@@ -6,7 +6,10 @@ DB_NAME = 'blockchain.db'
 DB_PATH = os.path.join(os.getcwd(), DB_NAME)
 
 if REFRESH_DB:
-	os.remove(DB_PATH)
+	try:
+		os.remove(DB_PATH)
+	except:
+		pass
 
 def create_tables():
 	connection, cursor = connect()
