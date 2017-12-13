@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from ecdsa import SigningKey
+from ecdsa import SigningKey, NIST192p
 
 REFRESH_DB = True
 DB_NAME = 'blockchain.db'
@@ -31,7 +31,13 @@ def keys_to_format(s, v):
 
 def format_to_keys(s, v):
 	# returns the human readable format to bytes for processing
-	return(bytes.fromhex(s), bytes.fromhex(v))
+	s = bytes.fromhex(s)
+	v = bytes.fromhex(v)
+
+	# and into the library specific object
+	s = SigningKey.from_string(s, curve=NIST192p)
+	v = s.get_verifying_key()
+	return(s, v)
 
 def new_wallet():
 	# interface to creating a new wallet
@@ -40,5 +46,6 @@ def new_wallet():
 
 
 (pubkey, privkey) = new_wallet()
+print(format_to_keys(pubkey, privkey))
 print(pubkey)
 print(privkey)
