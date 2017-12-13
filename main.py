@@ -1,7 +1,14 @@
+import sqlite3
+import os
 import wallet
 import db
 
-cursor = db.init()
+cursor = db.get_cursor()
+
+cursor.execute('''CREATE TABLE wallets 
+	(key text primary key, 
+	balance real)'''
+)
 
 # create a new wallet
 (s, k) = wallet.new()
@@ -21,6 +28,7 @@ print(cursor.fetchone())
 cursor.execute("INSERT INTO wallets VALUES (?, ?)", (s2, 0))
 cursor.execute("SELECT * FROM wallets WHERE key = ?", (s2,))
 print(cursor.fetchone())
+
 # '''
 # {
 # 	to: '',
