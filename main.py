@@ -1,41 +1,19 @@
-import sqlite3
-import os
 import wallet
 import db
 
-cursor = db.get_cursor()
+# create a new local datastore
+db.create_tables()
+connection, cursor = db.connect()
 
-cursor.execute('''CREATE TABLE wallets 
-	(key text primary key, 
-	balance real)'''
-)
-
-# create a new wallet
+# create and insert a new wallet
 (s, k) = wallet.new()
+db.insert_wallet(s)
 
-# add it to the local database
-cursor.execute("INSERT INTO wallets VALUES (?, ?)", (s, 0))
+# mint some coins and verify it has them
+db.mint_coins(s, 100)
+print(db.select_wallet(s))
 
-def set_coins(wallet, amount):
-	cursor.execute("UPDATE wallets SET balance = ? WHERE key = ?", (amount, wallet))
-
-set_coins(s, 100)
-
-cursor.execute("SELECT * FROM wallets WHERE key = ?", (s,))
-print(cursor.fetchone())
-
+# create and insert a new wallet and verify it has no coins
 (s2, k2) = wallet.new()
-cursor.execute("INSERT INTO wallets VALUES (?, ?)", (s2, 0))
-cursor.execute("SELECT * FROM wallets WHERE key = ?", (s2,))
-print(cursor.fetchone())
-
-# '''
-# {
-# 	to: '',
-# 	amount: '',
-# },
-# {
-# 	signature: '',
-# 	proof: ''
-# }
-# '''
+db.insert_wallet(s2)
+print(db.select_wallet(s2))
