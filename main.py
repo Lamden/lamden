@@ -23,10 +23,12 @@ def test_db_and_wallet():
 # transactions should become protocol buffers, but for now they are JSON
 # create and insert a new wallet
 (s, v) = wallet.new()
+(s2, v2) = wallet.new()
 
 msg = b'hello there'
 sig = wallet.sign(s, msg)
-wallet.verify(v, msg, sig)
+print(wallet.verify(v, msg, sig))
+print(wallet.verify(v2, msg, sig))
 
 transaction = {
 	'payload' : {

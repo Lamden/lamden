@@ -36,4 +36,7 @@ def sign(s, msg):
 def verify(v, msg, sig):
 	v = bytes.fromhex(v)
 	v = VerifyingKey.from_string(v, curve=NIST192p)
-	return v.verify(sig, msg, hashfunc=hashlib.sha1, sigdecode=ecdsa.util.sigdecode_der)
+	try:
+		return v.verify(bytes.fromhex(sig), msg, hashfunc=hashlib.sha1, sigdecode=ecdsa.util.sigdecode_der)
+	except:
+		return False
