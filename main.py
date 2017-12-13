@@ -13,9 +13,31 @@ connection = sqlite3.connect(DB_NAME)
 cursor = connection.cursor()
 
 cursor.execute('''CREATE TABLE wallets 
-	(key text, 
+	(key text primary key, 
 	balance real)'''
 )
 
-(pubkey, privkey) = wallet.new()
-print(pubkey)
+# create a new wallet
+(s, k) = wallet.new()
+
+# add it to the local database
+cursor.execute("INSERT INTO wallets VALUES (?, ?)", (s, 0))
+
+def set_coins(wallet, amount):
+	cursor.execute("UPDATE wallets SET balance = ? WHERE key = ?", (amount, wallet))
+
+set_coins(s, 100)
+print(s)
+cursor.execute("SELECT * FROM wallets WHERE key = ?", (s,))
+print(cursor.fetchone())
+
+# '''
+# {
+# 	to: '',
+# 	amount: '',
+# },
+# {
+# 	signature: '',
+# 	proof: ''
+# }
+# '''
