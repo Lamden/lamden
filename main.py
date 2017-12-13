@@ -1,5 +1,7 @@
 import wallet
 import db
+import transaction
+import pickle
 
 def test_db_and_wallet():
 	# create a new local datastore
@@ -19,25 +21,30 @@ def test_db_and_wallet():
 	db.insert_wallet(s2)
 	print(db.select_wallet(s2))
 
+def test_sign_and_verify():
+	# transactions should become protocol buffers, but for now they are JSON
+	# create and insert a new wallet
+	(s, v) = wallet.new()
+	(s2, v2) = wallet.new()
 
-# transactions should become protocol buffers, but for now they are JSON
-# create and insert a new wallet
+	msg = b'hello there'
+	sig = wallet.sign(s, msg)
+	print(wallet.verify(v, msg, sig))
+	print(wallet.verify(v2, msg, sig))
+
 (s, v) = wallet.new()
 (s2, v2) = wallet.new()
 
-msg = b'hello there'
-sig = wallet.sign(s, msg)
-print(wallet.verify(v, msg, sig))
-print(wallet.verify(v2, msg, sig))
+tx = {}
 
-transaction = {
-	'payload' : {
-		'to' : 'wallet',
-		'amount' : 0
-	},
-	'metadata' : {
-		'proof' : '000',
-		'signature' : '000'
-	}
-}
+tx['payload'] = {}
+tx['payload']['to'] = v2
+tx['payload']['amount'] = 50
 
+payload = pickle.dumps(tx['payload'])
+
+tx['metadata'] = {}
+tx['metadata']['signature'] = wallet.sign(s, payload)
+tx['metadata']['proof'] = transaction.find_nonce(payload)
+
+print(tx)
