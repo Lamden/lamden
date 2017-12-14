@@ -15,14 +15,20 @@ import asyncio
 # the bundle of signatures is hashed and compared
 # if all is well, the block is added to the database
 
+def sub_to_mailbox(b):
+	context = zmq.Context()
+    subscriber = context.socket(zmq.SUB)
+    subscriber.connect("tcp://localhost:5563")
+    subscriber.setsockopt(zmq.SUBSCRIBE, b)
+
 async def transaction_box():
-	pass
+	sub_to_mailbox(b'T')
 
 async def block_box():
-	pass
+	sub_to_mailbox(b'B')
 
 async def hash_box():
-	pass
+	sub_to_mailbox(b'H')
 
 asyncio.get_event_loop().run_until_complete(asyncio.wait([
     transaction_box(),
