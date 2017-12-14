@@ -41,5 +41,3 @@ def test_transaction():
 
 	print(transaction.check_proof(tx['payload'], tx['metadata']['proof']))
 	print(transaction.check_proof(tx['payload'], '00000000000000000000000000000000'))
-
-test_transaction()
