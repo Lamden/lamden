@@ -1,7 +1,7 @@
 import wallet
 import db
 import transaction
-import pickle
+import pprint
 
 def test_db_and_wallet():
 	# create a new local datastore
@@ -32,19 +32,14 @@ def test_sign_and_verify():
 	print(wallet.verify(v, msg, sig))
 	print(wallet.verify(v2, msg, sig))
 
-(s, v) = wallet.new()
-(s2, v2) = wallet.new()
+def test_transaction():
+	(s, v) = wallet.new()
+	(s2, v2) = wallet.new()
 
-tx = {}
+	tx = transaction.build(to=v2, amount=50, s=s, v=v)
+	pprint.pprint(tx)
 
-tx['payload'] = {}
-tx['payload']['to'] = v2
-tx['payload']['amount'] = 50
+	print(transaction.check_proof(tx['payload'], tx['metadata']['proof']))
+	print(transaction.check_proof(tx['payload'], '00000000000000000000000000000000'))
 
-payload = pickle.dumps(tx['payload'])
-
-tx['metadata'] = {}
-tx['metadata']['signature'] = wallet.sign(s, payload)
-tx['metadata']['proof'] = transaction.find_nonce(payload)
-
-print(tx)
+test_transaction()
