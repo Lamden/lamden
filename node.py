@@ -3,6 +3,11 @@ import time
 import zmq
 from zmq.asyncio import Context, Poller
 import asyncio
+import uvloop
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+class Node():
+	def __init__()
 
 # types of envelopes:
 # transactions
@@ -17,12 +22,14 @@ import asyncio
 
 def sub_to_mailbox(b):
 	context = zmq.Context()
-    subscriber = context.socket(zmq.SUB)
-    subscriber.connect("tcp://localhost:5563")
-    subscriber.setsockopt(zmq.SUBSCRIBE, b)
+	subscriber = context.socket(zmq.SUB)
+	subscriber.connect("tcp://localhost:5563")
+	subscriber.setsockopt(zmq.SUBSCRIBE, b)
 
 async def transaction_box():
 	sub_to_mailbox(b'T')
+	# calculate validity of transaction
+	# 
 
 async def block_box():
 	sub_to_mailbox(b'B')
@@ -31,7 +38,7 @@ async def hash_box():
 	sub_to_mailbox(b'H')
 
 asyncio.get_event_loop().run_until_complete(asyncio.wait([
-    transaction_box(),
-    block_box(),
-    hash_box(),
+	transaction_box(),
+	block_box(),
+	hash_box(),
 ]))

@@ -3,6 +3,9 @@ import db
 import transaction
 import pprint
 
+#import timeit
+import secrets
+
 def test_db_and_wallet():
 	# create a new local datastore
 	db.create_tables()
@@ -41,3 +44,28 @@ def test_transaction():
 
 	print(transaction.check_proof(tx['payload'], tx['metadata']['proof']))
 	print(transaction.check_proof(tx['payload'], '00000000000000000000000000000000'))
+
+import time                                                
+
+def timeit(method):
+
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+
+        print('%r (%r, %r) %2.2f sec' % \
+              (method.__name__, args, kw, te-ts))
+        return result
+
+    return timed
+
+(s, v) = wallet.new()
+@timeit
+def sign_mb():
+	x = secrets.token_bytes(1024)
+	sig = wallet.sign(s, x)
+    
+sign_mb()
+# for x in range(1000):
+# 	s = secrets.token_bytes(16)
