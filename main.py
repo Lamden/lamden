@@ -1,6 +1,6 @@
-from wallets import base64_wallet as wallet
+from wallets import basic_wallet as wallet
 import db
-from transactions import base64_transaction as transaction
+from transactions import basic_transaction as transaction
 import pprint
 
 def test_db_and_wallet():
@@ -46,8 +46,11 @@ def test_transaction():
 (s2, v2) = wallet.new()
 
 tx = transaction.build(to=v2, amount=50, s=s, v=v)
-pprint.pprint(tx)
+from serialization import basic_serialization
+s = basic_serialization.serialize(tx)
+t = basic_serialization.deserialize(s)
 
-print(transaction.check_proof(tx['payload'], tx['metadata']['proof']))
-print(transaction.check_proof(tx['payload'], '00000000000000000000000000000000'))
+#print(s)
+print(t)
+print(tx)
 #4CQ8f6c9H2qFL7H3VVNVxVXar2ordtDetc9EJ9nXkC966ryCRb4hz1fcNiR1g6K76W
