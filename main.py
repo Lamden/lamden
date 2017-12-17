@@ -1,10 +1,7 @@
-import wallet
+from wallets import basic_wallet as wallet
 import db
-import transaction
+from transactions import basic_transaction as transaction
 import pprint
-
-#import timeit
-import secrets
 
 def test_db_and_wallet():
 	# create a new local datastore
@@ -45,27 +42,13 @@ def test_transaction():
 	print(transaction.check_proof(tx['payload'], tx['metadata']['proof']))
 	print(transaction.check_proof(tx['payload'], '00000000000000000000000000000000'))
 
-import time                                                
-
-def timeit(method):
-
-    def timed(*args, **kw):
-        ts = time.time()
-        result = method(*args, **kw)
-        te = time.time()
-
-        print('%r (%r, %r) %2.2f sec' % \
-              (method.__name__, args, kw, te-ts))
-        return result
-
-    return timed
-
 (s, v) = wallet.new()
-@timeit
-def sign_mb():
-	x = secrets.token_bytes(1024)
-	sig = wallet.sign(s, x)
-    
-sign_mb()
-# for x in range(1000):
-# 	s = secrets.token_bytes(16)
+(s2, v2) = wallet.new()
+
+tx = transaction.build(to=v2, amount=50, s=s, v=v)
+pprint.pprint(tx)
+
+print(transaction.check_proof(tx['payload'], tx['metadata']['proof']))
+print(transaction.check_proof(tx['payload'], '00000000000000000000000000000000'))
+
+#4CQ8f6c9H2qFL7H3VVNVxVXar2ordtDetc9EJ9nXkC966ryCRb4hz1fcNiR1g6K76W

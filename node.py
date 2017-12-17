@@ -6,9 +6,6 @@ import asyncio
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
-class Node():
-	def __init__()
-
 # types of envelopes:
 # transactions
 # blocks to sign

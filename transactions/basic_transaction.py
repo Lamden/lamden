@@ -1,11 +1,8 @@
 from twofish import Twofish
 import pickle
 import secrets
-import wallet
-
-# returns the serialization data 'for the wire'
-def new(payload, signature, proof):
-    return 0
+from transactions import transaction
+from wallets import basic_wallet as wallet
 
 def payload(*args):
     return {
