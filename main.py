@@ -1,6 +1,6 @@
-from wallets import basic_wallet as wallet
+from wallets import base64_wallet as wallet
 import db
-from transactions import basic_transaction as transaction
+from transactions import base64_transaction as transaction
 import pprint
 
 def test_db_and_wallet():
@@ -50,5 +50,4 @@ pprint.pprint(tx)
 
 print(transaction.check_proof(tx['payload'], tx['metadata']['proof']))
 print(transaction.check_proof(tx['payload'], '00000000000000000000000000000000'))
-
 #4CQ8f6c9H2qFL7H3VVNVxVXar2ordtDetc9EJ9nXkC966ryCRb4hz1fcNiR1g6K76W
