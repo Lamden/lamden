@@ -2,6 +2,7 @@ from wallets import basic_wallet as wallet
 import db
 from transactions import basic_transaction as transaction
 import pprint
+import hashlib
 
 def test_db_and_wallet():
 	# create a new local datastore
@@ -32,6 +33,7 @@ def test_sign_and_verify():
 	print(wallet.verify(v, msg, sig))
 	print(wallet.verify(v2, msg, sig))
 
+# testing id building a transaction works
 def test_transaction():
 	(s, v) = wallet.new()
 	(s2, v2) = wallet.new()
@@ -42,15 +44,42 @@ def test_transaction():
 	print(transaction.check_proof(tx['payload'], tx['metadata']['proof']))
 	print(transaction.check_proof(tx['payload'], '00000000000000000000000000000000'))
 
-(s, v) = wallet.new()
-(s2, v2) = wallet.new()
+# testing if a message can be serialized back and forth.
+def test_basic_serialization():
+	(s, v) = wallet.new()
+	(s2, v2) = wallet.new()
 
-tx = transaction.build(to=v2, amount=50, s=s, v=v)
-from serialization import basic_serialization
-s = basic_serialization.serialize(tx)
-t = basic_serialization.deserialize(s)
+	tx = transaction.build(to=v2, amount=50, s=s, v=v)
+	from serialization import basic_serialization
+	s = basic_serialization.serialize(tx)
+	t = basic_serialization.deserialize(s)
 
-#print(s)
-print(t)
-print(tx)
-#4CQ8f6c9H2qFL7H3VVNVxVXar2ordtDetc9EJ9nXkC966ryCRb4hz1fcNiR1g6K76W
+	#print(s)
+	print(t)
+	print(tx)
+
+
+
+def signing():
+	block_data = b'BLOCK_DATA'
+
+	sha3 = hashlib.sha3_256()
+	sha3.update(block_data)
+	print(sha3.digest())
+
+	signatures = []
+	wallets = []
+
+	for x in range(8):
+		print('signing...')
+		(s, v) = wallet.new()
+		wallets.append(v)
+		signatures.append(wallet.sign(s, block_data))
+
+	for x in range(8):
+		v = wallets[x]
+		sig = signatures[x]
+		print(wallet.verify(v, block_data, sig))
+
+	print(signatures)
+signing()
