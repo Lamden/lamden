@@ -82,4 +82,6 @@ def signing():
 		print(wallet.verify(v, block_data, sig))
 
 	print(signatures)
-signing()
+
+from networking import node
+node.test_transactions()

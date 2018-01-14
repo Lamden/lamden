@@ -20,6 +20,8 @@ def serialize(t):
 	return s
 
 def deserialize(s):
+	s = str(s)
+
 	t = {
 		'payload' : {
 			'to' : None,
