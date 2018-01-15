@@ -3,9 +3,8 @@ import time
 import zmq
 from transactions import basic_transaction as transaction
 from serialization import basic_serialization
-import datetime
 
-
+# add auth for only the public keys of witnesses
 def puller():
 	print('delegate listening...')
 	context = zmq.Context()

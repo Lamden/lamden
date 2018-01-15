@@ -3,24 +3,6 @@ import time
 import zmq
 from transactions import basic_transaction as transaction
 from serialization import basic_serialization
-import datetime
-
-# asynchronize eventually
-def main():
-	context = zmq.Context()
-
-	receiver = context.socket(zmq.REP)
-	receiver.bind("tcp://*:5555")
-
-	while True:
-		s = receiver.recv()
-		tx = basic_serialization.deserialize(s)
-
-		if (transaction.check_proof(tx['payload'], tx['metadata']['proof'])) == True:
-			receiver.send_string('success')
-		else:
-			receiver.send_string('failure')
-		print(s)
 
 def puller():
 	print('witness listening...')
