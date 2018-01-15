@@ -1,27 +1,26 @@
-import pika
+import sys
+import time
+import zmq
 from transactions import basic_transaction as transaction
-from serialization import basic_serialization as s
+from serialization import basic_serialization
 
-def main():
-	connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-	channel = connection.channel()
+def test_zmq():
+	context = zmq.Context()
 
-	channel.queue_declare(queue='transactions')
+	# Socket to receive messages on
+	receiver = context.socket(zmq.REP)
+	receiver.bind("tcp://*:5555")
 
-	def callback(ch, method, properties, body):
-	    tx = s.deserialize(body)
+	# Process tasks forever
+	while True:
+	    s = receiver.recv()
+	    tx = basic_serialization.deserialize(s)
+
 	    if (transaction.check_proof(tx['payload'], tx['metadata']['proof'])) == True:
-	    	print('transaction works!')
+	    	receiver.send_string('success')
 	    else:
-	    	print('transaction does not work!')
-
-	channel.basic_qos(prefetch_count=1)
-	channel.basic_consume(callback,
-	                      queue='transactions',
-	                      no_ack=True)
-
-	print(' [*] Waiting for messages. To exit press CTRL+C')
-	channel.start_consuming()
+	    	receiver.send_string('failure')
+	    print(s)
 
 if __name__ == "__main__":
-	main()
+	test_zmq()

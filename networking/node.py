@@ -1,15 +1,14 @@
-import pika
+import zmq
 from wallets import basic_wallet as wallet
 from transactions import basic_transaction as transaction
 from serialization import basic_serialization
 
-# build 2 transactions and send them to the witness
-def test_transactions():
-	connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-	channel = connection.channel()
+def test_zmq():
+	context = zmq.Context()
 
-	channel.queue_declare(queue='transactions')
-
+	# Socket to receive messages on
+	sender = context.socket(zmq.REQ)
+	sender.connect("tcp://localhost:5555")
 
 	(s, v) = wallet.new()
 	(s2, v2) = wallet.new()
@@ -19,23 +18,15 @@ def test_transactions():
 
 	tx2['metadata']['proof'] = '00000000000000000000000000000000'
 
-	print(tx)
+	sender.send_string(basic_serialization.serialize(tx))
 
-	channel.basic_publish(exchange='',
-	                      routing_key='transactions',
-	                      body=basic_serialization.serialize(tx),
-	                      properties=pika.BasicProperties(
-	                      		delivery_mode = 2,
-	                      	))
+	message = sender.recv()
+	print("Received reply %s" % ( message))
 
-	channel.basic_publish(exchange='',
-	                      routing_key='transactions',
-	                      body=basic_serialization.serialize(tx2),
-	                      properties=pika.BasicProperties(
-	                      		delivery_mode = 2,
-	                      ))
+	sender.send_string(basic_serialization.serialize(tx2))
 
-	connection.close()
+	message = sender.recv()
+	print("Received reply %s" % ( message))
 
 if __name__ == "__main__":
-	test_transactions()
+	test_zmq()
