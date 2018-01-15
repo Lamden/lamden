@@ -1,21 +1,22 @@
-import pika
+import sys
+import time
+import zmq
+from transactions import basic_transaction as transaction
+from serialization import basic_serialization
+import datetime
 
-def main():
-	connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-	channel = connection.channel()
 
-	channel.queue_declare(queue='verified_transactions')
+def puller():
+	print('delegate listening...')
+	context = zmq.Context()
 
-	def callback(ch, method, properties, body):
-	    print('recieved a verified transaction')
+	# Socket to receive messages on
+	witness = context.socket(zmq.PULL)
+	witness.bind("tcp://*:5559")
 
-	channel.basic_qos(prefetch_count=1)
-	channel.basic_consume(callback,
-	                      queue='verified_transactions',
-	                      no_ack=True)
-
-	print(' [*] Waiting for messages. To exit press CTRL+C')
-	channel.start_consuming()
+	while True:
+		s = witness.recv()
+		print(s)
 
 if __name__ == "__main__":
-	main()
+	puller()
