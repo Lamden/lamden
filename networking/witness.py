@@ -1,7 +1,7 @@
 import sys
 import time
 import zmq
-from transactions import basic_transaction as transaction
+from transactions import ed25519_transaction as transaction
 from serialization import basic_serialization
 
 def puller():

@@ -42,7 +42,7 @@ def test_transaction():
 	pprint.pprint(tx)
 
 	print(transaction.check_proof(tx['payload'], tx['metadata']['proof']))
-	print(transaction.check_proof(tx['payload'], '00000000000000000000000000000000'))
+	#print(transaction.check_proof(tx['payload'], '00000000000000000000000000000000'))
 
 # testing if a message can be serialized back and forth.
 def test_basic_serialization():
@@ -58,30 +58,26 @@ def test_basic_serialization():
 	print(t)
 	print(tx)
 
-
-
 def signing():
-	block_data = b'BLOCK_DATA'
+	import secrets
+	block_data = secrets.token_bytes(1024)
 
 	sha3 = hashlib.sha3_256()
 	sha3.update(block_data)
-	print(sha3.digest())
 
 	signatures = []
 	wallets = []
 
-	for x in range(8):
-		print('signing...')
+	for x in range(1024):
 		(s, v) = wallet.new()
 		wallets.append(v)
 		signatures.append(wallet.sign(s, block_data))
 
-	for x in range(8):
+	for x in range(1024):
 		v = wallets[x]
 		sig = signatures[x]
-		print(wallet.verify(v, block_data, sig))
+		wallet.verify(v, None, sig)
 
-	print(signatures)
-
-from networking import node
-node.test_transactions()
+for x in range(100):
+	print(x)
+	test_transaction()
