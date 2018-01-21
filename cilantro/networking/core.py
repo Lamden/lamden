@@ -18,5 +18,4 @@ class Node(object):
 
     @asyncio.coroutine
     def zmq_listen(self):
-        print('test')
         raise NotImplementedError
