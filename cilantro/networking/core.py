@@ -3,19 +3,12 @@ import asyncio
 import aiozmq
 import uvloop
 import time
+import multiprocessing
 
-class Node(object):
-    def __init__(self):
+class Node(multiprocessing.Process):
+    def __init__(self, *args):
         raise NotImplementedError
 
     @classmethod
-    def connect(cls):
-        raise NotImplementedError
-
-    @asyncio.coroutine
-    def http_listen(self):
-        raise NotImplementedError
-
-    @asyncio.coroutine
-    def zmq_listen(self):
+    async def consume(cls):
         raise NotImplementedError
