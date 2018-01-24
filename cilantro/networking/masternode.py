@@ -1,30 +1,30 @@
-from flask import Flask
-from flask_restful import Resource, Api
+from flask import Flask, request
 
 import zmq
 
 app = Flask(__name__)
-api = Api(app)
 
 context = zmq.Context()
 publisher = context.socket(zmq.PUB)
 
-class Transactions(Resource):
-    def post(self):
-        # serialize this bad boy
+HOST = '127.0.0.1'
+PORT = '4444'
+URL = 'tcp://{}:{}'.format(HOST, PORT)
 
-        # send the message over zmq
-        try:
-            publisher.bind('tcp://127.0.0.1:9999')
-            publisher.send(b'test_message')
-        except:
-            return {'error' : 'response'}
-        finally:
-            publisher.unbind()
+@app.route('/', methods=['POST'])
+def process_transaction():
 
-        return {'hello': 'world'}
+    data = request.args.get('tx')
+    print(data)
+    try:
+        publisher.bind(URL)
+        publisher.send(data)
+    except Exception as e:
+        print(e)
+    finally:
+        publisher.unbind(URL)
 
-api.add_resource(Transactions, '/')
+    return 'success'
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()

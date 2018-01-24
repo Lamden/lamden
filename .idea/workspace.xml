@@ -17,10 +17,11 @@
     <SUITE FILE_PATH="coverage/cilantro$test_dummy.coverage" NAME="test_dummy Coverage Results" MODIFIED="1516488305911" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
     <SUITE FILE_PATH="coverage/cilantro$test_wallets.coverage" NAME="test_wallets Coverage Results" MODIFIED="1516488687235" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
     <SUITE FILE_PATH="coverage/cilantro$Unittests_in_test_wallet_py.coverage" NAME="Unittests in test_wallet.py Coverage Results" MODIFIED="1516488665441" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro" />
-    <SUITE FILE_PATH="coverage/cilantro$masternode.coverage" NAME="masternode Coverage Results" MODIFIED="1516824634160" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/networking" />
+    <SUITE FILE_PATH="coverage/cilantro$masternode.coverage" NAME="masternode Coverage Results" MODIFIED="1516830814037" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/networking" />
     <SUITE FILE_PATH="coverage/cilantro$Unittests_in_test_witness_py.coverage" NAME="Unittests in test_witness.py Coverage Results" MODIFIED="1516500457524" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/networking" />
     <SUITE FILE_PATH="coverage/cilantro$basic.coverage" NAME="basic Coverage Results" MODIFIED="1516490273393" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/wallets" />
     <SUITE FILE_PATH="coverage/cilantro$witness.coverage" NAME="witness Coverage Results" MODIFIED="1516500085755" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/networking" />
+    <SUITE FILE_PATH="coverage/cilantro$core.coverage" NAME="core Coverage Results" MODIFIED="1516830588045" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/networking" />
     <SUITE FILE_PATH="coverage/cilantro$Unittests_in_test_basicTransaction_py.coverage" NAME="Unittests in test_basicTransaction.py Coverage Results" MODIFIED="1516500000374" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
   </component>
   <component name="FileEditorManager">
@@ -64,10 +65,10 @@
       <file leaf-file-name="masternode.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/cilantro/networking/masternode.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="225">
-              <caret line="15" column="35" lean-forward="false" selection-start-line="15" selection-start-column="35" selection-end-line="15" selection-end-column="35" />
+            <state relative-caret-position="375">
+              <caret line="25" column="0" lean-forward="true" selection-start-line="25" selection-start-column="0" selection-end-line="25" selection-end-column="0" />
               <folding>
-                <element signature="e#0#23#0" expanded="true" />
+                <element signature="e#0#32#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -208,6 +209,25 @@
     </option>
   </component>
   <component name="RunManager" selected="Python.masternode">
+    <configuration name="core" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/cilantro/networking" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="cilantro" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/cilantro/networking/core.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+    </configuration>
     <configuration name="masternode" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -246,21 +266,6 @@
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
     </configuration>
-    <configuration name="Unittests in test_base64Wallet.py" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests/cilantro/wallets" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="cilantro" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;$PROJECT_DIR$/tests/cilantro/wallets/test_base64Wallet.py&quot;" />
-      <option name="_new_targetType" value="&quot;PATH&quot;" />
-    </configuration>
     <configuration name="Unittests in test_basicTransaction.py" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -292,19 +297,19 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
     </configuration>
     <list size="5">
-      <item index="0" class="java.lang.String" itemvalue="Python tests.Unittests in test_base64Wallet.py" />
-      <item index="1" class="java.lang.String" itemvalue="Python tests.Unittests in test_basicTransaction.py" />
-      <item index="2" class="java.lang.String" itemvalue="Python.witness" />
-      <item index="3" class="java.lang.String" itemvalue="Python tests.Unittests in test_witness.py" />
-      <item index="4" class="java.lang.String" itemvalue="Python.masternode" />
+      <item index="0" class="java.lang.String" itemvalue="Python tests.Unittests in test_basicTransaction.py" />
+      <item index="1" class="java.lang.String" itemvalue="Python.witness" />
+      <item index="2" class="java.lang.String" itemvalue="Python tests.Unittests in test_witness.py" />
+      <item index="3" class="java.lang.String" itemvalue="Python.masternode" />
+      <item index="4" class="java.lang.String" itemvalue="Python.core" />
     </list>
     <recent_temporary>
       <list size="5">
         <item index="0" class="java.lang.String" itemvalue="Python.masternode" />
-        <item index="1" class="java.lang.String" itemvalue="Python tests.Unittests in test_witness.py" />
-        <item index="2" class="java.lang.String" itemvalue="Python.witness" />
-        <item index="3" class="java.lang.String" itemvalue="Python tests.Unittests in test_basicTransaction.py" />
-        <item index="4" class="java.lang.String" itemvalue="Python tests.Unittests in test_base64Wallet.py" />
+        <item index="1" class="java.lang.String" itemvalue="Python.core" />
+        <item index="2" class="java.lang.String" itemvalue="Python tests.Unittests in test_witness.py" />
+        <item index="3" class="java.lang.String" itemvalue="Python.witness" />
+        <item index="4" class="java.lang.String" itemvalue="Python tests.Unittests in test_basicTransaction.py" />
       </list>
     </recent_temporary>
   </component>
@@ -343,7 +348,14 @@
       <option name="project" value="LOCAL" />
       <updated>1516824224211</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="masternodes are like a RESTful endpoint now">
+      <created>1516824869976</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1516824869976</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TestHistory">
@@ -414,7 +426,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="testing pycharm" />
     <MESSAGE value="not overthinking networking this time through. refactoring later" />
-    <option name="LAST_COMMIT_MESSAGE" value="not overthinking networking this time through. refactoring later" />
+    <MESSAGE value="masternodes are like a RESTful endpoint now" />
+    <option name="LAST_COMMIT_MESSAGE" value="masternodes are like a RESTful endpoint now" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -679,12 +692,28 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/../../cilantro/venv/lib/python3.6/site-packages/werkzeug/serving.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="324">
+          <caret line="813" column="0" lean-forward="false" selection-start-line="813" selection-start-column="0" selection-end-line="813" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../../cilantro/venv/lib/python3.6/site-packages/flask/app.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="324">
+          <caret line="840" column="0" lean-forward="false" selection-start-line="840" selection-start-column="0" selection-end-line="840" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/cilantro/networking/masternode.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="15" column="35" lean-forward="false" selection-start-line="15" selection-start-column="35" selection-end-line="15" selection-end-column="35" />
+        <state relative-caret-position="375">
+          <caret line="25" column="0" lean-forward="true" selection-start-line="25" selection-start-column="0" selection-end-line="25" selection-end-column="0" />
           <folding>
-            <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#0#32#0" expanded="true" />
           </folding>
         </state>
       </provider>
