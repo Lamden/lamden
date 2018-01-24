@@ -1,9 +1,9 @@
 class Serializer(object):
     
     @staticmethod
-    def serialize():
+    def serialize(*args):
         pass
 
     @staticmethod
-    def deserialize():
+    def deserialize(*args):
         pass

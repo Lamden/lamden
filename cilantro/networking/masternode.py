@@ -14,7 +14,7 @@ URL = 'tcp://{}:{}'.format(HOST, PORT)
 @app.route('/', methods=['POST'])
 def process_transaction():
 
-    data = request.args.get('tx')
+    data = request.get_data()
     print(data)
     try:
         publisher.bind(URL)
