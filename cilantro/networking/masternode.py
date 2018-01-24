@@ -1,17 +1,6 @@
 from flask import Flask, request, jsonify
-
 from cilantro.serialization import JSONSerializer
-
 import zmq
-
-app = Flask(__name__)
-
-context = zmq.Context()
-publisher = context.socket(zmq.PUB)
-
-HOST = '127.0.0.1'
-PORT = '4444'
-URL = 'tcp://{}:{}'.format(HOST, PORT)
 
 class Masternode(object):
     def __init__(self, host='127.0.0.1', port='9999', serializer=JSONSerializer):
@@ -31,15 +20,17 @@ class Masternode(object):
             return {'status': 'Could not serialize transaction' }
 
         try:
-            publisher.bind(self.url)
-            self.serializer.send(d, publisher)
+            self.publisher.bind(self.url)
+            self.serializer.send(d, self.publisher)
             print('ay')
         except Exception as e:
             print(e)
         finally:
-            publisher.unbind(self.url)
+            self.publisher.unbind(self.url)
 
         return { 'status' : '{} successfully published to the network'.format(d) }
+
+app = Flask(__name__)
 
 @app.route('/', methods=['POST'])
 def process_transaction():
