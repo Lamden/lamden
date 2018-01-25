@@ -1,4 +1,7 @@
-from flask import Flask, request, jsonify
+import uvloop
+from aiohttp import web
+web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
 from cilantro.serialization import JSONSerializer
 import zmq
 
@@ -26,28 +29,44 @@ class Masternode(object):
         d = None
         try:
             d = self.serializer.serialize(data)
-            print(d)
         except:
             return {'status': 'Could not serialize transaction' }
 
         try:
             self.publisher.bind(self.url)
             self.serializer.send(d, self.publisher)
-            print('ay')
         except Exception as e:
-            print(e)
             return {'status': 'Could not send transaction'}
         finally:
             self.publisher.unbind(self.url)
 
         return { 'status' : '{} successfully published to the network'.format(d) }
 
-app = Flask(__name__)
+    async def a_process_tranasaction(self, data=None):
+        d = None
+        try:
+            d = self.serializer.serialize(data)
+        except:
+            return {'status': 'Could not serialize transaction' }
 
-@app.route('/', methods=['POST'])
-def process_transaction():
+        try:
+            self.publisher.bind(self.url)
+            self.serializer.send(d, self.publisher)
+        except Exception as e:
+            return {'status': 'Could not send transaction'}
+        finally:
+            self.publisher.unbind(self.url)
+
+        return { 'status' : '{} successfully published to the network'.format(d) }
+
+
+async def process_transaction(request):
     m = Masternode()
-    return jsonify(m.process_tranasaction(request.get_data()))
+    r = m.process_tranasaction(await request.content.read())
+    return web.Response(text=str(r))
 
 if __name__ == '__main__':
-    app.run()
+    app = web.Application()
+    app.router.add_post('/', process_transaction)
+    web.run_app(app, host='127.0.0.1', port=8080)
+
