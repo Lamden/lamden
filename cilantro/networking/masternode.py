@@ -42,23 +42,6 @@ class Masternode(object):
 
         return { 'status' : '{} successfully published to the network'.format(d) }
 
-    async def a_process_tranasaction(self, data=None):
-        d = None
-        try:
-            d = self.serializer.serialize(data)
-        except:
-            return {'status': 'Could not serialize transaction' }
-
-        try:
-            self.publisher.bind(self.url)
-            self.serializer.send(d, self.publisher)
-        except Exception as e:
-            return {'status': 'Could not send transaction'}
-        finally:
-            self.publisher.unbind(self.url)
-
-        return { 'status' : '{} successfully published to the network'.format(d) }
-
 
 async def process_transaction(request):
     m = Masternode()
