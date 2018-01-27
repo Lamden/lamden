@@ -2,8 +2,7 @@ from cilantro.transactions import Transaction
 
 class BasicTransaction(Transaction):
     def __init__(self, wallet, proof):
-        self.wallet = wallet
-        self.proof_system = proof
+        super().__init__(wallet, proof)
         self.payload = {
             'payload' : {
                 'to' : None,
@@ -17,7 +16,6 @@ class BasicTransaction(Transaction):
         }
 
     def build(self, to, amount, s, v, complete=True):
-
         self.payload['payload']['to'] = to
         self.payload['payload']['amount'] = amount
         self.payload['payload']['from'] = v
@@ -27,7 +25,7 @@ class BasicTransaction(Transaction):
             self.payload['metadata']['proof'] = self.seal(self.payload['payload'])
 
     def sign(self, payload):
-        self.wallet.sign()
+        return self.wallet.sign(payload)
 
     def seal(self, payload):
-        return(self.proof_system.find(payload))
+        return self.proof_system.find(payload)
