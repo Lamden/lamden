@@ -2,15 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6ebd7a7f-13df-4968-9189-3a5e4b4a98f0" name="Default" comment="">
-      <change beforePath="" afterPath="$PROJECT_DIR$/cilantro/db/__init__.py" />
-      <change beforePath="" afterPath="$PROJECT_DIR$/cilantro/db/state_memory.py" />
-      <change beforePath="" afterPath="$PROJECT_DIR$/cilantro/serialization/msgpack_serializer.py" />
-      <change beforePath="" afterPath="$PROJECT_DIR$/cilantro/transactions/testnet.py" />
-      <change beforePath="$PROJECT_DIR$/.idea/cilantro.iml" afterPath="$PROJECT_DIR$/.idea/cilantro.iml" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="$PROJECT_DIR$/.idea/misc.xml" />
+      <change beforePath="" afterPath="$PROJECT_DIR$/cilantro/serialization/capnp/testnet_transaction.capnp" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/cilantro/transactions/basic.py" afterPath="$PROJECT_DIR$/cilantro/transactions/basic.py" />
-      <change beforePath="$PROJECT_DIR$/cilantro/transactions/core.py" afterPath="$PROJECT_DIR$/cilantro/transactions/core.py" />
+      <change beforePath="$PROJECT_DIR$/cilantro/db/state_memory.py" afterPath="$PROJECT_DIR$/cilantro/db/state_memory.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -21,16 +15,6 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="masternode.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cilantro/networking/masternode.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="60">
-              <caret line="5" column="10" lean-forward="false" selection-start-line="5" selection-start-column="10" selection-end-line="5" selection-end-column="10" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="witness.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/cilantro/networking/witness.py">
           <provider selected="true" editor-type-id="text-editor">
@@ -43,86 +27,22 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="state_memory.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="state_memory.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/cilantro/db/state_memory.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="195">
-              <caret line="13" column="12" lean-forward="false" selection-start-line="13" selection-start-column="12" selection-end-line="13" selection-end-column="12" />
+            <state relative-caret-position="315">
+              <caret line="21" column="31" lean-forward="false" selection-start-line="21" selection-start-column="31" selection-end-line="21" selection-end-column="31" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="json_serializer.py" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/cilantro/serialization/json_serializer.py">
+      <file leaf-file-name="testnet_transaction.capnp" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/cilantro/serialization/capnp/testnet_transaction.capnp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="330">
-              <caret line="24" column="22" lean-forward="true" selection-start-line="24" selection-start-column="22" selection-end-line="24" selection-end-column="22" />
+            <state relative-caret-position="225">
+              <caret line="15" column="1" lean-forward="true" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
               <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="basic.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cilantro/transactions/basic.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="60">
-              <caret line="4" column="8" lean-forward="false" selection-start-line="4" selection-start-column="8" selection-end-line="4" selection-end-column="39" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="testnet.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cilantro/transactions/testnet.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="435">
-              <caret line="29" column="9" lean-forward="false" selection-start-line="29" selection-start-column="9" selection-end-line="29" selection-end-column="9" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="msgpack_serializer.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cilantro/serialization/msgpack_serializer.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="165">
-              <caret line="11" column="8" lean-forward="true" selection-start-line="11" selection-start-column="8" selection-end-line="11" selection-end-column="8" />
-              <folding>
-                <element signature="e#0#45#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="core.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cilantro/transactions/core.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="270">
-              <caret line="18" column="33" lean-forward="false" selection-start-line="18" selection-start-column="33" selection-end-line="18" selection-end-column="33" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="core.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/core.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="0">
-              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="fishfish.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/fishfish.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="345">
-              <caret line="23" column="20" lean-forward="false" selection-start-line="23" selection-start-column="20" selection-end-line="23" selection-end-column="20" />
-              <folding>
-                <element signature="e#0#35#0" expanded="true" />
-              </folding>
             </state>
           </provider>
         </entry>
@@ -143,11 +63,12 @@
     <option name="CHANGED_PATHS">
       <list>
         <option value="$PROJECT_DIR$/cilantro/networking/witness.py" />
-        <option value="$PROJECT_DIR$/cilantro/db/state_memory.py" />
         <option value="$PROJECT_DIR$/cilantro/transactions/core.py" />
         <option value="$PROJECT_DIR$/cilantro/transactions/basic.py" />
         <option value="$PROJECT_DIR$/cilantro/transactions/testnet.py" />
         <option value="$PROJECT_DIR$/cilantro/serialization/msgpack_serializer.py" />
+        <option value="$PROJECT_DIR$/cilantro/serialization/capnp/testnet_transaction.capnp" />
+        <option value="$PROJECT_DIR$/cilantro/db/state_memory.py" />
       </list>
     </option>
   </component>
@@ -191,24 +112,6 @@
               <item name="cilantro" type="462c0819:PsiDirectoryNode" />
               <item name="cilantro" type="462c0819:PsiDirectoryNode" />
             </path>
-            <path>
-              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="db" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="serialization" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="transactions" type="462c0819:PsiDirectoryNode" />
-            </path>
           </expand>
           <select />
         </subPane>
@@ -247,6 +150,14 @@
       <option name="presentableId" value="Default" />
       <updated>1516840252255</updated>
     </task>
+    <task id="LOCAL-00001" summary="db and new transaction types">
+      <created>1517095457567</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1517095457567</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -280,6 +191,10 @@
   </component>
   <component name="VcsContentAnnotationSettings">
     <option name="myLimit" value="2678400000" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="db and new transaction types" />
+    <option name="LAST_COMMIT_MESSAGE" value="db and new transaction types" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -375,7 +290,7 @@
         <state relative-caret-position="345">
           <caret line="23" column="20" lean-forward="false" selection-start-line="23" selection-start-column="20" selection-end-line="23" selection-end-column="20" />
           <folding>
-            <element signature="e#0#35#0" expanded="true" />
+            <element signature="e#0#35#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -390,11 +305,37 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/db/state_memory.py">
+    <entry file="file://$PROJECT_DIR$/cilantro/transactions/basic.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="195">
-          <caret line="13" column="12" lean-forward="false" selection-start-line="13" selection-start-column="12" selection-end-line="13" selection-end-column="12" />
+        <state relative-caret-position="60">
+          <caret line="4" column="8" lean-forward="false" selection-start-line="4" selection-start-column="8" selection-end-line="4" selection-end-column="39" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/serialization/json_serializer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="330">
+          <caret line="24" column="22" lean-forward="false" selection-start-line="24" selection-start-column="22" selection-end-line="24" selection-end-column="22" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/transactions/testnet.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="705">
+          <caret line="47" column="0" lean-forward="false" selection-start-line="47" selection-start-column="0" selection-end-line="47" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/serialization/msgpack_serializer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="165">
+          <caret line="11" column="8" lean-forward="false" selection-start-line="11" selection-start-column="8" selection-end-line="11" selection-end-column="8" />
+          <folding>
+            <element signature="e#0#45#0" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -406,36 +347,18 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/transactions/basic.py">
+    <entry file="file://$PROJECT_DIR$/cilantro/serialization/capnp/testnet_transaction.capnp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="60">
-          <caret line="4" column="8" lean-forward="false" selection-start-line="4" selection-start-column="8" selection-end-line="4" selection-end-column="39" />
+        <state relative-caret-position="225">
+          <caret line="15" column="1" lean-forward="true" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/transactions/testnet.py">
+    <entry file="file://$PROJECT_DIR$/cilantro/db/state_memory.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="435">
-          <caret line="29" column="9" lean-forward="false" selection-start-line="29" selection-start-column="9" selection-end-line="29" selection-end-column="9" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/serialization/msgpack_serializer.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="165">
-          <caret line="11" column="8" lean-forward="true" selection-start-line="11" selection-start-column="8" selection-end-line="11" selection-end-column="8" />
-          <folding>
-            <element signature="e#0#45#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/serialization/json_serializer.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="330">
-          <caret line="24" column="22" lean-forward="true" selection-start-line="24" selection-start-column="22" selection-end-line="24" selection-end-column="22" />
+        <state relative-caret-position="315">
+          <caret line="21" column="31" lean-forward="false" selection-start-line="21" selection-start-column="31" selection-end-line="21" selection-end-column="31" />
           <folding />
         </state>
       </provider>
