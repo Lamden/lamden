@@ -4,7 +4,7 @@ import pickle
 import secrets
 
 class TwofishPOW(POW):
-    @classmethod
+    @staticmethod
     def find(o):
         T = Twofish(o[0:32])
         x = secrets.token_bytes(16)
@@ -14,9 +14,9 @@ class TwofishPOW(POW):
             x = T.encrypt(secret)
         return secret.hex(), x.hex()
 
-    @classmethod
+    @staticmethod
     def check(o, proof):
-        o = pickle.dumps(o)
+        #o = pickle.dumps(o)
         T = Twofish(o[0:32])
         x = T.encrypt(bytes.fromhex(proof))
         if x.hex()[0:3] == '000':

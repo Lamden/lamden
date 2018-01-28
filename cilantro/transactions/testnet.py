@@ -1,47 +1,51 @@
 from cilantro.transactions import Transaction
 
-TX = 't'
-STAMP = 's'
-VOTE = 'v'
-
-
-def standard_tx(to, sender, amount):
-    return TX, to, sender, amount
-
-
-def stamp_tx(amount):
-    return STAMP, amount
-
-
-def vote_tx(address):
-    return VOTE, address
-
-
 class TestNetTransaction(Transaction):
     # support stamp transactions, vote transactions, etc.
+    payload_format = {
+        'payload' : None,
+        'metadata' : {
+            'signature' : None,
+            'proof' : None
+        }
+    }
+
+    TX = 't'
+    STAMP = 's'
+    VOTE = 'v'
+
+    @staticmethod
+    def standard_tx(to: str, amount: str):
+        return TestNetTransaction.TX, to, amount
+
+    @staticmethod
+    def stamp_tx(amount):
+        return TestNetTransaction.STAMP, amount
+
+    @staticmethod
+    def vote_tx(address):
+        return TestNetTransaction.VOTE, address
+
     def __init__(self, wallet, proof):
         super().__init__(wallet, proof)
-        self.payload = {
-            'payload': None,
-            'metadata': {
-                'sig': None,
-                'proof': None
-            }
-        }
+        self.payload = TestNetTransaction.payload_format
 
-    def build(self, tx, use_stamp=False, complete=True):
-
+    def build(self, tx, s, use_stamp=False, complete=True):
         self.payload['payload'] = tx
 
         if complete:
-            self.payload['metadata']['sig'] = self.sign(self.payload['payload'])
+            self.payload['metadata']['signature'] = self.sign(s)
             if use_stamp:
-                self.payload['metadata']['proof'] = STAMP
+                self.payload['metadata']['proof'] = TestNetTransaction.STAMP
             else:
-                self.payload['metadata']['proof'] = self.seal(self.payload['payload'])
+                self.payload['metadata']['proof'] = self.seal()
 
-    def sign(self, payload):
-        return self.wallet.sign(payload)
+    def sign(self, s):
+        return self.wallet.sign(s, str(self.payload['payload']).encode())
 
-    def seal(self, payload):
-        return self.proof_system.find(payload)
+    def seal(self):
+        return self.proof_system.find(str(self.payload['payload']).encode())
+
+    def verify_tx(self, tx: dict, v, sig: bytes):
+        # perhaps should strong type this to a named tuple for better type assertion
+        return self.wallet.verify(v, str(tx).encode, sig)

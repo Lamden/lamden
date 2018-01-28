@@ -36,7 +36,8 @@ class ED25519Wallet(Wallet):
         return cls.keys_to_format(s, v)
 
     @classmethod
-    def sign(cls, s, msg):
+    def sign(cls, s, msg: bytes):
+        assert type(msg).__name__ == 'bytes', 'Message argument must be a byte string.'
         (s, v) = cls.format_to_keys(s)
         return s.sign(msg).hex()
 
