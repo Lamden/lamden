@@ -1,4 +1,6 @@
 from cilantro.transactions import Transaction
+from cilantro.wallets import Wallet
+from cilantro.proofs.pow import POW
 
 class TestNetTransaction(Transaction):
     # support stamp transactions, vote transactions, etc.
@@ -15,16 +17,25 @@ class TestNetTransaction(Transaction):
     VOTE = 'v'
 
     @staticmethod
-    def standard_tx(to: str, amount: str):
-        return TestNetTransaction.TX, to, amount
+    def standard_tx(sender: str, to: str, amount: str):
+        return TestNetTransaction.TX, sender, to, amount
 
     @staticmethod
-    def stamp_tx(amount):
-        return TestNetTransaction.STAMP, amount
+    def stamp_tx(sender: str, amount):
+        return TestNetTransaction.STAMP, sender, amount
 
     @staticmethod
-    def vote_tx(address):
-        return TestNetTransaction.VOTE, address
+    def vote_tx(sender: str, address):
+        return TestNetTransaction.VOTE, sender, address
+
+    @staticmethod
+    def verify_tx(tx, v, sig, wallet: Wallet, proof_system: POW):
+        valid_signature = wallet.verify(v, str(tx['payload']).encode(), sig)
+        try:
+            valid_proof = proof_system.check(str(tx['payload']).encode(), tx['metadata']['proof'][0])
+        except:
+            valid_proof = tx['metadata']['proof'] == 's'
+        return valid_signature, valid_proof
 
     def __init__(self, wallet, proof):
         super().__init__(wallet, proof)
@@ -45,7 +56,3 @@ class TestNetTransaction(Transaction):
 
     def seal(self):
         return self.proof_system.find(str(self.payload['payload']).encode())
-
-    def verify_tx(self, tx: dict, v, sig: bytes):
-        # perhaps should strong type this to a named tuple for better type assertion
-        return self.wallet.verify(v, str(tx).encode, sig)

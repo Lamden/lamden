@@ -1,11 +1,10 @@
 from cilantro.proofs.pow import POW
 from twofish import Twofish
-import pickle
 import secrets
 
 class TwofishPOW(POW):
     @staticmethod
-    def find(o):
+    def find(o: bytes):
         T = Twofish(o[0:32])
         x = secrets.token_bytes(16)
         secret = secrets.token_bytes(16)
@@ -15,8 +14,7 @@ class TwofishPOW(POW):
         return secret.hex(), x.hex()
 
     @staticmethod
-    def check(o, proof):
-        #o = pickle.dumps(o)
+    def check(o: bytes, proof: str):
         T = Twofish(o[0:32])
         x = T.encrypt(bytes.fromhex(proof))
         if x.hex()[0:3] == '000':
