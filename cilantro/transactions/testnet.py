@@ -29,12 +29,13 @@ class TestNetTransaction(Transaction):
         return TestNetTransaction.VOTE, sender, address
 
     @staticmethod
-    def verify_tx(tx, v, sig, wallet: Wallet, proof_system: POW):
-        valid_signature = wallet.verify(v, str(tx['payload']).encode(), sig)
+    def verify_tx(transaction, verifying_key, signature, wallet: Wallet, proof_system: POW):
+        print(transaction)
+        valid_signature = wallet.verify(verifying_key, str(transaction['payload']).encode(), signature)
         try:
-            valid_proof = proof_system.check(str(tx['payload']).encode(), tx['metadata']['proof'][0])
+            valid_proof = proof_system.check(str(transaction['payload']).encode(), transaction['metadata']['proof'][0])
         except:
-            valid_proof = tx['metadata']['proof'] == 's'
+            valid_proof = transaction['metadata']['proof'] == 's'
         return valid_signature, valid_proof
 
     def __init__(self, wallet, proof):

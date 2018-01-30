@@ -8,25 +8,26 @@ import redis
 '''
 
 class TestNetInterpreter(object):
-    @staticmethod
-    def query_for_transaction(tx: dict):
-        # 1. make sure the tx is signed by the right person
-        full_tx = tx['payload']
-        assert TestNetTransaction.verify_tx(full_tx, full_tx[1], )
-        type = full_tx[0]
-        print(full_tx)
+    def __init__(self):
+        # where the redis object gets initialized and connected
+        pass
 
+    @staticmethod
+    def query_for_transaction(tx: TestNetTransaction):
+        # 1. make sure the tx is signed by the right person
+        full_tx = tx.payload['payload']
+        print(TestNetTransaction.verify_tx(tx.payload, full_tx[1], tx.payload['metadata']['signature'], ED25519Wallet, SHA3POW))
+
+'''
+    To do:
+    Add to balance, subtract from another
+    Vote for candidates
+    Add stamps
+    Remove stamps
+'''
 
 (s, v) = ED25519Wallet.new()
-TO = 'jason'
-AMOUNT = '1001'
+tx = TestNetTransaction(ED25519Wallet, SHA3POW)
+tx.build(TestNetTransaction.standard_tx(v, 'jason', '100'), s, use_stamp=False, complete=True)
 
-tx = TestNetTransaction.standard_tx(v, TO, AMOUNT)
-
-transaction_factory = TestNetTransaction(wallet=ED25519Wallet, proof=SHA3POW)
-transaction_factory.build(tx, s, complete=True, use_stamp=True)
-
-full_tx = transaction_factory.payload
-sig = full_tx['metadata']['signature']
-
-TestNetInterpreter.query_for_transaction(full_tx)
+TestNetInterpreter.query_for_transaction(tx)
