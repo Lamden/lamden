@@ -27,35 +27,47 @@ class TestTestNetInterpreter(TestCase):
         self.assertTrue(1 == 1)
 
     def test_query_for_std_tx(self):
+        (s, v) = ED25519Wallet.new()
+        (s2, v2) = ED25519Wallet.new()
+
+        tx = TestNetTransaction(ED25519Wallet, SHA3POW)
+        tx.build(TestNetTransaction.standard_tx(v, v2, '25'), s, use_stamp=False, complete=True)
+
         interpreter = TestNetInterpreter()
-        interpreter.r.hset('balances', 'stuart', '100')
-        interpreter.r.hset('balances', 'jason', '0')
+        interpreter.r.hset('balances', v, '100')
+        interpreter.r.hset('balances', v2, '0')
 
-        self.assertEqual(interpreter.r.hget('balances', 'stuart'), b'100')
+        self.assertEqual(interpreter.r.hget('balances', v), b'100')
 
-        mock_tx = (TestNetTransaction.TX, 'stuart', 'jason', '25')
+        mock_tx = (TestNetTransaction.TX, v, v2, '25')
 
         query = interpreter.query_for_std_tx(mock_tx)
 
         mock_query = [
-            (HSET, BALANCES, 'stuart', 75),
-            (HSET, BALANCES, 'jason', 25)
+            (HSET, BALANCES, v, 75),
+            (HSET, BALANCES, v2, 25)
         ]
 
         self.assertEqual(query, mock_query)
 
     def test_query_for_std_tx_bad_query(self):
+        (s, v) = ED25519Wallet.new()
+        (s2, v2) = ED25519Wallet.new()
+
+        tx = TestNetTransaction(ED25519Wallet, SHA3POW)
+        tx.build(TestNetTransaction.standard_tx(v, v2, '125'), s, use_stamp=False, complete=True)
+
         interpreter = TestNetInterpreter()
-        interpreter.r.hset('balances', 'stuart', '100')
-        interpreter.r.hset('balances', 'jason', '0')
+        interpreter.r.hset('balances', v, '100')
+        interpreter.r.hset('balances', v2, '0')
 
-        self.assertEqual(interpreter.r.hget('balances', 'stuart'), b'100')
+        self.assertEqual(interpreter.r.hget('balances', v), b'100')
 
-        mock_tx = (TestNetTransaction.TX, 'stuart', 'jason', '125')
+        mock_tx = (TestNetTransaction.TX, v, v2, '125')
 
         try:
-            query = interpreter.query_for_std_tx(mock_tx)
+            interpreter.query_for_std_tx(mock_tx)
             self.assertTrue(False)
-        except AssertionError as e:
+        except AssertionError:
             self.assertTrue(True)
 

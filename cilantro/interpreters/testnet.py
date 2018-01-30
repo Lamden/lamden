@@ -33,9 +33,9 @@ class TestNetInterpreter(object):
         if full_tx[0] == TestNetTransaction.TX:
             query = self.query_for_std_tx(full_tx)
         elif full_tx[0] == TestNetTransaction.VOTE:
-            pass
+            query = self.query_for_vote_tx(full_tx)
         elif full_tx[0] == TestNetTransaction.STAMP:
-            pass
+            query = self.query_for_vote_tx(full_tx)
         else:
             pass
 
@@ -44,13 +44,50 @@ class TestNetInterpreter(object):
         recipient = transaction_payload[2]
         amount = transaction_payload[3]
 
-        sender_balance = rs.int(self.r.hget('balances', sender))
+        sender_balance = rs.int(self.r.hget(BALANCES, sender))
         assert sender_balance >= int(amount), 'Sender does not enough funds to send.'
 
-        recipient_balance = rs.int(self.r.hget('balances', recipient))
+        recipient_balance = rs.int(self.r.hget(BALANCES, recipient))
 
         query = [
             (HSET, BALANCES, sender, sender_balance-int(amount)),
             (HSET, BALANCES, recipient, recipient_balance+int(amount))
         ]
+        return query
+
+    def query_for_vote_tx(self, transaction_payload: tuple):
+        sender = transaction_payload[1]
+        candidate = transaction_payload[2]
+
+        query = [
+            (HSET, VOTES, sender, candidate)
+        ]
+        return query
+
+    def query_for_stamp_tx(self, transaction_payload: tuple):
+        sender = transaction_payload[1]
+        amount = transaction_payload[2]
+
+        if amount > 0:
+            sender_balance = rs.int(self.r.hget(BALANCES, sender))
+            assert sender_balance >= int(amount), 'Sender does not enough funds to send.'
+
+            sender_stamps = rs.int(self.r.hget(STAMPS, sender))
+
+            query = [
+                (HSET, BALANCES, sender, sender_balance-int(amount)),
+                (HSET, STAMPS, sender, sender_stamps+int(amount))
+            ]
+
+        else:
+            sender_stamps = rs.int(self.r.hget(STAMPS, sender))
+            assert sender_stamps >= int(amount), 'Sender does not enough stamps to send.'
+
+            sender_balance = rs.int(self.r.hget(BALANCES, sender))
+
+            query = [
+                (HSET, STAMPS, sender, sender_stamps - int(amount)),
+                (HSET, BALANCES, sender, sender_balance + int(amount))
+            ]
+
         return query
