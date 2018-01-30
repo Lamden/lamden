@@ -25,8 +25,11 @@ class Witness(object):
         self.context = zmq.Context()
         self.witness_sub = self.context.socket(zmq.SUB)
 
-        self.transaction_filter = '0x' # a filter will ensure that only transaction data will be accepted by witnesses for safety
+        # a filter will ensure that only transaction data will be accepted by witnesses for safety
+        self.transaction_filter = '0x'
+
         self.transaction_length = 32 # standard length for transaction data that can be used as an additional filter (safeguard)
+
         self.witness_sub.setsockopt_string(zmq.SUBSCRIBE, self.transaction_filter, self.transaction_length) # generate witness setting with filters to receive tx data only, of the right size, to avoid spam
 
     def accept_incoming_transactions(self):
@@ -76,20 +79,3 @@ class Witness(object):
 
 # include safeguard to make sure witness and masternode start at the same time and no packets are lost
 # add proxy/broker based solution to ensure dynamic discovery between masternodes and witnesses - solved via masternode acting as bootnode
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
