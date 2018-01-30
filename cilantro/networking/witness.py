@@ -39,7 +39,7 @@ class Witness(object):
 
         raw_tx = None
         try:
-            raw_tx = JSONSerializer.deserialize(tx)
+            raw_tx = self.serializer.deserialize(tx)
         except:
             return {'status': 'Could not deserialize transaction'}
 
