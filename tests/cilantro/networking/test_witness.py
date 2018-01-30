@@ -1,6 +1,13 @@
 from unittest import TestCase
-from cilantro.networking import Witness
+from unittest.mock import Mock, MagicMock
+from cilantro.networking.witness import Witness
 
 class TestWitness(TestCase):
-    w = Witness("tcp://*:5558", "tcp://localhost:5559")
-    print(w.masternodes, w.delegates)
+    def setUp(self):
+        self.testwitness = Witness()
+
+    def basictest(self):
+        print(self.testwitness.masternodes, self.testwitness.delegates)
+
+    def tearDown(self):
+        self.testwitness.dispose()
