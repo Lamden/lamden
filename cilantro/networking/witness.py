@@ -13,23 +13,26 @@ from cilantro.serialization import JSONSerializer
 '''
 
 class Witness(object):
-    def __init__(self, host='127.0.0.1', port='4444', serializer=JSONSerializer):
+    def __init__(self, host='127.0.0.1', sub_port='4444', serializer=JSONSerializer):
         self.host = host
-        self.port = port
+        self.sub_port = sub_port
+        self.pub_port = '4488'
+        self.sub_url = 'tcp://{}:{}'.format(self.host, self.sub_port)
+        self.pub_url = 'tcp://{}:{}'.format(self.host, self.pub_port)
+
         self.serializer = serializer
 
         self.context = zmq.Context()
-        self.witness = self.context.socket(zmq.SUB)
-        self.url = 'tcp://{}:{}'.format(self.host, self.port)
+        self.witness_sub = self.context.socket(zmq.SUB)
 
         self.transaction_filter = '0x' # a filter will ensure that only transaction data will be accepted by witnesses for safety
         self.transaction_length = 32 # standard length for transaction data that can be used as an additional filter (safeguard)
-        self.witness.setsockopt_string(zmq.SUBSCRIBE, self.transaction_filter, self.transaction_length) # generate witness setting with filters to receive tx data only, of the right size, to avoid spam
+        self.witness_sub.setsockopt_string(zmq.SUBSCRIBE, self.transaction_filter, self.transaction_length) # generate witness setting with filters to receive tx data only, of the right size, to avoid spam
 
     def accept_incoming_transactions(self):
         try:
-            self.witness.connect(self.url)
-            tx = self.witness.recv_string(flags=zmq.ZMQ_DONTWAIT, encoding='utf-8')
+            self.witness_sub.connect(self.sub_url)
+            tx = self.witness_sub.recv_string(flags=zmq.ZMQ_DONTWAIT, encoding='utf-8')
 
         except Exception as e:
             return {'status': 'Could not receive transaction'}
@@ -52,19 +55,17 @@ class Witness(object):
                 if fishfish.TwofishPOW.check(raw_tx, raw_tx.payload['metadata']['proof']):
                     self.confirmed_transaction_routine()
 
-    def sub_to_pub(self):
+    def activate_witness_publisher(self):
         """Routine to turn witness behavior from masternode subscriber to publisher for delegates by changing port"""
-        self.sub_to_pub_port = '4488'
-        self.sub_to_pub_url = 'tcp://{}:{}'.format(self.host, self.sub_to_pub_port)
-
-        self.subpub = self.context.socket(zmq.PUB)
-        self.subpub.bind(self.sub_to_pub_url)
+        self.witness_pub = self.context.socket(zmq.PUB)
+        self.witness_pub.bind(self.pub_url)
 
     def confirmed_transaction_routine(self, raw_tx):
-        """take approvated transaction data, serialize it, pass along to delegate publisher function"""
+        """take approvated transaction data, serialize it, and open publisher socket. publish along tx info to delegate sub and then unbind socket"""
         tx_to_delegate = JSONSerializer.serialize(raw_tx)
-        self.sub_to_pub()
-        self.subpub.send_string(tx_to_delegate, encoding='utf-8')
+        self.activate_witness_publisher()
+        self.witness_pub.send_string(tx_to_delegate, encoding='utf-8')
+        self.witness_pub.unbind(self.pub_url) #unbind socket
 
     def check_user_stake(self, tx_sender_address):
         """Check if tx sender has a stake and if sender does, and amount spent is less than stake, bypass hashcash check and allow tx to go directly to witnesses"""
