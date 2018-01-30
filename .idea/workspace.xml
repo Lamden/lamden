@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="BookmarkManager">
+    <bookmark url="file://$PROJECT_DIR$/tests/cilantro/transactions/test_testNetTransaction.py" line="50" mnemonic="4" />
+  </component>
   <component name="ChangeListManager">
-    <list default="true" id="33fbab6e-76be-4019-bf40-617d589b0842" name="Default" comment="">
+    <list default="true" id="6ebd7a7f-13df-4968-9189-3a5e4b4a98f0" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/cilantro/networking/core.py" afterPath="$PROJECT_DIR$/cilantro/networking/core.py" />
+      <change beforePath="$PROJECT_DIR$/cilantro/networking/witness.py" afterPath="$PROJECT_DIR$/cilantro/networking/witness.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -13,34 +16,30 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="CoverageDataManager">
-    <SUITE FILE_PATH="coverage/cilantro$Unittests_in_test_base64Wallet_py.coverage" NAME="Unittests in test_base64Wallet.py Coverage Results" MODIFIED="1516492257751" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/wallets" />
-    <SUITE FILE_PATH="coverage/cilantro$test_dummy.coverage" NAME="test_dummy Coverage Results" MODIFIED="1516488305911" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
-    <SUITE FILE_PATH="coverage/cilantro$test_wallets.coverage" NAME="test_wallets Coverage Results" MODIFIED="1516488687235" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
-    <SUITE FILE_PATH="coverage/cilantro$Unittests_in_test_wallet_py.coverage" NAME="Unittests in test_wallet.py Coverage Results" MODIFIED="1516488665441" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro" />
-    <SUITE FILE_PATH="coverage/cilantro$Unittests_in_test_witness_py.coverage" NAME="Unittests in test_witness.py Coverage Results" MODIFIED="1516500457524" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/networking" />
-    <SUITE FILE_PATH="coverage/cilantro$basic.coverage" NAME="basic Coverage Results" MODIFIED="1516490273393" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/wallets" />
-    <SUITE FILE_PATH="coverage/cilantro$witness.coverage" NAME="witness Coverage Results" MODIFIED="1516500085755" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/networking" />
-    <SUITE FILE_PATH="coverage/cilantro$Unittests_in_test_basicTransaction_py.coverage" NAME="Unittests in test_basicTransaction.py Coverage Results" MODIFIED="1516500000374" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_stamp_tx_build.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_stamp_tx_build Coverage Results" MODIFIED="1517165270139" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_standard_tx_build.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_standard_tx_build Coverage Results" MODIFIED="1517181443567" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_in_test_ED25519Wallet_py.coverage" NAME="Nosetests in test_ED25519Wallet.py Coverage Results" MODIFIED="1517162986360" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/wallets" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_ED25519Wallet_TestED25519Wallet_test_sign_and_verify.coverage" NAME="Nosetests for test_ED25519Wallet.TestED25519Wallet.test_sign_and_verify Coverage Results" MODIFIED="1517162995693" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/wallets" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_base64Wallet_TestBase64Wallet_test_sign_and_verify.coverage" NAME="Nosetests for test_base64Wallet.TestBase64Wallet.test_sign_and_verify Coverage Results" MODIFIED="1517162927975" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/wallets" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_sign_std_tx.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx Coverage Results" MODIFIED="1517204479680" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_stamp_std_tx_pow.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_stamp_std_tx_pow Coverage Results" MODIFIED="1517183432926" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_in_test_testNetTransaction_py.coverage" NAME="Nosetests in test_testNetTransaction.py Coverage Results" MODIFIED="1517160425874" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_vote_tx_build.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_vote_tx_build Coverage Results" MODIFIED="1517165888924" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$testnet.coverage" NAME="testnet Coverage Results" MODIFIED="1517261141431" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/interpreters" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_stamp_std_tx.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_stamp_std_tx Coverage Results" MODIFIED="1517182065750" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$ed25519.coverage" NAME="ed25519 Coverage Results" MODIFIED="1517163062227" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/wallets" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_sign_std_tx_pow.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx_pow Coverage Results" MODIFIED="1517207958073" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$testnet__1_.coverage" NAME="testnet (1) Coverage Results" MODIFIED="1517261005115" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction Coverage Results" MODIFIED="1517208147151" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_stamp_vote_tx.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_stamp_vote_tx Coverage Results" MODIFIED="1517182152889" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="__init__.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cilantro/networking/__init__.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="15">
-              <caret line="1" column="47" lean-forward="false" selection-start-line="1" selection-start-column="47" selection-end-line="1" selection-end-column="47" />
-              <folding>
-                <element signature="e#0#41#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="witness.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="witness.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/cilantro/networking/witness.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="60">
-              <caret line="4" column="20" lean-forward="true" selection-start-line="4" selection-start-column="20" selection-end-line="4" selection-end-column="20" />
+            <state relative-caret-position="219">
+              <caret line="27" column="127" lean-forward="true" selection-start-line="27" selection-start-column="127" selection-end-line="27" selection-end-column="127" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
               </folding>
@@ -48,23 +47,23 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="core.py" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/cilantro/networking/core.py">
+      <file leaf-file-name="testnet.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/cilantro/interpreters/testnet.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="195">
-              <caret line="13" column="33" lean-forward="true" selection-start-line="13" selection-start-column="33" selection-end-line="13" selection-end-column="33" />
+            <state relative-caret-position="345">
+              <caret line="23" column="5" lean-forward="false" selection-start-line="23" selection-start-column="5" selection-end-line="23" selection-end-column="5" />
               <folding>
-                <element signature="e#0#10#0" expanded="true" />
+                <element signature="e#0#52#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="test_witness.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/tests/cilantro/networking/test_witness.py">
+      <file leaf-file-name="test_testNetTransaction.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/tests/cilantro/transactions/test_testNetTransaction.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="75">
-              <caret line="6" column="0" lean-forward="false" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
+            <state relative-caret-position="465">
+              <caret line="31" column="89" lean-forward="true" selection-start-line="31" selection-start-column="89" selection-end-line="31" selection-end-column="89" />
               <folding>
                 <element signature="e#0#29#0" expanded="true" />
               </folding>
@@ -72,11 +71,41 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="core.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cilantro/transactions/core.py">
+      <file leaf-file-name="testnet.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/cilantro/transactions/testnet.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="135">
-              <caret line="9" column="43" lean-forward="false" selection-start-line="9" selection-start-column="43" selection-end-line="9" selection-end-column="43" />
+            <state relative-caret-position="230">
+              <caret line="32" column="25" lean-forward="false" selection-start-line="32" selection-start-column="25" selection-end-line="32" selection-end-column="25" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="ed25519.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/cilantro/wallets/ed25519.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="480">
+              <caret line="44" column="31" lean-forward="true" selection-start-line="44" selection-start-column="20" selection-end-line="44" selection-end-column="31" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="sha.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/sha.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="165">
+              <caret line="13" column="48" lean-forward="false" selection-start-line="13" selection-start-column="48" selection-end-line="13" selection-end-column="48" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="fishfish.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/fishfish.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="240">
+              <caret line="18" column="43" lean-forward="true" selection-start-line="18" selection-start-column="43" selection-end-line="18" selection-end-column="43" />
               <folding />
             </state>
           </provider>
@@ -92,6 +121,10 @@
     </option>
   </component>
   <component name="FindInProjectRecents">
+    <findStrings>
+      <find>print</find>
+      <find>stamp</find>
+    </findStrings>
     <replaceStrings>
       <replace />
     </replaceStrings>
@@ -102,36 +135,25 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/tests/test_dummy.py" />
-        <option value="$PROJECT_DIR$/cilantro/wallets/WalletType.py" />
-        <option value="$PROJECT_DIR$/cilantro/wallets/BasicWallet.py" />
-        <option value="$PROJECT_DIR$/cilantro/test_wallet.py" />
-        <option value="$PROJECT_DIR$/cilantro/wallets.py" />
-        <option value="$PROJECT_DIR$/cilantro/wallets/basic_wallet.py" />
-        <option value="$PROJECT_DIR$/cilantro/wallets/e25119.py" />
-        <option value="$PROJECT_DIR$/tests/test_wallets.py" />
-        <option value="$PROJECT_DIR$/cilantro/serialization/core.py" />
-        <option value="$PROJECT_DIR$/cilantro/proofs/twofish.py" />
-        <option value="$PROJECT_DIR$/cilantro/proofs/twofish_pow.py" />
-        <option value="$PROJECT_DIR$/cilantro/proofs/pow/twofish.py" />
-        <option value="$PROJECT_DIR$/tests/cilantro/wallets/test_base64Wallet.py" />
-        <option value="$PROJECT_DIR$/tests/cilantro/transactions/test_transaction.py" />
-        <option value="$PROJECT_DIR$/cilantro/proofs/pow/core.py" />
-        <option value="$PROJECT_DIR$/cilantro/transactions/__init__.py" />
-        <option value="$PROJECT_DIR$/cilantro/wallets/__init__.py" />
-        <option value="$PROJECT_DIR$/cilantro/proofs/pow/__init__.py" />
         <option value="$PROJECT_DIR$/cilantro/transactions/core.py" />
-        <option value="$PROJECT_DIR$/tests/cilantro/transactions/test_basicTransaction.py" />
-        <option value="$PROJECT_DIR$/cilantro/wallets/basic.py" />
-        <option value="$PROJECT_DIR$/cilantro/wallets/base64.py" />
-        <option value="$PROJECT_DIR$/cilantro/wallets/core.py" />
-        <option value="$PROJECT_DIR$/cilantro/wallets/ed25519.py" />
         <option value="$PROJECT_DIR$/cilantro/transactions/basic.py" />
+        <option value="$PROJECT_DIR$/cilantro/serialization/capnp/testnet_transaction.capnp" />
+        <option value="$PROJECT_DIR$/cilantro/serialization/msgpack_serializer.py" />
+        <option value="$PROJECT_DIR$/cilantro/db/state_memory.py" />
+        <option value="$PROJECT_DIR$/cilantro/db/delegate_db.py" />
+        <option value="$PROJECT_DIR$/cilantro/transactions/__init__.py" />
+        <option value="$PROJECT_DIR$/tests/cilantro/wallets/test_ED25519Wallet.py" />
+        <option value="$PROJECT_DIR$/cilantro/wallets/ed25519.py" />
         <option value="$PROJECT_DIR$/cilantro/proofs/pow/fishfish.py" />
-        <option value="$PROJECT_DIR$/cilantro/networking/__init__.py" />
-        <option value="$PROJECT_DIR$/tests/cilantro/networking/test_witness.py" />
+        <option value="$PROJECT_DIR$/cilantro/proofs/pow/__init__.py" />
+        <option value="$PROJECT_DIR$/cilantro/interpreters/__init__.py" />
+        <option value="$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterprater.py" />
+        <option value="$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py" />
+        <option value="$PROJECT_DIR$/cilantro/proofs/pow/sha.py" />
+        <option value="$PROJECT_DIR$/tests/cilantro/transactions/test_testNetTransaction.py" />
+        <option value="$PROJECT_DIR$/cilantro/transactions/testnet.py" />
+        <option value="$PROJECT_DIR$/cilantro/interpreters/testnet.py" />
         <option value="$PROJECT_DIR$/cilantro/networking/witness.py" />
-        <option value="$PROJECT_DIR$/cilantro/networking/core.py" />
       </list>
     </option>
   </component>
@@ -142,10 +164,12 @@
     <sorting>DEFINITION_ORDER</sorting>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="1" />
     <option name="y" value="23" />
-    <option name="width" value="1167" />
-    <option name="height" value="898" />
+    <option name="width" value="1920" />
+    <option name="height" value="1053" />
+  </component>
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
   </component>
   <component name="ProjectView">
     <navigator currentView="ProjectPane" proportions="" version="1">
@@ -162,8 +186,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
-      <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -180,11 +202,54 @@
               <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
               <item name="cilantro" type="462c0819:PsiDirectoryNode" />
               <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="db" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="interpreters" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
               <item name="networking" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
               <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="proofs" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="proofs" type="462c0819:PsiDirectoryNode" />
+              <item name="pow" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="serialization" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="transactions" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="wallets" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
               <item name="tests" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
@@ -198,23 +263,34 @@
               <item name="cilantro" type="462c0819:PsiDirectoryNode" />
               <item name="tests" type="462c0819:PsiDirectoryNode" />
               <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="networking" type="462c0819:PsiDirectoryNode" />
+              <item name="interpreters" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="tests" type="462c0819:PsiDirectoryNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="transactions" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="tests" type="462c0819:PsiDirectoryNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="wallets" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
+      <pane id="Scratches" />
     </panes>
   </component>
   <component name="PropertiesComponent">
-    <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
-    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$USER_HOME$/Anaconda3/envs/cilantroenv/Scripts/python.exe" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
-  </component>
-  <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/cilantro" />
-    </key>
+    <property name="WebServerToolWindowFactoryState" value="false" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -228,61 +304,46 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python tests.Unittests in test_witness.py">
-    <configuration name="basic" type="PythonConfigurationType" factoryName="Python" temporary="true">
+  <component name="RunManager" selected="Python.testnet">
+    <configuration name="testnet (1)" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/cilantro/wallets" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/cilantro/transactions" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <module name="cilantro" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/cilantro/wallets/basic.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/cilantro/transactions/testnet.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
     </configuration>
-    <configuration name="witness" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="testnet" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/cilantro/networking" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/cilantro/interpreters" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <module name="cilantro" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/cilantro/networking/witness.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/cilantro/interpreters/testnet.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
     </configuration>
-    <configuration name="Unittests in test_base64Wallet.py" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests/cilantro/wallets" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="cilantro" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;$PROJECT_DIR$/tests/cilantro/wallets/test_base64Wallet.py&quot;" />
-      <option name="_new_targetType" value="&quot;PATH&quot;" />
-    </configuration>
-    <configuration name="Unittests in test_basicTransaction.py" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -293,39 +354,57 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <module name="cilantro" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
+      <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;$PROJECT_DIR$/tests/cilantro/transactions/test_basicTransaction.py&quot;" />
-      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <option name="_new_target" value="&quot;test_testNetTransaction.TestTestNetTransaction&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
-    <configuration name="Unittests in test_witness.py" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests/cilantro/networking" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests/cilantro/transactions" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <module name="cilantro" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
+      <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;$PROJECT_DIR$/tests/cilantro/networking/test_witness.py&quot;" />
-      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <option name="_new_target" value="&quot;test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+    </configuration>
+    <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx_pow" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests/cilantro/transactions" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="cilantro" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
+      <option name="_new_regexPattern" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx_pow&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
     <list size="5">
-      <item index="0" class="java.lang.String" itemvalue="Python.basic" />
-      <item index="1" class="java.lang.String" itemvalue="Python tests.Unittests in test_base64Wallet.py" />
-      <item index="2" class="java.lang.String" itemvalue="Python tests.Unittests in test_basicTransaction.py" />
-      <item index="3" class="java.lang.String" itemvalue="Python.witness" />
-      <item index="4" class="java.lang.String" itemvalue="Python tests.Unittests in test_witness.py" />
+      <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetTransaction.TestTestNetTransaction" />
+      <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx" />
+      <item index="2" class="java.lang.String" itemvalue="Python.testnet" />
+      <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx_pow" />
+      <item index="4" class="java.lang.String" itemvalue="Python.testnet (1)" />
     </list>
     <recent_temporary>
       <list size="5">
-        <item index="0" class="java.lang.String" itemvalue="Python tests.Unittests in test_witness.py" />
-        <item index="1" class="java.lang.String" itemvalue="Python.witness" />
-        <item index="2" class="java.lang.String" itemvalue="Python tests.Unittests in test_basicTransaction.py" />
-        <item index="3" class="java.lang.String" itemvalue="Python tests.Unittests in test_base64Wallet.py" />
-        <item index="4" class="java.lang.String" itemvalue="Python.basic" />
+        <item index="0" class="java.lang.String" itemvalue="Python.testnet" />
+        <item index="1" class="java.lang.String" itemvalue="Python.testnet (1)" />
+        <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetTransaction.TestTestNetTransaction" />
+        <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx_pow" />
+        <item index="4" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx" />
       </list>
     </recent_temporary>
   </component>
@@ -337,85 +416,107 @@
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="33fbab6e-76be-4019-bf40-617d589b0842" name="Default" comment="" />
-      <created>1516487161283</created>
+      <changelist id="6ebd7a7f-13df-4968-9189-3a5e4b4a98f0" name="Default" comment="" />
+      <created>1516840252255</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1516487161283</updated>
+      <updated>1516840252255</updated>
     </task>
-    <task id="LOCAL-00001" summary="testing pycharm">
-      <created>1516517985408</created>
+    <task id="LOCAL-00001" summary="db and new transaction types">
+      <created>1517095457567</created>
       <option name="number" value="00001" />
       <option name="presentableId" value="LOCAL-00001" />
       <option name="project" value="LOCAL" />
-      <updated>1516517985408</updated>
+      <updated>1517095457567</updated>
     </task>
-    <task id="LOCAL-00002" summary="testing pycharm">
-      <created>1516518059019</created>
+    <task id="LOCAL-00002" summary="redis and more">
+      <created>1517096345971</created>
       <option name="number" value="00002" />
       <option name="presentableId" value="LOCAL-00002" />
       <option name="project" value="LOCAL" />
-      <updated>1516518059019</updated>
+      <updated>1517096345971</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="testnet test transactions">
+      <created>1517182212215</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1517182212215</updated>
+    </task>
+    <task id="LOCAL-00004" summary="validating tx's seems to work better">
+      <created>1517208168058</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1517208168058</updated>
+    </task>
+    <task id="LOCAL-00005" summary="validating tx's seems to work better">
+      <created>1517273237330</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1517273237330</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TestHistory">
-    <history-entry file="Unittests_in_test_basicTransaction_py - 2018.01.20 at 16h 16m 48s.xml">
-      <configuration name="Unittests in test_basicTransaction.py" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetTransaction_TestTestNetTransaction - 2018.01.28 at 21h 42m 04s.xml">
+      <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction" configurationId="tests" />
     </history-entry>
-    <history-entry file="Unittests_in_test_basicTransaction_py - 2018.01.20 at 16h 17m 17s.xml">
-      <configuration name="Unittests in test_basicTransaction.py" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetTransaction_TestTestNetTransaction - 2018.01.28 at 22h 37m 33s.xml">
+      <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction" configurationId="tests" />
     </history-entry>
-    <history-entry file="Unittests_in_test_basicTransaction_py - 2018.01.20 at 16h 18m 35s.xml">
-      <configuration name="Unittests in test_basicTransaction.py" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetTransaction_TestTestNetTransaction - 2018.01.28 at 22h 39m 22s.xml">
+      <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction" configurationId="tests" />
     </history-entry>
-    <history-entry file="Unittests_in_test_basicTransaction_py - 2018.01.20 at 18h 00m 00s.xml">
-      <configuration name="Unittests in test_basicTransaction.py" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetTransaction_TestTestNetTransaction - 2018.01.28 at 22h 40m 35s.xml">
+      <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction" configurationId="tests" />
     </history-entry>
-    <history-entry file="Unittests_in_test_witness_py - 2018.01.20 at 18h 02m 37s.xml">
-      <configuration name="Unittests in test_witness.py" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetTransaction_TestTestNetTransaction - 2018.01.28 at 22h 41m 39s.xml">
+      <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction" configurationId="tests" />
     </history-entry>
-    <history-entry file="Unittests_in_test_witness_py - 2018.01.20 at 18h 03m 45s.xml">
-      <configuration name="Unittests in test_witness.py" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetTransaction_TestTestNetTransaction - 2018.01.28 at 22h 42m 27s.xml">
+      <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction" configurationId="tests" />
     </history-entry>
-    <history-entry file="Unittests_in_test_witness_py - 2018.01.20 at 18h 04m 17s.xml">
-      <configuration name="Unittests in test_witness.py" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_sign_std_tx - 2018.01.28 at 21h 41m 20s.xml">
+      <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx" configurationId="tests" />
     </history-entry>
-    <history-entry file="Unittests_in_test_witness_py - 2018.01.20 at 18h 04m 57s.xml">
-      <configuration name="Unittests in test_witness.py" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_sign_std_tx_pow - 2018.01.28 at 22h 38m 39s.xml">
+      <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx_pow" configurationId="tests" />
     </history-entry>
-    <history-entry file="Unittests_in_test_witness_py - 2018.01.20 at 18h 07m 17s.xml">
-      <configuration name="Unittests in test_witness.py" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_sign_std_tx_pow - 2018.01.28 at 22h 38m 45s.xml">
+      <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx_pow" configurationId="tests" />
     </history-entry>
-    <history-entry file="Unittests_in_test_witness_py - 2018.01.20 at 18h 07m 42s.xml">
-      <configuration name="Unittests in test_witness.py" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_sign_std_tx_pow - 2018.01.28 at 22h 39m 18s.xml">
+      <configuration name="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx_pow" configurationId="tests" />
     </history-entry>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="23" width="1440" height="873" extended-state="6" />
+    <frame x="0" y="23" width="1920" height="1053" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
-      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="true" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.2534332" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.19861111" sideWeight="0.5" order="1" side_tool="false" content_ui="combo" />
-      <window_info id="Docker" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="false" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="SciView" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
-      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="true" content_ui="tabs" />
-      <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
-      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="combo" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
+      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
+      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.24566768" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.14114584" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Docker" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="false" weight="0.33" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
+      <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="SciView" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
+      <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
+      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Data View" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -425,214 +526,338 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="testing pycharm" />
-    <option name="LAST_COMMIT_MESSAGE" value="testing pycharm" />
+    <MESSAGE value="db and new transaction types" />
+    <MESSAGE value="redis and more" />
+    <MESSAGE value="testnet test transactions" />
+    <MESSAGE value="validating tx's seems to work better" />
+    <option name="LAST_COMMIT_MESSAGE" value="validating tx's seems to work better" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/cilantro/wallets/core.py</url>
-          <line>30</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-      </breakpoints>
-      <option name="time" value="4" />
+      <option name="time" value="5" />
     </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/cilantro/networking/__init__.py">
+    <entry file="file://$PROJECT_DIR$/cilantro/networking/witness.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
-            <element signature="e#0#41#0" expanded="true" />
+            <element signature="e#0#10#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/db/state_memory.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="330">
+          <caret line="22" column="27" lean-forward="false" selection-start-line="22" selection-start-column="27" selection-end-line="22" selection-end-column="27" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/serialization/msgpack_serializer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="135">
+          <caret line="11" column="8" lean-forward="false" selection-start-line="11" selection-start-column="8" selection-end-line="11" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/serialization/json_serializer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="330">
+          <caret line="24" column="22" lean-forward="true" selection-start-line="24" selection-start-column="22" selection-end-line="24" selection-end-column="22" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/serialization/capnp/testnet_transaction.capnp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="225">
+          <caret line="15" column="1" lean-forward="true" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/networking/masternode.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/cilantro/networking/witness.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="210">
-          <caret line="16" column="16" lean-forward="false" selection-start-line="16" selection-start-column="16" selection-end-line="16" selection-end-column="16" />
+        <state relative-caret-position="330">
+          <caret line="22" column="0" lean-forward="true" selection-start-line="22" selection-start-column="0" selection-end-line="22" selection-end-column="0" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
           </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/networking/core.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="210">
-          <caret line="18" column="22" lean-forward="true" selection-start-line="18" selection-start-column="22" selection-end-line="18" selection-end-column="22" />
-          <folding>
-            <element signature="e#0#10#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tests/cilantro/networking/test_witness.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="75">
-          <caret line="6" column="0" lean-forward="false" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#29#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/transactions/core.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="135">
-          <caret line="9" column="43" lean-forward="false" selection-start-line="9" selection-start-column="43" selection-end-line="9" selection-end-column="43" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/wallets/WalletType.py" />
-    <entry file="file://$PROJECT_DIR$/cilantro/wallets/BasicWallet.py" />
-    <entry file="file://$PROJECT_DIR$/cilantro/test_wallet.py" />
-    <entry file="file://$PROJECT_DIR$/cilantro/wallets.py" />
-    <entry file="file://$PROJECT_DIR$/tests/test_dummy.py" />
-    <entry file="file://$PROJECT_DIR$/tests/test_wallets.py" />
-    <entry file="file://$PROJECT_DIR$/cilantro/serialization/core.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="7" column="22" lean-forward="false" selection-start-line="7" selection-start-column="22" selection-end-line="7" selection-end-column="22" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/twofish.py" />
-    <entry file="file://$PROJECT_DIR$/cilantro/proofs/twofish_pow.py" />
-    <entry file="file://$PROJECT_DIR$/tests/cilantro/transactions/test_transaction.py" />
-    <entry file="file://$PROJECT_DIR$/cilantro/transactions/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="15">
-          <caret line="1" column="42" lean-forward="false" selection-start-line="1" selection-start-column="42" selection-end-line="1" selection-end-column="42" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/wallets/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="45">
-          <caret line="3" column="0" lean-forward="true" selection-start-line="3" selection-start-column="0" selection-end-line="3" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="15">
-          <caret line="1" column="51" lean-forward="false" selection-start-line="1" selection-start-column="41" selection-end-line="1" selection-end-column="51" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/core.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="7" column="11" lean-forward="true" selection-start-line="7" selection-start-column="11" selection-end-line="7" selection-end-column="11" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/tests/cilantro/wallets/test_base64Wallet.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="240">
-          <caret line="16" column="59" lean-forward="true" selection-start-line="8" selection-start-column="4" selection-end-line="16" selection-end-column="59" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/wallets/base64.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="180">
-          <caret line="12" column="59" lean-forward="true" selection-start-line="12" selection-start-column="59" selection-end-line="12" selection-end-column="59" />
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/cilantro/wallets/core.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="390">
-          <caret line="26" column="33" lean-forward="true" selection-start-line="26" selection-start-column="33" selection-end-line="26" selection-end-column="33" />
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/wallets/basic.py">
+    <entry file="file://$PROJECT_DIR$/cilantro/wallets/base64.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="7" column="0" lean-forward="true" selection-start-line="7" selection-start-column="0" selection-end-line="12" selection-end-column="71" />
+        <state relative-caret-position="0">
+          <caret line="0" column="12" lean-forward="false" selection-start-line="0" selection-start-column="7" selection-end-line="0" selection-end-column="12" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/fishfish.py">
+    <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/core.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="315">
-          <caret line="21" column="33" lean-forward="true" selection-start-line="21" selection-start-column="33" selection-end-line="21" selection-end-column="33" />
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/serialization/core.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/serialization/capnp/testnet_transaction.capnp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="225">
+          <caret line="15" column="1" lean-forward="false" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/serialization/json_serializer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="330">
+          <caret line="24" column="22" lean-forward="true" selection-start-line="24" selection-start-column="22" selection-end-line="24" selection-end-column="22" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/serialization/msgpack_serializer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="45">
+          <caret line="5" column="3" lean-forward="false" selection-start-line="5" selection-start-column="3" selection-end-line="5" selection-end-column="3" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/db/state_memory.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/db/delegate_db.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="390">
+          <caret line="26" column="12" lean-forward="false" selection-start-line="26" selection-start-column="12" selection-end-line="26" selection-end-column="12" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/networking/delegate.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#14#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/networking/masternode.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="390">
+          <caret line="27" column="46" lean-forward="true" selection-start-line="27" selection-start-column="46" selection-end-line="27" selection-end-column="46" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/proofs/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tests/cilantro/wallets/test_ED25519Wallet.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="180">
+          <caret line="12" column="12" lean-forward="true" selection-start-line="12" selection-start-column="12" selection-end-line="12" selection-end-column="12" />
+          <folding>
+            <element signature="e#0#29#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tests/cilantro/wallets/test_base64Wallet.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="16" selection-end-column="59" />
+          <folding>
+            <element signature="e#0#29#0" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tests/cilantro/transactions/test_basicTransaction.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="195">
-          <caret line="13" column="47" lean-forward="false" selection-start-line="13" selection-start-column="47" selection-end-line="13" selection-end-column="47" />
+          <caret line="13" column="47" lean-forward="true" selection-start-line="13" selection-start-column="47" selection-end-line="13" selection-end-column="47" />
+          <folding>
+            <element signature="e#0#29#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="30">
+          <caret line="2" column="43" lean-forward="true" selection-start-line="2" selection-start-column="43" selection-end-line="2" selection-end-column="43" />
+          <folding>
+            <element signature="e#0#40#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/transactions/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="30">
+          <caret line="2" column="40" lean-forward="false" selection-start-line="2" selection-start-column="40" selection-end-line="2" selection-end-column="40" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterprater.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="15">
+          <caret line="1" column="0" lean-forward="true" selection-start-line="1" selection-start-column="0" selection-end-line="1" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/interpreters/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="58" lean-forward="false" selection-start-line="0" selection-start-column="58" selection-end-line="0" selection-end-column="58" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/wallets/basic.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="90">
+          <caret line="6" column="0" lean-forward="true" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#29#0" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/cilantro/transactions/basic.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="420">
-          <caret line="28" column="28" lean-forward="false" selection-start-line="27" selection-start-column="0" selection-end-line="28" selection-end-column="28" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/wallets/ed25519.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="120">
-          <caret line="8" column="21" lean-forward="false" selection-start-line="8" selection-start-column="21" selection-end-line="8" selection-end-column="21" />
+        <state relative-caret-position="255">
+          <caret line="17" column="46" lean-forward="true" selection-start-line="17" selection-start-column="46" selection-end-line="17" selection-end-column="46" />
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/cilantro/transactions/core.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="135">
-          <caret line="9" column="43" lean-forward="false" selection-start-line="9" selection-start-column="43" selection-end-line="9" selection-end-column="43" />
+        <state relative-caret-position="60">
+          <caret line="4" column="8" lean-forward="true" selection-start-line="4" selection-start-column="8" selection-end-line="6" selection-end-column="27" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/tests/cilantro/networking/test_witness.py">
+    <entry file="file://$PROJECT_DIR$/cilantro/wallets/ed25519.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="75">
-          <caret line="6" column="0" lean-forward="false" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
+        <state relative-caret-position="480">
+          <caret line="44" column="31" lean-forward="true" selection-start-line="44" selection-start-column="20" selection-end-line="44" selection-end-column="31" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/transactions/testnet.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="230">
+          <caret line="32" column="25" lean-forward="false" selection-start-line="32" selection-start-column="25" selection-end-line="32" selection-end-column="25" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/interpreters/testnet.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="345">
+          <caret line="23" column="5" lean-forward="false" selection-start-line="23" selection-start-column="5" selection-end-line="23" selection-end-column="5" />
+          <folding>
+            <element signature="e#0#52#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/fishfish.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="240">
+          <caret line="18" column="43" lean-forward="true" selection-start-line="18" selection-start-column="43" selection-end-line="18" selection-end-column="43" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/sha.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="165">
+          <caret line="13" column="48" lean-forward="false" selection-start-line="13" selection-start-column="48" selection-end-line="13" selection-end-column="48" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tests/cilantro/transactions/test_testNetTransaction.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="465">
+          <caret line="31" column="89" lean-forward="true" selection-start-line="31" selection-start-column="89" selection-end-line="31" selection-end-column="89" />
           <folding>
             <element signature="e#0#29#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/networking/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="15">
-          <caret line="1" column="47" lean-forward="false" selection-start-line="1" selection-start-column="47" selection-end-line="1" selection-end-column="47" />
-          <folding>
-            <element signature="e#0#41#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/cilantro/networking/witness.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="60">
-          <caret line="4" column="20" lean-forward="true" selection-start-line="4" selection-start-column="20" selection-end-line="4" selection-end-column="20" />
-          <folding>
-            <element signature="e#0#10#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/networking/core.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="195">
-          <caret line="13" column="33" lean-forward="true" selection-start-line="13" selection-start-column="33" selection-end-line="13" selection-end-column="33" />
+        <state relative-caret-position="219">
+          <caret line="27" column="127" lean-forward="true" selection-start-line="27" selection-start-column="127" selection-end-line="27" selection-end-column="127" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
           </folding>
