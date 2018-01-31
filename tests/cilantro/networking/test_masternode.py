@@ -15,9 +15,9 @@ class TestMasternode(TestCase):
     def test_host_and_port_storage(self):
         HOST = '127.0.0.1'
         PORT = '9999'
-        m = Masternode(host=HOST, port=PORT)
+        m = Masternode(host=HOST, internal_port=PORT)
         self.assertEqual(m.host, HOST)
-        self.assertEqual(m.port, PORT)
+        self.assertEqual(m.internal_port, PORT)
 
     def test_serialization_storage(self):
         m = Masternode(serializer=MockSerializer)

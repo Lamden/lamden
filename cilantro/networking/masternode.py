@@ -15,15 +15,16 @@ import zmq
 '''
 
 class Masternode(object):
-    def __init__(self, host='127.0.0.1', port='9999', serializer=JSONSerializer):
+    def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
         self.host = host
-        self.port = port
+        self.internal_port = internal_port
+        self.external_port = external_port
         self.serializer = serializer
 
         self.context = zmq.Context()
         self.publisher = self.context.socket(zmq.PUB)
 
-        self.url = 'tcp://{}:{}'.format(self.host, self.port)
+        self.url = 'tcp://{}:{}'.format(self.host, self.internal_port)
 
     def process_tranasaction(self, data=None):
         d = None
@@ -46,8 +47,8 @@ class Masternode(object):
         r = self.process_tranasaction(await request.content.read())
         return web.Response(text=str(r))
 
-    def setup_web_server(self, host='127.0.0.1', port=8080):
+    def setup_web_server(self):
         app = web.Application()
         app.router.add.post('/', self.process_tranasaction)
-        web.run_app(app, host=host, port=port)
+        web.run_app(app, host=self.host, port=self.external_port)
 
