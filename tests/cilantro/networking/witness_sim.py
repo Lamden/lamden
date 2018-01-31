@@ -66,7 +66,7 @@ class Witness(object):
         except Exception as e:
             return {'status': 'Could not connect to witness sub socket'}
 
-        for i in range(1000000000):
+        for i in range(100000):
             """Main loop entry point for witness sub"""
             tx = self.witness_sub.recv_json(flags=0, encoding='utf-8')
             if tx != -1:
@@ -74,7 +74,7 @@ class Witness(object):
                     raw_tx = self.serializer.deserialize(tx)
                 except Exception as e:
                     return {'status': 'Could not deserialize transaction'}
-                print(raw_tx + 'number {}'.format(i))
+                print('Received transaction number {} containing {}'.format(i, raw_tx))
             else:
                 print('No tx data')
 

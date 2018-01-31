@@ -1,5 +1,6 @@
 import json
 import zmq
+import time
 
 # FAKE MASTERNODE FOR TESTING PURPOSES ONLY
 
@@ -33,10 +34,10 @@ class Masternode(object):
         self.url = 'tcp://{}:{}'.format(self.host, self.port)
 
     def process_tranasaction(self):
-        d = {'blocknumber': '11210'}
+        d = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto'}, 'metadata': {'sig':'x287', 'proof': '000'}}
         self.publisher.bind(self.url)
 
-        for i in range(1000000000):
+        for i in range(100000):
             self.serializer.send(d, self.publisher)
             print('Sending message {}'.format(i))
         self.publisher.unbind(self.url)
