@@ -16,6 +16,7 @@ import redis
     Remove stamps
 '''
 
+
 class TestNetInterpreter(object):
     def __init__(self, host='localhost', port=6379, db=0):
         self.r = redis.StrictRedis(host=host, port=port, db=db)
@@ -30,6 +31,8 @@ class TestNetInterpreter(object):
                                             proof_system=SHA3POW)[0] \
             is True
 
+        # assume failure, prove otherwise
+        query = FAIL
         if full_tx[0] == TestNetTransaction.TX:
             query = self.query_for_std_tx(full_tx)
         elif full_tx[0] == TestNetTransaction.VOTE:
@@ -38,6 +41,8 @@ class TestNetInterpreter(object):
             query = self.query_for_vote_tx(full_tx)
         else:
             pass
+
+        return query
 
     def query_for_std_tx(self, transaction_payload: tuple):
         sender = transaction_payload[1]
@@ -68,15 +73,15 @@ class TestNetInterpreter(object):
         sender = transaction_payload[1]
         amount = transaction_payload[2]
 
-        if amount > 0:
+        if int(amount) > 0:
             sender_balance = rs.int(self.r.hget(BALANCES, sender))
             assert sender_balance >= int(amount), 'Sender does not enough funds to send.'
 
             sender_stamps = rs.int(self.r.hget(STAMPS, sender))
 
             query = [
-                (HSET, BALANCES, sender, sender_balance-int(amount)),
-                (HSET, STAMPS, sender, sender_stamps+int(amount))
+                (HSET, BALANCES, sender, sender_balance - int(amount)),
+                (HSET, STAMPS, sender, sender_stamps + int(amount))
             ]
 
         else:
@@ -86,8 +91,8 @@ class TestNetInterpreter(object):
             sender_balance = rs.int(self.r.hget(BALANCES, sender))
 
             query = [
-                (HSET, STAMPS, sender, sender_stamps - int(amount)),
-                (HSET, BALANCES, sender, sender_balance + int(amount))
+                (HSET, STAMPS, sender, sender_stamps + int(amount)),
+                (HSET, BALANCES, sender, sender_balance - int(amount))
             ]
 
         return query

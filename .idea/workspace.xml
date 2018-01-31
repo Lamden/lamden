@@ -8,6 +8,9 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change beforePath="$PROJECT_DIR$/cilantro/interpreters/constants.py" afterPath="$PROJECT_DIR$/cilantro/interpreters/constants.py" />
       <change beforePath="$PROJECT_DIR$/cilantro/interpreters/testnet.py" afterPath="$PROJECT_DIR$/cilantro/interpreters/testnet.py" />
+      <change beforePath="$PROJECT_DIR$/cilantro/interpreters/utils.py" afterPath="$PROJECT_DIR$/cilantro/interpreters/utils.py" />
+      <change beforePath="$PROJECT_DIR$/cilantro/networking/delegate.py" afterPath="$PROJECT_DIR$/cilantro/networking/delegate.py" />
+      <change beforePath="$PROJECT_DIR$/cilantro/wallets/__init__.py" afterPath="$PROJECT_DIR$/cilantro/wallets/__init__.py" />
       <change beforePath="$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py" afterPath="$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -19,16 +22,21 @@
   </component>
   <component name="CoverageDataManager">
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_stamp_tx_build.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_stamp_tx_build Coverage Results" MODIFIED="1517273998883" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_invalid_tx_type.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_invalid_tx_type Coverage Results" MODIFIED="1517433666782" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_in_test_ED25519Wallet_py.coverage" NAME="Nosetests in test_ED25519Wallet.py Coverage Results" MODIFIED="1517162986360" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/wallets" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_ED25519Wallet_TestED25519Wallet_test_sign_and_verify.coverage" NAME="Nosetests for test_ED25519Wallet.TestED25519Wallet.test_sign_and_verify Coverage Results" MODIFIED="1517162995693" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/wallets" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_stamp_tx_sub.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_stamp_tx_sub Coverage Results" MODIFIED="1517432265422" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_sign_std_tx.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx Coverage Results" MODIFIED="1517204479680" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_vote_tx_build.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_vote_tx_build Coverage Results" MODIFIED="1517165888924" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
     <SUITE FILE_PATH="coverage/cilantro$testnet.coverage" NAME="testnet Coverage Results" MODIFIED="1517275222228" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/interpreters" />
     <SUITE FILE_PATH="coverage/cilantro$ed25519.coverage" NAME="ed25519 Coverage Results" MODIFIED="1517163062227" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/wallets" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_redisSerializer_TestRedisSerializer_test_int_maker.coverage" NAME="Nosetests for test_redisSerializer.TestRedisSerializer.test_int_maker Coverage Results" MODIFIED="1517277257272" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
-    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_basic_success.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_basic_success Coverage Results" MODIFIED="1517275574888" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_basic_success.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_basic_success Coverage Results" MODIFIED="1517433118086" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_redisSerializer_TestRedisSerializer_test_string_maker.coverage" NAME="Nosetests for test_redisSerializer.TestRedisSerializer.test_string_maker Coverage Results" MODIFIED="1517277449576" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_initializing_redis.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_initializing_redis Coverage Results" MODIFIED="1517276128044" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_stamp_tx_sub_bad_query.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_stamp_tx_sub_bad_query Coverage Results" MODIFIED="1517432236603" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_vote_tx.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_vote_tx Coverage Results" MODIFIED="1517280417641" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_basic_failure_at_first_assertion_point.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_basic_failure_at_first_assertion_point Coverage Results" MODIFIED="1517433369410" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_std_tx_bad_query.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query Coverage Results" MODIFIED="1517278544286" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_standard_tx_build.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_standard_tx_build Coverage Results" MODIFIED="1517181443567" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_base64Wallet_TestBase64Wallet_test_sign_and_verify.coverage" NAME="Nosetests for test_base64Wallet.TestBase64Wallet.test_sign_and_verify Coverage Results" MODIFIED="1517162927975" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/wallets" />
@@ -39,21 +47,23 @@
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_basicTransaction_TestBasicTransaction.coverage" NAME="Nosetests for test_basicTransaction.TestBasicTransaction Coverage Results" MODIFIED="1517275077409" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_sign_std_tx_pow.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_sign_std_tx_pow Coverage Results" MODIFIED="1517274028521" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
     <SUITE FILE_PATH="coverage/cilantro$testnet__1_.coverage" NAME="testnet (1) Coverage Results" MODIFIED="1517261005115" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_stamp_tx_add.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_stamp_tx_add Coverage Results" MODIFIED="1517295345885" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction Coverage Results" MODIFIED="1517274989506" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_redisSerializer_TestRedisSerializer_test_int_maker_fail.coverage" NAME="Nosetests for test_redisSerializer.TestRedisSerializer.test_int_maker_fail Coverage Results" MODIFIED="1517277304934" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_std_tx.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx Coverage Results" MODIFIED="1517278582062" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
-    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter Coverage Results" MODIFIED="1517276188534" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter Coverage Results" MODIFIED="1517433674776" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
     <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetTransaction_TestTestNetTransaction_test_stamp_vote_tx.coverage" NAME="Nosetests for test_testNetTransaction.TestTestNetTransaction.test_stamp_vote_tx Coverage Results" MODIFIED="1517182152889" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/transactions" />
+    <SUITE FILE_PATH="coverage/cilantro$Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_stamp_tx_bad_query.coverage" NAME="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_stamp_tx_bad_query Coverage Results" MODIFIED="1517296674208" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/cilantro/interpreters" />
   </component>
   <component name="FileEditorManager">
-    <splitter split-orientation="horizontal" split-proportion="0.5">
+    <splitter split-orientation="horizontal" split-proportion="0.4541596">
       <split-first>
         <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-          <file leaf-file-name="testnet.py" pinned="false" current-in-tab="true">
+          <file leaf-file-name="testnet.py" pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/cilantro/interpreters/testnet.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="-222">
-                  <caret line="37" column="51" lean-forward="false" selection-start-line="37" selection-start-column="51" selection-end-line="37" selection-end-column="51" />
+                <state relative-caret-position="240">
+                  <caret line="16" column="3" lean-forward="true" selection-start-line="16" selection-start-column="3" selection-end-line="16" selection-end-column="3" />
                   <folding>
                     <element signature="e#0#52#0" expanded="true" />
                   </folding>
@@ -61,11 +71,33 @@
               </provider>
             </entry>
           </file>
+          <file leaf-file-name="delegate.py" pinned="false" current-in-tab="false">
+            <entry file="file://$PROJECT_DIR$/cilantro/networking/delegate.py">
+              <provider selected="true" editor-type-id="text-editor">
+                <state relative-caret-position="60">
+                  <caret line="4" column="52" lean-forward="false" selection-start-line="4" selection-start-column="52" selection-end-line="4" selection-end-column="52" />
+                  <folding>
+                    <element signature="e#0#14#0" expanded="true" />
+                  </folding>
+                </state>
+              </provider>
+            </entry>
+          </file>
+          <file leaf-file-name="witness.py" pinned="false" current-in-tab="true">
+            <entry file="file://$PROJECT_DIR$/cilantro/networking/witness.py">
+              <provider selected="true" editor-type-id="text-editor">
+                <state relative-caret-position="119">
+                  <caret line="48" column="3" lean-forward="false" selection-start-line="48" selection-start-column="3" selection-end-line="48" selection-end-column="3" />
+                  <folding />
+                </state>
+              </provider>
+            </entry>
+          </file>
           <file leaf-file-name="constants.py" pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/cilantro/interpreters/constants.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="0">
-                  <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="5" selection-end-column="17" />
+                <state relative-caret-position="90">
+                  <caret line="6" column="0" lean-forward="false" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
                   <folding />
                 </state>
               </provider>
@@ -74,21 +106,9 @@
           <file leaf-file-name="utils.py" pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/cilantro/interpreters/utils.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="165">
-                  <caret line="11" column="0" lean-forward="true" selection-start-line="11" selection-start-column="0" selection-end-line="11" selection-end-column="0" />
+                <state relative-caret-position="135">
+                  <caret line="9" column="16" lean-forward="true" selection-start-line="9" selection-start-column="16" selection-end-line="9" selection-end-column="16" />
                   <folding />
-                </state>
-              </provider>
-            </entry>
-          </file>
-          <file leaf-file-name="testnet.py" pinned="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/cilantro/transactions/testnet.py">
-              <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="60">
-                  <caret line="4" column="6" lean-forward="false" selection-start-line="4" selection-start-column="6" selection-end-line="4" selection-end-column="6" />
-                  <folding>
-                    <element signature="e#0#45#0" expanded="true" />
-                  </folding>
                 </state>
               </provider>
             </entry>
@@ -100,10 +120,21 @@
           <file leaf-file-name="test_testNetInterpreter.py" pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="572">
-                  <caret line="70" column="30" lean-forward="true" selection-start-line="70" selection-start-column="30" selection-end-line="70" selection-end-column="30" />
+                <state relative-caret-position="210">
+                  <caret line="39" column="0" lean-forward="false" selection-start-line="39" selection-start-column="0" selection-end-line="39" selection-end-column="0" />
                   <folding>
                     <element signature="e#0#29#0" expanded="true" />
+                    <element signature="e#354#528#0" expanded="false" />
+                    <element signature="e#572#988#0" expanded="false" />
+                    <element signature="e#1057#1458#0" expanded="false" />
+                    <element signature="e#1505#2200#0" expanded="false" />
+                    <element signature="e#2257#2910#0" expanded="false" />
+                    <element signature="e#2958#3434#0" expanded="false" />
+                    <element signature="e#3487#4125#0" expanded="false" />
+                    <element signature="e#4184#4744#0" expanded="false" />
+                    <element signature="e#4797#5390#0" expanded="false" />
+                    <element signature="e#5453#6007#0" expanded="false" />
+                    <element signature="e#6063#6429#0" expanded="false" />
                   </folding>
                 </state>
               </provider>
@@ -159,11 +190,13 @@
         <option value="$PROJECT_DIR$/tests/cilantro/networking/test_witness.py" />
         <option value="$PROJECT_DIR$/cilantro/networking/witness.py" />
         <option value="$PROJECT_DIR$/cilantro/interpreters/RedisSerializer.py" />
-        <option value="$PROJECT_DIR$/cilantro/interpreters/utils.py" />
         <option value="$PROJECT_DIR$/tests/cilantro/interpreters/test_redisSerializer.py" />
-        <option value="$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py" />
-        <option value="$PROJECT_DIR$/cilantro/interpreters/testnet.py" />
         <option value="$PROJECT_DIR$/cilantro/interpreters/constants.py" />
+        <option value="$PROJECT_DIR$/cilantro/wallets/__init__.py" />
+        <option value="$PROJECT_DIR$/cilantro/interpreters/testnet.py" />
+        <option value="$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py" />
+        <option value="$PROJECT_DIR$/cilantro/interpreters/utils.py" />
+        <option value="$PROJECT_DIR$/cilantro/networking/delegate.py" />
       </list>
     </option>
   </component>
@@ -196,6 +229,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -214,17 +248,22 @@
               <item name="cilantro" type="462c0819:PsiDirectoryNode" />
               <item name="interpreters" type="462c0819:PsiDirectoryNode" />
             </path>
+            <path>
+              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="networking" type="462c0819:PsiDirectoryNode" />
+            </path>
           </expand>
           <select />
         </subPane>
       </pane>
       <pane id="Scope" />
-      <pane id="Scratches" />
     </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="last_opened_file_path" value="$USER_HOME$/Anaconda3/envs/cilantroenv/Scripts/python.exe" />
-    <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
+    <property name="settings.editor.selected.configurable" value="configurable.group.appearance" />
     <property name="WebServerToolWindowFactoryState" value="false" />
   </component>
   <component name="PyCoverageOptionsProvider">
@@ -243,8 +282,8 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx">
-    <configuration name="Nosetests for test_redisSerializer.TestRedisSerializer" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter">
+    <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -257,10 +296,10 @@
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;test_redisSerializer.TestRedisSerializer&quot;" />
+      <option name="_new_target" value="&quot;test_testNetInterpreter.TestTestNetInterpreter&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
-    <configuration name="Nosetests for test_redisSerializer.TestRedisSerializer.test_int_maker_fail" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_basic_failure_at_first_assertion_point" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -273,10 +312,10 @@
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;test_redisSerializer.TestRedisSerializer.test_int_maker_fail&quot;" />
+      <option name="_new_target" value="&quot;test_testNetInterpreter.TestTestNetInterpreter.test_basic_failure_at_first_assertion_point&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
-    <configuration name="Nosetests for test_redisSerializer.TestRedisSerializer.test_string_maker" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_basic_success" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -289,10 +328,10 @@
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;test_redisSerializer.TestRedisSerializer.test_string_maker&quot;" />
+      <option name="_new_target" value="&quot;test_testNetInterpreter.TestTestNetInterpreter.test_basic_success&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
-    <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_invalid_tx_type" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -305,10 +344,10 @@
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx&quot;" />
+      <option name="_new_target" value="&quot;test_testNetInterpreter.TestTestNetInterpreter.test_query_for_invalid_tx_type&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
-    <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_stamp_tx_sub" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -321,23 +360,23 @@
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query&quot;" />
+      <option name="_new_target" value="&quot;test_testNetInterpreter.TestTestNetInterpreter.test_query_for_stamp_tx_sub&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
     <list size="5">
-      <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx" />
-      <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests for test_redisSerializer.TestRedisSerializer.test_int_maker_fail" />
-      <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests for test_redisSerializer.TestRedisSerializer.test_string_maker" />
-      <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests for test_redisSerializer.TestRedisSerializer" />
-      <item index="4" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query" />
+      <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter" />
+      <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_stamp_tx_sub" />
+      <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_basic_success" />
+      <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_basic_failure_at_first_assertion_point" />
+      <item index="4" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_invalid_tx_type" />
     </list>
     <recent_temporary>
       <list size="5">
-        <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx" />
-        <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query" />
-        <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests for test_redisSerializer.TestRedisSerializer" />
-        <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests for test_redisSerializer.TestRedisSerializer.test_string_maker" />
-        <item index="4" class="java.lang.String" itemvalue="Python tests.Nosetests for test_redisSerializer.TestRedisSerializer.test_int_maker_fail" />
+        <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter" />
+        <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_invalid_tx_type" />
+        <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_basic_failure_at_first_assertion_point" />
+        <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_basic_success" />
+        <item index="4" class="java.lang.String" itemvalue="Python tests.Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_stamp_tx_sub" />
       </list>
     </recent_temporary>
   </component>
@@ -404,39 +443,46 @@
       <option name="project" value="LOCAL" />
       <updated>1517278084549</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="bulk of other transaction types supported">
+      <created>1517280325996</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1517280325996</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TestHistory">
-    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_std_tx - 2018.01.29 at 18h 03m 43s.xml">
-      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter - 2018.01.31 at 13h 16m 27s.xml">
+      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_std_tx - 2018.01.29 at 18h 16m 22s.xml">
-      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter - 2018.01.31 at 13h 21m 21s.xml">
+      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_std_tx_bad_query - 2018.01.29 at 18h 04m 55s.xml">
-      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_basic_failure_at_first_assertion_point - 2018.01.31 at 13h 14m 45s.xml">
+      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_basic_failure_at_first_assertion_point" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_std_tx_bad_query - 2018.01.29 at 18h 05m 19s.xml">
-      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_basic_failure_at_first_assertion_point - 2018.01.31 at 13h 16m 09s.xml">
+      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_basic_failure_at_first_assertion_point" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_std_tx_bad_query - 2018.01.29 at 18h 05m 45s.xml">
-      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_basic_success - 2018.01.31 at 13h 11m 58s.xml">
+      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_basic_success" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_std_tx_bad_query - 2018.01.29 at 18h 05m 54s.xml">
-      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_invalid_tx_type - 2018.01.31 at 13h 18m 21s.xml">
+      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_invalid_tx_type" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_std_tx_bad_query - 2018.01.29 at 18h 06m 19s.xml">
-      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_invalid_tx_type - 2018.01.31 at 13h 18m 28s.xml">
+      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_invalid_tx_type" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_std_tx_bad_query - 2018.01.29 at 18h 06m 50s.xml">
-      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_invalid_tx_type - 2018.01.31 at 13h 18m 41s.xml">
+      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_invalid_tx_type" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_std_tx_bad_query - 2018.01.29 at 18h 10m 32s.xml">
-      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_invalid_tx_type - 2018.01.31 at 13h 20m 41s.xml">
+      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_invalid_tx_type" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_std_tx_bad_query - 2018.01.29 at 18h 15m 45s.xml">
-      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_std_tx_bad_query" configurationId="tests" />
+    <history-entry file="Nosetests_for_test_testNetInterpreter_TestTestNetInterpreter_test_query_for_invalid_tx_type - 2018.01.31 at 13h 21m 07s.xml">
+      <configuration name="Nosetests for test_testNetInterpreter.TestTestNetInterpreter.test_query_for_invalid_tx_type" configurationId="tests" />
     </history-entry>
   </component>
   <component name="ToolWindowManager">
@@ -447,13 +493,12 @@
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.15188584" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.23139654" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Coverage" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.17552084" sideWeight="0.5" order="0" side_tool="true" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.22018349" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Coverage" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.23385416" sideWeight="0.5" order="0" side_tool="true" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.15364583" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.15260416" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Docker" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="false" weight="0.33" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="SciView" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
@@ -463,6 +508,7 @@
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="3" side_tool="false" content_ui="combo" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Data View" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
     </layout>
@@ -504,44 +550,103 @@
     <MESSAGE value="validating tx's seems to work better" />
     <MESSAGE value="self serializer" />
     <MESSAGE value="interpreter and testing on testnet" />
-    <option name="LAST_COMMIT_MESSAGE" value="interpreter and testing on testnet" />
+    <MESSAGE value="bulk of other transaction types supported" />
+    <option name="LAST_COMMIT_MESSAGE" value="bulk of other transaction types supported" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py</url>
-          <option name="timeStamp" value="9" />
-        </line-breakpoint>
-      </breakpoints>
-      <option name="time" value="10" />
+      <option name="time" value="13" />
     </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/cilantro/networking/witness.py">
+    <entry file="file://$PROJECT_DIR$/cilantro/interpreters/utils.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        <state relative-caret-position="192">
+          <caret line="8" column="21" lean-forward="false" selection-start-line="8" selection-start-column="21" selection-end-line="8" selection-end-column="21" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/transactions/testnet.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="48">
+          <caret line="4" column="6" lean-forward="false" selection-start-line="4" selection-start-column="6" selection-end-line="4" selection-end-column="6" />
           <folding>
-            <element signature="e#0#10#0" expanded="false" />
+            <element signature="e#0#45#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/db/state_memory.py">
+    <entry file="file://$PROJECT_DIR$/cilantro/interpreters/testnet.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="330">
-          <caret line="22" column="27" lean-forward="false" selection-start-line="22" selection-start-column="27" selection-end-line="22" selection-end-column="27" />
+        <state relative-caret-position="1824">
+          <caret line="81" column="9" lean-forward="false" selection-start-line="81" selection-start-column="9" selection-end-line="81" selection-end-column="9" />
+          <folding>
+            <element signature="e#0#52#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/interpreters/constants.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="5" selection-end-column="17" />
           <folding />
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/interpreters/utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="192">
+          <caret line="8" column="21" lean-forward="true" selection-start-line="8" selection-start-column="21" selection-end-line="8" selection-end-column="21" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/transactions/testnet.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="48">
+          <caret line="4" column="6" lean-forward="false" selection-start-line="4" selection-start-column="6" selection-end-line="4" selection-end-column="6" />
+          <folding>
+            <element signature="e#0#45#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#29#0" expanded="true" />
+            <element signature="e#354#528#0" expanded="false" />
+            <element signature="e#572#988#0" expanded="false" />
+            <element signature="e#1057#1458#0" expanded="false" />
+            <element signature="e#1505#2200#0" expanded="false" />
+            <element signature="e#2257#2910#0" expanded="false" />
+            <element signature="e#2958#3434#0" expanded="false" />
+            <element signature="e#3487#4125#0" expanded="false" />
+            <element signature="e#4184#4744#0" expanded="false" />
+            <element signature="e#4797#5390#0" expanded="false" />
+            <element signature="e#5453#6007#0" expanded="false" />
+            <element signature="e#6063#6429#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/networking/witness.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/db/state_memory.py" />
     <entry file="file://$PROJECT_DIR$/cilantro/serialization/msgpack_serializer.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="135">
           <caret line="11" column="8" lean-forward="false" selection-start-line="11" selection-start-column="8" selection-end-line="11" selection-end-column="8" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -549,7 +654,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="330">
           <caret line="24" column="22" lean-forward="true" selection-start-line="24" selection-start-column="22" selection-end-line="24" selection-end-column="22" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -557,7 +661,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="225">
           <caret line="15" column="1" lean-forward="true" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -565,7 +668,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -573,9 +675,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="330">
           <caret line="22" column="0" lean-forward="true" selection-start-line="22" selection-start-column="0" selection-end-line="22" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#10#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -614,7 +713,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -622,7 +720,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="225">
           <caret line="15" column="1" lean-forward="false" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -630,7 +727,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="330">
           <caret line="24" column="22" lean-forward="true" selection-start-line="24" selection-start-column="22" selection-end-line="24" selection-end-column="22" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -638,41 +734,15 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="45">
           <caret line="5" column="3" lean-forward="false" selection-start-line="5" selection-start-column="3" selection-end-line="5" selection-end-column="3" />
-          <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/db/state_memory.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/db/delegate_db.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="390">
-          <caret line="26" column="12" lean-forward="false" selection-start-line="26" selection-start-column="12" selection-end-line="26" selection-end-column="12" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/networking/delegate.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#14#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/db/state_memory.py" />
+    <entry file="file://$PROJECT_DIR$/cilantro/db/delegate_db.py" />
     <entry file="file://$PROJECT_DIR$/cilantro/proofs/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -680,9 +750,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="180">
           <caret line="12" column="12" lean-forward="true" selection-start-line="12" selection-start-column="12" selection-end-line="12" selection-end-column="12" />
-          <folding>
-            <element signature="e#0#29#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -690,9 +757,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="16" selection-end-column="59" />
-          <folding>
-            <element signature="e#0#29#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -700,9 +764,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="30">
           <caret line="2" column="43" lean-forward="true" selection-start-line="2" selection-start-column="43" selection-end-line="2" selection-end-column="43" />
-          <folding>
-            <element signature="e#0#40#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -710,23 +771,14 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="30">
           <caret line="2" column="40" lean-forward="false" selection-start-line="2" selection-start-column="40" selection-end-line="2" selection-end-column="40" />
-          <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterprater.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="15">
-          <caret line="1" column="0" lean-forward="true" selection-start-line="1" selection-start-column="0" selection-end-line="1" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterprater.py" />
     <entry file="file://$PROJECT_DIR$/cilantro/interpreters/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="58" lean-forward="false" selection-start-line="0" selection-start-column="58" selection-end-line="0" selection-end-column="58" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -734,7 +786,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -742,7 +793,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="255">
           <caret line="17" column="46" lean-forward="true" selection-start-line="17" selection-start-column="46" selection-end-line="17" selection-end-column="46" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -758,7 +808,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="240">
           <caret line="18" column="43" lean-forward="true" selection-start-line="18" selection-start-column="43" selection-end-line="18" selection-end-column="43" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -774,9 +823,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="90">
           <caret line="6" column="0" lean-forward="false" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#29#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -784,19 +830,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="345">
           <caret line="23" column="2" lean-forward="false" selection-start-line="23" selection-start-column="2" selection-end-line="23" selection-end-column="2" />
-          <folding>
-            <element signature="e#0#13#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/networking/witness.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="287">
-          <caret line="48" column="3" lean-forward="false" selection-start-line="48" selection-start-column="3" selection-end-line="48" selection-end-column="3" />
-          <folding>
-            <element signature="e#0#10#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -814,7 +847,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="300">
           <caret line="22" column="3" lean-forward="false" selection-start-line="22" selection-start-column="3" selection-end-line="22" selection-end-column="3" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -822,26 +854,16 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="195">
           <caret line="13" column="47" lean-forward="true" selection-start-line="13" selection-start-column="47" selection-end-line="13" selection-end-column="47" />
-          <folding>
-            <element signature="e#0#29#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cilantro/interpreters/RedisSerializer.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/interpreters/RedisSerializer.py" />
     <entry file="file://$PROJECT_DIR$/cilantro/transactions/testnet.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="60">
+        <state relative-caret-position="0">
           <caret line="4" column="6" lean-forward="false" selection-start-line="4" selection-start-column="6" selection-end-line="4" selection-end-column="6" />
           <folding>
-            <element signature="e#0#45#0" expanded="true" />
+            <element signature="e#0#45#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -850,45 +872,81 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="45">
           <caret line="3" column="18" lean-forward="false" selection-start-line="3" selection-start-column="18" selection-end-line="3" selection-end-column="18" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/wallets/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="45">
+          <caret line="3" column="0" lean-forward="true" selection-start-line="3" selection-start-column="0" selection-end-line="3" selection-end-column="0" />
           <folding>
-            <element signature="e#0#29#0" expanded="true" />
+            <element signature="e#0#40#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="572">
-          <caret line="70" column="30" lean-forward="true" selection-start-line="70" selection-start-column="30" selection-end-line="70" selection-end-column="30" />
+        <state relative-caret-position="210">
+          <caret line="39" column="0" lean-forward="false" selection-start-line="39" selection-start-column="0" selection-end-line="39" selection-end-column="0" />
           <folding>
             <element signature="e#0#29#0" expanded="true" />
+            <element signature="e#354#528#0" expanded="false" />
+            <element signature="e#572#988#0" expanded="false" />
+            <element signature="e#1057#1458#0" expanded="false" />
+            <element signature="e#1505#2200#0" expanded="false" />
+            <element signature="e#2257#2910#0" expanded="false" />
+            <element signature="e#2958#3434#0" expanded="false" />
+            <element signature="e#3487#4125#0" expanded="false" />
+            <element signature="e#4184#4744#0" expanded="false" />
+            <element signature="e#4797#5390#0" expanded="false" />
+            <element signature="e#5453#6007#0" expanded="false" />
+            <element signature="e#6063#6429#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/cilantro/interpreters/utils.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="165">
-          <caret line="11" column="0" lean-forward="true" selection-start-line="11" selection-start-column="0" selection-end-line="11" selection-end-column="0" />
+        <state relative-caret-position="135">
+          <caret line="9" column="16" lean-forward="true" selection-start-line="9" selection-start-column="16" selection-end-line="9" selection-end-column="16" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/cilantro/interpreters/constants.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="5" selection-end-column="17" />
+        <state relative-caret-position="90">
+          <caret line="6" column="0" lean-forward="false" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/cilantro/interpreters/testnet.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-222">
-          <caret line="37" column="51" lean-forward="false" selection-start-line="37" selection-start-column="51" selection-end-line="37" selection-end-column="51" />
+        <state relative-caret-position="240">
+          <caret line="16" column="3" lean-forward="true" selection-start-line="16" selection-start-column="3" selection-end-line="16" selection-end-column="3" />
           <folding>
             <element signature="e#0#52#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/networking/delegate.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="60">
+          <caret line="4" column="52" lean-forward="false" selection-start-line="4" selection-start-column="52" selection-end-line="4" selection-end-column="52" />
+          <folding>
+            <element signature="e#0#14#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cilantro/networking/witness.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="119">
+          <caret line="48" column="3" lean-forward="false" selection-start-line="48" selection-start-column="3" selection-end-line="48" selection-end-column="3" />
+          <folding />
         </state>
       </provider>
     </entry>
