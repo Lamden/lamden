@@ -1,4 +1,7 @@
 from unittest import TestCase
+from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+from aiohttp import web
+
 from cilantro.networking import Masternode
 from cilantro.serialization import Serializer
 
@@ -22,3 +25,15 @@ class TestMasternode(TestCase):
     def test_serialization_storage(self):
         m = Masternode(serializer=MockSerializer)
         self.assertEqual(type(m.serializer), type(MockSerializer))
+
+class TestMasternodeAsync(AioHTTPTestCase):
+    async def get_application(self):
+        app = web.Application()
+        app.router.add_post('/', Masternode().process_request)
+        return app
+
+    @unittest_run_loop
+    async def test_web_server_setup(self):
+        response = await self.client.request('POST', '/', data='{ "something" : "something else" }')
+        print(response.status)
+        self.assertEqual(response.status, 200)
