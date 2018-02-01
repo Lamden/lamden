@@ -26,7 +26,7 @@ class Masternode(object):
 
         self.url = 'tcp://{}:{}'.format(self.host, self.internal_port)
 
-    def process_tranasaction(self, data=None):
+    def process_transaction(self, data=None):
         d = None
         try:
             d = self.serializer.serialize(data)
@@ -44,11 +44,11 @@ class Masternode(object):
         return { 'status' : '{} successfully published to the network'.format(d) }
 
     async def process_request(self, request):
-        r = self.process_tranasaction(await request.content.read())
+        r = self.process_transaction(await request.content.read())
         return web.Response(text=str(r))
 
     async def setup_web_server(self):
         app = web.Application()
-        app.router.add_post('/', self.process_tranasaction)
+        app.router.add_post('/', self.process_transaction)
         web.run_app(app, host=self.host, port=int(self.external_port))
 

@@ -33,7 +33,7 @@ class Masternode(object):
 
         self.url = 'tcp://{}:{}'.format(self.host, self.port)
 
-    def process_tranasaction(self):
+    def process_transaction(self):
         d = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto'}, 'metadata': {'sig':'x287', 'proof': '000'}}
         self.publisher.bind(self.url)
 
@@ -44,4 +44,4 @@ class Masternode(object):
 
 
 a = Masternode()
-a.process_tranasaction()
+a.process_transaction()
