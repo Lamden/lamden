@@ -36,4 +36,5 @@ class TestMasternodeAsync(AioHTTPTestCase):
     async def test_web_server_setup(self):
         response = await self.client.request('POST', '/', data='{ "something" : "something else" }')
         print(response.status)
+        print(await response.content.read())
         self.assertEqual(response.status, 200)

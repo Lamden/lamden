@@ -44,9 +44,8 @@ class Masternode(object):
         return { 'status' : '{} successfully published to the network'.format(d) }
 
     async def process_request(self, request):
-        #r = self.process_tranasaction(await request.content.read())
-        return web.Response(text='pong')
-        #return web.Response(body=r)
+        r = self.process_tranasaction(await request.content.read())
+        return web.Response(text=str(r))
 
     async def setup_web_server(self):
         app = web.Application()
