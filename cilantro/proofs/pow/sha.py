@@ -18,6 +18,6 @@ class SHA3POW(POW):
         h = hashlib.sha3_256()
         s = bytes.fromhex(proof)
         h.update(o + s)
-        if h.digest().hex()[0:3] != '000':
+        if h.digest().hex()[0:3] == '000':
             return True
         return False
