@@ -15,15 +15,16 @@ import zmq
 '''
 
 class Masternode(object):
-    def __init__(self, host='127.0.0.1', port='9999', serializer=JSONSerializer):
+    def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
         self.host = host
-        self.port = port
+        self.internal_port = internal_port
+        self.external_port = external_port
         self.serializer = serializer
 
         self.context = zmq.Context()
         self.publisher = self.context.socket(zmq.PUB)
 
-        self.url = 'tcp://{}:{}'.format(self.host, self.port)
+        self.url = 'tcp://{}:{}'.format(self.host, self.internal_port)
 
     def process_tranasaction(self, data=None):
         d = None
@@ -42,14 +43,12 @@ class Masternode(object):
 
         return { 'status' : '{} successfully published to the network'.format(d) }
 
+    async def process_request(self, request):
+        r = self.process_tranasaction(await request.content.read())
+        return web.Response(text=str(r))
 
-async def process_transaction(request):
-    m = Masternode()
-    r = m.process_tranasaction(await request.content.read())
-    return web.Response(text=str(r))
-
-if __name__ == '__main__':
-    app = web.Application()
-    app.router.add_post('/', process_transaction)
-    web.run_app(app, host='127.0.0.1', port=8080)
+    async def setup_web_server(self):
+        app = web.Application()
+        app.router.add_post('/', self.process_tranasaction)
+        web.run_app(app, host=self.host, port=int(self.external_port))
 

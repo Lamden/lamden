@@ -2,6 +2,7 @@ import asyncio
 import uvloop
 import zmq
 from zmq.asyncio import Context
+from cilantro.interpreters import TestNetInterpreter
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 ctx = Context.instance()

@@ -35,6 +35,7 @@ class Witness(object):
         # generate witness setting with filters to receive tx data only, of the right size, to avoid spam
         self.witness_sub.setsockopt_string(zmq.SUBSCRIBE, '')
 
+
     def accept_incoming_transactions(self):
         try:
             self.witness_sub.connect(self.sub_url)
@@ -74,6 +75,8 @@ class Witness(object):
 # include safeguard to make sure witness and masternode start at the same time and no packets are lost
 # add broker based solution to ensure dynamic discovery  - solved via masternode acting as bootnode
 # add proxy/broker based solution to ensure dynamic discovery between witness and delegate
+
+
 
 
 
