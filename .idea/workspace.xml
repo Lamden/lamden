@@ -5,9 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="6ebd7a7f-13df-4968-9189-3a5e4b4a98f0" name="Default" comment="">
+      <change beforePath="" afterPath="$PROJECT_DIR$/playground/play_delegate_consensus.py" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/cilantro/networking/witness.py" afterPath="$PROJECT_DIR$/cilantro/networking/witness.py" />
-      <change beforePath="$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py" afterPath="$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py" />
+      <change beforePath="$PROJECT_DIR$/tests/cilantro/networking/masternode_sim.py" afterPath="$PROJECT_DIR$/playground/masternode_sim.py" />
+      <change beforePath="$PROJECT_DIR$/tests/cilantro/networking/witness_sim.py" afterPath="$PROJECT_DIR$/playground/witness_sim.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -61,46 +62,14 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="witness.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cilantro/networking/witness.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="36">
-              <caret line="22" column="69" lean-forward="true" selection-start-line="22" selection-start-column="69" selection-end-line="22" selection-end-column="69" />
-              <folding>
-                <element signature="e#0#10#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="masternode.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cilantro/networking/masternode.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="780">
-              <caret line="52" column="70" lean-forward="false" selection-start-line="52" selection-start-column="70" selection-end-line="52" selection-end-column="70" />
-              <folding>
-                <element signature="e#0#13#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="sha.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cilantro/proofs/pow/sha.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="300">
-              <caret line="22" column="3" lean-forward="false" selection-start-line="22" selection-start-column="3" selection-end-line="22" selection-end-column="3" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="delegate.py" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/cilantro/networking/delegate.py">
+      <file leaf-file-name="play_delegate_consensus.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/playground/play_delegate_consensus.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="225">
-              <caret line="19" column="51" lean-forward="true" selection-start-line="19" selection-start-column="51" selection-end-line="19" selection-end-column="51" />
-              <folding />
+              <caret line="15" column="25" lean-forward="true" selection-start-line="15" selection-start-column="25" selection-end-line="15" selection-end-column="25" />
+              <folding>
+                <element signature="e#204#256#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -164,6 +133,7 @@
         <option value="$PROJECT_DIR$/cilantro/networking/new_witness.py" />
         <option value="$PROJECT_DIR$/tests/cilantro/interpreters/test_testNetInterpreter.py" />
         <option value="$PROJECT_DIR$/tests/cilantro/networking/test_masternode.py" />
+        <option value="$PROJECT_DIR$/playground/play_delegate_consensus.py" />
       </list>
     </option>
   </component>
@@ -236,6 +206,11 @@
             <path>
               <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
               <item name="cilantro" type="462c0819:PsiDirectoryNode" />
+              <item name="playground" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
+              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
               <item name="tests" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
@@ -260,6 +235,7 @@
       <recent name="https://floobits.com/Denton24646/cilantro" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/playground" />
       <recent name="$PROJECT_DIR$" />
     </key>
   </component>
@@ -481,7 +457,14 @@
       <option name="project" value="LOCAL" />
       <updated>1517444807922</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="hm">
+      <created>1517598117205</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1517598117205</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TestHistory">
@@ -590,7 +573,8 @@
     <MESSAGE value="external and internal ports" />
     <MESSAGE value="async aiohttp tests work, the masternode doesnt :P" />
     <MESSAGE value="for the merge" />
-    <option name="LAST_COMMIT_MESSAGE" value="for the merge" />
+    <MESSAGE value="hm" />
+    <option name="LAST_COMMIT_MESSAGE" value="hm" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -599,7 +583,6 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/cilantro/db/state_memory.py" />
     <entry file="file://$PROJECT_DIR$/cilantro/serialization/msgpack_serializer.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="135">
@@ -940,6 +923,16 @@
         <state relative-caret-position="225">
           <caret line="19" column="51" lean-forward="true" selection-start-line="19" selection-start-column="51" selection-end-line="19" selection-end-column="51" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/playground/play_delegate_consensus.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="225">
+          <caret line="15" column="25" lean-forward="true" selection-start-line="15" selection-start-column="25" selection-end-line="15" selection-end-column="25" />
+          <folding>
+            <element signature="e#204#256#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
