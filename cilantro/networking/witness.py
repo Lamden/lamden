@@ -1,4 +1,5 @@
 import zmq
+
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW
 
