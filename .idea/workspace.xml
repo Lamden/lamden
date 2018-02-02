@@ -5,10 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="6ebd7a7f-13df-4968-9189-3a5e4b4a98f0" name="Default" comment="">
-      <change beforePath="" afterPath="$PROJECT_DIR$/playground/play_delegate_consensus.py" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/tests/cilantro/networking/masternode_sim.py" afterPath="$PROJECT_DIR$/playground/masternode_sim.py" />
-      <change beforePath="$PROJECT_DIR$/tests/cilantro/networking/witness_sim.py" afterPath="$PROJECT_DIR$/playground/witness_sim.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -143,7 +140,7 @@
     <detection-done>true</detection-done>
     <sorting>DEFINITION_ORDER</sorting>
   </component>
-  <component name="ProjectFrameBounds">
+  <component name="ProjectFrameBounds" extendedState="6">
     <option name="y" value="23" />
     <option name="width" value="1920" />
     <option name="height" value="1053" />
@@ -173,46 +170,6 @@
               <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
               <item name="cilantro" type="462c0819:PsiDirectoryNode" />
             </path>
-            <path>
-              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="interpreters" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="networking" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="proofs" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="proofs" type="462c0819:PsiDirectoryNode" />
-              <item name="pow" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="playground" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="cilantro" type="b2602c69:ProjectViewProjectNode" />
-              <item name="cilantro" type="462c0819:PsiDirectoryNode" />
-              <item name="tests" type="462c0819:PsiDirectoryNode" />
-            </path>
           </expand>
           <select />
         </subPane>
@@ -223,7 +180,7 @@
   </component>
   <component name="PropertiesComponent">
     <property name="last_opened_file_path" value="$USER_HOME$/Anaconda3/envs/cilantroenv/Scripts/python.exe" />
-    <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
+    <property name="settings.editor.selected.configurable" value="configurable.group.language" />
     <property name="WebServerToolWindowFactoryState" value="false" />
   </component>
   <component name="PyCoverageOptionsProvider">
@@ -464,7 +421,14 @@
       <option name="project" value="LOCAL" />
       <updated>1517598117205</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="added playgroud for messing around with code and trying things out">
+      <created>1517598403667</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1517598403667</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="TestHistory">
@@ -500,17 +464,17 @@
     </history-entry>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="23" width="1920" height="1053" extended-state="0" />
+    <frame x="-2" y="23" width="1920" height="1053" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Tool Output" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.15126903" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
-      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32985386" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.22018349" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Floobits" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.32985386" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.15388711" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Docker" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="false" weight="0.33" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
@@ -574,7 +538,8 @@
     <MESSAGE value="async aiohttp tests work, the masternode doesnt :P" />
     <MESSAGE value="for the merge" />
     <MESSAGE value="hm" />
-    <option name="LAST_COMMIT_MESSAGE" value="hm" />
+    <MESSAGE value="added playgroud for messing around with code and trying things out" />
+    <option name="LAST_COMMIT_MESSAGE" value="added playgroud for messing around with code and trying things out" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -903,7 +868,7 @@
         <state relative-caret-position="780">
           <caret line="52" column="70" lean-forward="false" selection-start-line="52" selection-start-column="70" selection-end-line="52" selection-end-column="70" />
           <folding>
-            <element signature="e#0#13#0" expanded="true" />
+            <element signature="e#0#13#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -913,7 +878,7 @@
         <state relative-caret-position="36">
           <caret line="22" column="69" lean-forward="true" selection-start-line="22" selection-start-column="69" selection-end-line="22" selection-end-column="69" />
           <folding>
-            <element signature="e#0#10#0" expanded="true" />
+            <element signature="e#0#10#0" expanded="false" />
           </folding>
         </state>
       </provider>
