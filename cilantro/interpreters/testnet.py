@@ -18,17 +18,20 @@ import redis
 
 
 class TestNetInterpreter(object):
-    def __init__(self, host='localhost', port=6379, db=0):
+    def __init__(self, host='localhost', port=6379, db=0, wallet=ED25519Wallet, proof_system=SHA3POW) :
         self.r = redis.StrictRedis(host=host, port=port, db=db)
+        self.wallet = wallet
+        self.proof_system = proof_system
 
     def query_for_transaction(self, tx: TestNetTransaction):
         # 1. make sure the tx is signed by the right person
         full_tx = tx.payload['payload']
+
         assert TestNetTransaction.verify_tx(transaction=tx.payload,
                                             verifying_key=full_tx[1],
                                             signature=tx.payload['metadata']['signature'],
-                                            wallet=ED25519Wallet,
-                                            proof_system=SHA3POW)[0] \
+                                            wallet=self.wallet,
+                                            proof_system=self.proof_system)[0] \
             is True
 
         # assume failure, prove otherwise
@@ -38,7 +41,7 @@ class TestNetInterpreter(object):
         elif full_tx[0] == TestNetTransaction.VOTE:
             query = self.query_for_vote_tx(full_tx)
         elif full_tx[0] == TestNetTransaction.STAMP:
-            query = self.query_for_vote_tx(full_tx)
+            query = self.query_for_stamp_tx(full_tx)
         else:
             pass
 
@@ -50,7 +53,7 @@ class TestNetInterpreter(object):
         amount = transaction_payload[3]
 
         sender_balance = rs.int(self.r.hget(BALANCES, sender))
-        assert sender_balance >= int(amount), 'Sender does not enough funds to send.'
+        assert sender_balance >= int(amount), 'Sender does not enough funds to send. Has {} needs {}.'.format(sender_balance, int(amount))
 
         recipient_balance = rs.int(self.r.hget(BALANCES, recipient))
 

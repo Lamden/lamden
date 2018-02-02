@@ -2,75 +2,100 @@
 # ID each tx or put them on a set?
 
 '''
-
-FIFO queue
-SSET pending_tx
-where is a data blob?
-where it's the series of state changes?
-
+    FIFO queue
+    SSET pending_tx
+    where is a data blob?
+    where it's the series of state changes?
 '''
 
 from cilantro.transactions import TestNetTransaction
 from cilantro.proofs.pow import POW
 from cilantro.interpreters import TestNetInterpreter
 from cilantro.wallets import ED25519Wallet
+from cilantro.interpreters.constants import *
 
-from pprint import pprint
 '''
-
     Steps:
     1. create a ton of wallets
     2. create a ton of random transactions for those wallets
     3. interpret those transactions and verify them
     4. put the db output stack in a list
     5. figure it out from there.
-
 '''
 import random
+import redis
 
 NUM_WALLETS = 100
 wallets = [ED25519Wallet.new() for x in range(NUM_WALLETS)]
 
-transactions = []
+txs = []
 
-setup_queries = []
+interpreter = TestNetInterpreter(proof_system=POW)
 
-interpreter = TestNetInterpreter()
+setup_queries = {}
 
 def generate_random_std_transaction():
     from_wallet, to_wallet = random.sample(wallets, 2)
     amount = str(random.randint(1, 1000))
 
-    tx = TestNetTransaction.standard_tx(from_wallet[0], to_wallet[0], amount)
+    tx = TestNetTransaction.standard_tx(from_wallet[1], to_wallet[1], amount)
 
     transaction_builder = TestNetTransaction(ED25519Wallet, POW)
-    transaction_builder.build(tx, from_wallet[1], complete=True, use_stamp=False)
+    transaction_builder.build(tx, from_wallet[0], complete=True, use_stamp=False)
 
-    setup_queries.append('add {} to balances {}'.format(amount, from_wallet[0]))
+    try:
+        setup_queries[from_wallet[1]][BALANCES] += int(amount)
+    except:
+        setup_queries[from_wallet[1]] = {}
+        setup_queries[from_wallet[1]][BALANCES] = int(amount)
 
-    transactions.append(transaction_builder)
+    txs.append(transaction_builder)
 
 def generate_random_stamp_transaction():
     from_wallet = random.choice(wallets)
     amount = str(random.randint(-1000, 1000))
 
-    tx = TestNetTransaction.stamp_tx(from_wallet[0], amount)
+    tx = TestNetTransaction.stamp_tx(from_wallet[1], amount)
 
     transaction_builder = TestNetTransaction(ED25519Wallet, POW)
-    transaction_builder.build(tx, from_wallet[1], complete=True, use_stamp=False)
+    transaction_builder.build(tx, from_wallet[0], complete=True, use_stamp=False)
 
-    location = 'balance'
+    location = BALANCES
     if int(amount) < 0:
-        location = 'stamp'
+        location = STAMPS
         amount = str(int(amount)*-1)
 
-    setup_queries.append('add {} to {} {}'.format(amount, location, from_wallet[0]))
-    transactions.append(transaction_builder)
+    try:
+        setup_queries[from_wallet[1]][location] += int(amount)
+    except:
+        setup_queries[from_wallet[1]] = {}
+        setup_queries[from_wallet[1]][location] = int(amount)
+
+    txs.append(transaction_builder)
+
 
 def generate_random_vote_transaction():
-    pass
+    from_wallet, to_wallet = random.sample(wallets, 2)
+
+    tx = TestNetTransaction.vote_tx(from_wallet[1], to_wallet[1])
+
+    transaction_builder = TestNetTransaction(ED25519Wallet, POW)
+    transaction_builder.build(tx, from_wallet[0], complete=True, use_stamp=False)
+
+    txs.append(transaction_builder)
+
 
 for i in range(100):
-    generate_random_stamp_transaction()
+    random.choice([
+        generate_random_std_transaction(),
+        #generate_random_stamp_transaction()
+    ])
 
-print(setup_queries)
+r = redis.StrictRedis(host='localhost', port=6379, db=0)
+
+for q in setup_queries:
+    for k in list(setup_queries[q].keys()):
+        r.hset(k, q, setup_queries[q][k])
+
+for t in txs:
+    print(interpreter.query_for_transaction(t))
