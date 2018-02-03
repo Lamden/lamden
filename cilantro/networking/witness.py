@@ -1,4 +1,8 @@
 import zmq
+import zmq.asyncio
+import asyncio
+# import uvloop
+
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW
 
@@ -25,7 +29,7 @@ class Witness(object):
 
         self.hasher = proof
 
-        self.context = zmq.Context()
+        self.context = zmq.asyncio.Context()
         self.witness_sub = self.context.socket(zmq.SUB)
 
         # a filter will ensure that only transaction data will be accepted by witnesses for safety
@@ -35,41 +39,40 @@ class Witness(object):
         # generate witness setting with filters to receive tx data only, of the right size, to avoid spam
         self.witness_sub.setsockopt_string(zmq.SUBSCRIBE, '')
 
-
-    def accept_incoming_transactions(self):
+    async def accept_incoming_transactions(self):
         try:
             self.witness_sub.connect(self.sub_url)
         except Exception as e:
             return {'status': 'Could not connect to witness sub socket'}
 
+        # Main loop entry point for witness sub
         while True:
-            """Main loop entry point for witness sub"""
-            tx = self.witness_sub.recv_json(flags=0, encoding='utf-8')
-
-            if tx != -1:
-                try:
-                    raw_tx = self.serializer.deserialize(tx)
-                except Exception as e:
-                    return {'status': 'Could not deserialize transaction'}
-                if self.hasher.check(raw_tx, raw_tx.payload['metadata']['proof']):
-                    self.confirmed_transaction_routine()
-                else:
-                    return {'status': 'Could not confirm transaction POW'}
+            tx = await self.witness_sub.recv_json(flags=0, encoding='utf-8')
+            try:
+                raw_tx = self.serializer.deserialize(tx)
+            except Exception as e:
+                return {'status': 'Could not deserialize transaction'}
+            if self.hasher.check(raw_tx, raw_tx.payload['metadata']['proof']):
+                self.confirmed_transaction_routine()
             else:
-                return {'status: No witness sub socket activity'}
+                return {'status': 'Could not confirm transaction POW'}
 
     def activate_witness_publisher(self):
         """Routine to turn witness behavior from masternode subscriber to publisher for delegates by changing port"""
         self.witness_pub = self.context.socket(zmq.PUB)
         self.witness_pub.bind(self.pub_url)
 
-    def confirmed_transaction_routine(self, raw_tx):
+    async def confirmed_transaction_routine(self, raw_tx):
         """take approvated transaction data, serialize it, and open publisher socket.
          Then publish along tx info to delegate sub and then unbind socket"""
         tx_to_delegate = self.serializer.serialize(raw_tx)
         self.activate_witness_publisher()
-        self.witness_pub.send_json(tx_to_delegate, encoding='utf-8')
-        self.witness_pub.unbind(self.pub_url) # unbind socket
+        await self.witness_pub.send_json(tx_to_delegate, encoding='utf-8')
+        self.witness_pub.unbind(self.pub_url) # unbind socket?
+
+
+loop = asyncio.get_event_loop() # add uvloop
+loop.run_forever()
 
 
 # include safeguard to make sure witness and masternode start at the same time and no packets are lost
