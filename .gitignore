@@ -1,2 +1,13 @@
+#Virtual Python Environments
 /venv
+
+#Integrated Development Environments
 /.idea
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
