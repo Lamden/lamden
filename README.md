@@ -13,7 +13,7 @@ Each of these are integral to the network and are described in detail below.
 
 ### Masternodes
 Masternodes serve as the entry point into the Cilantro network and publish transactions sent from individual nodes on
-the network. Masternodes are crucial security actors and stake 10,000+ TAU in order to obtain masternode status. They
+the network. Masternodes are crucial security actors and stake 100,000+ TAU in order to obtain masternode status. They
 are inherently altruistic and providing a service in order for the blockchain to provide such high throughput. They also
 support the cold storage of the transaction database once consumption is done by the network. They have no say as to what is 'right,'
 as governance is ultimately up to the network. However, they can monitor the behavior of nodes and tell the network who is misbehaving.
