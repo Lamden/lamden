@@ -30,7 +30,6 @@ class TestNetTransaction(Transaction):
 
     @staticmethod
     def verify_tx(transaction, verifying_key, signature, wallet: Wallet, proof_system: POW):
-        print(transaction)
         valid_signature = wallet.verify(verifying_key, str(transaction['payload']).encode(), signature)
         try:
             valid_proof = proof_system.check(str(transaction['payload']).encode(), transaction['metadata']['proof'][0])
@@ -40,7 +39,13 @@ class TestNetTransaction(Transaction):
 
     def __init__(self, wallet, proof):
         super().__init__(wallet, proof)
-        self.payload = TestNetTransaction.payload_format
+        self.payload = {
+                'payload' : None,
+                'metadata' : {
+                    'signature' : None,
+                    'proof' : None
+                }
+            }
 
     def build(self, tx, s, use_stamp=False, complete=True):
         self.payload['payload'] = tx

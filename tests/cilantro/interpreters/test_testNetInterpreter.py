@@ -104,7 +104,6 @@ class TestTestNetInterpreter(TestCase):
 
     def test_query_for_stamp_tx_add(self):
         (s, v) = ED25519Wallet.new()
-        (s2, v2) = ED25519Wallet.new()
 
         tx = TestNetTransaction(ED25519Wallet, SHA3POW)
         tx.build(TestNetTransaction.stamp_tx(v, '25'), s, use_stamp=False, complete=True)
