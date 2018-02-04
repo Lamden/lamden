@@ -27,7 +27,7 @@ transactions that include stake reserves being spent by users staking on the net
 ### Delegates
 Delegates bundle up transactions into blocks and are rewarded with TAU for their actions. They receive approved transactions
 from delegates and broadcast blocks based on a 1 second or 10,000 transaction limit per block. They also act as executors
-of the smart contracts passed along in transactions and are critical to the Cilantro security model. 
+of the smart contracts passed along in transactions and are critical to the Cilantro security model.
 
 
 ```
