@@ -1,15 +1,15 @@
 # Cilantro
 
 Cilantro is an enterprise level blockchain that is focused on high throughput and scalibility. Cilantro can process
-1000s of tx/second and also incorporates a smart contract language called Seneca to provide additional functionality.
-Additional features such as staking and anti-spam measures are also included out of the box.
+1000s of tx/second and incorporates a smart contract language called Seneca to provide advanced user functionality.
+Features such as staking and anti-spam measures are also included out of the box.
 
 ## Technical Details
 
-Cilantro is built utilizing the excellent ZeroMQ messaging platform. ZMQ is highly respected networking library that
+Cilantro is built utilizing the ZeroMQ messaging platform. ZMQ is respected networking library that
 provides advanced socket functionality and several useful message patterns that work well in an asynchronous framework.
-The Cilantro network consists of three key network participants: the masternodes, the witnesses, and the delegates.
-Each of these are integral to the network and are described in detail below.
+The Cilantro network consists of individuals transacting on the network alongside three key types of participants: the masternodes, the witnesses, and the delegates.
+Each of these three are integral to the network and are described in more detail below.
 
 ### Masternodes
 Masternodes serve as the entry point into the Cilantro network and publish transactions sent from individual nodes on
