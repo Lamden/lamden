@@ -1,59 +1,38 @@
-General description
-===================
-* A language to describe operations on the db
-* Contract language should be easy to read and write, and should be intelligible for non-technical users, e.g. it shouldn't look like Lisp or Haskell.
-* The most important capability is modeling organizations and access control
-* Contracts are stored in a blockchain
-* By traversing the entire blockchain and sequentially running all the operations described in the contracts, db state can be derived.
-* Contracts can reference other contracts in the blockchain, with some limitation on depth for system stability
-* Contracts can reference data in the db
-* Contracts are not Turing complete.
-  * They'll have a fixed set of functions, will not flow control, e.g. loops.
+# Cilantro
 
-Technical details
-==================
-* Contracts should be idempotent
-  * e.g. we'll never have balance = balance - 10, it will be balance = 80.
-  * I'm wondering a couple of things
-    * Stu, do I have this right?
-    * This would preclude certain edits to data when the creator of the contract isn't allowed to read the data he/she's editing.
-      * Something like, I can vote for the managers of my retirement fund, I have one vote allocated to me every year, but when I cast my vote, they don't want me to see running totals for the candidates, so I only can say +1.
-* Constraints
-  * There will be rules that validate smart contracts
-  * The rules themselves will be smart contracts
-* Contracts will have publicly viewable fields and private sections
-  * Can the private sections manipulate data? If so how do we ensure the db nodes have the key to view them?
-* Contracts will have a size limit
-* Contract submission requires a proof-of-work
-  * The system may tax larger contracts by requiring a more difficult hashing problem, (i.e. more leading zeros in hash)
-* We should have key inheritance with the ability to model RBAC
+Cilantro is an enterprise level blockchain that is focused on high throughput and scalibility. Cilantro can process
+1000s of tx/second and also incorporates a smart contract language called Seneca to provide additional functionality.
+Additional features such as staking and anti-spam measures are also included out of the box.
 
-* How requests are processed
-  * requests -> delegates -> transform into raw operations -> run consensus
+## Technical Details
 
-Style
-  really legible
-  ultimately going to be a Cassandra query
-  but it should boil down into a meta query
-  checks handled by delegates
+Cilantro is built utilizing the excellent ZeroMQ messaging platform. ZMQ is highly respected networking library that
+provides advanced socket functionality and several useful message patterns that work well in an asynchronous framework.
+The Cilantro network consists of three key network participants: the masternodes, the witnesses, and the delegates.
+Each of these are integral to the network and are described in detail below.
 
-User Stories
-============
-* I should be able to implement basic banking rules as one or more smart contracts e.g.
-  * Tokens removed from one wallet must be placed in one or more other wallets, and all transactions must sum to zero
-  * A contract that removes tokens from a wallet must be signed by the wallet owner
-* I want to restrict creation of permissions rules for my Db to users with a keypair with cert signed by key xyz.
-* To access a patient's record, you must be a doctor assigned to the patient, or be the attending physician of a resident assigned to the patient
+### Masternodes
+Masternodes serve as the entry point into the Cilantro network and publish transactions sent from individual nodes on
+the network. Masternodes are crucial security actors and stake 10,000+ TAU in order to obtain masternode status. They
+are inherently altruistic and providing a service in order for the blockchain to provide such high throughput. They also
+support the cold storage of the transaction database once consumption is done by the network. They have no say as to what is 'right,'
+as governance is ultimately up to the network. However, they can monitor the behavior of nodes and tell the network who is misbehaving.
 
-Comparable languages and inspiration
-====================================
-* Quill
-* CQL
-* SQL
-* YAML
-* Stu, I think you mentioned Q, is that right? Is this the one?
-  https://en.wikipedia.org/wiki/Q_(programming_language_from_Kx_Systems)
+### Witnesses
+Witnesses exist primarily to check the validity of proofs of transactions sent out by masternodes.
+They subscribe to masternodes on the network, confirm the hashcash style proof provided by the sender is valid, and
+then go ahead and pass the transaction along to delegates to include in a block. They will also facilitate
+transactions that include stake reserves being spent by users staking on the network.
 
-Other Stuff
-===========
-* https://people.csail.mit.edu/gregs/ll1-discuss-archive-html/msg04323.html
+### Delegates
+Delegates bundle up transactions into blocks and are rewarded with TAU for their actions. They receive approved transactions
+from delegates and broadcast blocks based on a 1 second or 10,000 transaction limit per block. They also act as executors
+of the smart contracts passed along in transactions and are critical to the Cilantro security model. 
+
+
+```
+Give examples
+```
+
+## Installing
+
