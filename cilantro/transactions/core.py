@@ -9,11 +9,11 @@ class Transaction(object):
     def __str__(self):
         return pprint.pformat(self.payload)
 
-    def build(self, to, amount, s, v, complete=True):
+    def build(self, *args):
         raise NotImplementedError
 
-    def sign(self):
+    def sign(self, *args):
         raise NotImplementedError
 
-    def seal(self):
+    def seal(self, *args):
         raise NotImplementedError

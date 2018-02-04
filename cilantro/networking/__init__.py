@@ -1,2 +1,2 @@
-from cilantro.networking.core import Node
+from cilantro.networking.masternode import Masternode
 from cilantro.networking.witness import Witness
