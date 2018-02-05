@@ -9,9 +9,8 @@ class SHA3POW(POW):
             h = hashlib.sha3_256()
             s = secrets.token_bytes(16)
             h.update(o + s)
-            if h.digest().hex()[0:3] != '000':
-                break
-        return s.hex()[2:], h.digest().hex()[2:]
+            if h.digest().hex()[0:3] == '000':
+                return s.hex()[2:], h.digest().hex()[2:]
 
     @staticmethod
     def check(o: bytes, proof: str):
