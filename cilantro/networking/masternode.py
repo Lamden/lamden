@@ -1,4 +1,5 @@
 import uvloop
+from cilantro.networking.constants import MAX_REQUEST_LENGTH
 from aiohttp import web
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -27,6 +28,9 @@ class Masternode(object):
         self.url = 'tcp://{}:{}'.format(self.host, self.internal_port)
 
     def process_transaction(self, data=None):
+        if not self.validate_transaction(data):
+            return {'status': 'invalid transaction'}
+
         d = None
         try:
             d = self.serializer.serialize(data)
@@ -42,6 +46,27 @@ class Masternode(object):
             self.publisher.unbind(self.url)
 
         return { 'status' : '{} successfully published to the network'.format(d) }
+
+    def validate_transaction(self, data=None):
+        """
+        Validation function for the payload of the request. Validates against payload size,
+        as well as valid payload fields for basic transaction
+
+        :input: data extracted from the Transaction's POST payload
+        :return: A boolean if the payload is transaction or not
+        """
+        if not data:
+            return False
+        elif data.content_length <= MAX_REQUEST_LENGTH:
+            return False
+        elif 'to' not in data['payload']:
+            return False
+        elif 'amount' not in data['payload']:
+            return False
+        elif 'from' not in data['payload']:
+            return False
+
+        return True
 
     async def process_request(self, request):
         r = self.process_transaction(await request.content.read())
