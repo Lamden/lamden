@@ -1,10 +1,15 @@
-import uvloop
 from cilantro.networking.constants import MAX_REQUEST_LENGTH
-from aiohttp import web
-web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
 from cilantro.serialization import JSONSerializer
+
+from aiohttp import web
 import zmq
+
+import sys
+if sys.platform != 'win32':
+    import uvloop
+    web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+else:
+    web.asyncio.set_event_loop_policy(None)
 
 '''
     Masternode

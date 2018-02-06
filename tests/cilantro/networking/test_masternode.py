@@ -22,11 +22,11 @@ class TestMasternode(TestCase):
         self.internal_port = '9999'
         self.external_port = '8080'
         self.serializer = MockSerializer
-        self.m = Masternode(host=self.host, internal_port=self.host, external_port = self.external_port, serializer = self.serializer)
+        self.m = Masternode(host=self.host, internal_port=self.internal_port, external_port = self.external_port, serializer = self.serializer)
         self.mock_data = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto'}, 'metadata': {'sig':'x287', 'proof': '000'}}
 
     def test_validate_transaction(self):
-        
+        pass
 
     def test_host_and_port_storage(self):
         HOST = '127.0.0.1'

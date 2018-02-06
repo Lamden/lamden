@@ -39,7 +39,11 @@ class Witness(object):
 
     def start_async(self):
         try:
-            self.loop = asyncio.get_event_loop()  # add uvloop here
+            if sys.platform != 'win32':
+                asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+            else:
+                asyncio.set_event_loop_policy(None)
+            self.loop = asyncio.get_event_loop()
             self.loop.create_task(self.accept_incoming_transactions())
         except Exception as e:
             print(e)
