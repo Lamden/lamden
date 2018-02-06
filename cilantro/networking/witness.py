@@ -1,7 +1,7 @@
 import zmq
 import zmq.asyncio
 import asyncio
-# import uvloop
+import uvloop
 
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW
@@ -71,8 +71,8 @@ class Witness(object):
         self.witness_pub.unbind(self.pub_url) # unbind socket?
 
 
-loop = asyncio.get_event_loop() # add uvloop
-loop.run_forever()
+# loop = asyncio.get_event_loop() # add uvloop
+# loop.run_forever()
 
 
 # include safeguard to make sure witness and masternode start at the same time and no packets are lost
