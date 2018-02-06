@@ -22,7 +22,7 @@ class MockSerializer(Serializer):
 
 class TestMasternode(TestCase):
     def setUp(self):
-        self.host = '127.0.0.1'
+        self.host = '*'
         self.internal_port = '9999'
         self.external_port = '8080'
         self.serializer = JSONSerializer

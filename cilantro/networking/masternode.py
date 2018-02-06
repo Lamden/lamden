@@ -16,7 +16,7 @@ import zmq
 '''
 
 class Masternode(object):
-    def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
+    def __init__(self, host='*', internal_port='9999', external_port='8080', serializer=JSONSerializer):
         self.host = host
         self.internal_port = internal_port
         self.external_port = external_port
