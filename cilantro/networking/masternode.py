@@ -47,8 +47,8 @@ class Masternode(object):
             print("error binding socket: ", str(e))
             return TX_STATUS['SEND_FAILED']
         finally:
-            self.publisher.unbind(self.url)
-            self.context.term()
+            self.publisher.close()
+            self.context.destroy()
 
         return TX_STATUS['SUCCESS']['status'].format(d)
 
