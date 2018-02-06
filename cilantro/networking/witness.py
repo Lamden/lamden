@@ -1,7 +1,10 @@
 import zmq
-import zmq.asyncio
+from zmq.asyncio import Context
 import asyncio
-import uvloop
+
+import sys
+if sys.platform != 'win32':
+    import uvloop
 
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW
@@ -18,36 +21,41 @@ from cilantro.proofs.pow import SHA3POW
 
 
 class Witness(object):
-    def __init__(self, host='127.0.0.1', sub_port='4444', serializer=JSONSerializer, proof=SHA3POW):
+    def __init__(self, host='127.0.0.1', sub_port='9999', serializer=JSONSerializer, hasher=SHA3POW):
         self.host = host
         self.sub_port = sub_port
-        self.pub_port = '4488'
+        self.pub_port = '7777'
         self.sub_url = 'tcp://{}:{}'.format(self.host, self.sub_port)
         self.pub_url = 'tcp://{}:{}'.format(self.host, self.pub_port)
 
         self.serializer = serializer
+        self.hasher = hasher
 
-        self.hasher = proof
+        self.ctx = Context.instance()
+        self.witness_sub = self.ctx.socket(socket_type=zmq.SUB)
 
-        self.context = zmq.asyncio.Context()
-        self.witness_sub = self.context.socket(zmq.SUB)
+        self.witness_pub = None
+        self.loop = None
 
-        # a filter will ensure that only transaction data will be accepted by witnesses for safety
-        # self.transaction_filter = '0x'
-        # standard length for transaction data that can be used as an additional filter (safeguard)
-        # self.transaction_length = 32
-        # generate witness setting with filters to receive tx data only, of the right size, to avoid spam
-        self.witness_sub.setsockopt_string(zmq.SUBSCRIBE, '')
+    def start_async(self):
+        try:
+            self.loop = asyncio.get_event_loop()  # add uvloop here
+            self.loop.create_task(self.accept_incoming_transactions())
+        except Exception as e:
+            print(e)
+        finally:
+            self.loop.stop()
 
     async def accept_incoming_transactions(self):
         try:
             self.witness_sub.connect(self.sub_url)
+            self.witness_sub.setsockopt(zmq.SUBSCRIBE, '')  # no filters applied
         except Exception as e:
             return {'status': 'Could not connect to witness sub socket'}
 
         # Main loop entry point for witness sub
         while True:
-            tx = await self.witness_sub.recv_json(flags=0, encoding='utf-8')
+            tx = await self.witness_sub.recv()
             try:
                 raw_tx = self.serializer.deserialize(tx)
             except Exception as e:
@@ -59,28 +67,21 @@ class Witness(object):
 
     def activate_witness_publisher(self):
         """Routine to turn witness behavior from masternode subscriber to publisher for delegates by changing port"""
-        self.witness_pub = self.context.socket(zmq.PUB)
+        self.witness_pub = self.ctx.socket(socket_type=zmq.PUB)
         self.witness_pub.bind(self.pub_url)
 
     async def confirmed_transaction_routine(self, raw_tx):
-        """take approvated transaction data, serialize it, and open publisher socket.
+        """Take approved transaction data, serialize it, and open publisher socket.
          Then publish along tx info to delegate sub and then unbind socket"""
         tx_to_delegate = self.serializer.serialize(raw_tx)
         self.activate_witness_publisher()
-        await self.witness_pub.send_json(tx_to_delegate, encoding='utf-8')
-        self.witness_pub.unbind(self.pub_url) # unbind socket?
-
-
-# loop = asyncio.get_event_loop() # add uvloop
-# loop.run_forever()
+        await self.witness_pub.send(tx_to_delegate)
+        self.witness_pub.unbind(self.pub_url)  # unbind socket?
 
 
 # include safeguard to make sure witness and masternode start at the same time and no packets are lost
 # add broker based solution to ensure dynamic discovery  - solved via masternode acting as bootnode
 # add proxy/broker based solution to ensure dynamic discovery between witness and delegate
-
-
-
 
 
 
