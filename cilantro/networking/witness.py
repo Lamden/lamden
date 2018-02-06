@@ -39,10 +39,8 @@ class Witness(object):
 
     def start_async(self):
         try:
-            self.loop = asyncio.get_event_loop()
-            self.loop.create_task(self.accept_incoming_transactions())  # add uvloop here
-            # self.loop.run_until_complete()
-            # self.loop.run_forever()
+            self.loop = asyncio.get_event_loop()  # add uvloop here
+            self.loop.create_task(self.accept_incoming_transactions())
         except Exception as e:
             print(e)
         finally:
@@ -86,9 +84,6 @@ class Witness(object):
 # add proxy/broker based solution to ensure dynamic discovery between witness and delegate
 
 
-
-a = Witness()
-a.start_async()
 
 
 
