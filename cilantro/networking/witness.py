@@ -1,5 +1,5 @@
 import zmq
-import zmq.asyncio
+from zmq.asyncio import Context
 import asyncio
 
 import sys
@@ -31,24 +31,33 @@ class Witness(object):
         self.serializer = serializer
         self.hasher = hasher
 
-        self.context = zmq.asyncio.Context()
-        self.witness_sub = self.context.socket(zmq.SUB)
-        self.witness_sub.setsockopt_string(zmq.SUBSCRIBE, '')  # no filters applied
+        self.ctx = Context.instance()
+        self.witness_sub = self.ctx.socket(socket_type=zmq.SUB)
 
-    def _start(self):
-        self.loop = asyncio.get_event_loop()  # add uvloop here
-        self.loop.create_task(self.accept_incoming_transactions())
-        self.loop.run_forever()
+        self.witness_pub = None
+        self.loop = None
+
+    def start_async(self):
+        try:
+            self.loop = asyncio.get_event_loop()
+            self.loop.create_task(self.accept_incoming_transactions())  # add uvloop here
+            # self.loop.run_until_complete()
+            # self.loop.run_forever()
+        except Exception as e:
+            print(e)
+        finally:
+            self.loop.stop()
 
     async def accept_incoming_transactions(self):
         try:
             self.witness_sub.connect(self.sub_url)
+            self.witness_sub.setsockopt(zmq.SUBSCRIBE, '')  # no filters applied
         except Exception as e:
             return {'status': 'Could not connect to witness sub socket'}
 
         # Main loop entry point for witness sub
         while True:
-            tx = await self.witness_sub.recv(flags=0)
+            tx = await self.witness_sub.recv()
             try:
                 raw_tx = self.serializer.deserialize(tx)
             except Exception as e:
@@ -60,11 +69,11 @@ class Witness(object):
 
     def activate_witness_publisher(self):
         """Routine to turn witness behavior from masternode subscriber to publisher for delegates by changing port"""
-        self.witness_pub = self.context.socket(zmq.PUB)
+        self.witness_pub = self.ctx.socket(socket_type=zmq.PUB)
         self.witness_pub.bind(self.pub_url)
 
     async def confirmed_transaction_routine(self, raw_tx):
-        """take approvated transaction data, serialize it, and open publisher socket.
+        """Take approved transaction data, serialize it, and open publisher socket.
          Then publish along tx info to delegate sub and then unbind socket"""
         tx_to_delegate = self.serializer.serialize(raw_tx)
         self.activate_witness_publisher()
@@ -79,8 +88,7 @@ class Witness(object):
 
 
 a = Witness()
-a._start()
-
+a.start_async()
 
 
 
