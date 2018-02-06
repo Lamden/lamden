@@ -42,6 +42,8 @@ class TestNetInterpreter(object):
             query = self.query_for_vote_tx(full_tx)
         elif full_tx[0] == TestNetTransaction.STAMP:
             query = self.query_for_stamp_tx(full_tx)
+        elif full_tx[0] == TestNetTransaction.SWAP:
+            query = self.query_for_swap_tx(full_tx)
         else:
             pass
 
@@ -99,3 +101,6 @@ class TestNetInterpreter(object):
             ]
 
         return query
+
+    def query_for_swap_tx(self):
+        pass
