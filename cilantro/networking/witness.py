@@ -1,7 +1,10 @@
 import zmq
 import zmq.asyncio
 import asyncio
-# import uvloop
+
+import sys
+if sys.platform != 'win32':
+    import uvloop
 
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW
@@ -18,26 +21,24 @@ from cilantro.proofs.pow import SHA3POW
 
 
 class Witness(object):
-    def __init__(self, host='127.0.0.1', sub_port='4444', serializer=JSONSerializer, proof=SHA3POW):
+    def __init__(self, host='127.0.0.1', sub_port='9999', serializer=JSONSerializer, hasher=SHA3POW):
         self.host = host
         self.sub_port = sub_port
-        self.pub_port = '4488'
+        self.pub_port = '7777'
         self.sub_url = 'tcp://{}:{}'.format(self.host, self.sub_port)
         self.pub_url = 'tcp://{}:{}'.format(self.host, self.pub_port)
 
         self.serializer = serializer
-
-        self.hasher = proof
+        self.hasher = hasher
 
         self.context = zmq.asyncio.Context()
         self.witness_sub = self.context.socket(zmq.SUB)
+        self.witness_sub.setsockopt_string(zmq.SUBSCRIBE, '')  # no filters applied
 
-        # a filter will ensure that only transaction data will be accepted by witnesses for safety
-        # self.transaction_filter = '0x'
-        # standard length for transaction data that can be used as an additional filter (safeguard)
-        # self.transaction_length = 32
-        # generate witness setting with filters to receive tx data only, of the right size, to avoid spam
-        self.witness_sub.setsockopt_string(zmq.SUBSCRIBE, '')
+    def _start(self):
+        self.loop = asyncio.get_event_loop()  # add uvloop here
+        self.loop.create_task(self.accept_incoming_transactions())
+        self.loop.run_forever()
 
     async def accept_incoming_transactions(self):
         try:
@@ -47,7 +48,7 @@ class Witness(object):
 
         # Main loop entry point for witness sub
         while True:
-            tx = await self.witness_sub.recv_json(flags=0, encoding='utf-8')
+            tx = await self.witness_sub.recv(flags=0)
             try:
                 raw_tx = self.serializer.deserialize(tx)
             except Exception as e:
@@ -67,12 +68,8 @@ class Witness(object):
          Then publish along tx info to delegate sub and then unbind socket"""
         tx_to_delegate = self.serializer.serialize(raw_tx)
         self.activate_witness_publisher()
-        await self.witness_pub.send_json(tx_to_delegate, encoding='utf-8')
-        self.witness_pub.unbind(self.pub_url) # unbind socket?
-
-
-loop = asyncio.get_event_loop() # add uvloop
-loop.run_forever()
+        await self.witness_pub.send(tx_to_delegate)
+        self.witness_pub.unbind(self.pub_url)  # unbind socket?
 
 
 # include safeguard to make sure witness and masternode start at the same time and no packets are lost
@@ -81,7 +78,8 @@ loop.run_forever()
 
 
 
-
+a = Witness()
+a._start()
 
 
 
