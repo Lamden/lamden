@@ -14,7 +14,6 @@ class SHA3POW(POW):
 
     @staticmethod
     def check(o: bytes, proof: str):
-        print(proof)
         h = hashlib.sha3_256()
         s = bytes.fromhex(proof)
         h.update(o + s)
