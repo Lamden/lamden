@@ -137,5 +137,8 @@ class TestTestNetTransaction(TestCase):
 
         proof = full_tx['metadata']['proof']
 
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
+        print(proof)
+        print(str(full_tx['payload']).encode().hex())
+
+        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[1]))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
