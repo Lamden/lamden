@@ -4,7 +4,7 @@ from cilantro.proofs.pow import SHA3POW
 from cilantro.interpreters.utils import RedisSerializer as rs
 from cilantro.interpreters.constants import *
 import redis
-
+import hashlib
 
 '''
     A moronically simple testnet transaction to Redis query system to demonstrate how Seneca will ultimately work
@@ -102,5 +102,24 @@ class TestNetInterpreter(object):
 
         return query
 
-    def query_for_swap_tx(self):
-        pass
+    def query_for_swap_tx(self, tx):
+        sender, recipient, amount, hash_lock, unix_expiration = tx[1:]
+
+        if self.r.hgetall(hash_lock) is None:
+            return [(HMSET, hash_lock, sender, recipient, amount, unix_expiration)]
+        else:
+            return FAIL
+
+    def query_for_redeem_tx(self, tx):
+        secret = bytes.fromhex(tx[1])
+
+        ripe = hashlib.new('ripemd160')
+        ripe.update(secret)
+        hash_lock = ripe.digest().hex()
+
+        q = self.r.hgetall(hash_lock)
+        if q is None:
+            return FAIL
+        else:
+            pass
+            # transfer funds

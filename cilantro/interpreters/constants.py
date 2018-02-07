@@ -1,6 +1,7 @@
 FAIL = 'fail'
 HSET = 'hset'
 HGET = 'hget'
+HMSET = 'hmset'
 BALANCES = 'balances'
 VOTES = 'votes'
 STAMPS = 'stamps'
