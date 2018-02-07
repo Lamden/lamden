@@ -71,4 +71,4 @@ class TestNetTransaction(Transaction):
         return self.wallet.sign(s, str(self.payload['payload']).encode())
 
     def seal(self):
-        return self.proof_system.find(str(self.payload['payload']).encode())
+        return self.proof_system.find(str(self.payload['payload']).encode())[0]

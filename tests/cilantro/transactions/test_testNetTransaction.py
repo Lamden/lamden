@@ -75,7 +75,7 @@ class TestTestNetTransaction(TestCase):
         sig = full_tx['metadata']['signature']
 
         proof = full_tx['metadata']['proof']
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
+        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
 
     def test_stamp_std_tx(self):
@@ -106,7 +106,7 @@ class TestTestNetTransaction(TestCase):
 
         proof = full_tx['metadata']['proof']
 
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
+        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
 
     def test_stamp_vote_tx(self):
@@ -137,8 +137,5 @@ class TestTestNetTransaction(TestCase):
 
         proof = full_tx['metadata']['proof']
 
-        print(proof)
-        print(str(full_tx['payload']).encode().hex())
-
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
+        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
