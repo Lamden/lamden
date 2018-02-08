@@ -21,5 +21,5 @@ class JSONSerializer(Serializer):
         return json.dumps(d)
 
     @staticmethod
-    def send(d: dict, p: zmq.Context):
+    def send(d: dict, p: zmq.Socket):
         p.send_json(d)
