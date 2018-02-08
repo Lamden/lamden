@@ -2,6 +2,8 @@ import json
 import hashlib
 import secrets
 import zmq
+import asyncio
+from zmq.asyncio import Context
 
 # FAKE WITNESS FOR TESTING PURPOSES ONLY
 # port 4000
@@ -55,26 +57,26 @@ class Witness(object):
 
         self.hasher = proof
 
-        self.context = zmq.Context()
+        self.context = Context()
         self.witness_sub = self.context.socket(zmq.SUB)
 
         self.witness_sub.setsockopt_string(zmq.SUBSCRIBE, '')
 
-    def accept_incoming_transactions(self):
+    async def accept_incoming_transactions(self):
         try:
             self.witness_sub.connect(self.sub_url)
         except Exception as e:
             return {'status': 'Could not connect to witness sub socket'}
 
-        for i in range(100000):
+        while True:
             """Main loop entry point for witness sub"""
-            tx = self.witness_sub.recv_json(flags=0, encoding='utf-8')
+            tx = await self.witness_sub.recv_json(flags=0, encoding='utf-8')
             if tx != -1:
                 try:
                     raw_tx = self.serializer.deserialize(tx)
                 except Exception as e:
                     return {'status': 'Could not deserialize transaction'}
-                print('Received transaction number {} containing {}'.format(i, raw_tx))
+                print('Received transaction containing {}'.format(raw_tx))
             else:
                 print('No tx data')
 
@@ -99,4 +101,8 @@ class Witness(object):
         self.witness_pub.unbind(self.pub_url) # unbind socket
 
 b = Witness()
-b.accept_incoming_transactions()
+#asyncio.set_event_loop_policy(None)
+#import uvloop
+#asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+loop = asyncio.get_event_loop()
+loop.run_until_complete(b.accept_incoming_transactions())
