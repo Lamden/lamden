@@ -32,7 +32,7 @@ class Masternode(object):
 
         self.url = 'tcp://{}:{}'.format(self.host, self.internal_port)
 
-    def process_transaction(self, data=None):
+    def process_transaction(self, data: bytes = None):
         if not self.validate_transaction(data):
             return {'status': 'invalid transaction'}
 
@@ -52,7 +52,7 @@ class Masternode(object):
 
         return { 'status' : '{} successfully published to the network'.format(d) }
 
-    def validate_transaction(self, data=None):
+    def validate_transaction(self, data: bytes = None):
         """
         Validation function for the payload of the request. Validates against payload size,
         as well as valid payload fields for basic transaction
@@ -62,13 +62,13 @@ class Masternode(object):
         """
         if not data:
             return False
-        elif data.content_length <= MAX_REQUEST_LENGTH:
+        elif len(data) <= MAX_REQUEST_LENGTH:
             return False
-        elif 'to' not in data['payload']:
+        elif b'to' not in data:
             return False
-        elif 'amount' not in data['payload']:
+        elif b'amount' not in data:
             return False
-        elif 'from' not in data['payload']:
+        elif b'from' not in data:
             return False
 
         return True
