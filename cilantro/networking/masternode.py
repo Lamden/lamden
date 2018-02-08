@@ -78,6 +78,6 @@ class Masternode(object):
 
     async def setup_web_server(self):
         app = web.Application()
-        app.router.add_post('/', self.process_transaction)
+        app.router.add_post('/', self.process_request)
         web.run_app(app, host=self.host, port=int(self.external_port))
 
