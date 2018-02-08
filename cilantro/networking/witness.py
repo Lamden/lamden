@@ -3,8 +3,6 @@ from zmq.asyncio import Context
 import asyncio
 
 import sys
-if sys.platform != 'win32':
-    import uvloop
 
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW
@@ -21,7 +19,7 @@ from cilantro.proofs.pow import SHA3POW
 
 
 class Witness(object):
-    def __init__(self, host='127.0.0.1', sub_port='9999', serializer=JSONSerializer, hasher=SHA3POW):
+    def __init__(self, host='127.0.0.1', sub_port='4000', serializer=JSONSerializer, hasher=SHA3POW):
         self.host = host
         self.sub_port = sub_port
         self.pub_port = '7777'
@@ -31,7 +29,7 @@ class Witness(object):
         self.serializer = serializer
         self.hasher = hasher
 
-        self.ctx = Context.instance()
+        self.ctx = Context()
         self.witness_sub = self.ctx.socket(socket_type=zmq.SUB)
 
         self.witness_pub = None
@@ -39,35 +37,36 @@ class Witness(object):
 
     def start_async(self):
         try:
-            if sys.platform != 'win32':
-                asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-            else:
-                asyncio.set_event_loop_policy(None)
             self.loop = asyncio.get_event_loop()
-            self.loop.create_task(self.accept_incoming_transactions())
+            # self.loop.create_task(self.accept_incoming_transactions())
+            self.loop.run_until_complete(self.accept_incoming_transactions())
         except Exception as e:
             print(e)
-        finally:
-            self.loop.stop()
+        # finally:
+        #     self.loop.stop()
 
     async def accept_incoming_transactions(self):
         try:
             self.witness_sub.connect(self.sub_url)
-            self.witness_sub.setsockopt(zmq.SUBSCRIBE, '')  # no filters applied
+            self.witness_sub.setsockopt(zmq.SUBSCRIBE, b'')  # no filters applied
         except Exception as e:
+            print(e)
             return {'status': 'Could not connect to witness sub socket'}
 
         # Main loop entry point for witness sub
         while True:
             tx = await self.witness_sub.recv()
-            try:
-                raw_tx = self.serializer.deserialize(tx)
-            except Exception as e:
-                return {'status': 'Could not deserialize transaction'}
-            if self.hasher.check(raw_tx, raw_tx.payload['metadata']['proof']):
-                self.confirmed_transaction_routine()
-            else:
-                return {'status': 'Could not confirm transaction POW'}
+            print(tx)
+            # try:
+            #     #raw_tx = self.serializer.deserialize(tx)
+            # except Exception as e:
+            #     pass
+            #     #return {'status': 'Could not deserialize transaction'}
+            # if self.hasher.check(raw_tx, raw_tx.payload['metadata']['proof']):
+            #     self.confirmed_transaction_routine()
+            # else:
+            #     pass
+            #     #return {'status': 'Could not confirm transaction POW'}
 
     def activate_witness_publisher(self):
         """Routine to turn witness behavior from masternode subscriber to publisher for delegates by changing port"""

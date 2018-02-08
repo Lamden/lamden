@@ -21,7 +21,7 @@ else:
 '''
 
 class Masternode(object):
-    def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
+    def __init__(self, host='127.0.0.1', internal_port='4000', external_port='8080', serializer=JSONSerializer):
         self.host = host
         self.internal_port = internal_port
         self.external_port = external_port
@@ -39,6 +39,7 @@ class Masternode(object):
         d = None
         try:
             d = self.serializer.serialize(data)
+            print(d)
         except:
             return {'status': 'Could not serialize transaction' }
 
