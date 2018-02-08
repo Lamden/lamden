@@ -2,7 +2,8 @@ from unittest import TestCase
 from cilantro.transactions import TestNetTransaction
 from cilantro.wallets import ED25519Wallet
 from cilantro.proofs.pow import SHA3POW
-
+import secrets
+import hashlib
 '''
     Things to test:
     If transactions get built correctly.
@@ -128,6 +129,48 @@ class TestTestNetTransaction(TestCase):
         CANDIDATE = 'jason'
 
         tx = TestNetTransaction.vote_tx(v, CANDIDATE)
+
+        transaction_factory = TestNetTransaction(wallet=ED25519Wallet, proof=SHA3POW)
+        transaction_factory.build(tx, s, complete=True, use_stamp=False)
+
+        full_tx = transaction_factory.payload
+        sig = full_tx['metadata']['signature']
+
+        proof = full_tx['metadata']['proof']
+
+        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof))
+        self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
+
+    def test_swap_std_tx_pow(self):
+        (s, v) = ED25519Wallet.new()
+        RECIPIENT = 'davis'
+        AMOUNT = '100'
+
+        secret = secrets.token_hex(16)
+        hash = hashlib.sha3_256()
+        hash.update(bytes.fromhex(secret))
+
+        HASH_LOCK = hash.digest().hex()
+        UNIX_EXPIRATION = '1000'
+
+        tx = TestNetTransaction.swap_tx(v, RECIPIENT, AMOUNT, HASH_LOCK, UNIX_EXPIRATION)
+
+        transaction_factory = TestNetTransaction(wallet=ED25519Wallet, proof=SHA3POW)
+        transaction_factory.build(tx, s, complete=True, use_stamp=False)
+
+        full_tx = transaction_factory.payload
+        sig = full_tx['metadata']['signature']
+
+        proof = full_tx['metadata']['proof']
+
+        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof))
+        self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
+
+    def test_redeem_std_tx_pow(self):
+        (s, v) = ED25519Wallet.new()
+        SECRET = secrets.token_hex(16)
+
+        tx = TestNetTransaction.redeem_tx(SECRET)
 
         transaction_factory = TestNetTransaction(wallet=ED25519Wallet, proof=SHA3POW)
         transaction_factory.build(tx, s, complete=True, use_stamp=False)

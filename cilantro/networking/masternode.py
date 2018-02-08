@@ -28,8 +28,8 @@ class Masternode(object):
         self.url = 'tcp://{}:{}'.format(self.host, self.internal_port)
 
     def process_transaction(self, data=None):
-        if not self.validate_transaction(data):
-            return {'status': 'invalid transaction'}
+        # if not self.validate_transaction(data):
+        #     return {'status': 'invalid transaction'}
 
         d = None
         try:

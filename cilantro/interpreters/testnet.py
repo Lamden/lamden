@@ -105,8 +105,16 @@ class TestNetInterpreter(object):
     def query_for_swap_tx(self, tx):
         sender, recipient, amount, hash_lock, unix_expiration = tx[1:]
 
-        if self.r.hgetall(hash_lock) is None:
-            return [(HMSET, hash_lock, sender, recipient, amount, unix_expiration)]
+        # assert that the sender can 'stake' for the atomic swap
+        sender_balance = rs.int(self.r.hget(BALANCES, sender))
+        if sender_balance <= int(amount):
+            return FAIL
+
+        if len(self.r.hgetall(hash_lock)) == 0:
+            return [
+                (HSET, BALANCES, sender, sender_balance - int(amount)),
+                (HMSET, SWAP, hash_lock, sender, recipient, amount, unix_expiration)
+            ]
         else:
             return FAIL
 
@@ -122,4 +130,5 @@ class TestNetInterpreter(object):
             return FAIL
         else:
             pass
+
             # transfer funds

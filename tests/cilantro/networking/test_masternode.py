@@ -26,7 +26,7 @@ class TestMasternode(TestCase):
         self.mock_data = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto'}, 'metadata': {'sig':'x287', 'proof': '000'}}
 
     def test_validate_transaction(self):
-        
+        pass
 
     def test_host_and_port_storage(self):
         HOST = '127.0.0.1'

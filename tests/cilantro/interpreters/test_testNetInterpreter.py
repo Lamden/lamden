@@ -4,7 +4,8 @@ from cilantro.interpreters.constants import *
 from cilantro.wallets import ED25519Wallet
 from cilantro.proofs.pow import SHA3POW
 from cilantro.transactions import TestNetTransaction
-
+import secrets
+import hashlib
 
 class TestTestNetInterpreter(TestCase):
     def test_initializing_redis(self):
@@ -195,3 +196,85 @@ class TestTestNetInterpreter(TestCase):
         query = interpreter.query_for_transaction(tx)
 
         self.assertEqual(query, FAIL)
+
+    def test_query_for_swap_tx(self):
+        # create new wallet
+        (s, v) = ED25519Wallet.new()
+
+        # create the mock tx data
+        RECIPIENT = 'davis'
+        AMOUNT = '100'
+
+        secret = secrets.token_hex(16)
+        hash = hashlib.sha3_256()
+        hash.update(bytes.fromhex(secret))
+
+        HASH_LOCK = hash.digest().hex()
+        UNIX_EXPIRATION = '1000'
+
+        # build the transaction
+        tx = TestNetTransaction(ED25519Wallet, SHA3POW)
+        tx.build(TestNetTransaction.swap_tx(v, RECIPIENT, AMOUNT, HASH_LOCK, UNIX_EXPIRATION),
+                 s, use_stamp=False, complete=True)
+
+        # initialize the interpreter
+        interpreter = TestNetInterpreter()
+
+        # add some coinage
+        interpreter.r.hset(BALANCES, v, AMOUNT)
+
+        # create a mock tx to test
+        mock_tx = (TestNetTransaction.SWAP, v, RECIPIENT, AMOUNT, HASH_LOCK, UNIX_EXPIRATION)
+
+        # query
+        query = interpreter.query_for_swap_tx(mock_tx)
+
+        # create what the output should be
+        mock_query = [
+            (HSET, BALANCES, v, 0),
+            (HMSET, SWAP, HASH_LOCK, v, RECIPIENT, AMOUNT, UNIX_EXPIRATION),
+        ]
+
+        # assert true or not
+        self.assertEqual(query, mock_query)
+
+    def test_query_for_bad_swap_tx(self):
+        # create new wallet
+        (s, v) = ED25519Wallet.new()
+
+        # create the mock tx data
+        RECIPIENT = 'davis'
+        AMOUNT = '100'
+
+        secret = secrets.token_hex(16)
+        hash = hashlib.sha3_256()
+        hash.update(bytes.fromhex(secret))
+        HASH_LOCK = hash.digest().hex()
+        UNIX_EXPIRATION = '1000'
+
+        # build the transaction
+        tx = TestNetTransaction(ED25519Wallet, SHA3POW)
+        tx.build(TestNetTransaction.swap_tx(v, RECIPIENT, AMOUNT, HASH_LOCK, UNIX_EXPIRATION),
+                 s, use_stamp=False, complete=True)
+
+        # initialize the interpreter
+        interpreter = TestNetInterpreter()
+
+        # add the record
+        interpreter.r.hset(BALANCES, v, AMOUNT)
+        interpreter.r.hmset(HASH_LOCK, {'sender': v,
+                                        'recipient': RECIPIENT,
+                                        'amount': AMOUNT,
+                                        'hash_lock': HASH_LOCK,
+                                        'unix_expiration': UNIX_EXPIRATION})
+
+        # create a mock tx to test
+        mock_tx = (TestNetTransaction.SWAP, v, RECIPIENT, AMOUNT, HASH_LOCK, UNIX_EXPIRATION)
+
+        # query
+        query = interpreter.query_for_swap_tx(mock_tx)
+
+        # create what the output should be
+        mock_query = FAIL
+        # assert true or not
+        self.assertEqual(query, mock_query)
