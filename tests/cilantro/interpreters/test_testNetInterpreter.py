@@ -206,7 +206,7 @@ class TestTestNetInterpreter(TestCase):
         AMOUNT = '100'
 
         secret = secrets.token_hex(16)
-        hash = hashlib.sha3_256()
+        hash = hashlib.new('ripemd160')
         hash.update(bytes.fromhex(secret))
 
         HASH_LOCK = hash.digest().hex()
@@ -223,11 +223,8 @@ class TestTestNetInterpreter(TestCase):
         # add some coinage
         interpreter.r.hset(BALANCES, v, AMOUNT)
 
-        # create a mock tx to test
-        mock_tx = (TestNetTransaction.SWAP, v, RECIPIENT, AMOUNT, HASH_LOCK, UNIX_EXPIRATION)
-
         # query
-        query = interpreter.query_for_swap_tx(mock_tx)
+        query = interpreter.query_for_transaction(tx)
 
         # create what the output should be
         mock_query = [
@@ -247,7 +244,7 @@ class TestTestNetInterpreter(TestCase):
         AMOUNT = '100'
 
         secret = secrets.token_hex(16)
-        hash = hashlib.sha3_256()
+        hash = hashlib.new('ripemd160')
         hash.update(bytes.fromhex(secret))
         HASH_LOCK = hash.digest().hex()
         UNIX_EXPIRATION = '1000'
@@ -265,16 +262,53 @@ class TestTestNetInterpreter(TestCase):
         interpreter.r.hmset(HASH_LOCK, {'sender': v,
                                         'recipient': RECIPIENT,
                                         'amount': AMOUNT,
-                                        'hash_lock': HASH_LOCK,
                                         'unix_expiration': UNIX_EXPIRATION})
 
-        # create a mock tx to test
-        mock_tx = (TestNetTransaction.SWAP, v, RECIPIENT, AMOUNT, HASH_LOCK, UNIX_EXPIRATION)
-
         # query
-        query = interpreter.query_for_swap_tx(mock_tx)
+        query = interpreter.query_for_transaction(tx)
 
         # create what the output should be
         mock_query = FAIL
+        # assert true or not
+        self.assertEqual(query, mock_query)
+
+    def test_query_for_redeem_tx(self):
+        # create new wallets for sender and reciever
+        (sender_priv_key, sender_pub_key) = ED25519Wallet.new()
+        (recipient_priv_key, recipient_pub_key) = ED25519Wallet.new()
+
+        # create a swap to redeem
+        AMOUNT = '1000'
+        UNIX_EXPIRATION = '10000'
+
+        SECRET = secrets.token_hex(16)
+
+        hash = hashlib.new('ripemd160')
+        hash.update(bytes.fromhex(SECRET))
+
+        HASH_LOCK = hash.digest().hex()
+
+        interpreter = TestNetInterpreter()
+        interpreter.r.hset(BALANCES, sender_pub_key, AMOUNT)
+        interpreter.r.hset(BALANCES, recipient_pub_key, '100')
+        interpreter.r.hmset(HASH_LOCK, {
+            'sender': sender_pub_key,
+            'recipient': recipient_pub_key,
+            'amount': AMOUNT,
+            'unix_expiration': UNIX_EXPIRATION
+        })
+
+        # create the redeem script
+        tx = TestNetTransaction(ED25519Wallet, SHA3POW)
+        tx.build(TestNetTransaction.redeem_tx(SECRET), recipient_priv_key, use_stamp=False, complete=True)
+
+        # create the mock query of how it should work
+        mock_query = [
+            (HSET, BALANCES, recipient_pub_key, 1100),
+            (DEL, HASH_LOCK)
+        ]
+
+        query = interpreter.query_for_redeem_tx(tx.payload['payload'], tx.payload['metadata'])
+
         # assert true or not
         self.assertEqual(query, mock_query)

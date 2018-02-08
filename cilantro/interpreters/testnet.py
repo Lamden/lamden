@@ -107,7 +107,7 @@ class TestNetInterpreter(object):
 
         # assert that the sender can 'stake' for the atomic swap
         sender_balance = rs.int(self.r.hget(BALANCES, sender))
-        if sender_balance <= int(amount):
+        if sender_balance < int(amount):
             return FAIL
 
         if len(self.r.hgetall(hash_lock)) == 0:
@@ -118,7 +118,7 @@ class TestNetInterpreter(object):
         else:
             return FAIL
 
-    def query_for_redeem_tx(self, tx):
+    def query_for_redeem_tx(self, tx, metadata):
         secret = bytes.fromhex(tx[1])
 
         ripe = hashlib.new('ripemd160')
@@ -126,9 +126,21 @@ class TestNetInterpreter(object):
         hash_lock = ripe.digest().hex()
 
         q = self.r.hgetall(hash_lock)
-        if q is None:
+
+        if len(q) == 0:
             return FAIL
         else:
-            pass
-
-            # transfer funds
+            # assert sender is the true sender
+            sig = metadata['signature']
+            msg = None
+            d = rs.dict(q)
+            if self.wallet.verify(d['recipient'], msg, sig) is True:
+                # transfer funds
+                # get the recipient's balance
+                recipient_balance = self.r.hget(BALANCES, d['recipient'])
+                return [
+                    (HSET, BALANCES, d['recipient'], rs.int(recipient_balance) + int(d['amount'])),
+                    (DEL, hash_lock)
+                ]
+            else:
+                return FAIL
