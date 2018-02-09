@@ -13,3 +13,10 @@ class RedisSerializer:
     def str(b: bytes):
         s = b.decode()
         return s
+
+    @staticmethod
+    def dict(d: dict):
+        new_d = {}
+        for k, v in d.items():
+            new_d[k.decode()] = v.decode()
+        return new_d

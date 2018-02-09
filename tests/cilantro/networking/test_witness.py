@@ -25,7 +25,7 @@ class TestWitness(TestCase):
         m = Mock_Masternode()
         loop = asyncio.get_event_loop()
         a = loop.create_task(m.process_transaction(tx={'hello'}))
-        b= loop.create_task(w.accept_incoming_transactions())
+        b = loop.create_task(w.accept_incoming_transactions())
         loop.run_until_complete([ a, b ])
 
 

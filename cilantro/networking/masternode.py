@@ -73,11 +73,11 @@ class Masternode(object):
             return True
 
     async def process_request(self, request):
-        r = self.process_transaction(await request.content.read())
+        r = self.process_transaction(data=await request.content.read())
         return web.Response(text=str(r))
 
     async def setup_web_server(self):
         app = web.Application()
-        app.router.add_post('/', self.process_transaction)
+        app.router.add_post('/', self.process_request)
         web.run_app(app, host=self.host, port=int(self.external_port))
 

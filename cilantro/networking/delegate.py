@@ -67,3 +67,4 @@ class Delegate(object):
         await time.sleep(1.0 - ((time.time() - starttime) % 1.0))
         return True
 
+
