@@ -42,7 +42,6 @@ class BasicWallet(Wallet):
         s, v = generate_keys()
         return keys_to_format(s, v)
 
-
     @staticmethod
     def sign(s, msg):
         (s, v) = format_to_keys(s)

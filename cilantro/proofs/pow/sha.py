@@ -10,7 +10,7 @@ class SHA3POW(POW):
             s = secrets.token_bytes(16)
             h.update(o + s)
             if h.digest().hex()[0:3] == '000':
-                return s.hex()[2:], h.digest().hex()[2:]
+                return s.hex(), h.digest().hex()
 
     @staticmethod
     def check(o: bytes, proof: str):

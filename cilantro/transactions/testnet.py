@@ -15,6 +15,8 @@ class TestNetTransaction(Transaction):
     TX = 't'
     STAMP = 's'
     VOTE = 'v'
+    SWAP = 'a'
+    REDEEM = 'r'
 
     @staticmethod
     def standard_tx(sender: str, to: str, amount: str):
@@ -27,6 +29,14 @@ class TestNetTransaction(Transaction):
     @staticmethod
     def vote_tx(sender: str, address):
         return TestNetTransaction.VOTE, sender, address
+
+    @staticmethod
+    def swap_tx(sender: str, recipient: str, amount: str, hash_lock: str, unix_expiration: str):
+        return TestNetTransaction.SWAP, sender, recipient, amount, hash_lock, unix_expiration
+
+    @staticmethod
+    def redeem_tx(secret: str):
+        return TestNetTransaction.REDEEM, secret
 
     @staticmethod
     def verify_tx(transaction, verifying_key, signature, wallet: Wallet, proof_system: POW):
@@ -61,4 +71,4 @@ class TestNetTransaction(Transaction):
         return self.wallet.sign(s, str(self.payload['payload']).encode())
 
     def seal(self):
-        return self.proof_system.find(str(self.payload['payload']).encode())
+        return self.proof_system.find(str(self.payload['payload']).encode())[0]

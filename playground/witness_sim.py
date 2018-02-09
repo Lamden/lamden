@@ -86,12 +86,12 @@ class Witness(object):
             #     return {'status: No witness sub socket activity'}
 
     def activate_witness_publisher(self):
-        """Routine to turn witness behavior from masternode subscriber to publisher for delegates by changing port"""
+        """Routine to turn witness behavior from masternode subscriber to witness_pub for delegates by changing port"""
         self.witness_pub = self.context.socket(zmq.PUB)
         self.witness_pub.bind(self.pub_url)
 
     def confirmed_transaction_routine(self, raw_tx):
-        """take approvated transaction data, serialize it, and open publisher socket.
+        """take approvated transaction data, serialize it, and open witness_pub socket.
          Then publish along tx info to delegate sub and then unbind socket"""
         tx_to_delegate = self.serializer.serialize(raw_tx)
         self.activate_witness_publisher()

@@ -4,7 +4,7 @@ from cilantro.proofs.pow import SHA3POW
 from cilantro.interpreters.utils import RedisSerializer as rs
 from cilantro.interpreters.constants import *
 import redis
-
+import hashlib
 
 '''
     A moronically simple testnet transaction to Redis query system to demonstrate how Seneca will ultimately work
@@ -42,6 +42,8 @@ class TestNetInterpreter(object):
             query = self.query_for_vote_tx(full_tx)
         elif full_tx[0] == TestNetTransaction.STAMP:
             query = self.query_for_stamp_tx(full_tx)
+        elif full_tx[0] == TestNetTransaction.SWAP:
+            query = self.query_for_swap_tx(full_tx)
         else:
             pass
 
@@ -99,3 +101,46 @@ class TestNetInterpreter(object):
             ]
 
         return query
+
+    def query_for_swap_tx(self, tx):
+        sender, recipient, amount, hash_lock, unix_expiration = tx[1:]
+
+        # assert that the sender can 'stake' for the atomic swap
+        sender_balance = rs.int(self.r.hget(BALANCES, sender))
+        if sender_balance < int(amount):
+            return FAIL
+
+        if len(self.r.hgetall(hash_lock)) == 0:
+            return [
+                (HSET, BALANCES, sender, sender_balance - int(amount)),
+                (HMSET, SWAP, hash_lock, sender, recipient, amount, unix_expiration)
+            ]
+        else:
+            return FAIL
+
+    def query_for_redeem_tx(self, tx, metadata):
+        secret = bytes.fromhex(tx[1])
+
+        ripe = hashlib.new('ripemd160')
+        ripe.update(secret)
+        hash_lock = ripe.digest().hex()
+
+        q = self.r.hgetall(hash_lock)
+
+        if len(q) == 0:
+            return FAIL
+        else:
+            # assert sender is the true sender
+            sig = metadata['signature']
+            msg = None
+            d = rs.dict(q)
+            if self.wallet.verify(d['recipient'], msg, sig) is True:
+                # transfer funds
+                # get the recipient's balance
+                recipient_balance = self.r.hget(BALANCES, d['recipient'])
+                return [
+                    (HSET, BALANCES, d['recipient'], rs.int(recipient_balance) + int(d['amount'])),
+                    (DEL, hash_lock)
+                ]
+            else:
+                return FAIL
