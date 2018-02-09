@@ -8,6 +8,7 @@ if sys.platform != 'win32':
 
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW
+from cilantro.networking import PubSubBase
 
 
 '''
@@ -66,20 +67,19 @@ class Witness(object):
                 return {'status': 'Could not confirm transaction POW'}
 
     def activate_witness_publisher(self):
-        """Routine to turn witness behavior from masternode subscriber to witness_pub for delegates by changing port"""
+        """Routine to turn witness behavior from masternode subscriber to pub_socket for delegates by changing port"""
         self.witness_pub = self.ctx.socket(socket_type=zmq.PUB)
         self.witness_pub.bind(self.pub_url)
 
     async def confirmed_transaction_routine(self, raw_tx):
         """
-        Take approved transaction data, serialize it, and open witness_pub socket.
+        Take approved transaction data, serialize it, and open pub_socket socket.
         Then publish along tx info to delegate sub and then unbind socket
         """
         tx_to_delegate = self.serializer.serialize(raw_tx)
         self.activate_witness_publisher()
         await self.witness_pub.send(tx_to_delegate)
         self.witness_pub.unbind(self.pub_url)  # unbind socket?
-
 
 # include safeguard to make sure witness and masternode start at the same time and no packets are lost
 # add broker based solution to e nsure dynamic discovery  - solved via masternode acting as bootnode
