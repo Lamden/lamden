@@ -49,7 +49,17 @@ class Delegate(object):
                 self.delegate_logic()
 
     def delegate_logic(self):
-            pass
+        """
+        Step 1) Delegate takes 10k transactions from witness and forms a block
+        Step 2) Block propagates across the network to other delegates
+        Step 3) Delegates pass around in memory DB hash to confirm they have the same blockchain state
+        Step 4) Next block is mined and process repeats
+
+        zmq pattern: subscribers (delegates) need to be able to communicate with one another. this can be achieved via
+        a push/pull pattern where all delegates push their state to sink that pulls them in, but this is centralized.
+        another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
+        """
+        pass
 
     async def delegate_time(self):
         """Conditions to check that 1 second has passed"""
@@ -57,7 +67,3 @@ class Delegate(object):
         await time.sleep(1.0 - ((time.time() - starttime) % 1.0))
         return True
 
-
-a = Delegate()
-a.start_async()
-#a.recv()
