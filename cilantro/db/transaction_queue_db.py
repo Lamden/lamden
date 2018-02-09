@@ -12,18 +12,19 @@ class TransactionQueueDB(BaseDB):
         :param transaction_payload: A tuple specifying the transaction data
         :return:
         """
-        pass
+        # TODO -- implement
 
     def dequeue_transaction(self) -> tuple:
         """
         Removes the front transaction from the queue and returns it
         :return: A tuple specifying the transaction data
         """
-        pass
+        # TODO -- implement
 
     def queue_size(self) -> int:
         """
         Returns the number of transactions in the queue
         :return: An integer specifying the number of transactions in the queue
         """
-        pass
+        # TODO -- implement
+        return 5

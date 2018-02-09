@@ -7,10 +7,11 @@ chardet==3.0.4
 idna==2.6
 multidict==4.1.0
 pycares==2.3.0
-pyzmq==16.0.4
+pyzmq==17.0.0b4
 requests==2.18.4
 twofish==0.3.0
 urllib3==1.22
 uvloop==0.9.1
 yarl==1.1.0
 zmq==0.0.0
+pytest-aiohttp=0.3.0

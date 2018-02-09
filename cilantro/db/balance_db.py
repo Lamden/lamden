@@ -13,7 +13,9 @@ class BalanceDB(BaseDB):
         :param wallet_key: The verifying address for the wallet
         :return: A float representing the current balance of the wallet
         """
-        pass
+        # TODO -- implement this
+        print('getting balance for wallet: ' + str(wallet_key))
+        return 1000
 
     def set_balance(self, wallet_key: str, balance: float, wallet: Wallet=BasicWallet):
         """
@@ -23,4 +25,4 @@ class BalanceDB(BaseDB):
         :param balance: A float representing the balance to set the wallet to
         :return: void
         """
-        pass
+        print("setting balance for wallet {} to balance {}".format(wallet_key, balance))

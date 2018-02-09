@@ -14,7 +14,8 @@ class ScratchDB(BaseDB):
         :param wallet: a Wallet object
         :return: True if the wallet exists in the scratch, or false otherwise
         """
-        pass
+        # TODO -- implement
+        return False
 
     def get_balance(self, wallet_key: str, wallet: Wallet=BasicWallet) -> float:
         """
@@ -23,7 +24,10 @@ class ScratchDB(BaseDB):
         :param wallet: a Wallet object whose balance will be checked
         :return: A float representing the current balance of the wallet
         """
-        pass
+        # TODO -- implement
+        val = 50
+        print('getting scratch balance for wallet: {}...value: {}'.format(str(wallet_key), val))
+        return val
 
     def set_balance(self, wallet_key: str, balance: float, wallet: Wallet=BasicWallet, ):
         """
@@ -33,11 +37,14 @@ class ScratchDB(BaseDB):
         :param balance: A float representing the balance to set the wallet to
         :return:
         """
-        pass
+        # TODO -- implement
+        print('setting scratch balance for wallet: {} to value: {}'.format(wallet_key, balance))
 
     def flush(self):
         """
         Flushes all balances in the scratch
         :return:
         """
+        # TODO -- implement
+        print('flushing scratch')
         pass

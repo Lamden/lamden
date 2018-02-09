@@ -1,5 +1,5 @@
 from cilantro.transactions import Transaction
-from cilantro.wallets import Wallet
+from cilantro.wallets import Wallet, ED25519Wallet
 from cilantro.proofs.pow import POW
 
 class TestNetTransaction(Transaction):
@@ -15,6 +15,8 @@ class TestNetTransaction(Transaction):
     TX = 't'
     STAMP = 's'
     VOTE = 'v'
+    SWAP = 'a'
+    REDEEM = 'r'
 
     @staticmethod
     def standard_tx(sender: str, to: str, amount: str):
@@ -29,6 +31,14 @@ class TestNetTransaction(Transaction):
         return TestNetTransaction.VOTE, sender, address
 
     @staticmethod
+    def swap_tx(sender: str, recipient: str, amount: str, hash_lock: str, unix_expiration: str):
+        return TestNetTransaction.SWAP, sender, recipient, amount, hash_lock, unix_expiration
+
+    @staticmethod
+    def redeem_tx(secret: str):
+        return TestNetTransaction.REDEEM, secret
+
+    @staticmethod
     def verify_tx(transaction, verifying_key, signature, wallet: Wallet, proof_system: POW):
         valid_signature = wallet.verify(verifying_key, str(transaction['payload']).encode(), signature)
         try:
@@ -36,6 +46,43 @@ class TestNetTransaction(Transaction):
         except:
             valid_proof = transaction['metadata']['proof'] == 's'
         return valid_signature, valid_proof
+
+    @staticmethod
+    def from_dict(tx_dict, wallet=ED25519Wallet, proof=POW):
+        """
+        Build a TestNetTransaction object from a dictionary.
+        :param tx_dict: A dictionary containing the transaction data
+        :param wallet: Wallet to use for transaction
+        :param proof: Proof algorithm to use for transaction
+        :return: A TestNetTransaction object
+        """
+        # TODO -- support use_stamp flag and complete flag (like in TestNetTransaction.build(...)
+
+        transaction = TestNetTransaction(wallet, proof)
+        payload = tx_dict['payload']
+
+        sender = payload['from']
+        receiver = payload['to']
+        amount = str(payload['amount'])
+        tx_type = payload['type']
+
+        if tx_type == TestNetTransaction.TX:
+            transaction.payload = TestNetTransaction.standard_tx(sender, receiver, amount)
+        elif tx_type == TestNetTransaction.STAMP:
+            transaction.payload = TestNetTransaction.stamp_tx(sender, amount)
+        elif tx_type == TestNetTransaction.VOTE:
+            transaction.payload = TestNetTransaction.vote_tx(sender, receiver)
+        elif tx_type == TestNetTransaction.SWAP:
+            # TODO -- implement this
+            raise NotImplementedError
+        elif tx_type == TestNetTransaction.REDEEM:
+            # TODO -- implement this
+            raise NotImplementedError
+        else:
+            raise Exception('Error building transaction from dict -- '
+                            'Invalid type field in transaction dict: {}'.format(tx_dict))
+
+        return transaction
 
     def __init__(self, wallet, proof):
         super().__init__(wallet, proof)
@@ -61,4 +108,4 @@ class TestNetTransaction(Transaction):
         return self.wallet.sign(s, str(self.payload['payload']).encode())
 
     def seal(self):
-        return self.proof_system.find(str(self.payload['payload']).encode())
+        return self.proof_system.find(str(self.payload['payload']).encode())[0]

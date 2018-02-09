@@ -2,7 +2,12 @@ import asyncio
 import uvloop
 import zmq
 from zmq.asyncio import Context
+
 from cilantro.interpreters import TestNetInterpreter
+
+from cilantro.transactions import TestNetTransaction
+
+from cilantro.wallets import ED25519Wallet
 
 from cilantro.serialization import JSONSerializer
 
@@ -10,9 +15,8 @@ from cilantro.networking.constants import MAX_QUEUE_SIZE
 
 from cilantro.proofs.pow import SHA3POW
 
-from cilantro.db.balance_db import BalanceDB
-from cilantro.db.scratch_db import ScratchDB
 from cilantro.db.transaction_queue_db import TransactionQueueDB
+
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -29,15 +33,15 @@ class Delegate(object):
 
         self.serializer = serializer
 
-        self.ctx = Context.instance()
+        self.ctx = Context()
         self.delegate_sub = self.ctx.socket(socket_type=zmq.SUB)
 
-        self.balance = BalanceDB()
-        self.scratch = ScratchDB()
         self.queue = TransactionQueueDB()
 
         self.delegate_pub = None
         self.loop = None
+
+        self.interpreter = TestNetInterpreter()
 
     def start_async(self):
         try:
@@ -45,8 +49,6 @@ class Delegate(object):
             self.loop.create_task(self.accept_incoming_transactions())
         except Exception as e:
             print(e)
-        finally:
-            self.loop.stop()
 
     async def accept_incoming_transactions(self):
         try:
@@ -65,60 +67,53 @@ class Delegate(object):
                 print('error deserializing tranasction: ' + str(e))
                 return {'status': 'Could not deserialize transaction'}
 
-            # do i need to check the hash?
             self.process_transaction(raw_tx)
 
-    async def process_transaction(self, data=None):
+    def process_transaction(self, data=None):
         """
         :param data: The raw transaction data, assumed to be in byte format
         :return:
         """
-        # TODO -- validate data?
-
-        d = None
-
-        print("Delegate processing tx: {}".format(d))
+        d, tx = None, None
 
         try:
             d = self.serializer.serialize(data)
         except Exception as e:
             print("Error in delegate serializing data -- {}".format(e))
 
+        print("Delegate processing tx: {}".format(d))
 
-        # TODO -- abstract this out into a TransactionParser or TransactionHandler class
-        sender = d['payload']['from']
-        amount = d['payload']['amount']
+        try:
+            tx = TestNetTransaction.from_dict(d)
+            interpreter = TestNetInterpreter()
+            interpreter.interpret_transaction(tx)
+        except Exception as e:
+            print('Error interpreting transaction: {}\nTransaction dict: {}'.format(e, d))
+            return {'status': 'error interpreting transaction: {}'.format(e)}
 
-        # check if it is in scratch
-        if self.scratch.wallet_exists(sender):
-            # Is tx valid against scratch?
-            scratch_balance = self.scratch.get_balance(sender)
-            if scratch_balance - amount >= 0:
-                # Update scratch
-                self.scratch.set_balance(sender, scratch_balance - amount)
-            else:
-                return {'status': 'Error: sender does not have enough balance (against scratch)'}
-        else:
-            # Is tx valid against main db?
-            if self.balance.get_balance(sender) >= amount:
-                # Update scratch
-                balance = self.balance.get_balance(sender)
-                self.scratch.set_balance(sender, balance - amount)
-            else:
-                return {'status': 'Error: sender does not have enough balance (against main balance)'}
-
-        # Add to state change queue
-        self.queue.enqueue_transaction(d['payload'])
+        self.queue.enqueue_transaction(tx.payload)
 
         if self.queue.queue_size() > MAX_QUEUE_SIZE:
             print('queue exceeded max size...delegate performing consensus')
             self.perform_consensus()
 
+    def test_func(self):
+        print("hello this is a asdffadsf")
+
+
     def perform_consensus(self):
+        print('delegate performing consensus...')
         pass
 
 
 
+import json
+
+user_post = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto', 'type':'t'}, 'metadata': {'sig':'x287', 'proof': '000'}}
+binary_data = json.dumps(user_post).encode()
+
+d = Delegate()
+d.process_transaction(data=binary_data)
 
 
 

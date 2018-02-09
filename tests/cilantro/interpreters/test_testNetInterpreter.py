@@ -4,7 +4,8 @@ from cilantro.interpreters.constants import *
 from cilantro.wallets import ED25519Wallet
 from cilantro.proofs.pow import SHA3POW
 from cilantro.transactions import TestNetTransaction
-
+import secrets
+import hashlib
 
 class TestTestNetInterpreter(TestCase):
     def test_initializing_redis(self):
@@ -195,3 +196,231 @@ class TestTestNetInterpreter(TestCase):
         query = interpreter.query_for_transaction(tx)
 
         self.assertEqual(query, FAIL)
+
+    def test_query_for_swap_tx(self):
+        # create new wallet
+        (s, v) = ED25519Wallet.new()
+
+        # create the mock tx data
+        RECIPIENT = 'davis'
+        AMOUNT = '100'
+
+        secret = secrets.token_hex(16)
+        hash = hashlib.new('ripemd160')
+        hash.update(bytes.fromhex(secret))
+
+        HASH_LOCK = hash.digest().hex()
+        UNIX_EXPIRATION = '1000'
+
+        # build the transaction
+        tx = TestNetTransaction(ED25519Wallet, SHA3POW)
+        tx.build(TestNetTransaction.swap_tx(v, RECIPIENT, AMOUNT, HASH_LOCK, UNIX_EXPIRATION),
+                 s, use_stamp=False, complete=True)
+
+        # initialize the interpreter
+        interpreter = TestNetInterpreter()
+
+        # add some coinage
+        interpreter.r.hset(BALANCES, v, AMOUNT)
+
+        # query
+        query = interpreter.query_for_transaction(tx)
+
+        # create what the output should be
+        mock_query = [
+            (HSET, BALANCES, v, 0),
+            (HMSET, SWAP, HASH_LOCK, v, RECIPIENT, AMOUNT, UNIX_EXPIRATION),
+        ]
+
+        # assert true or not
+        self.assertEqual(query, mock_query)
+
+    def test_query_for_low_balance_swap_tx(self):
+        # create new wallet
+        (s, v) = ED25519Wallet.new()
+
+        # create the mock tx data
+        RECIPIENT = 'davis'
+        AMOUNT = '100'
+
+        secret = secrets.token_hex(16)
+        hash = hashlib.new('ripemd160')
+        hash.update(bytes.fromhex(secret))
+
+        HASH_LOCK = hash.digest().hex()
+        UNIX_EXPIRATION = '1000'
+
+        # build the transaction
+        tx = TestNetTransaction(ED25519Wallet, SHA3POW)
+        tx.build(TestNetTransaction.swap_tx(v, RECIPIENT, AMOUNT, HASH_LOCK, UNIX_EXPIRATION),
+                 s, use_stamp=False, complete=True)
+
+        # initialize the interpreter
+        interpreter = TestNetInterpreter()
+
+        # add some coinage
+        #interpreter.r.hset(BALANCES, v, AMOUNT)
+
+        # query
+        query = interpreter.query_for_transaction(tx)
+
+        # create what the output should be
+        mock_query = FAIL
+
+        # assert true or not
+        self.assertEqual(query, mock_query)
+
+    def test_query_for_bad_swap_tx(self):
+        # create new wallet
+        (s, v) = ED25519Wallet.new()
+
+        # create the mock tx data
+        RECIPIENT = 'davis'
+        AMOUNT = '100'
+
+        secret = secrets.token_hex(16)
+        hash = hashlib.new('ripemd160')
+        hash.update(bytes.fromhex(secret))
+        HASH_LOCK = hash.digest().hex()
+        UNIX_EXPIRATION = '1000'
+
+        # build the transaction
+        tx = TestNetTransaction(ED25519Wallet, SHA3POW)
+        tx.build(TestNetTransaction.swap_tx(v, RECIPIENT, AMOUNT, HASH_LOCK, UNIX_EXPIRATION),
+                 s, use_stamp=False, complete=True)
+
+        # initialize the interpreter
+        interpreter = TestNetInterpreter()
+
+        # add the record
+        interpreter.r.hset(BALANCES, v, AMOUNT)
+        interpreter.r.hmset(HASH_LOCK, {'sender': v,
+                                        'recipient': RECIPIENT,
+                                        'amount': AMOUNT,
+                                        'unix_expiration': UNIX_EXPIRATION})
+
+        # query
+        query = interpreter.query_for_transaction(tx)
+
+        # create what the output should be
+        mock_query = FAIL
+        # assert true or not
+        self.assertEqual(query, mock_query)
+
+    def test_query_for_redeem_tx(self):
+        # create new wallets for sender and reciever
+        (sender_priv_key, sender_pub_key) = ED25519Wallet.new()
+        (recipient_priv_key, recipient_pub_key) = ED25519Wallet.new()
+
+        # create a swap to redeem
+        AMOUNT = '1000'
+        UNIX_EXPIRATION = '10000'
+
+        SECRET = secrets.token_hex(16)
+
+        hash = hashlib.new('ripemd160')
+        hash.update(bytes.fromhex(SECRET))
+
+        HASH_LOCK = hash.digest().hex()
+
+        interpreter = TestNetInterpreter()
+        interpreter.r.hset(BALANCES, sender_pub_key, AMOUNT)
+        interpreter.r.hset(BALANCES, recipient_pub_key, '100')
+        interpreter.r.hmset(HASH_LOCK, {
+            'sender': sender_pub_key,
+            'recipient': recipient_pub_key,
+            'amount': AMOUNT,
+            'unix_expiration': UNIX_EXPIRATION
+        })
+
+        # create the redeem script
+        tx = TestNetTransaction(ED25519Wallet, SHA3POW)
+        tx.build(TestNetTransaction.redeem_tx(SECRET), recipient_priv_key, use_stamp=False, complete=True)
+
+        # create the mock query of how it should work
+        mock_query = [
+            (HSET, BALANCES, recipient_pub_key, 1100),
+            (DEL, HASH_LOCK)
+        ]
+
+        query = interpreter.query_for_redeem_tx(tx.payload['payload'], tx.payload['metadata'])
+
+        # assert true or not
+        self.assertEqual(query, mock_query)
+
+    def test_query_for_bad_secret_redeem(self):
+        # create new wallets for sender and reciever
+        (sender_priv_key, sender_pub_key) = ED25519Wallet.new()
+        (recipient_priv_key, recipient_pub_key) = ED25519Wallet.new()
+
+        # create a swap to redeem
+        AMOUNT = '1000'
+        UNIX_EXPIRATION = '10000'
+
+        SECRET = secrets.token_hex(16)
+
+        hash = hashlib.new('ripemd160')
+        hash.update(bytes.fromhex(SECRET))
+
+        HASH_LOCK = hash.digest().hex()
+
+        interpreter = TestNetInterpreter()
+        interpreter.r.hset(BALANCES, sender_pub_key, AMOUNT)
+        interpreter.r.hset(BALANCES, recipient_pub_key, '100')
+        interpreter.r.hmset(HASH_LOCK, {
+            'sender': sender_pub_key,
+            'recipient': recipient_pub_key,
+            'amount': AMOUNT,
+            'unix_expiration': UNIX_EXPIRATION
+        })
+
+        # create the redeem script
+        tx = TestNetTransaction(ED25519Wallet, SHA3POW)
+        tx.build(TestNetTransaction.redeem_tx('ABCD'), recipient_priv_key, use_stamp=False, complete=True)
+
+        # create the mock query of how it should work
+        mock_query = FAIL
+
+        query = interpreter.query_for_redeem_tx(tx.payload['payload'], tx.payload['metadata'])
+
+        # assert true or not
+        self.assertEqual(query, mock_query)
+
+    def test_query_for_bad_signature_redeem(self):
+        # create new wallets for sender and reciever
+        (sender_priv_key, sender_pub_key) = ED25519Wallet.new()
+        (recipient_priv_key, recipient_pub_key) = ED25519Wallet.new()
+        (attacker_priv_key, attacker_pub_key) = ED25519Wallet.new()
+
+        # create a swap to redeem
+        AMOUNT = '1000'
+        UNIX_EXPIRATION = '10000'
+
+        SECRET = secrets.token_hex(16)
+
+        hash = hashlib.new('ripemd160')
+        hash.update(bytes.fromhex(SECRET))
+
+        HASH_LOCK = hash.digest().hex()
+
+        interpreter = TestNetInterpreter()
+        interpreter.r.hset(BALANCES, sender_pub_key, AMOUNT)
+        interpreter.r.hset(BALANCES, recipient_pub_key, '100')
+        interpreter.r.hmset(HASH_LOCK, {
+            'sender': sender_pub_key,
+            'recipient': recipient_pub_key,
+            'amount': AMOUNT,
+            'unix_expiration': UNIX_EXPIRATION
+        })
+
+        # create the redeem script
+        tx = TestNetTransaction(ED25519Wallet, SHA3POW)
+        tx.build(TestNetTransaction.redeem_tx(SECRET), attacker_priv_key, use_stamp=False, complete=True)
+
+        # create the mock query of how it should work
+        mock_query = FAIL
+
+        query = interpreter.query_for_redeem_tx(tx.payload['payload'], tx.payload['metadata'])
+
+        # assert true or not
+        self.assertEqual(query, mock_query)
