@@ -1,20 +1,70 @@
 import asyncio
-import uvloop
 import zmq
 from zmq.asyncio import Context
-from cilantro.interpreters import TestNetInterpreter
+from cilantro.serialization import JSONSerializer
+from cilantro.proofs.pow import SHA3POW
+import time
+import sys
+if sys.platform != 'win32':
+    import uvloop
 
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-ctx = Context.instance()
 
-async def recv():
-    s = ctx.socket(zmq.SUB)
-    s.connect('tcp://127.0.0.1:9999')
-    s.subscribe(b'w')
-    while True:
-        msg = await s.recv_json()
-        print('received', msg)
-    s.close()
+'''
+    Delegates
 
-print('listening for messages...')
-asyncio.get_event_loop().run_until_complete(recv())
+    Delegates are the "miners" of the Cilantro blockchain in that they opportunistically bundle up transactions into 
+    blocks and are rewarded with TAU for their actions. They receive approved transactions from delegates and broadcast
+    blocks based on a 1 second or 10,000 transaction limit per block. They should be able to connect/drop from the 
+    network seamlessly as well as coordinate blocks amongst themselves. 
+'''
+
+
+class Delegate(object):
+    def __init__(self, host='127.0.0.1', sub_port='7777', serializer=JSONSerializer, hasher=SHA3POW):
+        self.host = host
+        self.sub_port = sub_port
+        self.serializer = serializer
+        self.hasher = hasher
+        self.sub_url = 'tcp://{}:{}'.format(self.host, self.sub_port)
+
+        self.ctx = Context()
+        self.delegate_sub = self.ctx.socket(socket_type=zmq.SUB)
+
+        self.loop = None
+
+    def start_async(self):
+        self.loop = asyncio.get_event_loop() # set uvloop here
+        self.loop.run_until_complete(self.recv())
+
+    async def recv(self):
+        self.delegate_sub.connect(self.sub_url)
+        self.delegate_sub.setsockopt(zmq.SUBSCRIBE, b'')
+
+        while True:
+            msg_count = 0
+            msg = await self.delegate_sub.recv()
+            print('received', msg)
+            msg_count += 1
+            if self.delegate_time() or msg_count == 10000: # conditions for delegate logic go here.
+                self.delegate_logic()
+
+    def delegate_logic(self):
+        """
+        Step 1) Delegate takes 10k transactions from witness and forms a block
+        Step 2) Block propagates across the network to other delegates
+        Step 3) Delegates pass around in memory DB hash to confirm they have the same blockchain state
+        Step 4) Next block is mined and process repeats
+
+        zmq pattern: subscribers (delegates) need to be able to communicate with one another. this can be achieved via
+        a push/pull pattern where all delegates push their state to sink that pulls them in, but this is centralized.
+        another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
+        """
+        pass
+
+    async def delegate_time(self):
+        """Conditions to check that 1 second has passed"""
+        starttime = time.time()
+        await time.sleep(1.0 - ((time.time() - starttime) % 1.0))
+        return True
+
+
