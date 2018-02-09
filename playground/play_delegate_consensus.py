@@ -99,3 +99,7 @@ for q in setup_queries:
 
 for t in txs:
     print(interpreter.query_for_transaction(t))
+
+for q in setup_queries:
+    for k in list(setup_queries[q].keys()):
+        print(r.hget(k,q))
