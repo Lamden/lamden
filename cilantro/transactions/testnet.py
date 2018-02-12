@@ -1,5 +1,5 @@
 from cilantro.transactions import Transaction
-from cilantro.wallets import Wallet
+from cilantro.wallets import Wallet, ED25519Wallet
 from cilantro.proofs.pow import POW
 
 class TestNetTransaction(Transaction):
@@ -47,6 +47,47 @@ class TestNetTransaction(Transaction):
             valid_proof = transaction['metadata']['proof'] == 's'
         return valid_signature, valid_proof
 
+    @staticmethod
+    def from_dict(tx_dict, use_stamp=False, wallet=ED25519Wallet, proof=POW):
+        """
+        Build a TestNetTransaction object from a dictionary.
+        :param tx_dict: A dictionary containing the transaction data
+        :param wallet: Wallet to use for transaction
+        :param proof: Proof algorithm to use for transaction
+        :return: A TestNetTransaction object
+        """
+        transaction = TestNetTransaction(wallet, proof)
+        transaction.payload['metadata'] = tx_dict['metadata']
+        payload = tx_dict['payload']
+
+        sender = payload['from']
+        receiver = payload['to']
+        amount = str(payload['amount'])
+        tx_type = payload['type']
+
+        if tx_type == TestNetTransaction.TX:
+            transaction.payload['payload'] = TestNetTransaction.standard_tx(sender, receiver, amount)
+        elif tx_type == TestNetTransaction.STAMP:
+            transaction.payload['payload'] = TestNetTransaction.stamp_tx(sender, amount)
+        elif tx_type == TestNetTransaction.VOTE:
+            transaction.payload['payload'] = TestNetTransaction.vote_tx(sender, receiver)
+        elif tx_type == TestNetTransaction.SWAP:
+            # TODO -- implement this
+            raise NotImplementedError
+        elif tx_type == TestNetTransaction.REDEEM:
+            # TODO -- implement this
+            raise NotImplementedError
+        else:
+            raise Exception('Error building transaction from dict -- '
+                            'Invalid type field in transaction dict: {}'.format(tx_dict))
+
+        if use_stamp:
+            transaction.payload['metadata']['proof'] = TestNetTransaction.STAMP
+        else:
+            transaction.payload['metadata']['proof'] = transaction.seal()
+
+        return transaction
+
     def __init__(self, wallet, proof):
         super().__init__(wallet, proof)
         self.payload = {
@@ -71,4 +112,4 @@ class TestNetTransaction(Transaction):
         return self.wallet.sign(s, str(self.payload['payload']).encode())
 
     def seal(self):
-        return self.proof_system.find(str(self.payload['payload']).encode())[0]
+        return self.proof_system.find(str(self.payload['payload']).encode())

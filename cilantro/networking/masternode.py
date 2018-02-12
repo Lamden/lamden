@@ -69,6 +69,8 @@ class Masternode(object):
             return False
         elif 'from' not in data['payload']:
             return False
+        elif 'type' not in data['payload']:
+            return False
         else:
             return True
 

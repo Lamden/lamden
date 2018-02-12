@@ -1,7 +1,7 @@
 from cilantro.transactions import TestNetTransaction
 from cilantro.wallets import ED25519Wallet
 from cilantro.proofs.pow import SHA3POW
-from cilantro.interpreters.utils import RedisSerializer as rs
+from cilantro.db.utils import RedisSerializer as rs
 from cilantro.interpreters.constants import *
 import redis
 import hashlib
