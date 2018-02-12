@@ -2,13 +2,15 @@ import asyncio
 import uvloop
 import zmq
 from zmq.asyncio import Context
-# from aiohttp import web
+from aiohttp import web
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW # Needed for Witness
 from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
 
 # Using UV Loop for EventLoop, instead aysncio's event loop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+# aiohttp
+web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class PubSubBase(object):
     def __init__(self, host=None, sub_port=None, pub_port=None, serializer=None):
@@ -50,9 +52,10 @@ class PubSubBase(object):
         except Exception as e:
             return {'status': 'Could not send '}
         while True:
+            print("in the while loop")
             req = await self.sub_socket.recv()
-            # req = await self.sub_socket.recv_json()
-            self.handle_req(req)
+            print(req)
+            await self.handle_req(req)
 
     async def handle_req(self, data=None):
         """
@@ -80,15 +83,20 @@ class PubSubBase(object):
         # When you need to serialize.
         # data = self.serialize(data)
         try:
+            print("in publish request")
             self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
             self.pub_socket.connect(self.pub_url)
             self.serializer.send(data, self.pub_socket)
         except Exception as e:
+            print("in publish_req Exception:")
+            print(e)
             return {'status': 'Could not send transaction'}
         finally:
             self.pub_socket.close() # stop listening to sub_url
+            # self.ctx.destroy()
 
-class Witness(PubSubBase):
+
+class Witness2(PubSubBase):
     def __init__(self, host='127.0.0.1', sub_port='9999', serializer=JSONSerializer, hasher=SHA3POW):
         PubSubBase.__init__(self, host=host, sub_port=sub_port, serializer=serializer)
         self.hasher = hasher
@@ -101,11 +109,13 @@ class Witness(PubSubBase):
         :param data:
         :return:
         """
+        # print("BEFORE try: handle_req in Witness2")
         try:
             raw_tx = self.serializer.deserialize(data)
         except Exception as e:
+            print(e)
             return{'status': 'Could not deserialize transaction'}
-
+        # print("handle_req in Witness2")
         if self.hasher.check(raw_tx, raw_tx.payload['metadata']['proof']):
             self.confirmed_transaction_routine()
         else:
@@ -121,9 +131,25 @@ class Witness(PubSubBase):
         await self.pub_socket.send(tx_to_delegate)
         self.pub_socket.unbind(self.pub_url)  # unbind socket?
 
-class Masternode(PubSubBase):
-    def __init__(self, host='*', internal_port='9999', external_port='8080', serializer=JSONSerializer):
-        PubSubBase.__init__(self, host=host, sub_port=internal_port, pub_port=external_port, serializer=serializer)
+class Masternode2(PubSubBase):
+    def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
+        PubSubBase.__init__(self, host=host, pub_port=internal_port, serializer=serializer)
+        self.external_port = external_port  # port to run server
+
+    def process_transaction(self, data=None):
+        # if not self.__validate_transaction_length(data):
+        #     return TX_STATUS['INVALID_TX_SIZE']
+
+        d = None
+        print(data)
+        try:
+            d = self.serializer.serialize(data)
+        except:
+            return TX_STATUS['SERIALIZE_FAILED']
+
+        # if not self.__validate_transaction_fields(d):
+        #     return TX_STATUS['INVALID_TX_FIELDS']
+        self.publish_req(data=d)
 
     def __validate_transaction_length(self, data: bytes):
         if not data:
@@ -145,11 +171,22 @@ class Masternode(PubSubBase):
         else:
             return True
 
+    async def process_request(self, request):
+        # print(request.content.read())
+        r = self.process_transaction(data=await request.content.read())
+        return web.Response(text=str(r))
+
+    def setup_web_server(self):
+        app = web.Application()
+        app.router.add_post('/', self.process_request)
+        web.run_app(app, host=self.host, port=int(self.external_port))
+
 
 
 if __name__ == '__main__':
     # Subscribe
     print("a")
-    sub = PubSubBase(sub_port='7777', pub_port='8888')
+    sub = PubSubBase(host='127.0.0.1', sub_port='7777', pub_port='8888')
+    # witness = Witness2(sub_port='7777')
     print("b")
-    # sub.start_async()
+    sub.start_async()

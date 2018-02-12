@@ -8,7 +8,7 @@ if sys.platform != 'win32':
 
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW
-from cilantro.networking import PubSubBase
+# from cilantro.networking import PubSubBase
 
 
 '''
