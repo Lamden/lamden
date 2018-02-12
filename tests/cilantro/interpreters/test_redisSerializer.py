@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.interpreters.utils import RedisSerializer as rs
+from cilantro.db.utils import RedisSerializer as rs
 
 class TestRedisSerializer(TestCase):
     def test_int_maker(self):

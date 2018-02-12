@@ -1,28 +1,28 @@
-import redis
 from cilantro.db.base_db import BaseDB
+from cilantro.db.constants import BALANCE_KEY
+from cilantro.db.utils import RedisSerializer as RS
 
-from cilantro.wallets.core import Wallet
-from cilantro.wallets.basic import BasicWallet
 
 class BalanceDB(BaseDB):
 
-    def get_balance(self, wallet_key: str, wallet: Wallet=BasicWallet) -> float:
+    def get_balance(self, wallet_key: str) -> float:
         """
         Retrieves the current balance for the wallet
-        :param wallet: a Wallet object whose balance will be checked
         :param wallet_key: The verifying address for the wallet
         :return: A float representing the current balance of the wallet
         """
-        # TODO -- implement this
-        print('getting balance for wallet: ' + str(wallet_key))
-        return 1000
+        if self.r.hexists(BALANCE_KEY, wallet_key):
+            return RS.float(self.r.hget(BALANCE_KEY, wallet_key))
+        else:
+            # raise Exception('(get_balance) Balance could not be found for key: {}'.format(wallet_key))
+            print('(get_balance) Balance could not be found for key: {} ... returning 0'.format(wallet_key))
+            return 0
 
-    def set_balance(self, wallet_key: str, balance: float, wallet: Wallet=BasicWallet):
+    def set_balance(self, wallet_key: str, balance: float):
         """
         Sets the balance of the wallet
-        :param wallet: a Wallet object whose balance will be checked
         :param wallet_key: The verifying address for the wallet
         :param balance: A float representing the balance to set the wallet to
         :return: void
         """
-        print("setting balance for wallet {} to balance {}".format(wallet_key, balance))
+        self.r.hset(BALANCE_KEY, wallet_key, balance)
