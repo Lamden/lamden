@@ -18,8 +18,8 @@ import zmq
 class Masternode(object):
     def __init__(self, host='*', internal_port='9999', external_port='8080', serializer=JSONSerializer):
         self.host = host
-        self.internal_port = internal_port
-        self.external_port = external_port
+        self.internal_port = internal_port # port to publish request
+        self.external_port = external_port # port to run server
         self.serializer = serializer
 
         self.context = zmq.Context()
