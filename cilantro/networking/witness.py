@@ -27,8 +27,8 @@ class Witness(object):
         self.pub_port = '7777'
         self.sub_url = 'tcp://{}:{}'.format(self.host, self.sub_port)
         self.pub_url = 'tcp://{}:{}'.format(self.host, self.pub_port)
-
         self.serializer = serializer
+
         self.hasher = hasher
 
         self.ctx = Context.instance()
@@ -66,24 +66,31 @@ class Witness(object):
                 return {'status': 'Could not confirm transaction POW'}
 
     def activate_witness_publisher(self):
-        """Routine to turn witness behavior from masternode subscriber to publisher for delegates by changing port"""
+        """Routine to turn witness behavior from masternode subscriber to pub_socket for delegates by changing port"""
         self.witness_pub = self.ctx.socket(socket_type=zmq.PUB)
         self.witness_pub.bind(self.pub_url)
 
     async def confirmed_transaction_routine(self, raw_tx):
-        """Take approved transaction data, serialize it, and open publisher socket.
-         Then publish along tx info to delegate sub and then unbind socket"""
+        """
+        Take approved transaction data, serialize it, and open pub_socket socket.
+        Then publish along tx info to delegate sub and then unbind socket
+        """
         tx_to_delegate = self.serializer.serialize(raw_tx)
         self.activate_witness_publisher()
         await self.witness_pub.send(tx_to_delegate)
         self.witness_pub.unbind(self.pub_url)  # unbind socket?
 
-
 # include safeguard to make sure witness and masternode start at the same time and no packets are lost
-# add broker based solution to ensure dynamic discovery  - solved via masternode acting as bootnode
+# add broker based solution to e nsure dynamic discovery  - solved via masternode acting as bootnode
 # add proxy/broker based solution to ensure dynamic discovery between witness and delegate
 
 
+if __name__ == '__main__':
+    # a = Witness()
+    # a.start_async()
+    a = zmq.Context()
+    b = Context()
+    print("a")
 
 
 
