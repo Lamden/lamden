@@ -97,10 +97,11 @@ class PubSubBase(object):
 
 
 class Witness2(PubSubBase):
-    def __init__(self, host='127.0.0.1', sub_port='9999', serializer=JSONSerializer, hasher=SHA3POW):
-        PubSubBase.__init__(self, host=host, sub_port=sub_port, serializer=serializer)
+    def __init__(self, host='127.0.0.1', sub_port='9999', pub_port='8888', serializer=JSONSerializer, hasher=SHA3POW):
+        PubSubBase.__init__(self, host=host, sub_port=sub_port,pub_port=pub_port, serializer=serializer)
         self.hasher = hasher
         self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
+        # self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
         self.pub_socket = None # Don't really need this... Just here as a reference
 
     async def handle_req(self, data=None):
@@ -180,6 +181,14 @@ class Masternode2(PubSubBase):
         app = web.Application()
         app.router.add_post('/', self.process_request)
         web.run_app(app, host=self.host, port=int(self.external_port))
+
+        
+class Delegate2(PubSubBase):
+    def __init__(self, host='127.0.0.1', sub_port='7777', serializer=JSONSerializer, hasher=SHA3POW):
+        PubSubBase.__init__(self, host=host, sub_port=sub_port, serializer=serializer)
+        self.hasher = hasher
+        self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)# Don't really need this... Just here as a reference
+        self.pub_socket = None
 
 
 
