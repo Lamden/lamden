@@ -6,7 +6,13 @@ from aiohttp import web
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW # Needed for Witness
 from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
+from cilantro.db.transaction_queue_db import TransactionQueueDB
+from cilantro.interpreters.basic_interpreter import BasicInterpreter
+from cilantro.transactions.testnet import TestNetTransaction
+from cilantro.networking.constants import MAX_QUEUE_SIZE
 
+import time
+import sys
 # Using UV Loop for EventLoop, instead aysncio's event loop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 # aiohttp
@@ -54,7 +60,7 @@ class PubSubBase(object):
         while True:
             print("in the while loop")
             req = await self.sub_socket.recv()
-            print(req)
+            print('received', req)
             await self.handle_req(req)
 
     async def handle_req(self, data=None):
@@ -101,8 +107,7 @@ class Witness2(PubSubBase):
         PubSubBase.__init__(self, host=host, sub_port=sub_port,pub_port=pub_port, serializer=serializer)
         self.hasher = hasher
         self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
-        # self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
-        self.pub_socket = None # Don't really need this... Just here as a reference
+        self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
 
     async def handle_req(self, data=None):
         """
@@ -182,13 +187,69 @@ class Masternode2(PubSubBase):
         app.router.add_post('/', self.process_request)
         web.run_app(app, host=self.host, port=int(self.external_port))
 
-        
+
 class Delegate2(PubSubBase):
     def __init__(self, host='127.0.0.1', sub_port='7777', serializer=JSONSerializer, hasher=SHA3POW):
         PubSubBase.__init__(self, host=host, sub_port=sub_port, serializer=serializer)
         self.hasher = hasher
         self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)# Don't really need this... Just here as a reference
         self.pub_socket = None
+
+        self.queue = TransactionQueueDB()
+        self.interpreter = BasicInterpreter()
+
+        self.msg_count = 0
+
+    def process_transaction(self, data: bytes=None):
+        """
+        Processes a transaction from witness. This first feeds it through the interpreter, and if
+        no errors are thrown, then adds the transaction to the queue.
+        :param data: The raw transaction data, assumed to be in byte format
+        :return:
+        """
+        d, tx = None, None
+
+        try:
+            d = self.serializer.serialize(data)
+        except Exception as e:
+            print("Error in delegate serializing data -- {}\nRaw data: {}".format(e, data))
+            return {'status': 'error in deleate deserializing data: {}\nRaw data: {}'.format(e, data)}
+
+        print("Delegate processing tx: {}".format(d))  # Debug
+
+        try:
+            tx = TestNetTransaction.from_dict(d)
+        except Exception as e:
+            print('Error building transaction from dictionary: {}\nerror = {}'.format(d, e))
+            return {'status': 'Error building transaction from dictionary: {}\nerror = {}'.format(d, e)}
+
+        try:
+            self.interpreter.interpret_transaction(tx)
+        except Exception as e:
+            print('Error interpreting transaction: {}\nTransaction dict: {}'.format(e, d))
+            return {'status': 'error interpreting transaction: {}'.format(e)}
+
+        self.queue.enqueue_transaction(tx.payload['payload'])
+
+        if self.queue.queue_size() > MAX_QUEUE_SIZE:
+            print('queue exceeded max size...delegate performing consensus')
+            self.perform_consensus()
+
+    def handle_req(self, data=None):
+        self.msg_count +=1
+        if self.delegate_time() or self.msg_count == 10000:
+            self.perform_consensus()
+            self.msg_count = 0
+
+    def perform_consensus(self):
+        print('delegate performing consensus...')
+        pass
+
+    async def delegate_time(self):
+        """Conditions to check that 1 second has passed"""
+        start_time = time.time()
+        await time.sleep(1.0 - ((time.time() - start_time) % 1.0))
+        return True
 
 
 
