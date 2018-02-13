@@ -19,6 +19,67 @@ class TestNetTransaction(Transaction):
     REDEEM = 'r'
 
     @staticmethod
+    def validate_tx_fields(tx: dict) -> bool:
+        """
+        Attempts to validate the transaction fields, and throws and error if any fields are missing. If
+        the fields are valid, this method returns true
+        :param tx: A transaction dictionary, assumed to be in the same form as it would be in a user's initial POST
+        request to Masternode
+        :return: True if the transaction fields are valid
+        :raises: An exception if an invalid or missing field is found
+        """
+        def build_exception(message: str) -> Exception:
+            return Exception("Transaction Validation Failed -- {}\nfor transaction Dictionary: {}"
+                             .format(message, tx))
+
+        def check_fields(fields: tuple, d: dict):
+            for field in fields:
+                if field not in d:
+                    raise build_exception("field {} missing".format(field))
+
+        # Basic type checks
+        if tx == None:
+            raise TypeError('Transaction Validation Failed -- tx_dict is None')
+        elif type(tx) is not dict:
+            raise TypeError('Transaction Validation Failed -- tx_dict is of wrong type')
+
+        # payload/metadata field checks
+        if 'payload' not in tx:
+            raise build_exception('payload field missing')
+        elif 'metadata' not in tx:
+            raise build_exception('metadata field is missing')
+
+        payload = tx['payload']
+        metadata = tx['metadata']
+
+        # metadata checks
+        if 'sig' not in metadata:
+            raise build_exception('sig field missing from metadata')
+        elif 'proof' not in metadata:
+            raise build_exception('proof field missing from metadata')
+
+        # payload checks
+        if 'type' not in payload:
+            raise build_exception('type field missing from payload')
+        elif payload['type'] not in (TestNetTransaction.TX, TestNetTransaction.STAMP, TestNetTransaction.VOTE,
+                                     TestNetTransaction.SWAP, TestNetTransaction.REDEEM):
+            raise build_exception('invalid type {} in payload'.format(payload['type']))
+
+        # Check required fields for each transaction type
+        if payload['type'] == TestNetTransaction.TX:
+            check_fields(('to', 'from', 'amount'), payload)
+        elif payload['type'] == TestNetTransaction.STAMP:
+            check_fields(('from', 'amount'), payload)
+        elif payload['type'] == TestNetTransaction.VOTE:
+            check_fields(('from', 'to'), payload)
+        elif payload['type'] == TestNetTransaction.SWAP:
+            check_fields(('from', 'to', 'amount', 'hash_lock', 'unix_expiration'), payload)
+        elif payload['type'] == TestNetTransaction.REDEEM:
+            check_fields(('redeem', 'redeem'), payload)
+
+        return True
+
+    @staticmethod
     def standard_tx(sender: str, to: str, amount: str):
         return TestNetTransaction.TX, sender, to, amount
 
@@ -60,23 +121,23 @@ class TestNetTransaction(Transaction):
         transaction.payload['metadata'] = tx_dict['metadata']
         payload = tx_dict['payload']
 
-        sender = payload['from']
-        receiver = payload['to']
-        amount = str(payload['amount'])
         tx_type = payload['type']
 
         if tx_type == TestNetTransaction.TX:
+            sender, receiver, amount = payload['from'], payload['to'], str(payload['amount'])
             transaction.payload['payload'] = TestNetTransaction.standard_tx(sender, receiver, amount)
         elif tx_type == TestNetTransaction.STAMP:
+            sender, amount = payload['from'], payload['amount']
             transaction.payload['payload'] = TestNetTransaction.stamp_tx(sender, amount)
         elif tx_type == TestNetTransaction.VOTE:
+            sender, receiver = payload['from'], payload['to']
             transaction.payload['payload'] = TestNetTransaction.vote_tx(sender, receiver)
         elif tx_type == TestNetTransaction.SWAP:
-            # TODO -- implement this
-            raise NotImplementedError
+            sender, receiver, amount, hash_lock, unix_expir = payload['from'], payload['to'], str(payload['amount']), \
+                                                              payload['hash_lock'], payload['unix_expiration']
+            transaction.payload['payload'] = TestNetTransaction.swap_tx(sender, receiver, amount, hash_lock, unix_expir)
         elif tx_type == TestNetTransaction.REDEEM:
-            # TODO -- implement this
-            raise NotImplementedError
+            transaction.payload['payload'] = TestNetTransaction.redeem_tx(payload['secret'])
         else:
             raise Exception('Error building transaction from dict -- '
                             'Invalid type field in transaction dict: {}'.format(tx_dict))
