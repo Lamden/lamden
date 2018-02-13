@@ -1,6 +1,8 @@
 import uvloop
 from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
+from cilantro.transactions.testnet import TestNetTransaction
 from aiohttp import web
+import sys
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 from cilantro.serialization import JSONSerializer
@@ -28,48 +30,39 @@ class Masternode(object):
         self.url = 'tcp://{}:{}'.format(self.host, self.internal_port)
 
     def process_transaction(self, data=None):
+        # Validate transaction size
         if not self.__validate_transaction_length(data):
-            return TX_STATUS['INVALID_TX_SIZE']
+            return {'error': TX_STATUS['INVALID_TX_SIZE']}
 
         d = None
         try:
             d = self.serializer.serialize(data)
         except:
-            return TX_STATUS['SERIALIZE_FAILED']
+            return {'error': TX_STATUS['SERIALIZE_FAILED']}
 
-        if not self.__validate_transaction_fields(d):
-            return TX_STATUS['INVALID_TX_FIELDS']
+        # Validate transaction fields
+        try:
+            TestNetTransaction.validate_tx_fields(d)
+        except Exception as e:
+            print(e)
+            return {'error': TX_STATUS['INVALID_TX_FIELDS'].format(e)}
 
         try:
             self.publisher.bind(self.url)
             self.serializer.send(d, self.publisher)
         except Exception as e:
             print("error binding socket: ", str(e))
-            return TX_STATUS['SEND_FAILED']
+            return {'error': TX_STATUS['SEND_FAILED']}
         finally:
             self.publisher.close()
             self.context.destroy()
 
-        return TX_STATUS['SUCCESS']['status'].format(d)
+        return {'success': TX_STATUS['SUCCESS'].format(d)}
 
     def __validate_transaction_length(self, data: bytes):
         if not data:
             return False
-        elif len(data) >= MAX_REQUEST_LENGTH:
-            return False
-        else:
-            return True
-
-    def __validate_transaction_fields(self, data: dict):
-        if not data:
-            return False
-        elif 'to' not in data['payload']:
-            return False
-        elif 'amount' not in data['payload']:
-            return False
-        elif 'from' not in data['payload']:
-            return False
-        elif 'type' not in data['payload']:
+        elif sys.getsizeof(data) >= MAX_REQUEST_LENGTH:
             return False
         else:
             return True

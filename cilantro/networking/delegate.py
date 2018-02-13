@@ -13,14 +13,24 @@ if sys.platform != 'win32':
     import uvloop
 
 
-'''
+"""
     Delegates
 
     Delegates are the "miners" of the Cilantro blockchain in that they opportunistically bundle up transactions into 
     blocks and are rewarded with TAU for their actions. They receive approved transactions from delegates and broadcast
     blocks based on a 1 second or 10,000 transaction limit per block. They should be able to connect/drop from the 
-    network seamlessly as well as coordinate blocks amongst themselves. 
-'''
+    network seamlessly as well as coordinate blocks amongst themselves.
+    
+     Delegate logic:   
+        Step 1) Delegate takes 10k transactions from witness and forms a block
+        Step 2) Block propagates across the network to other delegates
+        Step 3) Delegates pass around in memory DB hash to confirm they have the same blockchain state
+        Step 4) Next block is mined and process repeats
+
+        zmq pattern: subscribers (delegates) need to be able to communicate with one another. this can be achieved via
+        a push/pull pattern where all delegates push their state to sink that pulls them in, but this is centralized.
+        another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
+"""
 
 
 class Delegate(object):
@@ -55,47 +65,22 @@ class Delegate(object):
             if self.delegate_time() or msg_count == 10000: # conditions for delegate logic go here.
                 self.delegate_logic()
 
-    def delegate_logic(self):
-        """
-        Step 1) Delegate takes 10k transactions from witness and forms a block
-        Step 2) Block propagates across the network to other delegates
-        Step 3) Delegates pass around in memory DB hash to confirm they have the same blockchain state
-        Step 4) Next block is mined and process repeats
-
-        zmq pattern: subscribers (delegates) need to be able to communicate with one another. this can be achieved via
-        a push/pull pattern where all delegates push their state to sink that pulls them in, but this is centralized.
-        another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
-        """
-        pass
-
     def process_transaction(self, data: bytes=None):
         """
         Processes a transaction from witness. This first feeds it through the interpreter, and if
         no errors are thrown, then adds the transaction to the queue.
         :param data: The raw transaction data, assumed to be in byte format
-        :return:
         """
         d, tx = None, None
 
         try:
             d = self.serializer.serialize(data)
-        except Exception as e:
-            print("Error in delegate serializing data -- {}\nRaw data: {}".format(e, data))
-            return {'status': 'error in deleate deserializing data: {}\nRaw data: {}'.format(e, data)}
-
-        print("Delegate processing tx: {}".format(d))  # Debug
-
-        try:
+            TestNetTransaction.validate_tx_fields(d)
             tx = TestNetTransaction.from_dict(d)
-        except Exception as e:
-            print('Error building transaction from dictionary: {}\nerror = {}'.format(d, e))
-            return {'status': 'Error building transaction from dictionary: {}\nerror = {}'.format(d, e)}
-
-        try:
             self.interpreter.interpret_transaction(tx)
         except Exception as e:
-            print('Error interpreting transaction: {}\nTransaction dict: {}'.format(e, d))
-            return {'status': 'error interpreting transaction: {}'.format(e)}
+            print("Error in delegate process transaction: {}".format(e))
+            return {'error_status': 'Delegate error processing transaction: {}'.format(e)}
 
         self.queue.enqueue_transaction(tx.payload['payload'])
 
