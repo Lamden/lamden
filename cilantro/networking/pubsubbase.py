@@ -4,7 +4,7 @@ import zmq
 from zmq.asyncio import Context
 from aiohttp import web
 from cilantro.serialization import JSONSerializer
-from cilantro.proofs.pow import SHA3POW # Needed for Witness
+from cilantro.proofs.pow import SHA3POW, POW # Needed for Witness
 from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
 from cilantro.db.transaction_queue_db import TransactionQueueDB
 from cilantro.interpreters.basic_interpreter import BasicInterpreter
@@ -30,6 +30,7 @@ class PubSubBase(object):
         self.ctx = Context() # same as context variable
         self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
         self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
+        self.pub_socket.connect(self.pub_url)
 
         # self.sub_socket = None
         # self.pub_socket = None
@@ -38,9 +39,9 @@ class PubSubBase(object):
     def start_async(self):
         try:
             self.loop = asyncio.get_event_loop()  # add uvloop here
-            # self.loop.run_until_complete(self.start_subscribing())
-            self.loop.create_task(self.start_subscribing())
-            self.loop.run_forever()
+            self.loop.run_until_complete(self.start_subscribing())
+            # self.loop.create_task(self.start_subscribing())
+            # self.loop.run_forever()
         except Exception as e:
             print(e)
         finally:
@@ -66,7 +67,7 @@ class PubSubBase(object):
             print('received', req)
             await self.handle_req(req)
 
-    def handle_req(self, data: bytes):
+    async def handle_req(self, data: bytes):
         """
         override
         :param data:
@@ -96,7 +97,6 @@ class PubSubBase(object):
             print("in publish request")
             print(data)
             # self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
-            self.pub_socket.connect(self.pub_url)
             # self.pub_socket.send(data)
             self.serializer.send(self.serializer.serialize(data), self.pub_socket)
         except Exception as e:
@@ -104,12 +104,11 @@ class PubSubBase(object):
             print(e)
             return {'status': 'Could not send transaction'}
         # finally:
-        #     self.pub_socket.close() # stop listening to sub_url
-            # self.ctx.destroy()
+        #     self.pub_socket.disconnect(self.pub_url) # stop listening to sub_url
 
 
 class Witness2(PubSubBase):
-    def __init__(self, host='127.0.0.1', sub_port='9999', pub_port='8888', serializer=JSONSerializer, hasher=SHA3POW):
+    def __init__(self, host='127.0.0.1', sub_port='9999', pub_port='8888', serializer=JSONSerializer, hasher=POW):
         PubSubBase.__init__(self, host=host, sub_port=sub_port,pub_port=pub_port, serializer=serializer)
         self.hasher = hasher
         self.counter = 0
@@ -137,12 +136,15 @@ class Witness2(PubSubBase):
         # self.confirmed_transaction_routine(raw_tx=raw_tx)
         # if a:
         payload_bytes = self.serializer.deserialize(unpacked_data['payload']).encode()
-        if self.hasher.check(payload_bytes, unpacked_data['metadata']['proof']):
-            output = await self.confirmed_transaction_routine(data)
-            # return output
-        else:
-            # return {'status': 'Could not confirm transaction POW'}
-            pass
+        print('data', data)
+        print(await self.confirmed_transaction_routine(data))
+        # await self.confirmed_transaction_routine(data)
+        # if self.hasher.check(payload_bytes, unpacked_data['metadata']['proof']):
+        #     output = await self.confirmed_transaction_routine(data)
+        #     return output
+        # else:
+        #     print('status Could not confirm transaction POW')
+        #     pass
 
     def activate_witness_publisher(self):
         # self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
@@ -161,6 +163,8 @@ class Masternode2(PubSubBase):
     def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
         PubSubBase.__init__(self, host=host, pub_port=internal_port, serializer=serializer)
         self.external_port = external_port  # port to run server
+        # Debugger
+        self.counter = 0
 
     def process_transaction(self, data=None):
         if not self.__validate_transaction_length(data):
@@ -175,6 +179,8 @@ class Masternode2(PubSubBase):
 
         if not self.__validate_transaction_fields(d):
             return TX_STATUS['INVALID_TX_FIELDS']
+        self.counter+=1
+        print(self.counter)
         self.publish_req(data)
 
     def __validate_transaction_length(self, data: bytes):
@@ -209,8 +215,8 @@ class Masternode2(PubSubBase):
 
 
 class Delegate2(PubSubBase):
-    def __init__(self, host='127.0.0.1', sub_port='7777', serializer=JSONSerializer, hasher=SHA3POW):
-        PubSubBase.__init__(self, host=host, sub_port=sub_port, serializer=serializer)
+    def __init__(self, host='127.0.0.1', sub_port='8080', serializer=JSONSerializer, hasher=POW, pub_port='7878'):
+        PubSubBase.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
         self.hasher = hasher
 
         self.queue = TransactionQueueDB()
@@ -253,10 +259,15 @@ class Delegate2(PubSubBase):
             print('queue exceeded max size...delegate performing consensus')
             self.perform_consensus()
 
-    def handle_req(self, data=None):
+    async def start_subscribing(self):
+        print("in start_subscribing for delegate2")
+        await super().start_subscribing()
+
+    async def handle_req(self, data=None):
         self.msg_count +=1
         self.process_transaction(data=data)
         print('msg_count = ', self.msg_count)
+        return {"status": "success"}
         # if self.delegate_time() or self.msg_count == 10000:
         #     self.perform_consensus()
         #     self.msg_count = 0
@@ -273,10 +284,10 @@ class Delegate2(PubSubBase):
 
 
 
-if __name__ == '__main__':
-    # Subscribe
-    print("a")
-    sub = PubSubBase(host='127.0.0.1', sub_port='7777', pub_port='8888')
-    # witness = Witness2(sub_port='7777')
-    print("b")
-    sub.start_async()
+# if __name__ == '__main__':
+#     # Subscribe
+#     print("a")
+#     sub = PubSubBase(host='127.0.0.1', sub_port='7777', pub_port='8888')
+#     # witness = Witness2(sub_port='7777')
+#     print("b")
+#     sub.start_async()
