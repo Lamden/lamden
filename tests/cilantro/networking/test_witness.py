@@ -20,6 +20,8 @@ class Mock_Masternode(Masternode):
         self.publisher.unbind(self.url)
 
 class TestWitness(TestCase):
+
+
     def test_async(self):
         w = Witness()
         m = Mock_Masternode()

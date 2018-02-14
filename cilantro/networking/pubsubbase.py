@@ -89,22 +89,24 @@ class PubSubBase(object):
 
 
     def publish_req(self, data: bytes):
-        # SERIALIZE Function
-        # When you need to serialize.
-        # d = self.serialize(data)
-        # print('Where you at? ', data)
+        """
+        Function to publish data to pub_socket
+        pub_socket is connected during initialization
+
+        :param data:
+        :return:
+        """
         try:
             print("in publish request")
             print(data)
-            # self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
-            # self.pub_socket.send(data)
             self.serializer.send(self.serializer.serialize(data), self.pub_socket)
         except Exception as e:
             print("in publish_req Exception:")
             print(e)
-            return {'status': 'Could not send transaction'}
-        # finally:
-        #     self.pub_socket.disconnect(self.pub_url) # stop listening to sub_url
+            return {'error': TX_STATUS['SEND_FAILED']}
+
+        return {'success': TX_STATUS['SUCCESS'].format(data)}
+
 
 
 class Witness2(PubSubBase):
@@ -167,21 +169,30 @@ class Masternode2(PubSubBase):
         self.counter = 0
 
     def process_transaction(self, data=None):
+        """
+
+        :param data:
+        :return:
+        """
+        # Validate transaction size
         if not self.__validate_transaction_length(data):
-            return TX_STATUS['INVALID_TX_SIZE']
-        print("")
-        d = None
-        print('Masternode2 data = ', data)
+            return {'error': TX_STATUS['INVALID_TX_SIZE']}
+        # Serialize data
         try:
             d = self.serializer.serialize(data)
         except:
-            return TX_STATUS['SERIALIZE_FAILED']
-
-        if not self.__validate_transaction_fields(d):
-            return TX_STATUS['INVALID_TX_FIELDS']
+            return {'error': TX_STATUS['SERIALIZE_FAILED']}
+        # Validate transaction fields
+        try:
+            TestNetTransaction.validate_tx_fields(d)
+        except Exception as e:
+            print(e)
+            return {'error': TX_STATUS['INVALID_TX_FIELDS'].format(e)}
+        # Debugger
         self.counter+=1
         print(self.counter)
-        self.publish_req(data)
+        #
+        return self.publish_req(data)
 
     def __validate_transaction_length(self, data: bytes):
         if not data:

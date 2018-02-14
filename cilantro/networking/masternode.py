@@ -46,16 +46,16 @@ class Masternode(object):
         except Exception as e:
             print(e)
             return {'error': TX_STATUS['INVALID_TX_FIELDS'].format(e)}
-
+        # Publish
         try:
             self.publisher.bind(self.url)
             self.serializer.send(d, self.publisher)
         except Exception as e:
             print("error binding socket: ", str(e))
             return {'error': TX_STATUS['SEND_FAILED']}
-        finally:
-            self.publisher.close()
-            self.context.destroy()
+        # finally:
+        #     self.publisher.close()
+        #     self.context.destroy()
 
         return {'success': TX_STATUS['SUCCESS'].format(d)}
 

@@ -3,6 +3,7 @@ from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from aiohttp import web
 
 from cilantro.networking import Masternode
+from cilantro.networking import Masternode2
 from cilantro.serialization import JSONSerializer
 
 from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
@@ -11,12 +12,12 @@ import json
 
 class TestMasternode(TestCase):
     def setUp(self):
-        self.host = '*'
+        self.host = '127.0.0.1'# 127.0.0.1
         self.internal_port = '9999'
         self.external_port = '8080'
         self.serializer = JSONSerializer
         self.m = Masternode(host=self.host, internal_port=self.internal_port, external_port=self.external_port,
-                            serializer=self.serializer)
+                             serializer=self.serializer)
 
     def tearDown(self):
         pass
@@ -47,8 +48,7 @@ class TestMasternode(TestCase):
         payload_valid = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto', 'type':'t'},
                          'metadata': {'sig': 'x287', 'proof': '000'}}
         self.assertTrue('success' in self.m.process_transaction(data=TestMasternode.dict_to_bytes(payload_valid)))
-        # self.assertEqual(TX_STATUS['SUCCESS']['status'].format(payload_valid),
-        #                  self.m.process_transaction(data=TestMasternode.dict_to_bytes(payload_valid)))
+
 
     def test_host_and_port_storage(self):
         self.assertEqual(self.m.host, self.host)
@@ -63,19 +63,23 @@ class TestMasternode(TestCase):
         return str.encode(json.dumps(d))
 
 
-class TestMasternodeAsync(AioHTTPTestCase):
-    async def get_application(self):
-        app = web.Application()
-        app.router.add_post('/', Masternode().process_request)
-        return app
-
-    @unittest_run_loop
-    async def test_web_server_setup(self):
-        payload = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto'},
-                                                      'metadata': {'sig': 'x287', 'proof': '000'}}
-        payload_bytes = TestMasternode.dict_to_bytes(payload)
-        response = await self.client.request('POST', '/', data=payload_bytes)
-        response_data = await response.content.read()
-        # response_data = response_data_bytes.decode()
-        self.assertEqual(response_data.decode(), TX_STATUS['SUCCESS']['status'].format(payload))
-        self.assertEqual(response.status, 200)
+# class TestMasternodeAsync(AioHTTPTestCase):
+#     async def get_application(self):
+#         app = web.Application()
+#         app.router.add_post('/', Masternode().process_request)
+#         return app
+#
+#     @unittest_run_loop
+#     async def test_web_server_setup(self):
+#         payload = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto'},
+#                                                       'metadata': {'sig': 'x287', 'proof': '000'}}
+#         # payload = {"payload": {"to": "kevin”", "amount": "900", "from": "davis", "type": "t"}, "metadata": {"sig": "0x123", "proof": "c75ea80f6aa92f078e10a6b4837fac62"}}
+#         payload_bytes = TestMasternode.dict_to_bytes(payload)
+#
+#         self.m.set_up_web_Server()
+#
+#         response = await self.client.request('POST', '/', data=payload_bytes)
+#         response_data = await response.content.read()
+#         # response_data = response_data_bytes.decode()
+#         self.assertEqual(response_data.decode(), TX_STATUS['SUCCESS']['status'].format(payload))
+#         self.assertEqual(response.status, 200)
