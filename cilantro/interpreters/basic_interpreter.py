@@ -1,5 +1,5 @@
 from cilantro.db.constants import VOTE_TYPES
-from cilantro.db.db_manager import DBManager
+from cilantro.db.delegate.driver_manager import DriverManager
 from cilantro.proofs.pow import SHA3POW
 from cilantro.transactions import TestNetTransaction
 from cilantro.wallets import ED25519Wallet
@@ -21,7 +21,7 @@ class BasicInterpreter(BaseInterpreter):
 
     def __init__(self, wallet=ED25519Wallet, proof_system=SHA3POW):
         super().__init__(wallet=wallet, proof_system=proof_system)
-        self.db = DBManager()
+        self.db = DriverManager()
 
     def interpret_transaction(self, transaction: TestNetTransaction):
         """

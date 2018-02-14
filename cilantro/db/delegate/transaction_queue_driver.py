@@ -1,10 +1,10 @@
-from cilantro.db.base_db import BaseDB
-from cilantro.db.constants import QUEUE_KEY, TRANSACTION_KEY
+from cilantro.db.delegate.driver_base import DriverBase
+from cilantro.db.constants import QUEUE_KEY
 from cilantro.db.utils import RedisSerializer as RS
 from typing import Generator, List
 
 
-class TransactionQueueDB(BaseDB):
+class TransactionQueueDriver(DriverBase):
 
     def enqueue_transaction(self, transaction_payload: tuple):
         """
