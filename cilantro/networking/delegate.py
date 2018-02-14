@@ -118,8 +118,8 @@ class Delegate(object):
         try:
             blockhash = await self.hasher.find(self.blockserializer.serialize(block))[1]
         except Exception as e:
-            print("Error in serializing block: {}".format(e))
-            return {'error_status': 'Error in serializing block: {}'.format(e)}
+            print("Error in hashing block: {}".format(e))
+            return {'error_status': 'Error in hashing block: {}'.format(e)}
 
         # Step three request response hashed message
 

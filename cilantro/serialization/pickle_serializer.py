@@ -13,15 +13,19 @@ class PickleSerializer(Serializer):
     @staticmethod
     def serialize(lt: list):
         try:
-            return pickle.dump(lt)
+            with open('data.pickle', 'wb') as f:
+                pickle.dump(lt, f, pickle.HIGHEST_PROTOCOL)
+                return f
         except Exception as e:
             print(e)
             return { 'error' : 'error' }
 
     @staticmethod
-    def deserialize(lt: list):
+    def deserialize(p: pickle):
         try:
-            return pickle.load(lt)
+            with open(p, 'rb') as f:
+                data = pickle.load(f)
+                return data
         except Exception as e:
             print(e)
             return {'error': 'error'}
