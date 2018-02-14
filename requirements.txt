@@ -16,3 +16,4 @@ uvloop==0.9.1
 yarl==1.1.0
 zmq==0.0.0
 pytest-aiohttp=0.3.0
+ntplib=0.3.3
