@@ -6,24 +6,14 @@ setup(
     name='cilantro',
     version=__version__,
     packages=find_packages(exclude=['docs', 'tests']),
-    install_requires=[
-        'aiodns==1.1.1',
-        'aiohttp==2.3.9',
-        'async-timeout==2.0.0',
-        'cchardet==2.1.1',
-        'certifi==2018.1.18',
-        'chardet==3.0.4',
-        'idna==2.6',
-        'multidict==4.1.0',
-        'pycares==2.3.0',
-        'pyzmq==16.0.4',
-        'requests==2.18.4',
-        'twofish==0.3.0',
-        'urllib3==1.22',
-        'uvloop==0.9.1',
-        'yarl==1.1.0',
-        'zmq==0.0.0',
-    ],
+    install_requires=open('requirements.txt').readlines(),
+    entry_points={
+        'console_scripts': [
+            'masternode=cilantro.networking.masternode:serve',
+            'delegate=cilantro.networking.delegate:serve',
+            'witness=cilantro.networking.witness:serve'
+        ],
+    },
     zip_safe=False,
     package_data={
         '': [],

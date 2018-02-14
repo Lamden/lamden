@@ -2,6 +2,7 @@ from unittest import TestCase
 from cilantro.proofs.pow import SHA3POW
 import secrets
 
+
 class TestSHA3POW(TestCase):
     def test_find_solution(self):
         o = secrets.token_bytes(16)
