@@ -1,10 +1,9 @@
-import redis
-from cilantro.db.base_db import BaseDB
+from cilantro.db.delegate.driver_base import DriverBase
 from cilantro.db.constants import SCRATCH_KEY
 from cilantro.db.utils import RedisSerializer as RS
 
 
-class ScratchDB(BaseDB):
+class ScratchDriver(DriverBase):
 
     def wallet_exists(self, wallet_key: str) -> bool:
         """

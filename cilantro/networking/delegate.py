@@ -4,13 +4,13 @@ from zmq.asyncio import Context
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW
 from cilantro.networking.constants import MAX_QUEUE_SIZE
-from cilantro.db.transaction_queue_db import TransactionQueueDB
+from cilantro.db.delegate.transaction_queue_driver import TransactionQueueDriver
 from cilantro.interpreters.basic_interpreter import BasicInterpreter
 from cilantro.transactions.testnet import TestNetTransaction
 import time
 import sys
 if sys.platform != 'win32':
-    import uvloop
+    pass
 
 
 """
@@ -44,7 +44,7 @@ class Delegate(object):
         self.ctx = Context()
         self.delegate_sub = self.ctx.socket(socket_type=zmq.SUB)
 
-        self.queue = TransactionQueueDB()
+        self.queue = TransactionQueueDriver()
         self.interpreter = BasicInterpreter()
 
         self.loop = None
