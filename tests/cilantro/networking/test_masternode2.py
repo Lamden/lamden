@@ -42,17 +42,17 @@ class TestMasternode2(TestCase):
 
     def test_process_transaction_valid(self):
         """
-         Tests that a valid payload goes through
+         Tests that a valid payload goes through, aka successful publish request
         """
         payload_valid = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto', 'type':'t'},
                          'metadata': {'sig': 'x287', 'proof': '000'}}
-        self.assertTrue('success' in self.mn.process_transaction(data=TestMasternode2.dict_to_bytes(payload_valid)))
+        self.assertEqual({'status': 'Successfully published request'}, self.mn.process_transaction(data=TestMasternode2.dict_to_bytes(payload_valid)))
 
     def test_host_and_port_storage(self):
         self.assertEqual(self.mn.host, self.host)
         self.assertEqual(self.mn.pub_port, self.internal_port)
         self.assertEqual(self.mn.external_port, self.external_port)
-        self.assertEqual(self.mn.sub_port, None)
+        self.assertIsNone(self.mn.sub_port)
 
     def test_serialization_storage(self):
         self.assertEqual(type(self.mn.serializer), type(self.serializer))

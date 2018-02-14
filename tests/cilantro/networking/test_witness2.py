@@ -32,10 +32,21 @@ class TestWitness(TestCase):
         """
         1) Disconnects the pub_socket that was initialized when self.mn was initalized
         2) ctx destroy closes all sockets associated with the Master node's zmq's Context
-        :return:
         """
         self.w.pub_socket.disconnect(self.mn.pub_url)
         self.w.ctx.destroy()
+
+    def test_subscribing(self):
+        pass
+
+    def test_handle_req(self):
+        pass
+
+    def test_handle_req_hasher_check(self):
+        """
+        Tests that an error is thrown due to hasher.check
+        """
+        pass
 
     def test_async(self):
         pass

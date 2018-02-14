@@ -7,8 +7,9 @@ if sys.platform != 'win32':
     import uvloop
 
 from cilantro.serialization import JSONSerializer
-from cilantro.proofs.pow import SHA3POW
-# from cilantro.networking import PubSubBase
+from cilantro.proofs.pow import SHA3POW, POW
+from cilantro.networking import PubSubBase
+
 
 
 '''
@@ -85,14 +86,37 @@ class Witness(object):
 # add broker based solution to e nsure dynamic discovery  - solved via masternode acting as bootnode
 # add proxy/broker based solution to ensure dynamic discovery between witness and delegate
 
+class Witness2(PubSubBase):
+    def __init__(self, host='127.0.0.1', sub_port='9999', pub_port='8888', serializer=JSONSerializer, hasher=SHA3POW):
+        PubSubBase.__init__(self, host=host, sub_port=sub_port,pub_port=pub_port, serializer=serializer)
+        self.hasher = hasher
 
-if __name__ == '__main__':
-    # a = Witness()
-    # a.start_async()
-    a = zmq.Context()
-    b = Context()
-    print("a")
+    async def handle_req(self, data: bytes):
+        """
+        Handle the incoming request when start_subscribing
 
+        :param data:
+        :return:
+        """
+        try:
+            unpacked_data = self.serializer.serialize(data)
+        except Exception as e:
+            print(e)
+            return {'status': 'Could not deserialize transaction'}
+        payload_bytes = self.serializer.deserialize(unpacked_data['payload']).encode()
+
+        # print("handle_req in Witness2")
+        # print('proof in unpacked data is', unpacked_data['metadata']['proof'])
+        # print('payload bytes is', payload_bytes)
+
+        #TODO Need to use the correct variables for hasher.check
+        # Right now there's no checks and the request is being published to pub_socket
+        return self.publish_req(data)
+        # if self.hasher.check(payload_bytes, unpacked_data['metadata']['proof']):
+        #     return self.publish_req(data)
+        # else:
+        #     print('status Could not confirm transaction POW')
+        #     return {'status': 'invalid proof'}
 
 
 

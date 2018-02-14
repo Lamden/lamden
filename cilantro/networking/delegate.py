@@ -4,6 +4,7 @@ from zmq.asyncio import Context
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW
 from cilantro.networking.constants import MAX_QUEUE_SIZE
+from cilantro.networking import PubSubBase
 from cilantro.db.transaction_queue_db import TransactionQueueDB
 from cilantro.interpreters.basic_interpreter import BasicInterpreter
 from cilantro.transactions.testnet import TestNetTransaction
@@ -87,6 +88,75 @@ class Delegate(object):
         if self.queue.queue_size() > MAX_QUEUE_SIZE:
             print('queue exceeded max size...delegate performing consensus')
             self.perform_consensus()
+
+    def perform_consensus(self):
+        print('delegate performing consensus...')
+        pass
+
+    async def delegate_time(self):
+        """Conditions to check that 1 second has passed"""
+        start_time = time.time()
+        await time.sleep(1.0 - ((time.time() - start_time) % 1.0))
+        return True
+
+
+class Delegate2(PubSubBase):
+    def __init__(self, host='127.0.0.1', sub_port='8080', serializer=JSONSerializer, hasher=POW, pub_port='7878'):
+        PubSubBase.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
+        self.hasher = hasher
+
+        self.queue = TransactionQueueDB()
+        self.interpreter = BasicInterpreter()
+
+        self.msg_count = 0
+
+    def process_transaction(self, data: bytes=None):
+        """
+        Processes a transaction from witness. This first feeds it through the interpreter, and if
+        no errors are thrown, then adds the transaction to the queue.
+        :param data: The raw transaction data, assumed to be in byte format
+        :return:
+        """
+        d, tx = None, None
+
+        try:
+            d = self.serializer.serialize(data)
+        except Exception as e:
+            print("Error in delegate serializing data -- {}\nRaw data: {}".format(e, data))
+            return {'status': 'error in deleate deserializing data: {}\nRaw data: {}'.format(e, data)}
+
+        print("Delegate processing tx: {}".format(d))  # Debug
+
+        try:
+            tx = TestNetTransaction.from_dict(d)
+        except Exception as e:
+            print('Error building transaction from dictionary: {}\nerror = {}'.format(d, e))
+            return {'status': 'Error building transaction from dictionary: {}\nerror = {}'.format(d, e)}
+
+        try:
+            self.interpreter.interpret_transaction(tx)
+        except Exception as e:
+            print('Error interpreting transaction: {}\nTransaction dict: {}'.format(e, d))
+            return {'status': 'error interpreting transaction: {}'.format(e)}
+
+        self.queue.enqueue_transaction(tx.payload['payload'])
+
+        if self.queue.queue_size() > MAX_QUEUE_SIZE:
+            print('queue exceeded max size...delegate performing consensus')
+            self.perform_consensus()
+
+    async def start_subscribing(self):
+        print("in start_subscribing for delegate2")
+        await super().start_subscribing()
+
+    async def handle_req(self, data=None):
+        self.msg_count +=1
+        self.process_transaction(data=data)
+        print('msg_count = ', self.msg_count)
+        return {"status": "success"}
+        # if self.delegate_time() or self.msg_count == 10000:
+        #     self.perform_consensus()
+        #     self.msg_count = 0
 
     def perform_consensus(self):
         print('delegate performing consensus...')

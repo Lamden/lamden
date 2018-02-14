@@ -1,4 +1,4 @@
 from cilantro.networking.pubsubbase import PubSubBase
-from cilantro.networking.masternode import Masternode
-from cilantro.networking.witness import Witness
-from cilantro.networking.pubsubbase import (PubSubBase, Masternode2, Witness2, Delegate2)
+from cilantro.networking.masternode import Masternode, Masternode2
+from cilantro.networking.witness import Witness, Witness2
+from cilantro.networking.pubsubbase import Delegate2
