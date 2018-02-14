@@ -1,9 +1,9 @@
-from cilantro.db.base_db import BaseDB
+from cilantro.db.delegate.driver_base import DriverBase
 from cilantro.db.constants import SWAP_KEY
 from cilantro.db.utils import RedisSerializer as RS
 
 
-class SwapsDB(BaseDB):
+class SwapsDriver(DriverBase):
 
     def get_swap_data(self, hash_lock: str) -> tuple:
         """

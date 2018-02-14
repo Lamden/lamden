@@ -6,13 +6,13 @@ from aiohttp import web
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW # Needed for Witness
 from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
-from cilantro.db.transaction_queue_db import TransactionQueueDB
+from cilantro.db.delegate.transaction_queue_driver import TransactionQueueDriver
 from cilantro.interpreters.basic_interpreter import BasicInterpreter
 from cilantro.transactions.testnet import TestNetTransaction
 from cilantro.networking.constants import MAX_QUEUE_SIZE
 
 import time
-import sys
+
 # Using UV Loop for EventLoop, instead aysncio's event loop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 # aiohttp
@@ -195,7 +195,7 @@ class Delegate2(PubSubBase):
         self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)# Don't really need this... Just here as a reference
         self.pub_socket = None
 
-        self.queue = TransactionQueueDB()
+        self.queue = TransactionQueueDriver()
         self.interpreter = BasicInterpreter()
 
         self.msg_count = 0

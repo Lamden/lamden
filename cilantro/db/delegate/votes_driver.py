@@ -1,9 +1,8 @@
-from cilantro.db.base_db import BaseDB
-from cilantro.db.constants import VOTE_KEY, VOTE_TYPES
-from cilantro.db.utils import RedisSerializer as RS
+from cilantro.db.delegate.driver_base import DriverBase
+from cilantro.db.constants import VOTE_KEY
 
 
-class VoteDB(BaseDB):
+class VotesDriver(DriverBase):
     def get_votes(self, candidate_key: str, variable_name: str) -> int:
         """
         Retrieves the all votes for the candidate
