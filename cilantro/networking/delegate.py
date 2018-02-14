@@ -7,8 +7,10 @@ from cilantro.networking.constants import MAX_QUEUE_SIZE
 from cilantro.db.transaction_queue_db import TransactionQueueDB
 from cilantro.interpreters.basic_interpreter import BasicInterpreter
 from cilantro.transactions.testnet import TestNetTransaction
+from cilantro.serialization import PickleSerializer
 import time
 import sys
+
 if sys.platform != 'win32':
     import uvloop
 
@@ -19,13 +21,17 @@ if sys.platform != 'win32':
     Delegates are the "miners" of the Cilantro blockchain in that they opportunistically bundle up transactions into 
     blocks and are rewarded with TAU for their actions. They receive approved transactions from delegates and broadcast
     blocks based on a 1 second or 10,000 transaction limit per block. They should be able to connect/drop from the 
-    network seamlessly as well as coordinate blocks amongst themselves.
+    network seamlessly as well as establish consensus amongst themselves.
     
-     Delegate logic:   
-        Step 1) Delegate takes 10k transactions from witness and forms a block
-        Step 2) Block propagates across the network to other delegates
-        Step 3) Delegates pass around in memory DB hash to confirm they have the same blockchain state
-        Step 4) Next block is mined and process repeats
+     Delegate logic:
+        Step 0) Delegate receives POW-verified tx and interprets it to make sure tx is valid. If so add to Queue   
+        Step 1) Delegate pops 10k transactions (stamps, atomic transactions, etc) from Queue into a block
+        Step 2) Serialize block (pickle)
+        Step 2) Hash pickled object in order to generate unique block fingerprint 
+        Step 3) Delegates pass around their hash to confirm they have the same blockchain state via REQUEST and
+        RESPONSE message pattern
+        Step 4) Block is sent back to masternode for cold storage
+        Step 5) Next block is mined and process repeats
 
         zmq pattern: subscribers (delegates) need to be able to communicate with one another. this can be achieved via
         a push/pull pattern where all delegates push their state to sink that pulls them in, but this is centralized.
@@ -49,11 +55,15 @@ class Delegate(object):
 
         self.loop = None
 
+        self.blockserializer = PickleSerializer
+        self.block = None
+
     def start_async(self):
         self.loop = asyncio.get_event_loop() # set uvloop here
         self.loop.run_until_complete(self.recv())
 
-    async def recv(self):
+    async def receive_witness_msg(self):
+        """Main entry point for delegate socket to receive messages from witness socket"""
         self.delegate_sub.connect(self.sub_url)
         self.delegate_sub.setsockopt(zmq.SUBSCRIBE, b'')
 
@@ -63,7 +73,13 @@ class Delegate(object):
             print('received', msg)
             msg_count += 1
             if self.delegate_time() or msg_count == 10000: # conditions for delegate logic go here.
-                self.delegate_logic()
+                pass
+
+    async def delegate_time(self):
+        """Conditions to check that 1 second has passed"""
+        start_time = time.time()
+        await time.sleep(1.0 - ((time.time() - start_time) % 1.0))
+        return True
 
     def process_transaction(self, data: bytes=None):
         """
@@ -88,12 +104,23 @@ class Delegate(object):
             print('queue exceeded max size...delegate performing consensus')
             self.perform_consensus()
 
-    def perform_consensus(self):
-        print('delegate performing consensus...')
-        pass
+    async def perform_consensus(self):
+        """This function holds the key steps to ensure delegate consensus is achieved according to logic"""
 
-    async def delegate_time(self):
-        """Conditions to check that 1 second has passed"""
-        start_time = time.time()
-        await time.sleep(1.0 - ((time.time() - start_time) % 1.0))
-        return True
+        #  Step one build block by emptying queue
+        try:
+            block = await self.queue.empty_queue() # node should still receive new tx as it forms a block
+        except Exception as e:
+            print("Error in forming block: {}".format(e))
+            return {'error_status': 'Error in forming block: {}'.format(e)}
+
+        # Step two hash the block byte object to generate unique hash
+        try:
+            blockhash = await self.hasher.find(self.blockserializer.serialize(block))[1]
+        except Exception as e:
+            print("Error in serializing block: {}".format(e))
+            return {'error_status': 'Error in serializing block: {}'.format(e)}
+
+        # Step three request response hashed message
+
+
