@@ -2,23 +2,11 @@ import asyncio
 import uvloop
 import zmq
 from zmq.asyncio import Context
-from aiohttp import web
-from cilantro.serialization import JSONSerializer
-from cilantro.proofs.pow import SHA3POW, POW # Needed for Witness
-from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
-from cilantro.db.transaction_queue_db import TransactionQueueDB
-from cilantro.interpreters.basic_interpreter import BasicInterpreter
-from cilantro.transactions.testnet import TestNetTransaction
-from cilantro.networking.constants import MAX_QUEUE_SIZE
 
-import time
-import sys
 # Using UV Loop for EventLoop, instead aysncio's event loop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-# aiohttp
-web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
-class PubSubBase(object):
+class Basenode(object):
     def __init__(self, host=None, sub_port=None, pub_port=None, serializer=None):
         self.host = host
         self.sub_port = sub_port
@@ -38,8 +26,6 @@ class PubSubBase(object):
         try:
             self.loop = asyncio.get_event_loop()  # add uvloop here
             self.loop.run_until_complete(self.start_subscribing())
-            # self.loop.create_task(self.start_subscribing())
-            # self.loop.run_forever()
         except Exception as e:
             print(e)
         finally:

@@ -2,9 +2,9 @@ import asyncio
 import zmq
 from zmq.asyncio import Context
 from cilantro.serialization import JSONSerializer
-from cilantro.proofs.pow import SHA3POW
+from cilantro.proofs.pow import SHA3POW, POW # Needed for Witness
 from cilantro.networking.constants import MAX_QUEUE_SIZE
-from cilantro.networking import PubSubBase
+from cilantro.networking import Basenode
 from cilantro.db.transaction_queue_db import TransactionQueueDB
 from cilantro.interpreters.basic_interpreter import BasicInterpreter
 from cilantro.transactions.testnet import TestNetTransaction
@@ -100,9 +100,9 @@ class Delegate(object):
         return True
 
 
-class Delegate2(PubSubBase):
+class Delegate2(Basenode):
     def __init__(self, host='127.0.0.1', sub_port='8080', serializer=JSONSerializer, hasher=POW, pub_port='7878'):
-        PubSubBase.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
+        Basenode.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
         self.hasher = hasher
 
         self.queue = TransactionQueueDB()

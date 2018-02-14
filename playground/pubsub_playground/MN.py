@@ -1,4 +1,4 @@
-from cilantro.networking import PubSubBase, Masternode2
+from cilantro.networking import Basenode, Masternode2
 
 if __name__ == '__main__':
     mn = Masternode2(external_port='7777', internal_port='8888')
