@@ -6,3 +6,5 @@ TX_STATUS = {'SUCCESS': '{} successfully published to the network',
                'INVALID_TX_FIELDS': '{}',
                'SERIALIZE_FAILED': 'Could not serialize transaction',
                'SEND_FAILED': 'Could not send transaction'}
+
+NTP_URL = 'pool.ntp.org'

@@ -1,7 +1,8 @@
 import uvloop
-from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
+from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS, NTP_URL
 from cilantro.transactions.testnet import TestNetTransaction
 from aiohttp import web
+import ntplib
 import sys
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -27,6 +28,8 @@ class Masternode(object):
         self.context = zmq.Context()
         self.publisher = self.context.socket(zmq.PUB)
 
+        self.ntp_client = ntplib.NTPClient()
+
         self.url = 'tcp://{}:{}'.format(self.host, self.internal_port)
 
     def process_transaction(self, data=None):
@@ -46,6 +49,12 @@ class Masternode(object):
         except Exception as e:
             print(e)
             return {'error': TX_STATUS['INVALID_TX_FIELDS'].format(e)}
+
+        # Add timestamp to metadata
+        time_stamp = self.ntp_client.request(NTP_URL, version=3).tx_time
+        d['metadata']['timestamp'] = str(time_stamp)
+
+        print(d)
 
         try:
             self.publisher.bind(self.url)
