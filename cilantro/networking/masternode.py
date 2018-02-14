@@ -1,7 +1,7 @@
 import uvloop
 from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
 from cilantro.transactions.testnet import TestNetTransaction
-from cilantro.networking import Basenode
+from cilantro.networking import BaseNode
 from aiohttp import web
 import sys
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -75,9 +75,9 @@ class Masternode(object):
         web.run_app(app, host=self.host, port=int(self.external_port))
 
 
-class Masternode2(Basenode):
+class Masternode2(BaseNode):
     def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
-        Basenode.__init__(self, host=host, pub_port=internal_port, serializer=serializer)
+        BaseNode.__init__(self, host=host, pub_port=internal_port, serializer=serializer)
         self.external_port = external_port  # port to run server
         # Debugger
         self.counter = 0

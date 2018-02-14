@@ -6,7 +6,7 @@ from zmq.asyncio import Context
 # Using UV Loop for EventLoop, instead aysncio's event loop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
-class Basenode(object):
+class BaseNode(object):
     def __init__(self, host=None, sub_port=None, pub_port=None, serializer=None):
         self.host = host
         self.sub_port = sub_port

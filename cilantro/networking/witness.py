@@ -8,7 +8,7 @@ if sys.platform != 'win32':
 
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW, POW
-from cilantro.networking import Basenode
+from cilantro.networking import BaseNode
 
 
 
@@ -86,9 +86,9 @@ class Witness(object):
 # add broker based solution to e nsure dynamic discovery  - solved via masternode acting as bootnode
 # add proxy/broker based solution to ensure dynamic discovery between witness and delegate
 
-class Witness2(Basenode):
+class Witness2(BaseNode):
     def __init__(self, host='127.0.0.1', sub_port='9999', pub_port='8888', serializer=JSONSerializer, hasher=SHA3POW):
-        Basenode.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
+        BaseNode.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
         self.hasher = hasher
 
     async def handle_req(self, data: bytes):
