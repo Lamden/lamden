@@ -28,17 +28,19 @@ class PubSubBase(object):
         self.serializer = serializer
 
         self.ctx = Context() # same as context variable
-        # self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
-        # self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
+        self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
+        self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
 
-        self.sub_socket = None
-        self.pub_socket = None
+        # self.sub_socket = None
+        # self.pub_socket = None
         self.loop = None
 
     def start_async(self):
         try:
             self.loop = asyncio.get_event_loop()  # add uvloop here
-            self.loop.run_until_complete(self.start_subscribing())
+            # self.loop.run_until_complete(self.start_subscribing())
+            self.loop.create_task(self.start_subscribing())
+            self.loop.run_forever()
         except Exception as e:
             print(e)
         finally:
@@ -50,12 +52,13 @@ class PubSubBase(object):
         :return:
         """
         try:
-            self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
+            # self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
             self.sub_socket.bind(self.sub_url)
             print('start subscribing to url: ' + self.sub_url)
             self.sub_socket.subscribe(b'') # as of 17.0
             # self.sub_socket.setsockopt(zmq.SUBSCRIBE, b'')  # no filters applied
         except Exception as e:
+            print(e)
             return {'status': 'Could not send '}
         while True:
             print("in the while loop")
@@ -63,7 +66,7 @@ class PubSubBase(object):
             print('received', req)
             await self.handle_req(req)
 
-    async def handle_req(self, data=None):
+    def handle_req(self, data: bytes):
         """
         override
         :param data:
@@ -84,21 +87,24 @@ class PubSubBase(object):
         return d
 
 
-    def publish_req(self, data=None):
+    def publish_req(self, data: bytes):
         # SERIALIZE Function
         # When you need to serialize.
-        # data = self.serialize(data)
+        # d = self.serialize(data)
+        # print('Where you at? ', data)
         try:
             print("in publish request")
-            self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
+            print(data)
+            # self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
             self.pub_socket.connect(self.pub_url)
-            self.serializer.send(data, self.pub_socket)
+            # self.pub_socket.send(data)
+            self.serializer.send(self.serializer.serialize(data), self.pub_socket)
         except Exception as e:
             print("in publish_req Exception:")
             print(e)
             return {'status': 'Could not send transaction'}
-        finally:
-            self.pub_socket.close() # stop listening to sub_url
+        # finally:
+        #     self.pub_socket.close() # stop listening to sub_url
             # self.ctx.destroy()
 
 
@@ -106,36 +112,50 @@ class Witness2(PubSubBase):
     def __init__(self, host='127.0.0.1', sub_port='9999', pub_port='8888', serializer=JSONSerializer, hasher=SHA3POW):
         PubSubBase.__init__(self, host=host, sub_port=sub_port,pub_port=pub_port, serializer=serializer)
         self.hasher = hasher
-        self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
-        self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
+        self.counter = 0
+        # self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
+        # self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
 
-    async def handle_req(self, data=None):
+    async def handle_req(self, data: bytes):
         """
         async def accept_incoming_transactions(self): after the while loop
         :param data:
         :return:
         """
-        # print("BEFORE try: handle_req in Witness2")
+        print("BEFORE try: handle_req in Witness2")
+        print(data)
         try:
-            raw_tx = self.serializer.deserialize(data)
+            unpacked_data = self.serializer.serialize(data)
+            # if raw_tx:
+            #     self.confirmed_transaction_routine(raw_tx=raw_tx)
         except Exception as e:
             print(e)
             return{'status': 'Could not deserialize transaction'}
-        # print("handle_req in Witness2")
-        if self.hasher.check(raw_tx, raw_tx.payload['metadata']['proof']):
-            self.confirmed_transaction_routine()
+        print("handle_req in Witness2")
+        self.counter += 1
+        print(self.counter)
+        # self.confirmed_transaction_routine(raw_tx=raw_tx)
+        # if a:
+        payload_bytes = self.serializer.deserialize(unpacked_data['payload']).encode()
+        if self.hasher.check(payload_bytes, unpacked_data['metadata']['proof']):
+            output = await self.confirmed_transaction_routine(data)
+            # return output
         else:
-            return {'status': 'Could not confirm transaction POW'}
+            # return {'status': 'Could not confirm transaction POW'}
+            pass
 
     def activate_witness_publisher(self):
-        self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
+        # self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
         self.pub_socket.bind(self.pub_url)
 
-    async def confirmed_transaction_routine(self, raw_tx):
-        tx_to_delegate = self.serializer.serialize(raw_tx)
-        self.activate_witness_publisher()
-        await self.pub_socket.send(tx_to_delegate)
-        self.pub_socket.unbind(self.pub_url)  # unbind socket?
+    async def confirmed_transaction_routine(self, data: bytes):
+        # tx_to_delegate = self.serializer.serialize(raw_tx)
+        # self.activate_witness_publisher()
+        # await self.pub_socket.send(tx_to_delegate)
+        # self.pub_socket.unbind(self.pub_url)  # unbind socket?
+        self.publish_req(data)
+        return {'success': 'request published yay'}
+
 
 class Masternode2(PubSubBase):
     def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
@@ -143,19 +163,19 @@ class Masternode2(PubSubBase):
         self.external_port = external_port  # port to run server
 
     def process_transaction(self, data=None):
-        # if not self.__validate_transaction_length(data):
-        #     return TX_STATUS['INVALID_TX_SIZE']
-
+        if not self.__validate_transaction_length(data):
+            return TX_STATUS['INVALID_TX_SIZE']
+        print("")
         d = None
-        print(data)
+        print('Masternode2 data = ', data)
         try:
             d = self.serializer.serialize(data)
         except:
             return TX_STATUS['SERIALIZE_FAILED']
 
-        # if not self.__validate_transaction_fields(d):
-        #     return TX_STATUS['INVALID_TX_FIELDS']
-        self.publish_req(data=d)
+        if not self.__validate_transaction_fields(d):
+            return TX_STATUS['INVALID_TX_FIELDS']
+        self.publish_req(data)
 
     def __validate_transaction_length(self, data: bytes):
         if not data:
@@ -178,7 +198,7 @@ class Masternode2(PubSubBase):
             return True
 
     async def process_request(self, request):
-        # print(request.content.read())
+        print(request.content.read())
         r = self.process_transaction(data=await request.content.read())
         return web.Response(text=str(r))
 
@@ -192,8 +212,6 @@ class Delegate2(PubSubBase):
     def __init__(self, host='127.0.0.1', sub_port='7777', serializer=JSONSerializer, hasher=SHA3POW):
         PubSubBase.__init__(self, host=host, sub_port=sub_port, serializer=serializer)
         self.hasher = hasher
-        self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)# Don't really need this... Just here as a reference
-        self.pub_socket = None
 
         self.queue = TransactionQueueDB()
         self.interpreter = BasicInterpreter()
@@ -237,9 +255,11 @@ class Delegate2(PubSubBase):
 
     def handle_req(self, data=None):
         self.msg_count +=1
-        if self.delegate_time() or self.msg_count == 10000:
-            self.perform_consensus()
-            self.msg_count = 0
+        self.process_transaction(data=data)
+        print('msg_count = ', self.msg_count)
+        # if self.delegate_time() or self.msg_count == 10000:
+        #     self.perform_consensus()
+        #     self.msg_count = 0
 
     def perform_consensus(self):
         print('delegate performing consensus...')
