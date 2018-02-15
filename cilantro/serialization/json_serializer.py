@@ -9,17 +9,27 @@ import zmq
 '''
 class JSONSerializer(Serializer):
     @staticmethod
-    def serialize(b: bytes):
+    def serialize(d: dict):
+        """
+        Convert dict -> bytes
+        :param d: dict
+        :return: bytes
+        """
+        try:
+            return str.encode(json.dumps(d))
+        except Exception as e:
+            print(e)
+            return {'error status': e}
+
+    @staticmethod
+    def deserialize(b: bytes):
+        """
+        bytes -> dict
+        :param d:
+        :return:
+        """
         try:
             return json.loads(b.decode())
         except Exception as e:
             print(e)
-            return { 'error' : 'error' }
-
-    @staticmethod
-    def deserialize(d: dict):
-        return json.dumps(d)
-
-    @staticmethod
-    def send(d: dict, p: zmq.Socket):
-        p.send_json(d)
+            return{'error status': e}

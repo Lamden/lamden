@@ -2,24 +2,6 @@ from unittest import TestCase
 from cilantro.networking import Witness2
 from cilantro.proofs.pow import SHA3POW, POW
 from cilantro.networking import Masternode
-import asyncio
-import requests
-
-# class Mock_Masternode(Masternode):
-#     def __init__(self, number_before_kill=10):
-#         self.life = number_before_kill
-#         super().__init__()
-#
-#     def process_transaction(self, tx=None):
-#         self.publisher.bind(self.url)
-#
-#         if self.life <= 0:
-#             self.publisher.send(tx)
-#         else:
-#             self.publisher.send(b'999')
-#
-#         self.life -= 1
-#         self.publisher.unbind(self.url)
 
 
 class TestWitness(TestCase):
@@ -45,6 +27,17 @@ class TestWitness(TestCase):
         """
         witness_hasher = self.w.hasher
         self.assertTrue(SHA3POW or POW, witness_hasher)
+
+    def test_publish_req_success(self):
+        """
+        Test's Witness's publish_req method, which is inherited from BaseNode
+        """
+        json_dict = {"payload": {"to": "kevin", "amount": "900", "from": "davis", "type": "t"}, "metadata": {"sig": "0x123", "proof": "4b5900f3a282a480d13a0164939a3c86"}}
+        self.assertEqual({'status': 'Successfully published request'}, self.w.publish_req(json_dict))
+
+    def test_publish_req_failure(self):
+        self.assertEqual({'status': 'Could not publish request'}, self.w.publish_req(json_dict))
+
 
     def test_subscribing(self):
         # self.w.start_subscribing()

@@ -103,19 +103,15 @@ class Witness2(BaseNode):
         :return:
         """
         try:
-            unpacked_data = self.serializer.serialize(data)
+            unpacked_data = self.serializer.deserialize(data)
         except Exception as e:
-            print(e)
+            print('in exception of handle_req of Witness2',e)
             return {'status': 'Could not deserialize transaction'}
         payload = unpacked_data["payload"]
-        # payload_bytes = self.serializer.deserialize(unpacked_data['payload']).encode()
-        payload_bytes = str.encode(json.dumps(payload))
-        # Right now there's no checks and the request is being published to pub_socket
-        # return self.publish_req(data)
-        boolean = self.hasher.check(payload_bytes, unpacked_data['metadata']['proof'])
+        payload_bytes = self.serializer.serialize(payload) # Convert just the payload into bytes
         if self.hasher.check(payload_bytes, unpacked_data['metadata']['proof']):
             print("Inside hasher.check")
-            return self.publish_req(data)
+            return self.publish_req(unpacked_data)
         else:
             print('status Could not confirm transaction POW')
             return {'status': 'invalid proof'}

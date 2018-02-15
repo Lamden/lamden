@@ -2,7 +2,6 @@ import asyncio
 import uvloop
 import zmq
 from zmq.asyncio import Context
-import json
 
 # Using UV Loop for EventLoop, instead aysncio's event loop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -28,7 +27,7 @@ class BaseNode(object):
             self.loop = asyncio.get_event_loop()  # add uvloop here
             self.loop.run_until_complete(self.start_subscribing())
         except Exception as e:
-            print(e)
+            print(type(e))
         finally:
             print("Loop finished")
 
@@ -42,7 +41,7 @@ class BaseNode(object):
             self.sub_socket.subscribe(b'') # as of 17.0  - no filters applied
         except Exception as e:
             print(e)
-            return {'status': 'Could not send '}
+            return {'status': 'Could not open/bind sub_socket'}
         while True:
             print("in the while loop")
             req = await self.sub_socket.recv()
@@ -57,32 +56,18 @@ class BaseNode(object):
         """
         pass
 
-    def serialize(self, data):
-        """
-        Since the base class takes in a serializer
-        :param data:
-        :return:
-        """
-        try:
-            d = self.serializer.serialize(data)
-        except:
-            return {'status': 'Could not serialize data'}
-        return d
 
-
-    def publish_req(self, data: bytes):
+    def publish_req(self, d: dict):
         """
         Function to publish data to pub_socket
         pub_socket is connected during initialization
-        :param data:
+        :param data: dict
         :return:
         """
         try:
             print("in publish request")
-            d = json.loads(data.decode())
             self.pub_socket.send_json(d)
         except Exception as e:
-            print("in publish_req Exception:")
             print(e)
             return {'status': 'Could not publish request'}
         return {'status': 'Successfully published request'}

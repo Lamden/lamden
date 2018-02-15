@@ -7,7 +7,6 @@ import sys
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 from cilantro.serialization import JSONSerializer
-import json
 
 '''
     Masternode
@@ -30,12 +29,12 @@ class Masternode(BaseNode):
         :param data:
         :return:
         """
-        # Validate transaction size
+        # 1) Validate transaction size
         if not self.__validate_transaction_length(data):
             return {'error': TX_STATUS['INVALID_TX_SIZE']}
-        # De-serialize data
+        # 2) De-serialize data
         try:
-            d = json.loads(data.decode())
+            d = self.serializer.deserialize(data)
         except Exception as e:
             print("in Exception of process_transaction")
             return {'error': TX_STATUS['SERIALIZE_FAILED'].format(e)}
@@ -48,7 +47,7 @@ class Masternode(BaseNode):
         # Debugger
         self.counter+=1
         print(self.counter)
-        return self.publish_req(data)
+        return self.publish_req(d)
 
     def __validate_transaction_length(self, data: bytes):
         if not data: #if data is None
