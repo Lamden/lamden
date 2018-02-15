@@ -3,6 +3,7 @@ from unittest.mock import Mock, MagicMock
 from cilantro.networking import Witness
 from cilantro.networking import Masternode
 import asyncio
+
 class Mock_Masternode(Masternode):
     def __init__(self, number_before_kill=10):
         self.life = number_before_kill
@@ -20,8 +21,6 @@ class Mock_Masternode(Masternode):
         self.publisher.unbind(self.url)
 
 class TestWitness(TestCase):
-
-
     def test_async(self):
         w = Witness()
         m = Mock_Masternode()
