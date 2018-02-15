@@ -14,6 +14,11 @@ class TestMasternode2(TestCase):
 
         self.mn = Masternode2(host=self.host, external_port=self.external_port, internal_port=self.internal_port)
 
+    def test_process_transaction_invalid_serialization(self):
+        payload_str = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto', 'type': 't'},
+                         'metadata': {'sig': 'x287', 'proof': '000'}}
+        self.assertTrue('error' in self.mn.process_transaction(data=payload_str))
+
     def tearDown(self):
         """
         1) Disconnects the pub_socket that was initialized when self.mn was initalized
@@ -40,6 +45,14 @@ class TestMasternode2(TestCase):
             payload_oversized['payload'][x] = "some key #" + str(x)
         self.assertTrue('error' in self.mn.process_transaction(data=TestMasternode2.dict_to_bytes(payload_oversized)))
 
+    def test_process_transaction_invalid_data_length(self):
+        """
+        Tests if not data in __validate_transaction_length
+        :return:
+        """
+        data = None
+        self.assertTrue('error' in self.mn.process_transaction(data=data))
+
     def test_process_transaction_valid(self):
         """
          Tests that a valid payload goes through, aka successful publish request
@@ -56,6 +69,9 @@ class TestMasternode2(TestCase):
 
     def test_serialization_storage(self):
         self.assertEqual(type(self.mn.serializer), type(self.serializer))
+
+    def test_setup_web_server(self):
+        pass
 
     @staticmethod
     def dict_to_bytes(d):

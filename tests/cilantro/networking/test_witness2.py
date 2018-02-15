@@ -21,12 +21,14 @@ import requests
 #         self.publisher.unbind(self.url)
 
 
-class TestWitness(TestCase):
+class TestWitness2(TestCase):
     def setUp(self):
         self.host = '127.0.0.1'
         self.sub_port = '8888'
         self.pub_port = '8080'
         self.w = Witness2(sub_port=self.sub_port, pub_port=self.pub_port)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
 
     def tearDown(self):
         """
@@ -37,6 +39,7 @@ class TestWitness(TestCase):
         self.w.ctx.destroy()
 
     def test_subscribing(self):
+        self.w.start_subscribing()
         pass
 
     def test_handle_req(self):

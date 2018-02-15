@@ -5,9 +5,9 @@ import asyncio
 import json
 
 if __name__ == '__main__':
-    pub = BaseNode(host='127.0.0.1', sub_port='5555', pub_port='7777', serializer=JSONSerializer)
-    pub.publish_req({'fake-key': 'fake-value'})
-    # print("a")
+    try:
+        JSONSerializer.serialize()
+    except Exception as e:
+        print(e)
 
-    # loop = asyncio.get_event_loop()
-    # loop.run_until_complete()
+

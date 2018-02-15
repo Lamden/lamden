@@ -94,8 +94,8 @@ class Masternode2(BaseNode):
         # Serialize data
         try:
             d = self.serializer.serialize(data)
-        except:
-            return {'error': TX_STATUS['SERIALIZE_FAILED']}
+        except Exception as e:
+            return {'error': TX_STATUS['SERIALIZE_FAILED'].format(e)}
         # Validate transaction fields
         try:
             TestNetTransaction.validate_tx_fields(d)
@@ -109,7 +109,7 @@ class Masternode2(BaseNode):
         return self.publish_req(data)
 
     def __validate_transaction_length(self, data: bytes):
-        if not data:
+        if not data: #if data is None
             return False
         elif len(data) >= MAX_REQUEST_LENGTH:
             return False
