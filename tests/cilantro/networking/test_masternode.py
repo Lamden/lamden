@@ -5,6 +5,7 @@ from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
 from cilantro.networking import Masternode
 import json
 
+
 class TestMasternode(TestCase):
     def setUp(self):
         self.host = '127.0.0.1'
@@ -14,11 +15,6 @@ class TestMasternode(TestCase):
 
         self.mn = Masternode(host=self.host, external_port=self.external_port, internal_port=self.internal_port)
 
-    def test_process_transaction_invalid_serialization(self):
-        payload_str = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto', 'type': 't'},
-                         'metadata': {'sig': 'x287', 'proof': '000'}}
-        self.assertTrue('error' in self.mn.process_transaction(data=payload_str))
-
     def tearDown(self):
         """
         1) Disconnects the pub_socket that was initialized when self.mn was initalized
@@ -27,6 +23,15 @@ class TestMasternode(TestCase):
         """
         self.mn.pub_socket.disconnect(self.mn.pub_url)
         self.mn.ctx.destroy()
+
+    def test_process_transaction_invalid_serialization(self):
+        """
+        TODO
+        :return:
+        """
+        payload_str = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto', 'type': 't'},
+                         'metadata': {'sig': 'x287', 'proof': '000'}}
+        self.assertTrue('error' in self.mn.process_transaction(data=payload_str))
 
     def test_process_transaction_fields(self):
         """

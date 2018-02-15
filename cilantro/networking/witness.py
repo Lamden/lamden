@@ -9,7 +9,7 @@ if sys.platform != 'win32':
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW, POW
 from cilantro.networking import BaseNode
-
+import json
 
 
 '''
@@ -61,8 +61,12 @@ class Witness(object):
             try:
                 raw_tx = self.serializer.deserialize(tx)
             except Exception as e:
+                print(e)
                 return {'status': 'Could not deserialize transaction'}
             if self.hasher.check(raw_tx, raw_tx.payload['metadata']['proof']):
+                """
+                
+                """
                 self.confirmed_transaction_routine()
             else:
                 return {'status': 'Could not confirm transaction POW'}
@@ -103,20 +107,18 @@ class Witness2(BaseNode):
         except Exception as e:
             print(e)
             return {'status': 'Could not deserialize transaction'}
+        payload = unpacked_data["payload"]
         payload_bytes = self.serializer.deserialize(unpacked_data['payload']).encode()
-
-        # print("handle_req in Witness2")
-        # print('proof in unpacked data is', unpacked_data['metadata']['proof'])
-        # print('payload bytes is', payload_bytes)
-
-        #TODO Need to use the correct variables for hasher.check
+        payload_bytes = str.encode(json.dumps(payload))
         # Right now there's no checks and the request is being published to pub_socket
-        return self.publish_req(data)
-        # if self.hasher.check(payload_bytes, unpacked_data['metadata']['proof']):
-        #     return self.publish_req(data)
-        # else:
-        #     print('status Could not confirm transaction POW')
-        #     return {'status': 'invalid proof'}
+        # return self.publish_req(data)
+        boolean = self.hasher.check(payload_bytes, unpacked_data['metadata']['proof'])
+        if self.hasher.check(payload_bytes, unpacked_data['metadata']['proof']):
+            print("Inside hasher.check")
+            return self.publish_req(data)
+        else:
+            print('status Could not confirm transaction POW')
+            return {'status': 'invalid proof'}
 
 
 

@@ -26,6 +26,11 @@ class JSONSerializer():
 class SHA3POW():
     @staticmethod
     def find(o: bytes):
+        """
+
+        :param o:
+        :return:
+        """
         while True:
             h = hashlib.sha3_256()
             s = secrets.token_bytes(16)
@@ -36,6 +41,12 @@ class SHA3POW():
 
     @staticmethod
     def check(o: bytes, proof: str):
+        """
+
+        :param o: payload dict in byte format
+        :param proof:
+        :return:
+        """
         h = hashlib.sha3_256()
         s = bytes.fromhex(proof)
         h.update(o + s)
