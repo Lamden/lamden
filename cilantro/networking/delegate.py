@@ -28,14 +28,13 @@ if sys.platform != 'win32':
         Step 1) Delegate pops 10k transactions (stamps, atomic transactions, etc) from Queue into a block
         Step 2) Serialize block (pickle)
         Step 2) Hash pickled object in order to generate unique block fingerprint 
-        Step 3) Delegates pass around their hash to confirm they have the same blockchain state via REQUEST and
-        RESPONSE message pattern
+        Step 3) Delegates pass around their hash to confirm they have the same blockchain state via Harmony
+         message pattern
         Step 4) Block is sent back to masternode for cold storage
         Step 5) Next block is mined and process repeats
 
-        zmq pattern: subscribers (delegates) need to be able to communicate with one another. this can be achieved via
-        a push/pull pattern where all delegates push their state to sink that pulls them in, but this is centralized.
-        another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
+        zmq pattern: Delegates will act according to the harmony pattern to seamlessly pass messages amongst themselves
+        Upon consensus block formation masternode will PULL block info from random delegate
 """
 
 
@@ -57,6 +56,14 @@ class Delegate(object):
 
         self.blockserializer = PickleSerializer
         self.block = None
+
+        self.dealer_socket = self.ctx.socket(socket_type=zmq.DEALER)
+        self.dealer_port = '5555'
+        self.dealer_url = 'tcp://{}:{}'.format(self.host, self.dealer_port)
+
+        self.router_socket = self.ctx.socket(socket_type=zmq.ROUTER)
+        self.router_port = '6666'
+        self.router_url = 'tcp://{}:{}'.format(self.host, self.router_port)
 
     def start_async(self):
         self.loop = asyncio.get_event_loop() # set uvloop here
@@ -105,7 +112,7 @@ class Delegate(object):
             self.perform_consensus()
 
     async def perform_consensus(self):
-        """This function holds the key steps to ensure delegate consensus is achieved according to logic"""
+        """This function holds the key steps to ensure delegate consensus is achieved according to logic above"""
 
         #  Step one build block by emptying queue
         try:
@@ -122,5 +129,15 @@ class Delegate(object):
             return {'error_status': 'Error in hashing block: {}'.format(e)}
 
         # Step three request response hashed message
+        self.harmony()
 
+    async def harmony(self):
+        try:
+            self.dealer_socket.connect(self.dealer_url)
+            self.router_socket.bind(self.router_url)
+        except Exception as e:
+            print("Error in connecting: {}".format(e))
+            return {'error_status': 'Error in connecting: {}'.format(e)}
 
+        # read messages from our ROUTER socket to know where they came from
+        # write messages to peer DEALER socket
