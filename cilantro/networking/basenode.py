@@ -2,6 +2,7 @@ import asyncio
 import uvloop
 import zmq
 from zmq.asyncio import Context
+import json
 
 # Using UV Loop for EventLoop, instead aysncio's event loop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -38,7 +39,6 @@ class BaseNode(object):
         """
         try:
             self.sub_socket.bind(self.sub_url)
-            print('start subscribing to url: ' + self.sub_url)
             self.sub_socket.subscribe(b'') # as of 17.0  - no filters applied
         except Exception as e:
             print(e)
@@ -74,14 +74,13 @@ class BaseNode(object):
         """
         Function to publish data to pub_socket
         pub_socket is connected during initialization
-
         :param data:
         :return:
         """
         try:
             print("in publish request")
-            print(data)
-            self.serializer.send(self.serializer.serialize(data), self.pub_socket)
+            d = json.loads(data.decode())
+            self.pub_socket.send_json(d)
         except Exception as e:
             print("in publish_req Exception:")
             print(e)

@@ -7,7 +7,7 @@ import sys
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 from cilantro.serialization import JSONSerializer
-import zmq
+import json
 
 '''
     Masternode
@@ -24,19 +24,20 @@ class Masternode(BaseNode):
         # Debugger
         self.counter = 0
 
-    def process_transaction(self, data=None):
+    def process_transaction(self, data: bytes):
         """
-
+        Validates the POST Request from Client
         :param data:
         :return:
         """
         # Validate transaction size
         if not self.__validate_transaction_length(data):
             return {'error': TX_STATUS['INVALID_TX_SIZE']}
-        # Serialize data
+        # De-serialize data
         try:
-            d = self.serializer.serialize(data)
+            d = json.loads(data.decode())
         except Exception as e:
+            print("in Exception of process_transaction")
             return {'error': TX_STATUS['SERIALIZE_FAILED'].format(e)}
         # Validate transaction fields
         try:
@@ -47,7 +48,6 @@ class Masternode(BaseNode):
         # Debugger
         self.counter+=1
         print(self.counter)
-        #
         return self.publish_req(data)
 
     def __validate_transaction_length(self, data: bytes):

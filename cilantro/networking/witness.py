@@ -108,7 +108,7 @@ class Witness2(BaseNode):
             print(e)
             return {'status': 'Could not deserialize transaction'}
         payload = unpacked_data["payload"]
-        payload_bytes = self.serializer.deserialize(unpacked_data['payload']).encode()
+        # payload_bytes = self.serializer.deserialize(unpacked_data['payload']).encode()
         payload_bytes = str.encode(json.dumps(payload))
         # Right now there's no checks and the request is being published to pub_socket
         # return self.publish_req(data)
