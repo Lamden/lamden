@@ -51,7 +51,7 @@ def create_std_tx(sender: tuple, recipient: tuple, amount: float):
     """
     tx = {'payload': {'to': recipient[1], 'amount': str(amount), 'from': sender[1], 'type':'t'}, 'metadata':
          {'sig':'???', 'proof': '000'}}
-    tx['metadata']['sig'] = ED25519Wallet.sign(sender[0], json.dumps(tx['payload']).encode())
+    tx['metadata']['signature'] = ED25519Wallet.sign(sender[0], json.dumps(tx['payload']).encode())
     return tx
 
 

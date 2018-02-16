@@ -15,7 +15,16 @@ class SwapsDriver(DriverBase):
         if self.r.hexists(SWAP_KEY, hash_lock):
             return RS.tuple_from_str(self.r.hget(SWAP_KEY, hash_lock))
         else:
+            print("Attempted to get hash_lock={} that doesnt exist in table")
             return ()
+
+    def swap_exists(self, hash_lock: str) -> bool:
+        """
+        Returns true if the hash lock exists in the db, and false otherwise
+        :param hash_lock: The hash lock for the swap
+        :return: True if the hash lock exists in the db; false otherwise
+        """
+        return self.r.hexists(SWAP_KEY, hash_lock)
 
     def set_swap_data(self, hash_lock: str, sender: str, recipient: str, amount: float, unix_expiration: str):
         """
