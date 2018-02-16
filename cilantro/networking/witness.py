@@ -7,8 +7,9 @@ if sys.platform != 'win32':
     import uvloop
 
 from cilantro.serialization import JSONSerializer
-from cilantro.proofs.pow import SHA3POW
-# from cilantro.networking import PubSubBase
+from cilantro.proofs.pow import SHA3POW, POW
+from cilantro.networking import BaseNode
+import json
 
 
 '''
@@ -60,8 +61,12 @@ class Witness(object):
             try:
                 raw_tx = self.serializer.deserialize(tx)
             except Exception as e:
+                print(e)
                 return {'status': 'Could not deserialize transaction'}
             if self.hasher.check(raw_tx, raw_tx.payload['metadata']['proof']):
+                """
+                
+                """
                 self.confirmed_transaction_routine()
             else:
                 return {'status': 'Could not confirm transaction POW'}
@@ -85,14 +90,31 @@ class Witness(object):
 # add broker based solution to e nsure dynamic discovery  - solved via masternode acting as bootnode
 # add proxy/broker based solution to ensure dynamic discovery between witness and delegate
 
+class Witness2(BaseNode):
+    def __init__(self, host='127.0.0.1', sub_port='9999', pub_port='8888', serializer=JSONSerializer, hasher=SHA3POW):
+        BaseNode.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
+        self.hasher = hasher
 
-if __name__ == '__main__':
-    # a = Witness()
-    # a.start_async()
-    a = zmq.Context()
-    b = Context()
-    print("a")
+    async def handle_req(self, data: bytes):
+        """
+        Handle the incoming request when start_subscribing
 
+        :param data:
+        :return:
+        """
+        try:
+            unpacked_data = self.serializer.deserialize(data)
+        except Exception as e:
+            print('in exception of handle_req of Witness2',e)
+            return {'status': 'Could not deserialize transaction'}
+        payload = unpacked_data["payload"]
+        payload_bytes = self.serializer.serialize(payload) # Convert just the payload into bytes
+        if self.hasher.check(payload_bytes, unpacked_data['metadata']['proof']):
+            print("Inside hasher.check")
+            return self.publish_req(unpacked_data)
+        else:
+            print('status Could not confirm transaction POW')
+            return {'status': 'invalid proof'}
 
 
 

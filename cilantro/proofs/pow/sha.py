@@ -5,6 +5,11 @@ import secrets
 class SHA3POW(POW):
     @staticmethod
     def find(o: bytes):
+        """
+
+        :param o: json object in bytes type.
+        :return: Tuple ()
+        """
         while True:
             h = hashlib.sha3_256()
             s = secrets.token_bytes(16)
