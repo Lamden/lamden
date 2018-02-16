@@ -1,0 +1,10 @@
+language: python
+python:
+  - "3.6"
+before_install:
+  - sudo apt-get install software-properties-common
+install: "python setup.py develop"
+script: LAMDEN_FOLDER_PATH=. NODE_INFO_JSON=~/node.info pytest -s tests
+notifications:
+  webhooks:
+    - https://lamden-discord-travisci.herokuapp.com/webhook/
