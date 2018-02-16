@@ -63,7 +63,7 @@ class TestMasternode(TestCase):
          Tests that a valid payload goes through, aka successful publish request
         """
         payload_valid = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto', 'type':'t'},
-                         'metadata': {'sig': 'x287', 'proof': '000'}}
+                         'metadata': {'signature': 'x287', 'proof': '000'}}
         self.assertEqual({'status': 'Successfully published request'}, self.mn.process_transaction(data=TestMasternode.dict_to_bytes(payload_valid)))
 
     def test_host_and_port_storage(self):
