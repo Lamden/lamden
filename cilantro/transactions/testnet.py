@@ -53,8 +53,8 @@ class TestNetTransaction(Transaction):
         metadata = tx['metadata']
 
         # metadata checks
-        if 'sig' not in metadata:
-            raise build_exception('sig field missing from metadata')
+        if 'signature' not in metadata:
+            raise build_exception('signature field missing from metadata')
         elif 'proof' not in metadata:
             raise build_exception('proof field missing from metadata')
 
@@ -96,8 +96,8 @@ class TestNetTransaction(Transaction):
         return TestNetTransaction.SWAP, sender, recipient, amount, hash_lock, unix_expiration
 
     @staticmethod
-    def redeem_tx(secret: str):
-        return TestNetTransaction.REDEEM, secret
+    def redeem_tx(sender: str, secret: str):
+        return TestNetTransaction.REDEEM, sender, secret
 
     @staticmethod
     def verify_tx(transaction, verifying_key, signature, wallet: Wallet, proof_system: POW):
@@ -137,7 +137,7 @@ class TestNetTransaction(Transaction):
                                                               payload['hash_lock'], payload['unix_expiration']
             transaction.payload['payload'] = TestNetTransaction.swap_tx(sender, receiver, amount, hash_lock, unix_expir)
         elif tx_type == TestNetTransaction.REDEEM:
-            transaction.payload['payload'] = TestNetTransaction.redeem_tx(payload['secret'])
+            transaction.payload['payload'] = TestNetTransaction.redeem_tx(payload['to'], payload['secret'])
         else:
             raise Exception('Error building transaction from dict -- '
                             'Invalid type field in transaction dict: {}'.format(tx_dict))
