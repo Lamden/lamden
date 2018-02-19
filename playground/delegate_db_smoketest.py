@@ -35,7 +35,7 @@ def print_scratch():
     for person, balance in r.hgetall(SCRATCH_KEY).items():
         print("{} : {}".format(person, balance))
 
-def print_queue()
+def print_queue():
     queue_len = r.llen(QUEUE_KEY)
     for x in r.lrange(QUEUE_KEY, 0, queue_len):
         print(x)
