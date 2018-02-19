@@ -15,5 +15,18 @@ VT = namedtuple('VotingTypes', 'delegate transaction_fee')
 VOTE_TYPES = VT('DELEGATE', 'TX_FEE')
 
 # For masternode cold storage
-MG = namedtuple('MongoConstants', 'db_name col_name latest_hash_key block_num_key')
-MONGO = MG('cilantro', 'blockchain', 'latest_hash', 'block_num')
+MG = namedtuple('MongoConstants',
+                'db_name '
+                'blocks_col_name '
+                'latest_hash_key '
+                'latest_block_num_key '
+                'balances_col_name '
+                'genesis_key '
+                'blocks_state_col_name ')
+MONGO = MG('cilantro',
+           'blockchain',
+           'latest_hash',
+           'latest_block_num',
+           'balances',
+           'is_genesis',
+           'blockchain_state')
