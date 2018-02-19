@@ -25,8 +25,11 @@ class Masternode(BaseNode):
     def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
         BaseNode.__init__(self, host=host, pub_port=internal_port, serializer=serializer)
         self.external_port = external_port
-        self.time_client = ntplib.NTPClient()
-        self.db = BlockchainDriver()
+        # self.time_client = ntplib.NTPClient()  TODO -- investigate why we can't query NTP_URL with high frequency
+        self.db = BlockchainDriver(serializer=serializer)
+
+        # FOR TESTNET ONLY
+        self.db.create_genesis()
 
     def process_transaction(self, data: bytes):
         """
@@ -51,7 +54,7 @@ class Masternode(BaseNode):
             return {'error': TX_STATUS['INVALID_TX_FIELDS'].format(e)}
 
         # Add timestamp and UUID
-        d['metadata']['timestamp'] = self.time_client.request(NTP_URL, version=3).tx_time
+        # d['metadata']['timestamp'] = self.time_client.request(NTP_URL, version=3).tx_time
         d['metadata']['uuid'] = str(uuid.uuid4())
 
         return self.publish_req(d)
@@ -62,11 +65,17 @@ class Masternode(BaseNode):
         try:
             d = self.serializer.deserialize(data)
             # TODO -- validate block
-            self.db.persist_block(d)
-            print("finished insert")
         except Exception as e:
-            print("Error processing block: {}".format(e))
-            return {'error_status': 'Could not store block -- Error: {}'.format(e)}
+            print("Error deserializing block: {}".format(e))
+            return {'error_status': 'Could not deserialize block -- Error: {}'.format(e)}
+
+        try:
+            print("persisting block...")
+            self.db.persist_block(d)
+            print("finished persisting block")
+        except Exception as e:
+            print("Error persisting block: {}".format(e))
+            return {'error_status': 'Could not persist block -- Error: {}'.format(e)}
 
         print("Successfully stored block data: {}".format(d))
         return {'status': "persisted block with data:\n{}".format(d)}

@@ -1,9 +1,6 @@
-import asyncio
-import zmq
-from zmq.asyncio import Context
 from cilantro.serialization import JSONSerializer
 from cilantro.proofs.pow import SHA3POW, POW
-from cilantro.networking.constants import MAX_QUEUE_SIZE
+from cilantro.networking.constants import MAX_QUEUE_SIZE, QUEUE_AUTO_FLUSH_TIME
 from cilantro.db.delegate.transaction_queue_driver import TransactionQueueDriver
 from cilantro.networking import BaseNode
 from cilantro.interpreters.basic_interpreter import BasicInterpreter
@@ -41,7 +38,7 @@ class Delegate(BaseNode):
     def __init__(self, host='127.0.0.1', sub_port='8888', serializer=JSONSerializer, hasher=POW, pub_port='7878'):
         BaseNode.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
         self.hasher = hasher
-
+        self.last_flush_time = time.time()
         self.queue = TransactionQueueDriver()
         self.interpreter = BasicInterpreter()
 
@@ -65,10 +62,13 @@ class Delegate(BaseNode):
 
         self.queue.enqueue_transaction(tx.payload['payload'])
         if self.queue.queue_size() > MAX_QUEUE_SIZE:
-            print('queue exceeded max size...delegate performing consensus')
+            print('queue exceeded max size, flushing queue')
+            self.perform_consensus()
+        elif time.time() - self.last_flush_time >= QUEUE_AUTO_FLUSH_TIME:
+            print('time since last queue flush exceeded, flushing queue')
             self.perform_consensus()
 
-        return {'success': 'delegate proccesed transaction: {}'.format(d)}
+        return {'success': 'delegate processed transaction: {}'.format(d)}
 
     async def handle_req(self, data: bytes=None):
         return self.process_transaction(data=data)
@@ -80,10 +80,15 @@ class Delegate(BaseNode):
 
         # Package block for transport
         all_tx = self.queue.dequeue_all()
-        h = hashlib.sha3_256()
-        h.update(self.serializer.serialize(all_tx))
-        block = {'block': all_tx, 'hash': h.hexdigest()}
 
+        # BELOW LOGIC MOVED TO MASTERNODE
+        # h = hashlib.sha3_256()
+        # h.update(self.serializer.serialize(all_tx))
+        # block = {'block': all_tx, 'hash': h.hexdigest()}
+
+        block = {'transactions': all_tx}
+
+        self.last_flush_time = time.time()
         self.post_block(self.serializer.serialize(block))
 
     def post_block(self, block: bytes):
