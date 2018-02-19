@@ -7,27 +7,6 @@ import xxtea
 
 UNLOCKED_WALLET = None
 
-
-async def cli_loading_animation():
-    pass
-
-
-def pad_bytes(b):
-    while len(b) < 32:
-        b += b'0'
-    return b
-
-
-def format_password(p):
-    password = p.encode()[:32]
-    password = pad_bytes(password)
-    return password
-
-
-def password_as_nonce(p):
-    assert len(p) >= 24, 'Provided password is not long enough. Must be at least 24 bytes.'
-    return p[:24]
-
 @click.command()
 @click.option('--file_dir', default=None)
 def new_wallet(file_dir):
@@ -36,9 +15,6 @@ def new_wallet(file_dir):
 
     # securely get the password to salt the wallet signing key
     password = getpass('Enter a password to secure the wallet: ')
-
-    # size password to 32 bytes for ed25519 encryption
-
 
     wallet = ED25519Wallet.new()
     signing_key = bytes.fromhex(wallet[0])
@@ -61,12 +37,12 @@ def unlock_wallet():
 
     with open(os.path.join(os.path.join(os.getcwd(), 'test.tau')), 'rb') as f:
         encrypted_wallet = f.read()
-
     password = getpass('Enter the password to unlock the wallet: ')
-
     signing_key = xxtea.decrypt(encrypted_wallet, password)
+    UNLOCKED_WALLET = signing_key
 
-    print(signing_key)
+    print(UNLOCKED_WALLET)
+
 
 @click.command()
 @click.argument('address')
