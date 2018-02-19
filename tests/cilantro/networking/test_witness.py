@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.networking import Witness2
+from cilantro.networking import Witness
 from cilantro.proofs.pow import SHA3POW, POW
 from cilantro.networking import Masternode
 
@@ -10,7 +10,7 @@ class TestWitness(TestCase):
         self.sub_port = '8888'
         self.pub_port = '8080'
         self.hasher = SHA3POW
-        self.w = Witness2(sub_port=self.sub_port, pub_port=self.pub_port, hasher=POW)
+        self.w = Witness(sub_port=self.sub_port, pub_port=self.pub_port, hasher=POW)
 
     def tearDown(self):
         """
@@ -36,7 +36,9 @@ class TestWitness(TestCase):
         self.assertEqual({'status': 'Successfully published request'}, self.w.publish_req(json_dict))
 
     def test_publish_req_failure(self):
-        self.assertEqual({'status': 'Could not publish request'}, self.w.publish_req(json_dict))
+        json_dict = {"payload": {"to": "kevin", "amount": "900", "from": "davis", "type": "t"},
+                     "metadata": {"sig": "0x123", "proof": "4b5900f3a282a480d13a0164939a3c86"}}
+        self.assertEqual({'status': 'Could not publish request'}, self.w.publish_req(json_dict)['status'])
 
 
     def test_subscribing(self):

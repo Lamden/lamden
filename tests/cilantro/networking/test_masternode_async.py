@@ -1,4 +1,4 @@
-from cilantro.networking import Masternode2
+from cilantro.networking import Masternode
 from cilantro.serialization import JSONSerializer
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from aiohttp import web
@@ -10,17 +10,19 @@ class TestMasternodeAsync(AioHTTPTestCase):
     def setUp(self):
         self.host = '127.0.0.1'
         self.internal_port = '7777'
-        self.external_port = '8888'
+        self.external_port = '8080'
         self.serializer = JSONSerializer
 
-        self.mn = Masternode2(host=self.host, external_port=self.external_port, internal_port=self.internal_port)
+        self.mn = Masternode(host=self.host, external_port=self.external_port, internal_port=self.internal_port)
 
     def tearDown(self):
-        pass
+        print('tearing down')
+        self.mn.pub_socket.disconnect(self.mn.pub_url)
+        self.mn.ctx.destroy()
 
     async def get_application(self):
         app = web.Application()
-        app.router.add_post('/', Masternode2().process_request)
+        app.router.add_post('/', Masternode().process_request)
         return app
 
     @unittest_run_loop
@@ -30,7 +32,7 @@ class TestMasternodeAsync(AioHTTPTestCase):
         # payload = {"payload": {"to": "kevin”", "amount": "900", "from": "davis", "type": "t"}, "metadata": {"sig": "0x123", "proof": "c75ea80f6aa92f078e10a6b4837fac62"}}
         payload_bytes = TestMasternodeAsync.dict_to_bytes(payload)
 
-        self.mn.set_up_web_Server()
+        self.mn.setup_web_server()
 
         response = await self.client.request('POST', '/', data=payload_bytes)
         response_data = await response.content.read()

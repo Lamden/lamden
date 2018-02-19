@@ -74,3 +74,6 @@ class BaseNode(object):
 
         print("Successfully published request: {}".format(data))
         return {'status': 'Successfully published request: {}'.format(data)}
+
+    def disconnect(self):
+        self.ctx.destroy()

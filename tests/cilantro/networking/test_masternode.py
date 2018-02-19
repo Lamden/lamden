@@ -5,6 +5,9 @@ from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
 from cilantro.networking import Masternode
 import json
 
+'''
+    RUN MONGOD!!!
+'''
 
 class TestMasternode(TestCase):
     def setUp(self):
@@ -31,6 +34,7 @@ class TestMasternode(TestCase):
         """
         payload_str = {'payload': {'to': 'satoshi', 'amount': '100', 'from': 'nakamoto', 'type': 't'},
                          'metadata': {'sig': 'x287', 'proof': '000'}}
+
         self.assertTrue('error' in self.mn.process_transaction(data=payload_str))
 
     def test_process_transaction_fields(self):
