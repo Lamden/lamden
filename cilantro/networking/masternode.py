@@ -1,10 +1,12 @@
 import uvloop
-from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
+from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS, NTP_URL
 from cilantro.transactions.testnet import TestNetTransaction
 from cilantro.networking import BaseNode
 from aiohttp import web
 from cilantro.serialization import JSONSerializer
 import sys
+import ntplib
+import uuid
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
@@ -22,6 +24,7 @@ class Masternode(BaseNode):
     def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
         BaseNode.__init__(self, host=host, pub_port=internal_port, serializer=serializer)
         self.external_port = external_port
+        self.time_client = ntplib.NTPClient()
 
     def process_transaction(self, data: bytes):
         """
@@ -45,7 +48,10 @@ class Masternode(BaseNode):
             print(e)
             return {'error': TX_STATUS['INVALID_TX_FIELDS'].format(e)}
 
-        print('masternode publishing request: {}'.format(d))  # DEBUG LINE TODO: remove it
+        # Add timestamp and UUID
+        d['metadata']['timestamp'] = self.time_client.request(NTP_URL, version=3).tx_time
+        d['metadata']['uuid'] = str(uuid.uuid4())
+
         return self.publish_req(d)
 
     def __validate_transaction_length(self, data: bytes):

@@ -1,15 +1,6 @@
-import zmq
-from zmq.asyncio import Context
-import asyncio
-
-import sys
-if sys.platform != 'win32':
-    import uvloop
-
 from cilantro.serialization import JSONSerializer
-from cilantro.proofs.pow import SHA3POW, POW
+from cilantro.proofs.pow import SHA3POW
 from cilantro.networking import BaseNode
-import json
 
 
 '''
@@ -33,12 +24,6 @@ class Witness(BaseNode):
         except Exception as e:
             return {'status': 'Could not deserialize transaction'}
         payload_bytes = self.serializer.serialize(unpacked_data["payload"])
-
-        # DEBUG
-        print("request POW: {}\n".format(unpacked_data['metadata']['proof']))
-        print("request ")
-
-        # END DEBUG
 
         if self.hasher.check(payload_bytes, unpacked_data['metadata']['proof']):
             return self.publish_req(unpacked_data)
