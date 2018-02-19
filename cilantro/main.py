@@ -1,16 +1,21 @@
 import click
 import os
 from getpass import getpass
-from simplecrypt import encrypt, decrypt
 from cilantro.wallets import ED25519Wallet
 from datetime import datetime
 
 UNLOCKED_WALLET = None
 
+import nacl.secret
+import nacl.utils
 
 async def cli_loading_animation():
     pass
 
+def pad_bytes(b):
+    while len(b) < 32:
+        b += b'0'
+    return b
 
 @click.command()
 @click.option('--file_dir', default=None)
@@ -20,15 +25,18 @@ def new_wallet(file_dir):
 
     # securely get the password to salt the wallet signing key
     password = getpass('Enter a password to secure the wallet: ')
-    print('Generating wallet...')
 
-    # generate a new wallet
+    # size password to 32 bytes for ed25519 encryption
+    password = password.encode()[:32]
+    password = pad_bytes(password)
+    print(password)
+
+    box = nacl.secret.SecretBox(password)
+
     wallet = ED25519Wallet.new()
     signing_key = bytes.fromhex(wallet[0])
 
-    # encrypt with the password
-    print('Encrypting wallet...')
-    encrypted_wallet = encrypt(password, signing_key)
+    encrypted_wallet = box.encrypt(signing_key)
 
     print(encrypted_wallet)
 
@@ -36,13 +44,10 @@ def new_wallet(file_dir):
     now = datetime.utcnow()
     file_name = 'UTC-' + str(now).replace(' ', '-') + '.tau'
 
-    print('creating new wallet in {}'.format(os.path.join(file_dir, file_name)))
+    print('Generated new wallet in {}'.format(os.path.join(file_dir, file_name)))
 
     with open(os.path.join(file_dir, file_name), 'wb') as f:
         f.write(encrypted_wallet)
-
-    print('done')
-
 
 @click.command()
 @click.argument('address')
