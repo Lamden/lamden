@@ -10,6 +10,9 @@ from cilantro.interpreters.basic_interpreter import BasicInterpreter
 from cilantro.transactions.testnet import TestNetTransaction
 import time
 import sys
+import requests
+import hashlib
+import json
 if sys.platform != 'win32':
     pass
 
@@ -32,6 +35,7 @@ if sys.platform != 'win32':
         a push/pull pattern where all delegates push their state to sink that pulls them in, but this is centralized.
         another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
 """
+
 
 class Delegate(BaseNode):
     def __init__(self, host='127.0.0.1', sub_port='8888', serializer=JSONSerializer, hasher=POW, pub_port='7878'):
@@ -71,7 +75,24 @@ class Delegate(BaseNode):
 
     def perform_consensus(self):
         print('delegate performing consensus...')
-        pass
+
+        # TODO -- consensus
+
+        # Package block for transport
+        all_tx = self.queue.dequeue_all()
+        h = hashlib.sha3_256()
+        h.update(self.serializer.serialize(all_tx))
+        block = {'block': all_tx, 'hash': h.hexdigest()}
+
+        self.post_block(self.serializer.serialize(block))
+
+    def post_block(self, block: bytes):
+        print("Delegate posting block to masternode\nBlock binary: {}".format(block))
+        r = requests.post("http://127.0.0.1:8080/add_block", data=block)
+        if r.status_code == 200:
+            print('Delegate succesfully posted block to Masternode')
+        else:
+            print("Delegate had problem posting block to Masternode (status code={})".format(r.status_code))
 
     async def delegate_time(self):
         """Conditions to check that 1 second has passed"""

@@ -4,6 +4,7 @@ from cilantro.transactions.testnet import TestNetTransaction
 from cilantro.networking import BaseNode
 from aiohttp import web
 from cilantro.serialization import JSONSerializer
+from cilantro.db.masternode.blockchain_driver import BlockchainDriver
 import sys
 import ntplib
 import uuid
@@ -25,6 +26,7 @@ class Masternode(BaseNode):
         BaseNode.__init__(self, host=host, pub_port=internal_port, serializer=serializer)
         self.external_port = external_port
         self.time_client = ntplib.NTPClient()
+        self.db = BlockchainDriver()
 
     def process_transaction(self, data: bytes):
         """
@@ -54,6 +56,21 @@ class Masternode(BaseNode):
 
         return self.publish_req(d)
 
+    def add_block(self, data: bytes):
+        print("process block got raw data: {}".format(data))
+        d = None
+        try:
+            d = self.serializer.deserialize(data)
+            # TODO -- validate block
+            self.db.persist_block(d)
+            print("finished insert")
+        except Exception as e:
+            print("Error processing block: {}".format(e))
+            return {'error_status': 'Could not store block -- Error: {}'.format(e)}
+
+        print("Successfully stored block data: {}".format(d))
+        return {'status': "persisted block with data:\n{}".format(d)}
+
     def __validate_transaction_length(self, data: bytes):
         if not data:
             return False
@@ -63,11 +80,15 @@ class Masternode(BaseNode):
             return True
 
     async def process_request(self, request):
-        print(request.content.read())
         r = self.process_transaction(data=await request.content.read())
+        return web.Response(text=str(r))
+
+    async def process_block_request(self, request):
+        r = self.add_block(data=await request.content.read())
         return web.Response(text=str(r))
 
     def setup_web_server(self):
         app = web.Application()
         app.router.add_post('/', self.process_request)
+        app.router.add_post('/add_block', self.process_block_request)
         web.run_app(app, host=self.host, port=int(self.external_port))
