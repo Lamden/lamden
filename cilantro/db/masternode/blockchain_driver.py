@@ -21,8 +21,30 @@ class BlockchainDriver(object):
         new_hash = block['hash']
         if last_hash is None:
             self.col.insert_one({MONGO.latest_hash_key: new_hash})
+            last_hash = "genesis"
         else:
             self.col.update_one({MONGO.latest_hash_key: {'$exists': True}}, {'$set': {MONGO.latest_hash_key: new_hash}})
+            last_hash = last_hash[MONGO.latest_hash_key]
 
-        self.col.insert_one({'hash': new_hash, 'previous_hash': last_hash, 'block': block['block']})
+        block['previous_hash'] = last_hash
+        self.col.insert_one(block)
+        # self.col.insert_one({'hash': new_hash, 'previous_hash': last_hash[MONGO.latest_hash_key],
+        #                      'block_num': block['block_num'], 'transactions': block['transactions']})
+
+    def inc_block_number(self) -> int:
+        """
+        Increments the latest block number and returns it
+        :return: The latest block number, as an integer
+        """
+        block_num = self.col.find_one({MONGO.block_num_key: {'$exists': True}})
+        if block_num is None:
+            block_num = 1
+            self.col.insert_one({MONGO.block_num_key: block_num})
+        else:
+            block_num = int(block_num[MONGO.block_num_key])
+            block_num += 1
+
+        self.col.update_one({MONGO.block_num_key: {'$exists': True}}, {'$set': {MONGO.block_num_key: block_num}})
+        return block_num
+
 

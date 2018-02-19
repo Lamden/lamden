@@ -8,6 +8,7 @@ from cilantro.db.masternode.blockchain_driver import BlockchainDriver
 import sys
 import ntplib
 import uuid
+import hashlib
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
@@ -25,7 +26,7 @@ class Masternode(BaseNode):
     def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
         BaseNode.__init__(self, host=host, pub_port=internal_port, serializer=serializer)
         self.external_port = external_port
-        self.time_client = ntplib.NTPClient()
+        # self.time_client = ntplib.NTPClient()  TODO -- investigate why we can't query NTP_URL with high frequency
         self.db = BlockchainDriver()
 
     def process_transaction(self, data: bytes):
@@ -51,7 +52,7 @@ class Masternode(BaseNode):
             return {'error': TX_STATUS['INVALID_TX_FIELDS'].format(e)}
 
         # Add timestamp and UUID
-        d['metadata']['timestamp'] = self.time_client.request(NTP_URL, version=3).tx_time
+        # d['metadata']['timestamp'] = self.time_client.request(NTP_URL, version=3).tx_time
         d['metadata']['uuid'] = str(uuid.uuid4())
 
         return self.publish_req(d)
@@ -62,11 +63,25 @@ class Masternode(BaseNode):
         try:
             d = self.serializer.deserialize(data)
             # TODO -- validate block
+        except Exception as e:
+            print("Error deserializing block: {}".format(e))
+            return {'error_status': 'Could not deserialize block -- Error: {}'.format(e)}
+
+        # Add block hash and number
+        all_tx = d['transactions']
+        block_num = self.db.inc_block_number()
+        h = hashlib.sha3_256()
+        h.update(self.serializer.serialize(all_tx) + block_num.to_bytes(8, 'little'))
+        d['block_num'] = block_num
+        d['hash'] = h.hexdigest()
+
+        try:
+            print("persisting block...")
             self.db.persist_block(d)
             print("finished insert")
         except Exception as e:
-            print("Error processing block: {}".format(e))
-            return {'error_status': 'Could not store block -- Error: {}'.format(e)}
+            print("Error persisting block: {}".format(e))
+            return {'error_status': 'Could not persist block -- Error: {}'.format(e)}
 
         print("Successfully stored block data: {}".format(d))
         return {'status': "persisted block with data:\n{}".format(d)}

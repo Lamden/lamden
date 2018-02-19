@@ -80,9 +80,10 @@ class Delegate(BaseNode):
 
         # Package block for transport
         all_tx = self.queue.dequeue_all()
-        h = hashlib.sha3_256()
-        h.update(self.serializer.serialize(all_tx))
-        block = {'block': all_tx, 'hash': h.hexdigest()}
+        # h = hashlib.sha3_256()
+        # h.update(self.serializer.serialize(all_tx))
+        # block = {'block': all_tx, 'hash': h.hexdigest()}
+        block = {'transactions': all_tx}
 
         self.post_block(self.serializer.serialize(block))
 
