@@ -1,44 +1,55 @@
-import json
 import redis
 from cilantro.networking.delegate import Delegate
 from cilantro.db.constants import *
 import json
 from cilantro.wallets.ed25519 import ED25519Wallet
+from cilantro.proofs.pow import SHA3POW
+from cilantro.serialization.json_serializer import JSONSerializer
+
+r = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 def encode_tx(tx):
     return json.dumps(tx).encode()
 
-def flush_scratch(r):
+def flush_scratch():
     print('flushing scratch...')
     for key in r.hscan_iter(SCRATCH_KEY):
         r.hdel(SCRATCH_KEY, key[0])
 
-def flush_queue(r):
+def flush_queue():
     print('flushing queue...')
     queue_len = r.llen(QUEUE_KEY)
     for _ in range(queue_len):
         r.lpop(QUEUE_KEY)
 
-def flush_transactions(r):
+def flush_transactions():
     print('flushing transactions...')
     for key in r.hscan_iter(TRANSACTION_KEY):
         r.hdel(TRANSACTION_KEY, key[0])
 
-def print_status(r):
-    print('-----------------------------------')
-    print('BALANCES')
-    print(r.hgetall(BALANCE_KEY))
-    print('-----------------------------------')
-    print('SCRATCH')
-    print(r.hgetall(SCRATCH_KEY))
-    print('-----------------------------------')
-    print('TRANSACTIONS')
-    print(r.hgetall(TRANSACTION_KEY))
-    print('-----------------------------------')
-    print('QUEUE')
+def print_balance():
+    for person, balance in r.hgetall(BALANCE_KEY).items():
+        print("{} : {}".format(person, balance))
+
+def print_scratch():
+    for person, balance in r.hgetall(SCRATCH_KEY).items():
+        print("{} : {}".format(person, balance))
+
+def print_queue()
     queue_len = r.llen(QUEUE_KEY)
     for x in r.lrange(QUEUE_KEY, 0, queue_len):
         print(x)
+
+def print_status():
+    print('-----------------------------------')
+    print('BALANCES')
+    print_balance()
+    print('-----------------------------------')
+    print('SCRATCH')
+    print_scratch()
+    print('-----------------------------------')
+    print('QUEUE')
+    print_queue()
     print('-----------------------------------\n')
 
 def create_std_tx(sender: tuple, recipient: tuple, amount: float):
@@ -49,9 +60,10 @@ def create_std_tx(sender: tuple, recipient: tuple, amount: float):
     :param amount: The amount to send
     :return:
     """
-    tx = {'payload': {'to': recipient[1], 'amount': str(amount), 'from': sender[1], 'type':'t'}, 'metadata':
-         {'sig':'???', 'proof': '000'}}
-    tx['metadata']['signature'] = ED25519Wallet.sign(sender[0], json.dumps(tx['payload']).encode())
+    tx = {"payload": {"to": recipient[1], "amount": str(amount), "from": sender[1], "type":"t"}, "metadata": {}}
+    # tx["metadata"]["proof"] = SHA3POW.find(json.dumps(tx["payload"]).encode())[0]
+    tx["metadata"]["proof"] = SHA3POW.find(JSONSerializer.serialize(tx["payload"]))[0]
+    tx["metadata"]["signature"] = ED25519Wallet.sign(sender[0], json.dumps(tx["payload"]).encode())
     return tx
 
 
@@ -65,14 +77,13 @@ DENTON = ('c139bb396b4f7aa0bea43098a52bd89e411ef31dccd1497f4d27da5f63c53b49',
 NEW_GUY = ('31935ede01db774f539133aa5a7017c734338e4c2d3d580f36fedf9921222abe',
            'a7bb55132f737c953ae6f8d159648815df1145fd0bf5c88ee757a096c19f4f6b')
 
-r = redis.StrictRedis(host='localhost', port=6379, db=0)
 d = Delegate()
 trans = []
 
 # Reset the Redis DBE
-flush_queue(r)
-flush_scratch(r)
-flush_transactions(r)
+flush_queue()
+flush_scratch()
+flush_transactions()
 
 trans.append(create_std_tx(STU, DAVIS, 125))
 trans.append(create_std_tx(DAVIS, DENTON, 350))
