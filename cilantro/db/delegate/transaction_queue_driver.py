@@ -32,7 +32,7 @@ class TransactionQueueDriver(DriverBase):
 
         return RS.tuple_from_str(RS.str(self.r.lpop(QUEUE_KEY)))
 
-    def empty_queue_iter(self) -> Generator[tuple, None, None]:
+    def dequeue_all_iter(self) -> Generator[tuple, None, None]:
         """
         Returns a generator that yields all transactions in the queue, in FIFO order. This dequeues transactions at
         each yield. Note: this will empty the queue as it iterates over
@@ -43,7 +43,7 @@ class TransactionQueueDriver(DriverBase):
             yield self.dequeue_transaction()
             size -= 1
 
-    def empty_queue(self) -> List[tuple]:
+    def dequeue_all(self) -> List[tuple]:
         """
         Flushes the queue and returns all transactions as a list in FIFI order
         :return: A list containing all the transaction tuples in the queue in FIFO order

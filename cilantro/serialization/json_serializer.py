@@ -7,29 +7,24 @@ import zmq
     Takes bytes on the wire and transforms them into JSON objects to send through ZMQ
     Not for production, but good for testing.
 '''
+
+
 class JSONSerializer(Serializer):
     @staticmethod
-    def serialize(d: dict):
+    def serialize(d: dict) -> bytes:
         """
         Convert dict -> bytes
         :param d: dict
         :return: bytes
         """
-        try:
-            return str.encode(json.dumps(d))
-        except Exception as e:
-            print(e)
-            return {'error status': e}
+        # NOTE: it is imperative to sort the keys when serializing otherwise the hashcash will very likely fail
+        return json.dumps(d, sort_keys=True).encode()
 
     @staticmethod
-    def deserialize(b: bytes):
+    def deserialize(b: bytes) -> dict:
         """
         bytes -> dict
-        :param d:
-        :return:
+        :param b: Bytes to load as json
+        :return: a dictionary
         """
-        try:
-            return json.loads(b.decode())
-        except Exception as e:
-            print(e)
-            return{'error status': e}
+        return json.loads(b.decode())

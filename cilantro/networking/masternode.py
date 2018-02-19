@@ -1,12 +1,15 @@
 import uvloop
-from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
+from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS, NTP_URL
 from cilantro.transactions.testnet import TestNetTransaction
 from cilantro.networking import BaseNode
 from aiohttp import web
+from cilantro.serialization import JSONSerializer
+from cilantro.db.masternode.blockchain_driver import BlockchainDriver
 import sys
+import ntplib
+import uuid
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
-from cilantro.serialization import JSONSerializer
 
 '''
     Masternode
@@ -16,18 +19,20 @@ from cilantro.serialization import JSONSerializer
     They have no say as to what is 'right,' as governance is ultimately up to the network. However, they can monitor
     the behavior of nodes and tell the network who is misbehaving. 
 '''
+
+
 class Masternode(BaseNode):
     def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
         BaseNode.__init__(self, host=host, pub_port=internal_port, serializer=serializer)
-        self.external_port = external_port  # port to run server
-        # Debugger
-        self.counter = 0
+        self.external_port = external_port
+        self.time_client = ntplib.NTPClient()
+        self.db = BlockchainDriver()
 
     def process_transaction(self, data: bytes):
         """
-        Validates the POST Request from Client
-        :param data:
-        :return:
+        Validates the POST Request from Client, and publishes it to Witnesses
+        :param data: binary encoded JSON data from the user's POST request
+        :return: A dictionary indicating the status of Masternode's attempt to publish the request to witnesses
         """
         # 1) Validate transaction size
         if not self.__validate_transaction_length(data):
@@ -44,25 +49,46 @@ class Masternode(BaseNode):
         except Exception as e:
             print(e)
             return {'error': TX_STATUS['INVALID_TX_FIELDS'].format(e)}
-        # Debugger
-        self.counter+=1
-        print(self.counter)
+
+        # Add timestamp and UUID
+        d['metadata']['timestamp'] = self.time_client.request(NTP_URL, version=3).tx_time
+        d['metadata']['uuid'] = str(uuid.uuid4())
+
         return self.publish_req(d)
 
+    def add_block(self, data: bytes):
+        print("process block got raw data: {}".format(data))
+        d = None
+        try:
+            d = self.serializer.deserialize(data)
+            # TODO -- validate block
+            self.db.persist_block(d)
+            print("finished insert")
+        except Exception as e:
+            print("Error processing block: {}".format(e))
+            return {'error_status': 'Could not store block -- Error: {}'.format(e)}
+
+        print("Successfully stored block data: {}".format(d))
+        return {'status': "persisted block with data:\n{}".format(d)}
+
     def __validate_transaction_length(self, data: bytes):
-        if not data: #if data is None
+        if not data:
             return False
-        elif len(data) >= MAX_REQUEST_LENGTH:
+        elif sys.getsizeof(data) >= MAX_REQUEST_LENGTH:
             return False
         else:
             return True
 
     async def process_request(self, request):
-        print(request.content.read())
         r = self.process_transaction(data=await request.content.read())
+        return web.Response(text=str(r))
+
+    async def process_block_request(self, request):
+        r = self.add_block(data=await request.content.read())
         return web.Response(text=str(r))
 
     def setup_web_server(self):
         app = web.Application()
         app.router.add_post('/', self.process_request)
+        app.router.add_post('/add_block', self.process_block_request)
         web.run_app(app, host=self.host, port=int(self.external_port))
