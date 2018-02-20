@@ -85,7 +85,6 @@ class Delegate(BaseNode):
     def perform_consensus(self):
         if self.queue.queue_size() <= 0:
             print("queue is empty, doing nothing")
-            return
 
         print('delegate performing consensus...')
 
