@@ -10,8 +10,7 @@ import sys
 import requests
 import hashlib
 import json
-if sys.platform != 'win32':
-    pass
+
 
 
 """

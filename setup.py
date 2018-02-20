@@ -22,7 +22,7 @@ setup(
     long_description=open('README.md').read(),
     url='https://github.com/Lamden/cilantro',
     author='Lamden',
-    email='developers@lamden.io',
+    email='team@lamden.io',
     classifiers=[
         'Programming Language :: Python :: 3.6',
     ],
