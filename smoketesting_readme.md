@@ -1,0 +1,157 @@
+This describes spinning up a masternode + witness+ delegate, and how run test transaction through them.
+
+## PREREQUISITES:
+- Make sure mongo and redis are running in the background (run ```sudo mongod``` and ```redis-server``` in seperate terminal tabs)
+
+## Spinning up instances
+Open 3 separate terminal tabs, and spin up a masternode, delegate, witness in each.
+
+### Masternode
+```python
+from cilantro.networking.masternode import Masternode
+from aiohttp import web
+
+node = Masternode()
+app = web.Application()
+
+app.router.add_post('/', node.process_request)
+app.router.add_post('/add_block', node.process_block_request)
+web.run_app(app, host="127.0.0.1", port=int(node.external_port))
+```
+### Witness
+```python
+from cilantro.networking.witness import Witness
+w = Witness()
+w.start_async()
+```
+
+### Delegate
+```python
+from cilantro.networking.delegate import Delegate
+d = Delegate()
+d.start_async()
+```
+
+## Creating test transactions
+With all 3 nodes up and running, you should now be able to send transactions as POST requests to masternode at the localhost:8080/ endpoint
+
+Here are some utility methods for creating signed standard transactions. 
+I recommend you just copy and paste them into a ipython terminal and invoke them ad-hoc.
+The tuples STU/DENTON/DAVIS contain the (signing_key, verifying_key) for each of us, and we each have some funds seeded in the genesis block.
+
+```python
+import json
+from cilantro.wallets.ed25519 import ED25519Wallet
+from cilantro.proofs.pow import SHA3POW
+from cilantro.serialization.json_serializer import JSONSerializer
+
+def create_std_tx(sender: tuple, recipient: tuple, amount: float):
+    """
+    Utility method to create signed transaction
+    :param sender: A tuple containing the (signing_key, verifying_key) of the sender
+    :param recipient: A tuple containing the (signing_key, verifying_key) of the recipient
+    :param amount: The amount to send
+    :return: The transaction as a dictionary
+    """
+    tx = {"payload": {"to": recipient[1], "amount": str(amount), "from": sender[1], "type":"t"}, "metadata": {}}
+    # tx["metadata"]["proof"] = SHA3POW.find(json.dumps(tx["payload"]).encode())[0]
+    tx["metadata"]["proof"] = SHA3POW.find(JSONSerializer.serialize(tx["payload"]))[0]
+    tx["metadata"]["signature"] = ED25519Wallet.sign(sender[0], json.dumps(tx["payload"]).encode())
+    return tx
+    
+STU = ('373ac0ec93038e4235c4716183afe55dab95f5d780415f60e7dd5363a2d2fd10',
+       '403619540f4dfadc2da892c8d37bf243cd8d5a8e6665bc615f6112f0c93a3b09')
+DAVIS = ('1f4be9265694ec059e11299ab9a5edce314f28accab38e09d770af36b1edaa27',
+         '6fbc02647179786c10703f7fb82e625c05ede8787f5eeff84c5d9be03ff59ce8')
+DENTON = ('c139bb396b4f7aa0bea43098a52bd89e411ef31dccd1497f4d27da5f63c53b49',
+          'a86f22eabd53ea84b04e643361bd59b3c7b721b474b986ab29be10af6bcc0af1')
+```
+
+To create a standard transaction from Stu to Davis for 10 dollars, you would call
+```python
+tx = create_std_tx(STU, DAVIS, 10)
+```
+Then just print the transaction and copy the dictionary to your clipboard
+
+### Sending Transaction to Masternode
+
+Now, either create a python request object and send this post data programatically, or more easily use Postmates (or some other UI for sending post requests).
+If you use postmates, you will very likely have to convert all the single quotes to double quotes. To quickly do this, copy the dictionary to your clipboard, open a terminal, and run:
+```
+echo `pbpaste` | sed "s/\'/\"/g" | `pbcopy`
+```
+And the transcation dictionary with double quotes will be copied to your clipboard.
+
+POST the transaction dictionary in the transaction body (raw format) to http://127.0.0.1:8080/ and it should go through the system.
+
+### Viewing Results
+Much of the output can be seen in terminals running masternode/witness/delegate. To check out the scratch state and transaction queue, here are some helper methods.
+I just recommend you copy/paste them into an ipython terminal.
+```python
+import redis
+from cilantro.db.constants import *
+import json
+from cilantro.wallets.ed25519 import ED25519Wallet
+from cilantro.proofs.pow import SHA3POW
+from cilantro.serialization.json_serializer import JSONSerializer
+
+r = redis.StrictRedis(host='localhost', port=6379, db=0)
+
+BALANCE_KEY = 'BALANCE'
+SCRATCH_KEY = 'SCRATCH'
+QUEUE_KEY = 'QUEUE'
+TRANSACTION_KEY = 'TRANSACTION'
+
+def encode_tx(tx):
+    return json.dumps(tx).encode()
+
+def flush_scratch():
+    print('flushing scratch...')
+    for key in r.hscan_iter(SCRATCH_KEY):
+        r.hdel(SCRATCH_KEY, key[0])
+
+def flush_queue():
+    print('flushing queue...')
+    queue_len = r.llen(QUEUE_KEY)
+    for _ in range(queue_len):
+        r.lpop(QUEUE_KEY)
+
+def flush_transactions():
+    print('flushing transactions...')
+    for key in r.hscan_iter(TRANSACTION_KEY):
+        r.hdel(TRANSACTION_KEY, key[0])
+        
+def print_balance():
+    for person, balance in r.hgetall(BALANCE_KEY).items():
+        print("{} : {}".format(person, balance))
+        
+def print_scratch():
+    for person, balance in r.hgetall(SCRATCH_KEY).items():
+        print("{} : {}".format(person, balance))
+        
+def print_queue():
+    queue_len = r.llen(QUEUE_KEY)
+    for x in r.lrange(QUEUE_KEY, 0, queue_len):
+        print(x)
+        
+def print_status():
+    print('-----------------------------------')
+    print('BALANCES')
+    print_balance()
+    print('-----------------------------------')
+    print('SCRATCH')
+    print_scratch()
+    print('-----------------------------------')
+    print('QUEUE')
+    print_queue()
+    print('-----------------------------------\n')
+```
+
+To check out the cold storage, you would have to just open a Mongo CLI and run command on the cilantro db. I haven't written a python wrapper for this yet, but you can checkout the code in blockchain_driver.py if you want to look at the cold storage using python.
+
+
+
+
+
+
+
