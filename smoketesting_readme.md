@@ -185,7 +185,7 @@ A signed transaction from Stu to Davis for 10 coin:
 ```
 
 ## Example Postman Transaction 
-![alt text](https://imgur.com/a/JIfC8 "Examples Postman Request")
+![alt text](https://i.imgur.com/dMGVYaG.png "Examples Postman Request")
 
 
 
