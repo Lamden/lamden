@@ -1,7 +1,25 @@
 This describes spinning up a masternode + witness+ delegate, and how run test transaction through them.
 
 ## PREREQUISITES:
+### Spin up servers
 - Make sure mongo and redis are running in the background (run ```sudo mongod``` and ```redis-server``` in seperate terminal tabs)
+### Set balances in redis
+In reality, this would be done by the delegates querying masternode for the latest state when they boot up, but for now it has to be done manually. In a python terminal, run this:
+```python
+import redis
+r = redis.StrictRedis(host='localhost', port=6379, db=0)
+BALANCE_KEY = 'BALANCE'
+STU = ('373ac0ec93038e4235c4716183afe55dab95f5d780415f60e7dd5363a2d2fd10',
+       '403619540f4dfadc2da892c8d37bf243cd8d5a8e6665bc615f6112f0c93a3b09')
+DAVIS = ('1f4be9265694ec059e11299ab9a5edce314f28accab38e09d770af36b1edaa27',
+         '6fbc02647179786c10703f7fb82e625c05ede8787f5eeff84c5d9be03ff59ce8')
+DENTON = ('c139bb396b4f7aa0bea43098a52bd89e411ef31dccd1497f4d27da5f63c53b49',
+          'a86f22eabd53ea84b04e643361bd59b3c7b721b474b986ab29be10af6bcc0af1')
+
+r.hset(BALANCE_KEY, STU[1], 1000)
+r.hset(BALANCE_KEY, DAVIS[1], 500)
+r.hset(BALANCE_KEY, DENTON[1], 750)
+```
 
 ## Spinning up instances
 Open 3 separate terminal tabs, and spin up a masternode, delegate, witness in each.
