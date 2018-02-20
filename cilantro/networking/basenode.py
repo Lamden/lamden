@@ -20,11 +20,9 @@ class BaseNode(object):
         self.pub_url = 'tcp://{}:{}'.format(self.host, self.pub_port)
         self.serializer = serializer
 
-        self.ctx = zmq.Context()
-        self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
-        self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
-        self.pub_socket.connect(self.pub_url)
-
+        self.ctx = None
+        self.sub_socket = None
+        self.pub_socket = None
         self.loop = None
 
     def start_listening(self):
@@ -35,6 +33,11 @@ class BaseNode(object):
             print(e)
 
     def start_subscribing(self):
+        self.ctx = zmq.Context()
+        self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
+        self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
+
+        self.pub_socket.connect(self.pub_url)
         self.sub_socket.bind(self.sub_url)
         self.sub_socket.subscribe(b'')
 
