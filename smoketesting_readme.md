@@ -102,8 +102,9 @@ And the transcation dictionary with double quotes will be copied to your clipboa
 
 Set the transaction dictionary in the transaction body (raw format), and send a POST request to http://127.0.0.1:8080/ and it should go through the system.
 
-### Viewing Results
-## Delegate State
+## Viewing Results
+
+### Delegate State
 Delegate keeps track of the real-time state of balances using Redis. Much of the output can be seen in terminals running masternode/witness/delegate. To check out the scratch state and transaction queue, here are some helper methods.
 I just recommend you just copy/paste them into an ipython terminal.
 ```python
@@ -183,7 +184,7 @@ flush_scratch()
 
 To check out the cold storage, you would have to just open a Mongo CLI and run command on the cilantro db. (I haven't written a python wrapper for this yet, but you can checkout the code in blockchain_driver.py if you want to look at the cold storage using python)
 
-## Cold Storage (Masternode)
+### Cold Storage (Masternode)
 Masternode holds the entire blockchain, as well as a dictionary of the latest balances. To view this data, use the Mongo CLI.
 First open a new tab in terminal, and run ```mongo``` to start the CLI.
 Then run:
@@ -192,11 +193,11 @@ use cilantro
 ```
 To select the cilantro database. You can now use the commands below to view the blockchain and latest balances.
 
-# To view the entire blockchain:
+#### To view the entire blockchain:
 ```
 db['blockchain'].find({}).pretty()
 ```
-# To view the balances:
+#### To view the balances:
 ```
 db['balances'].find({}).pretty()
 ```
