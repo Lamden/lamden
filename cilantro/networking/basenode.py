@@ -27,12 +27,14 @@ class BaseNode(object):
 
     def start_listening(self):
         try:
-            t = Thread(target=self.start_subscribing)
+            loop = asyncio.new_event_loop()
+            t = Thread(target=self.start_subscribing, args=(loop,))
             t.start()
         except Exception as e:
             print(e)
 
-    def start_subscribing(self):
+    def start_subscribing(self, loop):
+        asyncio.set_event_loop(loop)
         self.ctx = zmq.Context()
         self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
         self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
@@ -43,9 +45,9 @@ class BaseNode(object):
 
         while True:
             req = self.sub_socket.recv()
-            self.handle_req(req)
+            asyncio.ensure_future(self.handle_req(req))
 
-    def handle_req(self, data: bytes):
+    async def handle_req(self, data: bytes):
         """
         Callback that is executed when the node receives data from its subscriber port. This should be
         overridden by child classes
