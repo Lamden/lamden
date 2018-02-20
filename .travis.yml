@@ -6,6 +6,8 @@ before_install:
 install:
   - pip install -r requirements.txt
   - pip install coverage
+scripts:
+  - nosetests tests
 notifications:
   webhooks:
     - https://lamden-discord-travisci.herokuapp.com/webhook/
