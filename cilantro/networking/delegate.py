@@ -8,8 +8,7 @@ from cilantro.transactions.testnet import TestNetTransaction
 import time
 import sys
 import requests
-import hashlib
-import json
+import asyncio
 if sys.platform != 'win32':
     pass
 
@@ -41,11 +40,12 @@ class Delegate(BaseNode):
         self.last_flush_time = time.time()
         self.queue = TransactionQueueDriver()
         self.interpreter = BasicInterpreter()
+        self.timer_flag = None
 
-    def process_transaction(self, data: bytes=None):
+    async def process_transaction(self, data: bytes=None):
         """
         Processes a transaction from witness. This first feeds it through the interpreter, and if
-        no errors are thrown, then adds the transaction to the queue.
+        no errors are thrown, then adds the transaction to the queue. Then flushes queue to perform consensus.
         :param data: The raw transaction data, assumed to be in byte format
         :return:
         """
@@ -60,13 +60,18 @@ class Delegate(BaseNode):
             print("Error in delegate process transaction: {}".format(e))
             return {'error_status': 'Delegate error processing transaction: {}'.format(e)}
 
-        self.queue.enqueue_transaction(tx.payload['payload'])
-        if self.queue.queue_size() > MAX_QUEUE_SIZE:
-            print('queue exceeded max size, flushing queue')
-            self.perform_consensus()
-        elif time.time() - self.last_flush_time >= QUEUE_AUTO_FLUSH_TIME:
-            print('time since last queue flush exceeded, flushing queue')
-            self.perform_consensus()
+        self.queue.enqueue_transaction(tx.payload['payload'])  # put transaction into queue
+
+        asyncio.ensure_future(self.flush_time())  # fire and forget function that returns after flush time (1 second)
+
+        self.timer_flag = 0 #  blocking??? :/
+        while not self.timer_flag:
+            if self.queue.queue_size() > MAX_QUEUE_SIZE:
+                print('queue exceeded max size, flushing queue')
+                self.perform_consensus()
+            else:
+                print('time since last queue flush exceeded, flushing queue')
+                self.perform_consensus()
 
         return {'success': 'delegate processed transaction: {}'.format(d)}
 
@@ -99,8 +104,6 @@ class Delegate(BaseNode):
         else:
             print("Delegate had problem posting block to Masternode (status code={})".format(r.status_code))
 
-    async def delegate_time(self):
-        """Conditions to check that 1 second has passed"""
-        start_time = time.time()
-        await time.sleep(1.0 - ((time.time() - start_time) % 1.0))
-        return True
+    async def flush_time(self):
+        await asyncio.sleep(QUEUE_AUTO_FLUSH_TIME)
+        self.timer_flag = 1
