@@ -22,11 +22,16 @@ MG = namedtuple('MongoConstants',
                 'latest_block_num_key '
                 'balances_col_name '
                 'genesis_key '
-                'blocks_state_col_name ')
+                'blocks_state_col_name '
+                'wallet_key '
+                'balance_key')
+
 MONGO = MG('cilantro',
            'blockchain',
            'latest_hash',
            'latest_block_num',
            'balances',
            'is_genesis',
-           'blockchain_state')
+           'blockchain_state',
+           'wallet',
+           'balance')
