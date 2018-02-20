@@ -6,7 +6,7 @@ before_install:
 install:
   - pip install coverage
   - python setup.py develop
-script: python -m unittest discover -s ./tests
+script: python unittest discover -s ./tests
 notifications:
   webhooks:
     - https://lamden-discord-travisci.herokuapp.com/webhook/
