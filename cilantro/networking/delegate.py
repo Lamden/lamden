@@ -42,6 +42,8 @@ class Delegate(BaseNode):
         self.interpreter = BasicInterpreter()
         self.timer_flag = None
 
+        # asyncio.ensure_future(self.flush_time())  # fire and forget function that returns after flush time (1 second)
+
     async def process_transaction(self, data: bytes=None):
         """
         Processes a transaction from witness. This first feeds it through the interpreter, and if
@@ -60,6 +62,8 @@ class Delegate(BaseNode):
             print("Error in delegate process transaction: {}".format(e))
             return {'error_status': 'Delegate error processing transaction: {}'.format(e)}
 
+        print('queueing tx : {}'.format(d))
+
         self.queue.enqueue_transaction(tx.payload['payload'])  # put transaction into queue
 
         asyncio.ensure_future(self.flush_time())  # fire and forget function that returns after flush time (1 second)
@@ -76,9 +80,13 @@ class Delegate(BaseNode):
         return {'success': 'delegate processed transaction: {}'.format(d)}
 
     async def handle_req(self, data: bytes=None):
-        return self.process_transaction(data=data)
+        return await self.process_transaction(data=data)
 
     def perform_consensus(self):
+        if self.queue.queue_size() <= 0:
+            print("queue is empty, doing nothing")
+            return
+
         print('delegate performing consensus...')
 
         # TODO -- consensus
@@ -105,5 +113,7 @@ class Delegate(BaseNode):
             print("Delegate had problem posting block to Masternode (status code={})".format(r.status_code))
 
     async def flush_time(self):
+        print('waiting a second')
         await asyncio.sleep(QUEUE_AUTO_FLUSH_TIME)
+        print('second over')
         self.timer_flag = 1
