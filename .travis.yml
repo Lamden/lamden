@@ -4,8 +4,8 @@ python:
 before_install:
   - sudo apt-get install software-properties-common
 install:
-  - pip install -r requirements.txt
   - pip install coverage
+  - python setup.py develop
 scripts:
   - nosetests tests
 notifications:
