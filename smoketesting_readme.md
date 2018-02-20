@@ -178,6 +178,14 @@ ect, ect.
 To check out the cold storage, you would have to just open a Mongo CLI and run command on the cilantro db. I haven't written a python wrapper for this yet, but you can checkout the code in blockchain_driver.py if you want to look at the cold storage using python.
 
 
+## Example Signed Transaction 
+A signed transaction from Stu to Davis for 10 coin:
+```
+{"metadata": {"proof": "eca5be799af673635fab49bddbb2c4c0", "signature": "16b42ba1ebb5f6be0e90da12c4a282e38ce9b3c857d78e3842082ffcfa52e7041266549a5946daee82777fb71a17bbb000b765c38c3efd9913178c93912fd7077b22746f223a202236666263303236343731373937383663313037303366376662383265363235633035656465383738376635656566663834633564396265303366663539636538222c2022616d6f756e74223a2022313030222c202266726f6d223a202234303336313935343066346466616463326461383932633864333762663234336364386435613865363636356263363135663631313266306339336133623039222c202274797065223a202274227d"}, "payload": {"amount": "100", "from": "403619540f4dfadc2da892c8d37bf243cd8d5a8e6665bc615f6112f0c93a3b09", "to": "6fbc02647179786c10703f7fb82e625c05ede8787f5eeff84c5d9be03ff59ce8", "type": "t"}}
+```
+
+## Example Postman Transaction 
+![alt text](https://imgur.com/a/JIfC8 "Examples Postman Request")
 
 
 
