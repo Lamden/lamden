@@ -18,9 +18,6 @@ class TestBaseNode(TestCase):
 
         self.b = MockBaseNode(host=self.host, sub_port=self.sub_port, pub_port=self.pub_port, serializer=self.serializer)
 
-    def tearDown(self):
-        self.b.disconnect()
-
     def test_sanity(self):
         self.assertEqual(1, 1)
 
@@ -29,6 +26,7 @@ class TestBaseNode(TestCase):
         self.assertEqual(self.b.sub_port, self.sub_port)
         self.assertEqual(self.b.pub_port, self.pub_port)
         self.assertEqual(self.b.serializer, JSONSerializer)
+        self.b.disconnect()
 
     def test_send_json(self):
         test_json = {
@@ -37,6 +35,7 @@ class TestBaseNode(TestCase):
 
         response = self.b.publish_req(test_json)
         self.assertEqual(response['status'], "Successfully published request: {'something': 'something'}")
+        self.b.disconnect()
 
     def test_send_bad_json(self):
         test_json = b'd34db33f'
@@ -47,11 +46,9 @@ class TestBaseNode(TestCase):
         except Exception as e:
             self.assertEqual(1, 1)
 
-    async def ass(self):
-        print('ass')
+        self.b.disconnect()
 
-    def test_async(self):
-        self.b.start_async(is_testing=True)
-        self.b.loop.create_task(self.ass())
-        #self.b.loop.run_until_complete()
-        print(self.b.loop)
+    def test_listen(self):
+        self.b.start_listening()
+        print('ass')
+        self.b.disconnect()

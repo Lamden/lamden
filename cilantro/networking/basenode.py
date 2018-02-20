@@ -3,10 +3,13 @@ import uvloop
 import zmq
 from zmq.asyncio import Context
 from concurrent.futures import ThreadPoolExecutor
+import sys
+
+from threading import Thread
 
 # Using UV Loop for EventLoop, instead aysncio's event loop
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
+if sys.platform != 'win32':
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class BaseNode(object):
     def __init__(self, host=None, sub_port=None, pub_port=None, serializer=None):
@@ -17,43 +20,29 @@ class BaseNode(object):
         self.pub_url = 'tcp://{}:{}'.format(self.host, self.pub_port)
         self.serializer = serializer
 
-        self.ctx = Context()
+        self.ctx = zmq.Context()
         self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
         self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
         self.pub_socket.connect(self.pub_url)
 
         self.loop = None
 
-        self.executor = ThreadPoolExecutor(max_workers=5)
-
-    def start_async(self, is_testing=False):
+    def start_listening(self):
         try:
-            self.loop = asyncio.get_event_loop()
-            if not is_testing:
-                self.loop.run_until_complete(self.start_subscribing())
+            t = Thread(target=self.start_subscribing)
+            t.start()
         except Exception as e:
-            print("Error starting subscriber event loop: {}".format(e))
+            print(e)
 
-    async def start_subscribing(self):
-        """
-        Start subscribing to requests on self.pub_socket (currently with no filters)
-        TODO -- add support for subscribing with filters
-        :return: A dictionary indicating the status of the publish attempt
-        """
-        try:
-            self.sub_socket.bind(self.sub_url)
-            self.sub_socket.subscribe(b'')
-        except Exception as e:
-            print("Error subscribing to socket {}, error: {}".format(self.sub_url, e))
-            return {'status': 'Could not open/bind sub_socket'}
+    def start_subscribing(self):
+        self.sub_socket.bind(self.sub_url)
+        self.sub_socket.subscribe(b'')
 
         while True:
-            print("Subscriber waiting for data...")
-            req = await self.sub_socket.recv()
-            print('Subscriber received data: ', req)
-            await self.handle_req(req)
+            req = self.sub_socket.recv()
+            self.handle_req(req)
 
-    async def handle_req(self, data: bytes):
+    def handle_req(self, data: bytes):
         """
         Callback that is executed when the node receives data from its subscriber port. This should be
         overridden by child classes
