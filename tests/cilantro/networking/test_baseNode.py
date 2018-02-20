@@ -26,9 +26,9 @@ class TestBaseNode(TestCase):
         self.assertEqual(self.b.sub_port, self.sub_port)
         self.assertEqual(self.b.pub_port, self.pub_port)
         self.assertEqual(self.b.serializer, JSONSerializer)
-        self.b.disconnect()
 
     def test_send_json(self):
+        self.b.start_listening()
         test_json = {
             'something' : 'something'
         }
@@ -38,6 +38,7 @@ class TestBaseNode(TestCase):
         self.b.disconnect()
 
     def test_send_bad_json(self):
+        self.b.start_listening()
         test_json = b'd34db33f'
 
         try:
@@ -46,9 +47,13 @@ class TestBaseNode(TestCase):
         except Exception as e:
             self.assertEqual(1, 1)
 
-        self.b.disconnect()
+        from contextlib import suppress
+        from zmq.error import ContextTerminated
+        with suppress(Exception):
+            self.b.disconnect()
 
     def test_listen(self):
+        self.assertEqual(self.b.ctx, None)
         self.b.start_listening()
         print('ass')
         self.b.disconnect()

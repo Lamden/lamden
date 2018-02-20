@@ -25,11 +25,13 @@ class BaseNode(object):
         self.pub_socket = None
         self.loop = None
 
+        self.thread = None
+
     def start_listening(self):
         try:
             loop = asyncio.new_event_loop()
-            t = Thread(target=self.start_subscribing, args=(loop,))
-            t.start()
+            self.thread = Thread(target=self.start_subscribing, args=(loop,))
+            self.thread.start()
         except Exception as e:
             print(e)
 
@@ -38,8 +40,8 @@ class BaseNode(object):
         self.ctx = zmq.Context()
         self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
         self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
-
         self.pub_socket.connect(self.pub_url)
+
         self.sub_socket.bind(self.sub_url)
         self.sub_socket.subscribe(b'')
 
@@ -74,4 +76,8 @@ class BaseNode(object):
         return {'status': 'Successfully published request: {}'.format(data)}
 
     def disconnect(self):
-        self.ctx.destroy()
+        try:
+            self.ctx.destroy()
+            self.thread.stop()
+        except:
+            pass
