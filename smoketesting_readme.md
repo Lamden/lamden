@@ -1,7 +1,7 @@
 This describes spinning up a masternode + witness+ delegate, and how run test transaction through them.
 
 ## PREREQUISITES:
-### Spin up servers
+### Spin up databases
 - Make sure mongo and redis are running in the background (run ```sudo mongod``` and ```redis-server``` in seperate terminal tabs)
 ### Set balances in redis
 In reality, this would be done by the delegates querying masternode for the latest state when they boot up, but for now it has to be done manually. In a python terminal, run this:
