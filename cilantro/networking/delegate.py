@@ -79,6 +79,8 @@ class Delegate(BaseNode):
         return self.process_transaction(data=data)
 
     def perform_consensus(self):
+        if self.queue.queue_size() <= 0:
+            return
         print('delegate performing consensus...')
 
         # TODO -- consensus
