@@ -147,6 +147,16 @@ def print_status():
     print('-----------------------------------\n')
 ```
 
+To look at the scratch run
+```
+print_scratch()
+```
+and to look at the balance run
+```
+print_balance()
+```
+ect, ect.
+
 To check out the cold storage, you would have to just open a Mongo CLI and run command on the cilantro db. I haven't written a python wrapper for this yet, but you can checkout the code in blockchain_driver.py if you want to look at the cold storage using python.
 
 
