@@ -2,6 +2,7 @@ import asyncio
 import uvloop
 import zmq
 from zmq.asyncio import Context
+from concurrent.futures import ThreadPoolExecutor
 
 # Using UV Loop for EventLoop, instead aysncio's event loop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -23,10 +24,13 @@ class BaseNode(object):
 
         self.loop = None
 
-    def start_async(self):
+        self.executor = ThreadPoolExecutor(max_workers=5)
+
+    def start_async(self, is_testing=False):
         try:
             self.loop = asyncio.get_event_loop()
-            self.loop.run_until_complete(self.start_subscribing())
+            if not is_testing:
+                self.loop.run_until_complete(self.start_subscribing())
         except Exception as e:
             print("Error starting subscriber event loop: {}".format(e))
 

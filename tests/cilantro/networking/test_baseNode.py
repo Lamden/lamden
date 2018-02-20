@@ -1,6 +1,12 @@
 from unittest import TestCase
 from cilantro.networking import BaseNode
 from cilantro.serialization import JSONSerializer
+import asyncio
+
+class MockBaseNode(BaseNode):
+    def handle_req(self, data: bytes):
+        if data == b'999':
+            self.disconnect()
 
 
 class TestBaseNode(TestCase):
@@ -10,7 +16,7 @@ class TestBaseNode(TestCase):
         self.pub_port = 7777
         self.serializer = JSONSerializer
 
-        self.b = BaseNode(host=self.host, sub_port=self.sub_port, pub_port=self.pub_port, serializer=self.serializer)
+        self.b = MockBaseNode(host=self.host, sub_port=self.sub_port, pub_port=self.pub_port, serializer=self.serializer)
 
     def tearDown(self):
         self.b.disconnect()
@@ -41,6 +47,11 @@ class TestBaseNode(TestCase):
         except Exception as e:
             self.assertEqual(1, 1)
 
+    async def ass(self):
+        print('ass')
 
-
-
+    def test_async(self):
+        self.b.start_async(is_testing=True)
+        self.b.loop.create_task(self.ass())
+        #self.b.loop.run_until_complete()
+        print(self.b.loop)
