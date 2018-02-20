@@ -93,19 +93,19 @@ Then just print the transaction and copy the dictionary to your clipboard
 
 ### Sending Transaction to Masternode
 
-Now, either create a python request object and send this post data programatically, or more easily use Postmates (or some other UI for sending post requests).
-If you use postmates, you will very likely have to convert all the single quotes to double quotes. To quickly do this, copy the dictionary to your clipboard, open a terminal, and run:
+Now, either create a python request object and send this post data programatically, or more easily use Postman (or some other UI for sending post requests).
+If you want to use the transaction you printed in a python terminal in Postman, you will have to convert all the single quotes to double quotes. To quickly do this, copy the transaction dictionary to your clipboard, open a terminal, and run:
 ```
 echo `pbpaste` | sed "s/\'/\"/g" | `pbcopy`
 ```
 And the transcation dictionary with double quotes will be copied to your clipboard.
 
-POST the transaction dictionary in the transaction body (raw format) to http://127.0.0.1:8080/ and it should go through the system.
+Set the transaction dictionary in the transaction body (raw format), and send a POST request to http://127.0.0.1:8080/ and it should go through the system.
 
 ### Viewing Results
 ## Delegate State
 Delegate keeps track of the real-time state of balances using Redis. Much of the output can be seen in terminals running masternode/witness/delegate. To check out the scratch state and transaction queue, here are some helper methods.
-I just recommend you copy/paste them into an ipython terminal.
+I just recommend you just copy/paste them into an ipython terminal.
 ```python
 import redis
 from cilantro.db.constants import *
@@ -176,7 +176,12 @@ print_balance()
 ```
 ect, ect.
 
-To check out the cold storage, you would have to just open a Mongo CLI and run command on the cilantro db. I haven't written a python wrapper for this yet, but you can checkout the code in blockchain_driver.py if you want to look at the cold storage using python.
+It may be wise to clear the scratch inbetween tests, using
+```
+flush_scratch()
+```
+
+To check out the cold storage, you would have to just open a Mongo CLI and run command on the cilantro db. (I haven't written a python wrapper for this yet, but you can checkout the code in blockchain_driver.py if you want to look at the cold storage using python)
 
 ## Cold Storage (Masternode)
 Masternode holds the entire blockchain, as well as a dictionary of the latest balances. To view this data, use the Mongo CLI.
