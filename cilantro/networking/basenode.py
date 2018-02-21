@@ -1,86 +1,62 @@
-import asyncio
-import uvloop
-import zmq
-from zmq.asyncio import Context
-from concurrent.futures import ThreadPoolExecutor
-import sys
-
-from threading import Thread
-
-# Using UV Loop for EventLoop, instead aysncio's event loop
-if sys.platform != 'win32':
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 from multiprocessing import Process, Pipe, Queue
 
+import zmq
 
-class BaseNode(object):
-    def __init__(self, host=None, sub_port=None, pub_port=None, serializer=None):
-        self.host = host
-        self.sub_port = sub_port
-        self.pub_port = pub_port
-        self.sub_url = 'tcp://{}:{}'.format(self.host, self.sub_port)
-        self.pub_url = 'tcp://{}:{}'.format(self.host, self.pub_port)
+
+class ZMQScaffolding:
+    def __init__(self, base_url='127.0.0.1', subscriber_port='9999', publisher_port='9998', filters=(b'', )):
+        self.base_url = base_url
+        self.subscriber_port = subscriber_port
+        self.publisher_port = publisher_port
+        self.subscriber_url = 'tcp://{}:{}'.format(self.base_url, self.subscriber_port)
+        self.publisher_url = 'tcp://{}:{}'.format(self.base_url, self.publisher_port)
+
+        self.filters = filters
+
+    def connect(self):
+        self.context = zmq.Context()
+
+        self.sub_socket = self.context.socket(socket_type=zmq.SUB)
+        self.pub_socket = self.context.socket(socket_type=zmq.PUB)
+        self.pub_socket.connect(self.publisher_url)
+
+        self.sub_socket.bind(self.subscriber_url)
+
+        for filter in self.filters:
+            self.sub_socket.subscribe(filter)
+
+class BaseNode:
+    def __init__(self, queue, serializer, start=True, **kwargs):
+        assert queue is not None, 'Queue must be provided to instantiate a node.'
+        self.queue = queue
         self.serializer = serializer
+        self.process = Process(target=self.loop)
 
-        self.ctx = None
-        self.sub_socket = None
-        self.pub_socket = None
-        self.loop = None
+        self.message_queue = ZMQScaffolding(**kwargs)
 
-        self.queue = Queue()
-        self.pipe = Pipe()
-        self.process = None
-
-    def start_listening(self):
-        try:
-            loop = asyncio.new_event_loop()
-            self.process = Process(target=self.start_subscribing, args=(loop, self.queue))
+        if start:
             self.process.start()
-        except Exception as e:
-            print(e)
 
-    def start_subscribing(self, loop, queue):
-        asyncio.set_event_loop(loop)
-        self.ctx = zmq.Context()
-        self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
-        self.pub_socket = self.ctx.socket(socket_type=zmq.PUB)
-        self.pub_socket.connect(self.pub_url)
-
-        self.sub_socket.bind(self.sub_url)
-        self.sub_socket.subscribe(b'')
-
+    def loop(self):
+        self.message_queue.connect()
         while True:
-            req = self.sub_socket.recv()
-            asyncio.ensure_future(self.handle_req(req))
-            if not self.queue.empty():
-                msg = self.queue.get()
+            self.process_local_queue(self.queue.get())
+            try:
+                msg = self.message_queue.sub_socket.recv(flags=zmq.NOBLOCK)
+                self.process_message_queue(msg)
+            except zmq.Again:
+                pass
 
-
-    async def handle_req(self, data: bytes):
-        """
-        Callback that is executed when the node receives data from its subscriber port. This should be
-        overridden by child classes
-        :param data: Binary data received from node's subscribe socket
-        :return: A dictionary indicating the status of the handle request
-        """
+    def process_message_queue(self, msg):
         raise NotImplementedError
 
-    def publish_req(self, data: dict):
-        """
-        Function to publish data to pub_socket (pub_socket is connected during initialization)
-        TODO -- add support for publishing with filters
+    def process_local_queue(self, msg):
+        raise NotImplementedError
 
-        :param data: A python dictionary signifying the data to publish
-        :return: A dictionary indicating the status of the publish attempt
-        """
-        try:
-            self.pub_socket.send_json(data)
-        except Exception as e:
-            print("error publishing request: {}".format(e))
-            return {'status': 'Could not publish request'}
+    def handle_request(self, request):
+        # serialize
+        # put on queue
+        self.queue.put(request)
 
-        print("Successfully published request: {}".format(data))
-        return {'status': 'Successfully published request: {}'.format(data)}
-
-    def disconnect(self):
+    def terminate(self):
         self.process.terminate()
