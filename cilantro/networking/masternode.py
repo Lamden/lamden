@@ -155,6 +155,9 @@ class Masternode(BaseNode):
         else:
             return True
 
+    def get_blockchain_json(self, data: bytes):
+        return self.db.get_blockchain_data()
+
     async def process_request(self, request):
         r = self.process_transaction(data=await request.content.read())
         return web.Response(text=str(r))
@@ -167,12 +170,18 @@ class Masternode(BaseNode):
         r = self.faucet(data=await request.content.read())
         return web.Response(text=str(r))
 
+    async def process_blockchain_request(self, request):
+        d = self.get_blockchain_json(data=await request.content.read())
+        return web.json_response(d)
+
+
     def setup_web_server(self):
         app = web.Application()
         app.router.add_post('/', self.process_request)
         app.router.add_post('/add_block', self.process_block_request)
         app.router.add_post('/faucet', self.process_faucet_request)
         app.router.add_get('/updates', self.get_updates)
+        app.router.add_get('/blockchain', self.process_blockchain_request)
 
         resource = app.router.add_resource('/balance/{wallet_key}')
         resource.add_route('GET', self.get_balance)

@@ -1,4 +1,4 @@
-from pymongo import MongoClient, ReturnDocument
+from pymongo import MongoClient, ReturnDocument, ASCENDING, DESCENDING
 from cilantro.db.constants import MONGO
 import json
 import hashlib
@@ -159,7 +159,14 @@ class BlockchainDriver(object):
                                   {'$set': {MONGO.latest_block_num_key: block_num}})
         return block_num
 
-
-
+    def get_blockchain_data(self) -> list:
+        """
+        Returns blockchain data (as list of blocks (which are dicts) for client size viz
+        :return:
+        """
+        data = []
+        for block in self.blocks.find({MONGO.genesis_key: {'$exists': False}}, {"_id": 0}).sort('block_num', ASCENDING):
+            data.append(block)
+        return data
 
 
