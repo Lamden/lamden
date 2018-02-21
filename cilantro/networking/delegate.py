@@ -40,11 +40,11 @@ class Delegate(BaseNode):
         self.last_flush_time = time.time()
         self.queue = TransactionQueueDriver()
         self.interpreter = BasicInterpreter()
-        self.timer_flag = None
+        self.timer_flag = 0
 
         # asyncio.ensure_future(self.flush_time())  # fire and forget function that returns after flush time (1 second)
 
-    async def process_transaction(self, data: bytes=None):
+    def process_transaction(self, data: bytes=None):
         """
         Processes a transaction from witness. This first feeds it through the interpreter, and if
         no errors are thrown, then adds the transaction to the queue. Then flushes queue to perform consensus.
@@ -68,23 +68,25 @@ class Delegate(BaseNode):
 
         asyncio.ensure_future(self.flush_time())  # fire and forget function that returns after flush time (1 second)
 
-        self.timer_flag = 0 #  blocking??? :/
-        while not self.timer_flag:
-            if self.queue.queue_size() > MAX_QUEUE_SIZE:
+        while not self.timer_flag:  #  blocking behavior?
+            if self.queue.queue_size() <= 0:
+                print("queue is empty, doing nothing")
+                pass
+            elif self.queue.queue_size() > MAX_QUEUE_SIZE:
                 print('queue exceeded max size, flushing queue')
                 self.perform_consensus()
-            else:
-                print('time since last queue flush exceeded, flushing queue')
-                self.perform_consensus()
 
+        self.perform_consensus()
         return {'success': 'delegate processed transaction: {}'.format(d)}
 
     async def handle_req(self, data: bytes=None):
         return await self.process_transaction(data=data)
 
     def perform_consensus(self):
+        self.timer_flag = 0
         if self.queue.queue_size() <= 0:
             print("queue is empty, doing nothing")
+            return
 
         print('delegate performing consensus...')
 

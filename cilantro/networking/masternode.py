@@ -1,4 +1,3 @@
-import uvloop
 from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS, NTP_URL
 from cilantro.transactions.testnet import TestNetTransaction
 from cilantro.networking import BaseNode
@@ -8,7 +7,10 @@ from cilantro.db.masternode.blockchain_driver import BlockchainDriver
 import sys
 import ntplib
 import uuid
-web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+import sys
+if sys.platform != 'win32':
+    import uvloop
+    web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 '''

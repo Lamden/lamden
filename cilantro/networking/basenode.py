@@ -1,10 +1,14 @@
 import asyncio
-import uvloop
 import zmq
 from zmq.asyncio import Context
 
-# Using UV Loop for EventLoop, instead aysncio's event loop
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+# Using UV Loop for EventLoop, instead asyncio's event loop
+import sys
+if sys.platform != 'win32':
+    import uvloop
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+
 
 
 class BaseNode(object):
