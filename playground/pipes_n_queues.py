@@ -1,7 +1,8 @@
 from multiprocessing import Process, Pipe, Queue
 
 import zmq
-
+from zmq.asyncio import Context
+import asyncio
 
 class ZMQScaffolding:
     def __init__(self, base_url='127.0.0.1', subscriber_port='9999', publisher_port='9998', filters=(b'', )):
@@ -14,7 +15,7 @@ class ZMQScaffolding:
         self.filters = filters
 
     def connect(self):
-        self.context = zmq.Context()
+        self.context = Context()
 
         self.sub_socket = self.context.socket(socket_type=zmq.SUB)
         self.pub_socket = self.context.socket(socket_type=zmq.PUB)
@@ -31,32 +32,35 @@ BROADCAST = 'BROADCAST'
 
 
 class Node:
-    def __init__(self, queue, serializer, start=True, **kwargs):
-        assert queue is not None, 'Queue must be provided to instantiate a node.'
-        self.queue = queue
+    def __init__(self, serializer, start=True, **kwargs):
+        self.queue = Queue()
         self.serializer = serializer
-        self.process = Process(target=self.loop)
+        self.process = Process(target=self.run)
 
         self.message_queue = ZMQScaffolding(**kwargs)
 
         if start:
             self.process.start()
 
-    def loop(self):
+    def run(self):
         self.message_queue.connect()
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(asyncio.wait([
+            self.handle_subscribe_message(),
+            self.handle_process_message(),
+        ]))
+
+    async def handle_subscribe_message(self):
         while True:
-            self.process_local_queue(self.queue.get())
-            try:
-                msg = self.message_queue.sub_socket.recv(flags=zmq.NOBLOCK)
-                self.process_message_queue(msg)
-            except zmq.Again:
-                pass
+            print('holla')
+            msg = await self.message_queue.sub_socket.recv()
+            print(msg)
 
-    def process_message_queue(self, msg):
-        raise NotImplementedError
-
-    def process_local_queue(self, msg):
-        raise NotImplementedError
+    async def handle_process_message(self):
+        while True:
+            print('hella')
+            msg = self.queue.get()
+            print(msg)
 
     def handle_request(self, request):
         # serialize
@@ -78,10 +82,8 @@ class DumbNode(Node):
         return {'status': 'Successfully published request: {}'.format(msg)}
 
 
-q = Queue()
-for i in range(10):
-    n = DumbNode(queue=q, serializer=None, start=True)
+n = DumbNode(serializer=None, start=True)
 #n.handle_request(b'something')
 import time
 time.sleep(1)
-#n.terminate()
+n.terminate()
