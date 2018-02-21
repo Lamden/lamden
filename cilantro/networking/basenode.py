@@ -7,7 +7,7 @@ import sys
 
 from threading import Thread
 
-# Using UV Loop for EventLoop, instead aysncio's event loop
+# Using UV Loop for EventLoop, instead asyncio's event loop
 if sys.platform != 'win32':
     import uvloop
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
