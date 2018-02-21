@@ -30,14 +30,8 @@ Open 3 separate terminal tabs, and spin up a masternode, delegate, witness in ea
 ### Masternode
 ```python
 from cilantro.networking.masternode import Masternode
-from aiohttp import web
-
-node = Masternode()
-app = web.Application()
-
-app.router.add_post('/', node.process_request)
-app.router.add_post('/add_block', node.process_block_request)
-web.run_app(app, host="127.0.0.1", port=int(node.external_port))
+mn = Masternode()
+mn.setup_web_server()
 ```
 ### Witness
 ```python
