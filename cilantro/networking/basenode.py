@@ -1,5 +1,5 @@
 from multiprocessing import Process, Pipe, Queue
-
+from cilantro.serialization import JSONSerializer
 import zmq
 import asyncio
 
@@ -29,7 +29,7 @@ class ZMQScaffolding:
 
 
 class BaseNode:
-    def __init__(self, serializer, start=True, **kwargs):
+    def __init__(self, serializer=JSONSerializer, start=True, **kwargs):
         self.queue = Queue()
         self.serializer = serializer
         self.process = Process(target=self.run)
@@ -41,6 +41,7 @@ class BaseNode:
 
     # start multiprocess / non-blocking event loop for the queues
     def run(self):
+        print('running')
         self.message_queue.connect()
         loop = asyncio.new_event_loop()
         loop.run_until_complete(asyncio.wait([
@@ -50,12 +51,15 @@ class BaseNode:
 
     async def zmq_loop(self):
         while True:
+            print('zmq')
             msg = await self.message_queue.sub_socket.recv()
             self.handle_zmq_msg(msg)
 
     async def mp_loop(self):
         while True:
+            print('ass!')
             msg = self.queue.get()
+            print('message recieved')
             self.handle_mp_msg(msg)
 
     # move towards this abstraction eventually
@@ -69,7 +73,12 @@ class BaseNode:
         raise NotImplementedError
 
     def handle_mp_msg(self, msg):
-        raise NotImplementedError
+        print('yes')
+        if msg[0] == 'EVAL':
+            eval(msg[1])
 
     def terminate(self):
         self.process.terminate()
+
+    def mp_eval(self, eval_statement):
+        self.queue.put(('EVAL', eval_statement))

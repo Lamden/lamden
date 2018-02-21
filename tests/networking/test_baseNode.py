@@ -3,6 +3,7 @@ from cilantro.networking import BaseNode
 from cilantro.serialization import JSONSerializer
 import asyncio
 import time
+import zmq
 
 class MockBaseNode(BaseNode):
     def handle_req(self, data: bytes):
@@ -17,10 +18,21 @@ class TestBaseNode(TestCase):
         self.publisher_port = 7777
         self.serializer = JSONSerializer
 
-        self.b = MockBaseNode(base_url=self.base_url,
-                              subscriber_port=self.subscriber_port,
-                              publisher_port=self.publisher_port,
-                              serializer=self.serializer)
+        self.b = BaseNode(base_url=self.base_url,
+                          subscriber_port=self.subscriber_port,
+                          publisher_port=self.publisher_port,
+                          serializer=self.serializer)
+
+    def mockedBaseNode(self):
+        self.base_url = '127.0.0.1'
+        self.subscriber_port = 8888
+        self.publisher_port = 7777
+        self.serializer = JSONSerializer
+
+        return MockBaseNode(base_url=self.base_url,
+                            subscriber_port=self.subscriber_port,
+                            publisher_port=self.publisher_port,
+                            serializer=self.serializer)
 
     def tearDown(self):
         self.b.terminate()
@@ -45,7 +57,12 @@ class TestBaseNode(TestCase):
         except NotImplementedError:
             self.assertTrue(True)
 
+    def test_zmq_msg_send(self):
+        t = BaseNode()
+        print(t)
+
     def test_send_json(self):
+        self.b = self.mockedBaseNode()
         test_json = {
             'something': 'something'
         }
