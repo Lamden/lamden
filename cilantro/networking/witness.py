@@ -31,7 +31,12 @@ class Witness(BaseNode):
             print('Error: Witness could not confirm transaction POW')
             return {'status': 'invalid proof'}
 
-    def publish_req(self, msg):
+    def handle_request(self, request):
+        # serialize
+        # put on queue
+        self.queue.put(request)
+
+    def process_local_queue(self, msg):
         try:
             self.message_queue.pub_socket.send(msg)
         except Exception as e:

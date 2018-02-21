@@ -57,7 +57,22 @@ class Masternode(BaseNode):
         # d['metadata']['timestamp'] = self.time_client.request(NTP_URL, version=3).tx_time
         d['metadata']['uuid'] = str(uuid.uuid4())
 
-        return self.publish_req(d)
+        return self.handle_request(d)
+
+    def handle_request(self, request):
+        # serialize
+        # put on queue
+        self.queue.put(request)
+
+    def process_local_queue(self, msg):
+        try:
+            self.message_queue.pub_socket.send(msg)
+        except Exception as e:
+            print("error publishing request: {}".format(e))
+            return {'status': 'Could not publish request'}
+
+        print("Successfully published request: {}".format(msg))
+        return {'status': 'Successfully published request: {}'.format(msg)}
 
     def add_block(self, data: bytes):
         print("process block got raw data: {}".format(data))
