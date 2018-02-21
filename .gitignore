@@ -16,3 +16,6 @@ __pycache__/
 
 .cache/
 cilantro.egg-info/
+
+# FOR DEMO
+cilantro/faucet.json

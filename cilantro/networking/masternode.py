@@ -12,6 +12,10 @@ import uuid
 # IMPORTS FOR DEMO
 import json
 import time
+import os
+from cilantro.networking.constants import FAUCET_PERCENT
+from cilantro.wallets.ed25519 import ED25519Wallet
+from cilantro.proofs.pow import SHA3POW
 # END DEMO IMPORT
 
 
@@ -38,6 +42,10 @@ class Masternode(BaseNode):
         # FOR TESTNET ONLY
         self.db.create_genesis()
         self.updates = None
+        file_path = os.getcwd() + '/cilantro/faucet.json'
+        faucet_json = json.load(open(file_path))
+        self.faucet_s = faucet_json['signing_key']
+        self.faucet_v = faucet_json['verifying_key']
 
     def process_transaction(self, data: bytes):
         """
@@ -97,7 +105,34 @@ class Masternode(BaseNode):
         Sends some money from the faucet to the users wallet
         :param data: The wallet id to credit (as binary data)
         """
-        pass
+        d = None
+        try:
+            d = self.serializer.deserialize(data)
+        except Exception as e:
+            print("Error deserializing faucet request: {}".format(data))
+            return {'error_status': "Error deserializing faucet request: {}".format(data)}
+
+        if 'wallet_key' not in d:
+            print("Error! wallet_key not in faucet request")
+            return {'error status': 'wallet_key not in faucet request!'}
+
+        wallet_key = d['wallet_key']
+        # Check if user has already used faucet
+        if self.db.check_faucet_used(wallet_key):
+            print("Uh oh. Wallet {} already used the faucet.".format(wallet_key))
+            return {'error_status': 'user already used faucet'}
+        else:
+            print("First faucuet use for wallet {}".format(wallet_key))
+            self.db.add_faucet_use(wallet_key)
+
+        # Create signed standard transaction from faucet
+        amount = self.db.get_balance(self.faucet_v)[self.faucet_v] * FAUCET_PERCENT
+        tx = {"payload": {"to": wallet_key, "amount": str(amount), "from": self.faucet_v, "type": "t"},
+              "metadata": {}}
+        tx["metadata"]["proof"] = SHA3POW.find(self.serializer.serialize(tx["payload"]))[0]
+        tx["metadata"]["signature"] = ED25519Wallet.sign(self.faucet_s, self.serializer.serialize(tx["payload"]))
+
+        return self.process_transaction(self.serializer.serialize(tx))
 
     def get_balance(self, request):
         wallet_key = request.match_info['wallet_key']
@@ -128,10 +163,15 @@ class Masternode(BaseNode):
         r = self.add_block(data=await request.content.read())
         return web.Response(text=str(r))
 
+    async def process_faucet_request(self, request):
+        r = self.faucet(data=await request.content.read())
+        return web.Response(text=str(r))
+
     def setup_web_server(self):
         app = web.Application()
         app.router.add_post('/', self.process_request)
         app.router.add_post('/add_block', self.process_block_request)
+        app.router.add_post('/faucet', self.process_faucet_request)
         app.router.add_get('/updates', self.get_updates)
 
         resource = app.router.add_resource('/balance/{wallet_key}')

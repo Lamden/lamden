@@ -24,7 +24,8 @@ MG = namedtuple('MongoConstants',
                 'genesis_key '
                 'blocks_state_col_name '
                 'wallet_key '
-                'balance_key')
+                'balance_key '
+                'faucet_col_name')
 
 MONGO = MG('cilantro',
            'blockchain',
@@ -34,4 +35,5 @@ MONGO = MG('cilantro',
            'is_genesis',
            'blockchain_state',
            'wallet',
-           'balance')
+           'balance',
+           'faucet')

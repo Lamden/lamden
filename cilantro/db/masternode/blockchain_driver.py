@@ -16,6 +16,7 @@ class BlockchainDriver(object):
         self.blocks = db[MONGO.blocks_col_name]
         self.state = db[MONGO.blocks_state_col_name]
         self.balances = db[MONGO.balances_col_name]
+        self.faucet = db[MONGO.faucet_col_name]
         self.serializer = JSONSerializer
 
     def persist_block(self, block: dict) -> dict:
@@ -116,10 +117,8 @@ class BlockchainDriver(object):
                 raise Exception("Sender address {} could not be found in balances (tx={})".format(sender_adr, tx))
 
             # Update sender and receiver balance
-            # self.balances.update_one({MONGO.wallet_key: sender_adr}, {'$inc': {MONGO.balance_key: -amount}})
-            # self.balances.update_one({MONGO.wallet_key: receiver_adr},
-            #                          {'$inc': {MONGO.balance_key: amount}}, upsert=True)
-            sender_new = self.balances.find_one_and_update({MONGO.wallet_key: sender_adr}, {'$inc': {MONGO.balance_key: -amount}},
+            sender_new = self.balances.find_one_and_update({MONGO.wallet_key: sender_adr},
+                                                           {'$inc': {MONGO.balance_key: -amount}},
                                               return_document=ReturnDocument.AFTER)
             receiver_new = self.balances.find_one_and_update({MONGO.wallet_key: receiver_adr},
                                               {'$inc': {MONGO.balance_key: amount}},
@@ -137,6 +136,12 @@ class BlockchainDriver(object):
             raise NotImplementedError
         else:
             raise Exception("Unknown transaction type {} processed by blockchain_driver".format(tx_type))
+
+    def check_faucet_used(self, wallet_key) -> bool:
+        return self.faucet.find_one({wallet_key: True}) is not None
+
+    def add_faucet_use(self, wallet_key):
+        self.faucet.insert_one({wallet_key: True})
 
     def inc_block_number(self) -> int:
         """
