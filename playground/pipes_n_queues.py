@@ -26,11 +26,6 @@ class ZMQScaffolding:
         for filter in self.filters:
             self.sub_socket.subscribe(filter)
 
-
-CONSUME = 'CONSUME'
-BROADCAST = 'BROADCAST'
-
-
 class Node:
     def __init__(self, serializer, start=True, **kwargs):
         self.queue = Queue()

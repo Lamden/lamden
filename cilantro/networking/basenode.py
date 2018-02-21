@@ -1,7 +1,7 @@
 from multiprocessing import Process, Pipe, Queue
 
 import zmq
-
+import asyncio
 
 class ZMQScaffolding:
     def __init__(self, base_url='127.0.0.1', subscriber_port='1111', publisher_port='9998', filters=(b'', )):
@@ -26,33 +26,47 @@ class ZMQScaffolding:
         for filter in self.filters:
             self.sub_socket.subscribe(filter)
 
+
 class BaseNode:
     def __init__(self, serializer, start=True, **kwargs):
         self.queue = Queue()
         self.serializer = serializer
-        self.process = Process(target=self.loop)
+        self.process = Process(target=self.run)
 
         self.message_queue = ZMQScaffolding(**kwargs)
 
         if start:
             self.process.start()
 
-    def loop(self):
+    def run(self):
         self.message_queue.connect()
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(asyncio.wait([
+            self.listen(),
+            self.mp_loop(),
+        ]))
+
+    async def zmq_loop(self):
         while True:
-            print("one inter of the while loop (basenode)")
-            self.process_local_queue(self.queue.get())
-            try:
-                msg = self.message_queue.sub_socket.recv(flags=zmq.NOBLOCK)
-                self.process_message_queue(msg)
-            except zmq.Again:
-                pass
+            msg = await self.message_queue.sub_socket.recv()
+            self.handle_zmq_msg(msg)
 
-    def process_message_queue(self, msg):
-        raise NotImplementedError
+    async def mp_loop(self):
+        while True:
+            msg = self.queue.get()
+            self.handle_mp_msg(msg)
 
-    def process_local_queue(self, msg):
-        raise NotImplementedError
+    # move towards this abstraction eventually
+    async def listen(self, getter, callback):
+        while True:
+            msg = getter()
+            callback(msg)
+
+    def handle_zmq_msg(self, msg):
+        print(msg)
+
+    def handle_mp_msg(self, msg):
+        print(msg)
 
     def handle_request(self, request):
         # serialize
@@ -61,3 +75,5 @@ class BaseNode:
 
     def terminate(self):
         self.process.terminate()
+
+
