@@ -2,6 +2,8 @@ import nacl
 import nacl.encoding
 import nacl.signing
 
+import ed25519
+
 from cilantro.wallets import Wallet
 
 class ED25519Wallet(Wallet):
@@ -14,21 +16,19 @@ class ED25519Wallet(Wallet):
 
     @classmethod
     def generate_keys(cls):
-        s = nacl.signing.SigningKey.generate()
-        v = s.verify_key
-        return (s, v)
+        return ed25519.create_keypair()
 
     @classmethod
     def keys_to_format(cls, s, v):
-        s = s.encode()
-        v = v.encode()
+        s = s.to_bytes()
+        v = v.to_bytes()
         return s.hex(), v.hex()
 
     @classmethod
     def format_to_keys(cls, s):
         s = bytes.fromhex(s)
-        s = nacl.signing.SigningKey(s)
-        return s, s.verify_key
+        s = ed25519.SigningKey(s)
+        return s, s.get_verifying_key()
 
     @classmethod
     def new(cls):
@@ -45,9 +45,9 @@ class ED25519Wallet(Wallet):
     def verify(cls, v, msg, sig):
         v = bytes.fromhex(v)
         sig = bytes.fromhex(sig)
-        v = nacl.signing.VerifyKey(v)
+        v = ed25519.VerifyingKey(v)
         try:
-            v.verify(sig)
+            v.verify(sig, msg)
         except:
             return False
         return True
