@@ -66,12 +66,11 @@ def create_std_tx(sender: tuple, recipient: tuple, amount: float):
     :param sender: A tuple containing the (signing_key, verifying_key) of the sender
     :param recipient: A tuple containing the (signing_key, verifying_key) of the recipient
     :param amount: The amount to send
-    :return: The transaction as a dictionary
+    :return:
     """
-    tx = {"payload": {"to": recipient[1], "amount": str(amount), "from": sender[1], "type":"t"}, "metadata": {}}
-    # tx["metadata"]["proof"] = SHA3POW.find(json.dumps(tx["payload"]).encode())[0]
+    tx = {"payload": {"to": recipient[1], "amount": str(amount), "from": sender[1], "type": "t"}, "metadata": {}}
     tx["metadata"]["proof"] = SHA3POW.find(JSONSerializer.serialize(tx["payload"]))[0]
-    tx["metadata"]["signature"] = ED25519Wallet.sign(sender[0], json.dumps(tx["payload"]).encode())
+    tx["metadata"]["signature"] = ED25519Wallet.sign(sender[0], JSONSerializer.serialize(tx["payload"]))
     return tx
     
 STU = ('373ac0ec93038e4235c4716183afe55dab95f5d780415f60e7dd5363a2d2fd10',
