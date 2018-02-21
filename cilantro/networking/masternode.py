@@ -20,16 +20,15 @@ web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     the behavior of nodes and tell the network who is misbehaving. 
 '''
 
-
 class Masternode(BaseNode):
-    def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
-        BaseNode.__init__(self, host=host, pub_port=internal_port, serializer=serializer)
+    def __init__(self, base_url='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
+        BaseNode.__init__(self, base_url=base_url, publisher_port=internal_port, serializer=serializer)
         self.external_port = external_port
         # self.time_client = ntplib.NTPClient()  TODO -- investigate why we can't query NTP_URL with high frequency
         self.db = BlockchainDriver(serializer=serializer)
 
         # FOR TESTNET ONLY
-        self.db.create_genesis()
+        # self.db.create_genesis()
 
     def process_transaction(self, data: bytes):
         """
@@ -57,7 +56,22 @@ class Masternode(BaseNode):
         # d['metadata']['timestamp'] = self.time_client.request(NTP_URL, version=3).tx_time
         d['metadata']['uuid'] = str(uuid.uuid4())
 
-        return self.publish_req(d)
+        return self.handle_request(d)
+
+    def handle_request(self, request):
+        # serialize
+        # put on queue
+        self.queue.put(request)
+
+    def process_local_queue(self, msg):
+        try:
+            self.message_queue.pub_socket.send_json(msg)
+        except Exception as e:
+            print("error publishing request: {}".format(e))
+            return {'status': 'Could not publish request'}
+
+        print("Successfully published request: {}".format(msg))
+        return {'status': 'Successfully published request: {}'.format(msg)}
 
     def add_block(self, data: bytes):
         print("process block got raw data: {}".format(data))
