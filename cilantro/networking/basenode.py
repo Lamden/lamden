@@ -10,6 +10,8 @@ from threading import Thread
 # Using UV Loop for EventLoop, instead aysncio's event loop
 if sys.platform != 'win32':
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+from multiprocessing import Process, Pipe, Queue
+
 
 class BaseNode(object):
     def __init__(self, host=None, sub_port=None, pub_port=None, serializer=None):
@@ -25,17 +27,19 @@ class BaseNode(object):
         self.pub_socket = None
         self.loop = None
 
-        self.thread = None
+        self.queue = Queue()
+        self.pipe = Pipe()
+        self.process = None
 
     def start_listening(self):
         try:
             loop = asyncio.new_event_loop()
-            self.thread = Thread(target=self.start_subscribing, args=(loop,))
-            self.thread.start()
+            self.process = Process(target=self.start_subscribing, args=(loop, self.queue))
+            self.process.start()
         except Exception as e:
             print(e)
 
-    def start_subscribing(self, loop):
+    def start_subscribing(self, loop, queue):
         asyncio.set_event_loop(loop)
         self.ctx = zmq.Context()
         self.sub_socket = self.ctx.socket(socket_type=zmq.SUB)
@@ -48,6 +52,9 @@ class BaseNode(object):
         while True:
             req = self.sub_socket.recv()
             asyncio.ensure_future(self.handle_req(req))
+            if not self.queue.empty():
+                msg = self.queue.get()
+
 
     async def handle_req(self, data: bytes):
         """
@@ -76,8 +83,4 @@ class BaseNode(object):
         return {'status': 'Successfully published request: {}'.format(data)}
 
     def disconnect(self):
-        try:
-            self.ctx.destroy()
-            self.thread.stop()
-        except:
-            pass
+        self.process.terminate()

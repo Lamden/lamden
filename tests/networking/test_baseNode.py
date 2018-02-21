@@ -2,6 +2,7 @@ from unittest import TestCase
 from cilantro.networking import BaseNode
 from cilantro.serialization import JSONSerializer
 import asyncio
+import time
 
 class MockBaseNode(BaseNode):
     def handle_req(self, data: bytes):
@@ -30,10 +31,11 @@ class TestBaseNode(TestCase):
     def test_send_json(self):
         self.b.start_listening()
         test_json = {
-            'something' : 'something'
+            'something': 'something'
         }
-
+        time.sleep(1)
         response = self.b.publish_req(test_json)
+        print(response)
         self.assertEqual(response['status'], "Successfully published request: {'something': 'something'}")
         self.b.disconnect()
 
@@ -47,10 +49,7 @@ class TestBaseNode(TestCase):
         except Exception as e:
             self.assertEqual(1, 1)
 
-        from contextlib import suppress
-        from zmq.error import ContextTerminated
-        with suppress(Exception):
-            self.b.disconnect()
+        self.b.disconnect()
 
     def test_listen(self):
         self.assertEqual(self.b.ctx, None)
