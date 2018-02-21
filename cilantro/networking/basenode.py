@@ -3,6 +3,7 @@ from multiprocessing import Process, Pipe, Queue
 import zmq
 import asyncio
 
+
 class ZMQScaffolding:
     def __init__(self, base_url='127.0.0.1', subscriber_port='1111', publisher_port='9998', filters=(b'', )):
         self.base_url = base_url
@@ -38,11 +39,12 @@ class BaseNode:
         if start:
             self.process.start()
 
+    # start multiprocess / non-blocking event loop for the queues
     def run(self):
         self.message_queue.connect()
         loop = asyncio.new_event_loop()
         loop.run_until_complete(asyncio.wait([
-            self.listen(),
+            self.zmq_loop(),
             self.mp_loop(),
         ]))
 
@@ -62,18 +64,12 @@ class BaseNode:
             msg = getter()
             callback(msg)
 
+    # callback methods for local queue and zmq
     def handle_zmq_msg(self, msg):
-        print(msg)
+        raise NotImplementedError
 
     def handle_mp_msg(self, msg):
-        print(msg)
-
-    def handle_request(self, request):
-        # serialize
-        # put on queue
-        self.queue.put(request)
+        raise NotImplementedError
 
     def terminate(self):
         self.process.terminate()
-
-
