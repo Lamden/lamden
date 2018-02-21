@@ -26,3 +26,15 @@ class BalanceDriver(DriverBase):
         :return: void
         """
         self.r.hset(BALANCE_KEY, wallet_key, balance)
+
+    def seed_state(self, balances: dict):
+        for wallet_key, balance in balances.items():
+            self.set_balance(wallet_key, balance)
+
+    def flush(self):
+        """
+        Flushes all balances
+        """
+        for item in self.r.hscan_iter(BALANCE_KEY):
+            self.r.hdel(BALANCE_KEY, item[0])
+

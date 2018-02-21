@@ -12,3 +12,10 @@ class DriverManager(object):
         self.votes = VotesDriver()
         self.stamps = StampsDriver()
         self.swaps = SwapsDriver()
+
+    def flush_state(self):
+        print("Flushing balance")
+        self.balance.flush()
+        print("Flushing scratch")
+        self.scratch.flush()
+        print("Done flushing state")

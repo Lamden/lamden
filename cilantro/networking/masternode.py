@@ -8,6 +8,13 @@ from cilantro.db.masternode.blockchain_driver import BlockchainDriver
 import sys
 import ntplib
 import uuid
+
+# IMPORTS FOR DEMO
+import json
+import time
+# END DEMO IMPORT
+
+
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
@@ -30,6 +37,7 @@ class Masternode(BaseNode):
 
         # FOR TESTNET ONLY
         self.db.create_genesis()
+        self.updates = None
 
     def process_transaction(self, data: bytes):
         """
@@ -55,6 +63,7 @@ class Masternode(BaseNode):
 
         # Add timestamp and UUID
         # d['metadata']['timestamp'] = self.time_client.request(NTP_URL, version=3).tx_time
+        d['metadata']['timestamp'] = time.time()  # INSECURE, FOR DEMO ONLY
         d['metadata']['uuid'] = str(uuid.uuid4())
 
         return self.publish_req(d)
@@ -71,14 +80,37 @@ class Masternode(BaseNode):
 
         try:
             print("persisting block...")
-            self.db.persist_block(d)
+            self.updates = self.db.persist_block(d)
             print("finished persisting block")
         except Exception as e:
             print("Error persisting block: {}".format(e))
             return {'error_status': 'Could not persist block -- Error: {}'.format(e)}
 
         print("Successfully stored block data: {}".format(d))
-        return {'status': "persisted block with data:\n{}".format(d)}
+        # return {'status': "persisted block with data:\n{}".format(d)}
+
+        print("BLOCK PERSIST UPDATES: {}".format(self.updates))
+
+    def faucet(self, data: bytes):
+        """
+        -- FOR TEST NET ONLY --
+        Sends some money from the faucet to the users wallet
+        :param data: The wallet id to credit (as binary data)
+        """
+        pass
+
+    def get_balance(self, request):
+        wallet_key = request.match_info['wallet_key']
+        if wallet_key == 'all':
+            return web.json_response(self.db.get_all_balances())
+        else:
+            return web.json_response(self.db.get_balance(wallet_key))
+
+    def get_updates(self, request):
+        if self.updates is None:
+            return web.json_response({})
+        else:
+            return web.json_response(self.updates)
 
     def __validate_transaction_length(self, data: bytes):
         if not data:
@@ -100,4 +132,9 @@ class Masternode(BaseNode):
         app = web.Application()
         app.router.add_post('/', self.process_request)
         app.router.add_post('/add_block', self.process_block_request)
+        app.router.add_get('/updates', self.get_updates)
+
+        resource = app.router.add_resource('/balance/{wallet_key}')
+        resource.add_route('GET', self.get_balance)
+
         web.run_app(app, host=self.host, port=int(self.external_port))

@@ -19,9 +19,21 @@ class BasicInterpreter(BaseInterpreter):
         - Redeem transactions
     """
 
-    def __init__(self, wallet=ED25519Wallet, proof_system=SHA3POW):
+    def __init__(self, wallet=ED25519Wallet, proof_system=SHA3POW, initial_state: dict=None):
         super().__init__(wallet=wallet, proof_system=proof_system)
         self.db = DriverManager()
+
+        if initial_state:
+            print("Seeding initial state...")
+            self.db.balance.seed_state(initial_state)
+            print("Done seeding state with {} wallets.".format(len(initial_state)))
+
+    def update_state(self, state: dict):
+        print("Interpreter flushing scratch...")
+        self.db.scratch.flush()
+        print("Interpreter setting new balances for {} wallets...".format(len(state)))
+        self.db.balance.seed_state(state)
+        print("Interpreter done updating state.")
 
     def interpret_transaction(self, transaction: TestNetTransaction):
         """

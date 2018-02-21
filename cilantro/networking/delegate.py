@@ -35,12 +35,29 @@ if sys.platform != 'win32':
 
 
 class Delegate(BaseNode):
-    def __init__(self, host='127.0.0.1', sub_port='8888', serializer=JSONSerializer, hasher=POW, pub_port='7878'):
+
+    def __init__(self, host='127.0.0.1', sub_port='8888', serializer=JSONSerializer, hasher=POW, pub_port='7878',
+                 mn_url='http://127.0.0.1:8080'):
         BaseNode.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
+        self.mn_get_balance_url = mn_url + "/balance/all"
+        self.mn_post_block_url = mn_url + "/add_block"
+        self.mn_get_updates_url = mn_url + '/updates'
         self.hasher = hasher
         self.last_flush_time = time.time()
         self.queue = TransactionQueueDriver()
-        self.interpreter = BasicInterpreter()
+        self.interpreter = BasicInterpreter(initial_state=self.fetch_state())
+
+    def fetch_state(self):
+        print("Fetching full balance state from Masternode...")
+        r = requests.get(self.mn_get_balance_url)
+        print("Done")
+        return r.json()
+
+    def fetch_updates(self):
+        print("Fetching balance updates from Masternode...")
+        r = requests.get(self.mn_get_updates_url)
+        print("Done")
+        return r.json()
 
     def process_transaction(self, data: bytes=None):
         """
@@ -60,7 +77,9 @@ class Delegate(BaseNode):
             print("Error in delegate process transaction: {}".format(e))
             return {'error_status': 'Delegate error processing transaction: {}'.format(e)}
 
-        self.queue.enqueue_transaction(tx.payload['payload'])
+        tx_dict = (*tx.payload['payload'], tx.payload['metadata']['timestamp'])
+
+        self.queue.enqueue_transaction(tx_dict)
         if self.queue.queue_size() > MAX_QUEUE_SIZE:
             print('queue exceeded max size, flushing queue')
             self.perform_consensus()
@@ -92,15 +111,22 @@ class Delegate(BaseNode):
         block = {'transactions': all_tx}
 
         self.last_flush_time = time.time()
-        self.post_block(self.serializer.serialize(block))
+        if self.post_block(self.serializer.serialize(block)):
+            updates = self.fetch_updates()
+            if len(updates) == 0:
+                print("Delegate could not get latest updates from masternode. Getting full balance...")
+                updates = self.fetch_state()
+            self.interpreter.update_state(updates)
 
     def post_block(self, block: bytes):
         print("Delegate posting block to masternode\nBlock binary: {}".format(block))
-        r = requests.post("http://127.0.0.1:8080/add_block", data=block)
+        r = requests.post(self.mn_post_block_url, data=block)
         if r.status_code == 200:
-            print('Delegate succesfully posted block to Masternode')
+            print('Delegate successfully posted block to Masternode')
+            return True
         else:
             print("Delegate had problem posting block to Masternode (status code={})".format(r.status_code))
+            return False
 
     async def delegate_time(self):
         """Conditions to check that 1 second has passed"""

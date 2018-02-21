@@ -1,4 +1,4 @@
-from pymongo import MongoClient
+from pymongo import MongoClient, ReturnDocument
 from cilantro.db.constants import MONGO
 import json
 import hashlib
@@ -18,10 +18,12 @@ class BlockchainDriver(object):
         self.balances = db[MONGO.balances_col_name]
         self.serializer = JSONSerializer
 
-    def persist_block(self, block: dict):
+    def persist_block(self, block: dict) -> dict:
         """
         Attempts to persist the block, represented as a python dictionary. Raises an exception if something fails
         :param block: The block as a python dictionary
+        :return: A dictionary containing all the wallets keys and new amounts updated as a result of the block in the
+        form of {wallet_key1: new_amount1, wallet_key2: new_amount2, ...}
 
         TODO -- make a custom block data structure
         """
@@ -46,8 +48,11 @@ class BlockchainDriver(object):
         self.blocks.insert_one(block)
 
         # Update balances
+        updates = {}
         for tx in all_tx:
-            self.update_balance(tx)
+            for wallet, balance in self.update_balance(tx).items():
+                updates[wallet] = balance
+        return updates
 
     def create_genesis(self):
         # Make sure genesis block does not already exist
@@ -80,10 +85,24 @@ class BlockchainDriver(object):
         self.blocks.insert_one(block)
         print("Inserted genesis block with alloc: {}".format(block['alloc']))
 
-    def update_balance(self, tx: list):
+    def get_balance(self, wallet_key):
+        balance = self.balances.find_one({MONGO.wallet_key: wallet_key})
+        if balance is None:
+            print("Balance not found for wallet key: {}, returning 0".format(wallet_key))
+            return 0
+        return {wallet_key: balance[MONGO.balance_key]}
+
+    def get_all_balances(self):
+        balances = {}
+        for b in self.balances.find({}):
+            balances[b[MONGO.wallet_key]] = b[MONGO.balance_key]
+        return balances
+
+    def update_balance(self, tx: list) -> dict:
         """
         Updates the balance collection to reflect the outcome of the transaction
         :param tx: A list representing the transaction
+        :return: A dictionary of updated balances in the form {wallet1: new_balance1, wallet2: new_balance2, ...}
         """
         print("updating balance for tx: {}".format(tx))
 
@@ -97,9 +116,16 @@ class BlockchainDriver(object):
                 raise Exception("Sender address {} could not be found in balances (tx={})".format(sender_adr, tx))
 
             # Update sender and receiver balance
-            self.balances.update_one({MONGO.wallet_key: sender_adr}, {'$inc': {MONGO.balance_key: -amount}})
-            self.balances.update_one({MONGO.wallet_key: receiver_adr},
-                                     {'$inc': {MONGO.balance_key: amount}}, upsert=True)
+            # self.balances.update_one({MONGO.wallet_key: sender_adr}, {'$inc': {MONGO.balance_key: -amount}})
+            # self.balances.update_one({MONGO.wallet_key: receiver_adr},
+            #                          {'$inc': {MONGO.balance_key: amount}}, upsert=True)
+            sender_new = self.balances.find_one_and_update({MONGO.wallet_key: sender_adr}, {'$inc': {MONGO.balance_key: -amount}},
+                                              return_document=ReturnDocument.AFTER)
+            receiver_new = self.balances.find_one_and_update({MONGO.wallet_key: receiver_adr},
+                                              {'$inc': {MONGO.balance_key: amount}},
+                                              upsert=True, return_document=ReturnDocument.AFTER)
+
+            return {sender_adr: sender_new[MONGO.balance_key], receiver_adr: receiver_new[MONGO.balance_key]}
 
         elif tx_type == TestNetTransaction.VOTE:
             raise NotImplementedError

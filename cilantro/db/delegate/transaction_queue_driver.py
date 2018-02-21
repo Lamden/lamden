@@ -45,7 +45,7 @@ class TransactionQueueDriver(DriverBase):
 
     def dequeue_all(self) -> List[tuple]:
         """
-        Flushes the queue and returns all transactions as a list in FIFI order
+        Flushes the queue and returns all transactions as a list in FIFO order
         :return: A list containing all the transaction tuples in the queue in FIFO order
         """
         queues = []
