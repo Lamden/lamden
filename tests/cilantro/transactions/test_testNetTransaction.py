@@ -4,6 +4,7 @@ from cilantro.wallets import ED25519Wallet
 from cilantro.proofs.pow import SHA3POW
 import secrets
 import hashlib
+
 '''
     Things to test:
     If transactions get built correctly.
@@ -14,12 +15,13 @@ import hashlib
     If signing works.  - ✔︎
     If POW puzzle works. - ✔︎
     If stamping works. - ✔︎
-    
+
     Let's do it :)
-    
+
     Do transactions need to say who it's from if they are signing it?
     Probably not...
 '''
+
 
 class TestTestNetTransaction(TestCase):
 
@@ -28,7 +30,7 @@ class TestTestNetTransaction(TestCase):
         TO = 'jason'
         AMOUNT = '100'
 
-        std_should_be = (TestNetTransaction.TX, FROM, TO, AMOUNT)
+        std_should_be = [TestNetTransaction.TX, FROM, TO, AMOUNT]
 
         self.assertEqual(std_should_be, TestNetTransaction.standard_tx(FROM, TO, AMOUNT))
 
@@ -36,7 +38,7 @@ class TestTestNetTransaction(TestCase):
         FROM = 'stuart'
         AMOUNT = '1000'
 
-        stamp_should_be = (TestNetTransaction.STAMP, FROM, AMOUNT)
+        stamp_should_be = [TestNetTransaction.STAMP, FROM, AMOUNT]
 
         self.assertEqual(stamp_should_be, TestNetTransaction.stamp_tx(FROM, AMOUNT))
 
@@ -44,7 +46,7 @@ class TestTestNetTransaction(TestCase):
         FROM = 'stuart'
         CANDIDATE = 'jason'
 
-        vote_should_be = (TestNetTransaction.VOTE, FROM, CANDIDATE)
+        vote_should_be = [TestNetTransaction.VOTE, FROM, CANDIDATE]
 
         self.assertEqual(vote_should_be, TestNetTransaction.vote_tx(FROM, CANDIDATE))
 
@@ -194,18 +196,18 @@ class TestTestNetTransaction(TestCase):
                 "proof": "e5685adafe831b6dbb2fd4fb580138b3",
                 "signature": "028570e317407ab675bce76e4f5001e5e38b29f98cb65bf978135c30ca76a4e28e2f1f580ab8a6f35d1a4315d488f2ff0afe92dd7332cc89bb9bc298df87800b"
             },
-            "payload": (
+            "payload": [
                 TestNetTransaction.TX,
                 "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
                 "f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f",
                 "4",
-            )
+            ]
         }
 
-        expected_payload = (TestNetTransaction.TX,
+        expected_payload = [TestNetTransaction.TX,
                             tx_dict['payload'][1],
                             tx_dict['payload'][2],
-                            tx_dict['payload'][3])
+                            tx_dict['payload'][3]]
 
         tx = TestNetTransaction.from_dict(tx_dict)
         self.assertEqual(expected_payload, tx.payload['payload'])
@@ -216,14 +218,14 @@ class TestTestNetTransaction(TestCase):
                 "proof": 'e5685adafe831b6dbb2fd4fb580138b3',
                 "signature": "028570e317407ab675bce76e4f5001e5e38b29f98cb65bf978135c30ca76a4e28e2f1f580ab8a6f35d1a4315d488f2ff0afe92dd7332cc89bb9bc298df87800b"
             },
-            "payload": (
+            "payload": [
                 TestNetTransaction.STAMP,
                 "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
                 "4",
-            )
+            ]
         }
 
-        expected_payload = (TestNetTransaction.STAMP, tx_dict['payload'][1], tx_dict['payload'][2])
+        expected_payload = [TestNetTransaction.STAMP, tx_dict['payload'][1], tx_dict['payload'][2]]
         tx = TestNetTransaction.from_dict(tx_dict)
         self.assertEqual(expected_payload, tx.payload['payload'])
 
@@ -233,13 +235,13 @@ class TestTestNetTransaction(TestCase):
                 "proof": 'e5685adafe831b6dbb2fd4fb580138b3',
                 "signature": "028570e317407ab675bce76e4f5001e5e38b29f98cb65bf978135c30ca76a4e28e2f1f580ab8a6f35d1a4315d488f2ff0afe92dd7332cc89bb9bc298df87800b"
             },
-            "payload": (
+            "payload": [
                 TestNetTransaction.VOTE,
                 "f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f",
                 "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
-            )
+            ]
         }
-        expected_payload = (TestNetTransaction.VOTE, tx_dict['payload'][1], tx_dict['payload'][2])
+        expected_payload = [TestNetTransaction.VOTE, tx_dict['payload'][1], tx_dict['payload'][2]]
         tx = TestNetTransaction.from_dict(tx_dict)
         self.assertEqual(expected_payload, tx.payload['payload'])
 
@@ -249,23 +251,23 @@ class TestTestNetTransaction(TestCase):
                 "proof": 'e5685adafe831b6dbb2fd4fb580138b3',
                 "signature": "028570e317407ab675bce76e4f5001e5e38b29f98cb65bf978135c30ca76a4e28e2f1f580ab8a6f35d1a4315d488f2ff0afe92dd7332cc89bb9bc298df87800b"
             },
-            "payload": (
+            "payload": [
                 TestNetTransaction.SWAP,
                 "f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f",
                 "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
                 "100",
                 "abcdef12345678",
                 "123456789",
-            )
+            ]
         }
 
         tx = TestNetTransaction.from_dict(tx_dict)
-        expected_payload = (TestNetTransaction.SWAP,
+        expected_payload = [TestNetTransaction.SWAP,
                             tx_dict['payload'][1],
                             tx_dict['payload'][2],
                             tx_dict['payload'][3],
                             tx_dict['payload'][4],
-                            tx_dict['payload'][5])
+                            tx_dict['payload'][5]]
 
         self.assertEqual(expected_payload, tx.payload['payload'])
 
@@ -275,17 +277,17 @@ class TestTestNetTransaction(TestCase):
                 "proof": 'e5685adafe831b6dbb2fd4fb580138b3',
                 "signature": "028570e317407ab675bce76e4f5001e5e38b29f98cb65bf978135c30ca76a4e28e2f1f580ab8a6f35d1a4315d488f2ff0afe92dd7332cc89bb9bc298df87800b"
             },
-            "payload": (
+            "payload": [
                 TestNetTransaction.REDEEM,
                 "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
                 "1234567890",
-            )
+            ]
         }
 
         tx = TestNetTransaction.from_dict(tx_dict)
-        expected_payload = (TestNetTransaction.REDEEM,
+        expected_payload = [TestNetTransaction.REDEEM,
                             tx_dict['payload'][1],
-                            tx_dict['payload'][2])
+                            tx_dict['payload'][2]]
 
         self.assertEqual(expected_payload, tx.payload['payload'])
 
@@ -295,11 +297,11 @@ class TestTestNetTransaction(TestCase):
                 "proof": 'e5685adafe831b6dbb2fd4fb580138b3',
                 "signature": "028570e317407ab675bce76e4f5001e5e38b29f98cb65bf978135c30ca76a4e28e2f1f580ab8a6f35d1a4315d488f2ff0afe92dd7332cc89bb9bc298df87800b"
             },
-            "payload": (
+            "payload": [
                 "xxx",
                 "1234567890",
                 "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
-            )
+            ]
         }
 
         self.assertRaises(Exception, TestNetTransaction.from_dict, tx_dict)

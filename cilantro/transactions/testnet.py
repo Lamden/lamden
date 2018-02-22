@@ -89,23 +89,23 @@ class TestNetTransaction(Transaction):
 
     @staticmethod
     def standard_tx(sender: str, to: str, amount: str):
-        return TestNetTransaction.TX, sender, to, amount
+        return [TestNetTransaction.TX, sender, to, amount]
 
     @staticmethod
     def stamp_tx(sender: str, amount):
-        return TestNetTransaction.STAMP, sender, amount
+        return [TestNetTransaction.STAMP, sender, amount]
 
     @staticmethod
     def vote_tx(sender: str, address):
-        return TestNetTransaction.VOTE, sender, address
+        return [TestNetTransaction.VOTE, sender, address]
 
     @staticmethod
     def swap_tx(sender: str, recipient: str, amount: str, hash_lock: str, unix_expiration: str):
-        return TestNetTransaction.SWAP, sender, recipient, amount, hash_lock, unix_expiration
+        return [TestNetTransaction.SWAP, sender, recipient, amount, hash_lock, unix_expiration]
 
     @staticmethod
     def redeem_tx(sender: str, secret: str):
-        return TestNetTransaction.REDEEM, sender, secret
+        return [TestNetTransaction.REDEEM, sender, secret]
 
     @staticmethod
     def verify_tx(transaction, verifying_key, signature, wallet: Wallet, proof_system: POW):

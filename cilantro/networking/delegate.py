@@ -104,7 +104,7 @@ class Delegate(BaseNode):
             print("Error in delegate process transaction: {}".format(e))
             return {'error_status': 'Delegate error processing transaction: {}'.format(e)}
 
-        self.queue.enqueue_transaction(tx_dict)
+        self.queue.enqueue_transaction(tx.payload['payload'])
         if self.queue.queue_size() > MAX_QUEUE_SIZE:
             print('queue exceeded max size, flushing queue')
             self.perform_consensus()

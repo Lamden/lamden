@@ -86,12 +86,13 @@ flush_queue()
 flush_scratch()
 flush_transactions()
 
-trans.append(create_std_tx(STU, DAVIS, 125))
-trans.append(create_std_tx(DAVIS, DENTON, 350))
-trans.append(create_std_tx(DENTON, STU, 420))
+trans.append(create_std_tx(STU, DAVIS, 1))
+trans.append(create_std_tx(DAVIS, STU, 1))
+# trans.append(create_std_tx(DAVIS, DENTON, 1))
+# trans.append(create_std_tx(DENTON, STU, 1))
 
 # Add a transaction to a new user (user who is not yet in the current balance state)
-trans.append(create_std_tx(STU, NEW_GUY, 1000))
+# trans.append(create_std_tx(STU, NEW_GUY, 1000))
 
 # Execute the transactions and inspect the Redis DB
 print_status()

@@ -75,15 +75,6 @@ class Masternode(BaseNode):
         d['metadata']['timestamp'] = time.time()  # INSECURE, FOR DEMO ONLY
         d['metadata']['uuid'] = str(uuid.uuid4())
 
-        # DEBUG TODO REMOVE
-        from cilantro.wallets.ed25519 import ED25519Wallet
-        payload_binary = JSONSerializer.serialize(d['payload'])
-        if not ED25519Wallet.verify(d['payload']['from'], payload_binary, d['metadata']['signature']):
-            print('masternode: fail point 2')
-        else:
-            print('masternode validated transaction')
-        # END DEBUG
-
         return self.publish_req(d)
 
     def add_block(self, data: bytes):
