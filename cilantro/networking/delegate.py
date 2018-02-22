@@ -78,10 +78,27 @@ class Delegate(BaseNode):
         """
         d, tx = None, None
 
+        # DEBUG TODO REMOVE
+        from cilantro.wallets.ed25519 import ED25519Wallet
+        d = self.serializer.deserialize(data)
+        payload_binary = JSONSerializer.serialize(d['payload'])
+        if not ED25519Wallet.verify(d['payload']['from'], payload_binary, d['metadata']['signature']):
+            print('delegate: fail point 1')
+        else:
+            print("delegate works also???")
+        # END DEBUG
+
+
         try:
             d = self.serializer.deserialize(data)
             TestNetTransaction.validate_tx_fields(d)
+
+            # QUARENTEEN
             tx = TestNetTransaction.from_dict(d)
+            print("Original dictionary: {}".format(d))
+            print("Trnasaction after from_dict: {}".format(tx))
+            # END
+
             self.interpreter.interpret_transaction(tx)
         except Exception as e:
             print("Error in delegate process transaction: {}".format(e))

@@ -25,6 +25,15 @@ class Witness(BaseNode):
             return {'status': 'Could not deserialize transaction'}
         payload_bytes = self.serializer.serialize(unpacked_data["payload"])
 
+        # DEBUG TODO REMOVE
+        from cilantro.wallets.ed25519 import ED25519Wallet
+        payload_binary = JSONSerializer.serialize(unpacked_data['payload'])
+        if not ED25519Wallet.verify(unpacked_data['payload']['from'], payload_binary, unpacked_data['metadata']['signature']):
+            print('witness: fail point 1')
+        else:
+            print("witness works also???")
+        # END DEBUG
+
         if self.hasher.check(payload_bytes, unpacked_data['metadata']['proof']):
             return self.publish_req(unpacked_data)
         else:

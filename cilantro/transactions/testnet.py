@@ -1,6 +1,7 @@
 from cilantro.transactions import Transaction
 from cilantro.wallets import Wallet, ED25519Wallet
 from cilantro.proofs.pow import POW
+from cilantro.serialization.json_serializer import JSONSerializer
 
 class TestNetTransaction(Transaction):
     # support stamp transactions, vote transactions, etc.
@@ -17,6 +18,8 @@ class TestNetTransaction(Transaction):
     VOTE = 'v'
     SWAP = 'a'
     REDEEM = 'r'
+
+    SERIALIZER = JSONSerializer
 
     @staticmethod
     def validate_tx_fields(tx: dict) -> bool:
@@ -101,15 +104,16 @@ class TestNetTransaction(Transaction):
 
     @staticmethod
     def verify_tx(transaction, verifying_key, signature, wallet: Wallet, proof_system: POW):
-        valid_signature = wallet.verify(verifying_key, str(transaction['payload']).encode(), signature)
+        payload_binary = TestNetTransaction.SERIALIZER.serialize(transaction['payload'])
+        valid_signature = wallet.verify(verifying_key, payload_binary, signature)
         try:
-            valid_proof = proof_system.check(str(transaction['payload']).encode(), transaction['metadata']['proof'][0])
+            valid_proof = proof_system.check(payload_binary, transaction['metadata']['proof'][0])
         except:
             valid_proof = transaction['metadata']['proof'] == 's'
         return valid_signature, valid_proof
 
     @staticmethod
-    def from_dict(tx_dict, use_stamp=False, wallet=ED25519Wallet, proof=POW):
+    def from_dict(tx_dict, wallet=ED25519Wallet, proof=POW):
         """
         Build a TestNetTransaction object from a dictionary.
         :param tx_dict: A dictionary containing the transaction data
@@ -119,6 +123,7 @@ class TestNetTransaction(Transaction):
         """
         transaction = TestNetTransaction(wallet, proof)
         transaction.payload['metadata'] = tx_dict['metadata']
+
         payload = tx_dict['payload']
 
         tx_type = payload['type']
@@ -137,15 +142,10 @@ class TestNetTransaction(Transaction):
                                                               payload['hash_lock'], payload['unix_expiration']
             transaction.payload['payload'] = TestNetTransaction.swap_tx(sender, receiver, amount, hash_lock, unix_expir)
         elif tx_type == TestNetTransaction.REDEEM:
-            transaction.payload['payload'] = TestNetTransaction.redeem_tx(payload['to'], payload['secret'])
+            transaction.payload['payload'] = TestNetTransaction.redeem_tx(payload['from'], payload['secret'])
         else:
             raise Exception('Error building transaction from dict -- '
                             'Invalid type field in transaction dict: {}'.format(tx_dict))
-
-        if use_stamp:
-            transaction.payload['metadata']['proof'] = TestNetTransaction.STAMP
-        else:
-            transaction.payload['metadata']['proof'] = transaction.seal()
 
         return transaction
 
@@ -170,7 +170,7 @@ class TestNetTransaction(Transaction):
                 self.payload['metadata']['proof'] = self.seal()
 
     def sign(self, s):
-        return self.wallet.sign(s, str(self.payload['payload']).encode())
+        return self.wallet.sign(s, TestNetTransaction.SERIALIZER.serialize(self.payload['payload']))
 
     def seal(self):
-        return self.proof_system.find(str(self.payload['payload']).encode())
+        return self.proof_system.find(TestNetTransaction.SERIALIZER.serialize(self.payload['payload']))

@@ -376,7 +376,7 @@ class TestTestNetInterpreter(TestCase):
 
         # create the redeem script
         tx = TestNetTransaction(ED25519Wallet, SHA3POW)
-        tx.build(TestNetTransaction.redeem_tx('ABCD'), recipient_priv_key, use_stamp=False, complete=True)
+        tx.build(TestNetTransaction.redeem_tx(sender_pub_key, 'ABCD'), recipient_priv_key, use_stamp=False, complete=True)
 
         # create the mock query of how it should work
         mock_query = FAIL
@@ -415,7 +415,7 @@ class TestTestNetInterpreter(TestCase):
 
         # create the redeem script
         tx = TestNetTransaction(ED25519Wallet, SHA3POW)
-        tx.build(TestNetTransaction.redeem_tx(SECRET), attacker_priv_key, use_stamp=False, complete=True)
+        tx.build(TestNetTransaction.redeem_tx(sender_pub_key, SECRET), attacker_priv_key, use_stamp=False, complete=True)
 
         # create the mock query of how it should work
         mock_query = FAIL

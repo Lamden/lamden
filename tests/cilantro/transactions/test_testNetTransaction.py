@@ -74,9 +74,10 @@ class TestTestNetTransaction(TestCase):
 
         full_tx = transaction_factory.payload
         sig = full_tx['metadata']['signature']
+        payload_binary = TestNetTransaction.SERIALIZER.serialize(full_tx['payload'])
 
         proof = full_tx['metadata']['proof']
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
+        self.assertTrue(SHA3POW.check(payload_binary, proof[0]))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
 
     def test_stamp_std_tx(self):
@@ -106,8 +107,9 @@ class TestTestNetTransaction(TestCase):
         sig = full_tx['metadata']['signature']
 
         proof = full_tx['metadata']['proof']
+        payload_binary = TestNetTransaction.SERIALIZER.serialize(full_tx['payload'])
 
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
+        self.assertTrue(SHA3POW.check(payload_binary, proof[0]))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
 
     def test_stamp_vote_tx(self):
@@ -137,8 +139,9 @@ class TestTestNetTransaction(TestCase):
         sig = full_tx['metadata']['signature']
 
         proof = full_tx['metadata']['proof']
+        payload_binary = TestNetTransaction.SERIALIZER.serialize(full_tx['payload'])
 
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
+        self.assertTrue(SHA3POW.check(payload_binary, proof[0]))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
 
     def test_swap_std_tx_pow(self):
@@ -162,8 +165,9 @@ class TestTestNetTransaction(TestCase):
         sig = full_tx['metadata']['signature']
 
         proof = full_tx['metadata']['proof']
+        payload_binary = TestNetTransaction.SERIALIZER.serialize(full_tx['payload'])
 
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
+        self.assertTrue(SHA3POW.check(payload_binary, proof[0]))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
 
     def test_redeem_std_tx_pow(self):
@@ -179,6 +183,121 @@ class TestTestNetTransaction(TestCase):
         sig = full_tx['metadata']['signature']
 
         proof = full_tx['metadata']['proof']
+        payload_binary = TestNetTransaction.SERIALIZER.serialize(full_tx['payload'])
 
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
+        self.assertTrue(SHA3POW.check(payload_binary, proof[0]))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
+
+    def test_from_dict_std_tx(self):
+        tx_dict = {
+            "metadata": {
+                "proof": "e5685adafe831b6dbb2fd4fb580138b3",
+                "signature": "028570e317407ab675bce76e4f5001e5e38b29f98cb65bf978135c30ca76a4e28e2f1f580ab8a6f35d1a4315d488f2ff0afe92dd7332cc89bb9bc298df87800b"
+            },
+            "payload": {
+                "amount": "4",
+                "from": "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
+                "to": "f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f",
+                "type": TestNetTransaction.TX
+            }
+        }
+
+        expected_payload = (TestNetTransaction.TX, tx_dict['payload']['from'],
+                            tx_dict['payload']['to'], tx_dict['payload']['amount'])
+        tx = TestNetTransaction.from_dict(tx_dict)
+        self.assertEqual(expected_payload, tx.payload['payload'])
+
+    def test_from_dict_stamp_tx(self):
+        tx_dict = {
+            "metadata": {
+                "proof": 'e5685adafe831b6dbb2fd4fb580138b3',
+                "signature": "028570e317407ab675bce76e4f5001e5e38b29f98cb65bf978135c30ca76a4e28e2f1f580ab8a6f35d1a4315d488f2ff0afe92dd7332cc89bb9bc298df87800b"
+            },
+            "payload": {
+                "amount": "4",
+                "from": "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
+                "type": TestNetTransaction.STAMP
+            }
+        }
+
+        expected_payload = (TestNetTransaction.STAMP, tx_dict['payload']['from'], tx_dict['payload']['amount'])
+        tx = TestNetTransaction.from_dict(tx_dict)
+        self.assertEqual(expected_payload, tx.payload['payload'])
+
+
+    def test_from_dict_vote(self):
+        tx_dict = {
+            "metadata": {
+                "proof": 'e5685adafe831b6dbb2fd4fb580138b3',
+                "signature": "028570e317407ab675bce76e4f5001e5e38b29f98cb65bf978135c30ca76a4e28e2f1f580ab8a6f35d1a4315d488f2ff0afe92dd7332cc89bb9bc298df87800b"
+            },
+            "payload": {
+                "from": "f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f",
+                "to": "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
+                "type": TestNetTransaction.VOTE
+            }
+        }
+        expected_payload = (TestNetTransaction.VOTE, tx_dict['payload']['from'], tx_dict['payload']['to'])
+        tx = TestNetTransaction.from_dict(tx_dict)
+        self.assertEqual(expected_payload, tx.payload['payload'])
+
+    def test_from_dict_swap(self):
+        tx_dict = {
+            "metadata": {
+                "proof": 'e5685adafe831b6dbb2fd4fb580138b3',
+                "signature": "028570e317407ab675bce76e4f5001e5e38b29f98cb65bf978135c30ca76a4e28e2f1f580ab8a6f35d1a4315d488f2ff0afe92dd7332cc89bb9bc298df87800b"
+            },
+            "payload": {
+                "from": "f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f",
+                "to": "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
+                "amount": "100",
+                "hash_lock": "abcdef12345678",
+                "unix_expiration": "123456789",
+                "type": TestNetTransaction.SWAP
+            }
+        }
+
+        tx = TestNetTransaction.from_dict(tx_dict)
+        expected_payload = (TestNetTransaction.SWAP,
+                            tx_dict['payload']['from'],
+                            tx_dict['payload']['to'],
+                            tx_dict['payload']['amount'],
+                            tx_dict['payload']['hash_lock'],
+                            tx_dict['payload']['unix_expiration'])
+
+        self.assertEqual(expected_payload, tx.payload['payload'])
+
+    def test_from_dict_redeem(self):
+        tx_dict = {
+            "metadata": {
+                "proof": 'e5685adafe831b6dbb2fd4fb580138b3',
+                "signature": "028570e317407ab675bce76e4f5001e5e38b29f98cb65bf978135c30ca76a4e28e2f1f580ab8a6f35d1a4315d488f2ff0afe92dd7332cc89bb9bc298df87800b"
+            },
+            "payload": {
+                "secret": "1234567890",
+                "from": "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
+                "type": TestNetTransaction.REDEEM
+            }
+        }
+
+        tx = TestNetTransaction.from_dict(tx_dict)
+        expected_payload = (TestNetTransaction.REDEEM,
+                            tx_dict['payload']['from'],
+                            tx_dict['payload']['secret'])
+
+        self.assertEqual(expected_payload, tx.payload['payload'])
+
+    def test_from_dict_invalid_type(self):
+        tx_dict = {
+            "metadata": {
+                "proof": 'e5685adafe831b6dbb2fd4fb580138b3',
+                "signature": "028570e317407ab675bce76e4f5001e5e38b29f98cb65bf978135c30ca76a4e28e2f1f580ab8a6f35d1a4315d488f2ff0afe92dd7332cc89bb9bc298df87800b"
+            },
+            "payload": {
+                "secret": "1234567890",
+                "from": "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
+                "type": "xxx"
+            }
+        }
+
+        self.assertRaises(Exception, TestNetTransaction.from_dict, tx_dict)

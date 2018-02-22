@@ -50,7 +50,15 @@ class BasicInterpreter(BaseInterpreter):
                            TestNetTransaction.REDEEM: self.interpret_redeem_tx}
 
         tx_payload = transaction.payload['payload']
+
+        print("trying to validate sig for payload: {}".format(tx_payload))
+
         s = transaction.payload['metadata']['signature']
+        payload_binary = TestNetTransaction.SERIALIZER.serialize(tx_payload)
+
+        print(self.wallet.verify(tx_payload[1], payload_binary, s))
+        if not self.wallet.verify(tx_payload[1], payload_binary, s):
+            raise Exception("oh balls")
 
         if not TestNetTransaction.verify_tx(transaction=transaction.payload, verifying_key=tx_payload[1],
                                             signature=s, wallet=self.wallet,
@@ -137,7 +145,7 @@ class BasicInterpreter(BaseInterpreter):
         sender, recipient, amount, unix_expiration = self.db.swaps.get_swap_data(hash_lock)
         amount = float(amount)
         sig = self.transaction.payload['metadata']['signature']
-        msg = None
+        msg = TestNetTransaction.SERIALIZER.serialize(self.transaction.payload['payload'])
 
         if tx_sender not in (sender, recipient):
             raise Exception("Redeem Tx Error: redemption attempted by actor who is neither the original"
