@@ -163,7 +163,7 @@ class BlockchainDriver(object):
         """
         Returns blockchain data for client size viz
         """
-        keys = ('sender', 'reciever', 'amount', 'time', 'hash')
+        keys = ('sender', 'receiver', 'amount', 'time', 'hash')
         csv = ",".join(keys) + "\r\n"
 
         for block in self.blocks.find({MONGO.genesis_key: {'$exists': False}}, {"_id": 0}).sort('block_num', ASCENDING):
