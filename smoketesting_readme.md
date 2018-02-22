@@ -3,7 +3,7 @@ This describes spinning up a masternode + witness+ delegate, and how run test tr
 ## PREREQUISITES:
 ### Spin up databases
 - Make sure mongo and redis are running in the background (run ```sudo mongod``` and ```redis-server``` in seperate terminal tabs)
-```
+
 ## Spinning up instances
 Open 3 separate terminal tabs, and spin up a masternode, delegate, witness in each.
 
