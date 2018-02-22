@@ -43,9 +43,9 @@ class Masternode(BaseNode):
         self.db.create_genesis()
         self.updates = None
         file_path = os.getcwd() + '/cilantro/faucet.json'
-        faucet_json = json.load(open(file_path))
-        self.faucet_s = faucet_json['signing_key']
-        self.faucet_v = faucet_json['verifying_key']
+        # faucet_json = json.load(open(file_path))
+        # self.faucet_s = faucet_json['signing_key']
+        # self.faucet_v = faucet_json['verifying_key']
 
     def process_transaction(self, data: bytes):
         """

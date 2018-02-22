@@ -76,7 +76,7 @@ class TestTestNetTransaction(TestCase):
         sig = full_tx['metadata']['signature']
 
         proof = full_tx['metadata']['proof']
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof))
+        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
 
     def test_stamp_std_tx(self):
@@ -107,7 +107,7 @@ class TestTestNetTransaction(TestCase):
 
         proof = full_tx['metadata']['proof']
 
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof))
+        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
 
     def test_stamp_vote_tx(self):
@@ -138,7 +138,7 @@ class TestTestNetTransaction(TestCase):
 
         proof = full_tx['metadata']['proof']
 
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof))
+        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
 
     def test_swap_std_tx_pow(self):
@@ -163,14 +163,14 @@ class TestTestNetTransaction(TestCase):
 
         proof = full_tx['metadata']['proof']
 
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof))
+        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
 
     def test_redeem_std_tx_pow(self):
         (s, v) = ED25519Wallet.new()
         SECRET = secrets.token_hex(16)
 
-        tx = TestNetTransaction.redeem_tx(SECRET)
+        tx = TestNetTransaction.redeem_tx(v, SECRET)
 
         transaction_factory = TestNetTransaction(wallet=ED25519Wallet, proof=SHA3POW)
         transaction_factory.build(tx, s, complete=True, use_stamp=False)
@@ -180,5 +180,5 @@ class TestTestNetTransaction(TestCase):
 
         proof = full_tx['metadata']['proof']
 
-        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof))
+        self.assertTrue(SHA3POW.check(str(full_tx['payload']).encode(), proof[0]))
         self.assertTrue(TestNetTransaction.verify_tx(full_tx, v, sig, ED25519Wallet, SHA3POW))
