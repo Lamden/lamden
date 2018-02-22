@@ -50,22 +50,15 @@ class BasicInterpreter(BaseInterpreter):
                            TestNetTransaction.REDEEM: self.interpret_redeem_tx}
 
         tx_payload = transaction.payload['payload']
-
-        print("trying to validate sig for payload: {}".format(tx_payload))
-
         s = transaction.payload['metadata']['signature']
         payload_binary = TestNetTransaction.SERIALIZER.serialize(tx_payload)
-
-        print(self.wallet.verify(tx_payload[1], payload_binary, s))
-        if not self.wallet.verify(tx_payload[1], payload_binary, s):
-            raise Exception("oh balls")
 
         if not TestNetTransaction.verify_tx(transaction=transaction.payload, verifying_key=tx_payload[1],
                                             signature=s, wallet=self.wallet,
                                             proof_system=self.proof_system)[0]:
             raise Exception("Interpreter could not verify transaction signature")
 
-        print('(in interpret tx) transaction payload: {}'.format(tx_payload))  # debug line
+        # print('(in interpret tx) transaction payload: {}'.format(tx_payload))  # debug line
         INTERPRETER_MAP[tx_payload[0]](tx_payload[1:])
 
     def interpret_std_tx(self, tx_payload: tuple):

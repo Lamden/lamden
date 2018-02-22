@@ -159,14 +159,29 @@ class BlockchainDriver(object):
                                   {'$set': {MONGO.latest_block_num_key: block_num}})
         return block_num
 
-    def get_blockchain_data(self) -> list:
+    def get_blockchain_data(self) -> str:
         """
-        Returns blockchain data (as list of blocks (which are dicts) for client size viz
-        :return:
+        Returns blockchain data for client size viz
         """
-        data = []
+        keys = ('sender', 'reciever', 'amount', 'time', 'hash')
+        csv = ",".join(keys) + "\r\n"
+
         for block in self.blocks.find({MONGO.genesis_key: {'$exists': False}}, {"_id": 0}).sort('block_num', ASCENDING):
-            data.append(block)
-        return data
+            # data.append(block)
+            for tx in block['transactions']:
+
+                # DEBUG
+                if len(tx) < 5:
+                    print("why was this tx short: {}\n...for block: {}".format(tx, block))
+                # END DEBUG
+
+                sender = tx[1]
+                reciever = tx[2]
+                amount = str(tx[3])
+                time = str(tx[4])
+                hash = block['hash']
+                csv += ",".join((sender, reciever, amount, time, hash)) + "\r\n"
+
+        return csv
 
 
