@@ -86,19 +86,13 @@ class Delegate(BaseNode):
         try:
             d = self.serializer.deserialize(data)
             TestNetTransaction.validate_tx_fields(d)
-
-            # QUARENTEEN
             tx = TestNetTransaction.from_dict(d)
-            print("Original dictionary: {}".format(d))
-            print("Trnasaction after from_dict: {}".format(tx))
-            # END
-
             self.interpreter.interpret_transaction(tx)
         except Exception as e:
             print("Error in delegate process transaction: {}".format(e))
             return {'error_status': 'Delegate error processing transaction: {}'.format(e)}
 
-        self.queue.enqueue_transaction(tx.payload['payload'])
+        self.queue.enqueue_transaction((*tx.payload['payload'], tx.payload['metadata']['timestamp']))
         if self.queue.queue_size() > MAX_QUEUE_SIZE:
             print('queue exceeded max size, flushing queue')
             self.perform_consensus()
