@@ -35,10 +35,16 @@ I recommend you just copy and paste them into a ipython terminal and invoke them
 The tuples STU/DENTON/DAVIS contain the (signing_key, verifying_key) for each of us, and we each have some funds seeded in the genesis block.
 
 ```python
-import json
 from cilantro.wallets.ed25519 import ED25519Wallet
-from cilantro.proofs.pow import SHA3POW
 from cilantro.serialization.json_serializer import JSONSerializer
+from cilantro.proofs.pow import SHA3POW
+
+STU = ('24e90019ce7dbfe3f6e8bada161540e1330d8d51bff7e524bcd34b7fbefb0d9a260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f',
+ '260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f')
+DAVIS = ('d851136c3a2e0b93c929b184f75644d923a6c372bac7de1dc8a5353d07433123f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f',
+ 'f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f')
+DENTON = ('b5c409614cf07f8d57c30da53bcccc62c7e7723e15298ed6fcace29af4a413245d3267ee2454ace1a845f39674f127a4b838cbd38027ec6686b13d374609d0fe',
+          '5d3267ee2454ace1a845f39674f127a4b838cbd38027ec6686b13d374609d0fe')
 
 def create_std_tx(sender: tuple, recipient: tuple, amount: float):
     """
@@ -48,18 +54,10 @@ def create_std_tx(sender: tuple, recipient: tuple, amount: float):
     :param amount: The amount to send
     :return:
     """
-    #tx = {"payload": [recipient[1], "amount": str(amount), "from": sender[1], "type": "t"], "metadata": {}}
     tx = {"payload": ["t", sender[1], recipient[1], str(amount)], "metadata": {}}
     tx["metadata"]["proof"] = SHA3POW.find(JSONSerializer.serialize(tx["payload"]))[0]
     tx["metadata"]["signature"] = ED25519Wallet.sign(sender[0], JSONSerializer.serialize(tx["payload"]))
     return tx
-
-STU = ('24e90019ce7dbfe3f6e8bada161540e1330d8d51bff7e524bcd34b7fbefb0d9a260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f',
- '260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f')
-DAVIS = ('d851136c3a2e0b93c929b184f75644d923a6c372bac7de1dc8a5353d07433123f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f',
- 'f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f')
- DENTON = ('b5c409614cf07f8d57c30da53bcccc62c7e7723e15298ed6fcace29af4a413245d3267ee2454ace1a845f39674f127a4b838cbd38027ec6686b13d374609d0fe',
- '5d3267ee2454ace1a845f39674f127a4b838cbd38027ec6686b13d374609d0fe')
 ```
 
 To create a standard transaction from Stu to Davis for 10 dollars, you would call
