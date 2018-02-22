@@ -167,14 +167,7 @@ class BlockchainDriver(object):
         csv = ",".join(keys) + "\r\n"
 
         for block in self.blocks.find({MONGO.genesis_key: {'$exists': False}}, {"_id": 0}).sort('block_num', ASCENDING):
-            # data.append(block)
             for tx in block['transactions']:
-
-                # DEBUG
-                if len(tx) < 5:
-                    print("why was this tx short: {}\n...for block: {}".format(tx, block))
-                # END DEBUG
-
                 sender = tx[1]
                 reciever = tx[2]
                 amount = str(tx[3])
