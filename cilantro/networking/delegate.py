@@ -34,6 +34,8 @@ if sys.platform != 'win32':
         another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
 """
 
+from threading import Thread
+import time
 
 class Delegate(BaseNode):
 
@@ -48,14 +50,13 @@ class Delegate(BaseNode):
         self.queue = TransactionQueueDriver()
         self.interpreter = BasicInterpreter(initial_state=self.fetch_state())
 
-        #self.loop = asyncio.get_event_loop()
-        #self.loop.run_until_complete(self.flush_loop())
+        self.thread = Thread(target=self.flush_queue)
+        self.thread.start()
 
-    # async def flush_loop(self):
-    #     while True:
-    #
-    #         await asyncio.sleep(QUEUE_AUTO_FLUSH_TIME)
-    #         self.perform_consensus()
+    def flush_queue(self):
+        while True:
+            time.sleep(QUEUE_AUTO_FLUSH_TIME)
+            self.perform_consensus()
 
     def fetch_state(self):
         print("Fetching full balance state from Masternode...")
@@ -68,6 +69,7 @@ class Delegate(BaseNode):
         r = requests.get(self.mn_get_updates_url)
         print("Done")
         return r.json()
+
 
     def process_transaction(self, data: bytes=None):
         """
@@ -110,11 +112,6 @@ class Delegate(BaseNode):
 
         # Package block for transport
         all_tx = self.queue.dequeue_all()
-
-        # BELOW LOGIC MOVED TO MASTERNODE
-        # h = hashlib.sha3_256()
-        # h.update(self.serializer.serialize(all_tx))
-        # block = {'block': all_tx, 'hash': h.hexdigest()}
 
         block = {'transactions': all_tx}
 
