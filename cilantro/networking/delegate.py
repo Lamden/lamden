@@ -8,6 +8,7 @@ from cilantro.transactions.testnet import TestNetTransaction
 import time
 import sys
 import requests
+import asyncio
 import hashlib
 import json
 if sys.platform != 'win32':
@@ -46,6 +47,14 @@ class Delegate(BaseNode):
         self.last_flush_time = time.time()
         self.queue = TransactionQueueDriver()
         self.interpreter = BasicInterpreter(initial_state=self.fetch_state())
+
+        self.loop = asyncio.get_event_loop()
+        self.loop.run_until_complete(self.flush_loop())
+
+    async def flush_loop(self):
+        while True:
+            asyncio.sleep(QUEUE_AUTO_FLUSH_TIME)
+            self.perform_consensus()
 
     def fetch_state(self):
         print("Fetching full balance state from Masternode...")

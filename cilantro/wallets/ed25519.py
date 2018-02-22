@@ -1,7 +1,3 @@
-import nacl
-import nacl.encoding
-import nacl.signing
-
 import ed25519
 
 from cilantro.wallets import Wallet
