@@ -63,16 +63,6 @@ class Masternode(BaseNode):
             print("in Exception of process_transaction")
             return {'error': TX_STATUS['SERIALIZE_FAILED'].format(e)}
 
-        # DEBUG TODO REMOVE
-        from cilantro.wallets.ed25519 import ED25519Wallet
-        payload_binary = JSONSerializer.serialize(d['payload'])
-        if not ED25519Wallet.verify(d['payload']['from'], payload_binary, d['metadata']['signature']):
-            print('masternode: fail point 1')
-        else:
-            print("why does this work?")
-        # END DEBUG
-
-
         # Validate transaction fields
         try:
             TestNetTransaction.validate_tx_fields(d)
@@ -91,7 +81,7 @@ class Masternode(BaseNode):
         if not ED25519Wallet.verify(d['payload']['from'], payload_binary, d['metadata']['signature']):
             print('masternode: fail point 2')
         else:
-            print('fail point 2 not reached also???')
+            print('masternode validated transaction')
         # END DEBUG
 
         return self.publish_req(d)

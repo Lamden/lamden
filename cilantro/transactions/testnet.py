@@ -131,23 +131,23 @@ class TestNetTransaction(Transaction):
 
         payload = tx_dict['payload']
 
-        tx_type = payload['type']
+        tx_type = payload[0]
 
         if tx_type == TestNetTransaction.TX:
-            sender, receiver, amount = payload['from'], payload['to'], str(payload['amount'])
+            sender, receiver, amount = payload[1], payload[2], str(payload[3])
             transaction.payload['payload'] = TestNetTransaction.standard_tx(sender, receiver, amount)
         elif tx_type == TestNetTransaction.STAMP:
-            sender, amount = payload['from'], payload['amount']
+            sender, amount = payload[1], payload[2]
             transaction.payload['payload'] = TestNetTransaction.stamp_tx(sender, amount)
         elif tx_type == TestNetTransaction.VOTE:
-            sender, receiver = payload['from'], payload['to']
+            sender, receiver = payload[1], payload[2]
             transaction.payload['payload'] = TestNetTransaction.vote_tx(sender, receiver)
         elif tx_type == TestNetTransaction.SWAP:
-            sender, receiver, amount, hash_lock, unix_expir = payload['from'], payload['to'], str(payload['amount']), \
-                                                              payload['hash_lock'], payload['unix_expiration']
+            sender, receiver, amount, hash_lock, unix_expir = payload[1], payload[2], str(payload[3]), \
+                                                              payload[4], payload[5]
             transaction.payload['payload'] = TestNetTransaction.swap_tx(sender, receiver, amount, hash_lock, unix_expir)
         elif tx_type == TestNetTransaction.REDEEM:
-            transaction.payload['payload'] = TestNetTransaction.redeem_tx(payload['from'], payload['secret'])
+            transaction.payload['payload'] = TestNetTransaction.redeem_tx(payload[1], payload[2])
         else:
             raise Exception('Error building transaction from dict -- '
                             'Invalid type field in transaction dict: {}'.format(tx_dict))
