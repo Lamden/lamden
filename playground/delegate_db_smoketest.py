@@ -60,17 +60,18 @@ def create_std_tx(sender: tuple, recipient: tuple, amount: float):
     :param amount: The amount to send
     :return:
     """
-    tx = {"payload": {"to": recipient[1], "amount": str(amount), "from": sender[1], "type":"t"}, "metadata": {}}
-    # tx["metadata"]["proof"] = SHA3POW.find(json.dumps(tx["payload"]).encode())[0]
+    # TestNetTransaction.TX, sender, to, amount
+    tx = {'payload': ('t', sender[1], recipient[1], str(amount)), 'metadata':{}}
     tx["metadata"]["proof"] = SHA3POW.find(JSONSerializer.serialize(tx["payload"]))[0]
-    tx["metadata"]["signature"] = ED25519Wallet.sign(sender[0], json.dumps(tx["payload"]).encode())
+    # tx["metadata"]["signature"] = ED25519Wallet.sign(sender[0], json.dumps(tx["payload"]).encode())
+    tx["metadata"]["signature"] = ED25519Wallet.sign(sender[0], JSONSerializer.serialize(tx['payload']))
     return tx
 
 
-STU = ('373ac0ec93038e4235c4716183afe55dab95f5d780415f60e7dd5363a2d2fd10',
-       '403619540f4dfadc2da892c8d37bf243cd8d5a8e6665bc615f6112f0c93a3b09')
-DAVIS = ('1f4be9265694ec059e11299ab9a5edce314f28accab38e09d770af36b1edaa27',
-         '6fbc02647179786c10703f7fb82e625c05ede8787f5eeff84c5d9be03ff59ce8')
+STU = ('24e90019ce7dbfe3f6e8bada161540e1330d8d51bff7e524bcd34b7fbefb0d9a260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f',
+ '260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f')
+DAVIS = ('d851136c3a2e0b93c929b184f75644d923a6c372bac7de1dc8a5353d07433123f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f',
+ 'f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f')
 DENTON = ('c139bb396b4f7aa0bea43098a52bd89e411ef31dccd1497f4d27da5f63c53b49',
           'a86f22eabd53ea84b04e643361bd59b3c7b721b474b986ab29be10af6bcc0af1')
 
@@ -93,10 +94,10 @@ trans.append(create_std_tx(DENTON, STU, 420))
 trans.append(create_std_tx(STU, NEW_GUY, 1000))
 
 # Execute the transactions and inspect the Redis DB
-print_status(r)
+print_status()
 for t in trans:
     d.process_transaction(data=encode_tx(t))
-    print_status(r)
+    print_status()
 
 
 
