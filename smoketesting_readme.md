@@ -1,29 +1,9 @@
-i like turtles
-
-
 This describes spinning up a masternode + witness+ delegate, and how run test transaction through them.
 
 ## PREREQUISITES:
 ### Spin up databases
 - Make sure mongo and redis are running in the background (run ```sudo mongod``` and ```redis-server``` in seperate terminal tabs)
-### Set balances in redis
-In reality, this would be done by the delegates querying masternode for the latest state when they boot up, but for now it has to be done manually. In a python terminal, run this:
-```python
-import redis
-r = redis.StrictRedis(host='localhost', port=6379, db=0)
-BALANCE_KEY = 'BALANCE'
-STU = ('373ac0ec93038e4235c4716183afe55dab95f5d780415f60e7dd5363a2d2fd10',
-       '403619540f4dfadc2da892c8d37bf243cd8d5a8e6665bc615f6112f0c93a3b09')
-DAVIS = ('1f4be9265694ec059e11299ab9a5edce314f28accab38e09d770af36b1edaa27',
-         '6fbc02647179786c10703f7fb82e625c05ede8787f5eeff84c5d9be03ff59ce8')
-DENTON = ('c139bb396b4f7aa0bea43098a52bd89e411ef31dccd1497f4d27da5f63c53b49',
-          'a86f22eabd53ea84b04e643361bd59b3c7b721b474b986ab29be10af6bcc0af1')
-
-r.hset(BALANCE_KEY, STU[1], 1000)
-r.hset(BALANCE_KEY, DAVIS[1], 500)
-r.hset(BALANCE_KEY, DENTON[1], 750)
 ```
-
 ## Spinning up instances
 Open 3 separate terminal tabs, and spin up a masternode, delegate, witness in each.
 
@@ -68,17 +48,18 @@ def create_std_tx(sender: tuple, recipient: tuple, amount: float):
     :param amount: The amount to send
     :return:
     """
-    tx = {"payload": {"to": recipient[1], "amount": str(amount), "from": sender[1], "type": "t"}, "metadata": {}}
+    #tx = {"payload": [recipient[1], "amount": str(amount), "from": sender[1], "type": "t"], "metadata": {}}
+    tx = {"payload": ["t", sender[1], recipient[1], str(amount)], "metadata": {}}
     tx["metadata"]["proof"] = SHA3POW.find(JSONSerializer.serialize(tx["payload"]))[0]
     tx["metadata"]["signature"] = ED25519Wallet.sign(sender[0], JSONSerializer.serialize(tx["payload"]))
     return tx
-    
-STU = ('373ac0ec93038e4235c4716183afe55dab95f5d780415f60e7dd5363a2d2fd10',
-       '403619540f4dfadc2da892c8d37bf243cd8d5a8e6665bc615f6112f0c93a3b09')
-DAVIS = ('1f4be9265694ec059e11299ab9a5edce314f28accab38e09d770af36b1edaa27',
-         '6fbc02647179786c10703f7fb82e625c05ede8787f5eeff84c5d9be03ff59ce8')
-DENTON = ('c139bb396b4f7aa0bea43098a52bd89e411ef31dccd1497f4d27da5f63c53b49',
-          'a86f22eabd53ea84b04e643361bd59b3c7b721b474b986ab29be10af6bcc0af1')
+
+STU = ('24e90019ce7dbfe3f6e8bada161540e1330d8d51bff7e524bcd34b7fbefb0d9a260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f',
+ '260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f')
+DAVIS = ('d851136c3a2e0b93c929b184f75644d923a6c372bac7de1dc8a5353d07433123f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f',
+ 'f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f')
+ DENTON = ('b5c409614cf07f8d57c30da53bcccc62c7e7723e15298ed6fcace29af4a413245d3267ee2454ace1a845f39674f127a4b838cbd38027ec6686b13d374609d0fe',
+ '5d3267ee2454ace1a845f39674f127a4b838cbd38027ec6686b13d374609d0fe')
 ```
 
 To create a standard transaction from Stu to Davis for 10 dollars, you would call
