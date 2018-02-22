@@ -34,6 +34,8 @@ if sys.platform != 'win32':
         another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
 """
 
+from threading import Thread
+import time
 
 class Delegate(BaseNode):
 
@@ -48,14 +50,16 @@ class Delegate(BaseNode):
         self.queue = TransactionQueueDriver()
         self.interpreter = BasicInterpreter(initial_state=self.fetch_state())
 
-        #self.loop = asyncio.get_event_loop()
-        #self.loop.run_until_complete(self.flush_loop())
+        print('preblocking')
+        self.thread = Thread(target=self.flush_loop)
+        self.thread.start()
+        print('postblocking')
 
-    # async def flush_loop(self):
-    #     while True:
-    #
-    #         await asyncio.sleep(QUEUE_AUTO_FLUSH_TIME)
-    #         self.perform_consensus()
+    def flush_loop(self):
+        while True:
+            time.sleep(QUEUE_AUTO_FLUSH_TIME)
+            self.perform_consensus()
+            print('performing consensus')
 
     def fetch_state(self):
         print("Fetching full balance state from Masternode...")
@@ -69,6 +73,7 @@ class Delegate(BaseNode):
         print("Done")
         return r.json()
 
+
     def process_transaction(self, data: bytes=None):
         """
         Processes a transaction from witness. This first feeds it through the interpreter, and if
@@ -77,17 +82,6 @@ class Delegate(BaseNode):
         :return:
         """
         d, tx = None, None
-
-        # DEBUG TODO REMOVE
-        # from cilantro.wallets.ed25519 import ED25519Wallet
-        # d = self.serializer.deserialize(data)
-        # payload_binary = JSONSerializer.serialize(d['payload'])
-        # if not ED25519Wallet.verify(d['payload']['from'], payload_binary, d['metadata']['signature']):
-        #     print('delegate: fail point 1')
-        # else:
-        #     print("delegate works also???")
-        # END DEBUG
-
 
         try:
             d = self.serializer.deserialize(data)
