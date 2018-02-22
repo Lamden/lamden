@@ -50,16 +50,13 @@ class Delegate(BaseNode):
         self.queue = TransactionQueueDriver()
         self.interpreter = BasicInterpreter(initial_state=self.fetch_state())
 
-        print('preblocking')
-        self.thread = Thread(target=self.flush_loop)
+        self.thread = Thread(target=self.flush_queue)
         self.thread.start()
-        print('postblocking')
 
-    def flush_loop(self):
+    def flush_queue(self):
         while True:
             time.sleep(QUEUE_AUTO_FLUSH_TIME)
             self.perform_consensus()
-            print('performing consensus')
 
     def fetch_state(self):
         print("Fetching full balance state from Masternode...")
@@ -115,11 +112,6 @@ class Delegate(BaseNode):
 
         # Package block for transport
         all_tx = self.queue.dequeue_all()
-
-        # BELOW LOGIC MOVED TO MASTERNODE
-        # h = hashlib.sha3_256()
-        # h.update(self.serializer.serialize(all_tx))
-        # block = {'block': all_tx, 'hash': h.hexdigest()}
 
         block = {'transactions': all_tx}
 
