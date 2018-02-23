@@ -128,8 +128,7 @@ class Masternode(BaseNode):
 
         # Create signed standard transaction from faucet
         amount = self.db.get_balance(self.faucet_v)[self.faucet_v] * FAUCET_PERCENT
-        tx = {"payload": {"to": wallet_key, "amount": str(amount), "from": self.faucet_v, "type": "t"},
-              "metadata": {}}
+        tx = {"payload": ["t", self.faucet_v, wallet_key, str(amount)], "metadata": {}}
         tx["metadata"]["proof"] = SHA3POW.find(self.serializer.serialize(tx["payload"]))[0]
         tx["metadata"]["signature"] = ED25519Wallet.sign(self.faucet_s, self.serializer.serialize(tx["payload"]))
 
