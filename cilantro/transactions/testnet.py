@@ -3,16 +3,26 @@ from cilantro.wallets import Wallet, ED25519Wallet
 from cilantro.proofs.pow import POW
 from cilantro.serialization.json_serializer import JSONSerializer
 
+
 class TestNetTransaction(Transaction):
-    # support stamp transactions, vote transactions, etc.
-    payload_format = {
-        'payload' : None,
-        'metadata' : {
-            'signature' : None,
-            'proof' : None
-        }
+    # old dictionary based payload
+    # payload_format = {
+    #     'payload' : None,
+    #     'metadata' : {
+    #         'signature' : None,
+    #         'proof' : None
+    #     }
+    # }
+
+    # payload is now in tuple format instead of dictionary - comes from JSON as an array (list)
+    tesnet_tx_format = {
+        'metadata' : {'proof' : None,
+                      'signature' : None},
+
+        'payload' : ['type', 'sender', 'recipient', 'amount']
     }
 
+    # transaction types (first entry of payload array)
     TX = 't'
     STAMP = 's'
     VOTE = 'v'
@@ -20,6 +30,16 @@ class TestNetTransaction(Transaction):
     REDEEM = 'r'
 
     SERIALIZER = JSONSerializer
+
+    # example of tesnet transaction JSON that is POSTed to locahost 8080
+    '''
+    {"metadata": {"proof": "7b707d7e1c92fdf7a0195852f26346d3",
+  "signature": "fdb7a1d9dd34121e4005c8cb9dcfcd0217d9245158dfad71dbea0538fcdb23a43ac0c952263ed08d966d8db1d1d655b3178edf14ba91a35ff52b44dec8807b0f"},
+ "payload": ["t",
+  "260e707fa8e835f2df68f3548230beedcfc51c54b486c7224abeb8c7bd0d0d8f",
+  "f7947784333851ec363231ade84ca63b21d03e575b1919f4042959bcd3c89b5f",
+  "4"]}
+    '''
 
     @staticmethod
     def validate_tx_fields(tx: dict) -> bool:
@@ -32,8 +52,47 @@ class TestNetTransaction(Transaction):
         :raises: An exception if an invalid or missing field is found
         """
 
-        return True
-        # TODO -- implement for realz
+        pd = tx['payload']  # testnet transaction payload field only
+
+        # check tx payload type
+        if not pd[0] == 't':
+            raise ValueError('Tesnet transaction type should be standard only')
+
+        # check tx payload tuple length
+        if not len(pd) == 4:
+            raise ValueError('Tesnet standard transaction should strictly include 4 elements')
+
+        # check sender is valid hex - fastest
+        try:
+            int(pd[1], 16)
+        except ValueError:
+            raise ValueError('Tesnet send address must be valid hexadecimal')
+
+        # check sender length is valid
+        if not len(pd[1]) == 64:
+            raise ValueError('Tesnet send address must be 64 characters long')
+
+        # check receiver is valid hex - fastest
+        try:
+            int(pd[2], 16)
+        except ValueError:
+            raise ValueError('Tesnet receiver address must be valid hexadecimal')
+
+        # check receiver length is valid
+        if not len(pd[2]) == 64:
+            raise ValueError('Tesnet receiver address must be 64 characters long')
+
+        # check tx amount type is numeric
+        if not isinstance(pd[3], (int, float)):
+            raise TypeError('Tesnet transaction amount must resolve to numeric')
+
+        # check tx amount is non-negative
+        if not pd[3] >= 0:
+            raise ValueError('Testnet transaction amount must be non-negative')
+            
+        return True  # transaction payload is valid
+
+
 
         # def build_exception(message: str) -> Exception:
         #     return Exception("Transaction Validation Failed -- {}\nfor transaction Dictionary: {}"
