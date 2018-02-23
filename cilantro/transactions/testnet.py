@@ -89,8 +89,8 @@ class TestNetTransaction(Transaction):
             raise ValueError('Tesnet transaction amount must resolve to numeric')
 
         # check tx amount is non-negative
-        if not float(pd[3]) >= 0:
-            raise ValueError('Testnet transaction amount must be non-negative')
+        if not float(pd[3]) > 0:
+            raise ValueError('Testnet transaction amount must be greater than zero')
 
         return True  # transaction payload is valid
 
