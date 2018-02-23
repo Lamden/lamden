@@ -18,7 +18,7 @@ class JSONSerializer(Serializer):
         :return: bytes
         """
         # NOTE: it is imperative to sort the keys when serializing otherwise the hashcash will very likely fail
-        return json.dumps(d, sort_keys=True).encode()
+        return json.dumps(d, sort_keys=True, separators=(',', ':')).encode()
 
     @staticmethod
     def deserialize(b: bytes) -> dict:
