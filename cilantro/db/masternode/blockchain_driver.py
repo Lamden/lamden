@@ -19,6 +19,10 @@ class BlockchainDriver(object):
         self.faucet = db[MONGO.faucet_col_name]
         self.serializer = JSONSerializer
 
+        faucet_path = os.getcwd() + '/cilantro/faucet.json'
+        faucet_json = json.load(open(faucet_path))
+        self.faucet_v = faucet_json['verifying_key']
+
     def persist_block(self, block: dict) -> dict:
         """
         Attempts to persist the block, represented as a python dictionary. Raises an exception if something fails
@@ -169,11 +173,14 @@ class BlockchainDriver(object):
         for block in self.blocks.find({MONGO.genesis_key: {'$exists': False}}, {"_id": 0}).sort('block_num', ASCENDING):
             for tx in block['transactions']:
                 sender = tx[1]
-                reciever = tx[2]
+                # Exclude faucet transactions
+                if sender == self.faucet_v:
+                    continue
+                receiver = tx[2]
                 amount = str(tx[3])
                 time = str(tx[4])
                 hash = block['hash']
-                csv += ",".join((sender, reciever, amount, time, hash)) + "\r\n"
+                csv += ",".join((sender, receiver, amount, time, hash)) + "\r\n"
 
         return csv
 

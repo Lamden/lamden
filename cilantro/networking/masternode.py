@@ -127,7 +127,7 @@ class Masternode(BaseNode):
             self.db.add_faucet_use(wallet_key)
 
         # Create signed standard transaction from faucet
-        amount = self.db.get_balance(self.faucet_v)[self.faucet_v] * FAUCET_PERCENT
+        amount = int(self.db.get_balance(self.faucet_v)[self.faucet_v] * FAUCET_PERCENT)
         tx = {"payload": ["t", self.faucet_v, wallet_key, str(amount)], "metadata": {}}
         tx["metadata"]["proof"] = SHA3POW.find(self.serializer.serialize(tx["payload"]))[0]
         tx["metadata"]["signature"] = ED25519Wallet.sign(self.faucet_s, self.serializer.serialize(tx["payload"]))
@@ -168,7 +168,8 @@ class Masternode(BaseNode):
 
     async def process_faucet_request(self, request):
         r = self.faucet(data=await request.content.read())
-        return web.Response(text=str(r))
+        return web.json_response(r)
+        # return web.Response(text=str(r))
 
     async def process_blockchain_request(self, request):
         d = self.get_blockchain_json(data=await request.content.read())
