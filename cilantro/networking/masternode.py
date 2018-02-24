@@ -3,6 +3,7 @@ from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS, NTP_URL
 from cilantro.transactions.testnet import TestNetTransaction
 from cilantro.networking import BaseNode
 from aiohttp import web
+import aiohttp_cors
 from cilantro.serialization import JSONSerializer
 from cilantro.db.masternode.blockchain_driver import BlockchainDriver
 import sys
@@ -188,6 +189,7 @@ class Masternode(BaseNode):
         ssl_ctx.load_cert_chain(chain_file, priv_file)
 
         app = web.Application()
+
         app.router.add_post('/', self.process_request)
         app.router.add_post('/add_block', self.process_block_request)
         app.router.add_post('/faucet', self.process_faucet_request)
@@ -196,5 +198,18 @@ class Masternode(BaseNode):
 
         resource = app.router.add_resource('/balance/{wallet_key}')
         resource.add_route('GET', self.get_balance)
+
+        # add CORS support
+        cors = aiohttp_cors.setup(app, defaults={
+            "*": aiohttp_cors.ResourceOptions(
+                allow_credentials=True,
+                expose_headers="*",
+                allow_headers="*",
+            )
+        })
+
+        # Configure CORS on all routes.
+        for route in list(app.router.routes()):
+            cors.add(route)
 
         web.run_app(app, host=self.host, port=int(self.external_port), ssl_context=ssl_ctx)
