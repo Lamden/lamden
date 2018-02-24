@@ -8,6 +8,7 @@ from cilantro.db.masternode.blockchain_driver import BlockchainDriver
 import sys
 import ntplib
 import uuid
+import ssl
 
 # IMPORTS FOR DEMO
 import json
@@ -177,6 +178,15 @@ class Masternode(BaseNode):
 
 
     def setup_web_server(self):
+
+        chain_file = os.getcwd() + "/etc/letsencrypt/live/testnet.lamden.io/fullchain.pem"
+        priv_file = os.getcwd() + "/etc/letsencrypt/live/testnet.lamden.io/privkey.pem"
+
+        print("chain file loc: " + chain_file)
+
+        ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        ssl_ctx.load_cert_chain(chain_file, priv_file)
+
         app = web.Application()
         app.router.add_post('/', self.process_request)
         app.router.add_post('/add_block', self.process_block_request)
@@ -187,4 +197,4 @@ class Masternode(BaseNode):
         resource = app.router.add_resource('/balance/{wallet_key}')
         resource.add_route('GET', self.get_balance)
 
-        web.run_app(app, host=self.host, port=int(self.external_port))
+        web.run_app(app, host=self.host, port=int(self.external_port), ssl_context=ssl_ctx)
