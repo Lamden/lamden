@@ -94,7 +94,7 @@ class BlockchainDriver(object):
         balance = self.balances.find_one({MONGO.wallet_key: wallet_key})
         if balance is None:
             print("Balance not found for wallet key: {}, returning 0".format(wallet_key))
-            return 0
+            return {wallet_key: 0}
         return {wallet_key: balance[MONGO.balance_key]}
 
     def get_all_balances(self):
@@ -167,7 +167,7 @@ class BlockchainDriver(object):
         """
         Returns blockchain data for client size viz
         """
-        keys = ('sender', 'receiver', 'amount', 'time', 'block_hash')
+        keys = ('sender', 'receiver', 'amount', 'time', 'block_hash', 'block_num')
         csv = ",".join(keys) + "\r\n"
 
         for block in self.blocks.find({MONGO.genesis_key: {'$exists': False}}, {"_id": 0}).sort('block_num', ASCENDING):
@@ -180,7 +180,8 @@ class BlockchainDriver(object):
                 amount = str(tx[3])
                 time = str(tx[4])
                 hash = block['hash']
-                csv += ",".join((sender, receiver, amount, time, hash)) + "\r\n"
+                block_num = str(block['block_num'])
+                csv += ",".join((sender, receiver, amount, time, hash, block_num)) + "\r\n"
 
         return csv
 
