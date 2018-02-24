@@ -40,7 +40,7 @@ import time
 class Delegate(BaseNode):
 
     def __init__(self, host='127.0.0.1', sub_port='8888', serializer=JSONSerializer, hasher=POW, pub_port='7878',
-                 mn_url='http://127.0.0.1:8080'):
+                 mn_url='http://testnet.lamden.io:8080'):
         BaseNode.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
         self.mn_get_balance_url = mn_url + "/balance/all"
         self.mn_post_block_url = mn_url + "/add_block"
