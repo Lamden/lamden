@@ -179,8 +179,8 @@ class Masternode(BaseNode):
 
     def setup_web_server(self):
 
-        chain_file = os.getcwd() + "/etc/letsencrypt/live/testnet.lamden.io/fullchain.pem"
-        priv_file = os.getcwd() + "/etc/letsencrypt/live/testnet.lamden.io/privkey.pem"
+        chain_file = "/etc/letsencrypt/live/testnet.lamden.io/fullchain.pem"
+        priv_file = "/etc/letsencrypt/live/testnet.lamden.io/privkey.pem"
 
         print("chain file loc: " + chain_file)
 
