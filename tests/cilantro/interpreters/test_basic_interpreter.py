@@ -1,10 +1,10 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, call, patch
-from cilantro.interpreters.basic_interpreter import BasicInterpreter
-from cilantro.wallets import ED25519Wallet
-from cilantro.transactions.testnet import TestNetTransaction
-from cilantro.proofs.pow import SHA3POW
-from cilantro.db.constants import *
+from cilantro.protocol.interpreters import BasicInterpreter
+from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.transactions.testnet import TestNetTransaction
+from cilantro.protocol.proofs import SHA3POW
+from cilantro.utils.constants import *
 import secrets, hashlib
 
 

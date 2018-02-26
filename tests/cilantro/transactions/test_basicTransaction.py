@@ -1,7 +1,7 @@
 from unittest import TestCase
-from cilantro.transactions import BasicTransaction
-from cilantro.wallets import ED25519Wallet
-from cilantro.proofs.pow import TwofishPOW
+from cilantro.protocol.transactions import BasicTransaction
+from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.proofs import TwofishPOW
 
 class TestBasicTransaction(TestCase):
     def test_builder(self):

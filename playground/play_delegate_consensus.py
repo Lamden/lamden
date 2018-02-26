@@ -8,11 +8,10 @@
     where it's the series of state changes?
 '''
 
-from cilantro.transactions import TestNetTransaction
-from cilantro.proofs.pow import POW
-from cilantro.interpreters import TestNetInterpreter
-from cilantro.wallets import ED25519Wallet
-from cilantro.interpreters.constants import *
+from cilantro.protocol.transactions import TestNetTransaction
+from cilantro.protocol.proofs import POW
+from cilantro.protocol.interpreters import TestNetInterpreter
+from cilantro.protocol.wallets import ED25519Wallet
 
 '''
     Steps:

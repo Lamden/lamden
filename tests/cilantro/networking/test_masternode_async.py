@@ -1,5 +1,5 @@
 from cilantro.networking import Masternode2
-from cilantro.serialization import JSONSerializer
+from cilantro.protocol.serialization import JSONSerializer
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from aiohttp import web
 import json

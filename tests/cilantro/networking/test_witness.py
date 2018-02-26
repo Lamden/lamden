@@ -1,7 +1,6 @@
 from unittest import TestCase
 from cilantro.networking import Witness2
-from cilantro.proofs.pow import SHA3POW, POW
-from cilantro.networking import Masternode
+from cilantro.protocol.proofs import SHA3POW, POW
 
 
 class TestWitness(TestCase):

@@ -1,4 +1,4 @@
-from cilantro.proofs.pow import SHA3POW, POW
+from cilantro.protocol.proofs import SHA3POW
 import json
 import requests
 

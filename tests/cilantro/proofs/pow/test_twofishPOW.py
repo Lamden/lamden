@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.proofs.pow import TwofishPOW
+from cilantro.protocol.proofs import TwofishPOW
 import secrets
 
 class TestTwofishPOW(TestCase):

@@ -9,8 +9,8 @@ setup(
     install_requires=open('requirements.txt').readlines(),
     entry_points={
         'console_scripts': [
-            'masternode=cilantro.networking.masternode:serve',
-            'delegate=cilantro.networking.delegate:serve',
+            'db=cilantro.networking.db:serve',
+            'db=cilantro.networking.db:serve',
             'witness=cilantro.networking.witness:serve'
         ],
     },

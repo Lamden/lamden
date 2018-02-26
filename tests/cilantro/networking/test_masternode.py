@@ -1,6 +1,6 @@
 from unittest import TestCase
-from cilantro.serialization import JSONSerializer
-from cilantro.networking.constants import MAX_REQUEST_LENGTH, TX_STATUS
+from cilantro.protocol.serialization import JSONSerializer
+from cilantro.nodes.constants import MAX_REQUEST_LENGTH
 
 from cilantro.networking import Masternode
 import json

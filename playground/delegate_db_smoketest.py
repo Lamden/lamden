@@ -1,10 +1,10 @@
 import redis
-from cilantro.networking.delegate import Delegate
-from cilantro.db.constants import *
+from cilantro.nodes.delegate import Delegate
+from cilantro.utils.constants import *
 import json
-from cilantro.wallets.ed25519 import ED25519Wallet
-from cilantro.proofs.pow import SHA3POW
-from cilantro.serialization.json_serializer import JSONSerializer
+from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.proofs import SHA3POW
+from cilantro.protocol.serialization.json_serializer import JSONSerializer
 
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
 

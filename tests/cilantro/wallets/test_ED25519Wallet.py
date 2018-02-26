@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.wallets import ED25519Wallet
+from cilantro.protocol.wallets import ED25519Wallet
 
 class TestED25519Wallet(TestCase):
 

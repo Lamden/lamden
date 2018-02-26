@@ -1,7 +1,7 @@
 from unittest import TestCase
-from cilantro.transactions import TestNetTransaction
-from cilantro.wallets import ED25519Wallet
-from cilantro.proofs.pow import SHA3POW
+from cilantro.protocol.transactions import TestNetTransaction
+from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.proofs import SHA3POW
 import secrets
 import hashlib
 

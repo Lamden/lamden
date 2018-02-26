@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.proofs.pow import SHA3POW
+from cilantro.protocol.proofs import SHA3POW
 import secrets
 
 

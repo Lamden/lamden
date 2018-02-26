@@ -1,4 +1,4 @@
-from cilantro.networking.delegate import Delegate
+from cilantro.nodes.delegate import Delegate
 
 d = Delegate()
 d.start_async()

@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.wallets import Base64Wallet
+from cilantro.protocol.wallets import Base64Wallet
 
 class TestBase64Wallet(TestCase):
 

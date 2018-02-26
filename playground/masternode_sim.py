@@ -1,7 +1,3 @@
-import json
-import zmq
-import time
-
 # FAKE MASTERNODE FOR TESTING PURPOSES ONLY
 
 # class JSONSerializer():
@@ -47,7 +43,7 @@ import time
 # a.process_transaction()
 
 
-from cilantro.networking.masternode import Masternode
+from cilantro.nodes.masternode import Masternode
 from aiohttp import web
 
 node = Masternode()
