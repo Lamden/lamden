@@ -12,6 +12,10 @@ class ZMQScaffolding:
         self.subscriber_url = 'tcp://{}:{}'.format(self.base_url, self.subscriber_port)
         self.publisher_url = 'tcp://{}:{}'.format(self.base_url, self.publisher_port)
 
+        self.context = None
+        self.sub_socket = None
+        self.pub_socket = None
+
         self.filters = filters
 
     def connect(self):
@@ -21,11 +25,33 @@ class ZMQScaffolding:
         self.pub_socket = self.context.socket(socket_type=zmq.PUB)
         self.pub_socket.connect(self.publisher_url)
 
-        print("binding to url: ", self.subscriber_url)
+        print("ZMQ Binding to URL: ", self.subscriber_url)
         self.sub_socket.bind(self.subscriber_url)
 
-        for filter in self.filters:
-            self.sub_socket.subscribe(filter)
+        for f in self.filters:
+            self.sub_socket.subscribe(f)
+
+
+class ConveyorBelt:
+    def __init__(self, callback):
+        self.callback = callback
+
+    async def loop(self, **kwargs):
+        raise NotImplementedError
+
+
+class ZMQConveyorBelt(ConveyorBelt):
+    async def loop(self, sub_socket=None):
+        while True:
+            msg = await sub_socket.recv()
+            self.callback(msg)
+
+
+class LocalConveyorBelt(ConveyorBelt):
+    async def loop(self, queue=None):
+        while True:
+            msg = queue.get()
+            self.callback(msg)
 
 
 class BaseNode:
@@ -36,46 +62,25 @@ class BaseNode:
 
         self.message_queue = ZMQScaffolding(**kwargs)
 
+        self.zmq_conveyor_belt = ZMQConveyorBelt(callback=self.zmq_recv_callback)
+        self.mpq_conveyor_belt = ZMQConveyorBelt(callback=self.mpq_recv_callback)
+
+        self.conveyor_belts = [self.zmq_conveyor_belt, self.mpq_conveyor_belt]
+
         if start:
             self.process.start()
 
-    # start multiprocess / non-blocking event loop for the queues
     def run(self):
-        print('running')
+        print('Running async event loop.')
         self.message_queue.connect()
         loop = asyncio.new_event_loop()
-        loop.run_until_complete(asyncio.wait([
-            self.zmq_loop(),
-            self.mp_loop(),
-        ]))
+        loop.run_until_complete(asyncio.wait([c.loop() for c in self.conveyor_belts]))
 
-    async def zmq_loop(self):
-        while True:
-            print('zmq')
-            msg = await self.message_queue.sub_socket.recv()
-            self.handle_zmq_msg(msg)
-
-    async def mp_loop(self):
-        while True:
-            print('ass!')
-            msg = self.queue.get()
-            print('message recieved')
-            self.handle_mp_msg(msg)
-
-    # move towards this abstraction eventually
-    async def listen(self, getter, callback):
-        while True:
-            msg = getter()
-            callback(msg)
-
-    # callback methods for local queue and zmq
-    def handle_zmq_msg(self, msg):
+    def zmq_recv_callback(self, msg):
         raise NotImplementedError
 
-    def handle_mp_msg(self, msg):
-        print('yes')
-        if msg[0] == 'EVAL':
-            eval(msg[1])
+    def mpq_recv_callback(self, msg):
+        raise NotImplementedError
 
     def terminate(self):
         self.process.terminate()
