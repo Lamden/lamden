@@ -1,19 +1,37 @@
-import pprint
+from cilantro.protocol.serialization import JSONSerializer
+from cilantro.protocol.proofs.pow import SHA3POW
+from cilantro.protocol.wallets import ED25519
 
-class Transaction(object):
-    def __init__(self, wallet, proof):
-        self.wallet = wallet
-        self.proof_system = proof
-        self.payload = None
+SERIALIZER = JSONSerializer
+PROOF = SHA3POW
+WALLET = ED25519
+INTERPRETER = None
 
-    def __str__(self):
-        return pprint.pformat(self.payload)
+JSON = {
+    'payload': None,
+    'proof': None,
+    'signature': None
+}
 
-    def build(self, *args):
-        raise NotImplementedError
 
-    def sign(self, *args):
-        raise NotImplementedError
+def serialize(data):
+    return data
 
-    def seal(self, *args):
-        raise NotImplementedError
+
+def deserialize(data):
+    return data
+
+
+def from_json(data):
+    pass
+
+
+def new():
+    return {
+        'payload': None,
+        'proof': None,
+        'signature': None
+    }
+
+def is_valid(data):
+    pass
