@@ -4,7 +4,7 @@
     "serializer":"json",
     "proof":"sha3"
   },
-  "mongo-constants": {
+  "mongo_constants": {
     "db_name":"cilantro",
     "blocks_col_name":"blockchain",
     "latest_hash_key":"latest_hash",
