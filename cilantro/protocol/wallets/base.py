@@ -1,10 +1,4 @@
 class Wallet(object):
-    def __init__(self, s=None):
-        if s == None:
-            self.s, self.v = Wallet.new()
-        else:
-            self.s, self.v = Wallet.format_to_keys(s)
-            self.s, self.v = Wallet.keys_to_format(self.s, self.v)
 
     @classmethod
     def generate_keys(cls):

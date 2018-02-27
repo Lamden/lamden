@@ -1,15 +1,8 @@
 import ed25519
-
 from cilantro.protocol.wallets import Wallet
 
-class ED25519Wallet(Wallet):
-    def __init__(self, s=None):
-        if s == None:
-            self.s, self.v = ED25519Wallet.new()
-        else:
-            self.s, self.v = ED25519Wallet.format_to_keys(s)
-            self.s, self.v = ED25519Wallet.keys_to_format(self.s, self.v)
 
+class ED25519Wallet(Wallet):
     @classmethod
     def generate_keys(cls):
         return ed25519.create_keypair()
