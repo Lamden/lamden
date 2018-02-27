@@ -1,8 +1,8 @@
 {
   "protocol": {
-    "wallet":"ed25519",
-    "serializer":"json",
-    "proof":"sha3"
+    "wallets":"ED25519Wallet",
+    "serialization":"JSONSerializer",
+    "proofs":"SHA3POW"
   },
   "mongo_constants": {
     "db_name":"cilantro",

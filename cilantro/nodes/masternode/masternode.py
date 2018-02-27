@@ -18,8 +18,6 @@ from cilantro.nodes.constants import FAUCET_PERCENT
 from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.protocol.proofs import SHA3POW
 # END DEMO IMPORT
-
-
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 

@@ -1,4 +1,3 @@
-from cilantro.protocol.serialization import Serializer
 import json
 
 '''
@@ -8,7 +7,7 @@ import json
 '''
 
 
-class JSONSerializer(Serializer):
+class JSONSerializer:
     @staticmethod
     def serialize(d: dict) -> bytes:
         """

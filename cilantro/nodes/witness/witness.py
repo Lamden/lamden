@@ -1,7 +1,7 @@
-from cilantro.protocol.serialization import JSONSerializer
-from cilantro.protocol.proofs import SHA3POW
-from cilantro.networking import BaseNode
-
+#from cilantro.protocol.serialization import JSONSerializer
+#from cilantro.protocol.proofs import SHA3POW
+#from cilantro.nodes.base import BaseNode
+from cilantro import Constants
 
 '''
     Witness
@@ -14,7 +14,7 @@ from cilantro.networking import BaseNode
 
 
 class Witness(BaseNode):
-    def __init__(self, host='127.0.0.1', sub_port='9999', pub_port='8888', serializer=JSONSerializer, hasher=SHA3POW):
+    def __init__(self, host='127.0.0.1', sub_port='9999', pub_port='8888', serializer=JSONSerializer, hasher=Constants.Protocol.Proofs):
         BaseNode.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
         self.hasher = hasher
 

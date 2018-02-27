@@ -1,5 +1,5 @@
 from multiprocessing import Process, Queue
-from cilantro.serialization import JSONSerializer
+#from cilantro.serialization import JSONSerializer
 import zmq
 import asyncio
 
