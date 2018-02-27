@@ -1,11 +1,5 @@
-from cilantro.protocol.serialization import JSONSerializer
-from cilantro.protocol.proofs.pow import SHA3POW
-from cilantro.protocol.wallets import ED25519
-
-SERIALIZER = JSONSerializer
-PROOF = SHA3POW
-WALLET = ED25519
-INTERPRETER = None
+from .constants import *
+from .builder import TransactionBuilder
 
 JSON = {
     'payload': None,
@@ -14,24 +8,27 @@ JSON = {
 }
 
 
-def serialize(data):
-    return data
+class Transaction:
+    @staticmethod
+    def serialize(data):
+        return SERIALIZER.serialize(data)
 
+    @staticmethod
+    def deserialize(data):
+        return SERIALIZER.deserialize(data)
 
-def deserialize(data):
-    return data
+    @staticmethod
+    def from_json(data):
+        pass
 
+    @staticmethod
+    def new():
+        return {
+            'payload': None,
+            'proof': None,
+            'signature': None
+        }
 
-def from_json(data):
-    pass
-
-
-def new():
-    return {
-        'payload': None,
-        'proof': None,
-        'signature': None
-    }
-
-def is_valid(data):
-    pass
+    @staticmethod
+    def is_valid(data):
+        pass

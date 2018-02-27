@@ -1,5 +1,3 @@
-from cilantro.protocol.serialization import JSONSerializer
-from cilantro.protocol.proofs import POW
 from cilantro.nodes.constants import MAX_QUEUE_SIZE, QUEUE_AUTO_FLUSH_TIME
 from cilantro.nodes.delegate.db import TransactionQueueDriver
 from cilantro.networking import BaseNode

@@ -1,12 +1,4 @@
-from cilantro.protocol.serialization import JSONSerializer
-from cilantro.protocol.proofs.pow import SHA3POW
-from cilantro.protocol.wallets import ED25519
-from cilantro.protocol.interpreters import vanilla as VanillaInterpreter
-
-WALLET = ED25519
-SERIALIZER = None
-PROOF = SHA3POW
-INTERPRETER = VanillaInterpreter
+from .constants import *
 
 
 class TransactionBuilder:
@@ -21,5 +13,4 @@ class TransactionBuilder:
     @classmethod
     def build(cls, data):
         assert VanillaInterpreter.is_valid_transaction_type(data)
-        [tx['type'] for tx in TX_TYPES]
         pass
