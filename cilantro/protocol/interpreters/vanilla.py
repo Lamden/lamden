@@ -1,22 +1,21 @@
-VOTE = {'type': 'v', 'sender': None, 'key': None, 'value': None}
-STD = {'type': 'v', 'sender': None, 'reciever': None, 'amount': None}
-SWAP = {'type': 'swap', 'sender': None, 'amount': None, 'hash_lock': None, 'unix_expiration': None}
-REDEEM = {'type': 'r', 'sender': None, 'secret': None}
-STAMP = {'type': 'stamp', 'sender': None, 'amount': None}
+from .base import TransactionType
 
-TX_TYPES = [VOTE, STD, SWAP, REDEEM, STAMP]
+vote_tx = TransactionType('VOTE', ['sender', 'key', 'value'])
+standard_tx = TransactionType('STD', ['sender', 'receiver', 'amount'])
+swap_tx = TransactionType('SWAP', ['sender', 'amount', 'hash_lock', 'unix_expiration'])
+redeem_tx = TransactionType('REDEEM', ['sender', 'secret'])
+stamp_tx = TransactionType('STAMP', ['sender', 'amount'])
 
-JSON = {
-    'payload': None,
-    'proof': None,
-    'signature': None
-}
+TX_TYPES = [vote_tx,
+            standard_tx,
+            swap_tx,
+            redeem_tx,
+            stamp_tx]
 
-
-def is_valid_type(tx):
+def is_valid_transaction_type(tx):
     return tx['payload']['type'] in [t['type'] for t in TX_TYPES]
 
 
-def is_valid_fields(tx, type):
+def is_valid_transaction_fields(tx, type):
     pass
 
