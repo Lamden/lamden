@@ -1,4 +1,4 @@
-class POW():
+class POW:
     """
     Proof Of Work (POW)
     """

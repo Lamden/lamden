@@ -2,6 +2,7 @@ from cilantro.protocol.proofs import POW
 import hashlib
 import secrets
 
+
 class SHA3POW(POW):
     @staticmethod
     def find(o: bytes):
@@ -14,6 +15,7 @@ class SHA3POW(POW):
 
     @staticmethod
     def check(o: bytes, proof: str):
+        assert len(o) == 16
         h = hashlib.sha3_256()
         s = bytes.fromhex(proof)
         h.update(o + s)

@@ -13,9 +13,8 @@ TX_TYPES = [vote_tx,
             stamp_tx]
 
 def is_valid_transaction_type(tx):
-    return tx['payload']['type'] in [t['type'] for t in TX_TYPES]
+    return tx['payload']['type'] in [t.type for t in TX_TYPES]
 
 
 def is_valid_transaction_fields(tx, type):
     pass
-
