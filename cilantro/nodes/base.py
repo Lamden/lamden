@@ -1,4 +1,4 @@
-from multiprocessing import Process, Pipe, Queue
+from multiprocessing import Process, Queue
 from cilantro.serialization import JSONSerializer
 import zmq
 import asyncio
@@ -63,7 +63,7 @@ class BaseNode:
         self.message_queue = ZMQScaffolding(**kwargs)
 
         self.zmq_conveyor_belt = ZMQConveyorBelt(callback=self.zmq_recv_callback)
-        self.mpq_conveyor_belt = ZMQConveyorBelt(callback=self.mpq_recv_callback)
+        self.mpq_conveyor_belt = LocalConveyorBelt(callback=self.mpq_recv_callback)
 
         self.conveyor_belts = [self.zmq_conveyor_belt, self.mpq_conveyor_belt]
 

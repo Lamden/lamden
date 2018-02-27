@@ -1,10 +1,10 @@
 from cilantro.nodes.constants import MAX_QUEUE_SIZE, QUEUE_AUTO_FLUSH_TIME
 from cilantro.nodes.delegate.db import TransactionQueueDriver
 from cilantro.networking import BaseNode
-from cilantro.protocol.interpreters import BasicInterpreter
-from cilantro.protocol.transactions.testnet import TestNetTransaction
 import sys
 import requests
+
+from .constants import *
 
 if sys.platform != 'win32':
     pass
@@ -34,13 +34,12 @@ import time
 
 class Delegate(BaseNode):
 
-    def __init__(self, host='127.0.0.1', sub_port='8888', serializer=JSONSerializer, hasher=POW, pub_port='7878',
-                 mn_url='http://testnet.lamden.io:8080'):
-        BaseNode.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
-        self.mn_get_balance_url = mn_url + "/balance/all"
-        self.mn_post_block_url = mn_url + "/add_block"
-        self.mn_get_updates_url = mn_url + '/updates'
-        self.hasher = hasher
+    def __init__(self):
+        BaseNode.__init__(self, host=HOST, sub_port=SUB_PORT, pub_port=PUB_PORT, serializer=SERIALIZER)
+        self.mn_get_balance_url = GET_BALANCE_URL
+        self.mn_post_block_url = ADD_BLOCK_URL
+        self.mn_get_updates_url = GET_UPDATES_URL
+        self.hasher = PROOF
         self.last_flush_time = time.time()
         self.queue = TransactionQueueDriver()
         self.interpreter = BasicInterpreter(initial_state=self.fetch_state())

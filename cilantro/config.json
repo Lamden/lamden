@@ -1,0 +1,19 @@
+{
+  "protocol": {
+    "wallet":"ed25519",
+    "serializer":"json",
+    "proof":"sha3"
+  },
+  "mongo-constants": {
+    "db_name":"cilantro",
+    "blocks_col_name":"blockchain",
+    "latest_hash_key":"latest_hash",
+    "latest_block_num_key":"latest_block_num",
+    "balances_col_name":"balances",
+    "genesis_key":"is_genesis",
+    "blocks_state_col_name":"blockchain_state",
+    "wallet_key":"wallet",
+    "balance_key":"balance",
+    "faucet_col_name":"faucet"
+  }
+}
