@@ -2,10 +2,13 @@ from multiprocessing import Process, Pipe, Queue
 from cilantro.serialization import JSONSerializer
 import zmq
 import asyncio
+from cilantro.logger.base import get_logger
+
 
 
 class ZMQScaffolding:
     def __init__(self, base_url='127.0.0.1', subscriber_port='1111', publisher_port='9998', filters=(b'', )):
+
         self.base_url = base_url
         self.subscriber_port = subscriber_port
         self.publisher_port = publisher_port
@@ -18,6 +21,9 @@ class ZMQScaffolding:
 
         self.filters = filters
 
+        self.logger = get_logger()
+        print("a")
+
     def connect(self):
         self.context = zmq.Context()
 
@@ -25,7 +31,7 @@ class ZMQScaffolding:
         self.pub_socket = self.context.socket(socket_type=zmq.PUB)
         self.pub_socket.connect(self.publisher_url)
 
-        print("ZMQ Binding to URL: ", self.subscriber_url)
+        self.logger.info("ZMQ Binding to sub_socket")
         self.sub_socket.bind(self.subscriber_url)
 
         for f in self.filters:
@@ -67,11 +73,13 @@ class BaseNode:
 
         self.conveyor_belts = [self.zmq_conveyor_belt, self.mpq_conveyor_belt]
 
+        self.logger = get_logger()
         if start:
             self.process.start()
 
+
     def run(self):
-        print('Running async event loop.')
+        self.logger.info('Running async event loop.')
         self.message_queue.connect()
         loop = asyncio.new_event_loop()
         loop.run_until_complete(asyncio.wait([c.loop() for c in self.conveyor_belts]))
