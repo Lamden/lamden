@@ -19,3 +19,17 @@ class TestBaseNode(TestCase):
         self.assertTrue(b.mpq_conveyor_belt.__class__ == LocalConveyorBelt)
         self.assertTrue(b.process.__class__ == Process)
         self.assertTrue(b.conveyor_belts == [b.zmq_conveyor_belt, b.mpq_conveyor_belt])
+
+        self.assertTrue(b.message_queue.base_url == Constants.BaseNode.BaseUrl)
+        self.assertTrue(b.message_queue.subscriber_port == Constants.BaseNode.SubscriberPort)
+        self.assertTrue(b.message_queue.publisher_port == Constants.BaseNode.PublisherPort)
+        self.assertTrue(b.message_queue.subscriber_url == 'tcp://{}:{}'.format(b.message_queue.base_url,
+                                                                               b.message_queue.subscriber_port))
+        self.assertTrue(b.message_queue.publisher_url == 'tcp://{}:{}'.format(b.message_queue.base_url,
+                                                                              b.message_queue.publisher_port))
+
+        self.assertTrue(b.message_queue.context is None)
+        self.assertTrue(b.message_queue.sub_socket is None)
+        self.assertTrue(b.message_queue.pub_socket is None)
+
+        self.assertTrue(b.message_queue.filters == (b'', ))
