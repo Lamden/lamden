@@ -1,5 +1,6 @@
 from multiprocessing import Process, Pipe, Queue
-from cilantro.serialization import JSONSerializer
+# from cilantro.serialization import JSONSerializer
+JSONSerializer = None
 import zmq
 import asyncio
 from cilantro.logger.base import get_logger

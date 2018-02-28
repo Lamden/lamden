@@ -1,5 +1,7 @@
-from cilantro.networking import Masternode
+from cilantro.nodes.base import BaseNode
 
 if __name__ == '__main__':
-    mn = Masternode(external_port='7777', internal_port='8888')
-    mn.setup_web_server()
+    import time
+    bn = BaseNode()
+    time.sleep(2)
+    bn.terminate()
