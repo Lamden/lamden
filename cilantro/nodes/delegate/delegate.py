@@ -4,7 +4,7 @@ from cilantro.networking import BaseNode
 import sys
 import requests
 
-from .constants import *
+from cilantro import Constants
 
 if sys.platform != 'win32':
     pass
@@ -35,14 +35,19 @@ import time
 class Delegate(BaseNode):
 
     def __init__(self):
-        BaseNode.__init__(self, host=HOST, sub_port=SUB_PORT, pub_port=PUB_PORT, serializer=SERIALIZER)
-        self.mn_get_balance_url = GET_BALANCE_URL
-        self.mn_post_block_url = ADD_BLOCK_URL
-        self.mn_get_updates_url = GET_UPDATES_URL
-        self.hasher = PROOF
+        BaseNode.__init__(self,
+                          host=Constants.Delegate.Host,
+                          sub_port=Constants.Delegate.SubPort,
+                          pub_port=Constants.Delegate.PubPort,
+                          serializer=Constants.Protocol.Serialization)
+
+        self.mn_get_balance_url = self.host + Constants.Delegate.GetBalanceUrl
+        self.mn_post_block_url = self.host + Constants.Delegate.AddBlockUrl
+        self.mn_get_updates_url = self.host + Constants.Delegate.GetUpdatesUrl
+        self.hasher = Constants.Protocol.Proofs
         self.last_flush_time = time.time()
         self.queue = TransactionQueueDriver()
-        self.interpreter = BasicInterpreter(initial_state=self.fetch_state())
+        self.interpreter = Constants.Protocol.Interpreter(initial_state=self.fetch_state())
 
         self.thread = Thread(target=self.flush_queue)
         self.thread.start()

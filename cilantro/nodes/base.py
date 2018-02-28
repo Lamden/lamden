@@ -1,14 +1,14 @@
 from multiprocessing import Process, Queue
-#from cilantro.serialization import JSONSerializer
 import zmq
 import asyncio
 
+from cilantro import Constants
 
 class ZMQScaffolding:
-    def __init__(self, base_url='127.0.0.1', subscriber_port='1111', publisher_port='9998', filters=(b'', )):
-        self.base_url = base_url
-        self.subscriber_port = subscriber_port
-        self.publisher_port = publisher_port
+    def __init__(self, filters=(b'', )):
+        self.base_url = Constants.BaseNode.BaseUrl
+        self.subscriber_port = Constants.BaseNode.SubscriberPort
+        self.publisher_port = Constants.BaseNode.PublisherPort
         self.subscriber_url = 'tcp://{}:{}'.format(self.base_url, self.subscriber_port)
         self.publisher_url = 'tcp://{}:{}'.format(self.base_url, self.publisher_port)
 
@@ -55,9 +55,9 @@ class LocalConveyorBelt(ConveyorBelt):
 
 
 class BaseNode:
-    def __init__(self, serializer=JSONSerializer, start=True, **kwargs):
+    def __init__(self, start=True, **kwargs):
         self.queue = Queue()
-        self.serializer = serializer
+        self.serializer = Constants.Protocol.Serialization
         self.process = Process(target=self.run)
 
         self.message_queue = ZMQScaffolding(**kwargs)

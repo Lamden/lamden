@@ -1,19 +1,59 @@
 {
   "protocol": {
-    "wallets":"ED25519Wallet",
-    "serialization":"JSONSerializer",
-    "proofs":"SHA3POW"
+    "wallets": "ED25519Wallet",
+    "serialization": "JSONSerializer",
+    "proofs": "SHA3POW",
+    "transaction": "Transaction",
+    "interpreter": "VanillaInterpreter"
   },
   "mongo_constants": {
-    "db_name":"cilantro",
-    "blocks_col_name":"blockchain",
-    "latest_hash_key":"latest_hash",
-    "latest_block_num_key":"latest_block_num",
-    "balances_col_name":"balances",
-    "genesis_key":"is_genesis",
-    "blocks_state_col_name":"blockchain_state",
-    "wallet_key":"wallet",
-    "balance_key":"balance",
-    "faucet_col_name":"faucet"
+    "db_name": "cilantro",
+    "blocks_col_name": "blockchain",
+    "latest_hash_key": "latest_hash",
+    "latest_block_num_key": "latest_block_num",
+    "balances_col_name": "balances",
+    "genesis_key": "is_genesis",
+    "blocks_state_col_name": "blockchain_state",
+    "wallet_key": "wallet",
+    "balance_key": "balance",
+    "faucet_col_name": "faucet"
+  },
+  "nodes": {
+    "max-request-length": 100000,
+    "max-queue-size": 4,
+    "queue-auto-flush-time": 1.0,
+    "ntp-url": "pool.ntp.org",
+    "faucet-percent": 0.001,
+    "tx-status": {
+      "success": "{} successfully published to the network",
+      "invalid-tx-size": "transaction exceeded max size",
+      "invalid-tx-fields": "{}",
+      "serialize-failed": "SERIALIZED_FAILED: {}",
+      "send-failed": "Could not send transaction"
+    }
+  },
+  "masternode": {
+    "host":"127.0.0.1",
+    "internal-port":"9999",
+    "external-port":"8080"
+  },
+  "witness": {
+    "host": "127.0.0.1",
+    "sub-port": "9999",
+    "pub-port": "8888"
+  },
+  "base-node": {
+    "base-url": "127.0.0.1",
+    "subscriber-port": "1111",
+    "publisher-port": "9998"
+  },
+  "delegate": {
+    "host": "127.0.0.1",
+    "sub-port": "8888",
+    "pub-port": "7878",
+    "masternode-url": "http://testnet.lamden.io:8080",
+    "get-balance-url": "/balance/all",
+    "add-block-url": "/add_block",
+    "get-updates-url": "/updates"
   }
 }

@@ -1,6 +1,7 @@
 import json
 import os
 
+
 def snake_to_pascal(s):
     s = s.split('-')
     new_str = ''
@@ -42,6 +43,7 @@ class Constants:
     @classmethod
     def __str__(cls):
         return str(cls.json)
+
 
 Constants.build_from_json(config)
 Constants.json = config
