@@ -1,7 +1,8 @@
-from cilantro.protocol.serialization import JSONSerializer
-from cilantro.protocol.proofs import SHA3POW
-from cilantro.networking import BaseNode
+from cilantro.nodes.base import BaseNode
+from cilantro import Constants
 
+Serializer = Constants.Protocol.Serialization
+Proof = Constants.Protocol.Proofs
 
 '''
     Witness
@@ -12,11 +13,14 @@ from cilantro.networking import BaseNode
     transactions that include stake reserves being spent by users staking on the network.  
 '''
 
-
 class Witness(BaseNode):
-    def __init__(self, host='127.0.0.1', sub_port='9999', pub_port='8888', serializer=JSONSerializer, hasher=SHA3POW):
-        BaseNode.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
-        self.hasher = hasher
+    def __init__(self):
+        BaseNode.__init__(self,
+                          host=Constants.Witness.Host,
+                          sub_port=Constants.Witness.SubPort,
+                          pub_port=Constants.Witness.PubPort,
+                          serializer=Serializer)
+        self.hasher = Proof
 
     async def handle_req(self, data: bytes):
         try:

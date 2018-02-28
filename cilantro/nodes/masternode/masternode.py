@@ -4,7 +4,6 @@ from cilantro.protocol.transactions.testnet import TestNetTransaction
 from cilantro.networking import BaseNode
 from aiohttp import web
 import aiohttp_cors
-from cilantro.protocol.serialization import JSONSerializer
 from cilantro.nodes.masternode.db.blockchain_driver import BlockchainDriver
 import sys
 import uuid
@@ -15,13 +14,13 @@ import json
 import time
 import os
 from cilantro.nodes.constants import FAUCET_PERCENT
-from cilantro.protocol.wallets import ED25519Wallet
-from cilantro.protocol.proofs import SHA3POW
 # END DEMO IMPORT
-
-
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
+from cilantro import Constants
+Wallet = Constants.Protocol.Wallets
+Proof = Constants.Protocol.Proofs
+Serializer = Constants.Protocol.Serialization
 
 '''
     Masternode
@@ -34,8 +33,11 @@ web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 class Masternode(BaseNode):
-    def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=JSONSerializer):
-        BaseNode.__init__(self, host=host, pub_port=internal_port, serializer=serializer)
+    def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=Serializer):
+        BaseNode.__init__(self,
+                          host=Constants.Masternode.Host,
+                          pub_port=internal_port,
+                          serializer=Serializer)
         self.external_port = external_port
         # self.time_client = ntplib.NTPClient()  TODO -- investigate why we can't query NTP_URL with high frequency
         self.db = BlockchainDriver(serializer=serializer)
@@ -130,8 +132,8 @@ class Masternode(BaseNode):
         # Create signed standard transaction from faucet
         amount = int(self.db.get_balance(self.faucet_v)[self.faucet_v] * FAUCET_PERCENT)
         tx = {"payload": ["t", self.faucet_v, wallet_key, str(amount)], "metadata": {}}
-        tx["metadata"]["proof"] = SHA3POW.find(self.serializer.serialize(tx["payload"]))[0]
-        tx["metadata"]["signature"] = ED25519Wallet.sign(self.faucet_s, self.serializer.serialize(tx["payload"]))
+        tx["metadata"]["proof"] = Proof.find(self.serializer.serialize(tx["payload"]))[0]
+        tx["metadata"]["signature"] = Wallet.sign(self.faucet_s, self.serializer.serialize(tx["payload"]))
 
         return self.process_transaction(self.serializer.serialize(tx))
 

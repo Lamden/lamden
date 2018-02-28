@@ -1,10 +1,10 @@
 from cilantro.nodes.constants import MAX_QUEUE_SIZE, QUEUE_AUTO_FLUSH_TIME
 from cilantro.nodes.delegate.db import TransactionQueueDriver
 from cilantro.networking import BaseNode
-from cilantro.protocol.interpreters import BasicInterpreter
-from cilantro.protocol.transactions.testnet import TestNetTransaction
 import sys
 import requests
+
+from cilantro import Constants
 
 if sys.platform != 'win32':
     pass
@@ -34,16 +34,20 @@ import time
 
 class Delegate(BaseNode):
 
-    def __init__(self, host='127.0.0.1', sub_port='8888', serializer=JSONSerializer, hasher=POW, pub_port='7878',
-                 mn_url='http://testnet.lamden.io:8080'):
-        BaseNode.__init__(self, host=host, sub_port=sub_port, pub_port=pub_port, serializer=serializer)
-        self.mn_get_balance_url = mn_url + "/balance/all"
-        self.mn_post_block_url = mn_url + "/add_block"
-        self.mn_get_updates_url = mn_url + '/updates'
-        self.hasher = hasher
+    def __init__(self):
+        BaseNode.__init__(self,
+                          host=Constants.Delegate.Host,
+                          sub_port=Constants.Delegate.SubPort,
+                          pub_port=Constants.Delegate.PubPort,
+                          serializer=Constants.Protocol.Serialization)
+
+        self.mn_get_balance_url = self.host + Constants.Delegate.GetBalanceUrl
+        self.mn_post_block_url = self.host + Constants.Delegate.AddBlockUrl
+        self.mn_get_updates_url = self.host + Constants.Delegate.GetUpdatesUrl
+        self.hasher = Constants.Protocol.Proofs
         self.last_flush_time = time.time()
         self.queue = TransactionQueueDriver()
-        self.interpreter = BasicInterpreter(initial_state=self.fetch_state())
+        self.interpreter = Constants.Protocol.Interpreter(initial_state=self.fetch_state())
 
         self.thread = Thread(target=self.flush_queue)
         self.thread.start()
@@ -77,8 +81,8 @@ class Delegate(BaseNode):
 
         try:
             d = self.serializer.deserialize(data)
-            TestNetTransaction.validate_tx_fields(d)
-            tx = TestNetTransaction.from_dict(d)
+            Constants.Protocol.Transactions.validate_tx_fields(d)
+            tx = Constants.Protocol.Transactions.from_dict(d)
             self.interpreter.interpret_transaction(tx)
         except Exception as e:
             print("Error in db process transaction: {}".format(e))

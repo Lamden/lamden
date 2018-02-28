@@ -2,11 +2,17 @@ from .base import TransactionType
 
 
 class VanillaInterpreter:
-    vote_tx = TransactionType('VOTE', ['sender', 'key', 'value'])
-    standard_tx = TransactionType('STD', ['sender', 'receiver', 'amount'])
-    swap_tx = TransactionType('SWAP', ['sender', 'amount', 'hash_lock', 'unix_expiration'])
-    redeem_tx = TransactionType('REDEEM', ['sender', 'secret'])
-    stamp_tx = TransactionType('STAMP', ['sender', 'amount'])
+    VOTE = 'VOTE'
+    STD = 'STD'
+    SWAP = 'SWAP'
+    REDEEM = 'REDEEM'
+    STAMP = 'STAMP'
+
+    vote_tx = TransactionType(VOTE, ['sender', 'key', 'value'])
+    standard_tx = TransactionType(STD, ['sender', 'receiver', 'amount'])
+    swap_tx = TransactionType(SWAP, ['sender', 'amount', 'hash_lock', 'unix_expiration'])
+    redeem_tx = TransactionType(REDEEM, ['sender', 'secret'])
+    stamp_tx = TransactionType(STAMP, ['sender', 'amount'])
 
     TX_TYPES = [vote_tx,
                 standard_tx,

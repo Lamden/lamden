@@ -1,5 +1,6 @@
-from .constants import *
 from .builder import TransactionBuilder
+
+from cilantro import Constants
 
 JSON = {
     'payload': None,
@@ -11,11 +12,11 @@ JSON = {
 class Transaction:
     @staticmethod
     def serialize(data):
-        return SERIALIZER.serialize(data)
+        return Constants.Protocol.Serialization.serialize(data)
 
     @staticmethod
     def deserialize(data):
-        return SERIALIZER.deserialize(data)
+        return Constants.Protocol.Serialization.deserialize(data)
 
     @staticmethod
     def from_json(data):
