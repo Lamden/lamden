@@ -81,8 +81,8 @@ class Delegate(BaseNode):
 
         try:
             d = self.serializer.deserialize(data)
-            TestNetTransaction.validate_tx_fields(d)
-            tx = TestNetTransaction.from_dict(d)
+            Constants.Protocol.Transactions.validate_tx_fields(d)
+            tx = Constants.Protocol.Transactions.from_dict(d)
             self.interpreter.interpret_transaction(tx)
         except Exception as e:
             print("Error in db process transaction: {}".format(e))

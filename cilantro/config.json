@@ -3,20 +3,20 @@
     "wallets": "ED25519Wallet",
     "serialization": "JSONSerializer",
     "proofs": "SHA3POW",
-    "transaction": "Transaction",
-    "interpreter": "VanillaInterpreter"
+    "transactions": "Transaction",
+    "interpreters": "VanillaInterpreter"
   },
-  "mongo_constants": {
-    "db_name": "cilantro",
-    "blocks_col_name": "blockchain",
-    "latest_hash_key": "latest_hash",
-    "latest_block_num_key": "latest_block_num",
-    "balances_col_name": "balances",
-    "genesis_key": "is_genesis",
-    "blocks_state_col_name": "blockchain_state",
-    "wallet_key": "wallet",
-    "balance_key": "balance",
-    "faucet_col_name": "faucet"
+  "mongo-constants": {
+    "db-name": "cilantro",
+    "blocks-col-name": "blockchain",
+    "latest-hash-key": "latest_hash",
+    "latest-block-num-key": "latest_block_num",
+    "balances-col-name": "balances",
+    "genesis-key": "is_genesis",
+    "blocks-state-col-name": "blockchain_state",
+    "wallet-key": "wallet",
+    "balance-key": "balance",
+    "faucet-col-name": "faucet"
   },
   "nodes": {
     "max-request-length": 100000,

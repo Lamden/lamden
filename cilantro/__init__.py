@@ -48,12 +48,17 @@ class Constants:
 Constants.build_from_json(config)
 Constants.json = config
 
-dynamic_imports = [
-    ['cilantro.protocol.proofs', Constants.Protocol.Proofs],
-    ['cilantro.protocol.wallets', Constants.Protocol.Wallets],
-    ['cilantro.protocol.serialization', Constants.Protocol.Serialization],
-]
+c = __import__('cilantro.protocol.proofs', fromlist=[Constants.Protocol.Proofs])
+Constants.Protocol.Proofs = getattr(c, Constants.Protocol.Proofs)
 
-for d_i in dynamic_imports:
-    c = __import__(d_i[0], fromlist=[d_i[1]])
-    d_i[1] = getattr(c, d_i[1])
+c = __import__('cilantro.protocol.wallets', fromlist=[Constants.Protocol.Wallets])
+Constants.Protocol.Wallets = getattr(c, Constants.Protocol.Wallets)
+
+c = __import__('cilantro.protocol.serialization', fromlist=[Constants.Protocol.Serialization])
+Constants.Protocol.Serialization = getattr(c, Constants.Protocol.Serialization)
+
+c = __import__('cilantro.protocol.transactions', fromlist=[Constants.Protocol.Transactions])
+Constants.Protocol.Transactions = getattr(c, Constants.Protocol.Transactions)
+
+c = __import__('cilantro.protocol.interpreters', fromlist=[Constants.Protocol.Interpreters])
+Constants.Protocol.Interpreters = getattr(c, Constants.Protocol.Interpreters)

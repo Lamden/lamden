@@ -1,4 +1,3 @@
-from .constants import *
 from cilantro import Constants
 
 class TransactionBuilder:
