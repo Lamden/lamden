@@ -4,6 +4,7 @@ import asyncio
 
 from cilantro import Constants
 
+
 class ZMQScaffolding:
     def __init__(self, filters=(b'', )):
         self.base_url = Constants.BaseNode.BaseUrl
@@ -33,46 +34,50 @@ class ZMQScaffolding:
 
 
 class ConveyorBelt:
-    def __init__(self, callback):
+    def __init__(self, callback, queue=None):
         self.callback = callback
+        self.queue = queue
 
-    async def loop(self, **kwargs):
+    async def loop(self):
         raise NotImplementedError
 
 
 class ZMQConveyorBelt(ConveyorBelt):
-    async def loop(self, sub_socket=None):
+    async def loop(self):
+        assert self.queue is not None
         while True:
-            msg = await sub_socket.recv()
+            msg = await self.queue.recv()
             self.callback(msg)
 
 
 class LocalConveyorBelt(ConveyorBelt):
-    async def loop(self, queue=None):
+    async def loop(self):
+        assert self.queue is not None
         while True:
-            msg = queue.get()
+            msg = self.queue.get()
             self.callback(msg)
 
 
 class BaseNode:
     def __init__(self, start=True, **kwargs):
-        self.queue = Queue()
         self.serializer = Constants.Protocol.Serialization
-        self.process = Process(target=self.run)
 
+        # set up the multiprocessing setup
+        self.queue = Queue()
         self.message_queue = ZMQScaffolding(**kwargs)
 
         self.zmq_conveyor_belt = ZMQConveyorBelt(callback=self.zmq_recv_callback)
-        self.mpq_conveyor_belt = LocalConveyorBelt(callback=self.mpq_recv_callback)
+        self.mpq_conveyor_belt = LocalConveyorBelt(callback=self.mpq_recv_callback, queue=self.queue)
 
         self.conveyor_belts = [self.zmq_conveyor_belt, self.mpq_conveyor_belt]
 
+        self.process = Process(target=self.run)
         if start:
             self.process.start()
 
     def run(self):
-        print('Running async event loop.')
         self.message_queue.connect()
+        self.zmq_conveyor_belt.queue = self.message_queue
         loop = asyncio.new_event_loop()
         loop.run_until_complete(asyncio.wait([c.loop() for c in self.conveyor_belts]))
 
@@ -84,6 +89,3 @@ class BaseNode:
 
     def terminate(self):
         self.process.terminate()
-
-    def mp_eval(self, eval_statement):
-        self.queue.put(('EVAL', eval_statement))
