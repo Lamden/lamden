@@ -56,32 +56,36 @@ class TestBaseNode(TestCase):
             def zmq_recv_callback(self, msg):
                 pass
 
-            def mpq_recv_callback(self, msg):
+            def mpq_recv_callback(self, msg: str):
                 print('recieved', msg)
-                self.message_queue.pub_socket.send_string(msg)
+                self.message_queue.pub_socket.send(msg.encode())
                 print('published')
 
         class Subscriber(BaseNode):
-            def zmq_recv_callback(self, msg):
-                import sys
-                sys.stdout.flush()
-                print('yo')
+            def zmq_recv_callback(self, msg: str):
+                print('callback issued')
                 self.main_queue.put(msg)
 
             def mpq_recv_callback(self, msg):
                 pass
 
-        m = Publisher(subscriber_port=9799,
+        m = Publisher(subscriber_port=9791,
                       publisher_port=9777)
-        sleep(2)
+        sleep(1)
+
         m2 = Subscriber(subscriber_port=9777,
                         publisher_port=9799)
-        sleep(2)
+        sleep(1)
+
+        print('put this')
         m.mpq_queue.put('hello world!')
+
+        sleep(1)
         mm = m2.main_queue.get()
+        #self.assertFalse(m2.main_queue.empty())
         m.terminate()
         m2.terminate()
-        m.process.join()
-        m2.process.join()
+
+
         print(mm)
-        #self.assertEqual(mm, 'hello world!')
+        self.assertEqual(mm, 'hello world!'.encode())

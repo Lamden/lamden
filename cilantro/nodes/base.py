@@ -35,7 +35,8 @@ class ZMQScaffolding:
         self.pub_socket.connect(self.publisher_url)
 
         self.sub_socket.bind(self.subscriber_url)
-        self.sub_socket.subscribe(b'')
+        self.sub_socket.setsockopt(zmq.SUBSCRIBE, b'')
+        #self.sub_socket.subscribe(b'')
         print('binding')
         # for f in self.filters:
         #     self.sub_socket.subscribe(f)
@@ -56,7 +57,10 @@ class ZMQConveyorBelt(ConveyorBelt):
         while True:
             print('waiting for that good shit')
             sys.stdout.flush()
-            msg = await self.queue.recv()
+            try:
+                msg = self.queue.sub_socket.recv()
+            except Exception as e:
+                print(e)
             self.callback(msg)
 
 
@@ -64,9 +68,10 @@ class LocalConveyorBelt(ConveyorBelt):
     async def loop(self):
         assert self.queue is not None
         while True:
+            print('message recieved')
             msg = self.queue.get()
+            print(msg)
             self.callback(msg)
-
 
 class BaseNode:
     def __init__(self, start=True, **kwargs):
