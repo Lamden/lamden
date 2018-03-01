@@ -19,3 +19,6 @@ cilantro.egg-info/
 
 # FOR DEMO
 cilantro/faucet.json
+
+# LOGS
+**/logs
