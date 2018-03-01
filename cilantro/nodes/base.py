@@ -1,3 +1,9 @@
+"""A pypi demonstration vehicle.
+
+.. moduleauthor:: Foo Bar <foo@bar.com>
+
+"""
+
 from multiprocessing import Process, Queue
 import zmq
 import asyncio
@@ -56,6 +62,11 @@ class LocalConveyorBelt(ConveyorBelt):
 
 class BaseNode:
     def __init__(self, start=True, **kwargs):
+        """
+
+        :param start:
+        :param kwargs:
+        """
         self.queue = Queue()
         self.serializer = Constants.Protocol.Serialization
         self.process = Process(target=self.run)
@@ -71,6 +82,10 @@ class BaseNode:
             self.process.start()
 
     def run(self):
+        """
+
+        :return:
+        """
         print('Running async event loop.')
         self.message_queue.connect()
         loop = asyncio.new_event_loop()
@@ -83,6 +98,10 @@ class BaseNode:
         raise NotImplementedError
 
     def terminate(self):
+        """
+
+        :return:
+        """
         self.process.terminate()
 
     def mp_eval(self, eval_statement):
