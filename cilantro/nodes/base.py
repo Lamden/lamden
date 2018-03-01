@@ -55,8 +55,7 @@ class ZMQConveyorBelt(ConveyorBelt):
     async def loop(self):
         assert self.queue is not None
         while True:
-            print('waiting for that good shit')
-            sys.stdout.flush()
+            #sys.stdout.flush()
             try:
                 msg = self.queue.sub_socket.recv()
             except Exception as e:
@@ -72,6 +71,7 @@ class LocalConveyorBelt(ConveyorBelt):
             msg = self.queue.get()
             print(msg)
             self.callback(msg)
+
 
 class BaseNode:
     def __init__(self, start=True, **kwargs):

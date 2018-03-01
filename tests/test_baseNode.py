@@ -77,15 +77,13 @@ class TestBaseNode(TestCase):
                         publisher_port=9799)
         sleep(1)
 
-        print('put this')
         m.mpq_queue.put('hello world!')
 
         sleep(1)
         mm = m2.main_queue.get()
+        print('wrapping up')
         #self.assertFalse(m2.main_queue.empty())
         m.terminate()
         m2.terminate()
 
-
-        print(mm)
         self.assertEqual(mm, 'hello world!'.encode())
