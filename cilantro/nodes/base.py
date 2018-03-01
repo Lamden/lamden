@@ -1,15 +1,22 @@
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Pipe
 import zmq
 import asyncio
 
 from cilantro import Constants
+import sys
 
 
 class ZMQScaffolding:
-    def __init__(self, filters=(b'', )):
-        self.base_url = Constants.BaseNode.BaseUrl
-        self.subscriber_port = Constants.BaseNode.SubscriberPort
-        self.publisher_port = Constants.BaseNode.PublisherPort
+    def __init__(self,
+                 base_url=Constants.BaseNode.BaseUrl,
+                 subscriber_port=Constants.BaseNode.SubscriberPort,
+                 publisher_port=Constants.BaseNode.PublisherPort,
+                 filters=(b'', )):
+        self.base_url = base_url
+        self.subscriber_port = subscriber_port
+
+        self.publisher_port = publisher_port
+
         self.subscriber_url = 'tcp://{}:{}'.format(self.base_url, self.subscriber_port)
         self.publisher_url = 'tcp://{}:{}'.format(self.base_url, self.publisher_port)
 
@@ -23,14 +30,15 @@ class ZMQScaffolding:
         self.context = zmq.Context()
 
         self.sub_socket = self.context.socket(socket_type=zmq.SUB)
+
         self.pub_socket = self.context.socket(socket_type=zmq.PUB)
         self.pub_socket.connect(self.publisher_url)
 
-        print("ZMQ Binding to URL: ", self.subscriber_url)
         self.sub_socket.bind(self.subscriber_url)
-
-        for f in self.filters:
-            self.sub_socket.subscribe(f)
+        self.sub_socket.subscribe(b'')
+        print('binding')
+        # for f in self.filters:
+        #     self.sub_socket.subscribe(f)
 
 
 class ConveyorBelt:
@@ -46,6 +54,8 @@ class ZMQConveyorBelt(ConveyorBelt):
     async def loop(self):
         assert self.queue is not None
         while True:
+            print('waiting for that good shit')
+            sys.stdout.flush()
             msg = await self.queue.recv()
             self.callback(msg)
 
@@ -63,11 +73,13 @@ class BaseNode:
         self.serializer = Constants.Protocol.Serialization
 
         # set up the multiprocessing setup
-        self.queue = Queue()
+        self.mpq_queue = Queue()
+        self.main_queue = Queue()
+
         self.message_queue = ZMQScaffolding(**kwargs)
 
         self.zmq_conveyor_belt = ZMQConveyorBelt(callback=self.zmq_recv_callback)
-        self.mpq_conveyor_belt = LocalConveyorBelt(callback=self.mpq_recv_callback, queue=self.queue)
+        self.mpq_conveyor_belt = LocalConveyorBelt(callback=self.mpq_recv_callback, queue=self.mpq_queue)
 
         self.conveyor_belts = [self.zmq_conveyor_belt, self.mpq_conveyor_belt]
 
