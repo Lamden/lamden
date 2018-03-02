@@ -1,4 +1,4 @@
-from multiprocessing import Process, Queue, Pipe
+from multiprocessing import Process, Queue, Array
 import zmq
 import asyncio
 
@@ -80,6 +80,8 @@ class BaseNode:
         # set up the multiprocessing setup
         self.mpq_queue = Queue()
         self.main_queue = Queue()
+
+        self.array = Array()
 
         self.message_queue = ZMQScaffolding(**kwargs)
 
