@@ -1,4 +1,4 @@
-from multiprocessing import Process, Queue, Lock
+from multiprocessing import Process, Queue, Lock, Pipe
 from time import sleep
 
 
@@ -164,6 +164,7 @@ def test_basic_q_and_zmq():
 def test_basic_q_and_zmq_with_non_blocking():
     import zmq
     from cilantro import Constants
+    import multiprocessing as mp
 
     class Node(Process):
         def __init__(self, queue=None, lock=None, sub_port=9999, pub_port=9998):
@@ -240,7 +241,6 @@ def test_basic_q_and_zmq_with_non_blocking():
         def q_callback(self, msg):
             print('received a message on the queue. publishing it:', msg)
             self.pub_socket.send(msg)
-
     lock = Lock()
 
     sq = Queue()
@@ -358,4 +358,143 @@ def test_basic_q_and_zmq_with_threads():
     #p.exit()
     #s.exit()
 
-test_basic_q_and_zmq_with_non_blocking()
+#test_basic_q_and_zmq_with_non_blocking()
+
+def test_multiprocessing_array():
+    from multiprocessing import Array
+
+    class P(Process):
+        def __init__(self, array):
+            super().__init__()
+            self.array = array
+
+        def modify_array(self, array):
+            self.array = array
+
+        def flush_array(self):
+            self.array[:] = Array(ctypes.c_byte, 1024)
+
+        def get_from_array(self):
+            b = b''
+            for x in range(len(self.array)):
+                if self.array[x] == 0:
+                    break
+                b += bytes([self.array[x]])
+            return b
+
+        def pop(self):
+            x = self.get_from_array()
+            self.flush_array()
+            return x
+
+    import ctypes
+    a = Array(ctypes.c_byte, 1024)
+    print(a[0:11])
+    a[0:11] = b'hello world'
+    p = P(a)
+
+    print(p.array[0:11])
+
+    print(p.get_from_array())
+
+    p.flush_array()
+
+    print(p.array[0:11])
+
+def test_basic_q_and_zmq_with_pipe():
+    import zmq
+    from cilantro import Constants
+
+    class Node(Process):
+        def __init__(self, pipe=None, sub_port=9999, pub_port=9998):
+            super().__init__()
+            # assert mp structures are in place
+            assert pipe is not None, 'A pipe must be provided.'
+            # establish base url
+            self.base_url = Constants.BaseNode.BaseUrl
+
+            # setup subscriber constants
+            self.subscriber_port = sub_port
+            self.subscriber_url = 'tcp://{}:{}'.format(self.base_url, self.subscriber_port)
+
+            # setup publisher constants
+            self.publisher_port = pub_port
+            self.publisher_url = 'tcp://{}:{}'.format(self.base_url, self.publisher_port)
+
+            # set context and sockets to none until process starts because multiprocessing zmq is funky
+            self.context = None
+            self.sub_socket = None
+            self.pub_socket = None
+
+            # set queue
+            self.pipe = pipe
+
+        def run(self, *args):
+            super().run()
+            self.context = zmq.Context()
+
+            self.sub_socket = self.context.socket(socket_type=zmq.SUB)
+
+            self.sub_socket.bind(self.subscriber_url)
+            self.sub_socket.setsockopt(zmq.SUBSCRIBE, b'')
+
+            self.pub_socket = self.context.socket(socket_type=zmq.PUB)
+            self.pub_socket.connect(self.publisher_url)
+
+            self.loop()
+
+        def loop(self):
+            print('node entering loop where it will non-block check zmq and local queue')
+            while True:
+                try:
+                    self.zmq_callback(self.sub_socket.recv(flags=zmq.NOBLOCK))
+                except zmq.Again:
+                    pass
+
+                try:
+                    if self.pipe.poll():
+                        self.q_callback(self.pipe.recv())
+                except:
+                    pass
+
+        def zmq_callback(self, msg):
+            raise NotImplementedError
+
+        def q_callback(self, msg):
+            raise NotImplementedError
+
+    class Subscriber(Node):
+        def zmq_callback(self, msg):
+            print('received message from publisher. putting it on the queue:', msg)
+            self.pipe.send(msg)
+            print('done')
+
+        def q_callback(self, msg):
+            pass
+
+    class Publisher(Node):
+        def zmq_callback(self, msg):
+            pass
+
+        def q_callback(self, msg):
+            print('received a message on the queue. publishing it:', msg)
+            self.pub_socket.send(msg)
+
+    s_parent_pipe, s_child_pipe = Pipe()
+    s = Subscriber(pipe=s_child_pipe)
+    s.start()
+    sleep(1)
+
+    p_parent_pipe, p_child_pipe = Pipe()
+    p = Publisher(pipe=p_child_pipe, pub_port=9999, sub_port=9997)
+    p.start()
+    sleep(1)
+
+    p_parent_pipe.send(b'hello world')
+    sleep(1)
+    print('q is empty...' if not s_parent_pipe.poll() else 'q is not empty. got: {}'.format(s_parent_pipe.recv()))
+
+    p.terminate()
+    s.terminate()
+
+test_basic_q_and_zmq_with_pipe()
