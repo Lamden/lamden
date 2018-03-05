@@ -1,9 +1,17 @@
+'''
+    Masternode
+    These are the entry points to the blockchain and pass messages on throughout the system. They are also the cold
+    storage points for the blockchain once consumption is done by the network.
+
+    They have no say as to what is 'right,' as governance is ultimately up to the network. However, they can monitor
+    the behavior of nodes and tell the network who is misbehaving.
+'''
 import uvloop
-from cilantro.nodes.constants import MAX_REQUEST_LENGTH, TX_STATUS
-from cilantro.protocol.transactions.testnet import TestNetTransaction
-from cilantro.networking import BaseNode
+# from cilantro.nodes.constants import MAX_REQUEST_LENGTH, TX_STATUS
+# from cilantro.protocol.transactions.testnet import TestNetTransaction
+# from cilantro.nodes import BaseNode
 from aiohttp import web
-import aiohttp_cors
+# import aiohttp_cors
 from cilantro.nodes.masternode.db.blockchain_driver import BlockchainDriver
 import sys
 import uuid
@@ -13,7 +21,7 @@ import ssl
 import json
 import time
 import os
-from cilantro.nodes.constants import FAUCET_PERCENT
+# from cilantro.nodes.constants import FAUCET_PERCENT
 # END DEMO IMPORT
 web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -22,14 +30,7 @@ Wallet = Constants.Protocol.Wallets
 Proof = Constants.Protocol.Proofs
 Serializer = Constants.Protocol.Serialization
 
-'''
-    Masternode
-    These are the entry points to the blockchain and pass messages on throughout the system. They are also the cold
-    storage points for the blockchain once consumption is done by the network.
-    
-    They have no say as to what is 'right,' as governance is ultimately up to the network. However, they can monitor
-    the behavior of nodes and tell the network who is misbehaving. 
-'''
+
 
 
 class Masternode(BaseNode):

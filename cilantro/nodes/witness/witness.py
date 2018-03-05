@@ -1,17 +1,17 @@
 from cilantro.nodes.base import Node
+'''
+    Witness
+
+    Witnesses exist primarily to check the validity of proofs of transactions sent out by masternodes.
+    They subscribe to masternodes on the network, confirm the hashcash style proof provided by the sender is valid, and
+    then go ahead and pass the transaction along to delegates to include in a block. They will also facilitate
+    transactions that include stake reserves being spent by users staking on the network.
+'''
 from cilantro import Constants
 
 Serializer = Constants.Protocol.Serialization
 Proof = Constants.Protocol.Proofs
 
-'''
-    Witness
-    
-    Witnesses exist primarily to check the validity of proofs of transactions sent out by masternodes. 
-    They subscribe to masternodes on the network, confirm the hashcash style proof provided by the sender is valid, and
-    then go ahead and pass the transaction along to delegates to include in a block. They will also facilitate 
-    transactions that include stake reserves being spent by users staking on the network.  
-'''
 
 
 class Witness(Node):

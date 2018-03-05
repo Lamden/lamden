@@ -4,7 +4,6 @@ from cilantro import Constants
 import asyncio
 from aioprocessing import AioPipe
 
-
 class Node(Process):
     def __init__(self, sub_port=9999, pub_port=9998):
         super().__init__()
