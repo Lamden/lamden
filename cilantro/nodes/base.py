@@ -4,13 +4,14 @@ from cilantro import Constants
 import asyncio
 from aioprocessing import AioPipe
 
+
 class Node(Process):
-    def __init__(self, sub_port=9999, pub_port=9998):
+    def __init__(self, base_url=Constants.BaseNode.BaseUrl, sub_port=9999, pub_port=9998):
         super().__init__()
         self.parent_pipe, self.child_pipe = AioPipe()
 
         # establish base url
-        self.base_url = Constants.BaseNode.BaseUrl
+        self.base_url = base_url
 
         # setup subscriber constants
         self.subscriber_port = sub_port

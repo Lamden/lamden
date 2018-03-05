@@ -9,7 +9,7 @@
 import uvloop
 # from cilantro.nodes.constants import MAX_REQUEST_LENGTH, TX_STATUS
 # from cilantro.protocol.transactions.testnet import TestNetTransaction
-# from cilantro.nodes import BaseNode
+from cilantro.nodes import Node
 from aiohttp import web
 # import aiohttp_cors
 from cilantro.nodes.masternode.db.blockchain_driver import BlockchainDriver
@@ -31,14 +31,9 @@ Proof = Constants.Protocol.Proofs
 Serializer = Constants.Protocol.Serialization
 
 
-
-
-class Masternode(BaseNode):
-    def __init__(self, host='127.0.0.1', internal_port='9999', external_port='8080', serializer=Serializer):
-        BaseNode.__init__(self,
-                          host=Constants.Masternode.Host,
-                          pub_port=internal_port,
-                          serializer=Serializer)
+class Masternode(Node):
+    def __init__(self, base_url=Constants.Masternode.Host, internal_port='9999', external_port='8080', serializer=Serializer):
+        Node.__init__(self, base_url=base_url, pub_port=internal_port)
         self.external_port = external_port
         # self.time_client = ntplib.NTPClient()  TODO -- investigate why we can't query NTP_URL with high frequency
         self.db = BlockchainDriver(serializer=serializer)
@@ -79,7 +74,8 @@ class Masternode(BaseNode):
         d['metadata']['timestamp'] = time.time()  # INSECURE, FOR DEMO ONLY
         d['metadata']['uuid'] = str(uuid.uuid4())
 
-        return self.publish_req(d)
+        self.pub_socket.send(d)
+        return {'success': 'Successfully sent payload.'}
 
     def add_block(self, data: bytes):
         print("process block got raw data: {}".format(data))
@@ -178,7 +174,6 @@ class Masternode(BaseNode):
     async def process_blockchain_request(self, request):
         d = self.get_blockchain_json(data=await request.content.read())
         return web.Response(text=d)
-
 
     def setup_web_server(self):
 
