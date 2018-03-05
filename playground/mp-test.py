@@ -358,7 +358,6 @@ def test_basic_q_and_zmq_with_threads():
     #p.exit()
     #s.exit()
 
-#test_basic_q_and_zmq_with_non_blocking()
 
 def test_multiprocessing_array():
     from multiprocessing import Array
@@ -400,6 +399,7 @@ def test_multiprocessing_array():
     p.flush_array()
 
     print(p.array[0:11])
+
 
 def test_basic_q_and_zmq_with_pipe():
     import zmq
@@ -497,4 +497,161 @@ def test_basic_q_and_zmq_with_pipe():
     p.terminate()
     s.terminate()
 
-test_basic_q_and_zmq_with_pipe()
+
+def test_basic_q_with_pipe_async():
+    import asyncio
+    from aioprocessing import AioPipe
+
+    class Node(Process):
+        def __init__(self, pipe=None):
+            super().__init__()
+            # assert mp structures are in place
+            assert pipe is not None, 'A pipe must be provided.'
+
+            # set queue
+            self.pipe = pipe
+
+        def run(self, *args):
+            super().run()
+
+            self.loop()
+
+        def loop(self):
+            print('node entering loop where it will non-block check zmq and local queue')
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            tasks = [
+                asyncio.async(self.get_from_pipe(self.pipe)),
+            ]
+            loop.run_until_complete(asyncio.wait(tasks))
+            loop.close()
+
+        async def get_from_pipe(self, pipe):
+            while True:
+                pipe.send(pipe.recv())
+
+    p_parent_pipe, p_child_pipe = AioPipe()
+    p = Node(pipe=p_child_pipe)
+    p.start()
+    sleep(1)
+
+    p_parent_pipe.send(b'hello world')
+
+    sleep(1)
+    print('q is empty...' if not p_parent_pipe.poll() else 'q is not empty. got: {}'.format(p_parent_pipe.recv()))
+
+    p.terminate()
+
+
+def test_basic_q_and_zmq_with_pipe_async():
+    import zmq
+    #from zmq.asyncio import Context
+    from cilantro import Constants
+    import asyncio
+    from aioprocessing import AioPipe
+
+    class Node(Process):
+        def __init__(self, pipe=None, sub_port=9999, pub_port=9998):
+            super().__init__()
+            # assert mp structures are in place
+            assert pipe is not None, 'A pipe must be provided.'
+
+            # establish base url
+            self.base_url = Constants.BaseNode.BaseUrl
+
+            # setup subscriber constants
+            self.subscriber_port = sub_port
+            self.subscriber_url = 'tcp://{}:{}'.format(self.base_url, self.subscriber_port)
+
+            # setup publisher constants
+            self.publisher_port = pub_port
+            self.publisher_url = 'tcp://{}:{}'.format(self.base_url, self.publisher_port)
+
+            # set context and sockets to none until process starts because multiprocessing zmq is funky
+            self.context = None
+            self.sub_socket = None
+            self.pub_socket = None
+
+            # set pipe
+            self.pipe = pipe
+
+        def run(self, *args):
+            super().run()
+
+            self.context = zmq.Context()
+
+            self.sub_socket = self.context.socket(socket_type=zmq.SUB)
+
+            self.sub_socket.bind(self.subscriber_url)
+            self.sub_socket.setsockopt(zmq.SUBSCRIBE, b'')
+
+            self.pub_socket = self.context.socket(socket_type=zmq.PUB)
+            self.pub_socket.connect(self.publisher_url)
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            loop.run_until_complete(self.loop_da_loop())
+
+        async def loop_da_loop(self):
+            loop = asyncio.get_event_loop()
+            tasks = [
+                loop.run_in_executor(None, self.receive_from_pipe, self.pipe),
+                loop.run_in_executor(None, self.receive_from_socket, self.sub_socket)
+            ]
+            await asyncio.wait(tasks)
+
+        def receive_from_socket(self, socket):
+            print('zmq')
+            while True:
+                self.zmq_callback(socket.recv())
+
+        def receive_from_pipe(self, pipe):
+            print('pipe')
+            while True:
+                self.pipe_callback(pipe.recv())
+
+        def zmq_callback(self, msg):
+            raise NotImplementedError
+
+        def pipe_callback(self, msg):
+            raise NotImplementedError
+
+    class Subscriber(Node):
+        def zmq_callback(self, msg):
+            print('received message from publisher. putting it on the queue:', msg)
+            self.pipe.send(msg)
+            print('done')
+
+        def pipe_callback(self, msg):
+            pass
+
+    class Publisher(Node):
+        def zmq_callback(self, msg):
+            pass
+
+        def pipe_callback(self, msg):
+            print('received a message on the queue. publishing it:', msg)
+            self.pub_socket.send(msg)
+
+    s_parent_pipe, s_child_pipe = AioPipe()
+    s = Subscriber(pipe=s_child_pipe)
+    s.start()
+    sleep(1)
+
+    p_parent_pipe, p_child_pipe = AioPipe()
+    p = Publisher(pipe=p_child_pipe, pub_port=9999, sub_port=9997)
+    p.start()
+    sleep(1)
+
+    print('publishing message')
+    p_parent_pipe.send(b'hello world')
+
+    sleep(1)
+    print('q is empty...' if not s_parent_pipe.poll() else 'q is not empty. got: {}'.format(s_parent_pipe.recv()))
+
+    p.terminate()
+    s.terminate()
+
+test_basic_q_and_zmq_with_pipe_async()
