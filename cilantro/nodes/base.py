@@ -1,110 +1,64 @@
-from multiprocessing import Process, Queue, Array
+from multiprocessing import Process
 import zmq
-import asyncio
-
 from cilantro import Constants
-import sys
+import asyncio
+from aioprocessing import AioPipe
 
 
-class ZMQScaffolding:
-    def __init__(self,
-                 base_url=Constants.BaseNode.BaseUrl,
-                 subscriber_port=Constants.BaseNode.SubscriberPort,
-                 publisher_port=Constants.BaseNode.PublisherPort,
-                 filters=(b'', )):
-        self.base_url = base_url
-        self.subscriber_port = subscriber_port
+class Node(Process):
+    def __init__(self, sub_port=9999, pub_port=9998):
+        super().__init__()
+        self.parent_pipe, self.child_pipe = AioPipe()
 
-        self.publisher_port = publisher_port
+        # establish base url
+        self.base_url = Constants.BaseNode.BaseUrl
 
+        # setup subscriber constants
+        self.subscriber_port = sub_port
         self.subscriber_url = 'tcp://{}:{}'.format(self.base_url, self.subscriber_port)
+
+        # setup publisher constants
+        self.publisher_port = pub_port
         self.publisher_url = 'tcp://{}:{}'.format(self.base_url, self.publisher_port)
 
+        # set context and sockets to none until process starts because multiprocessing zmq is funky
         self.context = None
         self.sub_socket = None
         self.pub_socket = None
 
-        self.filters = filters
+    def run(self, *args):
+        super().run()
 
-    def connect(self):
         self.context = zmq.Context()
 
         self.sub_socket = self.context.socket(socket_type=zmq.SUB)
 
+        self.sub_socket.bind(self.subscriber_url)
+        self.sub_socket.setsockopt(zmq.SUBSCRIBE, b'')
+
         self.pub_socket = self.context.socket(socket_type=zmq.PUB)
         self.pub_socket.connect(self.publisher_url)
 
-        self.sub_socket.bind(self.subscriber_url)
-        self.sub_socket.setsockopt(zmq.SUBSCRIBE, b'')
-        #self.sub_socket.subscribe(b'')
-        print('binding')
-        # for f in self.filters:
-        #     self.sub_socket.subscribe(f)
-
-
-class ConveyorBelt:
-    def __init__(self, callback, queue=None):
-        self.callback = callback
-        self.queue = queue
-
-    async def loop(self):
-        raise NotImplementedError
-
-
-class ZMQConveyorBelt(ConveyorBelt):
-    async def loop(self):
-        assert self.queue is not None
-        while True:
-            #sys.stdout.flush()
-            try:
-                msg = self.queue.sub_socket.recv()
-            except Exception as e:
-                print(e)
-            self.callback(msg)
-
-
-class LocalConveyorBelt(ConveyorBelt):
-    async def loop(self):
-        assert self.queue is not None
-        while True:
-            print('message recieved')
-            msg = self.queue.get()
-            print(msg)
-            self.callback(msg)
-
-
-class BaseNode:
-    def __init__(self, start=True, **kwargs):
-        self.serializer = Constants.Protocol.Serialization
-
-        # set up the multiprocessing setup
-        self.mpq_queue = Queue()
-        self.main_queue = Queue()
-
-        self.array = Array()
-
-        self.message_queue = ZMQScaffolding(**kwargs)
-
-        self.zmq_conveyor_belt = ZMQConveyorBelt(callback=self.zmq_recv_callback)
-        self.mpq_conveyor_belt = LocalConveyorBelt(callback=self.mpq_recv_callback, queue=self.mpq_queue)
-
-        self.conveyor_belts = [self.zmq_conveyor_belt, self.mpq_conveyor_belt]
-
-        self.process = Process(target=self.run)
-        if start:
-            self.process.start()
-
-    def run(self):
-        self.message_queue.connect()
-        self.zmq_conveyor_belt.queue = self.message_queue
         loop = asyncio.new_event_loop()
-        loop.run_until_complete(asyncio.wait([c.loop() for c in self.conveyor_belts]))
+        asyncio.set_event_loop(loop)
 
-    def zmq_recv_callback(self, msg):
+        loop.run_until_complete(self.listen())
+
+    async def listen(self):
+        loop = asyncio.get_event_loop()
+        tasks = [
+            loop.run_in_executor(None, self.receive, self.child_pipe, self.pipe_callback),
+            loop.run_in_executor(None, self.receive, self.sub_socket, self.zmq_callback)
+        ]
+        await asyncio.wait(tasks)
+
+    @staticmethod
+    def receive(socket, callback):
+        while True:
+            callback(socket.recv())
+
+    def zmq_callback(self, msg):
         raise NotImplementedError
 
-    def mpq_recv_callback(self, msg):
+    def pipe_callback(self, msg):
         raise NotImplementedError
-
-    def terminate(self):
-        self.process.terminate()
