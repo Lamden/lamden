@@ -1,5 +1,3 @@
-from cilantro.nodes.constants import MAX_QUEUE_SIZE, QUEUE_AUTO_FLUSH_TIME
-from cilantro.nodes.delegate.db import TransactionQueueDriver
 from cilantro.nodes import Node
 import sys
 import requests
@@ -15,13 +13,13 @@ if sys.platform != 'win32':
 """
     Delegates
 
-    Delegates are the "miners" of the Cilantro blockchain in that they opportunistically bundle up transactions into 
-    blocks and are rewarded with TAU for their actions. They receive approved transactions from delegates and broadcast
+    Delegates are the "miners" of the Cilantro blockchain in that they opportunistically bundle up transaction into 
+    blocks and are rewarded with TAU for their actions. They receive approved transaction from delegates and broadcast
     blocks based on a 1 second or 10,000 transaction limit per block. They should be able to connect/drop from the 
     network seamlessly as well as coordinate blocks amongst themselves.
     
      Delegate logic:   
-        Step 1) Delegate takes 10k transactions from witness and forms a block
+        Step 1) Delegate takes 10k transaction from witness and forms a block
         Step 2) Block propagates across the network to other delegates
         Step 3) Delegates pass around in memory DB hash to confirm they have the same blockchain state
         Step 4) Next block is mined and process repeats
@@ -107,7 +105,7 @@ class Delegate(Node):
         # Package block for transport
         all_tx = self.queue.dequeue_all()
 
-        block = {'transactions': all_tx}
+        block = {'transaction': all_tx}
 
         self.last_flush_time = time.time()
         if self.post_block(self.serializer.serialize(block)):

@@ -1,4 +1,6 @@
+from cilantro import Constants
 from cilantro.nodes.base import Node
+
 '''
     Witness
 
@@ -7,11 +9,9 @@ from cilantro.nodes.base import Node
     then go ahead and pass the transaction along to delegates to include in a block. They will also facilitate
     transactions that include stake reserves being spent by users staking on the network.
 '''
-from cilantro import Constants
 
 Serializer = Constants.Protocol.Serialization
 Proof = Constants.Protocol.Proofs
-
 
 
 class Witness(Node):

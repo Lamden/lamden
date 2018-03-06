@@ -23,7 +23,7 @@ def flush_queue():
         r.lpop(QUEUE_KEY)
 
 def flush_transactions():
-    print('flushing transactions...')
+    print('flushing transaction...')
     for key in r.hscan_iter(TRANSACTION_KEY):
         r.hdel(TRANSACTION_KEY, key[0])
 
