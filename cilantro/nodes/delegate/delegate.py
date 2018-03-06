@@ -1,6 +1,6 @@
 from cilantro.nodes.constants import MAX_QUEUE_SIZE, QUEUE_AUTO_FLUSH_TIME
 from cilantro.nodes.delegate.db import TransactionQueueDriver
-from cilantro.networking import Node
+from cilantro.nodes import Node
 import sys
 import requests
 from threading import Thread
@@ -35,11 +35,7 @@ if sys.platform != 'win32':
 class Delegate(Node):
 
     def __init__(self):
-        Node.__init__(self,
-                          host=Constants.Delegate.Host,
-                          sub_port=Constants.Delegate.SubPort,
-                          pub_port=Constants.Delegate.PubPort,
-                          serializer=Constants.Protocol.Serialization)
+        Node.__init__(self, base_url=Constants.Delegate.Host, sub_port=Constants.Delegate.SubPort, pub_port=Constants.Delegate.PubPort)
 
         self.mn_get_balance_url = self.host + Constants.Delegate.GetBalanceUrl
         self.mn_post_block_url = self.host + Constants.Delegate.AddBlockUrl
