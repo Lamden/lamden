@@ -1,6 +1,7 @@
 from unittest import TestCase
 from cilantro.models.merkle import MerkleTree
 
+
 class TestMerkleTree(TestCase):
     def test_construction_1(self):
         should_be = [None, None, None, 1, 2, 3, 4]
@@ -35,3 +36,41 @@ class TestMerkleTree(TestCase):
         m = MerkleTree(leaves)
 
         self.assertEqual(test_merkle, m.nodes)
+
+    def test_find_root(self):
+        leaves = [1, 2, 3, 4]
+        test_merkle = [None,
+                       None,
+                       None,
+                       MerkleTree.hash(bytes(1)),
+                       MerkleTree.hash(bytes(2)),
+                       MerkleTree.hash(bytes(3)),
+                       MerkleTree.hash(bytes(4))]
+
+        test_merkle[2] = MerkleTree.hash(test_merkle[-2] + test_merkle[-1])
+        test_merkle[1] = MerkleTree.hash(test_merkle[3] + test_merkle[4])
+        test_merkle[0] = MerkleTree.hash(test_merkle[1] + test_merkle[2])
+
+        m = MerkleTree(leaves)
+
+        self.assertEqual(m.root(2), test_merkle[0])
+        self.assertEqual(m.root(4), test_merkle[1])
+        self.assertEqual(m.root(), test_merkle[0])
+
+    def test_find_children(self):
+        leaves = [1, 2, 3, 4]
+        test_merkle = [None,
+                       None,
+                       None,
+                       MerkleTree.hash(bytes(1)),
+                       MerkleTree.hash(bytes(2)),
+                       MerkleTree.hash(bytes(3)),
+                       MerkleTree.hash(bytes(4))]
+
+        test_merkle[2] = MerkleTree.hash(test_merkle[-2] + test_merkle[-1])
+        test_merkle[1] = MerkleTree.hash(test_merkle[3] + test_merkle[4])
+        test_merkle[0] = MerkleTree.hash(test_merkle[1] + test_merkle[2])
+
+        m = MerkleTree(leaves)
+
+        self.assertEqual(m.children(0), [test_merkle[1], test_merkle[2]])

@@ -21,17 +21,16 @@ class MerkleTree(ModelBase):
                 MerkleTree.hash(self.nodes[2 * i - 1] +
                                 self.nodes[2 * i])
 
-    def get_root_for_index(self, i):
-        pass
+    def root(self, i=0):
+        if i == 0:
+            return self.nodes[0]
+        return self.nodes[((i + 1) // 2) - 1]
 
-    def get_children_for_index(self, i):
-        pass
-
-    def get_root_for_hash(self, h):
-        pass
-
-    def get_children_for_hash(self, h):
-        pass
+    def children(self, i):
+        return [
+            self.nodes[((i + 1) * 2) - 1],
+            self.nodes[(((i + 1) * 2) + 1) - 1]
+        ]
 
     @staticmethod
     def hash(o):
