@@ -1,8 +1,8 @@
-from cilantro.nodes.constants import MAX_QUEUE_SIZE, QUEUE_AUTO_FLUSH_TIME
-from cilantro.nodes.delegate.db import TransactionQueueDriver
-from cilantro.networking import BaseNode
+from cilantro.nodes import Node
 import sys
 import requests
+from threading import Thread
+import time
 
 from cilantro import Constants
 
@@ -29,17 +29,11 @@ if sys.platform != 'win32':
         another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
 """
 
-from threading import Thread
-import time
 
-class Delegate(BaseNode):
+class Delegate(Node):
 
     def __init__(self):
-        BaseNode.__init__(self,
-                          host=Constants.Delegate.Host,
-                          sub_port=Constants.Delegate.SubPort,
-                          pub_port=Constants.Delegate.PubPort,
-                          serializer=Constants.Protocol.Serialization)
+        Node.__init__(self, base_url=Constants.Delegate.Host, sub_port=Constants.Delegate.SubPort, pub_port=Constants.Delegate.PubPort)
 
         self.mn_get_balance_url = self.host + Constants.Delegate.GetBalanceUrl
         self.mn_post_block_url = self.host + Constants.Delegate.AddBlockUrl
@@ -69,7 +63,6 @@ class Delegate(BaseNode):
         print("Done")
         return r.json()
 
-
     def process_transaction(self, data: bytes=None):
         """
         Processes a transaction from witness. This first feeds it through the interpreter, and if
@@ -98,8 +91,8 @@ class Delegate(BaseNode):
 
         return {'success': 'db processed transaction: {}'.format(d)}
 
-    async def handle_req(self, data: bytes=None):
-        return self.process_transaction(data=data)
+    def zmq_callback(self, msg):
+        return self.process_transaction(data=msg)
 
     def perform_consensus(self):
         if self.queue.queue_size() <= 0:

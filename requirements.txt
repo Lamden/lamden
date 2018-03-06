@@ -1,3 +1,4 @@
+aioprocessing
 aiodns==1.1.1
 aiohttp==2.3.9
 async-timeout==2.0.0
@@ -14,10 +15,12 @@ twofish==0.3.0
 urllib3==1.22
 uvloop==0.9.1
 yarl==1.1.0
-zmq==0.0.0
 pytest-aiohttp==0.3.0
 ntplib==0.3.3
 pymongo==3.6.0
+<<<<<<< HEAD
 pycapnp==0.6.3
+=======
+>>>>>>> refactor-session
 ed25519
 ecdsa
