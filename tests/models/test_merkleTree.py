@@ -21,9 +21,6 @@ class TestMerkleTree(TestCase):
         # create a merkle tree that should be
         leaves = [1, 2, 3, 4]
 
-
-        # hash leaves
-        leaves = [MerkleTree.hash(bytes(l)) for l in leaves]
         m = MerkleTree(leaves)
         print(leaves)
 
