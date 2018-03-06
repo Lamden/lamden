@@ -20,16 +20,18 @@ class TestMerkleTree(TestCase):
     def test_make_merkle_works(self):
         # create a merkle tree that should be
         leaves = [1, 2, 3, 4]
+        test_merkle = [None,
+                       None,
+                       None,
+                       MerkleTree.hash(bytes(1)),
+                       MerkleTree.hash(bytes(2)),
+                       MerkleTree.hash(bytes(3)),
+                       MerkleTree.hash(bytes(4))]
+
+        test_merkle[2] = MerkleTree.hash(test_merkle[-2] + test_merkle[-1])
+        test_merkle[1] = MerkleTree.hash(test_merkle[3] + test_merkle[4])
+        test_merkle[0] = MerkleTree.hash(test_merkle[1] + test_merkle[2])
 
         m = MerkleTree(leaves)
-        print(leaves)
 
-        i = m.size - len(leaves)
-        print(i)
-        while i >= 1:
-            true_i = i - 1
-            m.nodes[true_i] = MerkleTree.hash(m.nodes[2*i-1] + m.nodes[2*i])
-            i -= 1
-
-        from pprint import pprint
-        pprint(m.nodes, width=120)
+        self.assertEqual(test_merkle, m.nodes)
