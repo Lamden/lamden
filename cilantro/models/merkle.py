@@ -4,10 +4,22 @@ import hashlib
 
 class MerkleTree(ModelBase):
     def __init__(self, leaves=None):
+        # compute size of tree
         self.size = (len(leaves) * 2) - 1
 
+        # prehash leaves
+        self.leaves = [MerkleTree.hash(bytes(l)) for l in leaves]
+
+        # create empty nodes until we hash it
         self.nodes = [None for _ in range(len(leaves) - 1)]
         self.nodes.extend(leaves)
+
+        # hash the nodes
+        i = self.size - len(self.leaves)
+        while i >= 1:
+            true_i = i
+            self.nodes[true_i] = MerkleTree.hash(self.nodes[2 * i - 1] + self.nodes[2 * i])
+            i -= 1
 
     def get_root_for_index(self, i):
         pass
@@ -26,12 +38,3 @@ class MerkleTree(ModelBase):
         h = hashlib.sha3_256()
         h.update(o)
         return h.digest()
-
-# create a merkle tree that should be
-l = [1, 2, 3, 4]
-mt = [None, None, None, 1, 2, 3, 4]
-mt[1] = MerkleTree.hash(MerkleTree.hash(bytes(1)) + MerkleTree.hash(bytes(2)))
-mt[2] = MerkleTree.hash(MerkleTree.hash(bytes(3)) + MerkleTree.hash(bytes(4)))
-mt[0] = MerkleTree.hash(MerkleTree.hash(bytes(mt[1])) + MerkleTree.hash(bytes(mt[2])))
-from pprint import pprint
-pprint(mt)
