@@ -13,7 +13,6 @@ Serializer = Constants.Protocol.Serialization
 Proof = Constants.Protocol.Proofs
 
 
-
 class Witness(Node):
     def __init__(self):
         Node.__init__(self, sub_port=Constants.Witness.SubPort, pub_port=Constants.Witness.PubPort)
@@ -26,6 +25,7 @@ class Witness(Node):
             unpacked_data = self.serializer.deserialize(msg)
         except Exception as e:
             return {'status': 'Could not deserialize transaction'}
+
         payload_bytes = self.serializer.serialize(unpacked_data["payload"])
 
         if self.hasher.check(payload_bytes, unpacked_data['metadata']['proof']):
@@ -33,15 +33,3 @@ class Witness(Node):
         else:
             print('Error: Witness could not confirm transaction POW')
             return {'status': 'invalid proof'}
-
-
-
-
-
-
-
-
-
-
-
-

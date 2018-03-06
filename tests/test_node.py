@@ -3,8 +3,6 @@ from cilantro.nodes import Node
 from aioprocessing import AioConnection, AioPipe
 from time import sleep
 import zmq
-import asyncio
-
 
 class Subscriber(Node):
     def zmq_callback(self, msg):
