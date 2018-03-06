@@ -1,6 +1,6 @@
 import json
 import os
-
+from decimal import getcontext
 
 def snake_to_pascal(s):
     s = s.split('-')
@@ -54,11 +54,8 @@ Constants.Protocol.Proofs = getattr(c, Constants.Protocol.Proofs)
 c = __import__('cilantro.protocol.wallets', fromlist=[Constants.Protocol.Wallets])
 Constants.Protocol.Wallets = getattr(c, Constants.Protocol.Wallets)
 
-c = __import__('cilantro.protocol.serialization', fromlist=[Constants.Protocol.Serialization])
-Constants.Protocol.Serialization = getattr(c, Constants.Protocol.Serialization)
-
-c = __import__('cilantro.protocol.transactions', fromlist=[Constants.Protocol.Transactions])
-Constants.Protocol.Transactions = getattr(c, Constants.Protocol.Transactions)
-
 c = __import__('cilantro.protocol.interpreters', fromlist=[Constants.Protocol.Interpreters])
 Constants.Protocol.Interpreters = getattr(c, Constants.Protocol.Interpreters)
+
+# Config fixed point decimals
+getcontext().prec = Constants.Protocol.SignificantDigits

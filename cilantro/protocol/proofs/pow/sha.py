@@ -15,7 +15,7 @@ class SHA3POW(POW):
 
     @staticmethod
     def check(o: bytes, proof: str):
-        assert len(o) == 16
+        assert len(proof) == 32
         h = hashlib.sha3_256()
         s = bytes.fromhex(proof)
         h.update(o + s)

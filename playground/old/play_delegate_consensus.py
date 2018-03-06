@@ -16,8 +16,8 @@ from cilantro.protocol.wallets import ED25519Wallet
 '''
     Steps:
     1. create a ton of wallets
-    2. create a ton of random transactions for those wallets
-    3. interpret those transactions and verify them
+    2. create a ton of random transaction for those wallets
+    3. interpret those transaction and verify them
     4. put the db output stack in a list
     5. figure it out from there.
 '''

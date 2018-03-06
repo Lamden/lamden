@@ -7,10 +7,10 @@ Proof = Constants.Protocol.Proofs
 '''
     Witness
     
-    Witnesses exist primarily to check the validity of proofs of transactions sent out by masternodes. 
+    Witnesses exist primarily to check the validity of proofs of transaction sent out by masternodes. 
     They subscribe to masternodes on the network, confirm the hashcash style proof provided by the sender is valid, and
     then go ahead and pass the transaction along to delegates to include in a block. They will also facilitate 
-    transactions that include stake reserves being spent by users staking on the network.  
+    transaction that include stake reserves being spent by users staking on the network.  
 '''
 
 class Witness(BaseNode):
