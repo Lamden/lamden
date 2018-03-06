@@ -6,8 +6,9 @@ from aioprocessing import AioPipe
 
 
 class Node(Process):
-    def __init__(self, base_url=Constants.BaseNode.BaseUrl, sub_port=9999, pub_port=9998):
+    def __init__(self, base_url=Constants.BaseNode.BaseUrl, sub_port=7777, pub_port=9998):
         super().__init__()
+        print(sub_port)
         self.parent_pipe, self.child_pipe = AioPipe()
 
         # establish base url

@@ -1,5 +1,8 @@
 from cilantro import Constants
 from cilantro.nodes.base import Node
+from cilantro.models import StandardTransaction
+
+from cilantro.logger.base import get_logger
 
 '''
     Witness
@@ -10,27 +13,28 @@ from cilantro.nodes.base import Node
     transactions that include stake reserves being spent by users staking on the network.
 '''
 
-Serializer = Constants.Protocol.Serialization
 Proof = Constants.Protocol.Proofs
 
 
 class Witness(Node):
-    def __init__(self):
-        Node.__init__(self, sub_port=Constants.Witness.SubPort, pub_port=Constants.Witness.PubPort)
+    def __init__(self, sub_port=Constants.Witness.SubPort, pub_port=Constants.Witness.PubPort):
+        Node.__init__(self,
+                      sub_port=sub_port,
+                      pub_port=pub_port)
 
         self.hasher = Proof
-        self.serializer = Serializer
+        self.logger = get_logger('witness')
+        self.logger.info('Witness has appeared.')
 
     def zmq_callback(self, msg):
+        # assume standard tx
+        self.logger.info('Got a message: {}'.format(msg))
         try:
-            unpacked_data = self.serializer.deserialize(msg)
-        except Exception as e:
-            return {'status': 'Could not deserialize transaction'}
+            tx = StandardTransaction.from_bytes(msg)
+            self.logger.info(tx._data)
+            self.pub_socket.send(tx.serialize())
+        except:
+            self.logger.info('Could not deserialize: {}'.format(msg))
 
-        payload_bytes = self.serializer.serialize(unpacked_data["payload"])
-
-        if self.hasher.check(payload_bytes, unpacked_data['metadata']['proof']):
-            return self.pub_socket.send(unpacked_data)
-        else:
-            print('Error: Witness could not confirm transaction POW')
-            return {'status': 'invalid proof'}
+    def pipe_callback(self, msg):
+        pass

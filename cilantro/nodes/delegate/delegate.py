@@ -1,9 +1,7 @@
 from cilantro.nodes import Node
 import sys
-import requests
-from threading import Thread
-import time
-
+from cilantro.logger.base import get_logger
+from cilantro.models import StandardTransaction
 from cilantro import Constants
 
 if sys.platform != 'win32':
@@ -33,100 +31,21 @@ if sys.platform != 'win32':
 class Delegate(Node):
 
     def __init__(self):
-        Node.__init__(self, base_url=Constants.Delegate.Host, sub_port=Constants.Delegate.SubPort, pub_port=Constants.Delegate.PubPort)
+        Node.__init__(self,
+                      base_url=Constants.Delegate.Host,
+                      sub_port=Constants.Delegate.SubPort,
+                      pub_port=Constants.Delegate.PubPort)
 
-        self.mn_get_balance_url = self.host + Constants.Delegate.GetBalanceUrl
-        self.mn_post_block_url = self.host + Constants.Delegate.AddBlockUrl
-        self.mn_get_updates_url = self.host + Constants.Delegate.GetUpdatesUrl
-        self.hasher = Constants.Protocol.Proofs
-        self.last_flush_time = time.time()
-        self.queue = TransactionQueueDriver()
-        self.interpreter = Constants.Protocol.Interpreter(initial_state=self.fetch_state())
-
-        self.thread = Thread(target=self.flush_queue)
-        self.thread.start()
-
-    def flush_queue(self):
-        while True:
-            time.sleep(QUEUE_AUTO_FLUSH_TIME)
-            self.perform_consensus()
-
-    def fetch_state(self):
-        print("Fetching full balance state from Masternode...")
-        r = requests.get(self.mn_get_balance_url)
-        print("Done")
-        return r.json()
-
-    def fetch_updates(self):
-        print("Fetching balance updates from Masternode...")
-        r = requests.get(self.mn_get_updates_url)
-        print("Done")
-        return r.json()
-
-    def process_transaction(self, data: bytes=None):
-        """
-        Processes a transaction from witness. This first feeds it through the interpreter, and if
-        no errors are thrown, then adds the transaction to the queue.
-        :param data: The raw transaction data, assumed to be in byte format
-        :return:
-        """
-        d, tx = None, None
-
-        try:
-            d = self.serializer.deserialize(data)
-            Constants.Protocol.Transactions.validate_tx_fields(d)
-            tx = Constants.Protocol.Transactions.from_dict(d)
-            self.interpreter.interpret_transaction(tx)
-        except Exception as e:
-            print("Error in db process transaction: {}".format(e))
-            return {'error_status': 'Delegate error processing transaction: {}'.format(e)}
-
-        self.queue.enqueue_transaction((*tx.payload['payload'], tx.payload['metadata']['timestamp']))
-        if self.queue.queue_size() > MAX_QUEUE_SIZE:
-            print('queue exceeded max size, flushing queue')
-            self.perform_consensus()
-        elif time.time() - self.last_flush_time >= QUEUE_AUTO_FLUSH_TIME:
-            print('time since last queue flush exceeded, flushing queue')
-            self.perform_consensus()
-
-        return {'success': 'db processed transaction: {}'.format(d)}
+        self.logger = get_logger('delegate')
+        self.logger.info('A Delegate has appeared.')
 
     def zmq_callback(self, msg):
-        return self.process_transaction(data=msg)
+        self.logger.info('Delegate got a message: {}'.format(msg))
+        try:
+            tx = StandardTransaction.from_bytes(msg)
+            self.logger.info('The delegate says: ', tx._data)
+        except:
+            self.logger.info('Could not deserialize message: {}'.format(msg))
 
-    def perform_consensus(self):
-        if self.queue.queue_size() <= 0:
-            return
-
-        print('db performing consensus...')
-
-        # TODO -- consensus
-
-        # Package block for transport
-        all_tx = self.queue.dequeue_all()
-
-        block = {'transaction': all_tx}
-
-        self.last_flush_time = time.time()
-        if self.post_block(self.serializer.serialize(block)):
-            updates = self.fetch_updates()
-            if len(updates) == 0:
-                print("Delegate could not get latest updates from db. Getting full balance...")
-                updates = self.fetch_state()
-            self.interpreter.update_state(updates)
-
-    def post_block(self, block: bytes):
-        print("Delegate posting block to db\nBlock binary: {}".format(block))
-        r = requests.post(self.mn_post_block_url, data=block)
-        if r.status_code == 200:
-            print('Delegate successfully posted block to Masternode')
-            return True
-        else:
-            print("Delegate had problem posting block to Masternode (status code={})".format(r.status_code))
-            return False
-
-    async def delegate_time(self):
-        """Conditions to check that 1 second has passed"""
-        start_time = time.time()
-        await time.sleep(1.0 - ((time.time() - start_time) % 1.0))
-        return True
+    def pipe_callback(self, msg):
+        pass
