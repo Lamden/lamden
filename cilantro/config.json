@@ -1,10 +1,10 @@
 {
   "protocol": {
     "wallets": "ED25519Wallet",
-    "serialization": "JSONSerializer",
     "proofs": "SHA3POW",
-    "transactions": "Transaction",
-    "interpreters": "VanillaInterpreter"
+    "interpreters": "VanillaInterpreter",
+    "significant-digits": 19,
+    "decimal-precision": 4
   },
   "mongo-constants": {
     "db-name": "cilantro",

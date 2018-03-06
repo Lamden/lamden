@@ -33,7 +33,7 @@ class BlockchainDriver(object):
         TODO -- make a custom block data structure
         """
         # Add block number and block hash
-        all_tx = block['transactions']
+        all_tx = block['transaction']
         block_num = self.inc_block_number()
         h = hashlib.sha3_256()
         h.update(self.serializer.serialize(all_tx) + block_num.to_bytes(8, 'little'))
@@ -171,9 +171,9 @@ class BlockchainDriver(object):
         csv = ",".join(keys) + "\r\n"
 
         for block in self.blocks.find({MONGO.genesis_key: {'$exists': False}}, {"_id": 0}).sort('block_num', ASCENDING):
-            for tx in block['transactions']:
+            for tx in block['transaction']:
                 sender = tx[1]
-                # Exclude faucet transactions
+                # Exclude faucet transaction
                 if sender == self.faucet_v:
                     continue
                 receiver = tx[2]
