@@ -26,3 +26,12 @@ class MerkleTree(ModelBase):
         h = hashlib.sha3_256()
         h.update(o)
         return h.digest()
+
+# create a merkle tree that should be
+l = [1, 2, 3, 4]
+mt = [None, None, None, 1, 2, 3, 4]
+mt[1] = MerkleTree.hash(MerkleTree.hash(bytes(1)) + MerkleTree.hash(bytes(2)))
+mt[2] = MerkleTree.hash(MerkleTree.hash(bytes(3)) + MerkleTree.hash(bytes(4)))
+mt[0] = MerkleTree.hash(MerkleTree.hash(bytes(mt[1])) + MerkleTree.hash(bytes(mt[2])))
+from pprint import pprint
+pprint(mt)
