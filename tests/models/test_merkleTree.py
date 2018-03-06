@@ -74,3 +74,5 @@ class TestMerkleTree(TestCase):
         m = MerkleTree(leaves)
 
         self.assertEqual(m.children(0), [test_merkle[1], test_merkle[2]])
+        self.assertEqual(m.children(1), [test_merkle[3], test_merkle[4]])
+        self.assertEqual(m.children(2), [test_merkle[5], test_merkle[6]])
