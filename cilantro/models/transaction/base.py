@@ -74,47 +74,6 @@ class TransactionBase(ModelBase):
         """
         raise NotImplementedError
 
-    @classmethod
-    def deserialize_struct(cls, data: bytes):
-        """
-        Deserializes the captain proto structure and returns it. This method should be implemented by all subclasses
-        :param data: The encoded captain proto structure
-        :return: A captain proto struct reader
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def from_bytes(cls, data: bytes, validate=True):
-        """
-        Deserializes binary data and uses it as the underlying data for the newly instantiated Transaction class
-        If validate=True, then this method also calls validate on the newly created Transaction object.
-        :param data: The binary data of the underlying data interchange format
-        :param validate: If true, this method will also validate the data before returning the model object
-        :return: An instance of Transaction
-        """
-        model = cls(cls.deserialize_struct(data))
-        if validate:
-            model.validate()
-        return model
-
-    @classmethod
-    def from_data(cls, data: object, validate=True):
-        """
-        Creates a ModelBase and directly for the deserialized data.
-        If validate=True, then this method also calls validate on the newly created Transaction object.
-        :param data: The object to use as the underlying data format (i.e. Capnp Struct, JSON dict)
-        :param validate: If true, this method will also validate the data before returning the model object
-        :return: An instance of Transaction
-        """
-        # Cast data to a struct reader (not builder) if it isn't already
-        if hasattr(data, 'as_reader'):
-            data = data.as_reader()
-
-        model = cls(data)
-        if validate:
-            model.validate()
-        return model
-
     @property
     def proof(self):
         return self._data.metadata.proof.decode()

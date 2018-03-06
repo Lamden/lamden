@@ -143,7 +143,6 @@ class TestStandardTransaction(TestCase):
         """
         # Test amount is 0
         tx_struct = TestStandardTransaction.create_tx_struct(0)
-        print(tx_struct)
         tx = StandardTransaction.from_data(tx_struct, validate=False)
         self.assertRaises(Exception, tx.validate_payload)
 
