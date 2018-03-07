@@ -1,6 +1,7 @@
 import json
 import os
 from decimal import getcontext
+import sys
 
 def snake_to_pascal(s):
     s = s.split('-')
@@ -12,6 +13,8 @@ def snake_to_pascal(s):
 
 path = os.path.join(os.path.dirname(__file__), 'config.json')
 config = json.load(open(path))
+
+sys.path.append(os.path.dirname(__file__) + '/models/capnp')
 
 
 class Constants:
