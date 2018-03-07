@@ -80,6 +80,9 @@ def request_from_all_nodes():
         request_socket.disconnect(connection)
 
     def verify_signature(future):
+        from cilantro.logger import get_logger
+        logger = get_logger('threads')
+        logger.debug('writing to thread')
         signature_list.append(future.result())
 
     futures = [asyncio.Future() for _ in range(len(delegates_to_request))]
@@ -154,7 +157,7 @@ class ConsensusProcess(Subprocess):
             loop.run_until_complete(asyncio.wait(tasks))
             loop.close()
 
-            self.output.send(self.signatures)
+            self.child_output.send(self.signatures)
         else:
             self.merkle = msg
 
