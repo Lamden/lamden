@@ -69,7 +69,3 @@ class Subprocess(Process):
 
     def pipe_callback(self, msg):
         raise NotImplementedError
-
-class Node:
-    def __init__(self):
-        self.processes = []

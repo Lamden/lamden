@@ -2,6 +2,7 @@ import secrets
 from cilantro.models import MerkleTree
 from cilantro.protocol.wallets import ED25519Wallet
 import hashlib
+from cilantro.nodes import Subprocess, BIND, CONNECT
 
 from multiprocessing import Process
 import zmq
@@ -50,10 +51,12 @@ def print_stuff():
     print('\n===SIGNATURE OF MERKLE HASH===')
     [print(ED25519Wallet.sign(k[0], h.digest())) for k in delegates]
 
+
 signature_list = []
 
+
 def request_from_all_nodes():
-    #asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    # asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     loop = asyncio.get_event_loop()
 
     context = zmq.Context()
@@ -88,18 +91,74 @@ def request_from_all_nodes():
     loop.run_until_complete(asyncio.wait(tasks))
     loop.close()
 
-def respond():
-    loop = asyncio.get_event_loop()
 
-    context = zmq.Context()
+class ConsensusProcess(Subprocess):
+    def __init__(self,
+                 name='consensus',
+                 connection_type=BIND,
+                 socket_type=zmq.REP,
+                 url=connection_list[0],
+                 signing_key=None,
+                 delegates=None):
 
-    async def get_message(future, connection):
-        response_socket = context.socket(socket_type=zmq.REQ)
-        response_socket.bind(connection)
-        await response_socket.recv()
-        response_socket.send(b'signature')
+        super().__init__(self, name, connection_type, socket_type, url)
+        self.merkle = None
+        self.signing_key = signing_key
+        self.delegates = delegates
+        self.signatures = []
 
-        future.set_result(b'yay')
+    def set_merkle(self, merkle):
+        self.input.send(merkle)
 
-        response_socket.disconnect(connection)
+    def trigger_consensus(self):
+        self.input.send(b'')
 
+    def get_signatures(self):
+        if self.output.poll():
+            return self.output.recv()
+        else:
+            return None
+
+    def zmq_callback(self, msg):
+        self.socket.send(self.merkle)
+
+    def pipe_callback(self, msg):
+        '''
+        switch statement between merkle tree message and trigger message
+        '''
+        if len(msg) == 0:
+            loop = asyncio.get_event_loop()
+            context = zmq.Context()
+
+            async def get_message(future, connection, delegate_verifying_key):
+                request_socket = context.socket(socket_type=zmq.REQ)
+                request_socket.connect(connection)
+                request_socket.send(b'')
+
+                signature = await request_socket.recv()
+                future.set_result((signature, delegate_verifying_key))
+
+                request_socket.disconnect(connection)
+
+            def verify_signature(future):
+                signature, verifying_key = future.result()
+                if ED25519Wallet.verify(verifying_key, self.merkle, signature):
+                    self.signatures.append(future.result())
+
+            futures = [asyncio.Future() for _ in range(len(self.delegates))]
+
+            [f.add_done_callback(verify_signature) for f in futures]
+
+            tasks = [get_message(*a) for a in zip(futures, self.delegates)]
+
+            loop.run_until_complete(asyncio.wait(tasks))
+            loop.close()
+
+            self.output.send(self.signatures)
+        else:
+            self.merkle = msg
+
+
+class Delegate:
+    def __init__(self):
+        self.consensus_process = ConsensusProcess()
