@@ -1,4 +1,4 @@
-from cilantro.nodes.witness import Witness
+from cilantro.nodes import Witness
 
 w = Witness()
-w.start_async()
+w.start()

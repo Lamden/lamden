@@ -1,4 +1,4 @@
-from cilantro.nodes.delegate import Delegate
+from cilantro.nodes import Delegate
 
 d = Delegate()
-d.start_async()
+d.start()
