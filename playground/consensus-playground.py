@@ -103,12 +103,3 @@ def respond():
 
         response_socket.disconnect(connection)
 
-from multiprocessing import Process
-from threading import Thread
-p = Thread(target=request_from_all_nodes)
-
-# request_from_all_nodes()
-print(signature_list)
-
-class ZMQLoop(Process):
-    self.parent_pipe, self.child_pipe = AioPipe()
