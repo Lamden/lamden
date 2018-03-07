@@ -8,7 +8,7 @@ chardet==3.0.4
 idna==2.6
 multidict==4.1.0
 pycares==2.3.0
-pyzmq==17.0.0b4
+pyzmq==17.0.0
 redis==2.10.6
 requests==2.18.4
 twofish==0.3.0
