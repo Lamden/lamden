@@ -14,6 +14,11 @@ __pycache__/
 # C extensions
 *.so
 
-# Cilantro specific files
-*.tau
-*.rdb
+.cache/
+cilantro.egg-info/
+
+# FOR DEMO
+cilantro/faucet.json
+
+# LOGS
+**/logs

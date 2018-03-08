@@ -1,1 +1,0 @@
-from cilantro.interpreters.testnet import TestNetInterpreter
