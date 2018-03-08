@@ -12,7 +12,7 @@ from aiohttp import web
 # from cilantro.nodes.constants import FAUCET_PERCENT
 # END DEMO IMPORT
 from cilantro.logger.base import get_logger
-web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+#web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 from cilantro import Constants
 Wallet = Constants.Protocol.Wallets

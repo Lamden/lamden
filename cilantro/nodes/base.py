@@ -83,8 +83,7 @@ class Subprocess(Process):
     """
     def __init__(self, name, connection_type, socket_type, url):
         super().__init__()
-        self.input, self.child_input = AioPipe()
-        self.output, self.child_output = AioPipe()
+        self.parent_pipe, self.child_pipe = AioPipe()
 
         self.name = name
 
@@ -110,12 +109,12 @@ class Subprocess(Process):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        loop.run_until_complete(self.listen)
+        loop.run_until_complete(self.listen())
 
     async def listen(self):
         loop = asyncio.get_event_loop()
         tasks = [
-            loop.run_in_executor(None, self.receive, self.child_input, self.pipe_callback),
+            loop.run_in_executor(None, self.receive, self.child_pipe, self.pipe_callback),
             loop.run_in_executor(None, self.receive, self.socket, self.zmq_callback)
         ]
         await asyncio.wait(tasks)
@@ -123,7 +122,9 @@ class Subprocess(Process):
     @staticmethod
     def receive(socket, callback):
         while True:
+            print("socket {} waiting for recv with callback {}...".format(socket, callback))
             callback(socket.recv())
+            print("process got recv")
 
     def zmq_callback(self, msg):
         raise NotImplementedError
