@@ -1,6 +1,6 @@
-@0x8ec5d3d5a5c96396
+@0x93eca3fe49376df5;
 
-struct Packet {
+struct Message {
     type @0 :UInt16;
     payload @1 :Data;
 }

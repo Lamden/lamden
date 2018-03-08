@@ -1,4 +1,4 @@
-from cilantro.protocol.statemachine.state import NodeState, EmptyState
+from cilantro.protocol.statemachine.state import State, EmptyState
 from typing import List
 
 
@@ -6,7 +6,7 @@ class StateMachine:
     """
     TODO -- docstring
     """
-    def __init__(self, init_state: type(NodeState), states: List[type(NodeState)]):
+    def __init__(self, init_state: type(State), states: List[type(State)]):
         """
         TODO -- docstring
         :param init_state:
@@ -25,7 +25,7 @@ class StateMachine:
     NOTE: with this approach all internal attributes of each state persist between transitions.
     Is this what we want? or should each state be dealloc'd on exit(...) and alloc a new state before enter(...)?
     """
-    def transition(self, next_state: type(NodeState)):
+    def transition(self, next_state: type(State)):
         """
         TODO -- docstring
         :param next_state:
@@ -38,3 +38,4 @@ class StateMachine:
         self.state.exit(ns)
         ns.enter(self.state)
         self.state = ns
+        self.state.run()

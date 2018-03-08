@@ -62,7 +62,7 @@ class InterpretingState(NodeState):
         print("InterpretingState transitioning TO state: {}".format(next_state.name))
 
     def handle_message(self, packet):
-        print("Interpreting state got packet: {}".format(packet))
+        print("Interpreting state got message: {}".format(packet))
 
 
 class PerformingConsensusState(NodeState):
@@ -75,7 +75,7 @@ class PerformingConsensusState(NodeState):
         print("PerformingConsensusState transitioning TO state: {}".format(next_state.name))
 
     def handle_message(self, packet):
-        print("Consensus state got packet: {}".format(packet))
+        print("Consensus state got message: {}".format(packet))
 
 
 class StateMachine:
