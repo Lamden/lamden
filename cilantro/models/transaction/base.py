@@ -11,18 +11,9 @@ class TransactionBase(ModelBase):
     """
 
     def __init__(self, data):
-        self._data = data
+        super().__init__(data)
         self.pow = Constants.Protocol.Proofs
         self.wallet = Constants.Protocol.Wallets
-
-    def serialize(self) -> bytes:
-        """
-        Serialize the underlying data format into bytes
-        :return: Bytes
-        """
-        if not self._data:
-            raise Exception("internal attribute _data not set.")
-        return self._data.as_builder().to_bytes_packed()
 
     def validate(self):
         """

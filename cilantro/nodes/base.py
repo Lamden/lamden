@@ -4,6 +4,11 @@ from cilantro import Constants
 import asyncio
 from aioprocessing import AioPipe
 
+import sys
+if sys.platform != 'win32':
+    import uvloop
+    # asyncio.set_event_loop_policy(uvloop.EventLoopPolicy)
+
 
 class Node(Process):
     def __init__(self, base_url=Constants.BaseNode.BaseUrl, sub_port=7777, pub_port=9998):
@@ -55,6 +60,7 @@ class Node(Process):
 
     @staticmethod
     def receive(socket, callback):
+        # print("Recieved something at socket {} wtih callback {}".format(socket, callback))
         while True:
             callback(socket.recv())
 

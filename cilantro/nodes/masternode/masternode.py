@@ -9,38 +9,88 @@
 import uvloop
 from cilantro.nodes import Node
 from aiohttp import web
-# from cilantro.nodes.constants import FAUCET_PERCENT
-# END DEMO IMPORT
-from cilantro.logger.base import get_logger
-#web.asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+from cilantro.logger import get_logger
 
 from cilantro import Constants
 Wallet = Constants.Protocol.Wallets
 Proof = Constants.Protocol.Proofs
 
+from cilantro.models import Message, StandardTransaction
+from cilantro.protocol.statemachine import StateMachine, State
 
-class Masternode(Node):
+
+class Masternode(Node, StateMachine):
     def __init__(self, base_url=Constants.Masternode.Host, internal_port='9999', external_port='8080'):
-        Node.__init__(self, base_url=base_url, pub_port=internal_port)
+        Node.__init__(self, base_url, pub_port=internal_port, sub_port='5678')
         self.external_port = external_port
-        self.logger = get_logger('masternode')
+        self.log = get_logger('MasterNode')
+
+        STATES = [MNBootState, MNLiveState]
+        StateMachine.__init__(self, MNBootState, STATES)
 
     def zmq_callback(self, msg):
         pass
 
     def pipe_callback(self, msg):
         print('Publishing message: ', msg)
-        self.logger.info('Publishing message: {}'.format(msg))
+        self.log.info('Publishing message: {}'.format(msg))
         self.pub_socket.send(msg)
 
     async def process_request(self, request):
-        print('Got request: ', request)
-        self.logger.info('Got request: {}'.format(request))
-        self.parent_pipe.send(await request.content.read())
+        self.log.info('Got request: {}'.format(request))
+        content = await request.content.read()
+        print('Got content: ', content)
+
+        # Package transaction in message for delivery
+        # We are assume content is the StandardTransaction binary (but irl we should verify this)
+        msg = Message.create(StandardTransaction, content)
+
+        self.parent_pipe.send(msg.serialize())
         return web.Response(text=str(request))
 
     def setup_web_server(self):
+        self.log.info("Starting web server...")
         self.start()
         app = web.Application()
         app.router.add_post('/', self.process_request)
         web.run_app(app, host=self.base_url, port=int(self.external_port))
+
+
+class MNBootState(State):
+    name = "MNBootState"
+
+    def __init__(self, state_machine=None):
+        super().__init__(state_machine)
+        self.log = get_logger("Masternode.BootState")
+
+    def handle_message(self, msg):
+        self.log.info("got msg: {}".format(msg))
+
+    def enter(self, prev_state):
+        self.log.info("Masternode is booting...")
+
+    def exit(self, next_state):
+        self.log.info("Masternode exiting boot procedure...")
+
+    def run(self):
+        self.sm.transition(MNLiveState)
+
+
+class MNLiveState(State):
+    name = "MNLiveState"
+
+    def __init__(self, state_machine=None):
+        super().__init__(state_machine)
+        self.log = get_logger("Masternode.LiveState")
+
+    def handle_message(self, msg):
+        self.log.info("got msg: {}".format(msg))
+
+    def enter(self, prev_state):
+        self.log.info("Masternode entering live state...")
+
+    def exit(self, next_state):
+        self.log.info("Masternode exiting live state...")
+
+    def run(self):
+        self.log.info("Masternode live state is running.")

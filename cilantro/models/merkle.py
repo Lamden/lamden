@@ -3,6 +3,9 @@ import hashlib
 
 
 class MerkleTree(ModelBase):
+
+    name = "MERKLE_TREE"
+
     def __init__(self, leaves=None):
         self.raw_leaves = leaves
 
