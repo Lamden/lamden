@@ -4,9 +4,9 @@ python:
 before_install:
   - sudo apt-get install software-properties-common
 install:
-  - pip install -r requirements.txt
   - pip install coverage
-script: 
+  - python setup.py develop
+script: python -m unittest discover -s ./tests
 notifications:
   webhooks:
     - https://lamden-discord-travisci.herokuapp.com/webhook/

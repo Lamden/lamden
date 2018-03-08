@@ -6,6 +6,10 @@ from cilantro import Constants
 import zmq
 import asyncio
 
+# if sys.platform != 'win32':
+#     import uvloop
+#     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy)
+
 """
     Delegates
 
@@ -25,14 +29,39 @@ import asyncio
         another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
 """
 
+from threading import Thread
+
+
+class Router(Thread):
+    def __init__(self, callbacks):
+        super().__init__()
+        self.callbacks = callbacks
+        self.daemon = True
+
+    async def listen(self):
+        loop = asyncio.get_event_loop()
+        tasks = [loop.run_in_executor(None, self.receive, c[0], c[1]) for c in self.callbacks]
+        await asyncio.wait(tasks)
+
+    @staticmethod
+    def receive(socket, callback):
+        while True:
+            callback(socket.recv())
 
 class Delegate:
     def __init__(self):
-
-        self.router = "ROUTER"
-
         self.subscriber = Subscriber()
         self.consensus_process = ConsensusProcess()
+
+        callbacks = [(self.subscriber.parent_pipe, self.foo),
+                     (self.consensus_process.parent_pipe, self.foo)]
+
+        self.router = Router(callbacks)
+
+        self.router.start()
+
+    def foo(self, msg):
+        print(msg)
 
 class Subscriber(Subprocess):
     def __init__(self,

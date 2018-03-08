@@ -7,6 +7,8 @@ class MerkleTree(ModelBase):
     name = "MERKLE_TREE"
 
     def __init__(self, leaves=None):
+        self.raw_leaves = leaves
+
         # compute size of tree
         self.size = (len(leaves) * 2) - 1
 
@@ -34,6 +36,18 @@ class MerkleTree(ModelBase):
             self.nodes[((i + 1) * 2) - 1],
             self.nodes[(((i + 1) * 2) + 1) - 1]
         ]
+
+    def data_for_hash(self, h):
+        # gets data back for a given hash for propagating to masternode
+        searchable_hashes = self.nodes[len(self.leaves) - 1:]
+        if h in searchable_hashes:
+            return self.raw_leaves[searchable_hashes.index(h)]
+        return None
+
+    def hash_of_nodes(self):
+        h = hashlib.sha3_256()
+        [h.update(o) for o in self.nodes]
+        return h.digest()
 
     @staticmethod
     def hash(o):
