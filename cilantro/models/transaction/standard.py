@@ -1,11 +1,14 @@
 from cilantro import Constants
 from cilantro.models.transaction.base import TransactionBase
 from cilantro.models.utils import validate_hex, int_to_decimal
+
 import capnp
 import transaction_capnp
 
 
 class StandardTransaction(TransactionBase):
+
+    name = "STANDARD_TX"
 
     @classmethod
     def deserialize_struct(cls, data: bytes):
@@ -54,3 +57,12 @@ class StandardTransactionBuilder:
     def create_tx(sender_s, sender_v, receiver, amount):
         tx_struct = StandardTransactionBuilder.create_tx_struct(sender_s, sender_v, receiver, amount)
         return StandardTransaction.from_data(tx_struct)
+
+    @staticmethod
+    def random_tx():
+        import random
+        MULT = 1000
+
+        s = Constants.Protocol.Wallets.new()
+        r = Constants.Protocol.Wallets.new()
+        return StandardTransactionBuilder.create_tx(s[0], s[1], r[1], random.random() * MULT)

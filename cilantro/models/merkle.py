@@ -3,6 +3,9 @@ import hashlib
 
 
 class MerkleTree(ModelBase):
+
+    name = "MERKLE_TREE"
+
     def __init__(self, leaves=None):
         # compute size of tree
         self.size = (len(leaves) * 2) - 1

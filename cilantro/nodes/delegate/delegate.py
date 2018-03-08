@@ -6,10 +6,6 @@ from cilantro import Constants
 import zmq
 import asyncio
 
-if sys.platform != 'win32':
-    import uvloop
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy)
-
 """
     Delegates
 
@@ -32,6 +28,9 @@ if sys.platform != 'win32':
 
 class Delegate:
     def __init__(self):
+
+        self.router = "ROUTER"
+
         self.subscriber = Subscriber()
         self.consensus_process = ConsensusProcess()
 

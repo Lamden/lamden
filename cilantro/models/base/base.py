@@ -8,12 +8,17 @@ class ModelBase(object):
     an interface for executing RPC on the data between nodes.
     """
 
+    def __init__(self, data):
+        self._data = data
+
     def serialize(self) -> bytes:
         """
         Serialize the underlying data format into bytes
         :return: Bytes
         """
-        raise NotImplementedError
+        if not self._data:
+            raise Exception("internal attribute _data not set.")
+        return self._data.as_builder().to_bytes_packed()
 
     def validate(self):
         """
@@ -26,7 +31,9 @@ class ModelBase(object):
     @classmethod
     def deserialize_struct(cls, data: bytes):
         """
-        Deserializes the captain proto structure and returns it. This method should be implemented by all subclasses
+        Deserializes the captain proto structure and returns it. This method should be implemented by all subclasses,
+        and is only intended to be used internally (as it returns a Capnp struct and not a ModelBase instance).
+        To build a ModelBase object from bytes use ModelBase.from_bytes(...)
         :param data: The encoded captain proto structure
         :return: A captain proto struct reader
         """
@@ -41,7 +48,7 @@ class ModelBase(object):
         :param validate: If true, this method will also validate the data before returning the model object
         :return: An instance of Transaction
         """
-        model = cls(cls.deserialize_struct(data))
+        model = cls.from_data(cls.deserialize_struct(data), validate=False)
         if validate:
             model.validate()
         return model
