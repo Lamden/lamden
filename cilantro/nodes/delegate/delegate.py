@@ -1,11 +1,17 @@
-from cilantro.nodes import Node, Subprocess, BIND, CONNECT
+from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.nodes import Node, Subprocess, BIND, CONNECT, zmq_listener, zmq_sender, pipe_listener
 import sys
 from cilantro.logger.base import get_logger
-from cilantro.models import StandardTransaction
+from cilantro.models import StandardTransaction, Poke, MerkleTree
 from cilantro import Constants
 import zmq
 import asyncio
-
+from aioprocessing import AioPipe
+from multiprocessing import Process
+from cilantro.models import StandardTransaction, Message, MerkleTree, Poke
+from cilantro.models.message.message import MODEL_TYPES # TODO -- find a better home for these constants
+from cilantro.db.delegate.transaction_queue_driver import TransactionQueueDriver
+from cilantro.protocol.interpreters import VanillaInterpreter
 # if sys.platform != 'win32':
 #     import uvloop
 #     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy)
@@ -37,9 +43,20 @@ class Router(Thread):
         super().__init__()
         self.callbacks = callbacks
         self.daemon = True
+        self.log = get_logger("Delegate.Router")
+
+    def run(self):
+        super().run()
+        router_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(router_loop)
+
+        self.log.info("Starting router event loop")
+
+        router_loop.run_until_complete(self.listen())
 
     async def listen(self):
         loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(loop)
         tasks = [loop.run_in_executor(None, self.receive, c[0], c[1]) for c in self.callbacks]
         await asyncio.wait(tasks)
 
@@ -49,99 +66,142 @@ class Router(Thread):
             callback(socket.recv())
 
 class Delegate:
-    def __init__(self):
-        self.subscriber = Subscriber()
-        self.consensus_process = ConsensusProcess()
+    def __init__(self, url, delegates, delegate_keys):
+        self.log = get_logger("Delegate")
+        self.url = url
+        self.log.debug("A Delegate has appeared (this is on main proc)")
 
-        callbacks = [(self.subscriber.parent_pipe, self.foo),
-                     (self.consensus_process.parent_pipe, self.foo)]
+        self.delegates = delegates
+        self.delegate_keys = delegate_keys
+
+        # consensus variables
+        self.merkle = None
+        self.signatures = []
+        self.left_in_consensus = list(delegate_keys)
+
+        self.log.debug("Delegate subscribing on {}".format(self.url))
+
+        self.subscriber_pipe, self.subscriber_process = zmq_listener(zmq.SUB, BIND, self.url)
+        self.subscriber_process.start()
+
+        callbacks = [(self.subscriber_pipe, self.handle_message)]
 
         self.router = Router(callbacks)
 
         self.router.start()
 
-    def foo(self, msg):
-        print(msg)
+        # Queue + Interpreter
+        self.queue = TransactionQueueDriver()
+        self.interpreter = VanillaInterpreter()
 
-class Subscriber(Subprocess):
-    def __init__(self,
-                 name='subscriber',
-                 connection_type=BIND,
-                 socket_type=zmq.SUB,
-                 url=None):
-        super().__init__(self, name, connection_type, socket_type, url)
+        # ENTER EL HACKO
+        # self.log.debug("Delegate waiting for msg...")
+        # msg = self.subscriber_pipe.recv()
+        # self.log.debug("Delegate got msg!!! {}".format(msg))
 
-    def zmq_callback(self, msg):
-        self.logger.info('Delegate got a message: {}'.format(msg))
+    def handle_message(self, msg):
+        self.log.debug("Got message: {}".format(msg))
+
+        m = None
         try:
-            tx = StandardTransaction.from_bytes(msg)
-            self.logger.info('The delegate says: ', tx._data)
-        except:
-            self.logger.info('Could not deserialize message: {}'.format(msg))
+            m = Message.from_bytes(msg)
+            self.log.debug("Unpacked msg with data: {}".format(m._data))
+        except Exception as e:
+            self.log.error("Error deserializing msg: {}".format(e))
 
-
-class ConsensusProcess(Subprocess):
-    def __init__(self,
-                 name='consensus',
-                 connection_type=BIND,
-                 socket_type=zmq.REP,
-                 url=None,
-                 signing_key=None,
-                 delegates=None):
-
-        super().__init__(self, name, connection_type, socket_type, url)
-        self.merkle = None
-        self.signing_key = signing_key
-        self.delegates = delegates
-        self.signatures = []
-
-    def set_merkle(self, merkle):
-        self.input.send(merkle)
-
-    def trigger_consensus(self):
-        self.input.send(b'')
-
-    def get_signatures(self):
-        if self.output.poll():
-            return self.output.recv()
+        # Route m
+        if m.type == MODEL_TYPES[StandardTransaction.name]['id']:
+            self.log.debug("Got a standard TX on delegate!!")
+            # self.log.debug("about to access m.payload")
+            # p = m.payload
+            # self.log.debug("done accessing m.payload")
+            self.handle_tx(m.payload)
+        elif m.type == MODEL_TYPES[MerkleTree.name]['id']:
+            self.handle_merkle(m.payload)
+        elif m.type == MODEL_TYPES[Poke.name]['id']:
+            self.handle_poke()
         else:
-            return None
+            raise ValueError("Got message of unknown type: {}".format(m.type))
 
-    def zmq_callback(self, msg):
-        self.socket.send(self.merkle)
+    def handle_tx(self, tx_binary):
+        self.log.debug("Unpacking standard tx")
+        tx = None
 
-    def pipe_callback(self, msg):
-        '''
-        switch statement between merkle tree message and trigger message
-        '''
-        if len(msg) == 0:
-            loop = asyncio.get_event_loop()
-            context = zmq.Context()
+        # Deserialize tx
+        try:
+            tx = StandardTransaction.from_bytes(tx_binary)
+        except Exception as e:
+            self.log.error("Error unpacking standard transaction: {}".format(e))
 
-            async def get_message(future, connection, delegate_verifying_key):
-                request_socket = context.socket(socket_type=zmq.REQ)
-                request_socket.connect(connection)
-                request_socket.send(b'')
+        # Feed tx to interpreter
+        try:
+            self.log.debug("Interpretting standard tx")
+            self.interpreter.interpret_transaction(tx)
+        except Exception as e:
+            self.log.error("Error interpretting tx: {}".format(e))
 
-                signature = await request_socket.recv()
-                future.set_result((signature, delegate_verifying_key))
+        self.log.debug("Successfully interpretered tx...adding it to queue")
+        self.queue.enqueue_transaction((tx.sender, tx.receiver, tx.amount))
 
-                request_socket.disconnect(connection)
+        if self.queue.queue_size() >= 4:
+            self.log.debug("Starting consesnsus oh yea")
+            self.gather_consensus()
 
-            def verify_signature(future):
-                signature, verifying_key = future.result()
-                if ED25519Wallet.verify(verifying_key, self.merkle, signature):
-                    self.signatures.append(future.result())
+    def handle_merkle(self, merkle_payload):
+        merkle = MerkleTree.from_bytes(merkle_payload)
+        self.log.debug("Handle merkle called with data {}".format(merkle))
 
-            futures = [asyncio.Future() for _ in range(len(self.delegates))]
+        vk = Constants.Protocol.Wallets.verifying_key(merkle['vk'])
+        sig = merkle['signature']
 
-            [f.add_done_callback(verify_signature) for f in futures]
+        if Constants.Protocol.Wallets.verify(vk, self.merkle.hash_of_nodes, sig) and \
+                vk not in [x[0] for x in self.signatures] and \
+                vk in self.left_in_consensus:
 
-            tasks = [get_message(*a) for a in zip(futures, self.delegates)]
+            self.signatures.append((vk, sig))
+            i = self.left_in_consensus.index(vk)
+            self.left_in_consensus.pop(i)
 
-            loop.run_until_complete(asyncio.wait(tasks))
-            loop.close()
+        if len(self.signatures) > len(self.delegates) // 2:
+            data_to_mn = [self.merkle.hash_of_nodes(), self.merkle.nodes, self.signatures]
+            self.left_in_consensus = list(self.delegate_keys)
+            self.signatures = []
+            self.log.info("GOT DAT MASTERNODE DATA: {}".format(data_to_mn))
 
-            self.child_output.send(self.signatures)
-        else:
-            self.merkle = msg
+    def handle_poke(self):
+        pass
+
+    def gather_consensus(self):
+        loop = asyncio.get_event_loop()
+
+        context = zmq.Context()
+
+        async def get_message(future, connection):
+            request_socket = context.socket(socket_type=zmq.REQ)
+            request_socket.connect(connection)
+            
+            self.log.debug("Poking url: {}".format(connection))
+            
+            poke = Poke.create(connection)
+            
+            request_socket.send(poke.serialize())
+            msg = await request_socket.recv()
+            
+            self.log.debug("Got request from the poked delegate: {}".format(msg))
+
+            future.set_result(msg)
+            request_socket.disconnect(connection)
+
+        def verify_signature(future):
+            self.handle_message(future.result())
+
+        futures = [asyncio.Future() for _ in range(len(self.delegates))]
+
+        [f.add_done_callback(verify_signature) for f in futures]
+
+        tasks = [get_message(*a) for a in zip(futures, self.delegates)]
+
+        loop.run_until_complete(asyncio.wait(tasks))
+        loop.close()
+
+

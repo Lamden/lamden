@@ -40,3 +40,12 @@ class ED25519Wallet(Wallet):
         except:
             return False
         return True
+
+    @classmethod
+    def signing_to_verifying(cls, s):
+        return ed25519.VerifyingKey(s)
+
+    @classmethod
+    def verifying_key(cls, v):
+        v = bytes.fromhex(v)
+        return ed25519.VerifyingKey(v)

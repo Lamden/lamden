@@ -4,10 +4,10 @@ import capnp
 import message_capnp
 
 # TODO -- move these constants somewhere else
-from cilantro.models import MerkleTree
-from cilantro.models import StandardTransaction
+from cilantro.models import MerkleTree, StandardTransaction, Poke
 MODEL_TYPES = {MerkleTree.name: {'cls': MerkleTree, 'id': 0},
-               StandardTransaction.name: {'cls': StandardTransaction, 'id': 1}}
+               StandardTransaction.name: {'cls': StandardTransaction, 'id': 1},
+               Poke.name: {'cls':Poke, 'id': 2}}
 
 
 class Message(ModelBase):
@@ -24,6 +24,10 @@ class Message(ModelBase):
     @property
     def type(self):
         return self._data.type
+
+    @property
+    def payload(self):
+        return self._data.payload
 
     @classmethod
     def deserialize_struct(cls, data: bytes):

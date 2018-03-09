@@ -40,7 +40,7 @@ class SPA(Subprocess):
 
     def pipe_callback(self, msg):
         # self.logger.info('SBA got a message: {}'.format(msg))
-        self.child_pipe.send(msg + b'FROM_SBA')
+        self._pipe.send(msg + b'FROM_SBA')
 
     def zmq_callback(self, msg):
         pass
@@ -55,7 +55,7 @@ class SPB(Subprocess):
 
     def pipe_callback(self, msg):
         # self.logger.info('SBB got a message: {}'.format(msg))
-        self.child_pipe.send(msg + b'FROM_SBB')
+        self._pipe.send(msg + b'FROM_SBB')
 
     def zmq_callback(self, msg):
         pass
@@ -72,8 +72,8 @@ sp_b = SPB()
 sp_a.start()
 sp_b.start()
 
-callbacks = [(sp_a.parent_pipe, foo),
-             (sp_b.parent_pipe, foo)]
+callbacks = [(sp_a.pipe, foo),
+             (sp_b.pipe, foo)]
 
 router = Router(callbacks)
 router.start()
@@ -82,8 +82,8 @@ print('router and processes started')
 
 sleep(1)
 
-sp_a.parent_pipe.send(b'holla ')
-sp_b.parent_pipe.send(b'hella ')
+sp_a.pipe.send(b'holla ')
+sp_b.pipe.send(b'hella ')
 
 sleep(1)
 

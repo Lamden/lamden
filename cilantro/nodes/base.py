@@ -3,6 +3,7 @@ import zmq
 from cilantro import Constants
 import asyncio
 from aioprocessing import AioPipe
+from cilantro.logger import get_logger
 
 import sys
 if sys.platform != 'win32':
@@ -89,7 +90,7 @@ class Subprocess(Process):
     """
     def __init__(self, name, connection_type, socket_type, url):
         super().__init__()
-        self.parent_pipe, self.child_pipe = AioPipe()
+        self.pipe, self._pipe = AioPipe()
 
         self.name = name
 
@@ -120,7 +121,7 @@ class Subprocess(Process):
     async def listen(self):
         loop = asyncio.get_event_loop()
         tasks = [
-            loop.run_in_executor(None, self.receive, self.child_pipe, self.pipe_callback),
+            loop.run_in_executor(None, self.receive, self._pipe, self.pipe_callback),
             loop.run_in_executor(None, self.receive, self.socket, self.zmq_callback)
         ]
         await asyncio.wait(tasks)
@@ -137,3 +138,96 @@ class Subprocess(Process):
 
     def pipe_callback(self, msg):
         raise NotImplementedError
+
+
+'''
+    Subprocess can probably be slimmed down to a more functional model
+'''
+
+
+def pipe_listener():
+    def listen():
+        pl_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(pl_loop)
+
+        pl_loop.run_until_complete(loop())
+
+    async def loop():
+        sub_loop = asyncio.get_event_loop()
+        await asyncio.wait([sub_loop.run_in_executor(None, receive)])
+
+    def receive():
+        while True:
+            pipe.send(_pipe.recv())
+
+    pipe, _pipe = AioPipe()
+    process = Process(target=listen)
+
+    return pipe, process
+
+
+def zmq_listener(socket_type, connection_type, url):
+    def listen(*args):
+        log = args[-1]
+        context = zmq.Context()
+
+        socket = context.socket(socket_type=args[0])
+
+        socket.bind(args[2]) if args[1] == BIND else \
+            socket.connect(args[2])
+
+        if args[0] == zmq.SUB:
+            socket.setsockopt(zmq.SUBSCRIBE, b'')
+
+        log.debug("{} on {}".format(args[1], args[2]))
+
+        zmq_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(zmq_loop)
+
+        zmq_loop.run_until_complete(loop(socket))
+
+    async def loop(socket):
+        sub_loop = asyncio.get_event_loop()
+        await asyncio.wait([sub_loop.run_in_executor(None, receive, socket)])
+
+    def receive(socket):
+        log = get_logger('ZMQ_LISTENER')
+        log.debug("Setting up RECV on ZMQ_LISTENER")
+        while True:
+            log.debug("Waiting for a message on delegate")
+            _pipe.send(socket.recv())
+            log.debug("Got a message on delegate")
+
+    log = get_logger('ZMQ_LISTENER')
+    pipe, _pipe = AioPipe()
+    process = Process(target=listen, args=(socket_type, connection_type, url, log,))
+
+    return pipe, process
+
+
+def zmq_sender(socket_type, connection_type, url):
+    def listen(*args):
+        context = zmq.Context()
+
+        socket = context.socket(socket_type=args[0])
+
+        socket.bind(args[2]) if args[1] == BIND else \
+            socket.connect(args[2])
+
+        zmq_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(zmq_loop)
+
+        zmq_loop.run_until_complete(loop(socket))
+
+    async def loop(socket):
+        sub_loop = asyncio.get_event_loop()
+        await asyncio.wait([sub_loop.run_in_executor(None, receive, socket)])
+
+    def receive(socket):
+        while True:
+            socket.send(_pipe.recv())
+
+    pipe, _pipe = AioPipe()
+    process = Process(target=listen, args=(socket_type, connection_type, url, ))
+
+    return pipe, process

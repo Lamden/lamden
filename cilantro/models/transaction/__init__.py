@@ -1,1 +1,2 @@
 from cilantro.models.transaction.standard import StandardTransaction, StandardTransactionBuilder
+from cilantro.models.transaction.base import TransactionBase

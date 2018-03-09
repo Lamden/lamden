@@ -10,9 +10,4 @@ loggerIniFile = path + "/cilantro_logger.ini"
 fileConfig(loggerIniFile)
 
 def get_logger(name: str):
-    """
-
-    :param name:
-    :return:
-    """
     return logging.getLogger(name)

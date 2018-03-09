@@ -23,7 +23,7 @@ class Witness(Node, StateMachine):
                       pub_port=pub_port)
 
         self.hasher = Proof
-        self.log = get_logger('witness')
+        self.log = get_logger('Witness')
         self.log.info('Witness has appeared.')
 
         STATES = [WitnessBootState, WitnessLiveState]
@@ -37,13 +37,14 @@ class Witness(Node, StateMachine):
             self.log.info("Witness unpacked msg: {}".format(msg))
             self.log.info("Witness unpacked msg data: {}".format(msg._data))
 
-            # tx = StandardTransaction.from_bytes(msg)
-            if msg.type == 0:
+            # TODO route msg, validate pow
 
+            msg_binary = msg.serialize()
+            self.pub_socket.send(msg_binary)
+            self.log.info("Witness sent msg packet to publisher port: {}, with data {}"
+                          .format(self.publisher_url, msg_binary))
 
-            elif msg.type == 1:
-
-
+            # tx = StandardTransaction.from_bytes(msg
             # self.logger.info(tx._data)
             # self.pub_socket.send(tx.serialize())
         except Exception as e:

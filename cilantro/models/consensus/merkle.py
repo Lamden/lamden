@@ -1,6 +1,7 @@
 from cilantro.models import ModelBase
 import hashlib
-
+from cilantro import Constants
+import json
 
 class MerkleTree(ModelBase):
     name = "MERKLE_TREE"
@@ -47,6 +48,18 @@ class MerkleTree(ModelBase):
         h = hashlib.sha3_256()
         [h.update(o) for o in self.nodes]
         return h.digest()
+
+    def deserialize_struct(cls, data: bytes):
+        return json.loads(data.decode())
+
+    def validate(self):
+        assert 'vk' in self._data, "Vk field missing"
+        assert 'signature' in self._data, "Signature field missing"
+
+    def serialize_with_key(self, signing_key):
+        verifying_key = Constants.Protocol.Wallets.signing_to_verifying(signing_key)
+        sig = Constants.Protocol.Wallets.sign(signing_key, self.hash_of_nodes().encode())
+        return json.dumps({'vk': verifying_key, 'signature': sig}).encode()
 
     @staticmethod
     def hash(o):
