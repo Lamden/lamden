@@ -4,11 +4,39 @@ from cilantro import Constants
 import asyncio
 from aioprocessing import AioPipe
 from cilantro.logger import get_logger
-
+from threading import Thread
 import sys
 if sys.platform != 'win32':
     import uvloop
     # asyncio.set_event_loop_policy(uvloop.EventLoopPolicy)
+
+
+class Router(Thread):
+    def __init__(self, callbacks):
+        super().__init__()
+        self.callbacks = callbacks
+        self.daemon = True
+        self.log = get_logger("Delegate.Router")
+
+    def run(self):
+        super().run()
+        router_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(router_loop)
+
+        self.log.info("Starting router event loop")
+
+        router_loop.run_until_complete(self.listen())
+
+    async def listen(self):
+        loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(loop)
+        tasks = [loop.run_in_executor(None, self.receive, c[0], c[1]) for c in self.callbacks]
+        await asyncio.wait(tasks)
+
+    @staticmethod
+    def receive(socket, callback):
+        while True:
+            callback(socket.recv())
 
 
 class Node(Process):
@@ -38,13 +66,13 @@ class Node(Process):
 
         self.context = zmq.Context()
 
+        self.pub_socket = self.context.socket(socket_type=zmq.PUB)
+        self.pub_socket.bind(self.publisher_url)
+
         self.sub_socket = self.context.socket(socket_type=zmq.SUB)
 
-        self.sub_socket.bind(self.subscriber_url)
+        self.sub_socket.connect(self.subscriber_url)
         self.sub_socket.setsockopt(zmq.SUBSCRIBE, b'')
-
-        self.pub_socket = self.context.socket(socket_type=zmq.PUB)
-        self.pub_socket.connect(self.publisher_url)
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -191,14 +219,14 @@ def zmq_listener(socket_type, connection_type, url):
         await asyncio.wait([sub_loop.run_in_executor(None, receive, socket)])
 
     def receive(socket):
-        log = get_logger('ZMQ_LISTENER')
+        # log = get_logger('ZMQ_LISTENER')
         log.debug("Setting up RECV on ZMQ_LISTENER")
         while True:
-            log.debug("Waiting for a message on delegate")
+            log.debug("Waiting for a message on {}".format(url))
             _pipe.send(socket.recv())
-            log.debug("Got a message on delegate")
+            log.debug("Got a message on {}".format(url))
 
-    log = get_logger('ZMQ_LISTENER')
+    log = get_logger('ZMQ_LISTENER:{}'.format(url[-4:]))
     pipe, _pipe = AioPipe()
     process = Process(target=listen, args=(socket_type, connection_type, url, log,))
 
@@ -229,5 +257,49 @@ def zmq_sender(socket_type, connection_type, url):
 
     pipe, _pipe = AioPipe()
     process = Process(target=listen, args=(socket_type, connection_type, url, ))
+
+    return pipe, process
+
+
+def zmq_two_ways(socket_type, connection_type, url):
+    def listen(*args):
+        p = args[-1]
+        context = zmq.Context()
+
+        socket = context.socket(socket_type=args[0])
+
+        socket.bind(args[2]) if args[1] == BIND else \
+            socket.connect(args[2])
+
+        if args[0] == zmq.SUB:
+            socket.setsockopt(zmq.SUBSCRIBE, b'')
+
+        log.debug("{} on {}".format(args[1], args[2]))
+
+        zmq_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(zmq_loop)
+
+        zmq_loop.run_until_complete(loop(socket, p))
+
+    async def loop(socket, p):
+        sub_loop = asyncio.get_event_loop()
+        await asyncio.wait([sub_loop.run_in_executor(None, receive, socket),
+                            sub_loop.run_in_executor(None, send, p, socket)])
+
+    def receive(socket):
+        # log = get_logger('ZMQ_LISTENER')
+        log.debug("Setting up RECV on ZMQ_LISTENER")
+        while True:
+            log.debug("Waiting for a message on {}".format(url))
+            _pipe.send(socket.recv())
+            log.debug("Got a message on {}".format(url))
+
+    def send(p, socket):
+        while True:
+            socket.send(p.recv())
+
+    log = get_logger('ZMQ_LISTENER:{}'.format(url[-4:]))
+    pipe, _pipe = AioPipe()
+    process = Process(target=listen, args=(socket_type, connection_type, url, _pipe))
 
     return pipe, process

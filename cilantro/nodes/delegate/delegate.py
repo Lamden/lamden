@@ -1,5 +1,5 @@
 from cilantro.protocol.wallets import ED25519Wallet
-from cilantro.nodes import Node, Subprocess, BIND, CONNECT, zmq_listener, zmq_sender, pipe_listener
+from cilantro.nodes import Node, Subprocess, BIND, CONNECT, zmq_listener, zmq_sender, pipe_listener, zmq_two_ways, Router
 import sys
 from cilantro.logger.base import get_logger
 from cilantro.models import StandardTransaction, Poke, MerkleTree
@@ -35,69 +35,49 @@ from cilantro.protocol.interpreters import VanillaInterpreter
         another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
 """
 
-from threading import Thread
-
-
-class Router(Thread):
-    def __init__(self, callbacks):
-        super().__init__()
-        self.callbacks = callbacks
-        self.daemon = True
-        self.log = get_logger("Delegate.Router")
-
-    def run(self):
-        super().run()
-        router_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(router_loop)
-
-        self.log.info("Starting router event loop")
-
-        router_loop.run_until_complete(self.listen())
-
-    async def listen(self):
-        loop = asyncio.get_event_loop()
-        asyncio.set_event_loop(loop)
-        tasks = [loop.run_in_executor(None, self.receive, c[0], c[1]) for c in self.callbacks]
-        await asyncio.wait(tasks)
-
-    @staticmethod
-    def receive(socket, callback):
-        while True:
-            callback(socket.recv())
-
 class Delegate:
-    def __init__(self, url, delegates, delegate_keys):
-        self.log = get_logger("Delegate")
+    def __init__(self, url, port, delegates: list, signing_key):
+        self.log = get_logger("Delegate-{}".format(port))
+        self.port = port
         self.url = url
-        self.log.debug("A Delegate has appeared (this is on main proc)")
 
-        self.delegates = delegates
-        self.delegate_keys = delegate_keys
+        sub_url = 'tcp://127.0.0.1:{}'.format(Constants.Witness.PubPort)
+        rep_url = 'tcp://*:{}'.format(port)
+
+        self.log.debug("Spinning up delegate /w sub_url={}, rep_url={}".format(sub_url, rep_url))
+
+        self.delegates = list(filter(lambda d: d['port'] is not port, delegates))
+        self.log.debug("delegate list (excluding self): {}".format(self.delegates))
+        self.signing_key = signing_key
 
         # consensus variables
         self.merkle = None
+        self.signature = b'too soon bro'
         self.signatures = []
-        self.left_in_consensus = list(delegate_keys)
 
-        self.log.debug("Delegate subscribing on {}".format(self.url))
+        # NOTE -- might have to deepcopy below
+        self.left_in_consensus = list(self.delegates)
 
-        self.subscriber_pipe, self.subscriber_process = zmq_listener(zmq.SUB, BIND, self.url)
+        self.subscriber_pipe, self.subscriber_process = zmq_listener(zmq.SUB, CONNECT, sub_url)
         self.subscriber_process.start()
 
-        callbacks = [(self.subscriber_pipe, self.handle_message)]
+        self.consensus_replier_pipe, self.consensus_replier_process = zmq_two_ways(zmq.REP, BIND, rep_url)
+        self.consensus_replier_process.start()
+
+        callbacks = [(self.subscriber_pipe, self.handle_message),
+                     (self.consensus_replier_pipe, self.handle_message)]
 
         self.router = Router(callbacks)
 
         self.router.start()
 
         # Queue + Interpreter
-        self.queue = TransactionQueueDriver()
-        self.interpreter = VanillaInterpreter()
+        self.queue = TransactionQueueDriver(db=str(self.port)[-1:])
+        self.interpreter = VanillaInterpreter(port=str(self.port))
 
-        # ENTER EL HACKO
-        # self.log.debug("Delegate waiting for msg...")
-        # msg = self.subscriber_pipe.recv()
-        # self.log.debug("Delegate got msg!!! {}".format(msg))
+        # Flush queue on boot
+        self.log.debug("Delegate flushing queue on boot")
+        self.queue.dequeue_all()
 
     def handle_message(self, msg):
         self.log.debug("Got message: {}".format(msg))
@@ -121,6 +101,7 @@ class Delegate:
         elif m.type == MODEL_TYPES[Poke.name]['id']:
             self.handle_poke()
         else:
+            self.log.error("Got message of unknown type: {}".format(m.type))
             raise ValueError("Got message of unknown type: {}".format(m.type))
 
     def handle_tx(self, tx_binary):
@@ -141,10 +122,9 @@ class Delegate:
             self.log.error("Error interpretting tx: {}".format(e))
 
         self.log.debug("Successfully interpretered tx...adding it to queue")
-        self.queue.enqueue_transaction((tx.sender, tx.receiver, tx.amount))
+        self.queue.enqueue_transaction(tx.serialize())
 
         if self.queue.queue_size() >= 4:
-            self.log.debug("Starting consesnsus oh yea")
             self.gather_consensus()
 
     def handle_merkle(self, merkle_payload):
@@ -169,24 +149,41 @@ class Delegate:
             self.log.info("GOT DAT MASTERNODE DATA: {}".format(data_to_mn))
 
     def handle_poke(self):
-        pass
+        self.log.debug("Stop poking me")
+        # self.consensus_replier_pipe.send(self.signature)
+        self.log.debug("I replied to the poke with sig {}".format(self.signature))
 
     def gather_consensus(self):
-        loop = asyncio.get_event_loop()
+        self.log.debug("Starting consesnsus.")
 
+        # Get all tx
+        tx = self.queue.dequeue_all()
+
+        # Merkleize them and sign
+        self.merkle = MerkleTree(tx)
+        self.signature = ED25519Wallet.sign(self.signing_key, self.merkle.hash_of_nodes())
+        self.signature = self.signature.encode()
+
+        self.log.debug('signature is {}'.format(self.signature))
+
+        # Time to gather from others
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         context = zmq.Context()
 
+        # TODO -- why is this not getting fired async?
         async def get_message(future, connection):
             request_socket = context.socket(socket_type=zmq.REQ)
             request_socket.connect(connection)
-            
+
             self.log.debug("Poking url: {}".format(connection))
             
-            poke = Poke.create(connection)
-            
-            request_socket.send(poke.serialize())
+            poke = Poke.create()
+            poke_msg = Message.create(Poke, poke.serialize())
+
+            request_socket.send(poke_msg.serialize())
             msg = await request_socket.recv()
-            
+
             self.log.debug("Got request from the poked delegate: {}".format(msg))
 
             future.set_result(msg)
@@ -199,7 +196,9 @@ class Delegate:
 
         [f.add_done_callback(verify_signature) for f in futures]
 
-        tasks = [get_message(*a) for a in zip(futures, self.delegates)]
+        tasks = [get_message(*a) for a in zip(futures, ['{}:{}'.format(d['url'], d['port']) for d in self.delegates])]
+
+        self.log.debug("# of poke tasks: {}".format(len(tasks)))
 
         loop.run_until_complete(asyncio.wait(tasks))
         loop.close()

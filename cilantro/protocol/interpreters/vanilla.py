@@ -17,10 +17,10 @@ class VanillaInterpreter(BaseInterpreter):
         - Redeem transactions
     """
 
-    def __init__(self):
+    def __init__(self, port=0):
         super().__init__()
-        self.db = DriverManager()
-        self.log = get_logger("Delegate.Interpreter")
+        self.db = DriverManager(db=port[-1:])
+        self.log = get_logger("Delegate.Interpreter:{}".format(port))
 
         self.log.debug("Interpreter flushing scratch...")
         self.db.scratch.flush()

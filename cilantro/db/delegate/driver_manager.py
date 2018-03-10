@@ -6,12 +6,12 @@ from cilantro.db.delegate.swaps_driver import SwapsDriver
 
 
 class DriverManager(object):
-    def __init__(self):
-        self.balance = BalanceDriver()
-        self.scratch = ScratchDriver()
-        self.votes = VotesDriver()
-        self.stamps = StampsDriver()
-        self.swaps = SwapsDriver()
+    def __init__(self, db=0):
+        self.balance = BalanceDriver(db=db)
+        self.scratch = ScratchDriver(db=db)
+        self.votes = VotesDriver(db=db)
+        self.stamps = StampsDriver(db=db)
+        self.swaps = SwapsDriver(db=db)
 
     def flush_state(self):
         print("Flushing balance")

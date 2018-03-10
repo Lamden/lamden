@@ -12,9 +12,8 @@ class Poke(ModelBase):
         return data.decode()
 
     @staticmethod
-    def create(sender_url):
-        assert type(sender_url) is str, "Attempted to create a Poke with a sender_url that was not a string"
-        return Poke(sender_url)
+    def create():
+        return Poke('')
 
     def serialize(self):
         # We are assuming _data is a string
