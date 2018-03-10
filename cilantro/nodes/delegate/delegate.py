@@ -44,7 +44,7 @@ class Delegate:
         sub_url = 'tcp://127.0.0.1:{}'.format(Constants.Witness.PubPort)
         rep_url = 'tcp://*:{}'.format(port)
 
-        self.log.debug("Spinning up delegate /w sub_url={}, rep_url={}".format(sub_url, rep_url))
+        self.log.info("Spinning up delegate /w sub_url={}, rep_url={}".format(sub_url, rep_url))
 
         self.delegates = list(filter(lambda d: d['port'] is not port, delegates))
         self.log.debug("delegate list (excluding self): {}".format(self.delegates))
@@ -123,9 +123,13 @@ class Delegate:
 
         self.log.debug("Successfully interpretered tx...adding it to queue")
         self.queue.enqueue_transaction(tx.serialize())
+        self.log.debug("Added tx to the queue.")
 
         if self.queue.queue_size() >= 4:
+            self.log.debug("ok its conesuss time")
             self.gather_consensus()
+        else:
+            self.log.debug("Not time for consensus yet")
 
     def handle_merkle(self, merkle_payload):
         merkle = MerkleTree.from_bytes(merkle_payload)
@@ -150,11 +154,16 @@ class Delegate:
 
     def handle_poke(self):
         self.log.debug("Stop poking me")
-        # self.consensus_replier_pipe.send(self.signature)
-        self.log.debug("I replied to the poke with sig {}".format(self.signature))
+        self.consensus_replier_pipe.send(self.signature)
+        self.log.info("I replied to the poke with sig {}".format(self.signature))
 
     def gather_consensus(self):
-        self.log.debug("Starting consesnsus.")
+        self.log.debug("Starting consesnsus, with peers: {}"
+                       .format(['{}:{}'.format(d['url'], d['port']) for d in self.delegates]))
+
+        # if str(self.port)[-1] == '0':
+        #     self.log.debug("Exiting consensus as I am not the chosen one")
+        #     return
 
         # Get all tx
         tx = self.queue.dequeue_all()
@@ -169,36 +178,25 @@ class Delegate:
         # Time to gather from others
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        context = zmq.Context()
 
-        # TODO -- why is this not getting fired async?
-        async def get_message(future, connection):
+        def get_message(connection):
+            context = zmq.Context()
             request_socket = context.socket(socket_type=zmq.REQ)
             request_socket.connect(connection)
 
-            self.log.debug("Poking url: {}".format(connection))
+            self.log.warning("Poking url: {}".format(connection))
             
             poke = Poke.create()
             poke_msg = Message.create(Poke, poke.serialize())
 
             request_socket.send(poke_msg.serialize())
-            msg = await request_socket.recv()
+            msg = request_socket.recv()
 
-            self.log.debug("Got request from the poked delegate: {}".format(msg))
+            self.log.critical("Got request from the poked delegate: {}".format(msg))
 
-            future.set_result(msg)
-            request_socket.disconnect(connection)
+        connections = ['{}:{}'.format(d['url'], d['port']) for d in self.delegates]
 
-        def verify_signature(future):
-            self.handle_message(future.result())
-
-        futures = [asyncio.Future() for _ in range(len(self.delegates))]
-
-        [f.add_done_callback(verify_signature) for f in futures]
-
-        tasks = [get_message(*a) for a in zip(futures, ['{}:{}'.format(d['url'], d['port']) for d in self.delegates])]
-
-        self.log.debug("# of poke tasks: {}".format(len(tasks)))
+        tasks = [loop.run_in_executor(None, get_message, connection) for connection in connections]
 
         loop.run_until_complete(asyncio.wait(tasks))
         loop.close()
