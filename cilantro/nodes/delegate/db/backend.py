@@ -1,6 +1,8 @@
 import plyvel
 
 SEPARATOR = b'/'
+STATE = b'state'
+BALANCES = b'balances'
 
 class Backend:
     def get(self, table, key):
@@ -34,7 +36,7 @@ class LevelDBBackend(Backend):
 
     def exists(self, table: bytes, key: bytes):
         db = plyvel.DB(self.path, create_if_missing=True)
-        if db.get(SEPARATOR.join([table, key])):
+        if db.get(SEPARATOR.join([table, key])) is not None:
             db.close()
             return True
         db.close()

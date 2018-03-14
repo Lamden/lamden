@@ -1,15 +1,20 @@
 import hashlib
+from decimal import Decimal, getcontext
 
 class Encoder:
     @staticmethod
+    def encode(o):
+        if o.__class__ == str:
+            return o.encode()
+        elif o.__class__ == int:
+            return o.to_bytes(16, byteorder='big')
+        return o
+
+    @staticmethod
     def int(b: bytes) -> int:
-        try:
-            s = b.decode()
-            i = int(s)
-        except:
-            if b == None:
-                i = 0
-        return i
+        if b is None:
+            return 0
+        return int.from_bytes(b, byteorder='big')
 
     @staticmethod
     def float(b: bytes) -> float:
@@ -32,6 +37,11 @@ class Encoder:
         for k, v in d.items():
             new_d[k.decode()] = v.decode()
         return new_d
+
+    @staticmethod
+    def decimal(b: bytes, precision=16):
+        getcontext().prec = precision
+        return int(b)
 
     @staticmethod
     def hash_tuple(t: tuple) -> str:
