@@ -40,14 +40,6 @@ class VanillaInterpreter(BaseInterpreter):
         """
         self.log.debug("Interpreter got tx: {}".format(tx))
 
-        bool1 = tx.__class__ == StandardTransaction
-        bool2 = type(tx) is type(StandardTransaction)
-        bool3 = type(tx) == type(StandardTransaction)
-
-        # self.log.debug("class comp: {}".format(bool1))
-        # self.log.debug("is comp: {}".format(bool2))
-        # self.log.debug("== comp: {}".format(bool3))
-
         if tx.__class__ == StandardTransaction:
             self.interpret_std_tx(tx)
         else:

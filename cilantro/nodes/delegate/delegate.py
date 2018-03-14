@@ -1,13 +1,9 @@
 from cilantro.protocol.wallets import ED25519Wallet
-from cilantro.nodes import Node, Subprocess, BIND, CONNECT, zmq_listener, zmq_sender, pipe_listener, zmq_two_ways, Router
-import sys
+from cilantro.nodes import BIND, CONNECT, zmq_listener, zmq_two_ways, Router
 from cilantro.logger.base import get_logger
-from cilantro.models import StandardTransaction, Poke, MerkleTree
 from cilantro import Constants
 import zmq
 import asyncio
-from aioprocessing import AioPipe
-from multiprocessing import Process
 from cilantro.models import StandardTransaction, Message, MerkleTree, Poke
 from cilantro.models.message.message import MODEL_TYPES # TODO -- find a better home for these constants
 from cilantro.db.delegate.transaction_queue_driver import TransactionQueueDriver
