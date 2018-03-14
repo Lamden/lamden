@@ -1,11 +1,94 @@
 from cilantro.models import ModelBase
 import hashlib
-from cilantro import Constants
 import json
+from cilantro import Constants
 
-class MerkleTree(ModelBase):
-    name = "MERKLE_TREE"
 
+class MerkleSignature(ModelBase):
+    """
+    _data is a dict with keys: 'signature', 'timestamp', 'sender'
+    """
+    name = "MERKLE_SIGNATURE"
+
+    SIG = 'signature'
+    TS = 'timestamp'
+    SENDER = 'sender'
+
+    def validate(self):
+        assert type(self._data) == dict, "_data is not a dictionary"
+        assert self.SIG in self._data, "Signature field missing from _data: {}".format(self._data)
+        assert self.TS in self._data, "Timestamp field missing from _data: {}".format(self._data)
+        assert self.SENDER in self._data, "Sender field missing from _data: {}".format(self._data)
+
+    def serialize(self):
+        return json.dumps(self._data).encode()
+
+    def verify(self, msg, verifying_key):
+        # TODO validate verifying key and signature (hex, 64 char)
+        return Constants.Protocol.Wallets.verify(verifying_key, msg, self.signature)
+
+    @classmethod
+    def from_fields(cls, sig_hex: str, timestamp: str, sender: str, validate=True):
+        data = {cls.SIG: sig_hex, cls.TS: timestamp, cls.SENDER: sender}
+        return cls.from_data(data, validate=validate)
+
+    @classmethod
+    def deserialize_data(cls, data: bytes):
+        return json.loads(data.decode())
+
+    @property
+    def signature(self):
+        return self._data[self.SIG]
+
+    @property
+    def timestamp(self):
+        return self._data[self.TS]
+
+    @property
+    def sender(self):
+        return self._data[self.SENDER]
+
+
+class BlockContender(ModelBase):
+    """
+    _data is a dict with keys:
+        'signature': [MerkleSignature1, MerkleSignature2, MerkleSignature3, ....]
+            (all entries are MerkleSignature objects)
+        'nodes': [root hash, root left hash, root right hash, root left left hash ... ]
+            (all entries are hex strings)
+    """
+    name = "BLOCK_CONTENDER"
+
+    SIGS = 'signature'
+    NODES = 'nodes'
+
+    def validate(self):
+        pass
+
+    def serialize(self):
+        # loop through signatures list, serialize each
+        # json dump entire _data
+        pass
+
+    @classmethod
+    def deserialize_data(cls, data: bytes):
+        # json loads entire data
+        # deserialize each signature
+        pass
+
+    @property
+    def signatures(self):
+        return self._data[self.SIGS]
+
+    @property
+    def nodes(self):
+        return self._data[self.NODES]
+
+
+class MerkleTree:
+    """
+    TODO -- figure out what module this sort of "data creation" logic should live in
+    """
     def __init__(self, leaves=None):
         self.raw_leaves = leaves
 
@@ -46,20 +129,9 @@ class MerkleTree(ModelBase):
 
     def hash_of_nodes(self):
         h = hashlib.sha3_256()
+        # is this any better or worse than passing around the merkle root?
         [h.update(o) for o in self.nodes]
         return h.digest()
-
-    def deserialize_struct(cls, data: bytes):
-        return json.loads(data.decode())
-
-    def validate(self):
-        assert 'vk' in self._data, "Vk field missing"
-        assert 'signature' in self._data, "Signature field missing"
-
-    def serialize_with_key(self, signing_key):
-        verifying_key = Constants.Protocol.Wallets.signing_to_verifying(signing_key)
-        sig = Constants.Protocol.Wallets.sign(signing_key, self.hash_of_nodes().encode())
-        return json.dumps({'vk': verifying_key, 'signature': sig}).encode()
 
     @staticmethod
     def hash(o):
