@@ -1,6 +1,6 @@
 import hashlib
 
-class RedisSerializer:
+class Encoder:
     @staticmethod
     def int(b: bytes) -> int:
         try:

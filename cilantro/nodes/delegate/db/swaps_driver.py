@@ -1,6 +1,6 @@
 from cilantro.nodes.delegate.db.driver_base import DriverBase
 from cilantro.utils.constants import SWAP_KEY
-from cilantro.utils.utils import RedisSerializer as RS
+from cilantro.utils.utils import Encoder as E
 
 
 class SwapsDriver(DriverBase):
@@ -13,7 +13,7 @@ class SwapsDriver(DriverBase):
                  does not exist in the hash table
         """
         if self.r.hexists(SWAP_KEY, hash_lock):
-            return RS.tuple_from_str(self.r.hget(SWAP_KEY, hash_lock))
+            return E.tuple_from_str(self.r.hget(SWAP_KEY, hash_lock))
         else:
             print("Attempted to get hash_lock={} that doesnt exist in table")
             return ()
@@ -35,7 +35,7 @@ class SwapsDriver(DriverBase):
         :param amount: The amount for the swap
         :param unix_expiration: The unix expiration for the swap
         """
-        self.r.hset(SWAP_KEY, hash_lock, RS.str_from_tuple((sender, recipient, amount, unix_expiration)))
+        self.r.hset(SWAP_KEY, hash_lock, E.str_from_tuple((sender, recipient, amount, unix_expiration)))
 
     def remove_swap_data(self, hash_lock: str):
         """

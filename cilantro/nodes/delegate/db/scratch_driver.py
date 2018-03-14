@@ -1,6 +1,6 @@
 from cilantro.nodes.delegate.db.driver_base import DriverBase
 from cilantro.utils.constants import SCRATCH_KEY
-from cilantro.utils.utils import RedisSerializer as RS
+from cilantro.utils.utils import Encoder as E
 
 
 class ScratchDriver(DriverBase):
@@ -19,7 +19,7 @@ class ScratchDriver(DriverBase):
         :param wallet_key: The verifying address for the wallet
         :return: A float representing the current balance of the wallet
         """
-        return RS.float(self.r.hget(SCRATCH_KEY, wallet_key))
+        return E.float(self.r.hget(SCRATCH_KEY, wallet_key))
 
     def set_balance(self, wallet_key: str, balance: float):
         """
