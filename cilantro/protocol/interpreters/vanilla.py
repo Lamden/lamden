@@ -20,7 +20,7 @@ class VanillaInterpreter(BaseInterpreter):
     def __init__(self, port=0):
         super().__init__()
         self.db = DriverManager(db=port[-1:])
-        self.log = get_logger("Delegate.Interpreter:{}".format(port))
+        self.log = get_logger("Delegate.Interpreter:{}".format(port), auto_bg_val=int(port))
 
         self.log.debug("Interpreter flushing scratch...")
         self.db.scratch.flush()

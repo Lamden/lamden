@@ -1,9 +1,9 @@
-from cilantro.models import ModelBase
 import hashlib
 
-
-class MerkleTree(ModelBase):
-    name = "MERKLE_TREE"
+class MerkleTree:
+    """
+    Data structure for computing a merkle tree
+    """
 
     def __init__(self, leaves=None):
         self.raw_leaves = leaves
@@ -45,6 +45,7 @@ class MerkleTree(ModelBase):
 
     def hash_of_nodes(self):
         h = hashlib.sha3_256()
+        # is this any better or worse than passing around the merkle root?
         [h.update(o) for o in self.nodes]
         return h.digest()
 

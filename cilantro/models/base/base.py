@@ -29,7 +29,7 @@ class ModelBase(object):
         raise NotImplementedError
 
     @classmethod
-    def deserialize_struct(cls, data: bytes):
+    def deserialize_data(cls, data: bytes):
         """
         Deserializes the captain proto structure and returns it. This method should be implemented by all subclasses,
         and is only intended to be used internally (as it returns a Capnp struct and not a ModelBase instance).
@@ -48,7 +48,7 @@ class ModelBase(object):
         :param validate: If true, this method will also validate the data before returning the model object
         :return: An instance of Transaction
         """
-        model = cls.from_data(cls.deserialize_struct(data), validate=False)
+        model = cls.from_data(cls.deserialize_data(data), validate=False)
         if validate:
             model.validate()
         return model
