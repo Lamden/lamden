@@ -3,7 +3,8 @@ from cilantro.logger.base import get_logger
 from cilantro import Constants
 import asyncio
 from cilantro.models import StandardTransaction, Message
-from cilantro.models.consensus import MerkleTree, MerkleSignature, BlockContender
+from cilantro.models.consensus import MerkleSignature, BlockContender
+from cilantro.protocol.structures import MerkleTree
 from cilantro.models.message.message import MODEL_TYPES # TODO -- find a better home for these constants
 from cilantro.db.delegate.transaction_queue_driver import TransactionQueueDriver
 from cilantro.protocol.interpreters import VanillaInterpreter

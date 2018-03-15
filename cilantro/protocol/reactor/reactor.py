@@ -21,6 +21,7 @@ class Command:
     def __repr__(self):
         return "cmd={}, {}".format(self.type, self.kwargs)
 
+
 class ReactorCore(Thread):
 
     def __init__(self, queue, parent):
@@ -36,7 +37,7 @@ class ReactorCore(Thread):
         self.cmd_queue = []
 
         # Is this really the right way to do Thread subclassing? Having to instantiate all ur stuff in the run() method
-        # feels lowkey ratchet
+        # feels low key ratchet
         self.loop = asyncio.new_event_loop()
         self.sockets, self.ctx = None, None
         asyncio.set_event_loop(self.loop)
