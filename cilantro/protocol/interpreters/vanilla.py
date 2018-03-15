@@ -20,9 +20,9 @@ class VanillaInterpreter(BaseInterpreter):
 
     def __init__(self, port=0):
         super().__init__()
-        self.backend = LevelDBBackend()
 
-        self.log = get_logger("Delegate.Interpreter:{}".format(port))
+        self.backend = LevelDBBackend()
+        self.log = get_logger("Delegate.Interpreter:{}".format(port), auto_bg_val=int(port))
 
         self.log.debug("Interpreter flushing scratch...")
         self.backend.flush(SCRATCH)

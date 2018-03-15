@@ -1,16 +1,20 @@
 from cilantro.protocol.wallets import ED25519Wallet
-from cilantro.nodes import BIND, CONNECT, zmq_listener, zmq_two_ways, Router
 from cilantro.logger.base import get_logger
 from cilantro import Constants
-import zmq
 import asyncio
-from cilantro.models import StandardTransaction, Message, MerkleTree, Poke
+from cilantro.models import StandardTransaction, Message
+from cilantro.models.consensus import MerkleSignature, BlockContender
+from cilantro.protocol.structures import MerkleTree
 from cilantro.models.message.message import MODEL_TYPES # TODO -- find a better home for these constants
 from cilantro.db.delegate.transaction_queue_driver import TransactionQueueDriver
 from cilantro.protocol.interpreters import VanillaInterpreter
+
+from cilantro.protocol.reactor import NetworkReactor
 # if sys.platform != 'win32':
 #     import uvloop
 #     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy)
+
+import time
 
 """
     Delegates
@@ -32,40 +36,35 @@ from cilantro.protocol.interpreters import VanillaInterpreter
 """
 
 class Delegate:
-    def __init__(self, url, port, delegates: list, signing_key):
-        self.log = get_logger("Delegate-{}".format(port))
-        self.port = port
+    def __init__(self, url, delegates: dict, signing_key):
+        self.port = int(url[-4:])
+        self.log = get_logger("Delegate-{}".format(self.port), auto_bg_val=self.port)
         self.url = url
 
-        sub_url = 'tcp://127.0.0.1:{}'.format(Constants.Witness.PubPort)
-        rep_url = 'tcp://*:{}'.format(port)
+        self.log.info("Spinning up delegate /w url={}".format(self.url))
 
-        self.log.info("Spinning up delegate /w sub_url={}, rep_url={}".format(sub_url, rep_url))
-
-        self.delegates = list(filter(lambda d: d['port'] is not port, delegates))
-        self.log.debug("delegate list (excluding self): {}".format(self.delegates))
+        self.delegates = delegates
+        # Remove self from delegates hash
+        del self.delegates[url]
+        self.log.debug("delegates (excluding self): {}".format(self.delegates))
         self.signing_key = signing_key
 
         # consensus variables
         self.merkle = None
         self.signature = b'too soon bro'
-        self.signatures = []
+        self.signatures, self.failed_signatures = {}, {}
 
-        # NOTE -- might have to deepcopy below
-        self.left_in_consensus = list(self.delegates)
+        # Setup reactor, subscribe to witness
+        self.reactor = NetworkReactor(self)
+        witness_url = 'tcp://127.0.0.1:{}'.format(Constants.Witness.PubPort)
+        self.reactor.add_sub(url=witness_url, callback='handle_message')
 
-        self.subscriber_pipe, self.subscriber_process = zmq_listener(zmq.SUB, CONNECT, sub_url)
-        self.subscriber_process.start()
+        # Sub to other delegates
+        for d_url in self.delegates:
+            self.reactor.add_sub(url=d_url, callback='handle_message')
 
-        self.consensus_replier_pipe, self.consensus_replier_process = zmq_two_ways(zmq.REP, BIND, rep_url)
-        self.consensus_replier_process.start()
-
-        callbacks = [(self.subscriber_pipe, self.handle_message),
-                     (self.consensus_replier_pipe, self.handle_message)]
-
-        self.router = Router(callbacks)
-
-        self.router.start()
+        # Publish on our own URL
+        self.reactor.add_pub(url=self.url)
 
         # Queue + Interpreter
         self.queue = TransactionQueueDriver(db=str(self.port)[-1:])
@@ -75,27 +74,22 @@ class Delegate:
         self.log.debug("Delegate flushing queue on boot")
         self.queue.dequeue_all()
 
-    def handle_message(self, msg):
-        self.log.debug("Got message: {}".format(msg))
+        # Notify reactor that this node is ready to flex
+        self.reactor.notify_ready()
 
+    def handle_message(self, msg):
+        # self.log.debug("Got message: {}".format(msg))
         m = None
         try:
             m = Message.from_bytes(msg)
-            self.log.debug("Unpacked msg with data: {}".format(m._data))
         except Exception as e:
             self.log.error("Error deserializing msg: {}".format(e))
 
         # Route m
         if m.type == MODEL_TYPES[StandardTransaction.name]['id']:
-            self.log.debug("Got a standard TX on delegate!!")
-            # self.log.debug("about to access m.payload")
-            # p = m.payload
-            # self.log.debug("done accessing m.payload")
             self.handle_tx(m.payload)
-        elif m.type == MODEL_TYPES[MerkleTree.name]['id']:
-            self.handle_merkle(m.payload)
-        elif m.type == MODEL_TYPES[Poke.name]['id']:
-            self.handle_poke()
+        elif m.type == MODEL_TYPES[MerkleSignature.name]['id']:
+            self.handle_sig(m.payload)
         else:
             self.log.error("Got message of unknown type: {}".format(m.type))
             raise ValueError("Got message of unknown type: {}".format(m.type))
@@ -112,89 +106,55 @@ class Delegate:
 
         # Feed tx to interpreter
         try:
-            self.log.debug("Interpretting standard tx")
+            self.log.debug("Interpreting standard tx")
             self.interpreter.interpret_transaction(tx)
         except Exception as e:
-            self.log.error("Error interpretting tx: {}".format(e))
+            self.log.error("Error interpreting tx: {}".format(e))
 
-        self.log.debug("Successfully interpretered tx...adding it to queue")
+        self.log.debug("Successfully interpreted tx...adding it to queue")
         self.queue.enqueue_transaction(tx.serialize())
-        self.log.debug("Added tx to the queue.")
 
         if self.queue.queue_size() >= 4:
-            self.log.debug("ok its conesuss time")
             self.gather_consensus()
+
+    def handle_sig(self, sig_payload):
+        sig = MerkleSignature.from_bytes(sig_payload)
+        self.log.debug("Received signature with data {}".format(sig._data))
+
+        # Sanity check (for debugging purposes)
+        if (sig.sender in self.signatures) or (sig.sender in self.failed_signatures):
+            self.log.error("OH NO -- this delegate already has a signature from {}".format(sig.sender))
+            return
+
+        if sig.verify(self.merkle.hash_of_nodes(), self.delegates[sig.sender]):
+            self.log.debug("Signature validated from sender {}".format(sig.sender))
+            self.signatures[sig.sender] = sig
         else:
-            self.log.debug("Not time for consensus yet")
+            self.log.warning("!!! Signature NOT validated from sender {}".format(sig.sender))
+            self.failed_signatures[sig.sender] = sig
 
-    def handle_merkle(self, merkle_payload):
-        merkle = MerkleTree.from_bytes(merkle_payload)
-        self.log.debug("Handle merkle called with data {}".format(merkle))
+        self.log.debug("Number of sigs: {}".format(len(self.signatures)))
 
-        vk = Constants.Protocol.Wallets.verifying_key(merkle['vk'])
-        sig = merkle['signature']
-
-        if Constants.Protocol.Wallets.verify(vk, self.merkle.hash_of_nodes, sig) and \
-                vk not in [x[0] for x in self.signatures] and \
-                vk in self.left_in_consensus:
-
-            self.signatures.append((vk, sig))
-            i = self.left_in_consensus.index(vk)
-            self.left_in_consensus.pop(i)
-
-        if len(self.signatures) > len(self.delegates) // 2:
-            data_to_mn = [self.merkle.hash_of_nodes(), self.merkle.nodes, self.signatures]
-            self.left_in_consensus = list(self.delegate_keys)
-            self.signatures = []
-            self.log.info("GOT DAT MASTERNODE DATA: {}".format(data_to_mn))
-
-    def handle_poke(self):
-        self.log.debug("Stop poking me")
-        self.consensus_replier_pipe.send(self.signature)
-        self.log.info("I replied to the poke with sig {}".format(self.signature))
+        if len(self.signatures) > (len(self.delegates) + 1) // 2:
+            self.log.critical("We in consensus bruh!!! sigs={}".format(self.signatures))
+            # TODO -- successful consensus logic
 
     def gather_consensus(self):
-        self.log.debug("Starting consesnsus, with peers: {}"
-                       .format(['{}:{}'.format(d['url'], d['port']) for d in self.delegates]))
+        self.log.debug("Starting consesnsus with peers: {}".format(self.delegates))
 
-        # if str(self.port)[-1] == '0':
-        #     self.log.debug("Exiting consensus as I am not the chosen one")
-        #     return
-
-        # Get all tx
+        # Merkle-ize tx and sign
         tx = self.queue.dequeue_all()
-
-        # Merkleize them and sign
         self.merkle = MerkleTree(tx)
         self.signature = ED25519Wallet.sign(self.signing_key, self.merkle.hash_of_nodes())
-        self.signature = self.signature.encode()
+        self.log.critical('Signature for merkle is {}'.format(self.signature))
 
-        self.log.debug('signature is {}'.format(self.signature))
+        # Create merkle signature message
+        merkle_sig = MerkleSignature.from_fields(sig_hex=self.signature, timestamp='now', sender=self.url)
+        sig_msg = Message.create(MerkleSignature, merkle_sig.serialize())
 
-        # Time to gather from others
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        self.log.info("Broadcasting signatures...")
+        self.reactor.pub(url=self.url, data=sig_msg.serialize())
+        self.log.info("Done broadcasting signatures.")
 
-        def get_message(connection):
-            context = zmq.Context()
-            request_socket = context.socket(socket_type=zmq.REQ)
-            request_socket.connect(connection)
-
-            self.log.warning("Poking url: {}".format(connection))
-            
-            poke = Poke.create()
-            poke_msg = Message.create(Poke, poke.serialize())
-
-            request_socket.send(poke_msg.serialize())
-            msg = request_socket.recv()
-
-            self.log.critical("Got request from the poked delegate: {}".format(msg))
-
-        connections = ['{}:{}'.format(d['url'], d['port']) for d in self.delegates]
-
-        tasks = [loop.run_in_executor(None, get_message, connection) for connection in connections]
-
-        loop.run_until_complete(asyncio.wait(tasks))
-        loop.close()
 
 
