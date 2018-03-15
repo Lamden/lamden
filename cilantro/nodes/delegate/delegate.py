@@ -53,13 +53,15 @@ class Delegate:
         self.signature = b'too soon bro'
         self.signatures, self.failed_signatures = {}, {}
 
-        # Setup reactor -- subscribe to witness
+        # Setup reactor, subscribe to witness
         self.reactor = NetworkReactor(self)
         witness_url = 'tcp://127.0.0.1:{}'.format(Constants.Witness.PubPort)
         self.reactor.add_sub(url=witness_url, callback='handle_message')
+
         # Sub to other delegates
         for d_url in self.delegates:
             self.reactor.add_sub(url=d_url, callback='handle_message')
+
         # Publish on our own URL
         self.reactor.add_pub(url=self.url)
 
@@ -71,7 +73,7 @@ class Delegate:
         self.log.debug("Delegate flushing queue on boot")
         self.queue.dequeue_all()
 
-        # Notify reactor that this node is ready to ball
+        # Notify reactor that this node is ready to flex
         self.reactor.notify_ready()
 
     def handle_message(self, msg):

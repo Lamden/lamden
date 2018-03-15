@@ -10,11 +10,16 @@ from random import random
 import time
 
 
-
-
-
 class Command:
     ADD_SUB, REMOVE_SUB, ADD_PUB, REMOVE_PUB, PUB, READY = range(6)
+
+    def __init__(self, cmd, **kwargs):
+        self.type = cmd
+        self.kwargs = kwargs
+        # TODO -- validate cmd and kwargs with assertions (should not have any hardcore validation irl), i dont think?
+
+    def __repr__(self):
+        return "cmd={}, {}".format(self.type, self.kwargs)
 
 class ReactorCore(Thread):
 
