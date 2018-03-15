@@ -98,7 +98,7 @@ class StateQuery:
         raise NotImplementedError
 
     def __str__(self):
-        return self.table_name, self.keys
+        return self.table_name
 
 
 class StandardQuery(StateQuery):
