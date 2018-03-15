@@ -1,5 +1,6 @@
 import hashlib
 
+
 class RedisSerializer:
     @staticmethod
     def int(b: bytes) -> int:

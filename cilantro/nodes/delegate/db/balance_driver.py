@@ -1,6 +1,6 @@
 from cilantro.nodes.delegate.db.driver_base import DriverBase
 from cilantro.utils.constants import BALANCE_KEY
-from cilantro.utils.utils import RedisSerializer as RS
+from cilantro.utils.utils import Encoder as E
 
 
 class BalanceDriver(DriverBase):
@@ -12,7 +12,7 @@ class BalanceDriver(DriverBase):
         :return: A float representing the current balance of the wallet
         """
         if self.r.hexists(BALANCE_KEY, wallet_key):
-            return RS.float(self.r.hget(BALANCE_KEY, wallet_key))
+            return E.float(self.r.hget(BALANCE_KEY, wallet_key))
         else:
             # raise Exception('(get_balance) Balance could not be found for key: {}'.format(wallet_key))
             print('(get_balance) Balance could not be found for key: {} ... returning 0'.format(wallet_key))

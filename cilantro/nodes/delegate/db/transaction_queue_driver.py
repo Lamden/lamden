@@ -1,6 +1,6 @@
 from cilantro.nodes.delegate.db.driver_base import DriverBase
 from cilantro.utils.constants import QUEUE_KEY
-from cilantro.utils.utils import RedisSerializer as RS
+from cilantro.utils.utils import Encoder as E
 from typing import Generator, List
 
 
@@ -17,7 +17,7 @@ class TransactionQueueDriver(DriverBase):
         # self.r.hset(TRANSACTION_KEY, tx_key, RS.str_from_tuple(transaction_payload))
         # self.r.rpush(QUEUE_KEY, tx_key)
 
-        self.r.rpush(QUEUE_KEY, RS.str_from_tuple(transaction_payload))
+        self.r.rpush(QUEUE_KEY, E.str_from_tuple(transaction_payload))
 
     def dequeue_transaction(self) -> tuple:
         """
@@ -30,7 +30,7 @@ class TransactionQueueDriver(DriverBase):
         # self.r.hdel(TRANSACTION_KEY, tx_key)
         # return RS.tuple_from_str(tx_val)
 
-        return RS.tuple_from_str(RS.str(self.r.lpop(QUEUE_KEY)))
+        return E.tuple_from_str(E.str(self.r.lpop(QUEUE_KEY)))
 
     def dequeue_all_iter(self) -> Generator[tuple, None, None]:
         """

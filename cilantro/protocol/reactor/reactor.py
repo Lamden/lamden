@@ -2,11 +2,9 @@ import asyncio
 import zmq
 import zmq.asyncio
 import aioprocessing
-from multiprocessing import Process, Queue
 from threading import Thread
 import logging
 from cilantro.logger import get_logger
-from random import random
 import time
 
 
