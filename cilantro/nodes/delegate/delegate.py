@@ -136,7 +136,7 @@ class Delegate:
         self.log.debug("Number of sigs: {}".format(len(self.signatures)))
 
         if len(self.signatures) > (len(self.delegates) + 1) // 2:
-            self.log.critical("We in consensus bruh!!! sigs={}".format(self.signatures))
+            self.log.critical("Were in consensus!!! sigs={}".format(self.signatures))
             # TODO -- successful consensus logic
 
     def gather_consensus(self):
