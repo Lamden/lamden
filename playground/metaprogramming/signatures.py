@@ -1,10 +1,19 @@
 from inspect import Parameter, Signature
-
+from cilantro.logger import get_logger
 """
 First, just validate cmd
 Then validate kwargs using signatures in the appropriate subclass
 
 """
+
+
+class TestMeta(type):
+    pass
+
+
+class Test(metaclass=TestMeta):
+    socket_fields = ('pub_sockets', 'sub_sockets', 'req_sockets')
+
 
 class CommandMeta(type):
     def __new__(cls, clsname, bases, clsdict):
@@ -14,6 +23,9 @@ class CommandMeta(type):
         if not hasattr(clsobj, 'registry'):
             print("Creating Registry")
             clsobj.registry = {}
+
+        clsobj.log = get_logger(clsobj.__name__)
+
         print("Adding to registry: ", clsobj.__name__)
         clsobj.registry[clsobj.__name__] = clsobj
 
