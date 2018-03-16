@@ -1,7 +1,6 @@
 from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.logger.base import get_logger
 from cilantro import Constants
-import asyncio
 from cilantro.models import StandardTransaction, Message
 from cilantro.models.consensus import MerkleSignature, BlockContender
 from cilantro.protocol.structures import MerkleTree
@@ -10,11 +9,8 @@ from cilantro.db.delegate.transaction_queue_driver import TransactionQueueDriver
 from cilantro.protocol.interpreters import VanillaInterpreter
 
 from cilantro.protocol.reactor import NetworkReactor
-# if sys.platform != 'win32':
-#     import uvloop
-#     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy)
 
-import time
+from cilantro.db.delegate import *
 
 """
     Delegates
@@ -67,12 +63,13 @@ class Delegate:
         self.reactor.add_pub(url=self.url)
 
         # Queue + Interpreter
-        self.queue = TransactionQueueDriver(db=str(self.port)[-1:])
+        self.backend = LevelDBBackend()
+        self.queue = TransactionQueue(backend=self.backend)
         self.interpreter = VanillaInterpreter(port=str(self.port))
 
         # Flush queue on boot
         self.log.debug("Delegate flushing queue on boot")
-        self.queue.dequeue_all()
+        self.queue.flush()
 
         # Notify reactor that this node is ready to flex
         self.reactor.notify_ready()
@@ -112,9 +109,9 @@ class Delegate:
             self.log.error("Error interpreting tx: {}".format(e))
 
         self.log.debug("Successfully interpreted tx...adding it to queue")
-        self.queue.enqueue_transaction(tx.serialize())
+        self.queue.push(tx.serialize())
 
-        if self.queue.queue_size() >= 4:
+        if self.queue.size >= 4:
             self.gather_consensus()
 
     def handle_sig(self, sig_payload):
@@ -143,7 +140,7 @@ class Delegate:
         self.log.debug("Starting consesnsus with peers: {}".format(self.delegates))
 
         # Merkle-ize tx and sign
-        tx = self.queue.dequeue_all()
+        tx = self.queue.flush()
         self.merkle = MerkleTree(tx)
         self.signature = ED25519Wallet.sign(self.signing_key, self.merkle.hash_of_nodes())
         self.log.critical('Signature for merkle is {}'.format(self.signature))

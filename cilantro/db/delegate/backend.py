@@ -1,6 +1,7 @@
 import plyvel
 from cilantro.models.utils import int_to_decimal
 from cilantro import Constants
+from cilantro.utils import Encoder as E
 
 SEPARATOR = b'/'
 SCRATCH = b'scratch'
