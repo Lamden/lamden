@@ -1,10 +1,10 @@
-from cilantro.db.delegate.driver_manager import DriverManager
 import hashlib
 from cilantro.protocol.interpreters import BaseInterpreter
 from cilantro.models import TransactionBase, StandardTransaction
 from cilantro.logger import get_logger
 
-from cilantro.nodes.delegate.db import *
+# from cilantro.nodes.delegate.db import *
+from cilantro.db.delegate import LevelDBBackend, StandardQuery, SCRATCH
 
 class VanillaInterpreter(BaseInterpreter):
     """

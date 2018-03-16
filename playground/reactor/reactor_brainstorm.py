@@ -12,84 +12,81 @@ from threading import Thread
 URL = "tcp://127.0.0.1:5566"
 
 
-class Command:
-    """
-    NOTE -- it may be necessary to put a shared lock between reactor/main thread to enforce
-    synchronous callback execution
+"""
+NOTE -- it may be necessary to put a shared lock between reactor/main thread to enforce
+synchronous callback execution
 
-    commands obviously specify new events for the reactor. They must be able to accept some callback
-    or on_complete type handler. If so, how to ensure that this is run on the main thread?
-    - Commands get put into a queue on the main thread, which is awaiting to be read in the run loop
-    - How to make sure callbacks wait for main thread to finish its work before they are executed?
-        - IE data is read from 2 sockets at approximately the same time. Data from socket 1 gets
-        - sent to its callback A (presumably on the main thread), but while callback A is busy executing
-        - callback B wants to execute
+commands obviously specify new events for the reactor. They must be able to accept some callback
+or on_complete type handler. If so, how to ensure that this is run on the main thread?
+- Commands get put into a queue on the main thread, which is awaiting to be read in the run loop
+- How to make sure callbacks wait for main thread to finish its work before they are executed?
+    - IE data is read from 2 sockets at approximately the same time. Data from socket 1 gets
+    - sent to its callback A (presumably on the main thread), but while callback A is busy executing
+    - callback B wants to execute
 
-    Possible solution:
-        - Have an internal queue of callbacks waiting to be executed inside the reactor
-        - Have a lock on the reactor that is true if a callback is being executed (reactor obviosly will know when one
-        - starts).
+Possible solution:
+    - Have an internal queue of callbacks waiting to be executed inside the reactor
+    - Have a lock on the reactor that is true if a callback is being executed (reactor obviosly will know when one
+    - starts).
 
-        - Or just have a loop that continuously reads from the queue and runs the callbacks on the main thread?
-            - could this behavior be in an entirely separate event loop?
-                - Can we really have 2 event loops running at same time?
-        - When a callback finishes, run the next one
-
-
-    Who is responsible for the logic for creating/disconnecting/ect the sockets? Obviously there would have to be
-    a switch statement inside of reactor when its dealing with completing the command. Maybe the logic should just
-    go there and command should just be an ENUM?
-        - Or, a more complex but modular solution -- each command "type" (pub/sub, or req/reply, or deal/route, ect)
-          has its own state (share zmq context tho?). Then perhaps this state gets passed into the execution of
-          each command. Or should there be entirely differant command objects for each one? Is ivoking them with
-          these kwargs ratchet? No i think its ok for now.
+    - Or just have a loop that continuously reads from the queue and runs the callbacks on the main thread?
+        - could this behavior be in an entirely separate event loop?
+            - Can we really have 2 event loops running at same time?
+    - When a callback finishes, run the next one
 
 
-
-    There will exist long running callbacks on the main thread (maybe building merk trees, or sending lots of data)
-    These we would like to be async, but sometimes should only be able to be invoked once (i.e. if we are already
-    building a merk tree, and we get a request that triggers building a merk tree, only the first one should be run)
-    Who's responsbility is it to schedule this kind of behavior? Should the node itself be setting internal locks?
-    Or should the node be responsbile for designing flags/locks/ect. And is this even a real problem?
-
-
-    OR ENTIRELY DIFF IDEA:
-    Fuck the custom callbacks. Just have main thread pass it ONE callback in reactor's init, and run all code through
-    there
-
-
-    Is this handler approach too javascripty for python?
-    - NO! Javascript is build for event driven! If we are gravitating towards its style unintentionally, I say were
-      on to something.
-
-    would be sick to just be like
-    n = Node()
-    n._reactor_q.put(COMMAND.SUB, url='127.0...', callback=somefunc)
-    n._reactor_q.put(COMMAND.PUB, url='127.0....', data=b'hi', on_complete=somfunc)
+Who is responsible for the logic for creating/disconnecting/ect the sockets? Obviously there would have to be
+a switch statement inside of reactor when its dealing with completing the command. Maybe the logic should just
+go there and command should just be an ENUM?
+    - Or, a more complex but modular solution -- each command "type" (pub/sub, or req/reply, or deal/route, ect)
+      has its own state (share zmq context tho?). Then perhaps this state gets passed into the execution of
+      each command. Or should there be entirely differant command objects for each one? Is ivoking them with
+      these kwargs ratchet? No i think its ok for now.
 
 
 
-    """
-    # OPEN_SOCKET, CLOSE_SOCKET,  (very low level...or)
-    SUB, UNSUB, UNSUB_ALL = range(3)
+There will exist long running callbacks on the main thread (maybe building merk trees, or sending lots of data)
+These we would like to be async, but sometimes should only be able to be invoked once (i.e. if we are already
+building a merk tree, and we get a request that triggers building a merk tree, only the first one should be run)
+Who's responsbility is it to schedule this kind of behavior? Should the node itself be setting internal locks?
+Or should the node be responsbile for designing flags/locks/ect. And is this even a real problem?
 
-    # def __init__(self, cmd, **kwargs):
-    #     """
-    #
-    #     :param cmd:
-    #     :param kwargs:
-    #     """
-    #     """
-    #     In each switch
-    #     1) Validate kwargs (do later)
-    #     2)
-    #     """
-    #     if cmd == Command.SUB:
-    #         pass
-    #     elif cmd == Command.UNSUB:
-    #         pass
-    #     elif cmd == Command.UNSUB_ALL:
-    #         pass
+
+OR ENTIRELY DIFF IDEA:
+Fuck the custom callbacks. Just have main thread pass it ONE callback in reactor's init, and run all code through
+there
+
+
+Is this handler approach too javascripty for python?
+- NO! Javascript is build for event driven! If we are gravitating towards its style unintentionally, I say were
+  on to something.
+
+would be sick to just be like
+n = Node()
+n._reactor_q.put(COMMAND.SUB, url='127.0...', callback=somefunc)
+n._reactor_q.put(COMMAND.PUB, url='127.0....', data=b'hi', on_complete=somfunc)
+
+
+
+"""
+
+
+
+
+"""
+How to link the call signature passed into the queue to the actual proper command class?
+Well, lets have each command class define their own name, i.e. 
+
+class AddPubCommand(CommandBase):
+    name = ADD_PUB
+    
+But then wherever the signature are be called, we must import each type of command
+well I think importing these command types will be unavoidable. Just stick them in their 
+own module and define the __all__ import thing in the  __init__.py 
+
+Now, we just have the issues of dynamically adding the command class types upon creation to route the thing
+without an ugly switch statement. Should be able to use metaprogramming for this
+"""
 
 
 """
@@ -192,6 +189,52 @@ def start_listening():
     loop.run_until_complete(listen(socket, log))
 
 
+"""
+-- META STUFF --
+"""
+from inspect import Parameter, Signature
+
+
+def make_signature(names):
+    return Signature(
+        Parameter(name, Parameter.POSITIONAL_OR_KEYWORD)
+        for name in names)
+
+
+class CommandMeta(type):
+    def __new__(cls, clsname, bases, clsdict):
+        print("CommandMeta NEW called /w class ", cls.__name__)
+        clsobj = super().__new__(cls, clsname, bases, clsdict)
+
+        sig = make_signature(clsobj._fields)
+        setattr(clsobj, '__signature__', sig)
+
+        if not hasattr(clsobj, 'registry'):
+            print("Creating Registry")
+            clsobj.registry = {}
+        print("Adding to registry: ", clsobj.__name__)
+        clsobj.registry[clsobj.__name__] = clsobj
+
+        return clsobj
+
+
+class Command(metaclass=CommandMeta):
+    _fields = []
+    def __init__(self, *args, **kwargs):
+        bound = self.__signature__.bind(*args, **kwargs)
+        for name, val in bound.arguments.items():
+            setattr(self, name, val)
+
+    @classmethod
+    def execute(cls, ):
+
+
+class AddSubCommand(Command):
+    _fields = ['url', 'callback']
+
+
+class RemoveSubCommand(Command):
+    _fields = ['url']
 
 
 # if __name__ == "__main__":
@@ -201,7 +244,6 @@ def start_listening():
 #     reactor.start()
 #
 #     q.coro_put("Hi This Is An Item")
-#     q.coro_put("balls")
 
     # sub = Sub()
     # time.sleep(16)

@@ -20,6 +20,7 @@ class Command:
         return "cmd={}, {}".format(self.type, self.kwargs)
 
 
+
 class ReactorCore(Thread):
 
     def __init__(self, queue, parent):
@@ -27,7 +28,7 @@ class ReactorCore(Thread):
         self.log = get_logger("Reactor")
 
         # Comment out below for more granularity in debugging
-        self.log.setLevel(logging.INFO)
+        # self.log.setLevel(logging.INFO)
 
         self.queue = queue
         self.parent = parent
@@ -61,14 +62,12 @@ class ReactorCore(Thread):
             self.execute(cmd)
 
     def execute(self, cmd: Command):
-        self.log.debug("exec cmd: {}".format(cmd))
         if cmd.type == Command.READY:
             self.log.debug("Setting parent_ready to True...flushing {} cmds".format(len(self.cmd_queue)))
             self.parent_ready = True
             self.cmd_queue.reverse()
             while len(self.cmd_queue) > 0:
                 c = self.cmd_queue.pop()
-                self.log.debug("Executing cmd: {}".format(c))
                 self.execute(c)
             self.log.debug("Done flushing cmds")
             return
@@ -183,7 +182,7 @@ class NetworkReactor:
         self.q.coro_put(Command(Command.ADD_PUB, **kwargs))
 
     def remove_pub(self, **kwargs):
-        self.q.coro_put(Command(Command.PUB, **kwargs))
+        self.q.coro_put(Command(Command.REMOVE_PUB, **kwargs))
 
     def prove_im_nonblocking(self):
         self.log.debug("xD")
