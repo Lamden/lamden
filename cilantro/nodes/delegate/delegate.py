@@ -5,7 +5,6 @@ from cilantro.models import StandardTransaction, Message
 from cilantro.models.consensus import MerkleSignature, BlockContender
 from cilantro.protocol.structures import MerkleTree
 from cilantro.models.message.message import MODEL_TYPES # TODO -- find a better home for these constants
-from cilantro.db.delegate.transaction_queue_driver import TransactionQueueDriver
 from cilantro.protocol.interpreters import VanillaInterpreter
 
 from cilantro.protocol.reactor import NetworkReactor
@@ -31,6 +30,7 @@ from cilantro.db.delegate import *
         another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
 """
 
+
 class Delegate:
     def __init__(self, url, delegates: dict, signing_key):
         self.port = int(url[-4:])
@@ -47,7 +47,7 @@ class Delegate:
 
         # consensus variables
         self.merkle = None
-        self.signature = b'too soon bro'
+        self.signature = b''
         self.signatures, self.failed_signatures = {}, {}
 
         # Setup reactor, subscribe to witness
@@ -135,6 +135,7 @@ class Delegate:
         if len(self.signatures) > (len(self.delegates) + 1) // 2:
             self.log.critical("Were in consensus!!! sigs={}".format(self.signatures))
             # TODO -- successful consensus logic
+            # convert state changes to real changes
 
     def gather_consensus(self):
         self.log.debug("Starting consesnsus with peers: {}".format(self.delegates))
