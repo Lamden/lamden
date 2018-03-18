@@ -80,3 +80,35 @@ Consider this.
   But this illustrates non the less that there is a very wide space of possible node inputs and outputs that could
   be very tricky to manage if a strong framework is not in place.
 """
+
+"""
+class FilterClass(type):
+    def __prepare__(name, bases, **kwds):
+        return collections.OrderedDict()
+
+
+This way, when the class will be created, an OrderedDict will be used to host the namespace, allowing us to keep the 
+definition order. Please note that the signature __prepare__(name, bases, **kwds) is enforced by the language. 
+If you want the method to get the metaclass as a first argument (because the code of the method needs it) you 
+have to change the signature to __prepare__(metacls, name, bases, **kwds) and decorate it with @classmethod.
+
+The second function we want to define in our metaclass is __new__. Just like happens for the instantiation of classes, 
+this method is invoked by Python to get a new instance of the metaclass, and is run before __init__. Its signature 
+has to be __new__(metacls, name, bases, namespace, **kwds) and the result shall be an instance of the metaclass. 
+As for its normal class counterpart (after all a metaclass is a class), __new__() usually wraps the same method of 
+the parent class, type in this case, adding its own customizations.
+
+
+
+
+
+USE SLOTS FOR SPACE EFFICIENCY ON MESSAGE OBJECT CREATION:
+http://book.pythontips.com/en/latest/__slots__magic.html
+However, for small classes with known attributes it might be a bottleneck. The dict wastes a lot of RAM. 
+Python can’t just allocate a static amount of memory at object creation to store all the attributes. 
+Therefore it sucks a lot of RAM if you create a lot of objects (I am talking in thousands and millions). 
+Still there is a way to circumvent this issue. It involves the usage of __slots__ to tell Python not to use a dict,
+ and only allocate space for a fixed set of attributes. Here is an example with and without __slots__:
+
+Or....use PyPy and it will do all these optimization + more by default
+"""

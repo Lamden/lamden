@@ -39,14 +39,11 @@ class ZMQLoop:
 
 class CommandMeta(type):
     def __new__(cls, clsname, bases, clsdict):
-        print("CommandMeta NEW called /w class ", clsname)
         clsobj = super().__new__(cls, clsname, bases, clsdict)
         clsobj.log = get_logger(clsobj.__name__)
 
         if not hasattr(clsobj, 'registry'):
-            print("Creating Registry")
             clsobj.registry = {}
-        print("Adding to registry: ", clsobj.__name__)
         clsobj.registry[clsobj.__name__] = clsobj
 
         return clsobj
