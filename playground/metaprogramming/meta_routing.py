@@ -12,17 +12,6 @@ An implementation is needed for every possible message type a node can receive.
 Should there be a "routing" object, or even config file where the network topology for a node is defined staticly?
 Or should this just be implicit in the setup of a node.
 
-
-ATTACK PLAN
-use decorators and metaclasses to
-    - create a class that can define a decorator taking 1 arg
-    - these decorators get registered in the metaclass with their arg
-    - this metaclass registry dictionary should be different for direct descendants of the metaclass
-
-To hookup to decorators and metaclass, this means either
-A) The decorator must have a reference to the class, object, or metaclass
-B) The metaclass must search for all decorators during its instantiation (its creation would be too early I think)
-
 """
 from cilantro.logger import get_logger
 from functools import wraps, partial

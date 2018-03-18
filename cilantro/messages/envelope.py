@@ -3,56 +3,45 @@ from cilantro.messages import MessageBase
 import capnp
 import message_capnp
 
-# TODO -- move these constants somewhere else
-# or, better, come thru with that metaprogramming to dynamically track creation of modelbase instances
-from cilantro.messages import StandardTransaction, MerkleSignature, BlockContender
-MODEL_TYPES = {
-    BlockContender.name: {'cls': BlockContender, 'id': 0},
-    StandardTransaction.name: {'cls': StandardTransaction, 'id': 1},
-    MerkleSignature.name: {'cls': MerkleSignature, 'id': 2}
-    }
 
 class Envelope(MessageBase):
+    """
+    All messages passed between nodes must be wrapped in an envelope.
+
+    An envelope specifies what type of message is contained within, as well as metadata possibly such as
+    sender signature, timestamp, ect
+    """
 
     def validate(self):
-        """
-        Validates the underlying data, raising an exception if something is wrong
-        :return: Void
-        :raises: An exception if there if an issues arrises validating the underlying data
-        """
-        # print("Message Validating...")
-        # TODO -- implement
-
-    @property
-    def type(self):
-        return self._data.type
-
-    @property
-    def payload(self):
-        return self._data.payload
+        pass
+        assert self._data.type in MessageBase.registry, "Message type {} not found in registry {}"\
+                                                        .format(self._data.type, MessageBase.registry)
+        # also assert if we can deserialize self._data.payload?
 
     @classmethod
     def deserialize_data(cls, data: bytes):
-        """
-        Deserializes the captain proto structure and returns it. This method is only intended to be used internally
-        (as it returns a Capnp struct and not a MessageBase instance).
-        To build a MessageBase object from bytes use MessageBase.from_bytes(...)
-        :param data: The encoded captain proto structure
-        :return: A captain proto struct reader
-        """
         return message_capnp.Message.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, model: Type[MessageBase], data: bytes):
+    def create(cls, message: MessageBase):
         """
-        Creates a new message of the specified type, with a payload binary equal to bytes
-        :param model: The class of MessageBase which the data payload will store
-        :param data: The binary data for the MessageBase instance contained in this message
-        :return: An instance of Message
+        Creates a new envelope for a message
+        :param message: The MessageBase instance the data payload will store
+        :return: An instance of Envelope
         """
+        assert issubclass(type(message), MessageBase), "Message arg {} must be a subclass of MessageBase".format(type(message))
+        assert type(message) in MessageBase.registry, "Message {} not in registry {}".format(message, MessageBase.registry)
+
         struct = message_capnp.Message.new_message()
-        struct.type = MODEL_TYPES[model.name]['id']
-        struct.payload = data
+        struct.type = MessageBase.registry[type(message)]
+        struct.payload = message.serialize()
         msg = cls.from_data(struct)
 
         return msg
+
+    def open(self) -> MessageBase:
+        """
+        Open deserializes the message packed inside the envolope and returns it
+        :return: The deserialized MessageBase instance
+        """
+        return MessageBase.registry[self._data.type].from_bytes(self._data.payload)

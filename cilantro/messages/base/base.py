@@ -1,4 +1,26 @@
-class MessageBase(object):
+"""
+Messages encapsulate data that is sent between nodes.
+"""
+
+class MessageMeta(type):
+    def __new__(cls, clsname, bases, clsdict):
+        print("MessageMeta NEW called /w class ", clsname)
+        clsobj = super().__new__(cls, clsname, bases, clsdict)
+        if not hasattr(clsobj, 'registry'):
+            print("Creating Registry")
+            clsobj.registry = {}
+
+        print("Adding to registry: ", clsobj)
+
+        # Define an "undirected" mapping between classes and their enum vals
+        l = len(clsobj.registry) // 2
+        clsobj.registry[clsobj] = l
+        clsobj.registry[l] = clsobj
+
+        return clsobj
+
+
+class MessageBase(metaclass=MessageMeta):
     """
     MessageBase is the abstract class which defines required methods for any data model that is passed between nodes.
     All messages which are transmitted between nodes (i.e. transaction, blocks, routing tables, ect) must subclass this.
