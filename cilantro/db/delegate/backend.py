@@ -1,5 +1,5 @@
 import plyvel
-from cilantro.models.utils import int_to_decimal
+from cilantro.messages.utils import int_to_decimal
 from cilantro import Constants
 
 SEPARATOR = b'/'

@@ -1,19 +1,18 @@
 from typing import Type
-from cilantro.models import ModelBase
+from cilantro.messages import MessageBase
 import capnp
 import message_capnp
 
 # TODO -- move these constants somewhere else
 # or, better, come thru with that metaprogramming to dynamically track creation of modelbase instances
-from cilantro.models import StandardTransaction, MerkleSignature, BlockContender
+from cilantro.messages import StandardTransaction, MerkleSignature, BlockContender
 MODEL_TYPES = {
     BlockContender.name: {'cls': BlockContender, 'id': 0},
     StandardTransaction.name: {'cls': StandardTransaction, 'id': 1},
     MerkleSignature.name: {'cls': MerkleSignature, 'id': 2}
     }
 
-
-class Message(ModelBase):
+class Envelope(MessageBase):
 
     def validate(self):
         """
@@ -36,19 +35,19 @@ class Message(ModelBase):
     def deserialize_data(cls, data: bytes):
         """
         Deserializes the captain proto structure and returns it. This method is only intended to be used internally
-        (as it returns a Capnp struct and not a ModelBase instance).
-        To build a ModelBase object from bytes use ModelBase.from_bytes(...)
+        (as it returns a Capnp struct and not a MessageBase instance).
+        To build a MessageBase object from bytes use MessageBase.from_bytes(...)
         :param data: The encoded captain proto structure
         :return: A captain proto struct reader
         """
         return message_capnp.Message.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, model: Type[ModelBase], data: bytes):
+    def create(cls, model: Type[MessageBase], data: bytes):
         """
         Creates a new message of the specified type, with a payload binary equal to bytes
-        :param model: The class of ModelBase which the data payload will store
-        :param data: The binary data for the ModelBase instance contained in this message
+        :param model: The class of MessageBase which the data payload will store
+        :param data: The binary data for the MessageBase instance contained in this message
         :return: An instance of Message
         """
         struct = message_capnp.Message.new_message()

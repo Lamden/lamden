@@ -100,8 +100,6 @@ the parent class, type in this case, adding its own customizations.
 
 
 
-
-
 USE SLOTS FOR SPACE EFFICIENCY ON MESSAGE OBJECT CREATION:
 http://book.pythontips.com/en/latest/__slots__magic.html
 However, for small classes with known attributes it might be a bottleneck. The dict wastes a lot of RAM. 

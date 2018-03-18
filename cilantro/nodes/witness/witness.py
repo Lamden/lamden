@@ -1,6 +1,6 @@
 from cilantro import Constants
 from cilantro.nodes.base import Node, zmq_listener, zmq_sender, Router, BIND, CONNECT
-from cilantro.models import StandardTransaction, Message
+from cilantro.messages import StandardTransaction, Envelope
 from cilantro.protocol.statemachine import StateMachine, State
 from cilantro.logger.base import get_logger
 
@@ -45,7 +45,7 @@ class Witness(StateMachine):
     def handle_message(self, msg):
         self.log.info('Got a message: {}'.format(msg))
         try:
-            msg = Message.from_bytes(msg)
+            msg = Envelope.from_bytes(msg)
             self.log.info("Witness unpacked msg: {}".format(msg))
             self.log.info("Witness unpacked msg data: {}".format(msg._data))
 

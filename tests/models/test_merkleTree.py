@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.models.consensus.merkle import MerkleTree
+from cilantro.messages.consensus.merkle import MerkleTree
 
 
 class TestMerkleTree(TestCase):

@@ -1,5 +1,5 @@
 from cilantro import Constants
-from cilantro.models import TransactionBase
+from cilantro.messages import TransactionBase
 
 class BaseInterpreter(object):
     """

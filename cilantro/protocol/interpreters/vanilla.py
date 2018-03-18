@@ -1,6 +1,6 @@
 import hashlib
 from cilantro.protocol.interpreters import BaseInterpreter
-from cilantro.models import TransactionBase, StandardTransaction
+from cilantro.messages import TransactionBase, StandardTransaction
 from cilantro.logger import get_logger
 
 # from cilantro.nodes.delegate.db import *

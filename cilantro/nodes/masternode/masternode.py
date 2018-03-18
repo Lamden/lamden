@@ -15,7 +15,7 @@ from cilantro import Constants
 Wallet = Constants.Protocol.Wallets
 Proof = Constants.Protocol.Proofs
 
-from cilantro.models import Message, StandardTransaction
+from cilantro.messages import Envelope, StandardTransaction
 from cilantro.protocol.statemachine import StateMachine, State
 
 
@@ -43,7 +43,7 @@ class Masternode(Node, StateMachine):
 
         # Package transaction in message for delivery
         # We are assume content is the StandardTransaction binary (but irl we should verify this)
-        msg = Message.create(StandardTransaction, content)
+        msg = Envelope.create(StandardTransaction, content)
 
         self.parent_pipe.send(msg.serialize())
         return web.Response(text=str(request))

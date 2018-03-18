@@ -1,11 +1,10 @@
 from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.logger.base import get_logger
 from cilantro import Constants
-import asyncio
-from cilantro.models import StandardTransaction, Message
-from cilantro.models.consensus import MerkleSignature, BlockContender
+from cilantro.messages import StandardTransaction, Envelope
+from cilantro.messages.consensus import MerkleSignature
 from cilantro.protocol.structures import MerkleTree
-from cilantro.models.message.message import MODEL_TYPES # TODO -- find a better home for these constants
+from cilantro.messages.envelope import MODEL_TYPES # TODO -- find a better home for these constants
 from cilantro.db.delegate.transaction_queue_driver import TransactionQueueDriver
 from cilantro.protocol.interpreters import VanillaInterpreter
 
@@ -13,8 +12,6 @@ from cilantro.protocol.reactor import NetworkReactor
 # if sys.platform != 'win32':
 #     import uvloop
 #     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy)
-
-import time
 
 """
     Delegates
@@ -81,7 +78,7 @@ class Delegate:
         # self.log.debug("Got message: {}".format(msg))
         m = None
         try:
-            m = Message.from_bytes(msg)
+            m = Envelope.from_bytes(msg)
         except Exception as e:
             self.log.error("Error deserializing msg: {}".format(e))
 
@@ -150,7 +147,7 @@ class Delegate:
 
         # Create merkle signature message
         merkle_sig = MerkleSignature.from_fields(sig_hex=self.signature, timestamp='now', sender=self.url)
-        sig_msg = Message.create(MerkleSignature, merkle_sig.serialize())
+        sig_msg = Envelope.create(MerkleSignature, merkle_sig.serialize())
 
         self.log.info("Broadcasting signatures...")
         self.reactor.pub(url=self.url, data=sig_msg.serialize())

@@ -1,7 +1,7 @@
-class ModelBase(object):
+class MessageBase(object):
     """
-    ModelBase is the abstract class which defines required methods for any data model that is passed between nodes.
-    All models which are transmitted between nodes (i.e. transaction, blocks, routing tables, ect) must subclass this.
+    MessageBase is the abstract class which defines required methods for any data model that is passed between nodes.
+    All messages which are transmitted between nodes (i.e. transaction, blocks, routing tables, ect) must subclass this.
 
     Models are essentially just a wrapper around the underlying data interchange format (Captain Proto or JSON), which
     provide convenient methods for manipulating, reading, and computing functions of the data. They can also provide
@@ -32,21 +32,22 @@ class ModelBase(object):
     def deserialize_data(cls, data: bytes):
         """
         Deserializes the captain proto structure and returns it. This method should be implemented by all subclasses,
-        and is only intended to be used internally (as it returns a Capnp struct and not a ModelBase instance).
-        To build a ModelBase object from bytes use ModelBase.from_bytes(...)
+        and is only intended to be used internally (as it returns a Capnp struct and not a MessageBase instance).
+        To build a MessageBase object from bytes use MessageBase.from_bytes(...)
         :param data: The encoded captain proto structure
-        :return: A captain proto struct reader
+        :return: A captain proto struct reader (or whatever underlying deserialzed data representation the
+                 message uses, i.e. a dict if JSON)
         """
         raise NotImplementedError
 
     @classmethod
     def from_bytes(cls, data: bytes, validate=True):
         """
-        Deserializes binary data and uses it as the underlying data for the newly instantiated Transaction class
-        If validate=True, then this method also calls validate on the newly created Transaction object.
+        Deserializes binary data and uses it as the underlying data for the newly instantiated Message class
+        If validate=True, then this method also calls validate on the newly created Message object.
         :param data: The binary data of the underlying data interchange format
         :param validate: If true, this method will also validate the data before returning the model object
-        :return: An instance of Transaction
+        :return: An instance of MessageBase
         """
         model = cls.from_data(cls.deserialize_data(data), validate=False)
         if validate:
@@ -56,11 +57,11 @@ class ModelBase(object):
     @classmethod
     def from_data(cls, data: object, validate=True):
         """
-        Creates a ModelBase and directly for the deserialized data.
-        If validate=True, then this method also calls validate on the newly created Transaction object.
+        Creates a MessageBase and directly for the deserialized data.
+        If validate=True, then this method also calls validate on the newly created Message object.
         :param data: The object to use as the underlying data format (i.e. Capnp Struct, JSON dict)
         :param validate: If true, this method will also validate the data before returning the model object
-        :return: An instance of Transaction
+        :return: An instance of MessageBase
         """
         # Cast data to a struct reader (not builder) if it isn't already
         if hasattr(data, 'as_reader'):

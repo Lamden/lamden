@@ -14,7 +14,7 @@ def snake_to_pascal(s):
 path = os.path.join(os.path.dirname(__file__), 'config.json')
 config = json.load(open(path))
 
-sys.path.append(os.path.dirname(__file__) + '/models/capnp')
+sys.path.append(os.path.dirname(__file__) + '/messages/capnp')
 
 
 class Constants:
