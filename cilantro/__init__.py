@@ -29,13 +29,14 @@ def config_testnet(testnet: dict) -> dict:
     - Since there is only one Masternode (at least rn), Constants.Testnet.Masternode must be referenced using
       Constants.Testnet.Masternode.InternalUrl, Constants.Testnet.Masternode.ExternalUrl, --.Vk and --.Sk
     """
-    all_nodes = []
+    all_nodes = {}
     # Add masternode wallet and url to all_nodes
     mn_url = testnet['masternode']['internal-url']
     mn_sk, mn_vk = gen_keypair(mn_url)
     testnet['masternode']['vk'] = mn_vk
     testnet['masternode']['sk'] = mn_sk
-    all_nodes.append({'url': mn_url, 'vk': mn_vk})
+    # all_nodes.append({'url': mn_url, 'vk': mn_vk})
+    all_nodes[mn_url] = mn_vk
 
     for node_type in ('delegates', 'witnesses'):
         nodes = []
@@ -45,7 +46,8 @@ def config_testnet(testnet: dict) -> dict:
             url = "{}:{}".format(base_url, port_start+i)
             sk, vk = gen_keypair(url)
             nodes.append({'url': url, 'sk': sk, 'vk': vk})
-            all_nodes.append({'url': url, 'vk': vk})
+            # all_nodes.append({'url': url, 'vk': vk})
+            all_nodes[url] = vk
         testnet[node_type] = nodes
 
     testnet['all-nodes'] = all_nodes
@@ -77,7 +79,7 @@ class Constants:
         for k in d.keys():
             if k == 'testnet':
                 d[k] = config_testnet(d[k])
-            if type(d[k]) == dict:
+            if type(d[k]) == dict and (k != 'all-nodes'):
                 new_class = cls.new_class(name=snake_to_pascal(k))
                 cls.add_attr(name=snake_to_pascal(k), value=new_class)
                 cls.classes.append(new_class)
