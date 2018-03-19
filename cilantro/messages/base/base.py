@@ -4,12 +4,12 @@ Messages encapsulate data that is sent between nodes.
 
 class MessageMeta(type):
     def __new__(cls, clsname, bases, clsdict):
-        print("MessageMeta NEW called /w class ", clsname)
+        #print("MessageMeta NEW called /w class ", clsname)
         clsobj = super().__new__(cls, clsname, bases, clsdict)
         if not hasattr(clsobj, 'registry'):
             print("Creating Registry")
             clsobj.registry = {}
-        print("Adding to registry: ", clsobj)
+        #print("Adding to registry: ", clsobj)
 
         # Define an "undirected" mapping between classes and their enum vals
         l = len(clsobj.registry) // 2
@@ -92,3 +92,6 @@ class MessageBase(metaclass=MessageMeta):
         if validate:
             model.validate()
         return model
+
+    def __repr__(self):
+        return str(self._data)

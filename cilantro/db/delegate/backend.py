@@ -156,7 +156,7 @@ class StandardQuery(StateQuery):
             self.backend.set(self.scratch_table, tx.sender.encode(), new_sender_balance)
             self.backend.set(self.scratch_table, tx.receiver.encode(), new_receiver_balance)
 
-            self.txq.push(tx)
+            #self.txq.push(tx)
 
             return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
                    (self.scratch_table, tx.receiver.encode(), new_receiver_balance)

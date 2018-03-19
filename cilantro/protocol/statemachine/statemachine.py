@@ -1,5 +1,4 @@
 from cilantro.protocol.statemachine.state import State, EmptyState
-from typing import List
 
 
 class StateMachine:
@@ -42,7 +41,7 @@ class StateMachine:
         ns = self.states[next_state]
 
         self.state.exit(ns)
-        ns.enter()
+        ns.enter(self.state)
         self.state = ns
         self.state.run()
 

@@ -20,7 +20,7 @@
   },
   "nodes": {
     "max-request-length": 100000,
-    "max-queue-size": 4,
+    "max-queue-size": 2,
     "queue-auto-flush-time": 1.0,
     "ntp-url": "pool.ntp.org",
     "faucet-percent": 0.001,
@@ -39,13 +39,13 @@
     "external-port":"8080"
     },
     "witnesses": {
-      "host":"tpc://127.0.0.1",
+      "host":"tcp://127.0.0.1",
       "num": 1,
       "port_start":"8888"
     },
     "delegates": {
       "host":"tcp://127.0.0.1",
-      "num": 4,
+      "num": 3,
       "port_start": "4650"
     }
   }
