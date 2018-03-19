@@ -1,9 +1,9 @@
-from cilantro.models import ModelBase
+from cilantro.messages import MessageBase
 import json
 from cilantro import Constants
 
 
-class MerkleSignature(ModelBase):
+class MerkleSignature(MessageBase):
     """
     _data is a dict with keys: 'signature', 'timestamp', 'sender'
     """
@@ -48,7 +48,7 @@ class MerkleSignature(ModelBase):
         return self._data[self.SENDER]
 
 
-class BlockContender(ModelBase):
+class BlockContender(MessageBase):
     """
     _data is a dict with keys:
         'signature': [MerkleSignature1, MerkleSignature2, MerkleSignature3, ....]

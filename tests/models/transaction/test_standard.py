@@ -1,8 +1,8 @@
 from cilantro import Constants
 from unittest import TestCase
-from cilantro.models import StandardTransaction
-from cilantro.models.transaction.standard import StandardTransactionBuilder
-from cilantro.models.utils import int_to_decimal
+from cilantro.messages import StandardTransaction
+from cilantro.messages.transaction.standard import StandardTransactionBuilder
+from cilantro.messages.utils import int_to_decimal
 
 
 class TestStandardTransaction(TestCase):

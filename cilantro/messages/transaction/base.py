@@ -1,11 +1,10 @@
 from cilantro import Constants
-from cilantro.models.base import ModelBase
-from cilantro.models.utils import validate_hex
+from cilantro.messages.base import MessageBase
+from cilantro.messages.utils import validate_hex
 import capnp
-# import transaction_capnp
 
 
-class TransactionBase(ModelBase):
+class TransactionBase(MessageBase):
     """
     This class encapsulates the abstract data model for Transactions.
     """

@@ -1,5 +1,5 @@
 import secrets
-from cilantro.models import MerkleTree
+from cilantro.messages import MerkleTree
 from cilantro.protocol.wallets import ED25519Wallet
 import hashlib
 from cilantro.nodes import Subprocess, BIND, CONNECT

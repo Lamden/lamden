@@ -6,91 +6,85 @@
     They have no say as to what is 'right,' as governance is ultimately up to the network. However, they can monitor
     the behavior of nodes and tell the network who is misbehaving.
 '''
-import uvloop
-from cilantro.nodes import Node
-from aiohttp import web
-from cilantro.logger import get_logger
-
 from cilantro import Constants
-Wallet = Constants.Protocol.Wallets
-Proof = Constants.Protocol.Proofs
+from cilantro.nodes import NodeBase
+from cilantro.protocol.statemachine import State, receive
+from cilantro.messages import StandardTransaction, BlockContender, Envelope
+from aiohttp import web
+import asyncio
 
-from cilantro.models import Message, StandardTransaction
-from cilantro.protocol.statemachine import StateMachine, State
+class MNBaseState(State):
+    def enter(self, prev_state): pass
+    def exit(self, next_state): pass
+    def run(self): pass
 
-
-class Masternode(Node, StateMachine):
-    def __init__(self, base_url=Constants.Masternode.Host, internal_port='9999', external_port='8080'):
-        Node.__init__(self, base_url, pub_port=internal_port, sub_port='5678')
-        self.external_port = external_port
-        self.log = get_logger('MasterNode')
-
-        STATES = [MNBootState, MNLiveState]
-        StateMachine.__init__(self, MNBootState, STATES)
-
-    def zmq_callback(self, msg):
-        pass
-
-    def pipe_callback(self, msg):
-        print('Publishing message: ', msg)
-        self.log.info('Publishing message: {}'.format(msg))
-        self.pub_socket.send(msg)
+    @receive(BlockContender)
+    def recv_block(self, block: BlockContender):
+        self.log.error("Current state not configured to handle block contender: {}".format(block))
 
     async def process_request(self, request):
-        self.log.info('Got request: {}'.format(request))
+        self.log.error("Current state not configured to process POST request {}".format(request))
+
+
+class MNBootState(MNBaseState):
+    def enter(self, prev_state):
+        # Publish on our own URL
+        self.parent.reactor.add_pub(url=self.parent.url)
+        # TODO -- add req/reply endpoints for delegates
+
+    def run(self):
+        self.parent.transition(MNRunState)
+
+    def exit(self, next_state):
+        self.parent.reactor.notify_ready()
+
+
+class MNRunState(MNBaseState):
+    def enter(self, prev_state):
+        self.app = web.Application()
+        self.app.router.add_post('/', self.process_request)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+    def run(self):
+        self.log.info("Starting web server")
+        web.run_app(self.app, host=Constants.Testnet.Masternode.Host,
+                    port=int(Constants.Testnet.Masternode.ExternalPort))
+        # ^ this blocks I think? Or maybe not cause he's on a new event loop..?
+
+    def exit(self, next_state):
+        pass
+        # TODO -- stop web server, event loop
+        # Or is it blocking? ...
+        # And if its blocking that means we can't receive on ZMQ sockets right?
+
+    @receive(BlockContender)
+    def recv_block(self, block: BlockContender):
+        self.log.error("Masternode received block contender: {}".format(block))
+        # TODO -- alg to request leaves from delegates and cryptographically verify data
+
+    async def process_request(self, request):
+        self.log.info('Masternode got request: {}'.format(request))
         content = await request.content.read()
-        print('Got content: ', content)
+
+        # Validate transactions
+        tx = None
+        try:
+            tx = StandardTransaction.from_bytes(content)
+        except Exception as e:
+            msg = "MN could not deserialize transaction {} with error {}".format(content, e)
+            self.log.error(msg)
+            return web.Response(text=msg)
 
         # Package transaction in message for delivery
-        # We are assume content is the StandardTransaction binary (but irl we should verify this)
-        msg = Message.create(StandardTransaction, content)
+        msg = Envelope.create(tx)
+        self.parent.reactor.pub(url=self.url, data=msg.serialize())
 
-        self.parent_pipe.send(msg.serialize())
-        return web.Response(text=str(request))
-
-    def setup_web_server(self):
-        self.log.info("Starting web server...")
-        self.start()
-        app = web.Application()
-        app.router.add_post('/', self.process_request)
-        web.run_app(app, host=self.base_url, port=int(self.external_port))
+        return web.Response(text="Successfully published transaction: {}".format(tx._data))
 
 
-class MNBootState(State):
-    name = "MNBootState"
-
-    def __init__(self, state_machine=None):
-        super().__init__(state_machine)
-        self.log = get_logger("Masternode.BootState")
-
-    def handle_message(self, msg):
-        self.log.info("got msg: {}".format(msg))
-
-    def enter(self, prev_state):
-        self.log.info("Masternode is booting...")
-
-    def exit(self, next_state):
-        self.log.info("Masternode exiting boot procedure...")
-
-    def run(self):
-        self.sm.transition(MNLiveState)
-
-
-class MNLiveState(State):
-    name = "MNLiveState"
-
-    def __init__(self, state_machine=None):
-        super().__init__(state_machine)
-        self.log = get_logger("Masternode.LiveState")
-
-    def handle_message(self, msg):
-        self.log.info("got msg: {}".format(msg))
-
-    def enter(self, prev_state):
-        self.log.info("Masternode entering live state...")
-
-    def exit(self, next_state):
-        self.log.info("Masternode exiting live state...")
-
-    def run(self):
-        self.log.info("Masternode live state is running.")
+class Masternode(NodeBase):
+    _INIT_STATE = MNBootState
+    _STATES = [MNBootState, MNRunState]
+    def __init__(self, url=Constants.Testnet.Masternode.InternalUrl, signing_key=Constants.Testnet.Masternode.Sk):
+        super().__init__(url=url, signing_key=signing_key)

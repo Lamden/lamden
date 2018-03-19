@@ -1,1 +1,0 @@
-from cilantro.models.message.message import Message

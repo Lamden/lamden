@@ -39,14 +39,11 @@ class ZMQLoop:
 
 class CommandMeta(type):
     def __new__(cls, clsname, bases, clsdict):
-        print("CommandMeta NEW called /w class ", clsname)
         clsobj = super().__new__(cls, clsname, bases, clsdict)
         clsobj.log = get_logger(clsobj.__name__)
 
         if not hasattr(clsobj, 'registry'):
-            print("Creating Registry")
             clsobj.registry = {}
-        print("Adding to registry: ", clsobj.__name__)
         clsobj.registry[clsobj.__name__] = clsobj
 
         return clsobj
@@ -139,8 +136,6 @@ class ReactorCore(Thread):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-
-
     def run(self):
         super().run()
         self.log.debug("ReactorCore Run started")
@@ -201,7 +196,8 @@ class NetworkReactor:
     def notify_ready(self):
         self.q.coro_put(ReactorCore.READY_SIG)
 
-    def add_sub(self, **kwargs):
+    def add_sub(self, callback='route', **kwargs):
+        kwargs['callback'] = callback
         self.q.coro_put((AddSubCommand.__name__, kwargs))
 
     def remove_sub(self, **kwargs):

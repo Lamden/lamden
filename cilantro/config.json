@@ -32,28 +32,21 @@
       "send-failed": "Could not send transaction"
     }
   },
-  "masternode": {
+  "testnet": {
+    "masternode": {
     "host":"127.0.0.1",
-    "internal-port":"9999",
+    "internal-url":"tcp://127.0.0.1:9999",
     "external-port":"8080"
-  },
-  "witness": {
-    "host": "127.0.0.1",
-    "sub-port": "9999",
-    "pub-port": "8888"
-  },
-  "base-node": {
-    "base-url": "127.0.0.1",
-    "subscriber-port": "1111",
-    "publisher-port": "9998"
-  },
-  "delegate": {
-    "host": "127.0.0.1",
-    "sub-port": "8888",
-    "pub-port": "7878",
-    "masternode-url": "http://testnet.lamden.io:8080",
-    "get-balance-url": "/balance/all",
-    "add-block-url": "/add_block",
-    "get-updates-url": "/updates"
+    },
+    "witnesses": {
+      "host":"tpc://127.0.0.1",
+      "num": 1,
+      "port_start":"8888"
+    },
+    "delegates": {
+      "host":"tcp://127.0.0.1",
+      "num": 4,
+      "port_start": "4650"
+    }
   }
 }

@@ -1,4 +1,4 @@
-from cilantro.models import MerkleTree
+from cilantro.messages import MerkleTree
 import secrets
 import zmq
 import asyncio

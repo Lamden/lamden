@@ -1,6 +1,6 @@
 from cilantro import Constants
-from cilantro.models.transaction.base import TransactionBase
-from cilantro.models.utils import validate_hex, int_to_decimal
+from cilantro.messages.transaction.base import TransactionBase
+from cilantro.messages.utils import validate_hex, int_to_decimal
 
 import capnp
 import transaction_capnp
