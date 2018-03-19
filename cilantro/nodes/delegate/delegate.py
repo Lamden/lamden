@@ -1,20 +1,15 @@
 from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.logger.base import get_logger
 from cilantro import Constants
-import asyncio
 from cilantro.models import StandardTransaction, Message
 from cilantro.models.consensus import MerkleSignature, BlockContender
 from cilantro.protocol.structures import MerkleTree
 from cilantro.models.message.message import MODEL_TYPES # TODO -- find a better home for these constants
-from cilantro.db.delegate.transaction_queue_driver import TransactionQueueDriver
 from cilantro.protocol.interpreters import VanillaInterpreter
 
 from cilantro.protocol.reactor import NetworkReactor
-# if sys.platform != 'win32':
-#     import uvloop
-#     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy)
 
-import time
+from cilantro.db.delegate import *
 
 """
     Delegates
@@ -35,6 +30,7 @@ import time
         another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
 """
 
+
 class Delegate:
     def __init__(self, url, delegates: dict, signing_key):
         self.port = int(url[-4:])
@@ -51,7 +47,7 @@ class Delegate:
 
         # consensus variables
         self.merkle = None
-        self.signature = b'too soon bro'
+        self.signature = b''
         self.signatures, self.failed_signatures = {}, {}
 
         # Setup reactor, subscribe to witness
@@ -67,12 +63,13 @@ class Delegate:
         self.reactor.add_pub(url=self.url)
 
         # Queue + Interpreter
-        self.queue = TransactionQueueDriver(db=str(self.port)[-1:])
+        self.backend = LevelDBBackend()
+        self.queue = TransactionQueue(backend=self.backend)
         self.interpreter = VanillaInterpreter(port=str(self.port))
 
         # Flush queue on boot
         self.log.debug("Delegate flushing queue on boot")
-        self.queue.dequeue_all()
+        self.queue.flush()
 
         # Notify reactor that this node is ready to flex
         self.reactor.notify_ready()
@@ -112,9 +109,9 @@ class Delegate:
             self.log.error("Error interpreting tx: {}".format(e))
 
         self.log.debug("Successfully interpreted tx...adding it to queue")
-        self.queue.enqueue_transaction(tx.serialize())
+        self.queue.push(tx.serialize())
 
-        if self.queue.queue_size() >= 4:
+        if self.queue.size >= 4:
             self.gather_consensus()
 
     def handle_sig(self, sig_payload):
@@ -138,12 +135,13 @@ class Delegate:
         if len(self.signatures) > (len(self.delegates) + 1) // 2:
             self.log.critical("Were in consensus!!! sigs={}".format(self.signatures))
             # TODO -- successful consensus logic
+            # convert state changes to real changes
 
     def gather_consensus(self):
         self.log.debug("Starting consesnsus with peers: {}".format(self.delegates))
 
         # Merkle-ize tx and sign
-        tx = self.queue.dequeue_all()
+        tx = self.queue.flush()
         self.merkle = MerkleTree(tx)
         self.signature = ED25519Wallet.sign(self.signing_key, self.merkle.hash_of_nodes())
         self.log.critical('Signature for merkle is {}'.format(self.signature))
