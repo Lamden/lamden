@@ -202,6 +202,12 @@ class Delegate(NodeBase):
         self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
         self.queue = TransactionQueueDriver(db=self.url[-1]) # TODO -- replace this with new RocksDB
 
+        # TODO -- put this stuff in the right place
+        # Queue + Interpreter
+        self.backend = LevelDBBackend()
+        self.queue = TransactionQueue(backend=self.backend)
+        self.interpreter = VanillaInterpreter(port=str(self.port))
+
 
 # class Delegate:
 #     def __init__(self, url, delegates: dict, signing_key):

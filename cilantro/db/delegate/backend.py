@@ -1,12 +1,23 @@
 import plyvel
 from cilantro.messages.utils import int_to_decimal
 from cilantro import Constants
+from cilantro.utils import Encoder as E
 
 SEPARATOR = b'/'
 SCRATCH = b'scratch'
+STATE = b'state'
 BALANCES = b'balances'
 TXQ = b'txq'
 PATH = '/tmp/cilantro'
+
+
+# def sync_state_with_scratch(backend):
+#     scratch = backend.flush(SCRATCH)
+#     for tx in scratch:
+#         k, v = tx
+#         k = k.lstrip(SCRATCH)
+#         k = STATE + k
+#         backend.set
 
 
 class Backend:
@@ -57,7 +68,7 @@ class LevelDBBackend(Backend):
         db = plyvel.DB(self.path, create_if_missing=True)
         for k, v in db.iterator(start=table):
             if return_results:
-                results.append(v)
+                results.append((k, v))
             db.delete(k)
         db.close()
         return results
@@ -72,12 +83,12 @@ class TransactionQueue:
     def push(self, tx):
         self.size += 1
         prefix = self.size.to_bytes(16, byteorder='big')
-        self.backend.set(self.table_name + prefix, tx)
+        self.backend.set(self.table_name, prefix, tx)
 
     def pop(self):
         prefix = self.size.to_bytes(16, byteorder='big')
-        tx = self.backend.get(self.table_name + prefix)
-        self.backend.delete(self.table_name + prefix)
+        tx = self.backend.get(self.table_name, prefix)
+        self.backend.delete(self.table_name, prefix)
         self.size -= 1
         return tx
 
@@ -98,7 +109,7 @@ class StateQuery:
         raise NotImplementedError
 
     def __str__(self):
-        return self.table_name
+        return self.table_name.decode()
 
 
 class StandardQuery(StateQuery):
@@ -109,11 +120,11 @@ class StandardQuery(StateQuery):
     def __init__(self, table_name=BALANCES, backend=LevelDBBackend()):
         super().__init__(table_name=table_name, backend=backend)
 
-    def get_balance(self, address):
-        if self.backend.exists(self.scratch_table, address.encode()):
-            return int_to_decimal(E.int(self.backend.get(self.scratch_table, address.encode())))
-        else:
-            return int_to_decimal(E.int(self.backend.get(self.table_name, address.encode())))
+    def balance_to_decimal(self, table, address):
+        balance = self.backend.get(table, address.encode())
+        balance = E.int(balance)
+        balance = int_to_decimal(balance)
+        return balance
 
     @staticmethod
     def encode_balance(balance):
@@ -121,6 +132,12 @@ class StandardQuery(StateQuery):
         balance = int(balance)
         balance = E.encode(balance)
         return balance
+
+    def get_balance(self, address):
+        if self.backend.exists(self.scratch_table, address.encode()):
+            return self.balance_to_decimal(self.scratch_table, address)
+        else:
+            return self.balance_to_decimal(self.table_name, address)
 
     def process_tx(self, tx):
         sender_balance = self.get_balance(tx.sender)
