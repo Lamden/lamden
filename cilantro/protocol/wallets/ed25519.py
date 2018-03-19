@@ -4,8 +4,11 @@ from cilantro.protocol.wallets import Wallet
 
 class ED25519Wallet(Wallet):
     @classmethod
-    def generate_keys(cls):
-        return ed25519.create_keypair()
+    def generate_keys(cls, seed=None):
+        if seed:
+            return ed25519.create_keypair(entropy=lambda x: seed)
+        else:
+            return ed25519.create_keypair()
 
     @classmethod
     def keys_to_format(cls, s, v):
@@ -20,8 +23,8 @@ class ED25519Wallet(Wallet):
         return s, s.get_verifying_key()
 
     @classmethod
-    def new(cls):
-        s, v = cls.generate_keys()
+    def new(cls, seed=None):
+        s, v = cls.generate_keys(seed=seed)
         return cls.keys_to_format(s, v)
 
     @classmethod

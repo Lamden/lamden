@@ -136,8 +136,6 @@ class ReactorCore(Thread):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-
-
     def run(self):
         super().run()
         self.log.debug("ReactorCore Run started")
@@ -198,7 +196,8 @@ class NetworkReactor:
     def notify_ready(self):
         self.q.coro_put(ReactorCore.READY_SIG)
 
-    def add_sub(self, **kwargs):
+    def add_sub(self, callback='route', **kwargs):
+        kwargs['callback'] = callback
         self.q.coro_put((AddSubCommand.__name__, kwargs))
 
     def remove_sub(self, **kwargs):

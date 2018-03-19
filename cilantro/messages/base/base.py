@@ -9,7 +9,6 @@ class MessageMeta(type):
         if not hasattr(clsobj, 'registry'):
             print("Creating Registry")
             clsobj.registry = {}
-
         print("Adding to registry: ", clsobj)
 
         # Define an "undirected" mapping between classes and their enum vals

@@ -42,14 +42,14 @@ class BootState(NodeState):
     name = BOOT_STATE
 
     def enter(self, prev_state):
-        print("BootState transitioning FROM state: {}".format(prev_state.name))
+        print("SubBootState transitioning FROM state: {}".format(prev_state.name))
         print('blah blah blah im booting')
         time.sleep(0.75)
         self.sm.x['has_booted'] = True
         self.sm.transition(InterpretingState)
 
     def exit(self, next_state):
-        print("BootState transitioning TO state: {}".format(next_state.name))
+        print("SubBootState transitioning TO state: {}".format(next_state.name))
 
 
 class InterpretingState(NodeState):

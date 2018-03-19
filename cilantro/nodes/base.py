@@ -1,48 +1,19 @@
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor import NetworkReactor
-from cilantro.messages import Envelope, MessageBase
+from cilantro.messages import Envelope
+from cilantro.protocol.statemachine import StateMachine
+from cilantro import Constants
 
 
-class Poke(MessageBase):
-    def serialize(self) -> bytes:
-        return self._data.encode()
+class NodeBase(StateMachine):
 
-    def validate(self):
-        pass
-
-    @classmethod
-    def deserialize_data(cls, data: bytes):
-        return data.decode()
-
-
-def receive(msg_type):
-    # TODO -- add validation to make sure @receive calls are receiving the correct message type
-    print("INSIDE RECIEVE DECORATOR")
-    def decorate(func):
-        print("INSIDE RECIEVE DECORATE WITH FUNC ", func)
-        func._recv = msg_type
-        return func
-    return decorate
-
-
-class NodeMeta(type):
-
-    def __new__(cls, clsname, bases, clsdict):
-        print("LogMeta NEW for class {}".format(clsname))
-        clsobj = super().__new__(cls, clsname, bases, clsdict)
-        clsobj.log = get_logger(clsname)
-
-        clsobj._receivers = {r._recv: r for r in clsdict.values() if hasattr(r, '_recv')}
-        print("_receivers: ", clsobj._receivers)
-
-        return clsobj
-
-
-class NodeBase(metaclass=NodeMeta):
-
-    def __init__(self, url):
+    def __init__(self, url=None, signing_key=None):
         self.url = url
+        self.sk = signing_key
+        self.nodes_registry = Constants.Testnet.AllNodes
+        self.log = get_logger(type(self).__name__)
         self.reactor = NetworkReactor(self)
+        super().__init__()
 
     def route(self, msg_binary: bytes):
         msg = None
@@ -52,52 +23,10 @@ class NodeBase(metaclass=NodeMeta):
         except Exception as e:
             self.log.error("Error opening envelope: {}".format(e))
 
-        if type(msg) in self._receivers:
+        if type(msg) in self.state._receivers:
             self.log.debug("Routing msg: {}".format(msg))
-            self._receivers[type(msg)](self, msg)
+            self.state._receivers[type(msg)](self.state, msg)
         else:
-            self.log.error("Message {} has no implemented receiver in {}".format(msg, self._receivers))
-
-
-class SubNode(NodeBase):
-    def __init__(self, url, sub_urls=None):
-        super().__init__(url)
-
-        if sub_urls:
-            for sub in sub_urls:
-                self.log.info("Adding sub {}".format(sub))
-                self.reactor.add_sub(url=sub, callback='route')
-
-        self.reactor.notify_ready()
-
-    @receive(Poke)
-    def recv_poke(self, poke: Poke):
-        self.log.critical("Got poke: {} with data {}!!".format(poke, poke._data))
-
-
-class PubNode(NodeBase):
-    def __init__(self, url):
-        super().__init__(url)
-        self.reactor.add_pub(url=url)
-        self.reactor.notify_ready()
-
-    def send_poke(self, poke_msg):
-        poke = Poke.from_data(poke_msg)
-        evl = Envelope.create(poke)
-        self.reactor.pub(url=self.url, data=evl.serialize())
-
-
-if __name__ == "__main__":
-    import time
-    URL = "tcp://127.0.0.1:5566"
-    URL2 = "tcp://127.0.0.1:5577"
-    URL3 = "tcp://127.0.0.1:5588"
-    URL4 = "tcp://127.0.0.1:5599"
-
-    pub = PubNode(url=URL)
-    sub = SubNode(url=URL2, sub_urls=[URL])
-
-    time.sleep(0.5)
-
-    pub.send_poke('hihi its me')
+            self.log.error("Message {} has no implemented receiver for state {} in receivers {}"
+                           .format(msg, self.state, self.state._receivers))
 

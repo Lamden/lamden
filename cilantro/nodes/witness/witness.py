@@ -68,7 +68,7 @@ class WitnessBootState(State):
 
     def __init__(self, state_machine=None):
         super().__init__(state_machine)
-        self.log = get_logger("Witness.BootState")
+        self.log = get_logger("Witness.SubBootState")
 
     def handle_message(self, msg):
         self.log.info("!!! IN BOOT !!! got msg: {}".format(msg))
