@@ -140,6 +140,6 @@ class TestLevelDBBackend(TestCase):
         sq = StateQuery(t, l)
 
         def process_tx():
-            sq.process_tx({1 : 2})
+            sq.process_tx({1: 2})
 
         self.assertRaises(NotImplementedError, process_tx)
