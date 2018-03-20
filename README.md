@@ -2,7 +2,7 @@
 
 [![Coverage Status](https://coveralls.io/repos/github/Lamden/cilantro/badge.svg?branch=master)](https://coveralls.io/github/Lamden/cilantro?branch=master)
 
-Cilantro is an enterprise level blockchain that is focused on high throughput and scalibility. Cilantro can process
+Cilantro is an enterprise level blockchain that is focused on high throughput and scalability. Cilantro can process
 1000s of tx/second and incorporates a smart contract language called Seneca to provide advanced user functionality.
 Features such as staking and anti-spam measures are also included out of the box.
 
