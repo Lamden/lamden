@@ -25,7 +25,7 @@ def config_testnet(testnet: dict) -> dict:
     Dynamically builds nodes url and wallet info for testing purposes
     - Constants.Testnet.Witnesses and Constants.Testnet.Delegates will return lists of dictionaries,
       where each dict has keys 'url', 'sk', and 'vk'
-    - Constants.Testnet.AllNodes will return a list of all nodes as dictionaries with just 'url' and 'vk' keys
+    - Constants.Testnet.AllNodes will return a dict of all node with just keys as urls and values as verifying keys
     - Since there is only one Masternode (at least rn), Constants.Testnet.Masternode must be referenced using
       Constants.Testnet.Masternode.InternalUrl, Constants.Testnet.Masternode.ExternalUrl, --.Vk and --.Sk
     """

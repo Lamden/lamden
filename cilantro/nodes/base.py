@@ -25,14 +25,6 @@ class NodeBase(StateMachine):
 
         if type(msg) in self.state._receivers:
             self.log.debug("Routing msg: {}".format(msg))
-
-            has_recv = type(msg) in self.state._receivers
-            # self.log.info("Curernt state {}".format(self.state))
-            # self.log.info("State receivers: {}".format(self.state._receivers))
-            # self.log.info("msg type: {}".format(type(msg)))
-            # self.log.info("has_recv: {}".format(has_recv))
-            # self.log.info("self.state._receivers[type(msg)]: {}".format(self.state._receivers[type(msg)]))
-
             try:
                 self.state._receivers[type(msg)](self.state, msg)
             except Exception as e:

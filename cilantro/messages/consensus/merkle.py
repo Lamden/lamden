@@ -7,8 +7,6 @@ class MerkleSignature(MessageBase):
     """
     _data is a dict with keys: 'signature', 'timestamp', 'sender'
     """
-    name = "MERKLE_SIGNATURE"
-
     SIG = 'signature'
     TS = 'timestamp'
     SENDER = 'sender'
@@ -56,8 +54,6 @@ class BlockContender(MessageBase):
         'nodes': [root hash, root left hash, root right hash, root left left hash ... ]
             (all entries are hex strings)
     """
-    name = "BLOCK_CONTENDER"
-
     SIGS = 'signature'
     NODES = 'nodes'
 

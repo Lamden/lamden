@@ -119,7 +119,6 @@ class DelegateConsensusState(DelegateBaseState):
         self.signature = None
         self.merkle = None
         self.merkle_hash = None
-        # self.signatures, self.signature, self.merkle, self.merkle_hash, self.sent_update = [], None, None, None, False
 
     def enter(self, prev_state):
         assert self.parent.queue.size >= Constants.Nodes.MaxQueueSize, "In consensus state, but queue not full"
@@ -136,7 +135,7 @@ class DelegateConsensusState(DelegateBaseState):
         self.log.info("Broadcasting signature")
         self.parent.reactor.pub(url=self.parent.url, data=sig_msg.serialize())
 
-        # Now that we have the merkle hash, validate all our pending signatures
+        # Now that we've computed the merkle tree hash, validate all our pending signatures
         for sig in [s for s in self.parent.pending_sigs if self.validate_sig(s)]:
             self.signatures.append(sig)
 
@@ -147,10 +146,8 @@ class DelegateConsensusState(DelegateBaseState):
         self.signatures, self.signature, self.merkle, self.merkle_hash = [], None, None, None
 
     def validate_sig(self, sig: MerkleSignature) -> bool:
+        assert self.merkle_hash is not None, "Cannot validate signature without our merkle hash set"
         self.log.debug("Validating signature: {}".format(sig))
-
-        # self.log.critical("Sig sender: {}".format(sig.sender))
-        # self.log.critical("Nodes reigstry: {}".format(self.parent.nodes_registry))
 
         # Sanity checks
         if sig.sender not in self.parent.nodes_registry:
@@ -162,9 +159,6 @@ class DelegateConsensusState(DelegateBaseState):
             return False
         if not sig.verify(self.merkle_hash, self.parent.nodes_registry[sig.sender]):  # this check is just for debugging
             self.log.critical("Delegate could not verify signature: {}".format(sig))
-
-        is_valid = sig.verify(self.merkle_hash, self.parent.nodes_registry[sig.sender])
-        self.log.critical("Is valid: {}".format(is_valid))
 
         return sig.verify(self.merkle_hash, self.parent.nodes_registry[sig.sender])
 
@@ -199,9 +193,6 @@ class Delegate(NodeBase):
 
         # Shared between states
         self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
-
-        # TODO -- put this stuff in the right place
-        # Queue + Interpreter
         db_path = PATH + '_' + str(slot)
         self.backend = LevelDBBackend(path=db_path)
         self.queue = TransactionQueue(backend=self.backend)

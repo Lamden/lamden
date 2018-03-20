@@ -56,8 +56,7 @@ class StateMeta(type):
 
 
 class State(metaclass=StateMeta):
-    def __init__(self, state_machine=None):
-        assert state_machine is not None, "Cannot create state without a pointer to its encompassing state machine"
+    def __init__(self, state_machine):
         self.parent = state_machine
 
     def enter(self, prev_state):
