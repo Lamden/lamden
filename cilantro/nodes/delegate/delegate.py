@@ -23,7 +23,6 @@ from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, receive
 from cilantro.protocol.structures import MerkleTree
 from cilantro.messages import StandardTransaction, BlockContender, Envelope, MerkleSignature
-# TODO -- test receive decorator with inheritance.. shud work cuz the child recv will overwrite the parent recv key in registry
 
 from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.protocol.wallets import ED25519Wallet

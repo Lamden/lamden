@@ -30,7 +30,7 @@ class MerkleSignature(MessageBase):
         return cls.from_data(data, validate=validate)
 
     @classmethod
-    def deserialize_data(cls, data: bytes):
+    def _deserialize_data(cls, data: bytes):
         return json.loads(data.decode())
 
     @property
@@ -67,7 +67,7 @@ class BlockContender(MessageBase):
         pass
 
     @classmethod
-    def deserialize_data(cls, data: bytes):
+    def _deserialize_data(cls, data: bytes):
         # TODO -- implement
         # json loads entire data
         # deserialize each signature

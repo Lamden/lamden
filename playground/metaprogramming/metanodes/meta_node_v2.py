@@ -22,7 +22,7 @@ class Poke(MessageBase):
         pass
 
     @classmethod
-    def deserialize_data(cls, data: bytes):
+    def _deserialize_data(cls, data: bytes):
         return data.decode()
 
 

@@ -19,7 +19,7 @@ class Envelope(MessageBase):
         # also assert if we can deserialize self._data.payload?
 
     @classmethod
-    def deserialize_data(cls, data: bytes):
+    def _deserialize_data(cls, data: bytes):
         return message_capnp.Message.from_bytes_packed(data)
 
     @classmethod

@@ -11,7 +11,7 @@ class StandardTransaction(TransactionBase):
     name = "STANDARD_TX"
 
     @classmethod
-    def deserialize_data(cls, data: bytes):
+    def _deserialize_data(cls, data: bytes):
         return transaction_capnp.StandardTransaction.from_bytes_packed(data)
 
     def validate_payload(self):
