@@ -5,10 +5,11 @@ from cilantro.messages.utils import validate_hex, int_to_decimal
 import capnp
 import transaction_capnp
 
+import time
 
 class SwapTransaction(TransactionBase):
 
-    name = "SWAPtomorrow_TX"
+    name = "SWAP_TX"
 
     @classmethod
     def deserialize_data(cls, data: bytes):
@@ -19,7 +20,10 @@ class SwapTransaction(TransactionBase):
         validate_hex(self.receiver, 64, 'receiver')
         if self.amount <= 0:
             raise Exception("Amount must be greater than 0 (amount={})".format(self.amount))
-        validate_hex(self.hashlock, 64, 'hashlock')
+        if len(self.hashlock) > 64:
+            raise Exception("Hashlock too long. Must be at max 64 bytes (length={})".format(len(self.hashlock)))
+        if self.expiration < int(time.time()):
+            raise Exception("Expiration date is before now.")
 
     @property
     def receiver(self):
@@ -36,7 +40,6 @@ class SwapTransaction(TransactionBase):
     @property
     def expiration(self):
         return self._data.payload.expiration
-
 
 
 class SwapTransactionBuilder:

@@ -3,3 +3,4 @@ from cilantro.messages.consensus import MerkleSignature, BlockContender
 from cilantro.messages.transaction import StandardTransaction, StandardTransactionBuilder, TransactionBase
 from cilantro.messages.envelope import Envelope
 from cilantro.messages.transaction.vote import VoteTransaction, VoteTransactionBuilder
+from cilantro.messages.transaction.swap import SwapTransaction, SwapTransactionBuilder
