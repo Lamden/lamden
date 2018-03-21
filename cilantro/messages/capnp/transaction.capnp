@@ -38,6 +38,6 @@ struct SwapTransaction {
         receiver @1 :Data;
         amount @2 :UInt64;
         hashlock @3 :Data;
-        expiration @4 :Float32;
+        expiration @4 :UInt64;
     }
 }
