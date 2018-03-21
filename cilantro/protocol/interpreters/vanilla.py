@@ -1,10 +1,10 @@
 import hashlib
 from cilantro.protocol.interpreters import BaseInterpreter
-from cilantro.messages import TransactionBase, StandardTransaction, VoteTransaction
+from cilantro.messages import TransactionBase, StandardTransaction, VoteTransaction, SwapTransaction
 from cilantro.logger import get_logger
 
 # from cilantro.nodes.delegate.db import *
-from cilantro.db.delegate import LevelDBBackend, StandardQuery, SCRATCH, VoteQuery
+from cilantro.db.delegate import LevelDBBackend, StandardQuery, SCRATCH, VoteQuery, SwapQuery
 
 
 class VanillaInterpreter(BaseInterpreter):
@@ -29,7 +29,8 @@ class VanillaInterpreter(BaseInterpreter):
         self.backend.flush(SCRATCH)
         self.tx_method = {
             StandardTransaction: StandardQuery,
-            VoteTransaction: VoteQuery
+            VoteTransaction: VoteQuery,
+            SwapTransaction: SwapQuery
         }
 
     def interpret_transaction(self, tx: TransactionBase):
@@ -43,8 +44,8 @@ class VanillaInterpreter(BaseInterpreter):
         results = None
 
         try:
-            results = self.tx_method[tx](backend=self.backend).process_tx(tx)
-        except KeyError:
-            self.log.error("Got Transaction of unkown type: {}".format(type(tx)))
+            results = self.tx_method[type(tx)](backend=self.backend).process_tx(tx)
+        except Exception as e:
+            self.log.error("Got Transaction of unkown type: {}, {}".format(type(tx), e))
 
-        self.log.debug("Results of interpretation: {}", results)
+        self.log.debug("Results of interpretation: {}".format(results))

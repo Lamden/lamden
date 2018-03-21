@@ -41,12 +41,12 @@
     "witnesses": {
       "host":"tcp://127.0.0.1",
       "num": 1,
-      "port_start":"8888"
+      "port_start":"8686"
     },
     "delegates": {
       "host":"tcp://127.0.0.1",
       "num": 3,
-      "port_start": "4650"
+      "port_start": "4670"
     }
   }
 }

@@ -50,7 +50,7 @@ class VoteTransactionBuilder:
     @staticmethod
     def create_tx(sender_s, sender_v, policy, choice):
         tx_struct = VoteTransactionBuilder.create_tx_struct(sender_s, sender_v, policy, choice)
-        return VoteTransactionBuilder.from_data(tx_struct)
+        return VoteTransaction.from_data(tx_struct)
 
     @staticmethod
     def random_tx():

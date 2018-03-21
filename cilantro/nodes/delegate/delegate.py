@@ -22,7 +22,7 @@ from cilantro.logger import get_logger
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, receive
 from cilantro.protocol.structures import MerkleTree
-from cilantro.messages import StandardTransaction, BlockContender, Envelope, MerkleSignature
+from cilantro.messages import StandardTransaction, VoteTransaction, BlockContender, Envelope, MerkleSignature
 # TODO -- test receive decorator with inheritance.. shud work cuz the child recv will overwrite the parent recv key in registry
 
 from cilantro.protocol.interpreters import VanillaInterpreter
@@ -41,6 +41,12 @@ class DelegateBaseState(State):
 
     @receive(StandardTransaction)
     def recv_tx(self, tx: StandardTransaction):
+        self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
+        self.parent.pending_txs.append(tx)
+        self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
+
+    @receive(VoteTransaction)
+    def recv_vote(self, tx: VoteTransaction):
         self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
         self.parent.pending_txs.append(tx)
         self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
@@ -90,6 +96,10 @@ class DelegateInterpretState(DelegateBaseState):
 
     @receive(StandardTransaction)
     def recv_tx(self, tx: StandardTransaction):
+        self.interpret_tx(tx=tx)
+
+    @receive(VoteTransaction)
+    def recv_vote(self, tx: VoteTransaction):
         self.interpret_tx(tx=tx)
 
     def interpret_tx(self, tx: StandardTransaction):

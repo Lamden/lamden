@@ -174,9 +174,10 @@ class VoteQuery(StateQuery):
 
     def process_tx(self, tx):
         try:
-            self.backend.set(self.scratch_table, tx.policy + SEPARATOR + tx.choice + SEPARATOR + tx.sender.encode(), b'1')
-            return tx, (self.scratch_table, tx.policy + SEPARATOR + tx.choice + SEPARATOR + tx.sender.encode(), b'1')
-        except:
+            self.backend.set(self.scratch_table, tx.policy.encode() + SEPARATOR + tx.choice.encode() + SEPARATOR + tx.sender.encode(), b'1')
+            return tx, (self.scratch_table, tx.policy.encode() + SEPARATOR + tx.choice.encode() + SEPARATOR + tx.sender.encode(), b'1')
+        except Exception as e:
+            print('{}'.format(e))
             return None, None
 
 
@@ -211,14 +212,23 @@ class SwapQuery(StateQuery):
         sender_balance = self.get_balance(tx.sender)
 
         if sender_balance >= tx.amount:
+            # subtract the balance from the sender
+            new_sender_balance = sender_balance - tx.amount
+            new_sender_balance = self.encode_balance(new_sender_balance)
+
+            self.backend.set(self.scratch_table, tx.sender.encode(), new_sender_balance)
+
+            # place the balance into the swap
             amount_key = tx.receiver + SEPARATOR + tx.hashlock + SEPARATOR + b'amount'
             expiration_key = tx.receiver + SEPARATOR + tx.hashlock + SEPARATOR + b'expiration'
 
             self.backend.set(self.scratch_table, amount_key, tx.amount)
             self.backend.set(self.scratch_table, expiration_key, tx.expiration)
 
-            return tx, (self.scratch_table, amount_key, tx.amount), \
+            # return the queries for feedback
+            return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
+                   (self.scratch_table, amount_key, tx.amount), \
                    (self.scratch_table, expiration_key, tx.expiration)
         else:
-            return None, None, None
+            return None, None, None, None
 
