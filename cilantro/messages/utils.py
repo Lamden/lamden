@@ -7,7 +7,9 @@ def validate_hex(hex_str, length, field_name=""):
         int(hex_str, 16)
     except ValueError:
         raise Exception("Field {} was not valid hex with value={}".format(field_name, hex_str))
-    if len(hex_str) != length:
+    if length is None:
+        pass
+    elif len(hex_str) != length:
         raise Exception("Field {} was invalid in length. Expected length of {} but length was {}. "
                         "Field value={}".format(field_name, length, len(hex_str), hex_str))
 

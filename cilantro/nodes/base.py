@@ -33,3 +33,6 @@ class NodeBase(StateMachine):
             self.log.error("Message {} has no implemented receiver for state {} in receivers {}"
                            .format(msg, self.state, self.state._receivers))
 
+    async def route_http(self, request):
+        content = await request.content.read()
+        self.route(content)

@@ -9,7 +9,7 @@
 from cilantro import Constants
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, receive
-from cilantro.messages import StandardTransaction, Envelope
+from cilantro.messages import StandardTransaction, Envelope, VoteTransaction
 
 
 class WitnessBaseState(State):
@@ -39,6 +39,12 @@ class WitnessBootState(WitnessBaseState):
 class WitnessRunState(WitnessBaseState):
     @receive(StandardTransaction)
     def recv_tx(self, tx: StandardTransaction):
+        self.log.critical("run state got tx: {}".format(tx))
+        env = Envelope.create(tx)
+        self.parent.reactor.pub(url=self.parent.url, data=env.serialize())
+
+    @receive(VoteTransaction)
+    def recv_vote(self, tx: VoteTransaction):
         self.log.critical("run state got tx: {}".format(tx))
         env = Envelope.create(tx)
         self.parent.reactor.pub(url=self.parent.url, data=env.serialize())

@@ -9,6 +9,8 @@ STATE = b'state'
 BALANCES = b'balances'
 TXQ = b'txq'
 PATH = '/tmp/cilantro'
+VOTES = b'votes'
+SWAPS = b'swaps'
 
 
 # def sync_state_with_scratch(backend):
@@ -156,9 +158,77 @@ class StandardQuery(StateQuery):
             self.backend.set(self.scratch_table, tx.sender.encode(), new_sender_balance)
             self.backend.set(self.scratch_table, tx.receiver.encode(), new_receiver_balance)
 
-            #self.txq.push(tx)
-
             return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
                    (self.scratch_table, tx.receiver.encode(), new_receiver_balance)
         else:
             return None, None, None
+
+
+class VoteQuery(StateQuery):
+    """
+    VoteQuery
+    Automates the state modifications for vote transactions
+    """
+    def __init__(self, table_name=VOTES, backend=LevelDBBackend()):
+        super().__init__(table_name=table_name, backend=backend)
+
+    def process_tx(self, tx):
+        try:
+            self.backend.set(self.scratch_table, tx.policy.encode() + SEPARATOR + tx.choice.encode() + SEPARATOR + tx.sender.encode(), b'1')
+            return tx, (self.scratch_table, tx.policy.encode() + SEPARATOR + tx.choice.encode() + SEPARATOR + tx.sender.encode(), b'1')
+        except Exception as e:
+            print('{}'.format(e))
+            return None, None
+
+
+class SwapQuery(StateQuery):
+    """
+    SwapQuery
+    Automates the state modifications for swap transactions
+    """
+    def __init__(self, table_name=SWAPS, backend=LevelDBBackend()):
+        super().__init__(table_name=table_name, backend=backend)
+
+    def balance_to_decimal(self, table, address):
+        balance = self.backend.get(table, address.encode())
+        balance = E.int(balance)
+        balance = int_to_decimal(balance)
+        return balance
+
+    @staticmethod
+    def encode_balance(balance):
+        balance *= pow(10, Constants.Protocol.DecimalPrecision)
+        balance = int(balance)
+        balance = E.encode(balance)
+        return balance
+
+    def get_balance(self, address):
+        if self.backend.exists(self.scratch_table, address.encode()):
+            return self.balance_to_decimal(self.scratch_table, address)
+        else:
+            return self.balance_to_decimal(self.table_name, address)
+
+    def process_tx(self, tx):
+        sender_balance = self.get_balance(tx.sender)
+
+        if sender_balance >= tx.amount:
+            # subtract the balance from the sender
+            new_sender_balance = sender_balance - tx.amount
+            new_sender_balance = self.encode_balance(new_sender_balance)
+
+            self.backend.set(self.scratch_table, tx.sender.encode(), new_sender_balance)
+
+            # place the balance into the swap
+            amount_key = tx.receiver + SEPARATOR + tx.hashlock + SEPARATOR + b'amount'
+            expiration_key = tx.receiver + SEPARATOR + tx.hashlock + SEPARATOR + b'expiration'
+
+            self.backend.set(self.scratch_table, amount_key, tx.amount)
+            self.backend.set(self.scratch_table, expiration_key, tx.expiration)
+
+            # return the queries for feedback
+            return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
+                   (self.scratch_table, amount_key, tx.amount), \
+                   (self.scratch_table, expiration_key, tx.expiration)
+        else:
+            return None, None, None, None
+
