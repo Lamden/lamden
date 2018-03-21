@@ -17,3 +17,14 @@ struct StandardTransaction {
         amount @2 :UInt64;
     }
 }
+
+struct VoteTransaction {
+    metadata @0 :MetaData;
+    payload @1 :Payload;
+
+    struct Payload {
+        sender @0 :Data;
+        policy @1 :Data;
+        choice @2 :Data;
+    }
+}
