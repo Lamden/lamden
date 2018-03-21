@@ -73,30 +73,6 @@ class MNRunState(MNBaseState):
         self.log.error("Masternode received block contender: {}".format(block))
         # TODO -- alg to request leaves from delegates and cryptographically verify data
 
-    # async def process_request(self, request):
-    #     self.log.info('Masternode got request: {}'.format(request))
-    #     content = await request.content.read()
-    #     self.log.info("MN got content: {}".format(content))
-    #
-    #     # Validate transactions
-    #     tx = None
-    #     try:
-    #         tx = StandardTransaction.from_bytes(content)
-    #     except Exception as e:
-    #         msg = "MN could not deserialize transaction {} with error {}".format(content, e)
-    #         self.log.error(msg)
-    #         return web.Response(text=msg)
-    #
-    #     # Package transaction in message for delivery
-    #     self.log.info("packaging tx")
-    #     msg = Envelope.create(tx)
-    #     self.log.info("sending tx")
-    #     self.parent.reactor.pub(url=self.parent.url, data=msg.serialize())
-    #     self.log.info("tx sent")
-    #     self.log.info("tx_data: {}".format(tx._data))
-    #
-    #     return web.Response(text="Successfully published transaction: {}".format(tx._data))
-
 
 class Masternode(NodeBase):
     _INIT_STATE = MNBootState

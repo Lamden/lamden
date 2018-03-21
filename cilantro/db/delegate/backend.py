@@ -174,8 +174,10 @@ class VoteQuery(StateQuery):
 
     def process_tx(self, tx):
         try:
-            self.backend.set(self.scratch_table, tx.policy.encode() + SEPARATOR + tx.choice.encode() + SEPARATOR + tx.sender.encode(), b'1')
-            return tx, (self.scratch_table, tx.policy.encode() + SEPARATOR + tx.choice.encode() + SEPARATOR + tx.sender.encode(), b'1')
+            k = tx.policy.encode() + SEPARATOR + tx.sender.encode
+            v = tx.choice.encode()
+            self.backend.set(self.scratch_table, k, v)
+            return tx, (self.scratch_table, k, v)
         except Exception as e:
             print('{}'.format(e))
             return None, None
