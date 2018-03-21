@@ -8,7 +8,7 @@ import transaction_capnp
 
 class RedeemTransaction(TransactionBase):
 
-    name = "STANDARD_TX"
+    name = "REDEEM_TX"
 
     @classmethod
     def deserialize_data(cls, data: bytes):
@@ -16,17 +16,10 @@ class RedeemTransaction(TransactionBase):
 
     def validate_payload(self):
         validate_hex(self.sender, 64, 'sender')
-        validate_hex(self.receiver, 64, 'receiver')
-        if self.amount <= 0:
-            raise Exception("Amount must be greater than 0 (amount={})".format(self.amount))
 
     @property
-    def receiver(self):
-        return self._data.payload.receiver.decode()
-
-    @property
-    def amount(self):
-        return int_to_decimal(self._data.payload.amount)
+    def secret(self):
+        return self._data.payload.secret.decode()
 
 
 class RedeemTransactionBuilder:
