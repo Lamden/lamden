@@ -1,5 +1,4 @@
 from cilantro.messages import TransactionBase
-import json
 from cilantro import Constants
 
 import capnp
@@ -17,8 +16,8 @@ class VoteTransaction(TransactionBase):
 
     def validate_payload(self):
         validate_hex(self.sender, 64, 'sender')
-        validate_hex(self.policy, 8, 'policy')
-        validate_hex(self.choice, 8, 'choice')
+        validate_hex(self.policy, None, 'policy')
+        validate_hex(self.choice, None, 'choice')
 
     @property
     def policy(self):
