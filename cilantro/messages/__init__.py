@@ -4,3 +4,4 @@ from cilantro.messages.transaction import StandardTransaction, StandardTransacti
 from cilantro.messages.envelope import Envelope
 from cilantro.messages.transaction.vote import VoteTransaction, VoteTransactionBuilder
 from cilantro.messages.transaction.swap import SwapTransaction, SwapTransactionBuilder
+from cilantro.messages.transaction.redeem import RedeemTransaction, RedeemTransactionBuilder

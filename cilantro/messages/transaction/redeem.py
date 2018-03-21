@@ -33,7 +33,7 @@ class RedeemTransactionBuilder:
         tx = transaction_capnp.RedeemTransaction.new_message()
 
         tx.payload.sender = sender_v
-        tx.payload.amount = secret
+        tx.payload.secret = secret
         payload_binary = tx.payload.copy().to_bytes()
 
         tx.metadata.proof = Constants.Protocol.Proofs.find(payload_binary)[0]
