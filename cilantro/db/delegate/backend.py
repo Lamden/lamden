@@ -9,6 +9,7 @@ STATE = b'state'
 BALANCES = b'balances'
 TXQ = b'txq'
 PATH = '/tmp/cilantro'
+VOTES = b'votes'
 
 
 # def sync_state_with_scratch(backend):
@@ -156,9 +157,23 @@ class StandardQuery(StateQuery):
             self.backend.set(self.scratch_table, tx.sender.encode(), new_sender_balance)
             self.backend.set(self.scratch_table, tx.receiver.encode(), new_receiver_balance)
 
-            #self.txq.push(tx)
-
             return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
                    (self.scratch_table, tx.receiver.encode(), new_receiver_balance)
         else:
             return None, None, None
+
+
+class VoteQuery(StateQuery):
+    """
+    VoteQuery
+    Automates the state modifications for vote transactions
+    """
+    def __init__(self, table_name=VOTES, backend=LevelDBBackend()):
+        super().__init__(table_name=table_name, backend=backend)
+
+    def process_tx(self, tx):
+        try:
+            self.backend.set(self.scratch_table, tx.policy + SEPARATOR + tx.choice + SEPARATOR + tx.sender.encode(), b'1')
+            return tx, (self.scratch_table, tx.policy + SEPARATOR + tx.choice + SEPARATOR + tx.sender.encode(), b'1')
+        except:
+            return None, None

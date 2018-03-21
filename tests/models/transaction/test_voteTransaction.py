@@ -116,3 +116,11 @@ class TestVoteTransaction(TestCase):
         tx_struct.payload.sender = ''.join(['a' for _ in range(50)])
         tx = VoteTransaction.from_data(tx_struct, validate=False)
         self.assertRaises(Exception, tx.validate_payload)
+
+    def test_serialization(self):
+        """
+        Tests that serialize and from_bytes are inverse operations
+        """
+        tx_struct = TestVoteTransaction.create_tx_struct()
+        struct_binary = tx_struct.to_bytes_packed()
+        tx = VoteTransaction.from_data(tx_struct, validate=False)
