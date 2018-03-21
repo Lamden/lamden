@@ -2,6 +2,8 @@ import plyvel
 from cilantro.messages.utils import int_to_decimal
 from cilantro import Constants
 from cilantro.utils import Encoder as E
+import hashlib
+import time
 
 SEPARATOR = b'/'
 SCRATCH = b'scratch'
@@ -136,10 +138,11 @@ class StandardQuery(StateQuery):
         return balance
 
     def get_balance(self, address):
+        table = self.table_name
         if self.backend.exists(self.scratch_table, address.encode()):
-            return self.balance_to_decimal(self.scratch_table, address)
-        else:
-            return self.balance_to_decimal(self.table_name, address)
+            table = self.scratch_table
+
+        return self.balance_to_decimal(table, address)
 
     def process_tx(self, tx):
         sender_balance = self.get_balance(tx.sender)
@@ -183,7 +186,7 @@ class VoteQuery(StateQuery):
             return None, None
 
 
-class SwapQuery(StateQuery):
+class SwapQuery(StandardQuery):
     """
     SwapQuery
     Automates the state modifications for swap transactions
@@ -191,24 +194,13 @@ class SwapQuery(StateQuery):
     def __init__(self, table_name=SWAPS, backend=LevelDBBackend()):
         super().__init__(table_name=table_name, backend=backend)
 
-    def balance_to_decimal(self, table, address):
-        balance = self.backend.get(table, address.encode())
-        balance = E.int(balance)
-        balance = int_to_decimal(balance)
-        return balance
+    @staticmethod
+    def amount_key(address, hashlock):
+        return address + SEPARATOR + hashlock + SEPARATOR + b'amount'
 
     @staticmethod
-    def encode_balance(balance):
-        balance *= pow(10, Constants.Protocol.DecimalPrecision)
-        balance = int(balance)
-        balance = E.encode(balance)
-        return balance
-
-    def get_balance(self, address):
-        if self.backend.exists(self.scratch_table, address.encode()):
-            return self.balance_to_decimal(self.scratch_table, address)
-        else:
-            return self.balance_to_decimal(self.table_name, address)
+    def expiration_key(address, hashlock):
+        return address + SEPARATOR + hashlock + SEPARATOR + b'expiration'
 
     def process_tx(self, tx):
         sender_balance = self.get_balance(tx.sender)
@@ -221,8 +213,8 @@ class SwapQuery(StateQuery):
             self.backend.set(self.scratch_table, tx.sender.encode(), new_sender_balance)
 
             # place the balance into the swap
-            amount_key = tx.receiver + SEPARATOR + tx.hashlock + SEPARATOR + b'amount'
-            expiration_key = tx.receiver + SEPARATOR + tx.hashlock + SEPARATOR + b'expiration'
+            amount_key = self.amount_key(tx.receiver.encode(), tx.hashlock)
+            expiration_key = self.expiration_key(tx.receiver.encode(), tx.hashlock)
 
             self.backend.set(self.scratch_table, amount_key, tx.amount)
             self.backend.set(self.scratch_table, expiration_key, tx.expiration)
@@ -234,3 +226,56 @@ class SwapQuery(StateQuery):
         else:
             return None, None, None, None
 
+
+class RedeemQuery(SwapQuery):
+    def __init__(self, table_name=SWAPS, backend=LevelDBBackend()):
+        super().__init__(table_name=table_name, backend=backend)
+
+    def get_swap(self, address, hashlock):
+        # set up table name (scratch if the record does already exist)
+        amount_key = self.amount_key(address.encode(), hashlock)
+        expiration_key = self.expiration_key(address.encode(), hashlock)
+
+        table = self.table_name
+        if self.backend.exists(self.scratch_table, amount_key) and \
+                self.backend.exists(self.scratch_table, expiration_key):
+            table = self.scratch_table
+
+        # make the queries
+        amount = self.backend.get(table, amount_key)
+        expiration = self.backend.get(table, expiration_key)
+
+        # return it
+        return self.balance_to_decimal(amount), expiration
+
+    def process_tx(self, tx):
+        hashlock = hashlib.sha3_256()
+        hashlock.update(tx.secret)
+        hashlock = hashlock.digest()
+
+        amount, expiration = self.get_swap(tx.sender, hashlock)
+
+        now = int(time.time())
+
+        if amount is not None and expiration >= now:
+            sender_balance = self.get_balance(tx.sender)
+
+            # add amount to sender balance
+            new_sender_balance = sender_balance + amount
+            new_sender_balance = self.encode_balance(new_sender_balance)
+
+            self.backend.set(self.scratch_table, tx.sender.encode(), new_sender_balance)
+
+            # destroy the swap
+            amount_key = self.amount_key(tx.sender.encode(), hashlock)
+            expiration_key = self.expiration_key(tx.sender.encode(), hashlock)
+
+            self.backend.set(self.scratch_table, amount_key, None)
+            self.backend.set(self.scratch_table, expiration_key, None)
+
+            # return the queries for feedback
+            return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
+                   (self.scratch_table, amount_key, None), \
+                   (self.scratch_table, expiration_key, None)
+        else:
+            return None, None, None, None

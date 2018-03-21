@@ -51,5 +51,4 @@ class RedeemTransactionBuilder:
         import secrets
 
         s = Constants.Protocol.Wallets.new()
-        r = Constants.Protocol.Wallets.new()
         return RedeemTransactionBuilder.create_tx(s[0], s[1], secrets.token_bytes(32))
