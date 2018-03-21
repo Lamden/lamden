@@ -1,10 +1,10 @@
 import hashlib
 from cilantro.protocol.interpreters import BaseInterpreter
-from cilantro.messages import TransactionBase, StandardTransaction
+from cilantro.messages import TransactionBase, StandardTransaction, VoteTransaction
 from cilantro.logger import get_logger
 
 # from cilantro.nodes.delegate.db import *
-from cilantro.db.delegate import LevelDBBackend, StandardQuery, SCRATCH
+from cilantro.db.delegate import LevelDBBackend, StandardQuery, SCRATCH, VoteQuery
 
 
 class VanillaInterpreter(BaseInterpreter):
@@ -27,6 +27,10 @@ class VanillaInterpreter(BaseInterpreter):
 
         self.log.debug("Interpreter flushing scratch...")
         self.backend.flush(SCRATCH)
+        self.tx_method = {
+            StandardTransaction: StandardQuery,
+            VoteTransaction: VoteQuery
+        }
 
     def interpret_transaction(self, tx: TransactionBase):
         """
@@ -36,16 +40,11 @@ class VanillaInterpreter(BaseInterpreter):
         """
         self.log.debug("Interpreter got tx: {}".format(tx))
 
-        if tx.__class__ == StandardTransaction:
-            self.interpret_std_tx(tx)
-        else:
+        results = None
+
+        try:
+            results = self.tx_method[tx](backend=self.backend).process_tx(tx)
+        except KeyError:
             self.log.error("Got Transaction of unkown type: {}".format(type(tx)))
 
-    def interpret_std_tx(self, tx: StandardTransaction):
-        self.log.debug("Interpreter got tx with data sender={}, receiver={}, amount={}"
-                       .format(tx.sender, tx.receiver, tx.amount))
-
-        tx, sender_changes, receiver_changes = StandardQuery(backend=self.backend).process_tx(tx)
-
-        if tx is None:
-            raise Exception("Standard Tx Error")
+        self.log.debug("Results of interpretation: {}", results)
