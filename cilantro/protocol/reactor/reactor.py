@@ -49,8 +49,7 @@ class CommandMeta(type):
         return clsobj
 
 
-class Command(metaclass=CommandMeta):
-    pass
+class Command(metaclass=CommandMeta): pass
 
 
 class AddSubCommand(Command):
@@ -114,6 +113,11 @@ class SendPubCommand(Command):
         assert url in zl.sockets[ZMQLoop.PUB], "URL {} not found in sockets {}".format(url, zl.sockets)
         zl.log.debug("Publishing data {} to url {}".format(data, url))
         zl.sockets[ZMQLoop.PUB][url][ZMQLoop.SOCKET].send(data)
+
+
+class AddDealer(Command): pass
+
+class AddRouter(Command): pass
 
 
 class ReactorCore(Thread):
@@ -197,19 +201,41 @@ class NetworkReactor:
         self.q.coro_put(ReactorCore.READY_SIG)
 
     def add_sub(self, callback='route', **kwargs):
+        """
+        Starts subscribing to 'url'.
+        Requires kwargs 'url' of subscriber (as a string)...callback is optional, and by default will forward incoming messages to the
+        meta router built into base node
+
+        TODO -- expiriment with binding multiple URLS on one socket. This will achieve same functionality, but may be
+        more efficient
+        """
         kwargs['callback'] = callback
         self.q.coro_put((AddSubCommand.__name__, kwargs))
 
     def remove_sub(self, **kwargs):
+        """
+        Requires kwargs 'url' of sub
+        """
         self.q.coro_put((RemoveSubCommand.__name__, kwargs))
 
     def pub(self, **kwargs):
+        """
+        Publish data 'data on socket connected to 'url'
+        Requires kwargs 'url' to publish on, as well as 'data' which is the binary data (type should be bytes) to publish
+        If reactor is not already set up to publish on 'url', this will be setup and the data will be published
+        """
         self.q.coro_put((SendPubCommand.__name__, kwargs))
 
     def add_pub(self, **kwargs):
+        """
+        Configure the reactor to publish on 'url'.
+        """
         self.q.coro_put((AddPubCommand.__name__, kwargs))
 
     def remove_pub(self, **kwargs):
+        """
+        Close the publishing socket on 'url'
+        """
         self.q.coro_put((RemovePubCommand.__name__, kwargs))
 
     def prove_im_nonblocking(self):

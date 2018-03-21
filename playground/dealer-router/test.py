@@ -15,9 +15,5 @@ def main():
         publisher.send_multipart([b"B", b"We would like to see this"])
         time.sleep(1)
 
-    # We never get here but clean up anyhow
-    publisher.close()
-    context.term()
-
 if __name__ == "__main__":
     main()
