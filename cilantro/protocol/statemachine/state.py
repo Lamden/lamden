@@ -49,10 +49,29 @@ class StateMeta(type):
                 setattr(clsobj, name, debug_transition(name)(val))
 
         # Configure @receiver registry
-        clsobj._receivers = {r._recv: r for r in clsdict.values() if hasattr(r, '_recv')}
-        # print("_receivers: ", clsobj._receivers)
+
+        clsobj._receivers = {}
+        for r in (r for r in clsdict.values() if hasattr(r, '_recv')):
+            clsobj._receivers[r._recv] = r
+            subclasses = StateMeta.get_subclasses(r._recv)
+            for sub in filter(lambda k: k not in clsobj._receivers, subclasses):
+                clsobj._receivers[sub] = r
+
+        print("{} has _receivers: {}".format(clsobj.__name__, clsobj._receivers))
 
         return clsobj
+
+    @staticmethod
+    def get_subclasses(obj_cls, subs=None) -> list:
+        if subs is None:
+            subs = []
+
+        new_subs = obj_cls.__subclasses__()
+        subs.extend(new_subs)
+        for sub in new_subs:
+            subs.extend(StateMeta.get_subclasses(sub, subs=subs))
+        return subs
+
 
 
 class State(metaclass=StateMeta):

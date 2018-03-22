@@ -22,8 +22,7 @@ from cilantro.logger import get_logger
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, receive
 from cilantro.protocol.structures import MerkleTree
-from cilantro.messages import StandardTransaction, VoteTransaction, BlockContender, Envelope, MerkleSignature
-# TODO -- test receive decorator with inheritance.. shud work cuz the child recv will overwrite the parent recv key in registry
+from cilantro.messages import StandardTransaction, TransactionBase, BlockContender, Envelope, MerkleSignature
 
 from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.protocol.wallets import ED25519Wallet
@@ -39,14 +38,8 @@ class DelegateBaseState(State):
 
     def run(self): pass
 
-    @receive(StandardTransaction)
-    def recv_tx(self, tx: StandardTransaction):
-        self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
-        self.parent.pending_txs.append(tx)
-        self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
-
-    @receive(VoteTransaction)
-    def recv_vote(self, tx: VoteTransaction):
+    @receive(TransactionBase)
+    def recv_tx(self, tx: TransactionBase):
         self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
         self.parent.pending_txs.append(tx)
         self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
@@ -94,15 +87,11 @@ class DelegateInterpretState(DelegateBaseState):
         if next_state is not DelegateConsensusState:
             self.parent.queue.flush()  # TODO -- put proper api call here
 
-    @receive(StandardTransaction)
-    def recv_tx(self, tx: StandardTransaction):
+    @receive(TransactionBase)
+    def recv_tx(self, tx: TransactionBase):
         self.interpret_tx(tx=tx)
 
-    @receive(VoteTransaction)
-    def recv_vote(self, tx: VoteTransaction):
-        self.interpret_tx(tx=tx)
-
-    def interpret_tx(self, tx: StandardTransaction):
+    def interpret_tx(self, tx: TransactionBase):
         try:
             self.log.debug("Interpreting standard tx")
             self.interpreter.interpret_transaction(tx)
