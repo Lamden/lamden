@@ -4,7 +4,7 @@ from cilantro.messages import TransactionBase, StandardTransaction, VoteTransact
 from cilantro.logger import get_logger
 
 # from cilantro.nodes.delegate.db import *
-from cilantro.db.delegate import LevelDBBackend, StandardQuery, SCRATCH, VoteQuery, SwapQuery
+from cilantro.protocol.interpreters.queries import LevelDBBackend, StandardQuery, SCRATCH, VoteQuery, SwapQuery
 
 
 class VanillaInterpreter(BaseInterpreter):

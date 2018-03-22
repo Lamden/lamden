@@ -5,6 +5,7 @@ import hashlib
 import time
 from cilantro.db.delegate.backend import *
 
+
 class StateQuery:
     def __init__(self, table_name, backend):
         self.table_name = table_name
