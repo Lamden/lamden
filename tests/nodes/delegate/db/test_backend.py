@@ -123,6 +123,8 @@ class TestLevelDBBackend(TestCase):
         txs = tq.flush()
         txs = [tx[1] for tx in txs]
 
+        print(txs)
+
         self.assertCountEqual([tx_1, tx_2], txs)
         self.assertNotIn(tx_3, txs)
         self.assertNotIn(tx_4, txs)

@@ -70,7 +70,7 @@ class LevelDBBackend(Backend):
     def flush(self, table: bytes, return_results=True):
         results = []
         db = plyvel.DB(self.path, create_if_missing=True)
-        for k, v in db.iterator(start=table):
+        for k, v in db.iterator(prefix=table):
             if return_results:
                 results.append((k, v))
             db.delete(k)
