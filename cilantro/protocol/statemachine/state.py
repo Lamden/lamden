@@ -6,13 +6,21 @@ ENTER, EXIT, RUN = 'enter', 'exit', 'run'
 DEBUG_FUNCS = (ENTER, EXIT, RUN)
 
 
-def receive(msg_type):
+def recv(msg_type):
     """
     Decorator for dynamically routing incoming ZMQ messages to handles in Node's state
     """
     # TODO -- add validation to make sure @receive calls are receiving the correct message type?
     def decorate(func):
         func._recv = msg_type
+        return func
+    return decorate
+
+
+# TODO -- possibly add another arg for replying to different senders in different ways
+def recv_req(msg_type):
+    def decorate(func):
+        func._reply = msg_type
         return func
     return decorate
 
@@ -45,12 +53,11 @@ class StateMeta(type):
         # Add debug decorator to run/exit/enter methods
         for name, val in vars(clsobj).items():
             if callable(val) and name in DEBUG_FUNCS:
-                # print("Setting up debug logging for name {} with val {}".format(name, val))
                 setattr(clsobj, name, debug_transition(name)(val))
 
-        # Configure @receiver registry
+        # Configure @recv_request and @recv_ registry
         clsobj._receivers = {r._recv: r for r in clsdict.values() if hasattr(r, '_recv')}
-        # print("_receivers: ", clsobj._receivers)
+        clsobj._repliers = {r._reply: r for r in clsdict.values() if hasattr(r, '_reply')}
 
         return clsobj
 

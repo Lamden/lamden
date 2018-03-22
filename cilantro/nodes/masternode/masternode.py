@@ -8,7 +8,7 @@
 '''
 from cilantro import Constants
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, receive
+from cilantro.protocol.statemachine import State, recv
 from cilantro.messages import StandardTransaction, BlockContender, Envelope, VoteTransaction
 from aiohttp import web
 import asyncio
@@ -18,7 +18,7 @@ class MNBaseState(State):
     def exit(self, next_state): pass
     def run(self): pass
 
-    @receive(BlockContender)
+    @recv(BlockContender)
     def recv_block(self, block: BlockContender):
         self.log.error("Current state not configured to handle block contender: {}".format(block))
 
@@ -58,17 +58,17 @@ class MNRunState(MNBaseState):
         # Or is it blocking? ...
         # And if its blocking that means we can't receive on ZMQ sockets right?
 
-    @receive(StandardTransaction)
+    @recv(StandardTransaction)
     def recv_tx(self, tx: StandardTransaction):
         self.parent.reactor.pub(url=self.parent.url, data=Envelope.create(tx).serialize())
         return web.Response(text="Successfully published transaction: {}".format(tx._data))
 
-    @receive(VoteTransaction)
+    @recv(VoteTransaction)
     def recv_vote(self, tx: StandardTransaction):
         self.parent.reactor.pub(url=self.parent.url, data=Envelope.create(tx).serialize())
         return web.Response(text="Successfully published transaction: {}".format(tx._data))
 
-    @receive(BlockContender)
+    @recv(BlockContender)
     def recv_block(self, block: BlockContender):
         self.log.error("Masternode received block contender: {}".format(block))
         # TODO -- alg to request leaves from delegates and cryptographically verify data

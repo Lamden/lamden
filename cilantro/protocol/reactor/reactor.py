@@ -9,12 +9,17 @@ import time
 from collections import defaultdict
 
 
+"""
+TODO -- should we be using loop.call_soon_threadsafe(fut.cancel) instead of directly calling cancel()??
+see https://docs.python.org/3/library/asyncio-dev.html
+"""
+
 class ZMQLoop:
-    PUB, SUB, REQ = range(3)
-    SOCKET, FUTURE = range(2)
+    PUB, SUB, DEAL, ROUTE = range(4)
+    SOCKET, FUTURE, ID = range(3)
 
     def __init__(self, parent):
-        self.log = get_logger("Reactor.ZMQLoop")
+        self.log = get_logger("{}.Reactor".format(type(parent).__name__))
         self.parent = parent
 
         # self.loop = asyncio.new_event_loop()
@@ -23,19 +28,28 @@ class ZMQLoop:
 
         self.sockets = defaultdict(dict)
         self.ctx = zmq.asyncio.Context()
-        self.log.critical("CREATED WITH ZMQ CONTEXT: {}".format(self.ctx))
 
     async def receive(self, socket, url, callback):
-        self.log.warning("--- Starting Subscribing To URL: {} ---".format(url))
+        self.log.warning("--- Started Receiving on URL: {} with callback {} ---".format(url, callback))
         while True:
-            self.log.debug("({}) zmqloop waiting for msg...".format(url))
+            self.log.debug("({}) zmqloop recv waiting for msg...".format(url))
             msg = await socket.recv()
-            self.log.debug("({}) zmqloop got msg: {}".format(url, msg))
+            self.log.debug("({}) zmqloop recv got msg: {}".format(url, msg))
 
             assert hasattr(self.parent, callback), "Callback {} not found on parent object {}"\
                 .format(callback, self.parent)
             getattr(self.parent, callback)(msg)
 
+    async def receive_multipart(self, socket, url, callback):
+        self.log.warning("--- Starting Receiving Multipart To URL: {} with callback {} ---".format(url, callback))
+        while True:
+            self.log.debug("({}) zmqloop recv_multipart waiting for msg...".format(url))
+            id, msg = await socket.recv_multipart()
+            self.log.debug("({}) zmqloop recv_multipart got msg: {} with id: {}".format(url, msg, id))
+
+            assert hasattr(self.parent, callback), "Callback {} not found on parent object {}"\
+                .format(callback, self.parent)
+            getattr(self.parent, callback)(msg, url, id)
 
 class CommandMeta(type):
     def __new__(cls, clsname, bases, clsdict):
@@ -49,7 +63,8 @@ class CommandMeta(type):
         return clsobj
 
 
-class Command(metaclass=CommandMeta): pass
+class Command(metaclass=CommandMeta):
+    pass
 
 
 class AddSubCommand(Command):
@@ -59,7 +74,7 @@ class AddSubCommand(Command):
             "Subscriber already exists for that socket (sockets={})".format(zl.sockets)
 
         socket = zl.ctx.socket(socket_type=zmq.SUB)
-        cls.log.debug("created socket: {}".format(socket))
+        cls.log.debug("created socket {} at url {}".format(socket, url))
         socket.setsockopt(zmq.SUBSCRIBE, b'')
         socket.connect(url)
         future = asyncio.ensure_future(zl.receive(socket, url, callback))
@@ -115,9 +130,51 @@ class SendPubCommand(Command):
         zl.sockets[ZMQLoop.PUB][url][ZMQLoop.SOCKET].send(data)
 
 
-class AddDealer(Command): pass
+class AddDealerCommand(Command):
+    @classmethod
+    def execute(cls, zl: ZMQLoop, url, callback, id):
+        # TODO -- assert we havnt added this dealer already
+        socket = zl.ctx.socket(socket_type=zmq.DEALER)
+        socket.identity = id.encode('ascii')
+        socket.connect(url)
+        cls.log.debug("Dealer socket {} created with url {} and identity {}".format(socket, url, id))
+        future = asyncio.ensure_future(zl.receive(socket, url, callback))
 
-class AddRouter(Command): pass
+        zl.sockets[ZMQLoop.DEAL][url] = {}
+        zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET] = socket
+        zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.FUTURE] = future
+        zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.ID] = id
+
+
+class AddRouterCommand(Command):
+    @classmethod
+    def execute(cls, zl: ZMQLoop, url, callback):
+        socket = zl.ctx.socket(socket_type=zmq.ROUTER)
+        socket.bind(url)
+        cls.log.debug("Router socket {} created at url {}".format(socket, url))
+        future = asyncio.ensure_future(zl.receive_multipart(socket, url, callback))
+
+        zl.sockets[ZMQLoop.ROUTE][url] = {}
+        zl.sockets[ZMQLoop.ROUTE][url][ZMQLoop.SOCKET] = socket
+        zl.sockets[ZMQLoop.ROUTE][url][ZMQLoop.FUTURE] = future
+
+
+class RequestCommand(Command):
+    @classmethod
+    def execute(cls, zl: ZMQLoop, url, data):
+        assert url in zl.sockets[ZMQLoop.DEAL],\
+            'Tried to make a request to url {} that was not in dealer sockets {}'.format(url, zl.sockets[ZMQLoop.DEAL])
+        cls.log.debug("Sending request with data {} to url {}".format(data, url))
+        zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET].send(data)
+
+
+class ReplyCommand(Command):
+    @classmethod
+    def execute(cls, zl: ZMQLoop, url, id, data):
+        assert url in zl.sockets[ZMQLoop.ROUTE], 'Cannot reply to url {} that is not in router sockets {}'\
+            .format(url, zl.sockets[ZMQLoop.ROUTE])
+        cls.log.debug("Replying to url {} with id {} and data {}".format(url, id, data))
+        zl.sockets[ZMQLoop.ROUTE][url][ZMQLoop.SOCKET].send_multipart([id, data])
 
 
 class ReactorCore(Thread):
@@ -126,7 +183,7 @@ class ReactorCore(Thread):
 
     def __init__(self, queue, parent):
         super().__init__()
-        self.log = get_logger("Reactor")
+        self.log = get_logger("{}.Reactor".format(type(parent).__name__))
 
         # Comment out below for more granularity in debugging
         # self.log.setLevel(logging.INFO)
@@ -237,6 +294,33 @@ class NetworkReactor:
         Close the publishing socket on 'url'
         """
         self.q.coro_put((RemovePubCommand.__name__, kwargs))
+
+    def add_dealer(self, callback='route', **kwargs):
+        """
+        needs 'url', 'callback', and 'id
+        """
+        kwargs['callback'] = callback
+        self.q.coro_put((AddDealerCommand.__name__, kwargs))
+
+    def add_router(self, callback='route_req', **kwargs):
+        """
+        needs 'url', 'callback'
+        """
+        kwargs['callback'] = callback
+        self.q.coro_put((AddSubCommand.__name__, kwargs))
+        self.q.coro_put((AddRouterCommand.__name__, kwargs))
+
+    def request(self, **kwargs):
+        """
+        'url' and 'data' ... must add_dealer first with the url
+        """
+        self.q.coro_put((RequestCommand.__name__, kwargs))
+
+    def reply(self, **kwargs):
+        """
+        'url', 'data', and 'id' ... must add_router first with url
+        """
+        self.q.coro_put((ReplyCommand.__name__, kwargs))
 
     def prove_im_nonblocking(self):
         self.log.debug("xD")

@@ -20,7 +20,7 @@
 from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, receive
+from cilantro.protocol.statemachine import State, recv
 from cilantro.protocol.structures import MerkleTree
 from cilantro.messages import StandardTransaction, VoteTransaction, BlockContender, Envelope, MerkleSignature
 
@@ -38,19 +38,19 @@ class DelegateBaseState(State):
 
     def run(self): pass
 
-    @receive(StandardTransaction)
+    @recv(StandardTransaction)
     def recv_tx(self, tx: StandardTransaction):
         self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
         self.parent.pending_txs.append(tx)
         self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
 
-    @receive(VoteTransaction)
+    @recv(VoteTransaction)
     def recv_vote(self, tx: VoteTransaction):
         self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
         self.parent.pending_txs.append(tx)
         self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
 
-    @receive(MerkleSignature)
+    @recv(MerkleSignature)
     def recv_sig(self, sig: MerkleSignature):
         self.log.debug("Received signature with data {} but not in consensus, adding it to queue"
                        .format(sig._data))
@@ -93,11 +93,11 @@ class DelegateInterpretState(DelegateBaseState):
         if next_state is not DelegateConsensusState:
             self.parent.queue.flush()  # TODO -- put proper api call here
 
-    @receive(StandardTransaction)
+    @recv(StandardTransaction)
     def recv_tx(self, tx: StandardTransaction):
         self.interpret_tx(tx=tx)
 
-    @receive(VoteTransaction)
+    @recv(VoteTransaction)
     def recv_vote(self, tx: VoteTransaction):
         self.interpret_tx(tx=tx)
 
@@ -180,7 +180,7 @@ class DelegateConsensusState(DelegateBaseState):
             # TODO -- successful consensus logic
             # once update confirmed from mn, transition to update state
 
-    @receive(MerkleSignature)
+    @recv(MerkleSignature)
     def recv_sig(self, sig: MerkleSignature):
         if self.validate_sig(sig):
             self.signatures.append(sig)
@@ -188,6 +188,12 @@ class DelegateConsensusState(DelegateBaseState):
 
 
 class DelegateUpdateState(DelegateBaseState): pass
+
+
+
+async do_after(func, time):
+    await asyncio.sleep(time)
+    func()
 
 
 class Delegate(NodeBase):

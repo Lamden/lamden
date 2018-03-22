@@ -21,7 +21,7 @@ class ClientTask(threading.Thread):
     def run(self):
         context = zmq.Context()
         socket = context.socket(zmq.DEALER)
-        identity = u'worker-%d' % self.id
+        identity = u'client-task-%d' % self.id
         socket.identity = identity.encode('ascii')
         socket.connect('tcp://localhost:5570')
         print('Client %s started' % (identity))
@@ -32,6 +32,7 @@ class ClientTask(threading.Thread):
             reqs = reqs + 1
             print('Req #%d sent..' % (reqs))
             socket.send_string(u'request #%d' % (reqs))
+            socket.send_string(u'anotha one')
             for i in range(5):
                 sockets = dict(poll.poll(1000))
                 if socket in sockets:
@@ -54,13 +55,24 @@ class ServerTask(threading.Thread):
         backend = context.socket(zmq.DEALER)
         backend.bind('inproc://backend')
 
-        workers = []
-        for i in range(5):
-            worker = ServerWorker(context)
-            worker.start()
-            workers.append(worker)
 
-        zmq.proxy(frontend, backend)
+        ident, msg = frontend.recv_multipart()
+        tprint('Server received %s from %s' % (msg, ident))
+
+        # replies = randint(0,4)
+        replies = 1
+        for i in range(replies):
+            reply = "WORKER REPLYasdfadsfadfsasdfING TO REQUEST: {}".format(msg.decode())
+            time.sleep(1. / (randint(1, 10)))
+            frontend.send_multipart([ident, reply.encode()])
+        # workers = []
+        # for i in range(5):
+        #     worker = ServerWorker(context)
+        #     worker.start()
+        #     workers.append(worker)
+
+
+        # zmq.proxy(frontend, backend)
 
         frontend.close()
         backend.close()
@@ -79,10 +91,12 @@ class ServerWorker(threading.Thread):
         while True:
             ident, msg = worker.recv_multipart()
             tprint('Worker received %s from %s' % (msg, ident))
-            replies = randint(0,4)
+            # replies = randint(0,4)
+            replies = 1
             for i in range(replies):
+                reply = "WORKER REPLYING TO REQUEST: {}".format(msg.decode())
                 time.sleep(1. / (randint(1,10)))
-                worker.send_multipart([ident, msg])
+                worker.send_multipart([ident, reply.encode()])
 
         worker.close()
 

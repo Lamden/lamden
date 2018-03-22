@@ -1,19 +1,41 @@
+from cilantro.protocol.reactor import NetworkReactor
+from cilantro.logger import get_logger
 import time
-import zmq
 
-def main():
-    """main method"""
+URL = 'tcp://127.0.0.1:3530'
 
-    # Prepare our context and publisher
-    context   = zmq.Context()
-    publisher = context.socket(zmq.PUB)
-    publisher.bind("tcp://*:5563")
 
-    while True:
-        # Write two messages, each with an envelope and content
-        publisher.send_multipart([b"A", b"We don't want to see this"])
-        publisher.send_multipart([b"B", b"We would like to see this"])
-        time.sleep(1)
+class Requester:
+    _ID = 'ASS'
+    def __init__(self):
+        self.reactor = NetworkReactor(self)
+        self.log = get_logger("Requester")
+        self.reactor.add_dealer(url=URL, callback='handle_reply', id=self._ID)
+        self.reactor.notify_ready()
+
+    def handle_reply(self, rep):
+        self.log.critical("Got reply: {}".format(rep))
+
+    def send_req(self, req_str):
+        self.reactor.request(url=URL, data=req_str.encode())
+
+
+class Replier:
+    def __init__(self):
+        self.reactor = NetworkReactor(self)
+        self.log = get_logger("Replier")
+        self.reactor.add_router(url=URL, callback='handle_request')
+        self.reactor.notify_ready()
+
+    def handle_request(self, req, id):
+        self.log.critical("Got request: {} with sender id: {}".format(req, id))
+        self.reactor.reply(url=URL, id=id, data=b'heres your reply my guy')
+
 
 if __name__ == "__main__":
-    main()
+    requester = Requester()
+    replier = Replier()
+
+    time.sleep(1)
+
+    requester.send_req("racks on racks on racks")
