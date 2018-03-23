@@ -19,7 +19,7 @@ class RedeemTransaction(TransactionBase):
 
     @property
     def secret(self):
-        return self._data.payload.secret.decode()
+        return self._data.payload.secret
 
 
 class RedeemTransactionBuilder:

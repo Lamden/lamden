@@ -1,11 +1,11 @@
 from unittest import TestCase
-from cilantro.db.delegate.backend import *
 from cilantro.protocol.interpreters.queries import *
 from cilantro.messages import StandardTransactionBuilder, VoteTransactionBuilder, SwapTransactionBuilder, RedeemTransactionBuilder
 from cilantro.utils import Encoder as E
 from cilantro import Constants
 import secrets
 import hashlib
+
 
 class TestQueries(TestCase):
 
@@ -155,4 +155,59 @@ class TestQueries(TestCase):
         self.assertEqual(E.int(expiration), swap_tx.expiration)
 
     def test_redeem_process_tx(self):
-        pass
+        secret = secrets.token_bytes(64)
+
+        h = hashlib.sha3_256()
+        h.update(secret)
+        lock = h.digest()
+
+        sender_s, sender_v = Constants.Protocol.Wallets.new()
+        receiver_s, receiver_v = Constants.Protocol.Wallets.new()
+
+        swap_q = SwapQuery()
+        swap_tx = SwapTransactionBuilder.create_tx(sender_s, sender_v, receiver_v, 123, lock, int(time.time()) + 10000)
+
+        b = LevelDBBackend()
+        b.set(BALANCES, swap_tx.sender.encode(), SwapQuery.encode_balance(swap_tx.amount))
+
+        swap_q.process_tx(swap_tx)
+
+        redeem_q = RedeemQuery()
+        redeem_tx = RedeemTransactionBuilder.create_tx(receiver_s, receiver_v, secret)
+
+        amount, _ = redeem_q.get_swap(receiver_v, lock)
+
+        tx, sender_scratch, amount_scratch, expiration_scratch = redeem_q.process_tx(redeem_tx)
+
+        self.assertEqual(RedeemQuery().encode_balance(123), amount)
+        self.assertEqual(expiration_scratch[-1], None)
+
+    def test_redeem_process_tx_expires(self):
+        secret = secrets.token_bytes(64)
+
+        h = hashlib.sha3_256()
+        h.update(secret)
+        lock = h.digest()
+
+        sender_s, sender_v = Constants.Protocol.Wallets.new()
+        receiver_s, receiver_v = Constants.Protocol.Wallets.new()
+
+        swap_q = SwapQuery()
+        swap_tx = SwapTransactionBuilder.create_tx(sender_s, sender_v, receiver_v, 123, lock, int(time.time()))
+
+        b = LevelDBBackend()
+        b.set(BALANCES, swap_tx.sender.encode(), SwapQuery.encode_balance(swap_tx.amount))
+
+        swap_q.process_tx(swap_tx)
+
+        redeem_q = RedeemQuery()
+        redeem_tx = RedeemTransactionBuilder.create_tx(receiver_s, receiver_v, secret)
+
+        time.sleep(1)
+
+        tx, sender_scratch, amount_scratch, expiration_scratch = redeem_q.process_tx(redeem_tx)
+
+        self.assertEqual(tx, None)
+        self.assertEqual(sender_scratch, None)
+        self.assertEqual(amount_scratch, None)
+        self.assertEqual(expiration_scratch, None)

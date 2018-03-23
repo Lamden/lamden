@@ -45,6 +45,8 @@ class LevelDBBackend(Backend):
 
     def set(self, table: bytes, key: bytes, value: bytes):
         db = plyvel.DB(self.path, create_if_missing=True)
+        if value is None:
+            value = b''
         r = db.put(SEPARATOR.join([table, key]), value)
         db.close()
         return r

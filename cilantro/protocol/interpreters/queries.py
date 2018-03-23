@@ -168,13 +168,15 @@ class RedeemQuery(SwapQuery):
 
         amount, expiration = self.get_swap(tx.sender, hashlock)
 
+        print(amount, expiration)
+
         now = int(time.time())
 
-        if amount is not None and expiration >= now:
+        if amount is not None and E.int(expiration) >= now:
             sender_balance = self.get_balance(tx.sender)
 
             # add amount to sender balance
-            new_sender_balance = sender_balance + amount
+            new_sender_balance = sender_balance + int_to_decimal(E.int(amount))
             new_sender_balance = self.encode_balance(new_sender_balance)
 
             self.backend.set(self.scratch_table, tx.sender.encode(), new_sender_balance)
