@@ -190,12 +190,6 @@ class DelegateConsensusState(DelegateBaseState):
 class DelegateUpdateState(DelegateBaseState): pass
 
 
-
-async do_after(func, time):
-    await asyncio.sleep(time)
-    func()
-
-
 class Delegate(NodeBase):
     _INIT_STATE = DelegateBootState
     _STATES = [DelegateBootState, DelegateInterpretState, DelegateConsensusState, DelegateUpdateState]

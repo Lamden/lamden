@@ -50,13 +50,14 @@ class NodeBase(StateMachine):
             return
 
         try:
-            reply = self.state._repliers[type(msg)](self.state, msg, id)
-            self.log.debug("Replying to id {} with data {}".format(id, reply))
-            if reply is None:
-                self.log.debug("No reply returned for msg {}".format(msg))
-            else:
-                assert type(reply) is bytes, "Must return bytes from a @reply function"
-                self.reactor.reply(url=url, id=id, data=reply)
+            self.state._repliers[type(msg)](self.state, msg, id)
+            # reply = self.state._repliers[type(msg)](self.state, msg, id)
+            # self.log.debug("Replying to id {} with data {}".format(id, reply))
+            # if reply is None:
+            #     self.log.debug("No reply returned for msg {}".format(msg))
+            # else:
+            #     assert type(reply) is bytes, "Must return bytes from a @reply function"
+            #     self.reactor.reply(url=url, id=id, data=reply)
         except Exception as e:
             self.log.error("ERROR REPLYING TO MSG ... {}".format(e))
 

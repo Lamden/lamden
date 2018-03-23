@@ -12,19 +12,21 @@ from collections import defaultdict
 """
 TODO -- should we be using loop.call_soon_threadsafe(fut.cancel) instead of directly calling cancel()??
 see https://docs.python.org/3/library/asyncio-dev.html
+
+TODO -- set socket lingering so pending/queued messages are dealloc's when we close a socket or stop zmq context
+using set_socketops and ZMQ_LINGER
 """
 
 class ZMQLoop:
     PUB, SUB, DEAL, ROUTE = range(4)
     SOCKET, FUTURE, ID = range(3)
 
-    def __init__(self, parent):
+    def __init__(self, parent, loop):
         self.log = get_logger("{}.Reactor".format(type(parent).__name__))
         self.parent = parent
 
-        # self.loop = asyncio.new_event_loop()
-        self.loop = asyncio.get_event_loop()
-        asyncio.set_event_loop(self.loop)
+        self.loop = loop
+        asyncio.set_event_loop(loop)
 
         self.sockets = defaultdict(dict)
         self.ctx = zmq.asyncio.Context()
@@ -50,6 +52,7 @@ class ZMQLoop:
             assert hasattr(self.parent, callback), "Callback {} not found on parent object {}"\
                 .format(callback, self.parent)
             getattr(self.parent, callback)(msg, url, id)
+
 
 class CommandMeta(type):
     def __new__(cls, clsname, bases, clsdict):
@@ -161,11 +164,12 @@ class AddRouterCommand(Command):
 
 class RequestCommand(Command):
     @classmethod
-    def execute(cls, zl: ZMQLoop, url, data):
+    def execute(cls, zl: ZMQLoop, url, data, timeout):
         assert url in zl.sockets[ZMQLoop.DEAL],\
             'Tried to make a request to url {} that was not in dealer sockets {}'.format(url, zl.sockets[ZMQLoop.DEAL])
-        cls.log.debug("Sending request with data {} to url {}".format(data, url))
-        zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET].send(data)
+        cls.log.debug("Sending request with data {} to url {} with timeout {}".format(data, url, timeout))
+        # zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET].send(data)
+        zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET].send_multipart([data])
 
 
 class ReplyCommand(Command):
@@ -201,15 +205,15 @@ class ReactorCore(Thread):
         super().run()
         self.log.debug("ReactorCore Run started")
         asyncio.set_event_loop(self.loop)
-        self.zmq_loop = ZMQLoop(parent=self.parent)
+        self.zmq_loop = ZMQLoop(parent=self.parent, loop=self.loop)
         self.loop.run_until_complete(asyncio.gather(self.read_queue(),))
 
     async def read_queue(self):
         self.log.warning("-- Starting Queue Listening --")
         while True:
-            self.log.debug("Reading queue...")
+            # self.log.debug("Reading queue...")
             cmd = await self.queue.coro_get()
-            self.log.debug("Got cmd from queue: {}".format(cmd))
+            # self.log.debug("Got cmd from queue: {}".format(cmd))
             self.process_cmd(cmd)
 
     def process_cmd(self, cmd):
@@ -263,7 +267,7 @@ class NetworkReactor:
         Requires kwargs 'url' of subscriber (as a string)...callback is optional, and by default will forward incoming messages to the
         meta router built into base node
 
-        TODO -- expiriment with binding multiple URLS on one socket. This will achieve same functionality, but may be
+        TODO -- experiment with binding multiple URLS on one socket. This will achieve same functionality, but may be
         more efficient
         """
         kwargs['callback'] = callback
@@ -310,10 +314,12 @@ class NetworkReactor:
         self.q.coro_put((AddSubCommand.__name__, kwargs))
         self.q.coro_put((AddRouterCommand.__name__, kwargs))
 
-    def request(self, **kwargs):
+    def request(self, timeout=0, **kwargs):
         """
-        'url' and 'data' ... must add_dealer first with the url
+        'url', 'data', 'timeout' ... must add_dealer first with the url
+        Timeout is a int in miliseconds
         """
+        kwargs['timeout'] = timeout
         self.q.coro_put((RequestCommand.__name__, kwargs))
 
     def reply(self, **kwargs):

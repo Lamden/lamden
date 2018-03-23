@@ -70,7 +70,9 @@ class StuRunState(State):
     def reply_poke(self, poke: PokeRequest, id):
         self.log.critical("Stu replying to poke <{}> with id {}".format(poke, id))
         reply = PokeReply.from_data("yoyo this is my reply to {}".format(poke))
-        return Envelope.create(reply).serialize()
+        env = Envelope.create(reply).serialize()
+        self.parent.reactor.reply(url=URL, id=id, data=env)
+        return
 
 
 class Davis(NodeBase):
@@ -80,7 +82,6 @@ class Davis(NodeBase):
 class Stu(NodeBase):
     _STATES =  [StuBootState, StuRunState]
     _INIT_STATE = StuBootState
-
 
 
 if __name__ == "__main__":

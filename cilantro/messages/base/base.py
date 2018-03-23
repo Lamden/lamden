@@ -7,7 +7,7 @@ class MessageMeta(type):
         #print("MessageMeta NEW called /w class ", clsname)
         clsobj = super().__new__(cls, clsname, bases, clsdict)
         if not hasattr(clsobj, 'registry'):
-            print("Creating Registry")
+            # print("Creating Registry")
             clsobj.registry = {}
         #print("Adding to registry: ", clsobj)
 
