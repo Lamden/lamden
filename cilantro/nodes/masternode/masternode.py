@@ -9,7 +9,7 @@
 from cilantro import Constants
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, receive
-from cilantro.messages import StandardTransaction, BlockContender, Envelope, VoteTransaction
+from cilantro.messages import BlockContender, Envelope, TransactionBase
 from aiohttp import web
 import asyncio
 
@@ -58,13 +58,8 @@ class MNRunState(MNBaseState):
         # Or is it blocking? ...
         # And if its blocking that means we can't receive on ZMQ sockets right?
 
-    @receive(StandardTransaction)
-    def recv_tx(self, tx: StandardTransaction):
-        self.parent.reactor.pub(url=self.parent.url, data=Envelope.create(tx).serialize())
-        return web.Response(text="Successfully published transaction: {}".format(tx._data))
-
-    @receive(VoteTransaction)
-    def recv_vote(self, tx: StandardTransaction):
+    @receive(TransactionBase)
+    def recv_tx(self, tx: TransactionBase):
         self.parent.reactor.pub(url=self.parent.url, data=Envelope.create(tx).serialize())
         return web.Response(text="Successfully published transaction: {}".format(tx._data))
 
