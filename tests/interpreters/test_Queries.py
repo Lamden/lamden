@@ -1,14 +1,13 @@
 from unittest import TestCase
 from cilantro.db.delegate.backend import *
 from cilantro.protocol.interpreters.queries import *
-from cilantro.messages import StandardTransaction, StandardTransactionBuilder
+from cilantro.messages import StandardTransactionBuilder, VoteTransactionBuilder, SwapTransactionBuilder, RedeemTransactionBuilder
 from cilantro.utils import Encoder as E
+from cilantro import Constants
 import secrets
+import hashlib
 
 class TestQueries(TestCase):
-    def mint_coins(self, address, coins):
-        b = LevelDBBackend()
-        b.set(BALANCES, address.encode(), 0)
 
     def test_state_query_string(self):
         t = b'some_table'
@@ -79,3 +78,81 @@ class TestQueries(TestCase):
         self.assertEqual(tx, None)
         self.assertEqual(sender, None)
         self.assertEqual(receiver, None)
+
+    def test_vote_process_tx(self):
+        vote_q = VoteQuery()
+        vote_tx = VoteTransactionBuilder.random_tx()
+
+        tx, scratch = vote_q.process_tx(vote_tx)
+
+        self.assertEqual(scratch[1], vote_tx.policy.encode() + SEPARATOR + vote_tx.sender.encode())
+        self.assertEqual(scratch[2], vote_tx.choice.encode())
+
+    def test_vote_fail(self):
+        vote_q = VoteQuery()
+
+        tx, scratch = vote_q.process_tx(b'')
+
+        self.assertEqual(tx, None)
+        self.assertEqual(scratch, None)
+
+    def test_swap_amount_key(self):
+        a = secrets.token_bytes(16)
+        h = secrets.token_bytes(16)
+
+        self.assertEqual(SwapQuery.amount_key(a, h), a + SEPARATOR + h + SEPARATOR + b'amount')
+
+    def test_swap_expiration_key(self):
+        a = secrets.token_bytes(16)
+        h = secrets.token_bytes(16)
+
+        self.assertEqual(SwapQuery.expiration_key(a, h), a + SEPARATOR + h + SEPARATOR + b'expiration')
+
+    def test_swap_process_tx(self):
+        swap_q = SwapQuery()
+        swap_tx = SwapTransactionBuilder.random_tx()
+
+        b = LevelDBBackend()
+        b.set(BALANCES, swap_tx.sender.encode(), SwapQuery.encode_balance(swap_tx.amount))
+
+        swap_q.process_tx(swap_tx)
+
+        # test that the changes have been made to scratch
+        new_sender_value = b.get(SEPARATOR.join([SCRATCH, BALANCES]), swap_tx.sender.encode())
+        new_receiver_value = b.get(SEPARATOR.join([SCRATCH, SWAPS]), swap_q.amount_key(swap_tx.receiver.encode(), swap_tx.hashlock))
+        expiration_date = b.get(SEPARATOR.join([SCRATCH, SWAPS]), swap_q.expiration_key(swap_tx.receiver.encode(), swap_tx.hashlock))
+
+        new_sender_value = E.int(new_sender_value)
+        new_receiver_value = int_to_decimal(E.int(new_receiver_value))
+        expiration_date = E.int(expiration_date)
+
+        self.assertEqual(new_sender_value, 0)
+        self.assertEqual(new_receiver_value, swap_tx.amount)
+        self.assertEqual(expiration_date, swap_tx.expiration)
+
+    def test_redeem_get_swap(self):
+        secret = secrets.token_bytes(64)
+
+        h = hashlib.sha3_256()
+        h.update(secret)
+        lock = h.digest()
+
+        sender_s, sender_v = Constants.Protocol.Wallets.new()
+        receiver_s, receiver_v = Constants.Protocol.Wallets.new()
+
+        swap_q = SwapQuery()
+        swap_tx = SwapTransactionBuilder.create_tx(sender_s, sender_v, receiver_v, 123, lock, int(time.time()) + 10000)
+
+        b = LevelDBBackend()
+        b.set(BALANCES, swap_tx.sender.encode(), SwapQuery.encode_balance(swap_tx.amount))
+
+        swap_q.process_tx(swap_tx)
+
+        redeem_q = RedeemQuery()
+        amount, expiration = redeem_q.get_swap(receiver_v, lock)
+
+        self.assertEqual(amount, SwapQuery.encode_balance(swap_tx.amount))
+        self.assertEqual(E.int(expiration), swap_tx.expiration)
+
+    def test_redeem_process_tx(self):
+        pass

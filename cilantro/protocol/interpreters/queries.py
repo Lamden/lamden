@@ -54,7 +54,6 @@ class StandardQuery(StateQuery):
         sender_balance = self.get_balance(tx.sender)
 
         if sender_balance >= tx.amount:
-            print(sender_balance)
 
             receiver_balance = self.get_balance(tx.receiver)
 
@@ -83,12 +82,11 @@ class VoteQuery(StateQuery):
 
     def process_tx(self, tx):
         try:
-            k = tx.policy.encode() + SEPARATOR + tx.sender.encode
+            k = tx.policy.encode() + SEPARATOR + tx.sender.encode()
             v = tx.choice.encode()
             self.backend.set(self.scratch_table, k, v)
             return tx, (self.scratch_table, k, v)
         except Exception as e:
-            print('{}'.format(e))
             return None, None
 
 
@@ -99,6 +97,8 @@ class SwapQuery(StandardQuery):
     """
     def __init__(self, table_name=SWAPS, backend=LevelDBBackend()):
         super().__init__(table_name=table_name, backend=backend)
+        self.balance_table = BALANCES
+        self.balance_scratch = SEPARATOR.join([SCRATCH, self.balance_table])
 
     @staticmethod
     def amount_key(address, hashlock):
@@ -108,6 +108,13 @@ class SwapQuery(StandardQuery):
     def expiration_key(address, hashlock):
         return address + SEPARATOR + hashlock + SEPARATOR + b'expiration'
 
+    def get_balance(self, address):
+        table = self.balance_table
+        if self.backend.exists(self.scratch_table, address.encode()):
+            table = self.balance_scratch
+
+        return self.balance_to_decimal(table, address)
+
     def process_tx(self, tx):
         sender_balance = self.get_balance(tx.sender)
 
@@ -116,14 +123,14 @@ class SwapQuery(StandardQuery):
             new_sender_balance = sender_balance - tx.amount
             new_sender_balance = self.encode_balance(new_sender_balance)
 
-            self.backend.set(self.scratch_table, tx.sender.encode(), new_sender_balance)
+            self.backend.set(self.balance_scratch, tx.sender.encode(), new_sender_balance)
 
             # place the balance into the swap
             amount_key = self.amount_key(tx.receiver.encode(), tx.hashlock)
             expiration_key = self.expiration_key(tx.receiver.encode(), tx.hashlock)
 
-            self.backend.set(self.scratch_table, amount_key, tx.amount)
-            self.backend.set(self.scratch_table, expiration_key, tx.expiration)
+            self.backend.set(self.scratch_table, amount_key, self.encode_balance(tx.amount))
+            self.backend.set(self.scratch_table, expiration_key, E.encode(tx.expiration))
 
             # return the queries for feedback
             return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
@@ -152,7 +159,7 @@ class RedeemQuery(SwapQuery):
         expiration = self.backend.get(table, expiration_key)
 
         # return it
-        return self.balance_to_decimal(amount), expiration
+        return amount, expiration
 
     def process_tx(self, tx):
         hashlock = hashlib.sha3_256()
