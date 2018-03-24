@@ -123,23 +123,8 @@ class TestLevelDBBackend(TestCase):
         txs = tq.flush()
         txs = [tx[1] for tx in txs]
 
+        print(txs)
+
         self.assertCountEqual([tx_1, tx_2], txs)
         self.assertNotIn(tx_3, txs)
         self.assertNotIn(tx_4, txs)
-
-    def test_state_query_string(self):
-        t = b'some_table'
-        l = LevelDBBackend()
-        sq = StateQuery(t, l)
-
-        self.assertEqual(str(sq), t.decode())
-
-    def test_state_query_implemented_error(self):
-        t = b'some_table'
-        l = LevelDBBackend()
-        sq = StateQuery(t, l)
-
-        def process_tx():
-            sq.process_tx({1: 2})
-
-        self.assertRaises(NotImplementedError, process_tx)

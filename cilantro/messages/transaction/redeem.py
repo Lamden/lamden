@@ -19,7 +19,7 @@ class RedeemTransaction(TransactionBase):
 
     @property
     def secret(self):
-        return self._data.payload.secret.decode()
+        return self._data.payload.secret
 
 
 class RedeemTransactionBuilder:
@@ -33,7 +33,7 @@ class RedeemTransactionBuilder:
         tx = transaction_capnp.RedeemTransaction.new_message()
 
         tx.payload.sender = sender_v
-        tx.payload.amount = secret
+        tx.payload.secret = secret
         payload_binary = tx.payload.copy().to_bytes()
 
         tx.metadata.proof = Constants.Protocol.Proofs.find(payload_binary)[0]
@@ -51,5 +51,4 @@ class RedeemTransactionBuilder:
         import secrets
 
         s = Constants.Protocol.Wallets.new()
-        r = Constants.Protocol.Wallets.new()
         return RedeemTransactionBuilder.create_tx(s[0], s[1], secrets.token_bytes(32))
