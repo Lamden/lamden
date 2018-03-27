@@ -38,6 +38,6 @@ def get_logger(name: str, bg_color=None, auto_bg_val=None):
         apply_bg_color(LVLS, bg_color)
 
     log = logging.getLogger(name)
-    coloredlogs.install(level='DEBUG', logger=log, level_styles=lvl_styles)
+    coloredlogs.install(level='DEBUG', logger=log, level_styles=lvl_styles, milliseconds=True)
 
     return log

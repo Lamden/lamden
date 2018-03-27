@@ -107,6 +107,7 @@ class DelegateInterpretState(DelegateBaseState):
             self.interpreter.interpret_transaction(tx)
         except Exception as e:
             self.log.error("Error interpreting tx: {}".format(e))
+            return
 
         self.log.debug("Successfully interpreted tx...adding it to queue")
         self.parent.queue.push(tx.serialize())
@@ -204,7 +205,7 @@ class Delegate(NodeBase):
         self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
         db_path = PATH + '_' + str(slot)
         self.backend = LevelDBBackend(path=db_path)
-        self.queue = TransactionQueue(backend=self.backend)
+        self.tx_queue = TransactionQueue(backend=self.backend)
 
         super().__init__(url=url, signing_key=signing_key)
 

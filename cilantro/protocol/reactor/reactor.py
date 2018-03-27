@@ -15,6 +15,17 @@ see https://docs.python.org/3/library/asyncio-dev.html
 
 TODO -- set socket lingering so pending/queued messages are dealloc's when we close a socket or stop zmq context
 using set_socketops and ZMQ_LINGER
+
+USE ZMQ Sockets for communication to the main thread. Have a separate event loop for each thread, main thread
+async recv for incoming messages on reactor thread. Reactor thread async recv for command from main thread.
+DUDE ALSO I THINK THE PYTHON THREAD JUST PICKLES SHIT LMAO SLOW...ZMQ + CAPNP MIGHT BE FASTER? WHAT ABOUT TIME 
+TO BUILD THESE OBJECTS...? RUN SOME TESTS AND BENCHMARKS PLS
+
+This pattern allows us to expand node workers horizontally by having multiple processes or threads that recv
+by spinning up multiple "consumer" threads processing @receive events, wih one producer thread (the reactor).
+
+If necessary, we can have multiple reactors in the case of hella sockets, which would then communicate and load
+balance through an ipc dealer/router proxy to the consumer threads. SCALABILITY SON LETS GO
 """
 
 class ZMQLoop:
@@ -218,6 +229,7 @@ class ReactorCore(Thread):
 
     def process_cmd(self, cmd):
         # Handle Reactor event Cmds vs. ZMQLoop commands
+        # TODO -- move this logic into its own command class somehow... it would need an instance of the reactor core
         if type(cmd) == str:
             if cmd == self.READY_SIG:
                 self.log.debug("Setting parent_ready to True...flushing {} cmds".format(len(self.cmd_queue)))
