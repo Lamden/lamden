@@ -8,8 +8,8 @@
 '''
 from cilantro import Constants
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, recv
-from cilantro.messages import StandardTransaction, BlockContender, Envelope, VoteTransaction
+from cilantro.protocol.statemachine import State, recv, recv_req, timeout
+from cilantro.messages import BlockContender, Envelope, TransactionBase
 from aiohttp import web
 import asyncio
 
@@ -58,13 +58,8 @@ class MNRunState(MNBaseState):
         # Or is it blocking? ...
         # And if its blocking that means we can't receive on ZMQ sockets right?
 
-    @recv(StandardTransaction)
-    def recv_tx(self, tx: StandardTransaction):
-        self.parent.reactor.pub(url=self.parent.url, data=Envelope.create(tx).serialize())
-        return web.Response(text="Successfully published transaction: {}".format(tx._data))
-
-    @recv(VoteTransaction)
-    def recv_vote(self, tx: StandardTransaction):
+    @recv(TransactionBase)
+    def recv_tx(self, tx: TransactionBase):
         self.parent.reactor.pub(url=self.parent.url, data=Envelope.create(tx).serialize())
         return web.Response(text="Successfully published transaction: {}".format(tx._data))
 
@@ -72,30 +67,6 @@ class MNRunState(MNBaseState):
     def recv_block(self, block: BlockContender):
         self.log.error("Masternode received block contender: {}".format(block))
         # TODO -- alg to request leaves from delegates and cryptographically verify data
-
-    # async def process_request(self, request):
-    #     self.log.info('Masternode got request: {}'.format(request))
-    #     content = await request.content.read()
-    #     self.log.info("MN got content: {}".format(content))
-    #
-    #     # Validate transactions
-    #     tx = None
-    #     try:
-    #         tx = StandardTransaction.from_bytes(content)
-    #     except Exception as e:
-    #         msg = "MN could not deserialize transaction {} with error {}".format(content, e)
-    #         self.log.error(msg)
-    #         return web.Response(text=msg)
-    #
-    #     # Package transaction in message for delivery
-    #     self.log.info("packaging tx")
-    #     msg = Envelope.create(tx)
-    #     self.log.info("sending tx")
-    #     self.parent.reactor.pub(url=self.parent.url, data=msg.serialize())
-    #     self.log.info("tx sent")
-    #     self.log.info("tx_data: {}".format(tx._data))
-    #
-    #     return web.Response(text="Successfully published transaction: {}".format(tx._data))
 
 
 class Masternode(NodeBase):

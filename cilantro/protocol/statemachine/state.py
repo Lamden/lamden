@@ -59,14 +59,34 @@ class StateMeta(type):
         # Add debug decorator to run/exit/enter methods
         for name, val in vars(clsobj).items():
             if callable(val) and name in DEBUG_FUNCS:
+                # print("Setting up debug logging for name {} with val {}".format(name, val))
                 setattr(clsobj, name, debug_transition(name)(val))
 
-        # Configure decorator callback registries
-        clsobj._receivers = {r._recv: r for r in clsdict.values() if hasattr(r, '_recv')}
+        clsobj._receivers = {}
+        for r in (r for r in clsdict.values() if hasattr(r, '_recv')):
+            clsobj._receivers[r._recv] = r
+            subclasses = StateMeta.get_subclasses(r._recv)
+            for sub in filter(lambda k: k not in clsobj._receivers, subclasses):
+                clsobj._receivers[sub] = r
+
+        print("{} has _receivers: {}".format(clsobj.__name__, clsobj._receivers))
+
+        # TODO -- config repliers and timeouts to support polymorphism as well
         clsobj._repliers = {r._reply: r for r in clsdict.values() if hasattr(r, '_reply')}
         clsobj._timeouts = {r._timeout: r for r in clsdict.values() if hasattr(r, '_timeout')}
 
         return clsobj
+
+    @staticmethod
+    def get_subclasses(obj_cls, subs=None) -> list:
+        if subs is None:
+            subs = []
+
+        new_subs = obj_cls.__subclasses__()
+        subs.extend(new_subs)
+        for sub in new_subs:
+            subs.extend(StateMeta.get_subclasses(sub, subs=subs))
+        return subs
 
 
 class State(metaclass=StateMeta):

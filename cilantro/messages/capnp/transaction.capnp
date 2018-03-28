@@ -41,3 +41,13 @@ struct SwapTransaction {
         expiration @4 :UInt64;
     }
 }
+
+struct RedeemTransaction {
+    metadata @0 :MetaData;
+    payload @1 :Payload;
+
+    struct Payload {
+        sender @0 :Data;
+        secret @1 :Data;
+    }
+}

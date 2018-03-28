@@ -20,9 +20,9 @@
 from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, recv
+from cilantro.protocol.statemachine import State, recv, timeout, recv_req
 from cilantro.protocol.structures import MerkleTree
-from cilantro.messages import StandardTransaction, VoteTransaction, BlockContender, Envelope, MerkleSignature
+from cilantro.messages import StandardTransaction, TransactionBase, BlockContender, Envelope, MerkleSignature
 
 from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.protocol.wallets import ED25519Wallet
@@ -38,14 +38,8 @@ class DelegateBaseState(State):
 
     def run(self): pass
 
-    @recv(StandardTransaction)
-    def recv_tx(self, tx: StandardTransaction):
-        self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
-        self.parent.pending_txs.append(tx)
-        self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
-
-    @recv(VoteTransaction)
-    def recv_vote(self, tx: VoteTransaction):
+    @recv(TransactionBase)
+    def recv_tx(self, tx: TransactionBase):
         self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
         self.parent.pending_txs.append(tx)
         self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
@@ -93,21 +87,16 @@ class DelegateInterpretState(DelegateBaseState):
         if next_state is not DelegateConsensusState:
             self.parent.queue.flush()  # TODO -- put proper api call here
 
-    @recv(StandardTransaction)
-    def recv_tx(self, tx: StandardTransaction):
+    @recv(TransactionBase)
+    def recv_tx(self, tx: TransactionBase):
         self.interpret_tx(tx=tx)
 
-    @recv(VoteTransaction)
-    def recv_vote(self, tx: VoteTransaction):
-        self.interpret_tx(tx=tx)
-
-    def interpret_tx(self, tx: StandardTransaction):
+    def interpret_tx(self, tx: TransactionBase):
         try:
             self.log.debug("Interpreting standard tx")
             self.interpreter.interpret_transaction(tx)
         except Exception as e:
             self.log.error("Error interpreting tx: {}".format(e))
-            return
 
         self.log.debug("Successfully interpreted tx...adding it to queue")
         self.parent.queue.push(tx.serialize())
@@ -181,7 +170,7 @@ class DelegateConsensusState(DelegateBaseState):
             # TODO -- successful consensus logic
             # once update confirmed from mn, transition to update state
 
-    @recv(MerkleSignature)
+    @receive(MerkleSignature)
     def recv_sig(self, sig: MerkleSignature):
         if self.validate_sig(sig):
             self.signatures.append(sig)
@@ -205,7 +194,7 @@ class Delegate(NodeBase):
         self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
         db_path = PATH + '_' + str(slot)
         self.backend = LevelDBBackend(path=db_path)
-        self.tx_queue = TransactionQueue(backend=self.backend)
+        self.queue = TransactionQueue(backend=self.backend)
 
         super().__init__(url=url, signing_key=signing_key)
 

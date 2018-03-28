@@ -8,7 +8,7 @@ import transaction_capnp
 
 class RedeemTransaction(TransactionBase):
 
-    name = "STANDARD_TX"
+    name = "REDEEM_TX"
 
     @classmethod
     def deserialize_data(cls, data: bytes):
@@ -16,17 +16,10 @@ class RedeemTransaction(TransactionBase):
 
     def validate_payload(self):
         validate_hex(self.sender, 64, 'sender')
-        validate_hex(self.receiver, 64, 'receiver')
-        if self.amount <= 0:
-            raise Exception("Amount must be greater than 0 (amount={})".format(self.amount))
 
     @property
-    def receiver(self):
-        return self._data.payload.receiver.decode()
-
-    @property
-    def amount(self):
-        return int_to_decimal(self._data.payload.amount)
+    def secret(self):
+        return self._data.payload.secret
 
 
 class RedeemTransactionBuilder:
@@ -35,17 +28,12 @@ class RedeemTransactionBuilder:
     """
 
     @staticmethod
-    def create_tx_struct(sender_s, sender_v, receiver, amount):
+    def create_tx_struct(sender_s, sender_v, secret):
         # Adjust amount for fixed point arithmetic
-        amount *= pow(10, Constants.Protocol.DecimalPrecision)
-        if type(amount) == float:
-            amount = int(round(amount, 0))
-
         tx = transaction_capnp.RedeemTransaction.new_message()
 
         tx.payload.sender = sender_v
-        tx.payload.receiver = receiver
-        tx.payload.amount = amount
+        tx.payload.secret = secret
         payload_binary = tx.payload.copy().to_bytes()
 
         tx.metadata.proof = Constants.Protocol.Proofs.find(payload_binary)[0]
@@ -54,15 +42,13 @@ class RedeemTransactionBuilder:
         return tx
 
     @staticmethod
-    def create_tx(sender_s, sender_v, receiver, amount):
-        tx_struct = RedeemTransactionBuilder.create_tx_struct(sender_s, sender_v, receiver, amount)
+    def create_tx(sender_s, sender_v, secret):
+        tx_struct = RedeemTransactionBuilder.create_tx_struct(sender_s, sender_v, secret)
         return RedeemTransaction.from_data(tx_struct)
 
     @staticmethod
     def random_tx():
-        import random
-        MULT = 1000
+        import secrets
 
         s = Constants.Protocol.Wallets.new()
-        r = Constants.Protocol.Wallets.new()
-        return RedeemTransactionBuilder.create_tx(s[0], s[1], r[1], random.random() * MULT)
+        return RedeemTransactionBuilder.create_tx(s[0], s[1], secrets.token_bytes(32))
