@@ -1,6 +1,6 @@
+from cilantro import Constants
 from cilantro.messages import MessageBase
 import json
-from cilantro import Constants
 
 
 class MerkleSignature(MessageBase):

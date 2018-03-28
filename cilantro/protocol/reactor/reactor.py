@@ -3,10 +3,10 @@ import zmq
 import zmq.asyncio
 import aioprocessing
 from threading import Thread
-import logging
 from cilantro.logger import get_logger
 import time
 from collections import defaultdict
+from cilantro.messages import Envelope
 
 
 """
@@ -140,7 +140,9 @@ class SendPubCommand(Command):
     @classmethod
     def execute(cls, zl: ZMQLoop, url, data):
         assert url in zl.sockets[ZMQLoop.PUB], "URL {} not found in sockets {}".format(url, zl.sockets)
+        assert type(data) is Envelope, "Must pass envelope type to send commands"
         zl.log.debug("Publishing data {} to url {}".format(data, url))
+
         zl.sockets[ZMQLoop.PUB][url][ZMQLoop.SOCKET].send(data)
 
 
@@ -176,20 +178,27 @@ class AddRouterCommand(Command):
 class RequestCommand(Command):
     @classmethod
     def execute(cls, zl: ZMQLoop, url, data, timeout):
+        assert type(data) is Envelope, "Must pass envelope type to send commands"
         assert url in zl.sockets[ZMQLoop.DEAL],\
             'Tried to make a request to url {} that was not in dealer sockets {}'.format(url, zl.sockets[ZMQLoop.DEAL])
         cls.log.debug("Sending request with data {} to url {} with timeout {}".format(data, url, timeout))
+
+        if timeout > 0:
+            # TODO Add future for callback
+            pass
+
         # zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET].send(data)
-        zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET].send_multipart([data])
+        zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET].send_multipart([data.serialize()])
 
 
 class ReplyCommand(Command):
     @classmethod
-    def execute(cls, zl: ZMQLoop, url, id, data):
+    def execute(cls, zl: ZMQLoop, url, data, id):
+        assert type(data) is Envelope, "Must pass envelope type to send commands"
         assert url in zl.sockets[ZMQLoop.ROUTE], 'Cannot reply to url {} that is not in router sockets {}'\
             .format(url, zl.sockets[ZMQLoop.ROUTE])
         cls.log.debug("Replying to url {} with id {} and data {}".format(url, id, data))
-        zl.sockets[ZMQLoop.ROUTE][url][ZMQLoop.SOCKET].send_multipart([id, data])
+        zl.sockets[ZMQLoop.ROUTE][url][ZMQLoop.SOCKET].send_multipart([id, data.serialize()])
 
 
 class ReactorCore(Thread):
@@ -259,7 +268,7 @@ class ReactorCore(Thread):
             self.cmd_queue.append(cmd)
 
     def execute_cmd(self, cmd):
-        Command.registry[cmd[0]].execute(zl=self.zmq_loop, ** cmd[1])
+        Command.registry[cmd[0]].execute(zl=self.zmq_loop, **cmd[1])
 
 
 class NetworkReactor:

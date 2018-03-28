@@ -2,7 +2,6 @@ import json
 import os
 from decimal import getcontext
 import sys
-from cilantro.protocol.wallets import ED25519Wallet
 import hashlib
 
 def snake_to_pascal(s):
@@ -16,6 +15,7 @@ def gen_keypair(url):
     """
     Computes a wallet key pair as a deterministic function of url
     """
+    from cilantro.protocol.wallets import ED25519Wallet
     h = hashlib.sha256()
     h.update(url.encode())
     return ED25519Wallet.new(seed=h.digest())

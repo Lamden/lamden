@@ -41,7 +41,7 @@ class DavisRunState(State):
             time.sleep(2)
             self.log.debug("requesting from stu..")
             poke = PokeRequest.from_data("sup mayne {}".format(count))
-            self.parent.reactor.request(url=URL, data=Envelope.create(poke).serialize())
+            self.parent.reactor.request(url=URL, data=Envelope.create(poke))
             count += 1
 
     @recv(PokeReply)
@@ -70,7 +70,7 @@ class StuRunState(State):
     def reply_poke(self, poke: PokeRequest, id):
         self.log.critical("Stu replying to poke <{}> with id {}".format(poke, id))
         reply = PokeReply.from_data("yoyo this is my reply to {}".format(poke))
-        env = Envelope.create(reply).serialize()
+        env = Envelope.create(reply)
         self.parent.reactor.reply(url=URL, id=id, data=env)
         return
 
