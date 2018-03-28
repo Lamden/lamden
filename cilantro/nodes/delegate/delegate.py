@@ -22,13 +22,15 @@ from cilantro.logger import get_logger
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, recv, timeout, recv_req
 from cilantro.protocol.structures import MerkleTree
-from cilantro.messages import StandardTransaction, TransactionBase, BlockContender, Envelope, MerkleSignature
+from cilantro.messages import StandardTransaction, TransactionBase, BlockContender, Envelope, MerkleSignature, BlockDataRequest, BlockDataReply
 
 from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.protocol.wallets import ED25519Wallet
 
 from cilantro.db.delegate import LevelDBBackend, TransactionQueue
 from cilantro.db.delegate.backend import PATH
+
+from cilantro.utils import TestNetURLHelper
 
 
 class DelegateBaseState(State):
@@ -56,13 +58,22 @@ class DelegateBootState(DelegateBaseState):
         # Sub to other delegates
         for delegate in [d for d in Constants.Testnet.Delegates if d['url'] != self.parent.url]:
             self.log.info("{} subscribing to delegate {}".format(self.parent.url, delegate['url']))
-            self.parent.reactor.add_sub(url=delegate['url'])
+            self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(delegate['url']))
         # Sub to witnesses
         for witness in Constants.Testnet.Witnesses:
             self.log.info("{} subscribing to witness {}".format(self.parent.url, witness['url']))
-            self.parent.reactor.add_sub(url=witness['url'])
+            self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(witness['url']))
+
         # Pub on our own url
-        self.parent.reactor.add_pub(url=self.parent.url)
+        self.parent.reactor.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
+
+        # Add router socket
+        self.parent.reactor.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
+
+        # Add dealer socket for Masternode
+        self.parent.reactor.add_dealer(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl),
+                                       id=self.parent.url)
+
 
     def run(self):
         self.parent.transition(DelegateInterpretState)
@@ -85,7 +96,7 @@ class DelegateInterpretState(DelegateBaseState):
     def exit(self, next_state):
         # Flush queue if we are not leaving interpreting for consensus
         if next_state is not DelegateConsensusState:
-            self.parent.queue.flush()  # TODO -- put proper api call here
+            self.parent.queue.flush()
 
     @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
@@ -129,7 +140,7 @@ class DelegateConsensusState(DelegateBaseState):
         self.signature = ED25519Wallet.sign(self.parent.signing_key, self.merkle_hash)
 
         # Create merkle signature message and publish it
-        merkle_sig = MerkleSignature.from_fields(sig_hex=self.signature, timestamp='now', sender=self.parent.url)
+        merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now', sender=self.parent.url)
         sig_msg = Envelope.create(merkle_sig)
         self.log.info("Broadcasting signature")
         self.parent.reactor.pub(url=self.parent.url, data=sig_msg.serialize())
@@ -167,15 +178,24 @@ class DelegateConsensusState(DelegateBaseState):
 
         if len(self.signatures) > self.NUM_DELEGATES // 2:
             self.log.critical("\n\n\nDelegate in consensus!\n\n\n")
-            # TODO -- successful consensus logic
+            bc = BlockContender.create(signatures=self.signatures, nodes=self.merkle.leaves)
+            # send bc to masternode on his ROUTER socket'
             # once update confirmed from mn, transition to update state
 
-    @receive(MerkleSignature)
+    @recv(MerkleSignature)
     def recv_sig(self, sig: MerkleSignature):
         if self.validate_sig(sig):
             self.signatures.append(sig)
             self.check_majority()
 
+    @recv_req(BlockDataRequest)
+    def recv_blockdata_req(self, block_data: BlockDataRequest):
+        assert block_data.tx_hash in self.merkle.leaves, "Block hash {} not found in leaves {}"\
+            .format(block_data.tx_hash, self.merkle.leaves)
+        tx_binary = self.merkle.data_for_hash(block_data.tx_hash)
+        self.log.debug("Replying to tx hash request {} with tx binary: {}".format(block_data.tx_hash, tx_binary))
+        reply = BlockDataReply.create(tx_binary)
+        return reply
 
 class DelegateUpdateState(DelegateBaseState): pass
 

@@ -5,7 +5,7 @@ Extends upon V1 to support state machine
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor import NetworkReactor
 from cilantro.messages import Envelope, MessageBase
-from cilantro.protocol.statemachine import StateMachine, State, EmptyState
+from cilantro.protocol.statemachine import StateMachine, State, EmptyState, recv
 
 URL = "tcp://127.0.0.1:5566"
 URL2 = "tcp://127.0.0.1:5577"
@@ -44,7 +44,7 @@ class SubRunState(State):
     def run(self):
         pass
 
-    @receive(Poke)
+    @recv(Poke)
     def recv_poke(self, poke: Poke):
         self.log.critical("RUN state poked: {}".format(poke._data))
         self.parent.transition(SubPokedState)
@@ -58,7 +58,7 @@ class SubPokedState(State):
     def run(self):
         self.log.info("im here cause i was poked :/")
 
-    @receive(Poke)
+    @recv(Poke)
     def recv_poke(self, poke: Poke):
         self.log.critical("POKED state poked: {}".format(poke._data))
         self.parent.transition(SubRunState)

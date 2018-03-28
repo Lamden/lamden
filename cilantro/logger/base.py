@@ -18,7 +18,7 @@ lvl_styles = coloredlogs.DEFAULT_LEVEL_STYLES
 COLORS = ('blue', 'cyan', 'green', 'magenta', 'red', 'yellow', 'white')
 LVLS = ('debug', 'info', 'warning', 'error', 'critical')
 
-
+P = pow(2, 31) - 1
 
 def get_logger(name: str, bg_color=None, auto_bg_val=None):
     def apply_bg_color(lvls, color):
@@ -30,7 +30,7 @@ def get_logger(name: str, bg_color=None, auto_bg_val=None):
 
     if auto_bg_val is not None:
         assert bg_color is None, "Cannot set both bg_color and auto_bg_val (must be one or the other)"
-        color = COLORS[auto_bg_val % len(COLORS)]
+        color = COLORS[(auto_bg_val*P) % len(COLORS)]
         apply_bg_color(LVLS, color)
 
     if bg_color is not None:

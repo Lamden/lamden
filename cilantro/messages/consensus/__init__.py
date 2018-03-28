@@ -1,1 +1,1 @@
-from cilantro.messages.consensus.merkle import MerkleSignature, BlockContender
+from cilantro.messages.consensus.merkle import MerkleSignature, BlockContender, BlockDataRequest, BlockDataReply

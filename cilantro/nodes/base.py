@@ -58,4 +58,12 @@ class NodeBase(StateMachine):
 
     async def route_http(self, request):
         content = await request.content.read()
-        self.route(content)
+
+        try:
+            env = Envelope.from_bytes(content)
+            msg = env.open()
+        except Exception as e:
+            self.log.error("Error opening envelope from HTTP POST request...error: {}".format(e))
+            return
+
+        self.route(msg)

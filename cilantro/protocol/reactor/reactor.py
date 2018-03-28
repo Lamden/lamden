@@ -34,7 +34,7 @@ class ZMQLoop:
     SOCKET, FUTURE, ID = range(3)
 
     def __init__(self, parent, loop):
-        self.log = get_logger("{}.Reactor".format(type(parent).__name__))
+        self.log = get_logger("{}.Reactor".format(parent.log.name))
         self.parent = parent
 
         self.loop = loop
@@ -191,7 +191,7 @@ class SendPubCommand(Command):
         assert type(data) is Envelope, "Must pass envelope type to send commands"
         zl.log.debug("Publishing data {} to url {}".format(data, url))
 
-        zl.sockets[ZMQLoop.PUB][url][ZMQLoop.SOCKET].send(data)
+        zl.sockets[ZMQLoop.PUB][url][ZMQLoop.SOCKET].send(data.serialize())
 
 
 class AddDealerCommand(Command):
@@ -374,7 +374,7 @@ class NetworkReactor:
 
     def add_dealer(self, callback='route', **kwargs):
         """
-        needs 'url', 'callback', and 'id
+        needs 'url', 'callback', and 'id'
         """
         kwargs['callback'] = callback
         self.q.coro_put((AddDealerCommand.__name__, kwargs))
@@ -384,7 +384,6 @@ class NetworkReactor:
         needs 'url', 'callback'
         """
         kwargs['callback'] = callback
-        self.q.coro_put((AddSubCommand.__name__, kwargs))
         self.q.coro_put((AddRouterCommand.__name__, kwargs))
 
     def request(self, timeout=0, **kwargs):

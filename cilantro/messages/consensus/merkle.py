@@ -1,5 +1,5 @@
 from cilantro import Constants
-from cilantro.messages import MessageBase
+from cilantro.messages import MessageBase, TransactionBase
 import json
 
 
@@ -25,7 +25,7 @@ class MerkleSignature(MessageBase):
         return Constants.Protocol.Wallets.verify(verifying_key, msg, self.signature)
 
     @classmethod
-    def from_fields(cls, sig_hex: str, timestamp: str, sender: str, validate=True):
+    def create(cls, sig_hex: str, timestamp: str, sender: str, validate=True):
         data = {cls.SIG: sig_hex, cls.TS: timestamp, cls.SENDER: sender}
         return cls.from_data(data, validate=validate)
 
@@ -51,8 +51,7 @@ class BlockContender(MessageBase):
     _data is a dict with keys:
         'signature': [MerkleSignature1, MerkleSignature2, MerkleSignature3, ....]
             (all entries are MerkleSignature objects)
-        'nodes': [root hash, root left hash, root right hash, root left left hash ... ]
-            (all entries are hex strings)
+        'nodes': is a list of hashes of leaves
     """
     SIGS = 'signature'
     NODES = 'nodes'
@@ -61,17 +60,26 @@ class BlockContender(MessageBase):
         pass
 
     def serialize(self):
-        # TODO -- implement
         # loop through signatures list, serialize each
         # json dump entire _data
-        pass
+        for i in range(len(self._data[self.SIGS])):
+            self._data[self.SIGS][i] = self._data[self.SIGS][i].serialize()
+        return json.dumps(self._data)
+
+    @classmethod
+    def create(cls, signatures: list, nodes: list):
+        data = {cls.SIGS: signatures, cls.NODES: nodes}
+        return cls.from_data(data)
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
         # TODO -- implement
         # json loads entire data
         # deserialize each signature
-        pass
+        data = json.loads(data)
+        for i in range(len(data[cls.SIGS])):
+            data[cls.SIGS][i] = data[cls.SIGS][i].deserialize()
+        return data
 
     @property
     def signatures(self):
@@ -80,3 +88,43 @@ class BlockContender(MessageBase):
     @property
     def nodes(self):
         return self._data[self.NODES]
+
+
+class BlockDataRequest(MessageBase):
+    def validate(self):
+        pass
+
+    @classmethod
+    def _deserialize_data(cls, data: bytes):
+        return data.decode()
+
+    def serialize(self):
+        return self._data.encode()
+
+    @classmethod
+    def create(cls, tx_hash: str):
+        return cls.from_data(tx_hash)
+
+    @property
+    def tx_hash(self):
+        return self._data
+
+
+class BlockDataReply(MessageBase):
+    """
+    Underlying _data is just a binary blob storing a serialized transaction
+    """
+    def validate(self):
+        pass
+
+    @classmethod
+    def _deserialize_data(cls, data: bytes):
+        return data
+
+    def serialize(self):
+        return self._data
+
+    @classmethod
+    def create(cls, tx_binary: bytes):
+        return cls.from_data(tx)
+

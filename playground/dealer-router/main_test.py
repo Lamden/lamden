@@ -4,10 +4,12 @@ from cilantro.messages import Envelope, MessageBase
 import time
 
 URL = 'tcp://127.0.0.1:3530'
+URL2 = 'tcp://127.0.0.1:6100'
 
-SEND_RATE = 2
-TIMEOUT = 1
-REPLY_WAIT = 2
+SEND_RATE = 1
+NUM_SENDS = 2
+TIMEOUT = 3
+REPLY_WAIT = 0.5
 
 class PokeRequest(MessageBase):
     @classmethod
@@ -22,10 +24,16 @@ class PokeReply(MessageBase):
     def validate(self): pass
     def serialize(self): return self._data.encode()
 
+class Stab(MessageBase):
+    @classmethod
+    def _deserialize_data(cls, data: bytes): return data.decode()
+    def validate(self): pass
+    def serialize(self): return self._data.encode()
 
 class DavisBootState(State):
     def enter(self, prev_state):
-        self.parent.reactor.add_dealer(url=URL, id='DAVIS')
+        # self.parent.reactor.add_dealer(url=URL, id='DAVIS')
+        self.parent.reactor.add_sub(url=URL2)
 
     def run(self):
         self.parent.transition(DavisRunState)
@@ -38,27 +46,33 @@ class DavisRunState(State):
     def exit(self, next_state): pass
 
     def run(self):
-        time.sleep(1)
-        count = 0
-        while True:
-            time.sleep(SEND_RATE)
-            self.log.critical("requesting from stu..")
-            poke = PokeRequest.from_data("sup {}".format(count))
-            self.parent.reactor.request(url=URL, data=Envelope.create(poke), timeout=TIMEOUT)
-            count += 1
+        pass
+        # time.sleep(1)
+        # count = 0
+        # while count < NUM_SENDS:
+        #     time.sleep(SEND_RATE)
+        #     self.log.critical("requesting from stu..")
+        #     poke = PokeRequest.from_data("sup {}".format(count))
+        #     self.parent.reactor.request(url=URL, data=Envelope.create(poke), timeout=TIMEOUT)
+        #     count += 1
 
     @recv(PokeReply)
     def recv_poke(self, poke: PokeReply):
         self.log.critical("*** Davis got poke reply {}".format(poke))
 
+    @recv(Stab)
+    def recv_stab(self, stab: Stab):
+        self.log.critical("!!! got stab: {}".format(stab))
+
     @timeout(PokeRequest)
     def poke_timeout(self, poke_req: PokeRequest):
-        self.log.critical("poke request {} timed out!".format(poke_req))
+        self.log.warning("poke request {} timed out!".format(poke_req))
 
 
 class StuBootState(State):
     def enter(self, prev_state):
-        self.parent.reactor.add_router(url=URL)
+        # self.parent.reactor.add_router(url=URL)
+        self.parent.reactor.add_pub(url=URL2)
 
     def run(self):
         self.parent.transition(StuRunState)
@@ -71,16 +85,25 @@ class StuRunState(State):
     def enter(self, prev_state): pass
     def exit(self, next_state): pass
 
-    def run(self): pass
+    def run(self):
+        count = 0
+        while count < NUM_SENDS:
+            time.sleep(SEND_RATE)
+            self.log.critical("Stu sending stab")
+            stab = Stab.from_data("stab #{}".format(count))
+            self.parent.reactor.pub(url=URL2, data=Envelope.create(stab))
+            count += 1
 
     @recv_req(PokeRequest)
     def recv_poke_req(self, poke: PokeRequest, id):
-        self.log.critical("Stu got poke {}, but waiting 2 seconds...")
+        self.log.critical("Stu got poke {}, but waiting {} seconds...".format(REPLY_WAIT))
         time.sleep(REPLY_WAIT)
         self.log.critical("Stu replying to poke <{}> with id {}".format(poke, id))
         reply = PokeReply.from_data("yoyo this is my reply to {}".format(poke))
-        # env = Envelope.create(reply)
-        # self.parent.reactor.reply(url=URL, id=id, data=env)
+
+        stab = Stab.from_data("stab!")
+        self.parent.reactor.pub(url=URL2, data=Envelope.create(stab))
+
         return reply
 
 
@@ -94,6 +117,6 @@ class Stu(NodeBase):
 
 
 if __name__ == "__main__":
-    stu = Stu()
-    time.sleep(0.2)
     davis = Davis()
+    time.sleep(0.2)
+    stu = Stu()

@@ -19,7 +19,6 @@ class StateMachine:
         assert init_state is not None, "_INIT_STATE is None (did you set it in the subclass?)"
 
         self.state = EmptyState(self)
-        print(states)
         self.states = {s: s(self) for s in states}
         assert init_state in self.states, "Init state {} not in states {}".format(init_state, self.states)
 

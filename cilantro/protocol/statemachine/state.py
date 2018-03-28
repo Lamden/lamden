@@ -52,9 +52,13 @@ def debug_transition(transition_type):
 class StateMeta(type):
     def __new__(cls, clsname, bases, clsdict):
         clsobj = super().__new__(cls, clsname, bases, clsdict)
-
-        # Config logger
         clsobj.log = get_logger(clsname)
+
+        print("Creating state meta for clsname: ", clsname)
+        print("bases: ", bases)
+        print("clsdict: ", clsdict)
+        print("vars: ", vars(clsobj))
+        print("\n")
 
         # Add debug decorator to run/exit/enter methods
         for name, val in vars(clsobj).items():
@@ -62,14 +66,16 @@ class StateMeta(type):
                 # print("Setting up debug logging for name {} with val {}".format(name, val))
                 setattr(clsobj, name, debug_transition(name)(val))
 
+        # Configure receivers, repliers, and timeouts
         clsobj._receivers = {}
-        for r in (r for r in clsdict.values() if hasattr(r, '_recv')):
+
+        for r in (r for r in vars(clsobj).values() if hasattr(r, '_recv')):
             clsobj._receivers[r._recv] = r
             subclasses = StateMeta.get_subclasses(r._recv)
             for sub in filter(lambda k: k not in clsobj._receivers, subclasses):
                 clsobj._receivers[sub] = r
 
-        print("{} has _receivers: {}".format(clsobj.__name__, clsobj._receivers))
+        # print("{} has _receivers: {}".format(clsobj.__name__, clsobj._receivers))
 
         # TODO -- config repliers and timeouts to support polymorphism as well
         clsobj._repliers = {r._reply: r for r in clsdict.values() if hasattr(r, '_reply')}

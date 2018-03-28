@@ -35,18 +35,18 @@
   "testnet": {
     "masternode": {
     "host":"127.0.0.1",
-    "internal-url":"tcp://127.0.0.1:9999",
+    "internal-url":"tcp://127.0.0.1:5555",
     "external-port":"8080"
     },
     "witnesses": {
       "host":"tcp://127.0.0.1",
       "num": 1,
-      "port_start":"8686"
+      "port_start":"6000"
     },
     "delegates": {
       "host":"tcp://127.0.0.1",
-      "num": 3,
-      "port_start": "4670"
+      "num": 0,
+      "port_start": "7000"
     }
   }
 }
