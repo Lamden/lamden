@@ -24,9 +24,10 @@ TO BUILD THESE OBJECTS...? RUN SOME TESTS AND BENCHMARKS PLS
 This pattern allows us to expand node workers horizontally by having multiple processes or threads that recv
 by spinning up multiple "consumer" threads processing @receive events, wih one producer thread (the reactor).
 
-If necessary, we can have multiple reactors in the case of hella sockets, which would then communicate and load
-balance through an ipc dealer/router proxy to the consumer threads. SCALABILITY SON LETS GO
+Load balance through an ipc dealer/router proxy to the consumer threads. SCALABILITY SON LETS GO
 """
+
+TIMEOUT_CALLBACK = 'route_timeout'
 
 class ZMQLoop:
     PUB, SUB, DEAL, ROUTE = range(4)
@@ -42,27 +43,74 @@ class ZMQLoop:
         self.sockets = defaultdict(dict)
         self.ctx = zmq.asyncio.Context()
 
+        self.pending_reqs = {}  # key is msg uuid, value is an asyncio.Handle instance
+        self.msg_log = set()  # Set of received msg uuids, (for checking duplicate messages)
+
     async def receive(self, socket, url, callback):
         self.log.warning("--- Started Receiving on URL: {} with callback {} ---".format(url, callback))
         while True:
             self.log.debug("({}) zmqloop recv waiting for msg...".format(url))
-            msg = await socket.recv()
-            self.log.debug("({}) zmqloop recv got msg: {}".format(url, msg))
+            msg_binary = await socket.recv()
+            self.log.debug("({}) zmqloop recv got msg: {}".format(url, msg_binary))
 
             assert hasattr(self.parent, callback), "Callback {} not found on parent object {}"\
                 .format(callback, self.parent)
+            # TODO -- cleanup error handling with context managers?
+            try:
+                msg = self.open_msg(msg_binary)[0]
+            except Exception as e:
+                self.log.error("Error opening msg: {}, with msg binary: {}".format(e, msg_binary))
+                return
             getattr(self.parent, callback)(msg)
 
     async def receive_multipart(self, socket, url, callback):
         self.log.warning("--- Starting Receiving Multipart To URL: {} with callback {} ---".format(url, callback))
         while True:
             self.log.debug("({}) zmqloop recv_multipart waiting for msg...".format(url))
-            id, msg = await socket.recv_multipart()
-            self.log.debug("({}) zmqloop recv_multipart got msg: {} with id: {}".format(url, msg, id))
+            id, msg_binary = await socket.recv_multipart()
+            self.log.debug("({}) zmqloop recv_multipart got msg: {} with id: {}".format(url, msg_binary, id))
 
             assert hasattr(self.parent, callback), "Callback {} not found on parent object {}"\
                 .format(callback, self.parent)
-            getattr(self.parent, callback)(msg, url, id)
+            # TODO -- cleanup error handling with context managers?
+            try:
+                msg, uuid = self.open_msg(msg_binary)
+            except Exception as e:
+                self.log.error("Error opening msg: {}, with msg binary: {}".format(e, msg_binary))
+                return
+            getattr(self.parent, callback)(msg, url, id, uuid)
+
+    def check_timeout(self, envelope):
+        uuid = envelope.uuid
+        self.log.critical("Message with uuid {} timed out (msg={})".format(uuid, envelope))
+
+        # Sanity checks
+        assert hasattr(self.parent, TIMEOUT_CALLBACK), "Callback {} not found on parent object {}" \
+            .format(TIMEOUT_CALLBACK, self.parent)
+        """
+        TODO -- we need to be opening messages as soon as we receive them and queueing them up to run on mainthread
+        instead of blocking while mainthread does stuff (as we are currently). Otherwise, we may receive a message
+        but the timeout was trigger b/c main thread did not have time to process it.
+        Thus, assertion below is really for debugging  
+        """
+        assert uuid in self.pending_reqs, "UUID {} not found in pending requests {}".format(uuid, self.pending_reqs)
+
+        del self.pending_reqs[uuid]
+        getattr(self.parent, TIMEOUT_CALLBACK)(envelope.open())  # TODO -- add error handling for envelope open
+
+    def open_msg(self, msg_binary):
+        # Open msg
+        # Check for duplicates
+        # Remove callback for timeout (if any)
+        envelope = Envelope.from_bytes(msg_binary)
+        msg = envelope.open()
+
+        if envelope.uuid in self.pending_reqs:
+            self.log.info("Canceling timeout callback for message with uuid {}".format(envelope.uuid))
+            self.pending_reqs[envelope.uuid].cancel()
+            del self.pending_reqs[envelope.uuid]
+
+        return msg, envelope.uuid
 
 
 class CommandMeta(type):
@@ -178,14 +226,18 @@ class AddRouterCommand(Command):
 class RequestCommand(Command):
     @classmethod
     def execute(cls, zl: ZMQLoop, url, data, timeout):
-        assert type(data) is Envelope, "Must pass envelope type to send commands"
-        assert url in zl.sockets[ZMQLoop.DEAL],\
-            'Tried to make a request to url {} that was not in dealer sockets {}'.format(url, zl.sockets[ZMQLoop.DEAL])
         cls.log.debug("Sending request with data {} to url {} with timeout {}".format(data, url, timeout))
+        assert type(data) is Envelope, "Must pass envelope type to send commands"
+        assert data.uuid not in zl.pending_reqs, "UUID {} for envelope {} already in pending requests {}"\
+                                                 .format(data.uuid, data, zl.pending_reqs)
+        assert url in zl.sockets[ZMQLoop.DEAL], 'Tried to make a request to url {} that was not in dealer sockets {}'\
+                                                .format(url, zl.sockets[ZMQLoop.DEAL])
 
         if timeout > 0:
-            # TODO Add future for callback
-            pass
+            cls.log.info("Adding timeout of {} seconds for request with uuid {} and data {}"
+                             .format(timeout, data.uuid, data))
+            handle = zl.loop.call_later(timeout, zl.check_timeout, data)
+            zl.pending_reqs[data.uuid] = handle
 
         # zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET].send(data)
         zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET].send_multipart([data.serialize()])

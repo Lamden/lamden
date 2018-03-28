@@ -1,10 +1,13 @@
-from cilantro.protocol.statemachine import State, recv, recv_req
+from cilantro.protocol.statemachine import State, recv, recv_req, timeout
 from cilantro.nodes import NodeBase
 from cilantro.messages import Envelope, MessageBase
 import time
 
 URL = 'tcp://127.0.0.1:3530'
 
+SEND_RATE = 2
+TIMEOUT = 1
+REPLY_WAIT = 2
 
 class PokeRequest(MessageBase):
     @classmethod
@@ -38,15 +41,19 @@ class DavisRunState(State):
         time.sleep(1)
         count = 0
         while True:
-            time.sleep(2)
-            self.log.debug("requesting from stu..")
-            poke = PokeRequest.from_data("sup mayne {}".format(count))
-            self.parent.reactor.request(url=URL, data=Envelope.create(poke))
+            time.sleep(SEND_RATE)
+            self.log.critical("requesting from stu..")
+            poke = PokeRequest.from_data("sup {}".format(count))
+            self.parent.reactor.request(url=URL, data=Envelope.create(poke), timeout=TIMEOUT)
             count += 1
 
     @recv(PokeReply)
     def recv_poke(self, poke: PokeReply):
-        self.log.critical("Davis got poke reply {}".format(poke))
+        self.log.critical("*** Davis got poke reply {}".format(poke))
+
+    @timeout(PokeRequest)
+    def poke_timeout(self, poke_req: PokeRequest):
+        self.log.critical("poke request {} timed out!".format(poke_req))
 
 
 class StuBootState(State):
@@ -67,12 +74,14 @@ class StuRunState(State):
     def run(self): pass
 
     @recv_req(PokeRequest)
-    def reply_poke(self, poke: PokeRequest, id):
+    def recv_poke_req(self, poke: PokeRequest, id):
+        self.log.critical("Stu got poke {}, but waiting 2 seconds...")
+        time.sleep(REPLY_WAIT)
         self.log.critical("Stu replying to poke <{}> with id {}".format(poke, id))
         reply = PokeReply.from_data("yoyo this is my reply to {}".format(poke))
-        env = Envelope.create(reply)
-        self.parent.reactor.reply(url=URL, id=id, data=env)
-        return
+        # env = Envelope.create(reply)
+        # self.parent.reactor.reply(url=URL, id=id, data=env)
+        return reply
 
 
 class Davis(NodeBase):
@@ -86,5 +95,5 @@ class Stu(NodeBase):
 
 if __name__ == "__main__":
     stu = Stu()
-    time.sleep(0.5)
+    time.sleep(0.2)
     davis = Davis()

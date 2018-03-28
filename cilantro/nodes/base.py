@@ -1,7 +1,7 @@
 from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor import NetworkReactor
-from cilantro.messages import Envelope
+from cilantro.messages import Envelope, MessageBase
 from cilantro.protocol.statemachine import StateMachine
 
 
@@ -15,15 +15,7 @@ class NodeBase(StateMachine):
         self.reactor = NetworkReactor(self)
         super().__init__()
 
-    def route(self, msg_binary: bytes):
-        msg = None
-        try:
-            envelope = Envelope.from_bytes(msg_binary)
-            msg = envelope.open()
-        except Exception as e:
-            self.log.error("Route sub error opening envelope: {}".format(e))
-            return
-
+    def route(self, msg: MessageBase):
         if type(msg) in self.state._receivers:
             self.log.debug("Routing msg: {}".format(msg))
             try:
@@ -34,32 +26,35 @@ class NodeBase(StateMachine):
             self.log.error("Message {} has no implemented receiver for state {} in receivers {}"
                            .format(msg, self.state, self.state._receivers))
 
-    def route_req(self, msg_binary: bytes, url: str, id: bytes):
-        self.log.debug("Routing request binary: {} with id {} and url {}".format(msg_binary, id, url))
-        msg = None
-        try:
-            envelope = Envelope.from_bytes(msg_binary)
-            msg = envelope.open()
-        except Exception as e:
-            self.log.error("Route reply error opening envelope: {}".format(e))
-            return
-
+    def route_req(self, msg: MessageBase, url: str, id: bytes, uuid):
+        self.log.debug("Routing request binary: {} with id={} and url={} and uuid={}".format(msg, id, url, uuid))
         if type(msg) not in self.state._repliers:
             self.log.error("Message {} has no implemented replier for state {} in replier {}"
                            .format(msg, self.state, self.state._repliers))
             return
 
         try:
-            self.state._repliers[type(msg)](self.state, msg, id)
-            # reply = self.state._repliers[type(msg)](self.state, msg, id)
-            # self.log.debug("Replying to id {} with data {}".format(id, reply))
-            # if reply is None:
-            #     self.log.debug("No reply returned for msg {}".format(msg))
-            # else:
-            #     assert type(reply) is bytes, "Must return bytes from a @reply function"
-            #     self.reactor.reply(url=url, id=id, data=reply)
+            # self.state._repliers[type(msg)](self.state, msg, id)
+            reply = self.state._repliers[type(msg)](self.state, msg, id)
+            self.log.debug("Replying to id {} with data {}".format(id, reply))
+            if reply is None:
+                self.log.debug("No reply returned for msg {}".format(msg))
+            else:
+                assert issubclass(type(reply), MessageBase), "Reply must be a subclass of messagebase"
+                assert type(reply) is not Envelope, "Must reply with a message base instance but not an envelope"
+                env = Envelope.create(reply, uuid=uuid)
+                self.reactor.reply(url=url, id=id, data=env)
         except Exception as e:
             self.log.error("ERROR REPLYING TO MSG ... {}".format(e))
+
+    def route_timeout(self, msg: MessageBase):
+        self.log.critical("Routing msg to timeout handler, {}".format(msg))
+        if type(msg) not in self.state._timeouts:
+            self.log.error("No timeout handler found for msg type {} in handlers {}"
+                           .format(type(msg), self.state._timeouts))
+            return
+
+        self.state._timeouts[type(msg)](self.state, msg)
 
     async def route_http(self, request):
         content = await request.content.read()

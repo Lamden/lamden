@@ -25,6 +25,12 @@ def recv_req(msg_type):
     return decorate
 
 
+def timeout(msg_type):
+    def decorate(func):
+        func._timeout = msg_type
+        return func
+    return decorate
+
 def debug_transition(transition_type):
     def decorate(func):
         @wraps(func)
@@ -55,9 +61,10 @@ class StateMeta(type):
             if callable(val) and name in DEBUG_FUNCS:
                 setattr(clsobj, name, debug_transition(name)(val))
 
-        # Configure @recv_request and @recv_ registry
+        # Configure decorator callback registries
         clsobj._receivers = {r._recv: r for r in clsdict.values() if hasattr(r, '_recv')}
         clsobj._repliers = {r._reply: r for r in clsdict.values() if hasattr(r, '_reply')}
+        clsobj._timeouts = {r._timeout: r for r in clsdict.values() if hasattr(r, '_timeout')}
 
         return clsobj
 

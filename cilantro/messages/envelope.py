@@ -32,14 +32,14 @@ class Envelope(MessageBase):
     def validate(self):
         assert self._data.type in MessageBase.registry, "Message type {} not found in registry {}"\
                                                         .format(self._data.type, MessageBase.registry)
-        # also assert if we can deserialize self._data.payload?
+        # TODO -- check signature?
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
         return envelope_capnp.Envelope.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, message: MessageBase):
+    def create(cls, message: MessageBase, uuid=None):
         """
         Creates a new envelope for a message
         :param message: The MessageBase instance the data payload will store
@@ -51,7 +51,10 @@ class Envelope(MessageBase):
         struct = envelope_capnp.Envelope.new_message()
         struct.type = MessageBase.registry[type(message)]
         struct.signature = b'TODO: SIGNATURE'
-        struct.uuid = randint(0, MAX_UUID)
+        if uuid is None:
+            struct.uuid = randint(0, MAX_UUID)
+        else:
+            struct.uuid = uuid
         struct.payload = message.serialize()
         msg = cls.from_data(struct)
 
@@ -64,3 +67,7 @@ class Envelope(MessageBase):
         """
         # TODO vallidate signature of payload
         return MessageBase.registry[self._data.type].from_bytes(self._data.payload)
+
+    @property
+    def uuid(self):
+        return self._data.uuid
