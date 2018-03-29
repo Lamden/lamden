@@ -10,16 +10,14 @@ class StateQuery:
     def __init__(self, table_name, backend):
         self.table_name = table_name
         self.backend = backend
-        self.scratch_table = SEPARATOR.join([SCRATCH, self.table_name])
 
         self.txq = TransactionQueue(backend=self.backend)
-        self.txq_table = SEPARATOR.join([TXQ, self.table_name])
 
     def process_tx(self, tx: dict):
         raise NotImplementedError
 
     def __str__(self):
-        return self.table_name.decode()
+        return self.table_name
 
 
 class StandardQuery(StateQuery):
@@ -27,7 +25,7 @@ class StandardQuery(StateQuery):
     StandardQuery
     Automates the state and txq modifications for standard transactions
     """
-    def __init__(self, table_name=BALANCES, backend=LevelDBBackend()):
+    def __init__(self, table_name=BALANCES, backend=SQLBackend()):
         super().__init__(table_name=table_name, backend=backend)
 
     def balance_to_decimal(self, table, address):
@@ -44,11 +42,22 @@ class StandardQuery(StateQuery):
         return balance
 
     def get_balance(self, address):
-        table = self.table_name
-        if self.backend.exists(self.scratch_table, address.encode()):
-            table = self.scratch_table
+        self.backend.execute('use scratch;')
+        q = 'select * from {} where wallet="{}";'.format(self.table_name, address)
+        print(q)
+        self.backend.execute(q)
+        r = self.backend.db.fetchone()
 
-        return self.balance_to_decimal(table, address)
+        print(r)
+
+        if r is None:
+            self.backend.execute('use state;')
+            q = 'select * from {} where wallet="{}";'.format(self.table_name, address)
+            self.backend.execute(q)
+            r = self.backend.db.fetchone()
+            print(r)
+
+        return r[-1]
 
     def process_tx(self, tx):
         sender_balance = self.get_balance(tx.sender)
@@ -58,13 +67,11 @@ class StandardQuery(StateQuery):
             receiver_balance = self.get_balance(tx.receiver)
 
             new_sender_balance = sender_balance - tx.amount
-            new_sender_balance = self.encode_balance(new_sender_balance)
 
             new_receiver_balance = receiver_balance + tx.amount
-            new_receiver_balance = self.encode_balance(new_receiver_balance)
 
-            self.backend.set(self.scratch_table, tx.sender.encode(), new_sender_balance)
-            self.backend.set(self.scratch_table, tx.receiver.encode(), new_receiver_balance)
+            self.backend.replace(self.scratch_table, (tx.sender), (new_sender_balance))
+            self.backend.replace(self.scratch_table, (tx.receiver), (new_receiver_balance))
 
             return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
                    (self.scratch_table, tx.receiver.encode(), new_receiver_balance)
@@ -77,7 +84,7 @@ class VoteQuery(StateQuery):
     VoteQuery
     Automates the state modifications for vote transactions
     """
-    def __init__(self, table_name=VOTES, backend=LevelDBBackend()):
+    def __init__(self, table_name=VOTES, backend=SQLBackend()):
         super().__init__(table_name=table_name, backend=backend)
 
     def process_tx(self, tx):
@@ -95,7 +102,7 @@ class SwapQuery(StandardQuery):
     SwapQuery
     Automates the state modifications for swap transactions
     """
-    def __init__(self, table_name=SWAPS, backend=LevelDBBackend()):
+    def __init__(self, table_name=SWAPS, backend=SQLBackend()):
         super().__init__(table_name=table_name, backend=backend)
         self.balance_table = BALANCES
         self.balance_scratch = SEPARATOR.join([SCRATCH, self.balance_table])
@@ -141,7 +148,7 @@ class SwapQuery(StandardQuery):
 
 
 class RedeemQuery(SwapQuery):
-    def __init__(self, table_name=SWAPS, backend=LevelDBBackend()):
+    def __init__(self, table_name=SWAPS, backend=SQLBackend()):
         super().__init__(table_name=table_name, backend=backend)
 
     def get_swap(self, address, hashlock):

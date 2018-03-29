@@ -11,14 +11,14 @@ class TestQueries(TestCase):
 
     def test_state_query_string(self):
         t = b'some_table'
-        l = LevelDBBackend()
+        l = SQLBackend()
         sq = StateQuery(t, l)
 
         self.assertEqual(str(sq), t.decode())
 
     def test_state_query_implemented_error(self):
         t = b'some_table'
-        l = LevelDBBackend()
+        l = SQLBackend()
         sq = StateQuery(t, l)
 
         def process_tx():
@@ -27,7 +27,7 @@ class TestQueries(TestCase):
         self.assertRaises(NotImplementedError, process_tx)
 
     def test_standard_query_balance_encode_decode(self):
-        b = LevelDBBackend()
+        b = SQLBackend()
         a = secrets.token_hex(64)
         b.set(BALANCES, a.encode(), E.encode(1000000))
 
@@ -36,26 +36,27 @@ class TestQueries(TestCase):
         self.assertEqual(StandardQuery.encode_balance(balance), E.encode(1000000))
 
     def test_standard_query_get_balance(self):
-        b = LevelDBBackend()
+        b = SQLBackend()
         a = secrets.token_hex(64)
-        b.set(BALANCES, a.encode(), E.encode(1000000))
+        b.db.execute('use state;')
+        b.replace(BALANCES, '(wallet, amount)', (a, 1000000))
 
         balance = StandardQuery().get_balance(a)
 
-        self.assertEqual(balance, 100.0000)
+        self.assertEqual(balance, 1000000)
 
         aa = secrets.token_hex(64)
-        b.set(SCRATCH+SEPARATOR+BALANCES, aa.encode(), E.encode(1000000))
-
+        b.db.execute('use scratch;')
+        b.replace(BALANCES, '(wallet, amount)', (aa, 1000000))
         balance_scratch = StandardQuery().get_balance(aa)
 
-        self.assertEqual(balance_scratch, 100.0000)
+        self.assertEqual(balance_scratch, 1000000)
 
     def test_standard_process_tx(self):
         std_q = StandardQuery()
         std_tx = StandardTransactionBuilder.random_tx()
 
-        b = LevelDBBackend()
+        b = SQLBackend()
         b.set(BALANCES, std_tx.sender.encode(), StandardQuery.encode_balance(std_tx.amount))
 
         std_q.process_tx(std_tx)
@@ -112,7 +113,7 @@ class TestQueries(TestCase):
         swap_q = SwapQuery()
         swap_tx = SwapTransactionBuilder.random_tx()
 
-        b = LevelDBBackend()
+        b = SQLBackend()
         b.set(BALANCES, swap_tx.sender.encode(), SwapQuery.encode_balance(swap_tx.amount))
 
         swap_q.process_tx(swap_tx)
@@ -143,7 +144,7 @@ class TestQueries(TestCase):
         swap_q = SwapQuery()
         swap_tx = SwapTransactionBuilder.create_tx(sender_s, sender_v, receiver_v, 123, lock, int(time.time()) + 10000)
 
-        b = LevelDBBackend()
+        b = SQLBackend()
         b.set(BALANCES, swap_tx.sender.encode(), SwapQuery.encode_balance(swap_tx.amount))
 
         swap_q.process_tx(swap_tx)
@@ -167,7 +168,7 @@ class TestQueries(TestCase):
         swap_q = SwapQuery()
         swap_tx = SwapTransactionBuilder.create_tx(sender_s, sender_v, receiver_v, 123, lock, int(time.time()) + 10000)
 
-        b = LevelDBBackend()
+        b = SQLBackend()
         b.set(BALANCES, swap_tx.sender.encode(), SwapQuery.encode_balance(swap_tx.amount))
 
         swap_q.process_tx(swap_tx)
@@ -195,7 +196,7 @@ class TestQueries(TestCase):
         swap_q = SwapQuery()
         swap_tx = SwapTransactionBuilder.create_tx(sender_s, sender_v, receiver_v, 123, lock, int(time.time()))
 
-        b = LevelDBBackend()
+        b = SQLBackend()
         b.set(BALANCES, swap_tx.sender.encode(), SwapQuery.encode_balance(swap_tx.amount))
 
         swap_q.process_tx(swap_tx)
