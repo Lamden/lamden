@@ -3,38 +3,115 @@ import zmq
 import zmq.asyncio
 import aioprocessing
 from threading import Thread
-import logging
 from cilantro.logger import get_logger
 import time
+import logging
 from collections import defaultdict
+from cilantro.messages import Envelope
 
+
+"""
+TODO -- should we be using loop.call_soon_threadsafe(fut.cancel) instead of directly calling cancel()??
+see https://docs.python.org/3/library/asyncio-dev.html
+
+TODO -- set socket lingering so pending/queued messages are dealloc's when we close a socket or stop zmq context
+using set_socketops and ZMQ_LINGER
+
+USE ZMQ Sockets for communication to the main thread. Have a separate event loop for each thread, main thread
+async recv for incoming messages on reactor thread. Reactor thread async recv for command from main thread.
+DUDE ALSO I THINK THE PYTHON THREAD JUST PICKLES SHIT LMAO SLOW...ZMQ + CAPNP MIGHT BE FASTER? WHAT ABOUT TIME 
+TO BUILD THESE OBJECTS...? RUN SOME TESTS AND BENCHMARKS PLS
+
+This pattern allows us to expand node workers horizontally by having multiple processes or threads that recv
+by spinning up multiple "consumer" threads processing @receive events, wih one producer thread (the reactor).
+
+Load balance through an ipc dealer/router proxy to the consumer threads. SCALABILITY SON LETS GO
+"""
+
+TIMEOUT_CALLBACK = 'route_timeout'
 
 class ZMQLoop:
-    PUB, SUB, REQ = range(3)
-    SOCKET, FUTURE = range(2)
+    PUB, SUB, DEAL, ROUTE = range(4)
+    SOCKET, FUTURE, ID = range(3)
 
-    def __init__(self, parent):
-        self.log = get_logger("Reactor.ZMQLoop")
+    def __init__(self, parent, loop):
+        self.log = get_logger("{}.Reactor".format(parent.log.name))
         self.parent = parent
 
-        # self.loop = asyncio.new_event_loop()
-        self.loop = asyncio.get_event_loop()
-        asyncio.set_event_loop(self.loop)
+        self.loop = loop
+        asyncio.set_event_loop(loop)
 
         self.sockets = defaultdict(dict)
         self.ctx = zmq.asyncio.Context()
-        self.log.critical("CREATED WITH ZMQ CONTEXT: {}".format(self.ctx))
+
+        self.pending_reqs = {}  # key is msg uuid, value is an asyncio.Handle instance
+        self.msg_log = set()  # Set of received msg uuids, (for checking duplicate messages)
 
     async def receive(self, socket, url, callback):
-        self.log.warning("--- Starting Subscribing To URL: {} ---".format(url))
+        self.log.warning("--- Started Receiving on URL: {} with callback {} ---".format(url, callback))
         while True:
-            self.log.debug("({}) zmqloop waiting for msg...".format(url))
-            msg = await socket.recv()
-            self.log.debug("({}) zmqloop got msg: {}".format(url, msg))
+            self.log.debug("({}) zmqloop recv waiting for msg...".format(url))
+            msg_binary = await socket.recv()
+            self.log.debug("({}) zmqloop recv got msg: {}".format(url, msg_binary))
 
             assert hasattr(self.parent, callback), "Callback {} not found on parent object {}"\
                 .format(callback, self.parent)
+            # TODO -- cleanup error handling with context managers?
+            try:
+                msg = self.open_msg(msg_binary)[0]
+            except Exception as e:
+                self.log.error("Error opening msg: {}, with msg binary: {}".format(e, msg_binary))
+                return
             getattr(self.parent, callback)(msg)
+
+    async def receive_multipart(self, socket, url, callback):
+        self.log.warning("--- Starting Receiving Multipart To URL: {} with callback {} ---".format(url, callback))
+        while True:
+            self.log.debug("({}) zmqloop recv_multipart waiting for msg...".format(url))
+            id, msg_binary = await socket.recv_multipart()
+            self.log.debug("({}) zmqloop recv_multipart got msg: {} with id: {}".format(url, msg_binary, id))
+
+            assert hasattr(self.parent, callback), "Callback {} not found on parent object {}"\
+                .format(callback, self.parent)
+            # TODO -- cleanup error handling with context managers?
+            try:
+                msg, uuid = self.open_msg(msg_binary)
+            except Exception as e:
+                self.log.error("Error opening msg: {}, with msg binary: {}".format(e, msg_binary))
+                return
+            getattr(self.parent, callback)(msg, url, id, uuid)
+
+    def check_timeout(self, envelope):
+        uuid = envelope.uuid
+        self.log.critical("Message with uuid {} timed out (msg={})".format(uuid, envelope))
+
+        # Sanity checks
+        assert hasattr(self.parent, TIMEOUT_CALLBACK), "Callback {} not found on parent object {}" \
+            .format(TIMEOUT_CALLBACK, self.parent)
+        """
+        TODO -- we need to be opening messages as soon as we receive them and queueing them up to run on mainthread
+        instead of blocking while mainthread does stuff (as we are currently). Otherwise, we may receive a message
+        but the timeout was trigger b/c main thread did not have time to process it.
+        Thus, assertion below is really for debugging  
+        """
+        assert uuid in self.pending_reqs, "UUID {} not found in pending requests {}".format(uuid, self.pending_reqs)
+
+        del self.pending_reqs[uuid]
+        getattr(self.parent, TIMEOUT_CALLBACK)(envelope.open())  # TODO -- add error handling for envelope open
+
+    def open_msg(self, msg_binary):
+        # Open msg
+        # Check for duplicates
+        # Remove callback for timeout (if any)
+        envelope = Envelope.from_bytes(msg_binary)
+        msg = envelope.open()
+
+        if envelope.uuid in self.pending_reqs:
+            self.log.info("Canceling timeout callback for message with uuid {}".format(envelope.uuid))
+            self.pending_reqs[envelope.uuid].cancel()
+            del self.pending_reqs[envelope.uuid]
+
+        return msg, envelope.uuid
 
 
 class CommandMeta(type):
@@ -60,7 +137,7 @@ class AddSubCommand(Command):
             "Subscriber already exists for that socket (sockets={})".format(zl.sockets)
 
         socket = zl.ctx.socket(socket_type=zmq.SUB)
-        cls.log.debug("created socket: {}".format(socket))
+        cls.log.debug("created socket {} at url {}".format(socket, url))
         socket.setsockopt(zmq.SUBSCRIBE, b'')
         socket.connect(url)
         future = asyncio.ensure_future(zl.receive(socket, url, callback))
@@ -112,8 +189,69 @@ class SendPubCommand(Command):
     @classmethod
     def execute(cls, zl: ZMQLoop, url, data):
         assert url in zl.sockets[ZMQLoop.PUB], "URL {} not found in sockets {}".format(url, zl.sockets)
+        assert type(data) is Envelope, "Must pass envelope type to send commands"
         zl.log.debug("Publishing data {} to url {}".format(data, url))
-        zl.sockets[ZMQLoop.PUB][url][ZMQLoop.SOCKET].send(data)
+
+        zl.sockets[ZMQLoop.PUB][url][ZMQLoop.SOCKET].send(data.serialize())
+
+
+class AddDealerCommand(Command):
+    @classmethod
+    def execute(cls, zl: ZMQLoop, url, callback, id):
+        # TODO -- assert we havnt added this dealer already
+        socket = zl.ctx.socket(socket_type=zmq.DEALER)
+        socket.identity = id.encode('ascii')
+        socket.connect(url)
+        cls.log.debug("Dealer socket {} created with url {} and identity {}".format(socket, url, id))
+        future = asyncio.ensure_future(zl.receive(socket, url, callback))
+
+        zl.sockets[ZMQLoop.DEAL][url] = {}
+        zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET] = socket
+        zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.FUTURE] = future
+        zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.ID] = id
+
+
+class AddRouterCommand(Command):
+    @classmethod
+    def execute(cls, zl: ZMQLoop, url, callback):
+        socket = zl.ctx.socket(socket_type=zmq.ROUTER)
+        socket.bind(url)
+        cls.log.debug("Router socket {} created at url {}".format(socket, url))
+        future = asyncio.ensure_future(zl.receive_multipart(socket, url, callback))
+
+        zl.sockets[ZMQLoop.ROUTE][url] = {}
+        zl.sockets[ZMQLoop.ROUTE][url][ZMQLoop.SOCKET] = socket
+        zl.sockets[ZMQLoop.ROUTE][url][ZMQLoop.FUTURE] = future
+
+
+class RequestCommand(Command):
+    @classmethod
+    def execute(cls, zl: ZMQLoop, url, data, timeout):
+        cls.log.debug("Sending request with data {} to url {} with timeout {}".format(data, url, timeout))
+        assert type(data) is Envelope, "Must pass envelope type to send commands"
+        assert data.uuid not in zl.pending_reqs, "UUID {} for envelope {} already in pending requests {}"\
+                                                 .format(data.uuid, data, zl.pending_reqs)
+        assert url in zl.sockets[ZMQLoop.DEAL], 'Tried to make a request to url {} that was not in dealer sockets {}'\
+                                                .format(url, zl.sockets[ZMQLoop.DEAL])
+
+        if timeout > 0:
+            cls.log.info("Adding timeout of {} seconds for request with uuid {} and data {}"
+                             .format(timeout, data.uuid, data))
+            handle = zl.loop.call_later(timeout, zl.check_timeout, data)
+            zl.pending_reqs[data.uuid] = handle
+
+        # zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET].send(data)
+        zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET].send_multipart([data.serialize()])
+
+
+class ReplyCommand(Command):
+    @classmethod
+    def execute(cls, zl: ZMQLoop, url, data, id):
+        assert type(data) is Envelope, "Must pass envelope type to send commands"
+        assert url in zl.sockets[ZMQLoop.ROUTE], 'Cannot reply to url {} that is not in router sockets {}'\
+            .format(url, zl.sockets[ZMQLoop.ROUTE])
+        cls.log.debug("Replying to url {} with id {} and data {}".format(url, id, data))
+        zl.sockets[ZMQLoop.ROUTE][url][ZMQLoop.SOCKET].send_multipart([id, data.serialize()])
 
 
 class ReactorCore(Thread):
@@ -122,10 +260,10 @@ class ReactorCore(Thread):
 
     def __init__(self, queue, parent):
         super().__init__()
-        self.log = get_logger("Reactor")
+        self.log = get_logger("{}.Reactor".format(type(parent).__name__))
 
         # Comment out below for more granularity in debugging
-        # self.log.setLevel(logging.INFO)
+        self.log.setLevel(logging.INFO)
 
         self.queue = queue
         self.parent = parent
@@ -140,19 +278,20 @@ class ReactorCore(Thread):
         super().run()
         self.log.debug("ReactorCore Run started")
         asyncio.set_event_loop(self.loop)
-        self.zmq_loop = ZMQLoop(parent=self.parent)
+        self.zmq_loop = ZMQLoop(parent=self.parent, loop=self.loop)
         self.loop.run_until_complete(asyncio.gather(self.read_queue(),))
 
     async def read_queue(self):
         self.log.warning("-- Starting Queue Listening --")
         while True:
-            self.log.debug("Reading queue...")
+            # self.log.debug("Reading queue...")
             cmd = await self.queue.coro_get()
-            self.log.debug("Got cmd from queue: {}".format(cmd))
+            # self.log.debug("Got cmd from queue: {}".format(cmd))
             self.process_cmd(cmd)
 
     def process_cmd(self, cmd):
         # Handle Reactor event Cmds vs. ZMQLoop commands
+        # TODO -- move this logic into its own command class somehow... it would need an instance of the reactor core
         if type(cmd) == str:
             if cmd == self.READY_SIG:
                 self.log.debug("Setting parent_ready to True...flushing {} cmds".format(len(self.cmd_queue)))
@@ -182,7 +321,7 @@ class ReactorCore(Thread):
             self.cmd_queue.append(cmd)
 
     def execute_cmd(self, cmd):
-        Command.registry[cmd[0]].execute(zl=self.zmq_loop, ** cmd[1])
+        Command.registry[cmd[0]].execute(zl=self.zmq_loop, **cmd[1])
 
 
 class NetworkReactor:
@@ -197,20 +336,70 @@ class NetworkReactor:
         self.q.coro_put(ReactorCore.READY_SIG)
 
     def add_sub(self, callback='route', **kwargs):
+        """
+        Starts subscribing to 'url'.
+        Requires kwargs 'url' of subscriber (as a string)...callback is optional, and by default will forward incoming messages to the
+        meta router built into base node
+
+        TODO -- experiment with binding multiple URLS on one socket. This will achieve same functionality, but may be
+        more efficient
+        """
         kwargs['callback'] = callback
         self.q.coro_put((AddSubCommand.__name__, kwargs))
 
     def remove_sub(self, **kwargs):
+        """
+        Requires kwargs 'url' of sub
+        """
         self.q.coro_put((RemoveSubCommand.__name__, kwargs))
 
     def pub(self, **kwargs):
+        """
+        Publish data 'data on socket connected to 'url'
+        Requires kwargs 'url' to publish on, as well as 'data' which is the binary data (type should be bytes) to publish
+        If reactor is not already set up to publish on 'url', this will be setup and the data will be published
+        """
         self.q.coro_put((SendPubCommand.__name__, kwargs))
 
     def add_pub(self, **kwargs):
+        """
+        Configure the reactor to publish on 'url'.
+        """
         self.q.coro_put((AddPubCommand.__name__, kwargs))
 
     def remove_pub(self, **kwargs):
+        """
+        Close the publishing socket on 'url'
+        """
         self.q.coro_put((RemovePubCommand.__name__, kwargs))
+
+    def add_dealer(self, callback='route', **kwargs):
+        """
+        needs 'url', 'callback', and 'id'
+        """
+        kwargs['callback'] = callback
+        self.q.coro_put((AddDealerCommand.__name__, kwargs))
+
+    def add_router(self, callback='route_req', **kwargs):
+        """
+        needs 'url', 'callback'
+        """
+        kwargs['callback'] = callback
+        self.q.coro_put((AddRouterCommand.__name__, kwargs))
+
+    def request(self, timeout=0, **kwargs):
+        """
+        'url', 'data', 'timeout' ... must add_dealer first with the url
+        Timeout is a int in miliseconds
+        """
+        kwargs['timeout'] = timeout
+        self.q.coro_put((RequestCommand.__name__, kwargs))
+
+    def reply(self, **kwargs):
+        """
+        'url', 'data', and 'id' ... must add_router first with url
+        """
+        self.q.coro_put((ReplyCommand.__name__, kwargs))
 
     def prove_im_nonblocking(self):
         self.log.debug("xD")

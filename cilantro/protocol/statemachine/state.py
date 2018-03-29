@@ -6,7 +6,7 @@ ENTER, EXIT, RUN = 'enter', 'exit', 'run'
 DEBUG_FUNCS = (ENTER, EXIT, RUN)
 
 
-def receive(msg_type):
+def recv(msg_type):
     """
     Decorator for dynamically routing incoming ZMQ messages to handles in Node's state
     """
@@ -16,6 +16,20 @@ def receive(msg_type):
         return func
     return decorate
 
+
+# TODO -- possibly add another arg for replying to different senders in different ways
+def recv_req(msg_type):
+    def decorate(func):
+        func._reply = msg_type
+        return func
+    return decorate
+
+
+def timeout(msg_type):
+    def decorate(func):
+        func._timeout = msg_type
+        return func
+    return decorate
 
 def debug_transition(transition_type):
     def decorate(func):
@@ -38,9 +52,14 @@ def debug_transition(transition_type):
 class StateMeta(type):
     def __new__(cls, clsname, bases, clsdict):
         clsobj = super().__new__(cls, clsname, bases, clsdict)
-
-        # Config logger
         clsobj.log = get_logger(clsname)
+
+        # print("Creating state meta for clsname: ", clsname)
+        # print("bases: ", bases)
+        # print("clsdict: ", clsdict)
+        # print("vars: ", vars(clsobj))
+        # print("dir: ", dir(clsobj))
+        # print("\n")
 
         # Add debug decorator to run/exit/enter methods
         for name, val in vars(clsobj).items():
@@ -48,16 +67,22 @@ class StateMeta(type):
                 # print("Setting up debug logging for name {} with val {}".format(name, val))
                 setattr(clsobj, name, debug_transition(name)(val))
 
-        # Configure @receiver registry
-
+        # Configure receivers, repliers, and timeouts
         clsobj._receivers = {}
-        for r in (r for r in clsdict.values() if hasattr(r, '_recv')):
-            clsobj._receivers[r._recv] = r
-            subclasses = StateMeta.get_subclasses(r._recv)
-            for sub in filter(lambda k: k not in clsobj._receivers, subclasses):
-                clsobj._receivers[sub] = r
 
-        print("{} has _receivers: {}".format(clsobj.__name__, clsobj._receivers))
+        for r in dir(clsobj):
+            func = getattr(clsobj, r)
+            if hasattr(func, '_recv'):
+                clsobj._receivers[func._recv] = func
+                subclasses = StateMeta.get_subclasses(func._recv)
+                for sub in filter(lambda k: k not in clsobj._receivers, subclasses):
+                    clsobj._receivers[sub] = func
+
+        # print("{} has _receivers: {}".format(clsobj.__name__, clsobj._receivers))
+
+        # TODO -- config repliers and timeouts to support polymorphism as well
+        clsobj._repliers = {r._reply: r for r in clsdict.values() if hasattr(r, '_reply')}
+        clsobj._timeouts = {r._timeout: r for r in clsdict.values() if hasattr(r, '_timeout')}
 
         return clsobj
 
@@ -71,7 +96,6 @@ class StateMeta(type):
         for sub in new_subs:
             subs.extend(StateMeta.get_subclasses(sub, subs=subs))
         return subs
-
 
 
 class State(metaclass=StateMeta):

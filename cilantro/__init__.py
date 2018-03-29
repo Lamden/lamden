@@ -2,7 +2,6 @@ import json
 import os
 from decimal import getcontext
 import sys
-from cilantro.protocol.wallets import ED25519Wallet
 import hashlib
 
 def snake_to_pascal(s):
@@ -16,6 +15,7 @@ def gen_keypair(url):
     """
     Computes a wallet key pair as a deterministic function of url
     """
+    from cilantro.protocol.wallets import ED25519Wallet
     h = hashlib.sha256()
     h.update(url.encode())
     return ED25519Wallet.new(seed=h.digest())
@@ -29,7 +29,9 @@ def config_testnet(testnet: dict) -> dict:
     - Since there is only one Masternode (at least rn), Constants.Testnet.Masternode must be referenced using
       Constants.Testnet.Masternode.InternalUrl, Constants.Testnet.Masternode.ExternalUrl, --.Vk and --.Sk
     """
+    SLOTS_PER_NODE = 4  # distance between port assignments for each node
     all_nodes = {}
+
     # Add masternode wallet and url to all_nodes
     mn_url = testnet['masternode']['internal-url']
     mn_sk, mn_vk = gen_keypair(mn_url)
@@ -43,7 +45,7 @@ def config_testnet(testnet: dict) -> dict:
         base_url, num, port_start = testnet[node_type]['host'], testnet[node_type]['num'], \
                                     int(testnet[node_type]['port_start'])
         for i in range(num):
-            url = "{}:{}".format(base_url, port_start+i)
+            url = "{}:{}".format(base_url, port_start + i*SLOTS_PER_NODE)
             sk, vk = gen_keypair(url)
             nodes.append({'url': url, 'sk': sk, 'vk': vk})
             # all_nodes.append({'url': url, 'vk': vk})

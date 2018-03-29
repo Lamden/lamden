@@ -7,7 +7,7 @@ class MessageMeta(type):
         #print("MessageMeta NEW called /w class ", clsname)
         clsobj = super().__new__(cls, clsname, bases, clsdict)
         if not hasattr(clsobj, 'registry'):
-            print("Creating Registry")
+            # print("Creating Registry")
             clsobj.registry = {}
         #print("Adding to registry: ", clsobj)
 
@@ -24,9 +24,11 @@ class MessageBase(metaclass=MessageMeta):
     MessageBase is the abstract class which defines required methods for any data model that is passed between nodes.
     All messages which are transmitted between nodes (i.e. transaction, blocks, routing tables, ect) must subclass this.
 
-    Models are essentially just a wrapper around the underlying data interchange format (Captain Proto or JSON), which
-    provide convenient methods for manipulating, reading, and computing functions of the data. They can also provide
-    an interface for executing RPC on the data between nodes.
+    Message are essentially just a wrapper around the underlying data interchange format (Captain Proto or JSON), which
+    provide convenient methods for manipulating, reading, and computing functions of the data. This must implement
+    _deserialize_data(..), as well as serialize(..) if the underlying data (_data) is not capnp.
+
+    Messages can also provide an interface for executing RPC on the data between nodes.
     """
 
     def __init__(self, data):
@@ -50,7 +52,7 @@ class MessageBase(metaclass=MessageMeta):
         raise NotImplementedError
 
     @classmethod
-    def deserialize_data(cls, data: bytes):
+    def _deserialize_data(cls, data: bytes):
         """
         Deserializes the captain proto structure and returns it. This method should be implemented by all subclasses,
         and is only intended to be used internally (as it returns a Capnp struct and not a MessageBase instance).
@@ -67,10 +69,10 @@ class MessageBase(metaclass=MessageMeta):
         Deserializes binary data and uses it as the underlying data for the newly instantiated Message class
         If validate=True, then this method also calls validate on the newly created Message object.
         :param data: The binary data of the underlying data interchange format
-        :param validate: If true, this method will also validate the data before returning the model object
+        :param validate: If true, this method will also validate the data before returning the message object
         :return: An instance of MessageBase
         """
-        model = cls.from_data(cls.deserialize_data(data), validate=False)
+        model = cls.from_data(cls._deserialize_data(data), validate=False)
         if validate:
             model.validate()
         return model
@@ -78,10 +80,10 @@ class MessageBase(metaclass=MessageMeta):
     @classmethod
     def from_data(cls, data: object, validate=True):
         """
-        Creates a MessageBase and directly for the deserialized data.
+        Creates a MessageBase directly from the python data object (dict, capnp struct, str, ect).
         If validate=True, then this method also calls validate on the newly created Message object.
         :param data: The object to use as the underlying data format (i.e. Capnp Struct, JSON dict)
-        :param validate: If true, this method will also validate the data before returning the model object
+        :param validate: If true, this method will also validate the data before returning the message object
         :return: An instance of MessageBase
         """
         # Cast data to a struct reader (not builder) if it isn't already

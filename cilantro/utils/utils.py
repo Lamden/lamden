@@ -81,3 +81,14 @@ class Encoder:
                 return possible_float
 
         return tuple([attempt_convert_float(x) for x in s.split(',')])
+
+
+class TestNetURLHelper:
+    @staticmethod
+    def pubsub_url(url: str):
+        return url
+
+    @staticmethod
+    def dealroute_url(url: str):
+        port = int(url[-4:])
+        return url[:-4] + str(port + 1)

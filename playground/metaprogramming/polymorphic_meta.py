@@ -1,24 +1,24 @@
-from cilantro.protocol.statemachine import State, receive
+from cilantro.protocol.statemachine import State, recv
 from cilantro.messages import StandardTransaction, VoteTransaction, SwapTransaction, TransactionBase
 
 
 class BaseState(State):
 
-    @receive(StandardTransaction)
+    @recv(StandardTransaction)
     def base_recv_std(self, tx: StandardTransaction):
         pass
 
-    @receive(TransactionBase)
+    @recv(TransactionBase)
     def base_recv_tx(self, tx: TransactionBase):
         pass
 
-    @receive(VoteTransaction)
+    @recv(VoteTransaction)
     def base_recv_vote(self, tx: VoteTransaction):
         pass
 
 
 class SubState(BaseState):
-    @receive(VoteTransaction)
+    @recv(VoteTransaction)
     def recv_vote(self, tx: VoteTransaction):
         pass
 

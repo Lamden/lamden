@@ -8,8 +8,9 @@
 '''
 from cilantro import Constants
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, receive
+from cilantro.protocol.statemachine import State, recv
 from cilantro.messages import TransactionBase, Envelope
+from cilantro.utils import TestNetURLHelper
 
 
 class WitnessBaseState(State):
@@ -19,15 +20,18 @@ class WitnessBaseState(State):
 
     def run(self): pass
 
-    @receive(TransactionBase)
+    @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
         self.log.critical("Witness not configured to recv tx: {}".format(tx))
 
 
 class WitnessBootState(WitnessBaseState):
     def enter(self, prev_state):
-        self.parent.reactor.add_sub(url=Constants.Testnet.Masternode.InternalUrl)
-        self.parent.reactor.add_pub(url=self.parent.url)
+        self.parent.reactor.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
+        self.parent.reactor.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
+
+        self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl))
+        self.log.critical("Witness subscribing to URL: {}".format(TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl)))
 
     def run(self):
         self.parent.transition(WitnessRunState)
@@ -37,10 +41,10 @@ class WitnessBootState(WitnessBaseState):
 
 
 class WitnessRunState(WitnessBaseState):
-    @receive(TransactionBase)
+    @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
         env = Envelope.create(tx)
-        self.parent.reactor.pub(url=self.parent.url, data=env.serialize())
+        self.parent.reactor.pub(url=self.parent.url, data=env)
 
 
 class Witness(NodeBase):
