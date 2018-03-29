@@ -8,24 +8,6 @@ import hashlib
 
 
 class TestQueries(TestCase):
-
-    # def test_state_query_string(self):
-    #     t = b'some_table'
-    #     l = SQLBackend()
-    #     sq = StateQuery(t, l)
-    #
-    #     self.assertEqual(str(sq), t.decode())
-    #
-    # def test_state_query_implemented_error(self):
-    #     t = b'some_table'
-    #     l = SQLBackend()
-    #     sq = StateQuery(t, l)
-    #
-    #     def process_tx():
-    #         sq.process_tx({1: 2})
-    #
-    #     self.assertRaises(NotImplementedError, process_tx)
-
     def set_balance(self, wallet, db: str, amount):
         b = SQLBackend()
         b.db.execute('use {};'.format(db))
@@ -35,13 +17,13 @@ class TestQueries(TestCase):
     def test_standard_query_get_balance(self):
         a = secrets.token_hex(64)
         self.set_balance(a, 'state', 1000000)
-        balance = StandardQuery().get_balance(a)
+        balance = select_row('balances', 'wallet', a)
 
         self.assertEqual(balance, 1000000)
 
         aa = secrets.token_hex(64)
         self.set_balance(aa, 'scratch', 1000000)
-        balance_scratch = StandardQuery().get_balance(aa)
+        balance_scratch = select_row('balances', 'wallet', aa)
 
         self.assertEqual(balance_scratch, 1000000)
 

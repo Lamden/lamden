@@ -7,9 +7,8 @@ from cilantro.db.delegate.backend import *
 
 
 class StateQuery:
-    def __init__(self, table_name, backend):
+    def __init__(self, table_name):
         self.table_name = table_name
-        self.backend = backend
 
         self.txq = TransactionQueue(backend=self.backend)
 
@@ -20,37 +19,40 @@ class StateQuery:
         return self.table_name
 
 
+def select_row(table, field, value):
+    b = SQLBackend()
+    b.db.execute('use scratch;')
+    q = 'select * from {} where {}="{}";'.format(table, field, value)
+    b.db.execute(q)
+    r = b.db.fetchone()
+
+    if r is None:
+        b.db.execute('use state;')
+        q = 'select * from {} where {}="{}";'.format(table, field, value)
+        b.db.execute(q)
+        r = b.db.fetchone()
+
+    b.context.close()
+
+    if r is None:
+        return 0
+
+    return r[-1]
+
 class StandardQuery(StateQuery):
     """
     StandardQuery
     Automates the state and txq modifications for standard transactions
     """
-    def __init__(self, table_name=BALANCES, backend=SQLBackend()):
-        super().__init__(table_name=table_name, backend=backend)
-
-    def get_balance(self, address):
-        self.backend.execute('use scratch;')
-        q = 'select * from {} where wallet="{}";'.format(self.table_name, address)
-        self.backend.execute(q)
-        r = self.backend.db.fetchone()
-
-        if r is None:
-            self.backend.execute('use state;')
-            q = 'select * from {} where wallet="{}";'.format(self.table_name, address)
-            self.backend.execute(q)
-            r = self.backend.db.fetchone()
-
-        if r is None:
-            return 0
-
-        return r[-1]
+    def __init__(self, table_name=BALANCES):
+        super().__init__(table_name=table_name)
 
     def process_tx(self, tx):
-        sender_balance = self.get_balance(tx.sender)
+        sender_balance = select_row(BALANCES, 'wallet', tx.sender)
 
         if sender_balance >= tx.amount:
 
-            receiver_balance = self.get_balance(tx.receiver)
+            receiver_balance = select_row(BALANCES, 'wallet', tx.receiver)
 
             new_sender_balance = sender_balance - tx.amount
             new_receiver_balance = receiver_balance + tx.amount
@@ -59,7 +61,7 @@ class StandardQuery(StateQuery):
 
             return deltas
         else:
-            return None, None, None
+            return None
 
 
 class VoteQuery(StateQuery):
