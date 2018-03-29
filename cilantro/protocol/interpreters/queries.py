@@ -41,7 +41,7 @@ class StandardQuery(StateQuery):
             r = self.backend.db.fetchone()
 
         if r is None:
-            return None
+            return 0
 
         return r[-1]
 
@@ -53,14 +53,11 @@ class StandardQuery(StateQuery):
             receiver_balance = self.get_balance(tx.receiver)
 
             new_sender_balance = sender_balance - tx.amount
-
             new_receiver_balance = receiver_balance + tx.amount
 
-            self.backend.replace(self.scratch_table, (tx.sender), (new_sender_balance))
-            self.backend.replace(self.scratch_table, (tx.receiver), (new_receiver_balance))
+            deltas = ((tx.sender, new_sender_balance), (tx.receiver, new_receiver_balance))
 
-            return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
-                   (self.scratch_table, tx.receiver.encode(), new_receiver_balance)
+            return deltas
         else:
             return None, None, None
 

@@ -51,17 +51,13 @@ class TestQueries(TestCase):
 
         self.set_balance(std_tx.sender, 'state', std_tx.amount)
 
-        print(std_q.process_tx(std_tx))
+        deltas = std_q.process_tx(std_tx)
 
-        # test that the changes have been made to scratch
-        #new_sender_value = b.get(SEPARATOR.join([SCRATCH, BALANCES]), std_tx.sender.encode())
-        #new_receiver_value = b.get(SEPARATOR.join([SCRATCH, BALANCES]), std_tx.receiver.encode())
+        sender_deltas = deltas[0]
+        receiver_deltas = deltas[1]
 
-        #new_sender_value = E.int(new_sender_value)
-        #new_receiver_value = int_to_decimal(E.int(new_receiver_value))
-
-        #self.assertEqual(new_sender_value, 0)
-        #self.assertEqual(new_receiver_value, std_tx.amount)
+        self.assertEqual(sender_deltas[-1], 0)
+        self.assertEqual(receiver_deltas[-1], std_tx.amount)
 
     def test_standard_process_tx_fail(self):
         std_q = StandardQuery()

@@ -150,7 +150,7 @@ class TransactionQueue:
         self.backend.execute(q)
 
     def pop(self):
-        q = Query.from_(T('txq')).select('*').where(txq.id == 0)
+        q = Query.from_(T('txq')).select('*').where(T('txq').id == 0)
         tx = self.backend.execute(q)
         q = 'DELETE FROM {} WHERE "id"={}'.format(self.table_name, self.size)
         self.backend.execute(q)
