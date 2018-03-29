@@ -28,34 +28,20 @@ class StandardQuery(StateQuery):
     def __init__(self, table_name=BALANCES, backend=SQLBackend()):
         super().__init__(table_name=table_name, backend=backend)
 
-    def balance_to_decimal(self, table, address):
-        balance = self.backend.get(table, address.encode())
-        balance = E.int(balance)
-        balance = int_to_decimal(balance)
-        return balance
-
-    @staticmethod
-    def encode_balance(balance):
-        balance *= pow(10, Constants.Protocol.DecimalPrecision)
-        balance = int(balance)
-        balance = E.encode(balance)
-        return balance
-
     def get_balance(self, address):
         self.backend.execute('use scratch;')
         q = 'select * from {} where wallet="{}";'.format(self.table_name, address)
-        print(q)
         self.backend.execute(q)
         r = self.backend.db.fetchone()
-
-        print(r)
 
         if r is None:
             self.backend.execute('use state;')
             q = 'select * from {} where wallet="{}";'.format(self.table_name, address)
             self.backend.execute(q)
             r = self.backend.db.fetchone()
-            print(r)
+
+        if r is None:
+            return None
 
         return r[-1]
 
