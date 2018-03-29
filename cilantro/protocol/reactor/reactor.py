@@ -5,6 +5,7 @@ import aioprocessing
 from threading import Thread
 from cilantro.logger import get_logger
 import time
+import logging
 from collections import defaultdict
 from cilantro.messages import Envelope
 
@@ -262,7 +263,7 @@ class ReactorCore(Thread):
         self.log = get_logger("{}.Reactor".format(type(parent).__name__))
 
         # Comment out below for more granularity in debugging
-        # self.log.setLevel(logging.INFO)
+        self.log.setLevel(logging.INFO)
 
         self.queue = queue
         self.parent = parent

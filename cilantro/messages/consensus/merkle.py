@@ -1,6 +1,8 @@
 from cilantro import Constants
 from cilantro.messages import MessageBase, TransactionBase
+from cilantro.protocol.structures import MerkleTree
 import json
+import pickle
 
 
 class MerkleSignature(MessageBase):
@@ -64,7 +66,7 @@ class BlockContender(MessageBase):
         # json dump entire _data
         for i in range(len(self._data[self.SIGS])):
             self._data[self.SIGS][i] = self._data[self.SIGS][i].serialize()
-        return json.dumps(self._data)
+        return pickle.dumps(self._data)
 
     @classmethod
     def create(cls, signatures: list, nodes: list):
@@ -76,9 +78,9 @@ class BlockContender(MessageBase):
         # TODO -- implement
         # json loads entire data
         # deserialize each signature
-        data = json.loads(data)
+        data = pickle.loads(data)
         for i in range(len(data[cls.SIGS])):
-            data[cls.SIGS][i] = data[cls.SIGS][i].deserialize()
+            data[cls.SIGS][i] = MerkleSignature.from_bytes(data[cls.SIGS][i])
         return data
 
     @property
@@ -96,13 +98,13 @@ class BlockDataRequest(MessageBase):
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return data.decode()
+        return data
 
     def serialize(self):
-        return self._data.encode()
+        return self._data
 
     @classmethod
-    def create(cls, tx_hash: str):
+    def create(cls, tx_hash: bytes):
         return cls.from_data(tx_hash)
 
     @property
@@ -126,5 +128,14 @@ class BlockDataReply(MessageBase):
 
     @classmethod
     def create(cls, tx_binary: bytes):
-        return cls.from_data(tx)
+        return cls.from_data(tx_binary)
+
+    @property
+    def raw_tx(self):
+        return self._data
+
+    @property
+    def tx_hash(self):
+        return MerkleTree.hash(self._data)
+
 

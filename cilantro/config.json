@@ -20,7 +20,7 @@
   },
   "nodes": {
     "max-request-length": 100000,
-    "max-queue-size": 2,
+    "max-queue-size": 4,
     "queue-auto-flush-time": 1.0,
     "ntp-url": "pool.ntp.org",
     "faucet-percent": 0.001,
@@ -45,7 +45,7 @@
     },
     "delegates": {
       "host":"tcp://127.0.0.1",
-      "num": 0,
+      "num": 3,
       "port_start": "7000"
     }
   }

@@ -95,7 +95,8 @@ class DelegateInterpretState(DelegateBaseState):
 
     def exit(self, next_state):
         # Flush queue if we are not leaving interpreting for consensus
-        if next_state is not DelegateConsensusState:
+        if type(next_state) is not DelegateConsensusState:
+            self.log.critical("Delegate exiting interpreting for state {}, flushing queue".format(next_state))
             self.parent.queue.flush()
 
     @recv(TransactionBase)
@@ -111,6 +112,9 @@ class DelegateInterpretState(DelegateBaseState):
 
         self.log.debug("Successfully interpreted tx...adding it to queue")
         self.parent.queue.push(tx.serialize())
+
+        self.log.critical("\n\nSize of queue: {}\n\n".format(self.parent.queue.size))
+        # self.log.critical("Contents of queueu: {}".format(self.parent.queue.flush()))
 
         if self.parent.queue.size >= Constants.Nodes.MaxQueueSize:
             self.log.info("Consensus time!")
@@ -134,16 +138,17 @@ class DelegateConsensusState(DelegateBaseState):
         assert self.parent.queue.size >= Constants.Nodes.MaxQueueSize, "In consensus state, but queue not full"
 
         # Merkle-ize transaction queue and create signed merkle hash
-        all_tx = self.parent.queue.flush()
+        tx_tuples = self.parent.queue.flush()
+        all_tx = [t[1] for t in tx_tuples]
+        self.log.critical("Delegate got tx from flush: {}".format(all_tx))
         self.merkle = MerkleTree(all_tx)
         self.merkle_hash = self.merkle.hash_of_nodes()
         self.signature = ED25519Wallet.sign(self.parent.signing_key, self.merkle_hash)
 
         # Create merkle signature message and publish it
         merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now', sender=self.parent.url)
-        sig_msg = Envelope.create(merkle_sig)
-        self.log.info("Broadcasting signature")
-        self.parent.reactor.pub(url=self.parent.url, data=sig_msg.serialize())
+        self.log.info("Broadcasting signature {}".format(self.signature))
+        self.parent.reactor.pub(url=self.parent.url, data=Envelope.create(merkle_sig))
 
         # Now that we've computed the merkle tree hash, validate all our pending signatures
         for sig in [s for s in self.parent.pending_sigs if self.validate_sig(s)]:
@@ -178,8 +183,11 @@ class DelegateConsensusState(DelegateBaseState):
 
         if len(self.signatures) > self.NUM_DELEGATES // 2:
             self.log.critical("\n\n\nDelegate in consensus!\n\n\n")
-            bc = BlockContender.create(signatures=self.signatures, nodes=self.merkle.leaves)
+            bc = BlockContender.create(signatures=self.signatures, nodes=self.merkle.nodes)
+            self.log.critical("** dele created block contender: {}".format(bc))
             # send bc to masternode on his ROUTER socket'
+            self.parent.reactor.request(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl),
+                                        data=Envelope.create(bc))
             # once update confirmed from mn, transition to update state
 
     @recv(MerkleSignature)
@@ -189,7 +197,7 @@ class DelegateConsensusState(DelegateBaseState):
             self.check_majority()
 
     @recv_req(BlockDataRequest)
-    def recv_blockdata_req(self, block_data: BlockDataRequest):
+    def recv_blockdata_req(self, block_data: BlockDataRequest, id):
         assert block_data.tx_hash in self.merkle.leaves, "Block hash {} not found in leaves {}"\
             .format(block_data.tx_hash, self.merkle.leaves)
         tx_binary = self.merkle.data_for_hash(block_data.tx_hash)

@@ -54,11 +54,12 @@ class StateMeta(type):
         clsobj = super().__new__(cls, clsname, bases, clsdict)
         clsobj.log = get_logger(clsname)
 
-        print("Creating state meta for clsname: ", clsname)
-        print("bases: ", bases)
-        print("clsdict: ", clsdict)
-        print("vars: ", vars(clsobj))
-        print("\n")
+        # print("Creating state meta for clsname: ", clsname)
+        # print("bases: ", bases)
+        # print("clsdict: ", clsdict)
+        # print("vars: ", vars(clsobj))
+        # print("dir: ", dir(clsobj))
+        # print("\n")
 
         # Add debug decorator to run/exit/enter methods
         for name, val in vars(clsobj).items():
@@ -69,11 +70,13 @@ class StateMeta(type):
         # Configure receivers, repliers, and timeouts
         clsobj._receivers = {}
 
-        for r in (r for r in vars(clsobj).values() if hasattr(r, '_recv')):
-            clsobj._receivers[r._recv] = r
-            subclasses = StateMeta.get_subclasses(r._recv)
-            for sub in filter(lambda k: k not in clsobj._receivers, subclasses):
-                clsobj._receivers[sub] = r
+        for r in dir(clsobj):
+            func = getattr(clsobj, r)
+            if hasattr(func, '_recv'):
+                clsobj._receivers[func._recv] = func
+                subclasses = StateMeta.get_subclasses(func._recv)
+                for sub in filter(lambda k: k not in clsobj._receivers, subclasses):
+                    clsobj._receivers[sub] = func
 
         # print("{} has _receivers: {}".format(clsobj.__name__, clsobj._receivers))
 
