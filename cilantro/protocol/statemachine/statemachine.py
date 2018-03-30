@@ -12,16 +12,24 @@ class StateMachine:
         """
         TODO -- docstring
         """
+        self.is_started = False
+
+        assert self._STATES is not None, "_STATES is None (did you set it in the subclass?)"
+        assert self._INIT_STATE is not None, "_INIT_STATE is None (did you set it in the subclass?)"
+
+        self.state = EmptyState(self)
+        self.states = None
+
+    def start(self):
+        assert not self.is_started, "StateMachine already started -- .start() must only be invoked once."
+
         states = self._STATES
         init_state = self._INIT_STATE
 
-        assert states is not None, "_STATES is None (did you set it in the subclass?)"
-        assert init_state is not None, "_INIT_STATE is None (did you set it in the subclass?)"
-
-        self.state = EmptyState(self)
         self.states = {s: s(self) for s in states}
         assert init_state in self.states, "Init state {} not in states {}".format(init_state, self.states)
 
+        self.is_started = True
         self.transition(init_state)
 
     """
