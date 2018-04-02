@@ -123,15 +123,11 @@ class MNRunState(MNBaseState):
             req = BlockDataRequest.create(tx)
             self.log.critical("Requesting tx hash {} from URL {}".format(tx, replier))
             self.parent.reactor.request(url=TestNetURLHelper.dealroute_url(replier), data=Envelope.create(req), timeout=1)
-
-    @timeout(BlockDataRequest)
-    def timeout_block_req(self, req: BlockDataRequest):
-        self.log.critical("Oh shit block data request timed out: {}".format(req))
-
-    @recv(BlockDataReply)
-    def recv_block_reply(self, reply: BlockDataReply):
-        self.log.critical("Masternode got block data reply {}".format(reply))
-        # TODO -- add this to completed transactions, mark sender as available (how?)
+    #
+    # @recv(BlockDataReply)
+    # def recv_block_reply(self, reply: BlockDataReply):
+    #     self.log.critical("Masternode got block data reply {}".format(reply))
+    #     # TODO -- add this to completed transactions, mark sender as available (how?)
 
     def compute_hash_of_nodes(self, nodes) -> str:
         self.log.critical("Masternode computing hash of nodes...")
@@ -173,14 +169,12 @@ class MNRunState(MNBaseState):
             self.log.critical("Still {} transactions yet to request until we can build the block"
                               .format(len(self.tx_hashes) - len(self.retrieved_txs)))
 
-
     @timeout(BlockDataRequest)
-    def bc_timeout(self, request: BlockDataRequest):
+    def timeout_block_req(self, request: BlockDataRequest, url):
+        self.log.critical("BlockDataRequest timed out for url {} with request data {}".format(url, request))
         pass
 
-
 class MNNewBlockState(MNBaseState): pass
-
 
 
 class Masternode(NodeBase):
@@ -188,3 +182,4 @@ class Masternode(NodeBase):
     _STATES = [MNBootState, MNRunState]
     def __init__(self, url=Constants.Testnet.Masternode.InternalUrl, signing_key=Constants.Testnet.Masternode.Sk):
         super().__init__(url=url, signing_key=signing_key)
+        self.start()

@@ -31,7 +31,8 @@ class WitnessBootState(WitnessBaseState):
         self.parent.reactor.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
 
         self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl))
-        self.log.critical("Witness subscribing to URL: {}".format(TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl)))
+        self.log.critical("Witness subscribing to URL: {}"
+                          .format(TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl)))
 
     def run(self):
         self.parent.transition(WitnessRunState)
@@ -58,3 +59,4 @@ class Witness(NodeBase):
             signing_key = node_info['sk']
         super().__init__(url=url, signing_key=signing_key)
         self.log.info("Witness being created on slot {} with url {}".format(slot, url))
+        self.start()

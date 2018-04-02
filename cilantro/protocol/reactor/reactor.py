@@ -62,7 +62,7 @@ class ZMQLoop:
             except Exception as e:
                 self.log.error("Error opening msg: {}, with msg binary: {}".format(e, msg_binary))
                 return
-            getattr(self.parent, callback)(msg)
+            self.call_on_mt(callback, msg)
 
     async def receive_multipart(self, socket, url, callback):
         self.log.warning("--- Starting Receiving Multipart To URL: {} with callback {} ---".format(url, callback))
@@ -79,15 +79,11 @@ class ZMQLoop:
             except Exception as e:
                 self.log.error("Error opening msg: {}, with msg binary: {}".format(e, msg_binary))
                 return
-            getattr(self.parent, callback)(msg, url, id, uuid)
+            self.call_on_mt(callback, msg, url, id, uuid)
 
-    def check_timeout(self, envelope):
+    def check_timeout(self, envelope, url):
         uuid = envelope.uuid
-        self.log.critical("Message with uuid {} timed out (msg={})".format(uuid, envelope))
-
-        # Sanity checks
-        assert hasattr(self.parent, TIMEOUT_CALLBACK), "Callback {} not found on parent object {}" \
-            .format(TIMEOUT_CALLBACK, self.parent)
+        self.log.critical("Message with from url {} and msg uuid {} timed out (msg={})".format(url, uuid, envelope))
         """
         TODO -- we need to be opening messages as soon as we receive them and queueing them up to run on mainthread
         instead of blocking while mainthread does stuff (as we are currently). Otherwise, we may receive a message
@@ -97,12 +93,14 @@ class ZMQLoop:
         assert uuid in self.pending_reqs, "UUID {} not found in pending requests {}".format(uuid, self.pending_reqs)
 
         del self.pending_reqs[uuid]
-        getattr(self.parent, TIMEOUT_CALLBACK)(envelope.open())  # TODO -- add error handling for envelope open
+        self.call_on_mt(TIMEOUT_CALLBACK, envelope.open(), url)
 
     def open_msg(self, msg_binary):
         # Open msg
-        # Check for duplicates
+        # TODO -- Check for duplicates
         # Remove callback for timeout (if any)
+        # TODO -- add error handling for envelope open
+
         envelope = Envelope.from_bytes(msg_binary)
         msg = envelope.open()
 
@@ -112,6 +110,11 @@ class ZMQLoop:
             del self.pending_reqs[envelope.uuid]
 
         return msg, envelope.uuid
+
+    def call_on_mt(self, callback, *args):
+        assert hasattr(self.parent, callback), "Callback {} not found on parent object {}" \
+            .format(TIMEOUT_CALLBACK, self.parent)
+        getattr(self.parent, callback)(*args)
 
 
 class CommandMeta(type):
@@ -237,7 +240,7 @@ class RequestCommand(Command):
         if timeout > 0:
             cls.log.info("Adding timeout of {} seconds for request with uuid {} and data {}"
                              .format(timeout, data.uuid, data))
-            handle = zl.loop.call_later(timeout, zl.check_timeout, data)
+            handle = zl.loop.call_later(timeout, zl.check_timeout, data, url)
             zl.pending_reqs[data.uuid] = handle
 
         # zl.sockets[ZMQLoop.DEAL][url][ZMQLoop.SOCKET].send(data)

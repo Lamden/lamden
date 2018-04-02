@@ -89,6 +89,14 @@ class TestNetURLHelper:
         return url
 
     @staticmethod
+    def pubsub_url2(url: str):
+        return TestNetURLHelper.increment_url(url, 1)
+
+    @staticmethod
     def dealroute_url(url: str):
+        return TestNetURLHelper.increment_url(url, 2)
+
+    @staticmethod
+    def increment_url(url, increment):
         port = int(url[-4:])
-        return url[:-4] + str(port + 1)
+        return url[:-4] + str(port + increment)
