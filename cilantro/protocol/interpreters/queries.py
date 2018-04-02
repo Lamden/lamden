@@ -10,8 +10,6 @@ class StateQuery:
     def __init__(self, table_name):
         self.table_name = table_name
 
-        self.txq = TransactionQueue(backend=self.backend)
-
     def process_tx(self, tx: dict):
         raise NotImplementedError
 
@@ -19,25 +17,29 @@ class StateQuery:
         return self.table_name
 
 
-def select_row(table, field, value):
+def select_row(table, key, field, value):
+    if key is None:
+        key = '*'
+
     b = SQLBackend()
     b.db.execute('use scratch;')
-    q = 'select * from {} where {}="{}";'.format(table, field, value)
+    q = 'select {} from {} where {}="{}";'.format(key, table, field, value)
     b.db.execute(q)
     r = b.db.fetchone()
 
     if r is None:
         b.db.execute('use state;')
-        q = 'select * from {} where {}="{}";'.format(table, field, value)
+        q = 'select {} from {} where {}="{}";'.format(key, table, field, value)
         b.db.execute(q)
         r = b.db.fetchone()
 
     b.context.close()
 
     if r is None:
-        return 0
+        return (None, )
 
-    return r[-1]
+    return r
+
 
 class StandardQuery(StateQuery):
     """
@@ -46,13 +48,23 @@ class StandardQuery(StateQuery):
     """
     def __init__(self, table_name=BALANCES):
         super().__init__(table_name=table_name)
+        self.schema = {
+            'table': self.table_name,
+            'wallet': None,
+            'amount': None,
+        }
 
     def process_tx(self, tx):
-        sender_balance = select_row(BALANCES, 'wallet', tx.sender)
+
+        row = select_row(BALANCES, 'amount', 'wallet', tx.sender)
+        sender_balance = row[0] if row[0] is not None else 0
+
+        print(sender_balance)
 
         if sender_balance >= tx.amount:
 
-            receiver_balance = select_row(BALANCES, 'wallet', tx.receiver)
+            recv_row = select_row(BALANCES, 'amount', 'wallet', tx.receiver)
+            receiver_balance = recv_row[0] if recv_row[0] is not None else 0
 
             new_sender_balance = sender_balance - tx.amount
             new_receiver_balance = receiver_balance + tx.amount
@@ -69,17 +81,11 @@ class VoteQuery(StateQuery):
     VoteQuery
     Automates the state modifications for vote transactions
     """
-    def __init__(self, table_name=VOTES, backend=SQLBackend()):
-        super().__init__(table_name=table_name, backend=backend)
+    def __init__(self, table_name=VOTES):
+        super().__init__(table_name=table_name)
 
     def process_tx(self, tx):
-        try:
-            k = tx.policy.encode() + SEPARATOR + tx.sender.encode()
-            v = tx.choice.encode()
-            self.backend.set(self.scratch_table, k, v)
-            return tx, (self.scratch_table, k, v)
-        except Exception as e:
-            return None, None
+        return tx.sender, tx.policy, tx.choice
 
 
 class SwapQuery(StandardQuery):
@@ -87,71 +93,25 @@ class SwapQuery(StandardQuery):
     SwapQuery
     Automates the state modifications for swap transactions
     """
-    def __init__(self, table_name=SWAPS, backend=SQLBackend()):
-        super().__init__(table_name=table_name, backend=backend)
+    def __init__(self, table_name=SWAPS):
+        super().__init__(table_name=table_name)
         self.balance_table = BALANCES
-        self.balance_scratch = SEPARATOR.join([SCRATCH, self.balance_table])
-
-    @staticmethod
-    def amount_key(address, hashlock):
-        return address + SEPARATOR + hashlock + SEPARATOR + b'amount'
-
-    @staticmethod
-    def expiration_key(address, hashlock):
-        return address + SEPARATOR + hashlock + SEPARATOR + b'expiration'
-
-    def get_balance(self, address):
-        table = self.balance_table
-        if self.backend.exists(self.scratch_table, address.encode()):
-            table = self.balance_scratch
-
-        return self.balance_to_decimal(table, address)
 
     def process_tx(self, tx):
-        sender_balance = self.get_balance(tx.sender)
+        sender_balance = select_row('balances', 'amount', 'wallet', tx.sender)[-1]
 
         if sender_balance >= tx.amount:
-            # subtract the balance from the sender
+
             new_sender_balance = sender_balance - tx.amount
-            new_sender_balance = self.encode_balance(new_sender_balance)
+            return (tx.sender, new_sender_balance), (tx.sender, tx.receiver, tx.amount, tx.hashlock, tx.expiration)
 
-            self.backend.set(self.balance_scratch, tx.sender.encode(), new_sender_balance)
-
-            # place the balance into the swap
-            amount_key = self.amount_key(tx.receiver.encode(), tx.hashlock)
-            expiration_key = self.expiration_key(tx.receiver.encode(), tx.hashlock)
-
-            self.backend.set(self.scratch_table, amount_key, self.encode_balance(tx.amount))
-            self.backend.set(self.scratch_table, expiration_key, E.encode(tx.expiration))
-
-            # return the queries for feedback
-            return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
-                   (self.scratch_table, amount_key, tx.amount), \
-                   (self.scratch_table, expiration_key, tx.expiration)
         else:
-            return None, None, None, None
+            return None
 
 
 class RedeemQuery(SwapQuery):
-    def __init__(self, table_name=SWAPS, backend=SQLBackend()):
-        super().__init__(table_name=table_name, backend=backend)
-
-    def get_swap(self, address, hashlock):
-        # set up table name (scratch if the record does already exist)
-        amount_key = self.amount_key(address.encode(), hashlock)
-        expiration_key = self.expiration_key(address.encode(), hashlock)
-
-        table = self.table_name
-        if self.backend.exists(self.scratch_table, amount_key) and \
-                self.backend.exists(self.scratch_table, expiration_key):
-            table = self.scratch_table
-
-        # make the queries
-        amount = self.backend.get(table, amount_key)
-        expiration = self.backend.get(table, expiration_key)
-
-        # return it
-        return amount, expiration
+    def __init__(self, table_name=SWAPS):
+        super().__init__(table_name=table_name)
 
     def process_tx(self, tx):
         hashlock = hashlib.sha3_256()

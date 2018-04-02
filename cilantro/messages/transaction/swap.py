@@ -31,7 +31,7 @@ class SwapTransaction(TransactionBase):
 
     @property
     def amount(self):
-        return int_to_decimal(self._data.payload.amount)
+        return self._data.payload.amount
 
     @property
     def hashlock(self):
@@ -50,9 +50,9 @@ class SwapTransactionBuilder:
     @staticmethod
     def create_tx_struct(sender_s, sender_v, receiver, amount, hashlock, expiration):
         # Adjust amount for fixed point arithmetic
-        amount *= pow(10, Constants.Protocol.DecimalPrecision)
-        if type(amount) == float:
-            amount = int(round(amount, 0))
+        # amount *= pow(10, Constants.Protocol.DecimalPrecision)
+        # if type(amount) == float:
+        #     amount = int(round(amount, 0))
 
         tx = transaction_capnp.SwapTransaction.new_message()
 
@@ -85,4 +85,4 @@ class SwapTransactionBuilder:
 
         s = Constants.Protocol.Wallets.new()
         r = Constants.Protocol.Wallets.new()
-        return SwapTransactionBuilder.create_tx(s[0], s[1], r[1], random.random() * MULT, secrets.token_bytes(64), tomorrow)
+        return SwapTransactionBuilder.create_tx(s[0], s[1], r[1], int(random.random() * MULT), secrets.token_bytes(64), tomorrow)

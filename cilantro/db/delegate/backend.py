@@ -1,6 +1,6 @@
 import plyvel
 import mysql.connector
-from pypika import Query
+from pypika import Query as Q
 from pypika import Table as T
 
 SEPARATOR = '/'
@@ -36,7 +36,7 @@ class Backend:
         raise NotImplementedError
 
 
-class SQLBackend(Backend):
+class SQLBackend:
     def __init__(self, user='root'):
         self.context = mysql.connector.connect(user=user)
         self.db = self.context.cursor()
@@ -134,6 +134,12 @@ class Table:
         cursor.execute(q)
 
 
+class Query:
+    def __init__(self, table, updates):
+        self.table = table
+        self.updates = updates
+
+
 class TransactionQueue:
     def __init__(self, backend):
         self.backend = backend
@@ -146,11 +152,11 @@ class TransactionQueue:
 
     def push(self, tx):
         self.size += 1
-        q = Query.into(self.table_name).columns('id', 'tx').insert(self.size, tx)
+        q = Q.into(self.table_name).columns('id', 'tx').insert(self.size, tx)
         self.backend.execute(q)
 
     def pop(self):
-        q = Query.from_(T('txq')).select('*').where(T('txq').id == 0)
+        q = Q.from_(T('txq')).select('*').where(T('txq').id == 0)
         tx = self.backend.execute(q)
         q = 'DELETE FROM {} WHERE "id"={}'.format(self.table_name, self.size)
         self.backend.execute(q)
@@ -158,7 +164,7 @@ class TransactionQueue:
         return tx
 
     def flush(self):
-        q = Query.from_(T('txq')).select('*')
+        q = Q.from_(T('txq')).select('*')
         tx = self.backend.execute(q)
         self.backend.execute('DROP TABLE {};'.format(self.table_name))
         return tx
