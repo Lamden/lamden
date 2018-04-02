@@ -123,11 +123,11 @@ class MNRunState(MNBaseState):
             req = BlockDataRequest.create(tx)
             self.log.critical("Requesting tx hash {} from URL {}".format(tx, replier))
             self.parent.reactor.request(url=TestNetURLHelper.dealroute_url(replier), data=Envelope.create(req), timeout=1)
-
-    @recv(BlockDataReply)
-    def recv_block_reply(self, reply: BlockDataReply):
-        self.log.critical("Masternode got block data reply {}".format(reply))
-        # TODO -- add this to completed transactions, mark sender as available (how?)
+    #
+    # @recv(BlockDataReply)
+    # def recv_block_reply(self, reply: BlockDataReply):
+    #     self.log.critical("Masternode got block data reply {}".format(reply))
+    #     # TODO -- add this to completed transactions, mark sender as available (how?)
 
     def compute_hash_of_nodes(self, nodes) -> str:
         self.log.critical("Masternode computing hash of nodes...")
