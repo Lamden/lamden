@@ -12,7 +12,7 @@ swaps = Table('swaps', metadata,
               Column('receiver', String(64), nullable=False),
               Column('amount', Float(precision=4), nullable=False),
               Column('expiration', Date, nullable=False),
-              Column('receiver', String(40), nullable=False))
+              Column('hashlock', String(40), nullable=False))
 
 votes = Table('votes', metadata,
               Column('wallet', String(64), nullable=False),
