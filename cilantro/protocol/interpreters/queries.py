@@ -1,20 +1,11 @@
 from cilantro.messages.utils import int_to_decimal
-from cilantro import Constants
 from cilantro.utils import Encoder as E
 import hashlib
 import time
 from cilantro.db.delegate.backend import *
 
-
-class StateQuery:
-    def __init__(self, table_name):
-        self.table_name = table_name
-
-    def process_tx(self, tx: dict):
-        raise NotImplementedError
-
-    def __str__(self):
-        return self.table_name
+from sqlalchemy import *
+from cilantro.db.delegate import tables
 
 
 def select_row(table, key, field, value):
@@ -41,20 +32,23 @@ def select_row(table, key, field, value):
     return r
 
 
-class StandardQuery(StateQuery):
+class StandardQuery:
     """
     StandardQuery
     Automates the state and txq modifications for standard transactions
     """
-    def __init__(self, table_name=BALANCES):
-        super().__init__(table_name=table_name)
-        self.schema = {
-            'table': self.table_name,
-            'wallet': None,
-            'amount': None,
-        }
 
     def process_tx(self, tx):
+
+        q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
+        q.bind = tables.db
+
+        print(q.compile())
+
+        print(q)
+
+        r = tables.db.execute(q)
+        print(r.fetchone())
 
         row = select_row(BALANCES, 'amount', 'wallet', tx.sender)
         sender_balance = row[0] if row[0] is not None else 0
@@ -76,26 +70,26 @@ class StandardQuery(StateQuery):
             return None
 
 
-class VoteQuery(StateQuery):
+class VoteQuery:
     """
     VoteQuery
     Automates the state modifications for vote transactions
     """
-    def __init__(self, table_name=VOTES):
-        super().__init__(table_name=table_name)
 
     def process_tx(self, tx):
-        return tx.sender, tx.policy, tx.choice
+        q = insert(tables.votes).values(
+            wallet=tx.sender,
+            policy=tx.policy,
+            choice=tx.choice
+        )
+        return q
 
 
-class SwapQuery(StandardQuery):
+class SwapQuery:
     """
     SwapQuery
     Automates the state modifications for swap transactions
     """
-    def __init__(self, table_name=SWAPS):
-        super().__init__(table_name=table_name)
-        self.balance_table = BALANCES
 
     def process_tx(self, tx):
         sender_balance = select_row('balances', 'amount', 'wallet', tx.sender)[-1]
@@ -103,13 +97,27 @@ class SwapQuery(StandardQuery):
         if sender_balance >= tx.amount:
 
             new_sender_balance = sender_balance - tx.amount
-            return (tx.sender, new_sender_balance), (tx.sender, tx.receiver, tx.amount, tx.hashlock, tx.expiration)
+
+            balance_q = insert(tables.balances).values(
+                wallet=tx.sender,
+                amount=new_sender_balance
+            )
+
+            swap_q = insert(tables.swaps).values(
+                sender=tx.sender,
+                receiver=tx.receiver,
+                amount=tx.amount,
+                expiration=tx.expiration,
+                hashlock=tx.hashlock
+            )
+
+            return balance_q, swap_q
 
         else:
             return None
 
 
-class RedeemQuery(SwapQuery):
+class RedeemQuery:
     def __init__(self, table_name=SWAPS):
         super().__init__(table_name=table_name)
 

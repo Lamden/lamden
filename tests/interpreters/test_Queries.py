@@ -5,28 +5,36 @@ from cilantro.utils import Encoder as E
 from cilantro import Constants
 import secrets
 import hashlib
+from sqlalchemy import *
+from cilantro.db.delegate import tables
 
 
 class TestQueries(TestCase):
     @staticmethod
-    def set_balance(wallet, db: str, amount):
-        b = SQLBackend()
-        b.db.execute('use {};'.format(db))
-        b.replace(BALANCES, '(wallet, amount)', (wallet, amount))
-        b.db = b.context.close()
+    def set_balance(w, db: str, a):
+        tables.db.execute('use {}'.format(db))
+        q = insert(tables.balances).values(
+            wallet=w,
+            amount=a
+        )
+        tables.db.execute(q)
 
     def test_standard_query_get_balance(self):
         a = secrets.token_hex(64)
         self.set_balance(a, 'state', 1000000)
-        balance = select_row('balances', 'amount', 'wallet', a)
 
-        self.assertIn(1000000, balance)
+        q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == a)
+        balance = tables.db.execute(q).fetchone()
 
-        aa = secrets.token_hex(64)
-        self.set_balance(aa, 'scratch', 1000000)
-        balance_scratch = select_row('balances', 'amount', 'wallet', aa)
+        self.assertEqual(1000000, balance[0])
 
-        self.assertIn(1000000, balance_scratch)
+        a = secrets.token_hex(64)
+        self.set_balance(a, 'scratch', 1000000)
+
+        q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == a)
+        balance = tables.db.execute(q).fetchone()
+
+        self.assertEqual(1000000, balance[0])
 
     def test_standard_process_tx(self):
         std_q = StandardQuery()
@@ -63,7 +71,6 @@ class TestQueries(TestCase):
         swap_q = SwapQuery()
         swap_tx = SwapTransactionBuilder.random_tx()
 
-        b = SQLBackend()
         self.set_balance(swap_tx.sender, 'state', swap_tx.amount)
 
         swap_q.process_tx(swap_tx)
