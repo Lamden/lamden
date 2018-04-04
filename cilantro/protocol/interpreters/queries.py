@@ -1,30 +1,28 @@
 import hashlib
 import time
-
 from sqlalchemy import *
-
 from cilantro.db.delegate import tables
 
 
-def process_tx(func):
-    def context_manage(func):
-        def func_wrapper(*args, **kwargs):
-            func('use scratch;')
-            r = func(*args, **kwargs)
+def contract(tx):
+    def pending(ctx):
+        def execute(*args, **kwargs):
+            ctx('use scratch;')
+            r = ctx(*args, **kwargs)
 
             if r is not None:
                 return r
 
-            func('use state')
-            r = func(*args, **kwargs)
+            ctx('use state')
+            r = ctx(*args, **kwargs)
 
             return r
 
-        return func_wrapper
+        return execute
 
-    def func_wrapper(*args, **kwargs):
-        globals()['tables'].db.execute = context_manage(globals()['tables'].db.execute)
-        deltas = func(*args, **kwargs)
+    def format_query(*args, **kwargs):
+        globals()['tables'].db.execute = pending(globals()['tables'].db.execute)
+        deltas = tx(*args, **kwargs)
 
         if deltas is None:
             return None
@@ -38,9 +36,9 @@ def process_tx(func):
         for delta in deltas:
             new_deltas.append(str(delta.compile(compile_kwargs={'literal_binds': True})))
 
-
         return new_deltas
-    return func_wrapper
+
+    return format_query
 
 class StandardQuery:
     """
@@ -48,7 +46,7 @@ class StandardQuery:
     Automates the state and txq modifications for standard transactions
     """
 
-    @process_tx
+    @contract
     def process_tx(self, tx):
 
         q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
@@ -92,7 +90,7 @@ class VoteQuery:
     Automates the state modifications for vote transactions
     """
 
-    @process_tx
+    @contract
     def process_tx(self, tx):
         q = insert(tables.votes).values(
             wallet=tx.sender,
@@ -110,7 +108,7 @@ class SwapQuery:
     Sender cannot overwrite this value / update it, so fail if the swap cannot insert (on interpreter side?)
     """
 
-    @process_tx
+    @contract
     def process_tx(self, tx):
         q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
 
@@ -142,7 +140,7 @@ class SwapQuery:
 
 
 class RedeemQuery:
-    @process_tx
+    @contract
     def process_tx(self, tx):
         # calculate the hashlock from the secret. if it is incorrect, the query will fail
         hashlock = hashlib.sha3_256()
