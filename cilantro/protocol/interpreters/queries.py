@@ -2,9 +2,45 @@ import hashlib
 import time
 
 from sqlalchemy import *
+
 from cilantro.db.delegate import tables
 
 
+def process_tx(func):
+    def context_manage(func):
+        def func_wrapper(*args, **kwargs):
+            func('use scratch;')
+            r = func(*args, **kwargs)
+
+            if r is not None:
+                return r
+
+            func('use state')
+            r = func(*args, **kwargs)
+
+            return r
+
+        return func_wrapper
+
+    def func_wrapper(*args, **kwargs):
+        globals()['tables'].db.execute = context_manage(globals()['tables'].db.execute)
+        deltas = func(*args, **kwargs)
+
+        if deltas is None:
+            return None
+
+        try:
+            deltas[0]
+        except TypeError:
+            deltas = [deltas]
+
+        new_deltas = []
+        for delta in deltas:
+            new_deltas.append(str(delta.compile(compile_kwargs={'literal_binds': True})))
+
+
+        return new_deltas
+    return func_wrapper
 
 class StandardQuery:
     """
@@ -12,35 +48,37 @@ class StandardQuery:
     Automates the state and txq modifications for standard transactions
     """
 
+    @process_tx
     def process_tx(self, tx):
 
         q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
 
-        row = tables.db.execute(q).fetchone()
+        sender_balance = tables.db.execute(q).fetchone()
 
-        sender_balance = row[0] if row[0] is not None else 0
+        if sender_balance is None:
+            return None
 
-        print(sender_balance)
-
-        if sender_balance >= tx.amount:
+        if sender_balance[0] >= tx.amount:
 
             q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.receiver)
 
             recv_row = tables.db.execute(q).fetchone()
 
-            receiver_balance = recv_row[0] if recv_row[0] is not None else 0
+            if recv_row is None:
+                receiver_q = insert(tables.balances).values(
+                    wallet=tx.receiver,
+                    amount=tx.amount
+                )
 
-            new_sender_balance = sender_balance - tx.amount
-            new_receiver_balance = receiver_balance + tx.amount
+            else:
+                receiver_q = update(tables.balances).values(
+                    wallet=tx.receiver,
+                    amount=recv_row[0] + tx.amount
+                )
 
-            sender_q = insert(tables.balances).values(
+            sender_q = update(tables.balances).values(
                 wallet=tx.sender,
-                amount=new_sender_balance
-            )
-
-            receiver_q = insert(tables.balances).values(
-                wallet=tx.receiver,
-                amount=new_receiver_balance
+                amount=sender_balance[0] - tx.amount
             )
 
             return sender_q, receiver_q
@@ -54,6 +92,7 @@ class VoteQuery:
     Automates the state modifications for vote transactions
     """
 
+    @process_tx
     def process_tx(self, tx):
         q = insert(tables.votes).values(
             wallet=tx.sender,
@@ -71,14 +110,19 @@ class SwapQuery:
     Sender cannot overwrite this value / update it, so fail if the swap cannot insert (on interpreter side?)
     """
 
+    @process_tx
     def process_tx(self, tx):
-        sender_balance = select_row('balances', 'amount', 'wallet', tx.sender)[-1]
+        q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
+
+        row = tables.db.execute(q).fetchone()
+
+        sender_balance = 0 if row is None else row[0]
 
         if sender_balance >= tx.amount:
 
             new_sender_balance = sender_balance - tx.amount
 
-            balance_q = insert(tables.balances).values(
+            balance_q = update(tables.balances).values(
                 wallet=tx.sender,
                 amount=new_sender_balance
             )
@@ -98,7 +142,7 @@ class SwapQuery:
 
 
 class RedeemQuery:
-
+    @process_tx
     def process_tx(self, tx):
         # calculate the hashlock from the secret. if it is incorrect, the query will fail
         hashlock = hashlib.sha3_256()
@@ -117,15 +161,19 @@ class RedeemQuery:
         deltas = []
 
         for amount, expiration in tables.db.execute(q).cursor:
-            if expiration > time.time():
+            print(amount, expiration)
+
+            if int(expiration) > int(time.time()):
                 # awesome
                 q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
 
                 balance = tables.db.execute(q).fetchone()
 
+                balance = 0 if balance is None else balance[0]
+
                 new_balance = balance + amount
 
-                q = insert(tables.balances).values(
+                q = update(tables.balances).values(
                     wallet=tx.sender,
                     amount=new_balance
                 )
@@ -133,28 +181,30 @@ class RedeemQuery:
                 deltas.append(q)
 
                 q = delete(tables.swaps).where(
-                    tables.swaps.c.receiver == tx.sender,
-                    tables.swaps.c.hashlock == hashlock,
-                    tables.swaps.c.amount == amount,
-                    tables.swaps.c.expiration == expiration,
+                    and_(
+                        tables.swaps.c.receiver == tx.sender,
+                        tables.swaps.c.hashlock == hashlock,
+                        tables.swaps.c.amount == amount,
+                        tables.swaps.c.expiration == expiration,
+                    )
                 )
 
                 deltas.append(q)
 
         # check the opposing side. IE, if the sender is the original swap creator and wants a refund
 
-        q = select([tables.swaps.c.amount, tables.swaps.c.expiration]).where(and_(
+        q = select([tables.swaps.c.amount, tables.swaps.c.expiration, tables.swaps.c.receiver]).where(and_(
             tables.swaps.c.sender == tx.sender,
             tables.swaps.c.hashlock == hashlock
         ))
 
-        for amount, expiration in tables.db.execute(q).cursor:
-            if expiration < time.time():
+        for amount, expiration, receiver in tables.db.execute(q).cursor:
+            if int(expiration) < time.time():
                 q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
 
-                balance = tables.db.execute(q).fetchone()
+                balance = tables.db.execute(q).fetchone() or 0
 
-                new_balance = balance + amount
+                new_balance = balance[0] + amount
 
                 q = insert(tables.balances).values(
                     wallet=tx.sender,
@@ -164,12 +214,14 @@ class RedeemQuery:
                 deltas.append(q)
 
                 q = delete(tables.swaps).where(
-                    tables.swaps.c.receiver == tx.sender,
-                    tables.swaps.c.hashlock == hashlock,
-                    tables.swaps.c.amount == amount,
-                    tables.swaps.c.expiration == expiration,
+                    and_(
+                        tables.swaps.c.sender == tx.sender,
+                        tables.swaps.c.receiver == receiver,
+                        tables.swaps.c.hashlock == hashlock,
+                        tables.swaps.c.amount == amount,
+                        tables.swaps.c.expiration == expiration,
+                    )
                 )
-
                 deltas.append(q)
 
         if len(deltas) > 0:

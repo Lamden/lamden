@@ -16,8 +16,6 @@ class SwapTransaction(TransactionBase):
         return transaction_capnp.SwapTransaction.from_bytes_packed(data)
 
     def validate_payload(self):
-        validate_hex(self.sender, 64, 'sender')
-        validate_hex(self.receiver, 64, 'receiver')
         if self.amount <= 0:
             raise Exception("Amount must be greater than 0 (amount={})".format(self.amount))
         if len(self.hashlock) > 64:
@@ -35,7 +33,7 @@ class SwapTransaction(TransactionBase):
 
     @property
     def hashlock(self):
-        return self._data.payload.hashlock
+        return self._data.payload.hashlock.decode()
 
     @property
     def expiration(self):
@@ -85,4 +83,5 @@ class SwapTransactionBuilder:
 
         s = Constants.Protocol.Wallets.new()
         r = Constants.Protocol.Wallets.new()
-        return SwapTransactionBuilder.create_tx(s[0], s[1], r[1], int(random.random() * MULT), secrets.token_bytes(64), tomorrow)
+        return SwapTransactionBuilder.create_tx(s[0], s[1], r[1], int(random.random() * MULT),
+                                                secrets.token_hex(32), tomorrow)

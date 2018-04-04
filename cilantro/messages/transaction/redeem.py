@@ -19,7 +19,7 @@ class RedeemTransaction(TransactionBase):
 
     @property
     def secret(self):
-        return self._data.payload.secret
+        return self._data.payload.secret.decode()
 
 
 class RedeemTransactionBuilder:
@@ -51,4 +51,4 @@ class RedeemTransactionBuilder:
         import secrets
 
         s = Constants.Protocol.Wallets.new()
-        return RedeemTransactionBuilder.create_tx(s[0], s[1], secrets.token_bytes(32))
+        return RedeemTransactionBuilder.create_tx(s[0], s[1], secrets.token_hex(32))
