@@ -1,6 +1,5 @@
 from unittest import TestCase
 from cilantro.messages import StandardTransactionBuilder, VoteTransactionBuilder, SwapTransactionBuilder, RedeemTransactionBuilder
-from cilantro.utils import Encoder as E
 from cilantro import Constants
 import secrets
 from cilantro.protocol.interpreters.queries import *
@@ -9,7 +8,6 @@ from cilantro.protocol.interpreters.queries import *
 class TestQueries(TestCase):
     @staticmethod
     def set_balance(w, db: str, a):
-        tables.db.execute('use {}'.format(db))
         q = insert(tables.balances).values(
             wallet=w,
             amount=a
@@ -17,7 +15,7 @@ class TestQueries(TestCase):
         tables.db.execute(q)
 
     def test_standard_query_get_balance(self):
-        a = secrets.token_hex(64)
+        a = secrets.token_hex(32)
         self.set_balance(a, 'state', 1000000)
 
         q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == a)
@@ -25,7 +23,7 @@ class TestQueries(TestCase):
 
         self.assertEqual(1000000, balance[0])
 
-        a = secrets.token_hex(64)
+        a = secrets.token_hex(32)
         self.set_balance(a, 'scratch', 1000000)
 
         q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == a)
@@ -44,10 +42,11 @@ class TestQueries(TestCase):
         sender_deltas = deltas[0]
         receiver_deltas = deltas[1]
 
-        q = 'INSERT INTO balances (wallet, amount) VALUES '
+        q = 'UPDATE balances SET '
+        q2 = 'INSERT INTO balances (wallet, amount) VALUES '
 
-        self.assertEqual(sender_deltas, q + "('{}', {})".format(std_tx.sender, 0))
-        self.assertEqual(receiver_deltas, q + "('{}', {})".format(std_tx.receiver, std_tx.amount))
+        self.assertEqual(sender_deltas, q + "wallet='{}', amount={}".format(std_tx.sender, 0))
+        self.assertEqual(receiver_deltas, q2 + "('{}', {})".format(std_tx.receiver, std_tx.amount))
 
     def test_standard_process_tx_fail(self):
         std_q = StandardQuery()

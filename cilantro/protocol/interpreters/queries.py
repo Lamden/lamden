@@ -3,13 +3,13 @@ import time
 from sqlalchemy import *
 from sqlalchemy.sql.visitors import *
 from sqlalchemy.sql.functions import coalesce
+from sqlalchemy.sql.selectable import Select
 from cilantro.db.delegate import tables
 
 
 class ScratchCloningVisitor(CloningVisitor):
 
     def replace(self, elem):
-
         # replace tables with scratch tables
         if elem.__class__ == Table:
             return tables.mapping[elem]
@@ -24,7 +24,7 @@ class ScratchCloningVisitor(CloningVisitor):
         return None
 
     def traverse(self, obj):
-        """traverse and visit the given expression structure."""
+        # traverse and visit the given expression structure.
 
         def replace(elem):
             for v in self._visitor_iterator:
@@ -38,12 +38,19 @@ def contract(tx):
     def pending(ctx):
         def execute(*args, **kwargs):
             q = args[0]
-            scratch_q = ScratchCloningVisitor().traverse(q)
-            final_q = coalesce(scratch_q.as_scalar(), q.as_scalar())
 
-            r = ctx(final_q, **kwargs)
+            # select the query being passed
+            if q.__class__ == Select:
 
-            return r
+                # modify it to look at scratch first
+                scratch_q = ScratchCloningVisitor().traverse(q)
+                final_q = coalesce(scratch_q.as_scalar(), q.as_scalar())
+
+                r = ctx(final_q, **kwargs)
+
+                # return the new row query
+                return r
+            return ctx(*args, **kwargs)
 
         return execute
 
@@ -81,7 +88,7 @@ class StandardQuery:
 
         sender_balance = tables.db.execute(q).fetchone()
 
-        if sender_balance is None:
+        if sender_balance[0] is None:
             return None
 
         if sender_balance[0] >= tx.amount:
@@ -90,7 +97,7 @@ class StandardQuery:
 
             recv_row = tables.db.execute(q).fetchone()
 
-            if recv_row is None:
+            if recv_row[0] is None:
                 receiver_q = insert(tables.balances).values(
                     wallet=tx.receiver,
                     amount=tx.amount
@@ -99,12 +106,12 @@ class StandardQuery:
             else:
                 receiver_q = update(tables.balances).values(
                     wallet=tx.receiver,
-                    amount=recv_row[0] + tx.amount
+                    amount=int(recv_row[0]) + tx.amount
                 )
 
             sender_q = update(tables.balances).values(
                 wallet=tx.sender,
-                amount=sender_balance[0] - tx.amount
+                amount=int(sender_balance[0]) - tx.amount
             )
 
             return sender_q, receiver_q
@@ -150,7 +157,7 @@ class SwapQuery:
 
             balance_q = update(tables.balances).values(
                 wallet=tx.sender,
-                amount=new_sender_balance
+                amount=int(new_sender_balance)
             )
 
             swap_q = insert(tables.swaps).values(
@@ -232,7 +239,7 @@ class RedeemQuery:
 
                 new_balance = balance[0] + amount
 
-                q = insert(tables.balances).values(
+                q = update(tables.balances).values(
                     wallet=tx.sender,
                     amount=new_balance
                 )

@@ -9,15 +9,15 @@ metadata = MetaData()
 
 # create the tables that we want / need for our smart contracts
 balances = Table('balances', metadata,
-                 Column('wallet', String(64), primary_key=True),
+                 Column('wallet', String(64)),
                  Column('amount', Float(precision=4), nullable=False))
 
 swaps = Table('swaps', metadata,
-              Column('sender', String(64), primary_key=True),
+              Column('sender', String(64)),
               Column('receiver', String(64), nullable=False),
               Column('amount', Float(precision=4), nullable=False),
               Column('expiration', Integer, nullable=False),
-              Column('hashlock', String(40), nullable=False))
+              Column('hashlock', String(64), nullable=False))
 
 votes = Table('votes', metadata,
               Column('wallet', String(64), nullable=False),
