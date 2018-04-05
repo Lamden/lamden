@@ -1,196 +1,263 @@
-from cilantro.messages.utils import int_to_decimal
-from cilantro import Constants
-from cilantro.utils import Encoder as E
 import hashlib
 import time
-from cilantro.db.delegate.backend import *
+from sqlalchemy import *
+from sqlalchemy.sql.visitors import *
+from sqlalchemy.sql.functions import coalesce
+from sqlalchemy.sql.selectable import Select
+from cilantro.db.delegate import tables
 
 
-class StateQuery:
-    def __init__(self, table_name, backend):
-        self.table_name = table_name
-        self.backend = backend
-        self.scratch_table = SEPARATOR.join([SCRATCH, self.table_name])
+class ScratchCloningVisitor(CloningVisitor):
 
-        self.txq = TransactionQueue(backend=self.backend)
-        self.txq_table = SEPARATOR.join([TXQ, self.table_name])
+    def replace(self, elem):
+        # replace tables with scratch tables
+        if elem.__class__ == Table:
+            return tables.mapping[elem]
 
-    def process_tx(self, tx: dict):
-        raise NotImplementedError
+        # replace columns with scratch equivalents
+        elif elem.__class__ == Column:
+            if elem.table.__class__ == Table:
+                scr_tab = tables.mapping[elem.table]
+                cols = [c for c in scr_tab.columns if c.name == elem.name]
+                return cols[0]
 
-    def __str__(self):
-        return self.table_name.decode()
+        return None
+
+    def traverse(self, obj):
+        # traverse and visit the given expression structure.
+
+        def replace(elem):
+            for v in self._visitor_iterator:
+                e = v.replace(elem)
+                if e is not None:
+                    return e
+        return replacement_traverse(obj, self.__traverse_options__, replace)
 
 
-class StandardQuery(StateQuery):
+def contract(tx):
+    def pending(ctx):
+        def execute(*args, **kwargs):
+            q = args[0]
+
+            # select the query being passed
+            if q.__class__ == Select:
+
+                # modify it to look at scratch first
+                scratch_q = ScratchCloningVisitor().traverse(q)
+                final_q = coalesce(scratch_q.as_scalar(), q.as_scalar())
+
+                r = ctx(final_q, **kwargs)
+
+                # return the new row query
+                return r
+            return ctx(*args, **kwargs)
+
+        return execute
+
+    def format_query(*args, **kwargs):
+        globals()['tables'].db.execute = pending(globals()['tables'].db.execute)
+        deltas = tx(*args, **kwargs)
+
+        if deltas is None:
+            return None
+
+        try:
+            deltas[0]
+        except TypeError:
+            deltas = [deltas]
+
+        new_deltas = []
+        for delta in deltas:
+            new_deltas.append(str(delta.compile(compile_kwargs={'literal_binds': True})))
+
+        return new_deltas
+
+    return format_query
+
+
+class StandardQuery:
     """
     StandardQuery
     Automates the state and txq modifications for standard transactions
     """
-    def __init__(self, table_name=BALANCES, backend=LevelDBBackend()):
-        super().__init__(table_name=table_name, backend=backend)
 
-    def balance_to_decimal(self, table, address):
-        balance = self.backend.get(table, address.encode())
-        balance = E.int(balance)
-        balance = int_to_decimal(balance)
-        return balance
-
-    @staticmethod
-    def encode_balance(balance):
-        balance *= pow(10, Constants.Protocol.DecimalPrecision)
-        balance = int(balance)
-        balance = E.encode(balance)
-        return balance
-
-    def get_balance(self, address):
-        table = self.table_name
-        if self.backend.exists(self.scratch_table, address.encode()):
-            table = self.scratch_table
-
-        return self.balance_to_decimal(table, address)
-
+    @contract
     def process_tx(self, tx):
-        sender_balance = self.get_balance(tx.sender)
 
-        if sender_balance >= tx.amount:
+        q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
 
-            receiver_balance = self.get_balance(tx.receiver)
+        sender_balance = tables.db.execute(q).fetchone()
 
-            new_sender_balance = sender_balance - tx.amount
-            new_sender_balance = self.encode_balance(new_sender_balance)
+        if sender_balance[0] is None:
+            return None
 
-            new_receiver_balance = receiver_balance + tx.amount
-            new_receiver_balance = self.encode_balance(new_receiver_balance)
+        if sender_balance[0] >= tx.amount:
 
-            self.backend.set(self.scratch_table, tx.sender.encode(), new_sender_balance)
-            self.backend.set(self.scratch_table, tx.receiver.encode(), new_receiver_balance)
+            q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.receiver)
 
-            return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
-                   (self.scratch_table, tx.receiver.encode(), new_receiver_balance)
+            recv_row = tables.db.execute(q).fetchone()
+
+            if recv_row[0] is None:
+                receiver_q = insert(tables.balances).values(
+                    wallet=tx.receiver,
+                    amount=tx.amount
+                )
+
+            else:
+                receiver_q = update(tables.balances).values(
+                    wallet=tx.receiver,
+                    amount=int(recv_row[0]) + tx.amount
+                )
+
+            sender_q = update(tables.balances).values(
+                wallet=tx.sender,
+                amount=int(sender_balance[0]) - tx.amount
+            )
+
+            return sender_q, receiver_q
         else:
-            return None, None, None
+            return None
 
 
-class VoteQuery(StateQuery):
+class VoteQuery:
     """
     VoteQuery
     Automates the state modifications for vote transactions
     """
-    def __init__(self, table_name=VOTES, backend=LevelDBBackend()):
-        super().__init__(table_name=table_name, backend=backend)
 
+    @contract
     def process_tx(self, tx):
-        try:
-            k = tx.policy.encode() + SEPARATOR + tx.sender.encode()
-            v = tx.choice.encode()
-            self.backend.set(self.scratch_table, k, v)
-            return tx, (self.scratch_table, k, v)
-        except Exception as e:
-            return None, None
+        q = insert(tables.votes).values(
+            wallet=tx.sender,
+            policy=tx.policy,
+            choice=tx.choice
+        )
+        return q
 
 
-class SwapQuery(StandardQuery):
+class SwapQuery:
     """
     SwapQuery
     Automates the state modifications for swap transactions
+    Rules:
+    Sender cannot overwrite this value / update it, so fail if the swap cannot insert (on interpreter side?)
     """
-    def __init__(self, table_name=SWAPS, backend=LevelDBBackend()):
-        super().__init__(table_name=table_name, backend=backend)
-        self.balance_table = BALANCES
-        self.balance_scratch = SEPARATOR.join([SCRATCH, self.balance_table])
 
-    @staticmethod
-    def amount_key(address, hashlock):
-        return address + SEPARATOR + hashlock + SEPARATOR + b'amount'
-
-    @staticmethod
-    def expiration_key(address, hashlock):
-        return address + SEPARATOR + hashlock + SEPARATOR + b'expiration'
-
-    def get_balance(self, address):
-        table = self.balance_table
-        if self.backend.exists(self.scratch_table, address.encode()):
-            table = self.balance_scratch
-
-        return self.balance_to_decimal(table, address)
-
+    @contract
     def process_tx(self, tx):
-        sender_balance = self.get_balance(tx.sender)
+        q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
+
+        row = tables.db.execute(q).fetchone()
+
+        sender_balance = 0 if row is None else row[0]
 
         if sender_balance >= tx.amount:
-            # subtract the balance from the sender
+
             new_sender_balance = sender_balance - tx.amount
-            new_sender_balance = self.encode_balance(new_sender_balance)
 
-            self.backend.set(self.balance_scratch, tx.sender.encode(), new_sender_balance)
+            balance_q = update(tables.balances).values(
+                wallet=tx.sender,
+                amount=int(new_sender_balance)
+            )
 
-            # place the balance into the swap
-            amount_key = self.amount_key(tx.receiver.encode(), tx.hashlock)
-            expiration_key = self.expiration_key(tx.receiver.encode(), tx.hashlock)
+            swap_q = insert(tables.swaps).values(
+                sender=tx.sender,
+                receiver=tx.receiver,
+                amount=tx.amount,
+                expiration=tx.expiration,
+                hashlock=tx.hashlock
+            )
 
-            self.backend.set(self.scratch_table, amount_key, self.encode_balance(tx.amount))
-            self.backend.set(self.scratch_table, expiration_key, E.encode(tx.expiration))
+            return balance_q, swap_q
 
-            # return the queries for feedback
-            return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
-                   (self.scratch_table, amount_key, tx.amount), \
-                   (self.scratch_table, expiration_key, tx.expiration)
         else:
-            return None, None, None, None
+            return None
 
 
-class RedeemQuery(SwapQuery):
-    def __init__(self, table_name=SWAPS, backend=LevelDBBackend()):
-        super().__init__(table_name=table_name, backend=backend)
-
-    def get_swap(self, address, hashlock):
-        # set up table name (scratch if the record does already exist)
-        amount_key = self.amount_key(address.encode(), hashlock)
-        expiration_key = self.expiration_key(address.encode(), hashlock)
-
-        table = self.table_name
-        if self.backend.exists(self.scratch_table, amount_key) and \
-                self.backend.exists(self.scratch_table, expiration_key):
-            table = self.scratch_table
-
-        # make the queries
-        amount = self.backend.get(table, amount_key)
-        expiration = self.backend.get(table, expiration_key)
-
-        # return it
-        return amount, expiration
-
+class RedeemQuery:
+    @contract
     def process_tx(self, tx):
+        # calculate the hashlock from the secret. if it is incorrect, the query will fail
         hashlock = hashlib.sha3_256()
-        hashlock.update(tx.secret)
-        hashlock = hashlock.digest()
+        hashlock.update(bytes.fromhex(tx.secret))
+        hashlock = hashlock.digest().hex()
 
-        amount, expiration = self.get_swap(tx.sender, hashlock)
+        # build the query assuming that this is a redeem, not a refund
+        q = select([tables.swaps.c.amount, tables.swaps.c.expiration]).where(and_(
+            tables.swaps.c.receiver == tx.sender,
+            tables.swaps.c.hashlock == hashlock
+        ))
 
-        print(amount, expiration)
+        # get the data from the db. let's assume that people reuse secrets (BAD!), and so we will iterate through
+        # all of the queries we got back.
 
-        now = int(time.time())
+        deltas = []
 
-        if amount is not None and E.int(expiration) >= now:
-            sender_balance = self.get_balance(tx.sender)
+        for amount, expiration in tables.db.execute(q).cursor:
+            print(amount, expiration)
 
-            # add amount to sender balance
-            new_sender_balance = sender_balance + int_to_decimal(E.int(amount))
-            new_sender_balance = self.encode_balance(new_sender_balance)
+            if int(expiration) > int(time.time()):
+                # awesome
+                q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
 
-            self.backend.set(self.scratch_table, tx.sender.encode(), new_sender_balance)
+                balance = tables.db.execute(q).fetchone()
 
-            # destroy the swap
-            amount_key = self.amount_key(tx.sender.encode(), hashlock)
-            expiration_key = self.expiration_key(tx.sender.encode(), hashlock)
+                balance = 0 if balance is None else balance[0]
 
-            self.backend.set(self.scratch_table, amount_key, None)
-            self.backend.set(self.scratch_table, expiration_key, None)
+                new_balance = balance + amount
 
-            # return the queries for feedback
-            return tx, (self.scratch_table, tx.sender.encode(), new_sender_balance), \
-                   (self.scratch_table, amount_key, None), \
-                   (self.scratch_table, expiration_key, None)
-        else:
-            return None, None, None, None
+                q = update(tables.balances).values(
+                    wallet=tx.sender,
+                    amount=new_balance
+                )
+
+                deltas.append(q)
+
+                q = delete(tables.swaps).where(
+                    and_(
+                        tables.swaps.c.receiver == tx.sender,
+                        tables.swaps.c.hashlock == hashlock,
+                        tables.swaps.c.amount == amount,
+                        tables.swaps.c.expiration == expiration,
+                    )
+                )
+
+                deltas.append(q)
+
+        # check the opposing side. IE, if the sender is the original swap creator and wants a refund
+
+        q = select([tables.swaps.c.amount, tables.swaps.c.expiration, tables.swaps.c.receiver]).where(and_(
+            tables.swaps.c.sender == tx.sender,
+            tables.swaps.c.hashlock == hashlock
+        ))
+
+        for amount, expiration, receiver in tables.db.execute(q).cursor:
+            if int(expiration) < time.time():
+                q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
+
+                balance = tables.db.execute(q).fetchone() or 0
+
+                new_balance = balance[0] + amount
+
+                q = update(tables.balances).values(
+                    wallet=tx.sender,
+                    amount=new_balance
+                )
+
+                deltas.append(q)
+
+                q = delete(tables.swaps).where(
+                    and_(
+                        tables.swaps.c.sender == tx.sender,
+                        tables.swaps.c.receiver == receiver,
+                        tables.swaps.c.hashlock == hashlock,
+                        tables.swaps.c.amount == amount,
+                        tables.swaps.c.expiration == expiration,
+                    )
+                )
+                deltas.append(q)
+
+        if len(deltas) > 0:
+            return deltas
+
+        return None

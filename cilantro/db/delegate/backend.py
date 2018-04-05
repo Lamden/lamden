@@ -1,13 +1,16 @@
 import plyvel
+import mysql.connector
+from pypika import Query as Q
+from pypika import Table as T
 
-SEPARATOR = b'/'
-SCRATCH = b'scratch'
-STATE = b'state'
-BALANCES = b'balances'
-TXQ = b'txq'
+SEPARATOR = '/'
+SCRATCH = 'scratch'
+STATE = 'state'
+BALANCES = 'balances'
+TXQ = 'txq'
 PATH = '/tmp/cilantro'
-VOTES = b'votes'
-SWAPS = b'swaps'
+VOTES = 'votes'
+SWAPS = 'swaps'
 
 
 # def sync_state_with_scratch(backend):
@@ -32,6 +35,29 @@ class Backend:
     def flush(self, table):
         raise NotImplementedError
 
+
+class SQLBackend:
+    def __init__(self, user='root'):
+        self.context = mysql.connector.connect(user=user)
+        self.db = self.context.cursor()
+
+    def execute(self, q):
+        self.db.execute(q)
+
+    def select(self, table, conditions):
+        self.db.execute('select * from {} where {};'.format(table, conditions))
+        tx = self.db.fetchall()
+        return tx
+
+    def replace(self, table, fields, values):
+        q = 'replace into {} {} values {};'.format(table, fields, values)
+        print(q)
+        self.db.execute(q)
+        self.context.commit()
+
+    def delete(self, table, conditions):
+        self.db.execute('delete from {} where {};'.format(table, conditions))
+        self.context.commit()
 
 class LevelDBBackend(Backend):
     def __init__(self, path=PATH):
@@ -75,23 +101,70 @@ class LevelDBBackend(Backend):
         return results
 
 
+class Database:
+    def __init__(self, name, tables, cursor):
+        self.name = name
+        self.tables = tables
+        self.db = cursor
+
+    def setup(self):
+        self.db.execute('create database if not exists {};'.format(self.name))
+        self.db.execute('use {};'.format(self.name))
+        [t.setup(self.db) for t in self.tables]
+
+
+class Table:
+    def __init__(self, name, columns, primary_key=None):
+        self.name = name
+        self.columns = columns
+        self.primary_key = primary_key
+
+    def setup(self, cursor):
+        q = 'CREATE TABLE if not exists {}(\n'.format(self.name)
+
+        for o in self.columns:
+            q += '{} {},\n'.format(o[0], o[1])
+
+        if self.primary_key is None:
+            q = q[:-2] + '\n'
+        else:
+            q += 'primary key ({})\n'.format(self.primary_key)
+
+        q += ');'
+        cursor.execute(q)
+
+
+class Query:
+    def __init__(self, table, updates):
+        self.table = table
+        self.updates = updates
+
+
 class TransactionQueue:
     def __init__(self, backend):
         self.backend = backend
         self.size = 0
-        self.table_name = TXQ
+        self.table_name = 'txq'
+
+        txs = Table(name='txq', columns=[('id', 'int'), ('tx', 'blob')])
+        txq = Database(name='txq', tables=[txs], cursor=self.backend)
+        txq.setup()
 
     def push(self, tx):
         self.size += 1
-        prefix = self.size.to_bytes(16, byteorder='big')
-        self.backend.set(self.table_name, prefix, tx)
+        q = Q.into(self.table_name).columns('id', 'tx').insert(self.size, tx)
+        self.backend.execute(q)
 
     def pop(self):
-        prefix = self.size.to_bytes(16, byteorder='big')
-        tx = self.backend.get(self.table_name, prefix)
-        self.backend.delete(self.table_name, prefix)
+        q = Q.from_(T('txq')).select('*').where(T('txq').id == 0)
+        tx = self.backend.execute(q)
+        q = 'DELETE FROM {} WHERE "id"={}'.format(self.table_name, self.size)
+        self.backend.execute(q)
         self.size -= 1
         return tx
 
     def flush(self):
-        return self.backend.flush(self.table_name)
+        q = Q.from_(T('txq')).select('*')
+        tx = self.backend.execute(q)
+        self.backend.execute('DROP TABLE {};'.format(self.table_name))
+        return tx

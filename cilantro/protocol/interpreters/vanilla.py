@@ -4,7 +4,7 @@ from cilantro.messages import TransactionBase, StandardTransaction, VoteTransact
 from cilantro.logger import get_logger
 
 # from cilantro.nodes.delegate.db import *
-from cilantro.protocol.interpreters.queries import LevelDBBackend, StandardQuery, SCRATCH, VoteQuery, SwapQuery
+from cilantro.protocol.interpreters.queries import StandardQuery, VoteQuery, SwapQuery
 
 
 class VanillaInterpreter(BaseInterpreter):
@@ -19,33 +19,14 @@ class VanillaInterpreter(BaseInterpreter):
         - Redeem transactions
     """
 
-    def __init__(self, backend=LevelDBBackend()):
+    def __init__(self):
         super().__init__()
 
-        self.backend = backend
-        self.log = get_logger("Delegate.Interpreter hooked up.")
 
-        self.log.debug("Interpreter flushing scratch...")
-        self.backend.flush(SCRATCH)
-        self.tx_method = {
-            StandardTransaction: StandardQuery,
-            VoteTransaction: VoteQuery,
-            SwapTransaction: SwapQuery
-        }
-
-    def interpret_transaction(self, tx: TransactionBase):
+    def interpret_transaction(self, tx):
         """
         Interprets the transaction, and updates scratch/balance state as necessary.
         If any validation fails (i.e. insufficient balance), this method will raise an exception
         :param tx: A TestNetTransaction object to interpret
         """
-        self.log.debug("Interpreter got tx: {}".format(tx))
 
-        results = None
-
-        try:
-            results = self.tx_method[type(tx)](backend=self.backend).process_tx(tx)
-        except Exception as e:
-            self.log.error("Got Transaction of unkown type: {}, {}".format(type(tx), e))
-
-        self.log.debug("Results of interpretation: {}".format(results))
