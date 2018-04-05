@@ -1,25 +1,47 @@
 import hashlib
 import time
 from sqlalchemy import *
+from sqlalchemy.sql.visitors import *
+from sqlalchemy.sql.functions import coalesce
 from cilantro.db.delegate import tables
+
+
+class ScratchCloningVisitor(CloningVisitor):
+
+    def replace(self, elem):
+
+        # replace tables with scratch tables
+        if elem.__class__ == Table:
+            return tables.mapping[elem]
+
+        # replace columns with scratch equivalents
+        elif elem.__class__ == Column:
+            if elem.table.__class__ == Table:
+                scr_tab = tables.mapping[elem.table]
+                cols = [c for c in scr_tab.columns if c.name == elem.name]
+                return cols[0]
+
+        return None
+
+    def traverse(self, obj):
+        """traverse and visit the given expression structure."""
+
+        def replace(elem):
+            for v in self._visitor_iterator:
+                e = v.replace(elem)
+                if e is not None:
+                    return e
+        return replacement_traverse(obj, self.__traverse_options__, replace)
 
 
 def contract(tx):
     def pending(ctx):
         def execute(*args, **kwargs):
-            ctx('use scratch;')
-
             q = args[0]
+            scratch_q = ScratchCloningVisitor().traverse(q)
+            final_q = coalesce(scratch_q.as_scalar(), q.as_scalar())
 
-            print(q)
-
-            r = ctx(*args, **kwargs)
-
-            if r.rowcount > 0:
-                return r
-
-            ctx('use state;')
-            r = ctx(*args, **kwargs)
+            r = ctx(final_q, **kwargs)
 
             return r
 

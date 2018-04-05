@@ -24,10 +24,13 @@ votes = Table('votes', metadata,
               Column('policy', String(64), nullable=False),
               Column('choice', String(64), nullable=False))
 
+mapping = {}
+
 # create copies of the tables to hold temporary scratch by iterating through the metadata
 for table in metadata.sorted_tables:
     columns = [c.copy() for c in table.columns]
     scratch_table = Table('{}{}'.format(SCRATCH_PREFIX, table.name), metadata, *columns)
+    mapping[table] = scratch_table
 
 db.execute('create database if not exists {}'.format(DATABASE))
 db.execute('use {};'.format(DATABASE))
