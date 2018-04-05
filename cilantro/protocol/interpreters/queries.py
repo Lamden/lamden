@@ -8,12 +8,17 @@ def contract(tx):
     def pending(ctx):
         def execute(*args, **kwargs):
             ctx('use scratch;')
+
+            q = args[0]
+
+            print(q)
+
             r = ctx(*args, **kwargs)
 
-            if r is not None:
+            if r.rowcount > 0:
                 return r
 
-            ctx('use state')
+            ctx('use state;')
             r = ctx(*args, **kwargs)
 
             return r
@@ -39,6 +44,7 @@ def contract(tx):
         return new_deltas
 
     return format_query
+
 
 class StandardQuery:
     """

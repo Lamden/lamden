@@ -74,7 +74,9 @@ class TestQueries(TestCase):
 
         deltas = swap_q.process_tx(swap_tx)
 
-        self.assertEqual(deltas[0], "INSERT INTO balances (wallet, amount) VALUES ('{}', {})".format(swap_tx.sender, 0))
+        print(deltas)
+
+        self.assertEqual(deltas[0], "UPDATE balances SET wallet='{}', amount={}".format(swap_tx.sender, 0))
         self.assertEqual(deltas[1], "INSERT INTO swaps (sender, receiver, amount, expiration, hashlock) " 
                                     "VALUES ('{}', '{}', {}, {}, '{}')"
                          .format(swap_tx.sender, swap_tx.receiver, swap_tx.amount, swap_tx.expiration, swap_tx.hashlock))
