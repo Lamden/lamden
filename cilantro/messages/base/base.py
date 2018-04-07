@@ -4,17 +4,15 @@ Messages encapsulate data that is sent between nodes.
 
 class MessageMeta(type):
     def __new__(cls, clsname, bases, clsdict):
-        #print("MessageMeta NEW called /w class ", clsname)
         clsobj = super().__new__(cls, clsname, bases, clsdict)
         if not hasattr(clsobj, 'registry'):
-            # print("Creating Registry")
             clsobj.registry = {}
-        #print("Adding to registry: ", clsobj)
 
         # Define an "undirected" mapping between classes and their enum vals
-        l = len(clsobj.registry) // 2
-        clsobj.registry[clsobj] = l
-        clsobj.registry[l] = clsobj
+        # TODO hash cls name as enum val instead of using 'auto inc' which relies on order that messages are imported
+        i = len(clsobj.registry) // 2
+        clsobj.registry[clsobj] = i
+        clsobj.registry[i] = clsobj
 
         return clsobj
 

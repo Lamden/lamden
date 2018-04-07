@@ -44,16 +44,20 @@ def start_mn():
     mn = Masternode()
     signal.pause()
 
+def start_witness():
+    log.info("Starting witness")
+    witness = Witness()
+    signal.pause()
+
 if __name__ == "__main__":
     mn, witness, delegates = None, None, []
 
     if START_MASTERNODE:
-        log.info("Starting Masternode")
         p = Process(target=start_mn)
         p.start()
     if START_WITNESS:
-        log.info("Starting witness")
-        witness = Witness()
+        p = Process(target=start_witness)
+        p.start()
 
     if START_DELEGATES:
         if MULTI_PROC:
@@ -66,7 +70,7 @@ if __name__ == "__main__":
             log.debug("Starting delegate on same process")
             for i in range(len(Constants.Testnet.Delegates)):
                 d = Delegate(slot=i)
-            signal.pause()
+            # signal.pause()
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.pause()

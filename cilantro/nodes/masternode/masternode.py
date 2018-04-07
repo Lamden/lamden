@@ -60,7 +60,7 @@ class MNRunState(MNBaseState):
     def __init__(self, state_machine=None):
         super().__init__(state_machine=state_machine)
         self.app = web.Application()
-        self.loop = asyncio.new_event_loop()
+        # self.loop = asyncio.new_event_loop()
         self.app.router.add_post('/', self.parent.route_http)
 
         self.block_contenders = []
@@ -70,7 +70,7 @@ class MNRunState(MNBaseState):
         self.is_updating = False
 
     def enter(self, prev_state):
-        asyncio.set_event_loop(self.loop)
+        asyncio.set_event_loop(self.parent.loop)
         # ^ should this just be in init?
 
     def run(self):
@@ -180,6 +180,10 @@ class MNNewBlockState(MNBaseState): pass
 class Masternode(NodeBase):
     _INIT_STATE = MNBootState
     _STATES = [MNBootState, MNRunState]
+
     def __init__(self, url=Constants.Testnet.Masternode.InternalUrl, signing_key=Constants.Testnet.Masternode.Sk):
         super().__init__(url=url, signing_key=signing_key)
+        self.log.critical("hey, about to call self.start()")
         self.start()
+        self.log.critical("hey self.start() is not block!!!!!!!!")
+        self.loop.run_until_complete()

@@ -31,6 +31,10 @@ class MerkleSignature(MessageBase):
         data = {cls.SIG: sig_hex, cls.TS: timestamp, cls.SENDER: sender}
         return cls.from_data(data, validate=validate)
 
+    @staticmethod
+    def do_this():
+        print("done")
+
     @classmethod
     def _deserialize_data(cls, data: bytes):
         return json.loads(data.decode())

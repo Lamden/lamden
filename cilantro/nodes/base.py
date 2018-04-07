@@ -3,16 +3,17 @@ from cilantro.logger import get_logger
 from cilantro.protocol.reactor import NetworkReactor
 from cilantro.messages import Envelope, MessageBase
 from cilantro.protocol.statemachine import StateMachine
-
+import asyncio
 
 class NodeBase(StateMachine):
 
     def __init__(self, url=None, signing_key=None):
         self.url = url
         self.signing_key = signing_key
+        self.loop = asyncio.new_event_loop()
         self.nodes_registry = Constants.Testnet.AllNodes
         self.log = get_logger(type(self).__name__)
-        self.reactor = NetworkReactor(self)
+        self.reactor = NetworkReactor(self, self.loop)
         super().__init__()
 
     def route(self, msg: MessageBase):

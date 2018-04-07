@@ -199,11 +199,6 @@ class DelegateConsensusState(DelegateBaseState):
         assert block_data.tx_hash in self.merkle.leaves, "Block hash {} not found in leaves {}"\
             .format(block_data.tx_hash, self.merkle.leaves)
 
-        import time
-        self.log.debug("sleeping...")
-        time.sleep(1.2)
-        self.log.debug("done sleeping")
-
         tx_binary = self.merkle.data_for_hash(block_data.tx_hash)
         self.log.info("Replying to tx hash request {} with tx binary: {}".format(block_data.tx_hash, tx_binary))
         reply = BlockDataReply.create(tx_binary)
@@ -211,52 +206,6 @@ class DelegateConsensusState(DelegateBaseState):
 
 
 class DelegateUpdateState(DelegateBaseState): pass
-
-
-## TESTING
-from functools import wraps
-import random
-P = 0.36
-
-def do_nothing(*args, **kwargs):
-    # print("!!! DOING NOTHING !!!\nargs: {}\n**kwargs: {}".format(args, kwargs))
-    print("DOING NOTHING")
-
-def sketchy_execute(prob_fail):
-    def decorate(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            # print("UR BOY HAS INJECTED A SKETCH EXECUTE FUNC LOL LFG")
-            if random.random() < prob_fail:
-                print("!!! not running func")
-                return do_nothing(*args, **kwargs)
-            else:
-                # print("running func")
-                return func(*args, **kwargs)
-        return wrapper
-    return decorate
-
-
-class RogueMeta(type):
-    _OVERWRITES = ('route', 'route_req', 'route_timeout')
-
-    def __new__(cls, clsname, bases, clsdict):
-        clsobj = super().__new__(cls, clsname, bases, clsdict)
-
-        print("Rogue meta created with class name: ", clsname)
-        print("bases: ", bases)
-        print("clsdict: ", clsdict)
-        print("dir: ", dir(clsobj))
-
-        for name in dir(clsobj):
-            if name in cls._OVERWRITES:
-                print("\n\n***replacing {} with sketchy executor".format(name))
-                setattr(clsobj, name, sketchy_execute(P)(getattr(clsobj, name)))
-            else:
-                print("skipping name {}".format(name))
-
-        return clsobj
-## END TESTING
 
 
 class Delegate(NodeBase):
@@ -282,3 +231,5 @@ class Delegate(NodeBase):
                       .format(url, signing_key, db_path))
 
         self.start()
+        self.log.critical("delegate sm started (is this blocking..?)")
+        self.loop.run_forever()

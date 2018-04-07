@@ -59,4 +59,7 @@ class Witness(NodeBase):
             signing_key = node_info['sk']
         super().__init__(url=url, signing_key=signing_key)
         self.log.info("Witness being created on slot {} with url {}".format(slot, url))
+        self.log.critical("starting witness sm")
         self.start()
+        self.log.critical("witness sm started (is this blocking..?)")
+        self.loop.run_forever()
