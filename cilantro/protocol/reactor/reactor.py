@@ -1,13 +1,8 @@
 import asyncio
-# import zmq
 import zmq.asyncio
-import aioprocessing
 import random
 from cilantro.logger import get_logger
-import time
-import logging
-from collections import defaultdict
-from cilantro.messages import Envelope
+from cilantro.messages import MessageMeta, MessageBase, Envelope, ReactorCommand
 from multiprocessing import Process
 
 from cilantro.protocol.reactor.executor import *
@@ -34,94 +29,6 @@ Load balance through an ipc dealer/router proxy to the consumer threads. SCALABI
 once dynamic routing tables implemented...could be cool if on the node layer, you could access different delegates using
 lists or python arrays. Like send messages to self.routing.delegate[0] or self.routing.delegate_for_vk(verifying_key) 
 """
-
-# class ZMQLoop:
-#     PUB, SUB, DEAL, ROUTE = range(4)
-#     SOCKET, FUTURE, ID = range(3)
-#
-#     def __init__(self, parent_socket, loop, log):
-#         self.log = log
-#         self.parent_socket = parent_socket
-#
-#         self.loop = loop
-#         asyncio.set_event_loop(loop)
-#
-#         self.sockets = defaultdict(dict)
-#         self.ctx = zmq.asyncio.Context()
-#
-#         self.pending_reqs = {}  # key is msg uuid, value is an asyncio.Handle instance
-#         self.msg_log = set()  # Set of received msg uuids, (for checking duplicate messages)
-#
-#     async def receive(self, socket, url, callback):
-#         self.log.warning("--- Started Receiving on URL: {} with callback {} ---".format(url, callback))
-#         while True:
-#             self.log.debug("({}) zmqloop recv waiting for msg...".format(url))
-#             msg_binary = await socket.recv()
-#             self.log.debug("({}) zmqloop recv got msg: {}".format(url, msg_binary))
-#
-#             try:
-#                 msg = self.open_msg(msg_binary)[0]
-#             except Exception as e:
-#                 self.log.error("Error opening msg: {}, with msg binary: {}".format(e, msg_binary))
-#                 return
-#             self.call_on_mt(callback, msg)
-#
-#     async def receive_multipart(self, socket, url, callback):
-#         self.log.warning("--- Starting Receiving Multipart To URL: {} with callback {} ---".format(url, callback))
-#         while True:
-#             self.log.debug("({}) zmqloop recv_multipart waiting for msg...".format(url))
-#             id, msg_binary = await socket.recv_multipart()
-#             self.log.debug("({}) zmqloop recv_multipart got msg: {} with id: {}".format(url, msg_binary, id))
-#
-#             # TODO -- cleanup error handling with context managers?
-#             try:
-#                 msg, uuid = self.open_msg(msg_binary)
-#             except Exception as e:
-#                 self.log.error("Error opening msg: {}, with msg binary: {}".format(e, msg_binary))
-#                 return
-#             self.call_on_mt(callback, msg, url, id, uuid)
-#
-#     def check_timeout(self, envelope, url):
-#         uuid = envelope.uuid
-#         self.log.critical("Message with from url {} and msg uuid {} timed out (msg={})".format(url, uuid, envelope))
-#         """
-#         TODO -- we need to be opening messages as soon as we receive them and queueing them up to run on mainthread
-#         instead of blocking while mainthread does stuff (as we are currently). Otherwise, we may receive a message
-#         but the timeout was trigger b/c main thread did not have time to process it.
-#         Thus, assertion below is really for debugging
-#         """
-#         assert uuid in self.pending_reqs, "UUID {} not found in pending requests {}".format(uuid, self.pending_reqs)
-#
-#         del self.pending_reqs[uuid]
-#         self.call_on_mt(TIMEOUT_CALLBACK, envelope.open(), url)
-#
-#     def open_msg(self, msg_binary):
-#         # Open msg
-#         # TODO -- Check for duplicates
-#         # Remove callback for timeout (if any)
-#         # TODO -- add error handling for envelope open
-#
-#         envelope = Envelope.from_bytes(msg_binary)
-#         msg = envelope.open()
-#
-#         if envelope.uuid in self.pending_reqs:
-#             self.log.info("Canceling timeout callback for message with uuid {}".format(envelope.uuid))
-#             self.pending_reqs[envelope.uuid].cancel()
-#             del self.pending_reqs[envelope.uuid]
-#
-#         return msg, envelope.uuid
-#
-#     def call_on_mt(self, callback, *args):
-#         # assert hasattr(self.parent, callback), "Callback {} not found on parent object {}" \
-#         #     .format(TIMEOUT_CALLBACK, self.parent)
-#         msg = "Callback < {} > with args: {}".format(callback, args)
-#         self.log.critical("calling: {}".format(msg))
-#
-#         self.parent_socket.send_pyobj((callback, args))
-#
-#         # self.parent_socket.send(msg.encode())
-#         # getattr(self.parent, callback)(*args)
-
 
 class ReactorCore:
     READY_SIG = 'READY'
@@ -225,58 +132,60 @@ class NetworkReactor:
         self.log.critical("NOTIFY PAUSE")
         # TODO -- implement
 
-    def add_sub(self, callback='route', **kwargs):
+    def add_sub(self, url: str, filter: str):
         """
         Starts subscribing to 'url'.
         Requires kwargs 'url' of subscriber (as a string)...callback is optional, and by default will forward incoming messages to the
         meta router built into base node
         """
         self.log.debug("add sub")
-        # kwargs['callback'] = callback
-        self._send_command(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, kwargs)
-        # self.q.coro_put((AddSubCommand.__name__, kwargs))
+        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=url, filter=filter)
+        self.socket.send(cmd.serialize())
 
-    def remove_sub(self, **kwargs):
+    def remove_sub(self, url: str, filter: str):
         """
         Requires kwargs 'url' of sub
         """
-        # self.socket.send(b'HERES A COMMAND')
-        self._send_command(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, kwargs)
-        # self.q.coro_put((RemoveSubCommand.__name__, kwargs))
+        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, url=url, filter=filter)
+        self.socket.send(cmd.serialize())
 
-    def pub(self, **kwargs):
+    def pub(self, url: str, filter: str, metadata: MessageMeta, data: MessageBase):
         """
         Publish data 'data on socket connected to 'url'
         Requires kwargs 'url' to publish on, as well as 'data' which is the binary data (type should be bytes) to publish
         If reactor is not already set up to publish on 'url', this will be setup and the data will be published
         """
-        self._send_command(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__, kwargs)
-        # self.q.coro_put((SendPubCommand.__name__, kwargs))
+        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__, url=url, filter=filter,
+                                    data=data, metadata=metadata)
+        self.socket.send(cmd.serialize())
 
-    def add_pub(self, **kwargs):
+    def add_pub(self, url: str):
         """
         Configure the reactor to publish on 'url'.
         """
+        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__)
         self.log.debug("add pub")
         self._send_command(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, kwargs)
         # self.q.coro_put((AddPubCommand.__name__, kwargs))
+        self.socket.send(cmd.serialize())
 
-    def remove_pub(self, **kwargs):
+    def remove_pub(self, url: str):
         """
         Close the publishing socket on 'url'
         """
         self._send_command(SubPubExecutor.__name__, SubPubExecutor.remove_pub.__name__, kwargs)
         # self.q.coro_put((RemovePubCommand.__name__, kwargs))
+        self.socket.send(cmd.serialize())
 
-    def add_dealer(self, callback='route', **kwargs):
+    def add_dealer(self, url: str, id):
         """
         needs 'url', 'callback', and 'id'
         """
-        kwargs['callback'] = callback
         self._send_command(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__, kwargs)
         # self.q.coro_put((AddDealerCommand.__name__, kwargs))
+        self.socket.send(cmd.serialize())
 
-    def add_router(self, callback='route_req', **kwargs):
+    def add_router(self, url: str):
         """
         needs 'url', 'callback'
         """
@@ -284,28 +193,23 @@ class NetworkReactor:
         # kwargs['callback'] = callback
         self._send_command(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, kwargs)
         # self.q.coro_put((AddRouterCommand.__name__, kwargs))
+        self.socket.send(cmd.serialize())
 
-    def request(self, timeout=0, **kwargs):
+    def request(self, url: str, metadata: MessageMeta, data: MessageBase, timeout=0):
         """
         'url', 'data', 'timeout' ... must add_dealer first with the url
         Timeout is a int in miliseconds
         """
         self.log.debug("request")
-        kwargs['timeout'] = timeout
         self._send_command(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, kwargs)
         # self.q.coro_put((RequestCommand.__name__, kwargs))
+        self.socket.send(cmd.serialize())
 
-    def reply(self, **kwargs):
+    def reply(self, url: str, id: str, metadata: MessageMeta, data: MessageBase):
         """
         'url', 'data', and 'id' ... must add_router first with url
         """
         self._send_command(DealerRouterExecutor.__name__, DealerRouterExecutor.reply.__name__, kwargs)
         # self.socket.send_pyobj((ReplyCommand.__name__, kwargs))
         # self.q.coro_put((ReplyCommand.__name__, kwargs))
-
-    def prove_im_nonblocking(self):
-        self.log.debug("xD")
-
-    def _send_command(self, executor_class, executor_func, kwargs):
-        cmd = (executor_class, executor_func, kwargs)
-        self.socket.send_pyobj(cmd)
+        self.socket.send(cmd.serialize())

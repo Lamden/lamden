@@ -17,7 +17,8 @@ class ExecutorMeta(type):
 
         if not hasattr(clsobj, 'registry'):
             clsobj.registry = {}
-        clsobj.registry[clsobj.__name__] = clsobj
+        if clsobj.__name__ != 'Executor':
+            clsobj.registry[clsobj.__name__] = clsobj
 
         return clsobj
 
@@ -79,7 +80,7 @@ class SubPubExecutor(Executor):
         self.sub.setsockopt(zmq.UNSUBSCRIBE, msg_filter.encode())
         self.sub.disconnect(url)
 
-    def remove_pub(self):
+    def remove_pub(self, url: str):
         # TODO -- implement
         self.log.error("remove_pub not implemented")
         raise NotImplementedError
