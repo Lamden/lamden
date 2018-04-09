@@ -4,7 +4,11 @@
 struct ReactorCommand {
     className @0 :Text;
     funcName @1: Text;
-    kwargs @2 :List(Entry);
+
+    metadata: @2: Data;
+    data: @3: Data;
+
+    kwargs @4 :List(Entry);
     struct Entry {
         key @0 :Text;
         value @1 :Text;

@@ -30,6 +30,9 @@ once dynamic routing tables implemented...could be cool if on the node layer, yo
 lists or python arrays. Like send messages to self.routing.delegate[0] or self.routing.delegate_for_vk(verifying_key) 
 """
 
+CHILD_RDY_SIG = b'LETS DO THIS MY GUY'
+KILL_SIG = b'DIE'
+
 class ReactorCore:
     READY_SIG = 'READY'
     PAUSE_SIG = 'PAUSE'
@@ -58,7 +61,7 @@ class ReactorCore:
     async def _recv_messages(self):
         # Notify mainthread that this proc is ready
         self.log.debug("reactor notifying mainthread of ready")
-        self.socket.send(b'LETS GO')
+        self.socket.send(CHILD_RDY_SIG)
 
         self.log.warning("-- Starting Recv on PAIR Socket at {} --".format(self.url))
         while True:
@@ -68,6 +71,15 @@ class ReactorCore:
             self.process_cmd(cmd)
 
     def process_cmd(self, cmd):
+        if cmd == KILL_SIG:
+            self.log.critical("Killing ReactorCore subprocess")
+            self.socket.disconnect(self.url)
+            self.loop.close()
+            self.log.critical("bout to sys.exit()")
+            import sys
+            sys.exit()
+
+
         # Sanity checks (just for debugging really)
         assert type(cmd) == tuple, "Only a tuple object can be inserted into the queue"
         assert len(cmd) == 3, "Command must have 3 elements: (executor_class, executor_func, kwwargs dict)"
@@ -124,6 +136,9 @@ class NetworkReactor:
             self.log.debug("Got callback")
             getattr(self.parent, callback)(*args)
 
+    def kill(self):
+        pass
+
     def notify_ready(self):
         self.log.critical("NOTIFIY READY")
         # TODO -- implement (add queue of tx, flush on notify ready, pause on notify_pause
@@ -138,7 +153,6 @@ class NetworkReactor:
         Requires kwargs 'url' of subscriber (as a string)...callback is optional, and by default will forward incoming messages to the
         meta router built into base node
         """
-        self.log.debug("add sub")
         cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=url, filter=filter)
         self.socket.send(cmd.serialize())
 
@@ -163,36 +177,28 @@ class NetworkReactor:
         """
         Configure the reactor to publish on 'url'.
         """
-        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__)
-        self.log.debug("add pub")
-        self._send_command(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, kwargs)
-        # self.q.coro_put((AddPubCommand.__name__, kwargs))
+        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=url)
         self.socket.send(cmd.serialize())
 
     def remove_pub(self, url: str):
         """
         Close the publishing socket on 'url'
         """
-        self._send_command(SubPubExecutor.__name__, SubPubExecutor.remove_pub.__name__, kwargs)
-        # self.q.coro_put((RemovePubCommand.__name__, kwargs))
+        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.remove_pub.__name__, url=url)
         self.socket.send(cmd.serialize())
 
     def add_dealer(self, url: str, id):
         """
         needs 'url', 'callback', and 'id'
         """
-        self._send_command(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__, kwargs)
-        # self.q.coro_put((AddDealerCommand.__name__, kwargs))
+        cmd = ReactorCommand.create(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__, url=url, id=id)
         self.socket.send(cmd.serialize())
 
     def add_router(self, url: str):
         """
         needs 'url', 'callback'
         """
-        self.log.debug("add route")
-        # kwargs['callback'] = callback
-        self._send_command(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, kwargs)
-        # self.q.coro_put((AddRouterCommand.__name__, kwargs))
+        cmd = ReactorCommand.create(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, url=url)
         self.socket.send(cmd.serialize())
 
     def request(self, url: str, metadata: MessageMeta, data: MessageBase, timeout=0):
@@ -200,16 +206,14 @@ class NetworkReactor:
         'url', 'data', 'timeout' ... must add_dealer first with the url
         Timeout is a int in miliseconds
         """
-        self.log.debug("request")
-        self._send_command(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, kwargs)
-        # self.q.coro_put((RequestCommand.__name__, kwargs))
+        cmd = ReactorCommand.create(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, url=url,
+                                    metadata=metadata, data=data, timeout=timeout)
         self.socket.send(cmd.serialize())
 
     def reply(self, url: str, id: str, metadata: MessageMeta, data: MessageBase):
         """
         'url', 'data', and 'id' ... must add_router first with url
         """
-        self._send_command(DealerRouterExecutor.__name__, DealerRouterExecutor.reply.__name__, kwargs)
-        # self.socket.send_pyobj((ReplyCommand.__name__, kwargs))
-        # self.q.coro_put((ReplyCommand.__name__, kwargs))
+        cmd = ReactorCommand.create(DealerRouterExecutor.__name__, DealerRouterExecutor.reply.__name__, url=url, id=id,
+                                    metadata=metadata, data=data)
         self.socket.send(cmd.serialize())

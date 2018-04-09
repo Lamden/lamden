@@ -1,4 +1,4 @@
-from cilantro.messages import MessageBase
+from cilantro.messages import MessageBase, MessageMeta
 import capnp
 import command_capnp
 
@@ -11,6 +11,7 @@ class ReactorCommand(MessageBase):
         return self._data.as_builder().to_bytes()
 
     def validate(self):
+        # TODO implement
         pass
 
     @classmethod
@@ -18,12 +19,18 @@ class ReactorCommand(MessageBase):
         return command_capnp.CpDict.from_bytes(data)
 
     @classmethod
-    def create(cls, class_name: str, func_name: str, **kwargs):
-        print("Creating cpdict with data {}".format(kwargs))  # just for debugging, remove this later
-
+    def create(cls, class_name: str, func_name: str, metadata: MessageMeta=None, data: MessageBase=None, **kwargs):
         cmd = command_capnp.ReactorCommand.new_message()
+
         cmd.className = class_name
         cmd.funcName = func_name
+
+        if metadata:
+            # Sanity checks (we should probably remove these in production)
+            assert metadata and data, "If creating command with a binary payload, " \
+                                      "BOTH metadata and data must be passed in (not one or the other)"
+            assert
+
         cmd.init('kwargs', len(kwargs))
         i = 0
         for key, value in kwargs.items():
