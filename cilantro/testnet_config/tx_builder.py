@@ -1,9 +1,10 @@
 import requests
 from cilantro import Constants
 from cilantro.messages import StandardTransaction, StandardTransactionBuilder, Envelope, VoteTransaction, VoteTransactionBuilder, SwapTransaction, SwapTransactionBuilder
-from cilantro.db.delegate.backend import *
 from cilantro.utils import Encoder as E
 from cilantro.logger import get_logger
+
+from cilantro.protocol.interpreters.queries import *
 
 MN_URL = 'http://127.0.0.1:8080'
 
@@ -15,6 +16,7 @@ DENTON = ('9decc7f7f0b5a4fc87ab5ce700e2d6c5d51b7565923d50ea13cbf78031bb3acf',
  '20da05fdba92449732b3871cc542a058075446fedb41430ee882e99f9091cc4d')
 KNOWN_ADRS = (STU, DAVIS, DENTON)
 
+
 def send_tx(sender, receiver, amount):
     if sender not in KNOWN_ADRS:
         raise ValueError("Unknown address {} not in preloaded wallets".format(sender))
@@ -23,16 +25,6 @@ def send_tx(sender, receiver, amount):
 
     tx = StandardTransactionBuilder.create_tx(sender[0], sender[1], receiver, amount)
     r = requests.post(MN_URL, data=Envelope.create(tx).serialize())
-
-
-def seed_wallets(amount=10000):
-    for i in range(len(Constants.Testnet.Delegates)):
-        backend = LevelDBBackend(path=PATH + '_' + str(i))
-        for wallet in KNOWN_ADRS:
-            stored_amount = E.encode(amount * pow(10, Constants.Protocol.DecimalPrecision))
-            backend.set(BALANCES, wallet[1].encode(), stored_amount)
-            log = get_logger('WALLET SEEDER')
-            log.info(backend.get(BALANCES, wallet[1].encode()))
 
 
 def send_vote():
