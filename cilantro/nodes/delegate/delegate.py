@@ -22,15 +22,11 @@ from cilantro.logger import get_logger
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, recv, timeout, recv_req
 from cilantro.protocol.structures import MerkleTree
-from cilantro.messages import StandardTransaction, TransactionBase, BlockContender, Envelope, MerkleSignature, BlockDataRequest, BlockDataReply
-
 from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.protocol.wallets import ED25519Wallet
-
-from cilantro.db.delegate import LevelDBBackend, TransactionQueue
-from cilantro.db.delegate.backend import PATH
-
 from cilantro.utils import TestNetURLHelper
+from cilantro.messages import TransactionBase, BlockContender, Envelope, MerkleSignature, \
+    BlockDataRequest, BlockDataReply
 
 
 class DelegateBaseState(State):
@@ -74,7 +70,6 @@ class DelegateBootState(DelegateBaseState):
         self.parent.reactor.add_dealer(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl),
                                        id=self.parent.url)
 
-
     def run(self):
         self.parent.transition(DelegateInterpretState)
 
@@ -85,7 +80,6 @@ class DelegateBootState(DelegateBaseState):
 class DelegateInterpretState(DelegateBaseState):
     def __init__(self, state_machine=None):
         super().__init__(state_machine=state_machine)
-        self.interpreter = VanillaInterpreter(backend=self.parent.backend)
 
     def enter(self, prev_state):
         self.log.debug("Flushing pending tx queue of {} txs".format(len(self.parent.pending_txs)))
@@ -97,31 +91,23 @@ class DelegateInterpretState(DelegateBaseState):
         # Flush queue if we are not leaving interpreting for consensus
         if type(next_state) is not DelegateConsensusState:
             self.log.critical("Delegate exiting interpreting for state {}, flushing queue".format(next_state))
-            self.parent.queue.flush()
+            self.parent.interpreter.flush(update_state=False)
 
     @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
         self.interpret_tx(tx=tx)
 
     def interpret_tx(self, tx: TransactionBase):
-        try:
-            self.log.debug("Interpreting standard tx")
-            self.interpreter.interpret_transaction(tx)
-        except Exception as e:
-            self.log.error("Error interpreting tx: {}".format(e))
+        self.parent.interpreter.interpret_transaction(tx)
 
-        self.log.debug("Successfully interpreted tx...adding it to queue")
-        self.parent.queue.push(tx.serialize())
+        self.log.debug("Size of queue: {}".format(len(self.parent.interpreter.queue)))
 
-        self.log.critical("\n\nSize of queue: {}\n\n".format(self.parent.queue.size))
-        # self.log.critical("Contents of queueu: {}".format(self.parent.queue.flush()))
-
-        if self.parent.queue.size >= Constants.Nodes.MaxQueueSize:
+        if len(self.parent.interpreter.queue) >= Constants.Nodes.MaxQueueSize:
             self.log.info("Consensus time!")
             self.parent.transition(DelegateConsensusState)
         else:
             self.log.debug("Not consensus time yet, queue is only size {}/{}"
-                           .format(self.parent.queue.size, Constants.Nodes.MaxQueueSize))
+                           .format(len(self.parent.interpreter.queue), Constants.Nodes.MaxQueueSize))
 
 
 class DelegateConsensusState(DelegateBaseState):
@@ -135,12 +121,9 @@ class DelegateConsensusState(DelegateBaseState):
         self.merkle_hash = None
 
     def enter(self, prev_state):
-        assert self.parent.queue.size >= Constants.Nodes.MaxQueueSize, "In consensus state, but queue not full"
-
         # Merkle-ize transaction queue and create signed merkle hash
-        tx_tuples = self.parent.queue.flush()
-        all_tx = [t[1] for t in tx_tuples]
-        self.log.critical("Delegate got tx from flush: {}".format(all_tx))
+        all_tx = self.parent.interpreter.get_queue_binary()
+        self.log.info("Delegate got tx from interpreter queue: {}".format(all_tx))
         self.merkle = MerkleTree(all_tx)
         self.merkle_hash = self.merkle.hash_of_nodes()
         self.signature = ED25519Wallet.sign(self.parent.signing_key, self.merkle_hash)
@@ -199,10 +182,10 @@ class DelegateConsensusState(DelegateBaseState):
         assert block_data.tx_hash in self.merkle.leaves, "Block hash {} not found in leaves {}"\
             .format(block_data.tx_hash, self.merkle.leaves)
 
-        import time
-        self.log.debug("sleeping...")
-        time.sleep(1.2)
-        self.log.debug("done sleeping")
+        # import time
+        # self.log.debug("sleeping...")
+        # time.sleep(1.2)
+        # self.log.debug("done sleeping")
 
         tx_binary = self.merkle.data_for_hash(block_data.tx_hash)
         self.log.info("Replying to tx hash request {} with tx binary: {}".format(block_data.tx_hash, tx_binary))
@@ -214,48 +197,48 @@ class DelegateUpdateState(DelegateBaseState): pass
 
 
 ## TESTING
-from functools import wraps
-import random
-P = 0.36
-
-def do_nothing(*args, **kwargs):
-    # print("!!! DOING NOTHING !!!\nargs: {}\n**kwargs: {}".format(args, kwargs))
-    print("DOING NOTHING")
-
-def sketchy_execute(prob_fail):
-    def decorate(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            # print("UR BOY HAS INJECTED A SKETCH EXECUTE FUNC LOL LFG")
-            if random.random() < prob_fail:
-                print("!!! not running func")
-                return do_nothing(*args, **kwargs)
-            else:
-                # print("running func")
-                return func(*args, **kwargs)
-        return wrapper
-    return decorate
-
-
-class RogueMeta(type):
-    _OVERWRITES = ('route', 'route_req', 'route_timeout')
-
-    def __new__(cls, clsname, bases, clsdict):
-        clsobj = super().__new__(cls, clsname, bases, clsdict)
-
-        print("Rogue meta created with class name: ", clsname)
-        print("bases: ", bases)
-        print("clsdict: ", clsdict)
-        print("dir: ", dir(clsobj))
-
-        for name in dir(clsobj):
-            if name in cls._OVERWRITES:
-                print("\n\n***replacing {} with sketchy executor".format(name))
-                setattr(clsobj, name, sketchy_execute(P)(getattr(clsobj, name)))
-            else:
-                print("skipping name {}".format(name))
-
-        return clsobj
+# from functools import wraps
+# import random
+# P = 0.36
+#
+# def do_nothing(*args, **kwargs):
+#     # print("!!! DOING NOTHING !!!\nargs: {}\n**kwargs: {}".format(args, kwargs))
+#     print("DOING NOTHING")
+#
+# def sketchy_execute(prob_fail):
+#     def decorate(func):
+#         @wraps(func)
+#         def wrapper(*args, **kwargs):
+#             # print("UR BOY HAS INJECTED A SKETCH EXECUTE FUNC LOL LFG")
+#             if random.random() < prob_fail:
+#                 print("!!! not running func")
+#                 return do_nothing(*args, **kwargs)
+#             else:
+#                 # print("running func")
+#                 return func(*args, **kwargs)
+#         return wrapper
+#     return decorate
+#
+#
+# class RogueMeta(type):
+#     _OVERWRITES = ('route', 'route_req', 'route_timeout')
+#
+#     def __new__(cls, clsname, bases, clsdict):
+#         clsobj = super().__new__(cls, clsname, bases, clsdict)
+#
+#         print("Rogue meta created with class name: ", clsname)
+#         print("bases: ", bases)
+#         print("clsdict: ", clsdict)
+#         print("dir: ", dir(clsobj))
+#
+#         for name in dir(clsobj):
+#             if name in cls._OVERWRITES:
+#                 print("\n\n***replacing {} with sketchy executor".format(name))
+#                 setattr(clsobj, name, sketchy_execute(P)(getattr(clsobj, name)))
+#             else:
+#                 print("skipping name {}".format(name))
+#
+#         return clsobj
 ## END TESTING
 
 
@@ -270,15 +253,15 @@ class Delegate(NodeBase):
             signing_key = node_info['sk']
         super().__init__(url=url, signing_key=signing_key)
 
+        self.log = get_logger("Delegate-#{}".format(slot), auto_bg_val=slot)
+        self.log.info("Delegate being created on slot {} with url {}".format(url, signing_key))
+
         # Shared between states
         self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
-        db_path = PATH + '_' + str(slot)
-        self.backend = LevelDBBackend(path=db_path)
-        self.queue = TransactionQueue(backend=self.backend)
 
-
-        self.log = get_logger("Delegate-#{}".format(slot), auto_bg_val=slot)
-        self.log.info("Delegate being created on slot {} with url {}, and backend path {}"
-                      .format(url, signing_key, db_path))
+        # TODO -- add this as a property of the interpreter state, and implement functionality to pass data between
+        # states on transition, i.e sm.transition(NextState, arg1='hello', arg2='let_do+it')
+        # and the enter(...) of the next state should have these args
+        self.interpreter = VanillaInterpreter()
 
         self.start()

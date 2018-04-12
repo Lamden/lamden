@@ -18,6 +18,7 @@ class NodeBase(StateMachine):
     def route(self, msg: MessageBase):
         if type(msg) in self.state._receivers:
             self.log.debug("Routing msg: {}".format(msg))
+            # self.state._receivers[type(msg)](self.state, msg)
             try:
                 self.state._receivers[type(msg)](self.state, msg)
             except Exception as e:
@@ -67,3 +68,7 @@ class NodeBase(StateMachine):
             return
 
         self.route(msg)
+
+
+
+class Router: pass
