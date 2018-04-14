@@ -30,13 +30,9 @@ once dynamic routing tables implemented...could be cool if on the node layer, yo
 lists or python arrays. Like send messages to self.routing.delegate[0] or self.routing.delegate_for_vk(verifying_key) 
 """
 
-CHILD_RDY_SIG = b'LETS DO THIS MY GUY'
-KILL_SIG = b'DIE'
+CHILD_RDY_SIG = b'HEY ITS ME CHILD PROC -- LETS DO THIS MY GUY'
 
 class ReactorCore:
-    READY_SIG = 'READY'
-    PAUSE_SIG = 'PAUSE'
-
     def __init__(self, url, p_name=''):
         self.log = get_logger("{}.ReactorCore".format(p_name))
         self.log.info("ReactorCore started with url {}".format(url))
@@ -51,10 +47,12 @@ class ReactorCore:
         self.socket = self.context.socket(zmq.PAIR)
         self.socket.connect(self.url)
 
-        self.executors = {}
-        for name, executor in Executor.registry.items():
-            self.log.debug("Creating executor for name {} and class {}".format(name, executor))
-            self.executors[name] = executor(self.loop, self.context, self.socket)
+        # self.executors = {}
+        # for name, executor in Executor.registry.items():
+        #     self.log.debug("Creating executor for name {} and class {}".format(name, executor))
+        #     self.executors[name] = executor(self.loop, self.context, self.socket)
+        self.executors = {name: executor(self.loop, self.context, self.socket)
+                          for name, executor in Executor.registry.items()}
 
         self.loop.run_until_complete(self._recv_messages())
 
@@ -66,24 +64,26 @@ class ReactorCore:
         self.log.warning("-- Starting Recv on PAIR Socket at {} --".format(self.url))
         while True:
             self.log.debug("Reading socket...")
-            cmd = await self.socket.recv_pyobj()
-            self.log.debug("Got cmd from queue: {}".format(cmd))
-            self.process_cmd(cmd)
+            cmd_bin = await self.socket.recv()
+            self.log.debug("Got cmd from queue: {}".format(cmd_bin))
 
-    def process_cmd(self, cmd):
-        if cmd == KILL_SIG:
-            self.log.critical("Killing ReactorCore subprocess")
-            self.socket.disconnect(self.url)
-            self.loop.close()
-            self.log.critical("bout to sys.exit()")
-            import sys
-            sys.exit()
+            try:
+                cmd = ReactorCommand.from_bytes(cmd_bin)
+                self.execute_cmd(cmd)
+            except Exception as e:
+                self.log.error("Error deserializing ReactorCommand: {}\n with command binary: {}".format(e, cmd_bin))
 
+    def execute_cmd(self, cmd):
+        self.log.debug("Executing cmd: {}".format(cmd))
+        executor_name = cmd.class_name
+        executor_func = cmd.func_name
+        kwargs = cmd.kwargs
 
-        # Sanity checks (just for debugging really)
-        assert type(cmd) == tuple, "Only a tuple object can be inserted into the queue"
-        assert len(cmd) == 3, "Command must have 3 elements: (executor_class, executor_func, kwwargs dict)"
-        executor_name, executor_func, kwargs = cmd
+        if cmd.data:
+            kwargs['data'] = cmd.data
+        if cmd.metadata:
+            kwargs['metadata'] = cmd.metadata
+
         assert executor_name in self.executors, "Executor name {} not found in executors {}"\
             .format(executor_name, self.executors)
         assert hasattr(self.executors[executor_name], executor_func), "Function {} not found on executor class {}"\
@@ -124,20 +124,29 @@ class NetworkReactor:
         self.reactor = ReactorCore(url=url, p_name=p_name)
 
     async def _wait_child_rdy(self):
-        self.log.critical("Waiting for ready sig from child proc...")
+        self.log.debug("Waiting for ready sig from child proc...")
         msg = await self.socket.recv()
-        self.log.critical("Got ready sig from child proc: {}".format(msg))
+        self.log.debug("Got ready sig from child proc: {}".format(msg))
 
     async def _recv_messages(self):
-        self.log.warning("~~~ Starting recv for messages ~~~")
+        self.log.debug("~~ Starting recv for messages ~~")
         while True:
+            # TODO refactor and pretty this up
             self.log.debug("Waiting for callback...")
             callback, args = await self.socket.recv_pyobj()
-            self.log.debug("Got callback")
-            getattr(self.parent, callback)(*args)
+            self.log.debug("Got callback {} with args {}".format(callback, args))
 
-    def kill(self):
-        pass
+            other_args = args[:-2]
+            meta, payload = args[-2:]
+            envelope = Envelope.from_bytes(payload=payload, message_meta=meta)
+            new_args = args[:-2] + [envelope]
+            self.log.debug("new args with envelope created: {}".format(args))
+
+            getattr(self.parent, callback)(*new_args)
+
+    def send_cmd(self, cmd: ReactorCommand):
+        assert isinstance(cmd, ReactorCommand), "Only ReactorCommand instances can sent through the reactor"
+        self.socket.send(cmd.serialize())
 
     def notify_ready(self):
         self.log.critical("NOTIFIY READY")
@@ -156,22 +165,26 @@ class NetworkReactor:
         cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=url, filter=filter)
         self.socket.send(cmd.serialize())
 
-    def remove_sub(self, url: str, filter: str):
+    def remove_sub(self, url: str, msg_filter: str):
         """
         Requires kwargs 'url' of sub
         """
-        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, url=url, filter=filter)
+        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, url=url, filter=msg_filter)
         self.socket.send(cmd.serialize())
 
-    def pub(self, url: str, filter: str, metadata: MessageMeta, data: MessageBase):
-        """
-        Publish data 'data on socket connected to 'url'
-        Requires kwargs 'url' to publish on, as well as 'data' which is the binary data (type should be bytes) to publish
-        If reactor is not already set up to publish on 'url', this will be setup and the data will be published
-        """
-        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__, url=url, filter=filter,
-                                    data=data, metadata=metadata)
-        self.socket.send(cmd.serialize())
+    def pub(self, url: str, msg_filter: str, envelope: Envelope):
+        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__, url=url,
+                                    filter=msg_filter, data=envelope.data, metadata=envelope.metadata)
+
+    # def pub(self, url: str, filter: str, metadata: MessageMeta, data: MessageBase):
+    #     """
+    #     Publish data 'data on socket connected to 'url'
+    #     Requires kwargs 'url' to publish on, as well as 'data' which is the binary data (type should be bytes) to publish
+    #     If reactor is not already set up to publish on 'url', this will be setup and the data will be published
+    #     """
+    #     cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__, url=url, filter=filter,
+    #                                 data=data, metadata=metadata)
+    #     self.socket.send(cmd.serialize())
 
     def add_pub(self, url: str):
         """

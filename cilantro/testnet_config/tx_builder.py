@@ -1,6 +1,6 @@
 import requests
 from cilantro import Constants
-from cilantro.messages import StandardTransaction, StandardTransactionBuilder, Envelope, VoteTransaction, VoteTransactionBuilder, SwapTransaction, SwapTransactionBuilder
+from cilantro.messages import StandardTransaction, StandardTransactionBuilder, TransactionContainer, VoteTransaction, VoteTransactionBuilder, SwapTransaction, SwapTransactionBuilder
 from cilantro.db.delegate.backend import *
 from cilantro.utils import Encoder as E
 from cilantro.logger import get_logger
@@ -22,7 +22,10 @@ def send_tx(sender, receiver, amount):
         receiver = receiver[1]
 
     tx = StandardTransactionBuilder.create_tx(sender[0], sender[1], receiver, amount)
-    r = requests.post(MN_URL, data=Envelope.create(tx).serialize())
+    # r = requests.post(MN_URL, data=Envelope.create(tx).serialize())
+    r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
+    print("Request status code: {}".format(r.status_code))
+
 
 
 def seed_wallets(amount=10000):
@@ -37,7 +40,7 @@ def seed_wallets(amount=10000):
 
 def send_vote():
     tx = VoteTransactionBuilder.random_tx()
-    r = requests.post(MN_URL, data=Envelope.create(tx).serialize())
+    r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
 
 # def send_swap():
 #     tx = SwapTransactionBuilder.random_tx()

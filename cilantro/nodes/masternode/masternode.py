@@ -9,7 +9,7 @@
 from cilantro import Constants
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, recv, recv_req, timeout
-from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply
+from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, MessageMeta
 from cilantro.utils import TestNetURLHelper
 from aiohttp import web
 import asyncio
@@ -24,8 +24,12 @@ class MNBaseState(State):
 
     @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
-        self.log.critical("mn about to pub")
-        self.parent.reactor.pub(url=TestNetURLHelper.pubsub_url(self.parent.url), data=Envelope.create(tx))
+        self.log.critical("mn about to pub for tx {}".format(tx))
+
+        env = Envelope.create(signing_key=self.parent.signing, sender=self.parent.url, data=tx)
+        self.parent.reactor.pub(url=TestNetURLHelper.pubsub_url(self.parent.url),
+                                filter=Constants.ZmqFilters.WitnessMasternode, envelope=env)
+
         self.log.critical("published on our url: {}".format(TestNetURLHelper.pubsub_url(self.parent.url)))
         return web.Response(text="Successfully published transaction: {}".format(tx))
 
@@ -71,20 +75,14 @@ class MNRunState(MNBaseState):
 
     def enter(self, prev_state):
         asyncio.set_event_loop(self.parent.loop)
-        # ^ should this just be in init?
 
     def run(self):
         self.log.info("Starting web server")
         web.run_app(self.app, host=Constants.Testnet.Masternode.Host,
                     port=int(Constants.Testnet.Masternode.ExternalPort))
-        # ^ this blocks I think? Or maybe not cause he's on a new event loop..?
 
     def exit(self, next_state):
         pass
-        # TODO -- reset state vars (node_states, transactions, ect)
-        # TODO -- stop web server, event loop
-        # Or is it blocking? ...
-        # And if its blocking that means we can't receive on ZMQ sockets right?
 
     @recv_req(BlockContender)
     def recv_block(self, block: BlockContender, id):
@@ -123,11 +121,6 @@ class MNRunState(MNBaseState):
             req = BlockDataRequest.create(tx)
             self.log.critical("Requesting tx hash {} from URL {}".format(tx, replier))
             self.parent.reactor.request(url=TestNetURLHelper.dealroute_url(replier), data=Envelope.create(req), timeout=1)
-    #
-    # @recv(BlockDataReply)
-    # def recv_block_reply(self, reply: BlockDataReply):
-    #     self.log.critical("Masternode got block data reply {}".format(reply))
-    #     # TODO -- add this to completed transactions, mark sender as available (how?)
 
     def compute_hash_of_nodes(self, nodes) -> str:
         self.log.critical("Masternode computing hash of nodes...")
@@ -154,10 +147,10 @@ class MNRunState(MNBaseState):
             self.log.error("Received block data reply but not in updating state (reply={})".format(reply))
             return
 
-        self.log.critical("masternode got block data reply: {}".format(reply))
+        self.log.debug("masternode got block data reply: {}".format(reply))
         tx_hash = reply.tx_hash
-        self.log.critical("BlockReply tx hash: {}".format(tx_hash))
-        self.log.critical("Pending transactions: {}".format(self.tx_hashes))
+        self.log.debug("BlockReply tx hash: {}".format(tx_hash))
+        self.log.debug("Pending transactions: {}".format(self.tx_hashes))
         if tx_hash in self.tx_hashes:
             self.retrieved_txs[tx_hash] = reply.raw_tx
         else:
@@ -173,6 +166,7 @@ class MNRunState(MNBaseState):
     def timeout_block_req(self, request: BlockDataRequest, url):
         self.log.critical("BlockDataRequest timed out for url {} with request data {}".format(url, request))
         pass
+
 
 class MNNewBlockState(MNBaseState): pass
 

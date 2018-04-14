@@ -2,7 +2,8 @@
 Messages encapsulate data that is sent between nodes.
 """
 
-class MessageMeta(type):
+
+class MessageBaseMeta(type):
     def __new__(cls, clsname, bases, clsdict):
         clsobj = super().__new__(cls, clsname, bases, clsdict)
         if not hasattr(clsobj, 'registry'):
@@ -17,7 +18,7 @@ class MessageMeta(type):
         return clsobj
 
 
-class MessageBase(metaclass=MessageMeta):
+class MessageBase(metaclass=MessageBaseMeta):
     """
     MessageBase is the abstract class which defines required methods for any data model that is passed between nodes.
     All messages which are transmitted between nodes (i.e. transaction, blocks, routing tables, ect) must subclass this.
@@ -39,7 +40,8 @@ class MessageBase(metaclass=MessageMeta):
         """
         if not self._data:
             raise Exception("internal attribute _data not set.")
-        return self._data.as_builder().to_bytes_packed()
+        # return self._data.as_builder().to_bytes_packed()
+        return self._data.to_bytes_packed()
 
     def validate(self):
         """
@@ -70,10 +72,9 @@ class MessageBase(metaclass=MessageMeta):
         :param validate: If true, this method will also validate the data before returning the message object
         :return: An instance of MessageBase
         """
-        model = cls.from_data(cls._deserialize_data(data), validate=False)
-        if validate:
-            model.validate()
+        model = cls.from_data(cls._deserialize_data(data), validate=validate)
         return model
+
 
     @classmethod
     def from_data(cls, data: object, validate=True):
@@ -84,13 +85,10 @@ class MessageBase(metaclass=MessageMeta):
         :param validate: If true, this method will also validate the data before returning the message object
         :return: An instance of MessageBase
         """
-        # Cast data to a struct reader (not builder) if it isn't already
-        if hasattr(data, 'as_reader'):
-            data = data.as_reader()
-
         model = cls(data)
         if validate:
             model.validate()
+
         return model
 
     def __repr__(self):

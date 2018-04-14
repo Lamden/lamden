@@ -17,58 +17,6 @@ When updating state, just calculate the diffs between block numbers
 
 """
 
-# class Envelope(MessageBase):
-#     """
-#     All messages passed between nodes must be wrapped in an envelope.
-#
-#     An envelope specifies what type of message is contained within, as well as metadata possibly such as
-#     sender signature, timestamp, ect
-#     """
-#
-#     def validate(self):
-#         assert self._data.type in MessageBase.registry, "Message type {} not found in registry {}"\
-#                                                         .format(self._data.type, MessageBase.registry)
-#         # TODO -- check signature?
-#
-#     @classmethod
-#     def _deserialize_data(cls, data: bytes):
-#         return envelope_capnp.Envelope.from_bytes_packed(data)
-#
-#     @classmethod
-#     def create(cls, message: MessageBase, uuid=None):
-#         """
-#         Creates a new envelope for a message
-#         :param message: The MessageBase instance the data payload will store
-#         :return: An instance of Envelope
-#         """
-#         assert issubclass(type(message), MessageBase), "Message arg {} must be a subclass of MessageBase".format(type(message))
-#         assert type(message) in MessageBase.registry, "Message {} not in registry {}".format(message, MessageBase.registry)
-#
-#         struct = envelope_capnp.Envelope.new_message()
-#         struct.type = MessageBase.registry[type(message)]
-#         struct.signature = b'TODO: SIGNATURE'
-#         if uuid is None:
-#             struct.uuid = randint(0, MAX_UUID)
-#         else:
-#             struct.uuid = uuid
-#         struct.payload = message.serialize()
-#         msg = cls.from_data(struct)
-#
-#         return msg
-#
-#     def open(self, validate=True) -> MessageBase:
-#         """
-#         Open deserializes the message packed inside the envelope and returns it
-#         :return: The deserialized MessageBase instance
-#         """
-#         # TODO vallidate signature of payload
-#         return MessageBase.registry[self._data.type].from_bytes(self._data.payload)
-#
-#     @property
-#     def uuid(self):
-#         return self._data.uuid
-
-
 class Envelope:
     """
     An envelope is a convenience wrapper around a message's metadata (MessageMeta) and its
@@ -94,43 +42,77 @@ class Envelope:
     the
     """
 
+    def __init__(self, raw_metadata: bytes=None, raw_data: bytes=None, metadata: MessageMeta=None,
+                 data: MessageMeta=None, validate=True):
+        assert raw_metadata or metadata, "Either a MessageMeta instance or metadata binary must be passed in"
+        assert raw_data or data, "Either a MessageBase instance or Metadata binary must be passed in"
+
+        self._data = data
+        self._metadata = metadata
+        self._raw_data = raw_data
+        self._raw_metadata = raw_metadata
+
+        if validate:
+            self.validate()
+
+    def verify_signature(self, verifying_key: str):
+        return Constants.Protocols.Wallets.verify(verifying_key, self._raw_data, self.metadata.signature)
+
+    def validate(self):
+        a, b = None, None
+        try:
+            a = self.payload
+            b = self.metadata
+        except Exception as e:
+            self.log.error("Error deserializing data and/or metadata: {}\ndata binary: {}\nmetadata binary: {}"
+                           .format(e, self._raw_data, self._raw_metadata))
+            return
+
+        a.validate()
+        b.validate()
+
     @classmethod
     def from_bytes(cls, payload: bytes, message_meta: bytes):
         return cls(message_meta, payload)
 
     @classmethod
-    def from_data(cls, signing_key: str, sender: str, payload: MessageBase):
-        payload_binary = payload.serialize()
-        payload_type = MessageBase.registry[type(payload)]
-        signature = Constants.Protocols.Wallets.sign(signing_key, payload_binary)
+    def create(cls, signing_key: str, sender: str, data: MessageBase):
+        data_binary = data.serialize()
+        payload_type = MessageBase.registry[type(data)]
+        signature = Constants.Protocols.Wallets.sign(signing_key, data_binary)
         timestamp = time.time()
 
-        msg_meta = MessageMeta.create(type=payload_type, signature=signature, sender=sender, timestamp=str(timestamp))
-        return cls(msg_meta, payload_binary)
-
-    def __init__(self, metadata: bytes, payload: bytes):
-        self._payload, self._metadata = None, None
-        self._metadata_binary = metadata
-        self._payload_binary = payload
-
-    def verify_signature(self, verifying_key: str):
-        return Constants.Protocols.Wallets.verify(verifying_key, self._payload_binary, self.metadata.signature)
+        meta = MessageMeta.create(type=payload_type, signature=signature, sender=sender, timestamp=str(timestamp))
+        meta_binary = meta.serialize()
+        return cls(meta_binary, data_binary, validate=False)
 
     @property
-    def payload(self) -> MessageBase:
-        if not self._payload:
-            print("Lazy instantiating payload...")  # debug line, remove later
-            self._payload = MessageBase.registry[self.metadata.type].from_bytes(self._payload_binary)
-            print("Made payload: {}".format(self._payload))  # debug line, remove later
-        return self._payload
+    def data(self) -> MessageBase:
+        if not self._data:
+            self._data = MessageBase.registry[self.metadata.type].from_bytes(self._raw_data)
+
+        return self._data
 
     @property
     def metadata(self) -> MessageMeta:
         if not self._metadata:
-            print("Lazy instantiating metadata...")  # debug line, remove later
-            self._metadata = MessageMeta.from_bytes(self._metadata_binary)
-            print("Made metadata: {}".format(self._metadata))  # debug line, remove later
+            self._metadata = MessageMeta.from_bytes(self._raw_metadata)
+
         return self._metadata
+
+    @property
+    def raw_data(self) -> bytes:
+        if not self._raw_data:
+            self._raw_data = self.data.serialize()
+
+        return self._raw_data
+
+    @property
+    def raw_metadata(self) -> bytes:
+        if not self._raw_metadata:
+            self._raw_metadata = self.metadata.serialize()
+
+        return self._raw_metadata
 
 
 

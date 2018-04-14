@@ -153,3 +153,15 @@ class TestStandardTransaction(TestCase):
         tx_struct = TestStandardTransaction.create_tx_struct(100)
         struct_binary = tx_struct.to_bytes_packed()
         tx = StandardTransaction.from_data(tx_struct, validate=False)
+
+        self.assertTrue(True)
+
+    def test_builder_serializiation(self):
+        """
+        Tests serialization/deserialization using the StandardTransactionBuilder object
+        """
+        tx = StandardTransactionBuilder.random_tx()
+        clone = StandardTransaction.from_bytes(tx.serialize())
+
+        self.assertTrue(True)
+

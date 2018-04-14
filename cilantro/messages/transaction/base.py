@@ -13,6 +13,7 @@ class TransactionBase(MessageBase):
         super().__init__(data)
         self.pow = Constants.Protocol.Proofs
         self.wallet = Constants.Protocol.Wallets
+        self._payload_binary = None
 
     def validate(self):
         """
@@ -34,8 +35,7 @@ class TransactionBase(MessageBase):
         If the POW is valid, this method returns nothing.
         :raises: An exception if the POW is not valid.
         """
-        payload_binary = self._data.payload.as_builder().copy().to_bytes()
-        if not self.pow.check(payload_binary, self._data.metadata.proof.decode()):
+        if not self.pow.check(self.__payload_binary(), self._data.metadata.proof.decode()):
             raise Exception("Invalid proof of work for tx: {}".format(self._data))
 
     def validate_signature(self):
@@ -44,8 +44,7 @@ class TransactionBase(MessageBase):
         If the signature is valid, this method returns nothing.
         :raises: An exception if the signature is invalid
         """
-        payload_binary = self._data.payload.as_builder().copy().to_bytes()
-        if not self.wallet.verify(self.sender, payload_binary, self.signature):
+        if not self.wallet.verify(self.sender, self.__payload_binary(), self.signature):
             raise Exception("Invalid signature for tx: {}".format(self._data))
 
     def validate_metadata(self):
@@ -63,6 +62,22 @@ class TransactionBase(MessageBase):
         :raises: An exception if the fields are somehow invalid
         """
         raise NotImplementedError
+
+    def __payload_binary(self):
+        """
+        Helper method to get the underlying binary data for the payload. This is necessary because only capnp struct
+        builders have the .copy() attribute (struct readers do not), and we need to copy the payload before we can
+        generate the binary representation because otherwise the struct pointers will be messed up and the binary
+        representation will be inconsistent.
+        :return: Underlying payload data in bytes
+        """
+        if not self._payload_binary:
+            if hasattr(self._data.payload, 'copy'):
+                self._payload_binary = self._data.payload.copy().to_bytes()
+            else:
+                self._payload_binary = self._data.payload.as_builder().copy().to_bytes()
+
+        return self._payload_binary
 
     @property
     def proof(self):

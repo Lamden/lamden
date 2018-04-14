@@ -49,7 +49,7 @@
       "port_start": "7000"
     }
   },
-  "zmq_filters": {
+  "zmq-filters": {
     "witness-masternode": 0,
     "delegate-delegate": 1,
     "masternode-delegate": 2

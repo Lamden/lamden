@@ -94,7 +94,7 @@ class TestNetworkReactor(TestCase):
 
         reactor.socket.send = MagicMock()
 
-        reactor.remove_sub(url=URL, filter=FILTER)
+        reactor.remove_sub(url=URL, msg_filter=FILTER)
         reactor.socket.send.assert_called_with(cmd_binary)
 
 

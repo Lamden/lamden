@@ -7,9 +7,6 @@ import transaction_capnp
 
 
 class StandardTransaction(TransactionBase):
-
-    name = "STANDARD_TX"
-
     @classmethod
     def _deserialize_data(cls, data: bytes):
         return transaction_capnp.StandardTransaction.from_bytes_packed(data)

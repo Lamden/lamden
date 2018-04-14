@@ -25,7 +25,7 @@ MULTI_PROC = True
 
 START_MASTERNODE = True
 START_WITNESS = True
-START_DELEGATES = True
+START_DELEGATES = False
 
 
 log = get_logger("TestnetBootstrap")
