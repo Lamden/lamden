@@ -1,3 +1,5 @@
+import capnp
+
 """
 Messages encapsulate data that is sent between nodes.
 """
@@ -38,10 +40,15 @@ class MessageBase(metaclass=MessageBaseMeta):
         Serialize the underlying data format into bytes
         :return: Bytes
         """
-        if not self._data:
-            raise Exception("internal attribute _data not set.")
-        # return self._data.as_builder().to_bytes_packed()
-        return self._data.to_bytes_packed()
+        assert self._data, "Serialization error: internal _data not set"
+        assert type(self._data) in (capnp.lib.capnp._DynamicStructBuilder, capnp.lib.capnp._DynamicStructReader), \
+            "Serialization error: class of self._data is not a capnp _DynamicStructReader or _DynamicStructBuilder"
+
+        # Cast to struct builder if needed (reader does not have to_bytes_packed() method)
+        if type(self._data) is capnp.lib.capnp._DynamicStructReader:
+            return self._data.as_builder().to_bytes_packed()
+        else:
+            return self._data.to_bytes_packed()
 
     def validate(self):
         """
@@ -90,6 +97,10 @@ class MessageBase(metaclass=MessageBaseMeta):
             model.validate()
 
         return model
+
+    def __eq__(self, other):
+        # TODO -- implement (check type of self._data/other._data and use compare .to_dict() if both objects capnp)
+        pass
 
     def __repr__(self):
         return str(self._data)

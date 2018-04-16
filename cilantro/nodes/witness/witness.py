@@ -30,7 +30,8 @@ class WitnessBootState(WitnessBaseState):
         self.parent.reactor.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
         self.parent.reactor.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
 
-        self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl))
+        self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
+                                    filter=Constants.Testnet.ZmqFilters.WitnessMasternode)
         self.log.critical("Witness subscribing to URL: {}"
                           .format(TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl)))
 
@@ -44,8 +45,9 @@ class WitnessBootState(WitnessBaseState):
 class WitnessRunState(WitnessBaseState):
     @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
-        env = Envelope.create(tx)
-        self.parent.reactor.pub(url=self.parent.url, data=env)
+        self.log.critical("ayyyy witness got tx: {}".format(tx))
+        env = Envelope.create(signing_key=self.parent.signing, sender=self.parent.url, data=tx)
+        self.parent.reactor.pub(url=self.parent.url, envelope=env, filter=Constants.Testnet.WitnessDelegate)
 
 
 class Witness(NodeBase):

@@ -172,9 +172,11 @@ class NetworkReactor:
         cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, url=url, filter=msg_filter)
         self.socket.send(cmd.serialize())
 
-    def pub(self, url: str, msg_filter: str, envelope: Envelope):
-        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__, url=url,
-                                    filter=msg_filter, data=envelope.data, metadata=envelope.metadata)
+    def pub(self, filter: str, envelope: Envelope):
+        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__,
+                                    filter=filter, data=envelope.data, metadata=envelope.metadata)
+        self.log.critical("\n\nABOUT TO SEND CMD: {}\n\n".format(cmd))
+        self.socket.send(cmd.serialize())
 
     # def pub(self, url: str, filter: str, metadata: MessageMeta, data: MessageBase):
     #     """

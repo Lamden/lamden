@@ -165,3 +165,14 @@ class TestStandardTransaction(TestCase):
 
         self.assertTrue(True)
 
+    def test_builder_reserialization(self):
+        """
+        Tests that a transaction object can be loaded from binary created using StandardTransactionBuilder, and then
+        properly serialized again
+        """
+        tx = StandardTransactionBuilder.random_tx()
+        clone = StandardTransaction.from_bytes(tx.serialize())
+        clone.serialize()
+
+        self.assertTrue(True)
+

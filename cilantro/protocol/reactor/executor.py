@@ -50,7 +50,7 @@ class SubPubExecutor(Executor):
         self.sub = None
         self.pub = None
 
-    def send_pub(self, url, filter, metadata, data):
+    def send_pub(self, filter, metadata, data):
         assert self.pub, "Attempted to publish data but publisher socket is not configured"
         self.pub.send_multipart([filter, metadata, data])
 
@@ -64,15 +64,15 @@ class SubPubExecutor(Executor):
         self.log.warning("Publishing on url {}".format(url))
         self.pub.bind(url)
 
-    def add_sub(self, url: str, msg_filter: str):
+    def add_sub(self, url: str, filter: str):
         if not self.sub:
             self.log.info("Creating subscriber socket")
             self.sub = self.context.socket(socket_type=zmq.SUB)
             asyncio.ensure_future(self.recv_multipart(self.sub, SUB_CALLBACK, ignore_first_frame=True))
 
-        self.log.info("Subscribing to url {} with filter {}".format(url, msg_filter))
+        self.log.info("Subscribing to url {} with filter {}".format(url, filter))
         self.sub.connect(url)
-        self.sub.setsockopt(zmq.SUBSCRIBE, msg_filter.encode())
+        self.sub.setsockopt(zmq.SUBSCRIBE, filter.encode())
 
     def remove_sub(self, url: str, msg_filter: str):
         assert self.sub, "Remove sub command invoked but sub socket is not set"

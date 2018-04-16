@@ -26,9 +26,12 @@ class MNBaseState(State):
     def recv_tx(self, tx: TransactionBase):
         self.log.critical("mn about to pub for tx {}".format(tx))
 
-        env = Envelope.create(signing_key=self.parent.signing, sender=self.parent.url, data=tx)
-        self.parent.reactor.pub(url=TestNetURLHelper.pubsub_url(self.parent.url),
-                                filter=Constants.ZmqFilters.WitnessMasternode, envelope=env)
+        try:
+            env = Envelope.create(signing_key=self.parent.signing_key, sender=self.parent.url, data=tx)
+            self.log.critical("env created: {}".format(env))
+            self.parent.reactor.pub(filter=Constants.ZmqFilters.WitnessMasternode, envelope=env)
+        except Exception as e:
+            self.log.error("Erorr sending tx: {}".format(e))
 
         self.log.critical("published on our url: {}".format(TestNetURLHelper.pubsub_url(self.parent.url)))
         return web.Response(text="Successfully published transaction: {}".format(tx))

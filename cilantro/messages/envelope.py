@@ -77,9 +77,12 @@ class Envelope:
 
     @classmethod
     def create(cls, signing_key: str, sender: str, data: MessageBase):
+        assert issubclass(type(data), MessageBase), "Data for envelope must be a MessageBase instance"
+        # TODO -- validate hex for sk and sender
+
         data_binary = data.serialize()
         payload_type = MessageBase.registry[type(data)]
-        signature = Constants.Protocols.Wallets.sign(signing_key, data_binary)
+        signature = Constants.Protocol.Wallets.sign(signing_key, data_binary)
         timestamp = time.time()
 
         meta = MessageMeta.create(type=payload_type, signature=signature, sender=sender, timestamp=str(timestamp))
