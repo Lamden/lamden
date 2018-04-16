@@ -40,7 +40,7 @@
     },
     "witnesses": {
       "host":"tcp://127.0.0.1",
-      "num": 1,
+      "num": 4,
       "port_start":"6000"
     },
     "delegates": {

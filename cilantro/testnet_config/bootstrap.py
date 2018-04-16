@@ -62,6 +62,14 @@ def start_mn():
     mn = Masternode()
     signal.pause()
 
+
+def start_witness(i):
+    log = get_logger("MasternodeFactor")
+    log.critical("Starting witness on slot {}".format(i))
+    witness = Witness(slot=i)
+    signal.pause()
+
+
 if __name__ == "__main__":
     mn, witness, delegates = None, None, []
 
@@ -69,9 +77,12 @@ if __name__ == "__main__":
         log.info("Starting Masternode")
         p = Process(target=start_mn)
         p.start()
+
     if START_WITNESS:
-        log.info("Starting witness")
-        witness = Witness()
+        log.info("Starting {} witnesses".format(len(Constants.Testnet.Witnesses)))
+        for i in range(len(Constants.Testnet.Witnesses)):
+            p = Process(target=start_witness, args=(i,))
+            p.start()
 
     if START_DELEGATES:
         if MULTI_PROC:
