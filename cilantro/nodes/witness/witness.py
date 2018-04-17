@@ -26,6 +26,7 @@ class WitnessBaseState(State):
 
 
 class WitnessBootState(WitnessBaseState):
+    """Witness boot state has witness sub to masternode and establish a pub socket and router socket"""
     def enter(self, prev_state):
         self.parent.reactor.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
         self.parent.reactor.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
@@ -42,6 +43,7 @@ class WitnessBootState(WitnessBaseState):
 
 
 class WitnessRunState(WitnessBaseState):
+    """Witness run state has the witness receive transactions sent from masternode"""
     @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
         env = Envelope.create(tx)
