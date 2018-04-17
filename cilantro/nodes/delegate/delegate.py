@@ -50,6 +50,8 @@ class DelegateBaseState(State):
 
 
 class DelegateBootState(DelegateBaseState):
+    """Delegate Boot State consists of subscribing to all delegates/all witnesses as well as publishing to own url
+    Also the delegate adds a router and dealer socket so masternode can identify which delegate is communicating"""
     def enter(self, prev_state):
         # Sub to other delegates
         for delegate in [d for d in Constants.Testnet.Delegates if d['url'] != self.parent.url]:
@@ -78,6 +80,9 @@ class DelegateBootState(DelegateBaseState):
 
 
 class DelegateInterpretState(DelegateBaseState):
+    """Delegate interpret state has the delegate receive and interpret that transactions are valid according to the
+    interpreter chosen. Once the number of transactions in the queue exceeds the size or a time interval is reached the
+    delegate moves into consensus state"""
     def __init__(self, state_machine=None):
         super().__init__(state_machine=state_machine)
 
@@ -111,6 +116,8 @@ class DelegateInterpretState(DelegateBaseState):
 
 
 class DelegateConsensusState(DelegateBaseState):
+    """Consensus state is where delegates pass around a merkelized version of their transaction queues, publish them to
+    one another, confirm the signature is valid, and then vote/tally the results"""
     NUM_DELEGATES = len(Constants.Testnet.Delegates)
 
     def __init__(self, state_machine=None):
