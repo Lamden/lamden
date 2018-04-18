@@ -1,4 +1,9 @@
+import os
 from cilantro.nodes import Delegate
+from cilantro.testnet_config.tx_builder import seed_wallets
 
-d = Delegate()
-d.start()
+
+slot = os.getenv('SLOT_NUM')
+seed_wallets(i=slot)
+d = Delegate(slot=int(slot))
+

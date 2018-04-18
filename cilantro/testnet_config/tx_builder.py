@@ -3,6 +3,7 @@ from cilantro import Constants
 from cilantro.messages import StandardTransaction, StandardTransactionBuilder, Envelope, VoteTransaction, VoteTransactionBuilder, SwapTransaction, SwapTransactionBuilder
 from cilantro.utils import Encoder as E
 from cilantro.logger import get_logger
+from cilantro.db.delegate import *
 
 from cilantro.protocol.interpreters.queries import *
 
@@ -16,6 +17,15 @@ DENTON = ('9decc7f7f0b5a4fc87ab5ce700e2d6c5d51b7565923d50ea13cbf78031bb3acf',
  '20da05fdba92449732b3871cc542a058075446fedb41430ee882e99f9091cc4d')
 KNOWN_ADRS = (STU, DAVIS, DENTON)
 
+
+def seed_wallets(amount=10000, i=0):
+    log = get_logger("WalletSeeder")
+    log.critical("Seeding wallets with amount {}".format(amount))
+    with DB('{}_{}'.format(DB_NAME, i)) as db:
+        log.critical("GOT DB WITH NAME: {}".format(db.db_name))
+        for wallet in KNOWN_ADRS:
+            q = insert(db.tables.balances).values(wallet=wallet[1].encode(), amount=amount)
+            db.execute(q)
 
 def send_tx(sender, receiver, amount):
     if sender not in KNOWN_ADRS:
