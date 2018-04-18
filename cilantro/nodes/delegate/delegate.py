@@ -261,7 +261,7 @@ class Delegate(NodeBase):
         super().__init__(url=url, signing_key=signing_key)
 
         self.log = get_logger("Delegate-#{}".format(slot), auto_bg_val=slot)
-        self.log.info("Delegate being created on slot {} with url {}".format(url, signing_key))
+        self.log.info("Delegate being created on slot {} with url {} and signing_key {}".format(slot, url, signing_key))
 
         # Shared between states
         self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here

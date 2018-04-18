@@ -36,7 +36,7 @@ class ED25519Wallet(Wallet):
 
     @classmethod
     def new(cls, seed=None):
-        s, v = cls.generate_keys()
+        s, v = cls.generate_keys(seed=seed)
         return cls.keys_to_format(s, v)
 
     @classmethod

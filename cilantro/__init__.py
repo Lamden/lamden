@@ -35,7 +35,7 @@ def config_testnet(testnet: dict) -> dict:
     if os.getenv('MASTERNODE'):
         print("\n\n BOOTSTRAPING NODE URL's FROM ENV VARS")
         masternode = os.getenv('MASTERNODE')
-        delegates = os.getenv('DELEGATES').split(',')
+        delegates = os.getenv('DELEGATE').split(',')
         witnesses = os.getenv('WITNESS').split(',')
 
         mn_url = 'tcp://{}:5555'.format(masternode)

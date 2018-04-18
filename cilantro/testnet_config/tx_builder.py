@@ -7,7 +7,12 @@ from cilantro.db.delegate import *
 
 from cilantro.protocol.interpreters.queries import *
 
-MN_URL = 'http://127.0.0.1:8080'
+
+import os
+
+
+
+MN_URL = "http://{}:8080".format(os.getenv('MASTERNODE', '127.0.0.1'))
 
 STU = ('db929395f15937f023b4682995634b9dc19b1a2b32799f1f67d6f080b742cdb1',
  '324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502')

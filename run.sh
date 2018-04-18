@@ -48,5 +48,7 @@ EOF
 fi
 
 
-#exec /usr/bin/mysqld --user=root --console &
-#sleep 10
+exec /usr/bin/mysqld --user=root --console &
+sleep 10
+mkdir -p logs
+python3 $1
