@@ -1,3 +1,9 @@
+"""Module for initializing settings related to the built-in Cilantro logger
+
+Functions:
+-get_logger"""
+
+
 import os
 from pathlib import Path
 import logging, coloredlogs

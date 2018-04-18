@@ -1,3 +1,12 @@
+"""This module is for merkelizing the transaction payloads that delegates receive in interpreting state
+
+ Available classes:
+ -Merkle Signature
+ -Block Contender
+ -Block Data Request
+ -Block Data Reply"""
+
+
 from cilantro import Constants
 from cilantro.messages import MessageBase, TransactionBase
 from cilantro.protocol.structures import MerkleTree
