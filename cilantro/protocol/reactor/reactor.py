@@ -1,3 +1,9 @@
+"""The reactor is the integral component for cilantro nodes that acts as the API for all zmq message passed between
+the different node types. All ZMQ message commands such as pub, sub, send, receive, etc, go through the reactor core"""
+
+# TODO - add more description since this module is quite complex and critical
+
+
 import asyncio
 import zmq
 import zmq.asyncio

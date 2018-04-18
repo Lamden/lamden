@@ -1,3 +1,15 @@
+"""The db module for delegate is for bootstrapping the in-memory database for delegate nodes to store scratch and
+execute smart contracts
+
+Functions include:
+-create_db
+-execute (execute smart contract query)
+
+Classes include:
+-DBSingletonMeta
+-DB (which inherits from DBSingletonMeta)
+"""
+
 from multiprocessing import Lock
 import os
 
