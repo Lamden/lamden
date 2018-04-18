@@ -32,28 +32,56 @@ def config_testnet(testnet: dict) -> dict:
     SLOTS_PER_NODE = 4  # distance between port assignments for each node
     all_nodes = {}
 
-    # Add masternode wallet and url to all_nodes
-    mn_url = testnet['masternode']['internal-url']
-    mn_sk, mn_vk = gen_keypair(mn_url)
-    testnet['masternode']['vk'] = mn_vk
-    testnet['masternode']['sk'] = mn_sk
-    # all_nodes.append({'url': mn_url, 'vk': mn_vk})
-    all_nodes[mn_url] = mn_vk
+    if os.getenv('MASTERNODE'):
+        print("\n\n BOOTSTRAPING NODE URL's FROM ENV VARS")
+        masternode = os.getenv('MASTERNODE')
+        delegates = os.getenv('DELEGATES').split(',')
+        witnesses = os.getenv('WITNESS').split(',')
 
-    for node_type in ('delegates', 'witnesses'):
-        nodes = []
-        base_url, num, port_start = testnet[node_type]['host'], testnet[node_type]['num'], \
-                                    int(testnet[node_type]['port_start'])
-        for i in range(num):
-            url = "{}:{}".format(base_url, port_start + i*SLOTS_PER_NODE)
-            sk, vk = gen_keypair(url)
-            nodes.append({'url': url, 'sk': sk, 'vk': vk})
-            # all_nodes.append({'url': url, 'vk': vk})
-            all_nodes[url] = vk
-        testnet[node_type] = nodes
+        mn_url = 'tcp://{}:5555'.format(masternode)
+        mn_sk, mn_vk = gen_keypair(mn_url)
+        all_nodes[mn_url] = mn_vk
+        testnet['masternode']['internal-url'] = mn_url
+        testnet['masternode']['host'] = masternode
+        testnet['masternode']['vk'] = mn_vk
+        testnet['masternode']['sk'] = mn_sk
+
+        node_ips = {'delegates': delegates, 'witnesses': witnesses}
+
+        for key, node_list in node_ips.items():
+            nodes = []
+            for i, ip in enumerate(node_list):
+                url = 'tcp://{}:6000'.format(ip)
+                sk, vk = gen_keypair(url)
+                nodes.append({'url': url, 'sk': sk, 'vk': vk})
+                all_nodes[url] = vk
+            testnet[key] = nodes
+    else:
+        print("\n\n BOOTSTRAPPING NODE URL's FROM CONFIG.JSON")
+        mn_url = testnet['masternode']['internal-url']
+        mn_sk, mn_vk = gen_keypair(mn_url)
+        testnet['masternode']['vk'] = mn_vk
+        testnet['masternode']['sk'] = mn_sk
+        all_nodes[mn_url] = mn_vk
+
+        for node_type in ('delegates', 'witnesses'):
+            nodes = []
+            base_url, num, port_start = testnet[node_type]['host'], testnet[node_type]['num'], \
+                                        int(testnet[node_type]['port_start'])
+            for i in range(num):
+                url = "{}:{}".format(base_url, port_start + i * SLOTS_PER_NODE)
+                sk, vk = gen_keypair(url)
+                nodes.append({'url': url, 'sk': sk, 'vk': vk})
+                all_nodes[url] = vk
+
+            testnet[node_type] = nodes
 
     testnet['all-nodes'] = all_nodes
     return testnet
+
+    # Add masternode wallet and url to all_nodes
+    # mn_url = testnet['masternode']['internal-url']
+
 
 
 path = os.path.join(os.path.dirname(__file__), 'config.json')

@@ -1,4 +1,4 @@
 from cilantro.nodes import Masternode
+import os
 
 node = Masternode()
-node.setup_web_server()

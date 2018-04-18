@@ -1,4 +1,6 @@
 from cilantro.nodes import Witness
+import os
 
-w = Witness()
-w.start()
+slot = os.getenv('SLOT_NUM')
+w = Witness(slot=int(slot))
+
