@@ -47,18 +47,14 @@ class ReactorCore:
         self.socket = self.context.socket(zmq.PAIR)
         self.socket.connect(self.url)
 
-        # self.executors = {}
-        # for name, executor in Executor.registry.items():
-        #     self.log.debug("Creating executor for name {} and class {}".format(name, executor))
-        #     self.executors[name] = executor(self.loop, self.context, self.socket)
         self.executors = {name: executor(self.loop, self.context, self.socket)
                           for name, executor in Executor.registry.items()}
 
         self.loop.run_until_complete(self._recv_messages())
 
     async def _recv_messages(self):
-        # Notify mainthread that this proc is ready
-        self.log.debug("reactor notifying mainthread of ready")
+        # Notify parent proc that this proc is ready
+        self.log.debug("reactorcore notifying main proc of ready")
         self.socket.send(CHILD_RDY_SIG)
 
         self.log.warning("-- Starting Recv on PAIR Socket at {} --".format(self.url))
@@ -69,12 +65,16 @@ class ReactorCore:
 
             try:
                 cmd = ReactorCommand.from_bytes(cmd_bin)
-                self.execute_cmd(cmd)
             except Exception as e:
                 self.log.error("Error deserializing ReactorCommand: {}\n with command binary: {}".format(e, cmd_bin))
+                return
+
+            self.execute_cmd(cmd)
 
     def execute_cmd(self, cmd):
+        assert isinstance(cmd, ReactorCommand), "Cannot execute cmd {} that is not a ReactorCommand object".format(cmd)
         self.log.debug("Executing cmd: {}".format(cmd))
+
         executor_name = cmd.class_name
         executor_func = cmd.func_name
         kwargs = cmd.kwargs
@@ -113,7 +113,7 @@ class NetworkReactor:
         self.proc = Process(target=self._start_reactor, args=(self.url, type(parent).__name__))
         self.proc.start()
 
-        # Suspend execution of this proc until reactor proc is ready
+        # Block execution of this proc until reactor proc is ready
         self.loop.run_until_complete(self._wait_child_rdy())
 
         # Start listening to messages from reactor proc
@@ -134,13 +134,14 @@ class NetworkReactor:
             # TODO refactor and pretty this up
             self.log.debug("Waiting for callback...")
             callback, args = await self.socket.recv_pyobj()
-            self.log.debug("Got callback {} with args {}".format(callback, args))
+            args = list(args)
+            self.log.debug("Got callback <{}> with args {}".format(callback, args))
 
+            # TODO -- engineer less hacky way to do this that doesnt explicitly rely on multiframe positions
             other_args = args[:-2]
             meta, payload = args[-2:]
             envelope = Envelope.from_bytes(payload=payload, message_meta=meta)
             new_args = args[:-2] + [envelope]
-            self.log.debug("new args with envelope created: {}".format(args))
 
             getattr(self.parent, callback)(*new_args)
 
@@ -163,58 +164,48 @@ class NetworkReactor:
         meta router built into base node
         """
         cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=url, filter=filter)
-        self.socket.send(cmd.serialize())
+        self.send_cmd(cmd)
 
-    def remove_sub(self, url: str, msg_filter: str):
+    def remove_sub(self, url: str, filter: str):
         """
         Requires kwargs 'url' of sub
         """
-        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, url=url, filter=msg_filter)
-        self.socket.send(cmd.serialize())
+        cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, url=url, filter=filter)
+        self.send_cmd(cmd)
 
     def pub(self, filter: str, envelope: Envelope):
         cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__,
                                     filter=filter, data=envelope.data, metadata=envelope.metadata)
-        self.log.critical("\n\nABOUT TO SEND CMD: {}\n\n".format(cmd))
-        self.socket.send(cmd.serialize())
-
-    # def pub(self, url: str, filter: str, metadata: MessageMeta, data: MessageBase):
-    #     """
-    #     Publish data 'data on socket connected to 'url'
-    #     Requires kwargs 'url' to publish on, as well as 'data' which is the binary data (type should be bytes) to publish
-    #     If reactor is not already set up to publish on 'url', this will be setup and the data will be published
-    #     """
-    #     cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__, url=url, filter=filter,
-    #                                 data=data, metadata=metadata)
-    #     self.socket.send(cmd.serialize())
+        self.log.critical("\n\n(SEND PUB -- ABOUT TO SEND CMD: {}\n\n".format(cmd))
+        self.send_cmd(cmd)
 
     def add_pub(self, url: str):
         """
         Configure the reactor to publish on 'url'.
         """
         cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=url)
-        self.socket.send(cmd.serialize())
+        self.send_cmd(cmd)
 
     def remove_pub(self, url: str):
         """
         Close the publishing socket on 'url'
         """
         cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.remove_pub.__name__, url=url)
-        self.socket.send(cmd.serialize())
+        self.send_cmd(cmd)
 
     def add_dealer(self, url: str, id):
         """
         needs 'url', 'callback', and 'id'
         """
         cmd = ReactorCommand.create(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__, url=url, id=id)
-        self.socket.send(cmd.serialize())
+        self.send_cmd(cmd)
 
     def add_router(self, url: str):
         """
         needs 'url', 'callback'
         """
         cmd = ReactorCommand.create(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, url=url)
-        self.socket.send(cmd.serialize())
+        self.send_cmd(cmd)
 
     def request(self, url: str, metadata: MessageMeta, data: MessageBase, timeout=0):
         """
@@ -223,7 +214,7 @@ class NetworkReactor:
         """
         cmd = ReactorCommand.create(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, url=url,
                                     metadata=metadata, data=data, timeout=timeout)
-        self.socket.send(cmd.serialize())
+        self.send_cmd(cmd)
 
     def reply(self, url: str, id: str, metadata: MessageMeta, data: MessageBase):
         """
@@ -231,4 +222,4 @@ class NetworkReactor:
         """
         cmd = ReactorCommand.create(DealerRouterExecutor.__name__, DealerRouterExecutor.reply.__name__, url=url, id=id,
                                     metadata=metadata, data=data)
-        self.socket.send(cmd.serialize())
+        self.send_cmd(cmd)

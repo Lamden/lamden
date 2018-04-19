@@ -1,4 +1,5 @@
 from cilantro import Constants
+from cilantro.logger import get_logger
 from cilantro.messages import MessageMeta, MessageBase
 import capnp
 import envelope_capnp
@@ -47,6 +48,7 @@ class Envelope:
         assert raw_metadata or metadata, "Either a MessageMeta instance or metadata binary must be passed in"
         assert raw_data or data, "Either a MessageBase instance or Metadata binary must be passed in"
 
+        self.log = get_logger("Envelope")
         self._data = data
         self._metadata = metadata
         self._raw_data = raw_data
@@ -61,7 +63,7 @@ class Envelope:
     def validate(self):
         a, b = None, None
         try:
-            a = self.payload
+            a = self.data
             b = self.metadata
         except Exception as e:
             self.log.error("Error deserializing data and/or metadata: {}\ndata binary: {}\nmetadata binary: {}"

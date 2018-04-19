@@ -46,8 +46,8 @@ class WitnessRunState(WitnessBaseState):
     @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
         self.log.critical("ayyyy witness got tx: {}".format(tx))
-        env = Envelope.create(signing_key=self.parent.signing, sender=self.parent.url, data=tx)
-        self.parent.reactor.pub(url=self.parent.url, envelope=env, filter=Constants.Testnet.WitnessDelegate)
+        env = Envelope.create(signing_key=self.parent.signing_key, sender=self.parent.url, data=tx)
+        self.parent.reactor.pub(envelope=env, filter=Constants.ZmqFilters.WitnessDelegate)
 
 
 class Witness(NodeBase):

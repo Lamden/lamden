@@ -29,20 +29,27 @@ class NodeBase(StateMachine):
     #         self.log.error("Message {} has no implemented receiver for state {} in receivers {}"
     #                        .format(msg, self.state, self.state._receivers))
 
-    def route(self, metadata: bytes, data: bytes):
-        try:
-            md = MessageMeta.from_bytes(metadata)
-            d = MessageBase.registry[md.type].from_bytes(data)
+    # def route(self, metadata: bytes, data: bytes):
+    #     try:
+    #         md = MessageMeta.from_bytes(metadata)
+    #         d = MessageBase.registry[md.type].from_bytes(data)
+    #
+    #         # TODO -- check metadata signatures
+    #
+    #         assert type(d) in self.state._receivers, "State {} has no implemented receiver for {} in _receivers {}"\
+    #             .format(self.state, type(d), self.state._receivers)
+    #         self.state._receivers[type(d)](self.state, d)
+    #
+    #     except Exception as e:
+    #         self.log.error("Error deserializing message with\nerror: {}\nmetadata: {}\ndata: {}\n"
+    #                        .format(e, metadata, data))
 
-            # TODO -- check metadata signatures
+    def route(self, envelope: Envelope):
+        assert type(envelope.data) in self.state._receivers, \
+            "State {} has no implemented receiver for {} in _receivers {}"\
+                .format(self.state, type(envelope.data), self.state._receivers)
 
-            assert type(d) in self.state._receivers, "State {} has no implemented receiver for {} in _receivers {}"\
-                .format(self.state, type(d), self.state._receivers)
-            self.state._receivers[type(d)](self.state, d)
-
-        except Exception as e:
-            self.log.error("Error deserializing message with\nerror: {}\nmetadata: {}\ndata: {}\n"
-                           .format(e, metadata, data))
+        self.state._receivers[type(envelope.data)](self.state, envelope.data)
 
     def route_req(self, msg: MessageBase, url: str, id: bytes, uuid):
         self.log.debug("Routing request binary: {} with id={} and url={} and uuid={}".format(msg, id, url, uuid))

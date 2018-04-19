@@ -25,7 +25,7 @@ MULTI_PROC = True
 
 START_MASTERNODE = True
 START_WITNESS = True
-START_DELEGATES = False
+START_DELEGATES = True
 
 
 log = get_logger("TestnetBootstrap")
@@ -42,7 +42,7 @@ def start_delelegate(i):
 def start_mn():
     log.info("Starting Masternode")
     mn = Masternode()
-    signal.pause()
+    # signal.pause()
 
 def start_witness():
     log.info("Starting witness")
@@ -65,7 +65,7 @@ if __name__ == "__main__":
             for i in range(len(Constants.Testnet.Delegates)):
                 p = Process(target=start_delelegate, args=(i,))
                 p.start()
-            signal.pause()
+            # signal.pause()
         else:
             log.debug("Starting delegate on same process")
             for i in range(len(Constants.Testnet.Delegates)):

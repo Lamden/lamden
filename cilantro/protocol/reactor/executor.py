@@ -50,18 +50,18 @@ class SubPubExecutor(Executor):
         self.sub = None
         self.pub = None
 
-    def send_pub(self, filter, metadata, data):
+    def send_pub(self, filter: str, metadata: bytes, data: bytes):
         assert self.pub, "Attempted to publish data but publisher socket is not configured"
-        self.pub.send_multipart([filter, metadata, data])
+        self.pub.send_multipart([filter.encode(), metadata, data])
 
     def add_pub(self, url):
+        # TODO -- implement functionality so add_pub will close the existing socket and create a new one if we are switching urls
         if self.pub:
             self.log.error("Attempted to add publisher on url {} but publisher socket already configured.".format(url))
             return
 
-        self.log.info("Creating publisher socket")
+        self.log.info("Creating publisher socket on url {}".format(url))
         self.pub = self.context.socket(socket_type=zmq.PUB)
-        self.log.warning("Publishing on url {}".format(url))
         self.pub.bind(url)
 
     def add_sub(self, url: str, filter: str):
