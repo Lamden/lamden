@@ -5,11 +5,10 @@ import secrets
 from cilantro.protocol.interpreters.queries import *
 
 
-# DB.set_context("test_db_hello")
-
 global tables
 with DB() as db:
     tables = db.tables
+
 
 class TestQueries(TestCase):
     @staticmethod
