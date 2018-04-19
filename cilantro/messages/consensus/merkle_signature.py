@@ -1,5 +1,6 @@
 from cilantro import Constants
 from cilantro.messages import MessageBase
+from cilantro.messages.utils import validate_hex
 import json
 
 
@@ -34,12 +35,18 @@ class MerkleSignature(MessageBase):
         assert self.TS in self._data, "Timestamp field missing from _data: {}".format(self._data)
         assert self.SENDER in self._data, "Sender field missing from _data: {}".format(self._data)
 
+        validate_hex(self._data[self.SIG], 128, self.SIG)
+        validate_hex(self._data[self.SENDER], 64, self.SENDER)
+        # Validate timestamp somehow?
+
     def serialize(self):
         return json.dumps(self._data).encode()
 
     def verify(self, msg, verifying_key):
-        # TODO validate verifying key and signature (hex, 64 char)
-        return Constants.Protocol.Wallets.verify(verifying_key, msg, self.signature)
+        if validate_hex(verifying_key, length=64, raise_err=False):
+            return Constants.Protocol.Wallets.verify(verifying_key, msg, self.signature)
+        else:
+            return False
 
     @classmethod
     def create(cls, sig_hex: str, timestamp: str, sender: str, validate=True):

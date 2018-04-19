@@ -1,4 +1,4 @@
-from cilantro.messages import MessageBase
+from cilantro.messages import MessageBase, MerkleSignature
 import pickle
 
 """
@@ -17,11 +17,11 @@ class BlockContender(MessageBase):
     NODES = 'nodes'
 
     def validate(self):
-        pass
+        assert type(self._data) == dict, "BlockContender's _data must be a dict"
+        assert BlockContender.SIGS in self._data, "signature field missing from data {}".format(self._data)
+        assert BlockContender.NODES in self._data, "nodes field missing from data {}".format(self._data)
 
     def serialize(self):
-        # loop through signatures list, serialize each
-        # json dump entire _data
         for i in range(len(self._data[self.SIGS])):
             self._data[self.SIGS][i] = self._data[self.SIGS][i].serialize()
         return pickle.dumps(self._data)
@@ -33,9 +33,6 @@ class BlockContender(MessageBase):
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        # TODO -- implement
-        # json loads entire data
-        # deserialize each signature
         data = pickle.loads(data)
         for i in range(len(data[cls.SIGS])):
             data[cls.SIGS][i] = MerkleSignature.from_bytes(data[cls.SIGS][i])
