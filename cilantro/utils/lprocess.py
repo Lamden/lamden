@@ -23,7 +23,6 @@ class LProcess(Process):
             err_msg += '\n' + INNER_DELIM * DELIM_LEN
             err_msg += '\n' + OUTER_DELIM * DELIM_LEN
             log.error(err_msg)
-            # raise e
         finally:
             log.info("<--- {} Terminating <---".format(self.name))
             # TODO -- signal to parent to call .join() on this process and clean up nicely
