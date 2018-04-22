@@ -1,6 +1,7 @@
 from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.messages import MessageMeta, MessageBase
+from cilantro.utils import PicklableMixin
 import capnp
 import envelope_capnp
 import time
@@ -18,7 +19,7 @@ When updating state, just calculate the diffs between block numbers
 
 """
 
-class Envelope:
+class Envelope(PicklableMixin):
     """
     An envelope is a convenience wrapper around a message's metadata (MessageMeta) and its
     payload (MessageBase subclass).
@@ -118,8 +119,6 @@ class Envelope:
             self._raw_metadata = self.metadata.serialize()
 
         return self._raw_metadata
-
-
 
 
 

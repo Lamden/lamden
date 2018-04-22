@@ -1,1 +1,1 @@
-from cilantro.protocol.reactor.reactor import ReactorCore, NetworkReactor
+from cilantro.protocol.reactor.reactor import NetworkReactor
