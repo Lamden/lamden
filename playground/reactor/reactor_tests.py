@@ -1,6 +1,7 @@
 import asyncio
-from multiprocessing import Process, Queue
-from aioprocessing import AioQueue, AioProcess
+from multiprocessing import Queue
+from aioprocessing import AioQueue
+from cilantro.utils import LProcess
 
 from unittest.mock import MagicMock, call, patch
 from cilantro.protocol.reactor import NetworkReactor
@@ -55,30 +56,16 @@ class TestableReactor:
         self.cmd_q = AioQueue()  # Used to pass commands into blocking object
         self.rdy_sig_q = Queue()  # Used to block on .start() and wait for child proc
 
-        self.test_proc = Process(target=self._start_test, args=(self.rdy_sig_q, self.cmd_q))
+        self.test_proc = LProcess(target=self._start_test, args=(self.rdy_sig_q, self.cmd_q))
         self.log.debug("Starting test")
         self.test_proc.start()
-
-        # THIS DOES OUTPUT
-        # self.log.critical("**tt** about to die")
-        # i = 10 / 0
 
         self.log.debug("waiting for child ready sig")
         rdy = self.rdy_sig_q.get()
         self.log.debug("got rdy sig: {}".format(rdy))
 
-        # THIS DOES OUTPUT
-        # self.log.critical("**tt** about to die")
-        # i = 10 / 0
-
     def _start_test(self, rdy_sig_q, cmd_q):
         async def recv_cmd():
-            # WHY DOES IT NO OUT HERE?
-            # HAVING OTHER TASKS IN THE LOOP SEEMS TO MAKE THIS THING BREAK..
-            # log.critical("**** about to die")
-            # i = 10 / 0
-            # THIS DOES NOT OUTPUT ERROR!!!
-
             while True:
                 log.critical("waiting for cmd")
                 cmd = await cmd_q.coro_get()
@@ -89,36 +76,18 @@ class TestableReactor:
                 getattr(reactor, func)(*args, **kwargs)
 
         log = get_logger("TesterTarget")
-        log.debug("run started")
-
-        log.debug('sleeping')
-        import time
-        time.sleep(0.5)
-        log.debug('yawn wake up')
-
-        # THIS DOES OUTPUT
-        # log.critical("**** about to die")
-        # i = 10 / 0
-
         loop = asyncio.new_event_loop()
         mock_parent = MagicMock()
 
-        # THIS DOES OUTPUT
-        # log.critical("!!! about to die")
-        # i = 10 / 0
-
         log.debug("creating reactor")
         reactor = NetworkReactor(mock_parent, loop)
-
-        # THIS DOES NOT OUTPUT!
-        # log.critical("### about to die")
-        # i = 10 / 0
 
         log.debug("sending ready sig to parent")
         rdy_sig_q.put('ready')
 
         # DEBUG
         # log.critical("creating mock tester")
+        # reactor.tester = MagicMock()
         # reactor.tester.do_something = MagicMock()
         # log.critical("asserting mock tester called")
         # i = 10 / 0
@@ -152,15 +121,13 @@ if __name__ == '__main__':
     log.debug("hello test")
 
     r1 = TestableReactor()
-    # r2 = TestableReactor()
-
-    log.critical("\n\n$$ sick bruh this doesnt block?")
+    r2 = TestableReactor()
 
     r1.add_sub(url=URL, filter=FILTER)
 
-    # r2.add_pub(url=URL)
+    r2.add_pub(url=URL)
 
     import time
     time.sleep(0.2)
 
-    # r2.pub(filter=FILTER, envelope=random_envelope())
+    r2.pub(filter=FILTER, envelope=random_envelope())

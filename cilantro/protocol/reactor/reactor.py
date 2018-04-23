@@ -1,6 +1,6 @@
 import asyncio
 import zmq.asyncio
-from multiprocessing import Process
+from cilantro.utils import LProcess
 import random
 from cilantro.logger import get_logger
 from cilantro.messages import MessageMeta, MessageBase, Envelope, ReactorCommand
@@ -8,24 +8,10 @@ from cilantro.protocol.reactor.core import ReactorCore, CHILD_RDY_SIG
 from cilantro.protocol.reactor.executor import *
 
 
-class Tester:
-    def __init__(self):
-        self.log = get_logger("NetworkReactor.Tester")
-
-    def do_something(self):
-        self.log.critical("tester is doing something")
-
-
 class NetworkReactor:
     def __init__(self, parent, loop):
         self.log = get_logger("{}.NetworkReactor".format(type(parent).__name__))
         self.url = "ipc://reactor-" + str(random.randint(0, pow(2, 16)))
-
-        # DEBUG
-        self.tester = Tester()
-        # self.log.critical("destruction!!!")
-        # i = 10 / 0
-        # END DEBUG
 
         # Set instance vars
         self.parent = parent
@@ -38,46 +24,19 @@ class NetworkReactor:
         self.socket = self.context.socket(zmq.PAIR)
         self.socket.bind(self.url)
 
-        # DEBUG TODO REMOVE THIS
-        # THIS OUTPUTS
-        # self.log.critical("check 1 about to die")
-        # i = 10 / 0
-
         # Start reactor sub process
-        self.proc = Process(target=self._start_reactor, args=(self.url, type(parent).__name__))
+        self.proc = LProcess(target=self._start_reactor, args=(self.url, type(parent).__name__))
+        self.proc.daemon = True
         self.proc.start()
-
-        # DEBUG TODO REMOVE THIS
-        # TODO THIS DOES NOT OUTPUT!!!!!!!!!!
-        self.log.critical("\n\ncheck 2 about to die\n\n")
-        i = 10 / 0
 
         # Block execution of this proc until reactor proc is ready
         self.loop.run_until_complete(self._wait_child_rdy())
 
-        # DEBUG TODO REMOVE THIS
-        # self.log.critical("check 3 about to die")
-        # i = 10 / 0
-
         # Start listening to messages from reactor proc
         asyncio.ensure_future(self._recv_messages())
 
-        # DEBUG TODO REMOVE THIS
-        # self.log.critical("check 4 about to die")
-        # i = 10 / 0
-
     def _start_reactor(self, url, p_name):
-        log = get_logger("ReactorCore Target")
-        log.info("Starting ReactorCore process")
-
-        #0.5debug TODO remove
-        # THIS DOES OUTPUT
-        # log.critical("finna destruct")
-        # i = 10 / 0
-
         reactor = ReactorCore(url=url, p_name=p_name)
-
-        log.critical("\n\n\nthis will never print right\n\n\n")
 
     async def _wait_child_rdy(self):
         self.log.debug("Waiting for ready sig from child proc...")
@@ -94,13 +53,6 @@ class NetworkReactor:
             self.log.debug("Got callback <{}> with args {}".format(callback, args))
 
             self._run_callback(callback, args)
-            # TODO -- engineer less hacky way to do this that doesnt explicitly rely on multiframe positions
-            # other_args = args[:-2]
-            # meta, payload = args[-2:]
-            # envelope = Envelope.from_bytes(payload=payload, message_meta=meta)
-            # new_args = args[:-2] + [envelope]
-            #
-            # getattr(self.parent, callback)(*new_args)
 
     def _run_callback(self, callback, args):
         self.log.debug("Running callback '{}' with args {}".format(callback, args))
@@ -143,7 +95,6 @@ class NetworkReactor:
     def pub(self, filter: str, envelope: Envelope):
         cmd = ReactorCommand.create(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__,
                                     filter=filter, data=envelope.data, metadata=envelope.metadata)
-        self.log.critical("\n\n(SEND PUB -- ABOUT TO SEND CMD: {}\n\n".format(cmd))
         self._send_cmd(cmd)
 
     def add_pub(self, url: str):
@@ -164,7 +115,8 @@ class NetworkReactor:
         """
         needs 'url', 'callback', and 'id'
         """
-        cmd = ReactorCommand.create(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__, url=url, id=id)
+        cmd = ReactorCommand.create(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__,
+                                    url=url, id=id)
         self._send_cmd(cmd)
 
     def add_router(self, url: str):

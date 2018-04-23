@@ -1,9 +1,11 @@
 import asyncio
+import zmq.asyncio
 from cilantro.logger import get_logger
-from cilantro.protocol.reactor.executor import *
+from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages import ReactorCommand
 
-CHILD_RDY_SIG = b'HI ITS ME CHILD PROC, LETS DO THIS MY GUY'
+
+CHILD_RDY_SIG = b'ReactorCore Process Ready'
 
 
 class ReactorCore:
@@ -11,11 +13,6 @@ class ReactorCore:
         self.log = get_logger("{}.ReactorCore".format(p_name))
         self.log.info("ReactorCore started with url {}".format(url))
         self.url = url
-
-        # DEBUG LINE TODO remove this
-        # THIS OUTPUTS
-        # self.log.critical("CHECK 1 REACTOR CORE SELF DESTRUCT")
-        # i = 10 / 0
 
         # Comment out below for more granularity in debugging
         # self.log.setLevel(logging.INFO)
@@ -26,20 +23,10 @@ class ReactorCore:
         self.socket = self.context.socket(zmq.PAIR)
         self.socket.connect(self.url)
 
-        # DEBUG LINE TODO remove this
-        # THIS OUTPUTS
-        # self.log.critical("CHECK 2 REACTOR CORE SELF DESTRUCT")
-        # i = 10 / 0
-
         self.executors = {name: executor(self.loop, self.context, self.socket)
                           for name, executor in Executor.registry.items()}
 
         self.loop.run_until_complete(self._recv_messages())
-
-        # DEBUG LINE TODO remove this
-        # THIS NEVER RUNS (we block above)
-        self.log.critical("CHECK 3 REACTOR CORE SELF DESTRUCT")
-        i = 10 / 0
 
     async def _recv_messages(self):
         # Notify parent proc that this proc is ready
@@ -48,32 +35,30 @@ class ReactorCore:
 
         self.log.warning("-- Starting Recv on PAIR Socket at {} --".format(self.url))
         while True:
-            self.log.debug("Reading socket...")
+            self.log.debug("ReactorCore awaiting for command from main thread...")
             cmd_bin = await self.socket.recv()
-            self.log.debug("Got cmd from queue: {}".format(cmd_bin))
+            # self.log.debug("Got cmd from queue: {}".format(cmd_bin))
 
-            # TODO -- context managers to pretty this up
-            try:
-                cmd = ReactorCommand.from_bytes(cmd_bin)
-            except Exception as e:
-                self.log.error("Error deserializing ReactorCommand: {}\n with command binary: {}".format(e, cmd_bin))
-                return
-
+            # Should this be in a try catch? I suppose if we get a bad command from the main proc we might as well
+            # blow up because this is very likely because of a development error, so no try/catch for now
+            cmd = ReactorCommand.from_bytes(cmd_bin)
             self.execute_cmd(cmd)
 
-    def execute_cmd(self, cmd):
+    def execute_cmd(self, cmd: ReactorCommand):
         assert isinstance(cmd, ReactorCommand), "Cannot execute cmd {} that is not a ReactorCommand object".format(cmd)
-        self.log.debug("Executing cmd: {}".format(cmd))
+        self.log.debug("Executing cmd {}.{} with kwargs {}".format(cmd.func_name, cmd.class_name, cmd.kwargs))
 
         executor_name = cmd.class_name
         executor_func = cmd.func_name
         kwargs = cmd.kwargs
 
+        # Add 'data' and 'metadata' keys into kwargs. They are serialized separately for performance reasons
         if cmd.data:
             kwargs['data'] = cmd.data
         if cmd.metadata:
             kwargs['metadata'] = cmd.metadata
 
+        # Validate Command (for debugging mostly)
         assert executor_name in self.executors, "Executor name {} not found in executors {}"\
             .format(executor_name, self.executors)
         assert hasattr(self.executors[executor_name], executor_func), "Function {} not found on executor class {}"\
