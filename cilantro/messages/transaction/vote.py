@@ -1,4 +1,4 @@
-from cilantro.messages import TransactionBase
+from cilantro.messages.transaction.base import TransactionBase
 from cilantro import Constants
 
 import capnp

@@ -81,7 +81,7 @@ class MNRunState(MNBaseState):
 
     def run(self):
         self.log.info("Starting web server")
-        web.run_app(self.app, host=Constants.Testnet.Masternode.Host,
+        web.run_app(self.app, host='0.0.0.0',#Constants.Testnet.Masternode.Host,
                     port=int(Constants.Testnet.Masternode.ExternalPort))
 
     def exit(self, next_state):

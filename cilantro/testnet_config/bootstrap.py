@@ -1,6 +1,7 @@
 from cilantro import Constants
 from cilantro.nodes import Delegate, Masternode, Witness
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.testnet_config.tx_builder import *
+from cilantro.db.delegate import DB, DB_NAME
 from multiprocessing import Process
 from cilantro.logger import get_logger
 import signal
@@ -30,34 +31,55 @@ START_DELEGATES = True
 
 log = get_logger("TestnetBootstrap")
 
+
 def signal_handler(signal, frame):
         log.debug('You pressed Ctrl+C!')
         sys.exit(0)
 
 def start_delelegate(i):
-    log.info("Instantiating a new delegate")
+    def seed_wallets(amount=10000):
+        log.critical("Seeding wallets with amount {}".format(amount))
+        with DB('{}_{}'.format(DB_NAME, i)) as db:
+            log.critical("GOT DB WITH NAME: {}".format(db.db_name))
+            for wallet in KNOWN_ADRS:
+                q = insert(db.tables.balances).values(wallet=wallet[1].encode(), amount=amount)
+                db.execute(q)
+
+    log = get_logger("DelegateFactory")
+    db_name = DB_NAME + '_' + str(i)
+    log.critical("\n***Instantiating a new delegate on slot {} with db name: {}\n".format(i, db_name))
+
+    log.critical("Seeding wallets...")
+    DB.set_context(db_name)
+    seed_wallets()
+
     d = Delegate(slot=i)
-    signal.pause()
 
 def start_mn():
-    log.info("Starting Masternode")
+    log = get_logger("MasternodeFactor")
+    log.critical("\n***Starting Masternode\n")
     mn = Masternode()
-    # signal.pause()
 
-def start_witness():
-    log.info("Starting witness")
-    witness = Witness()
-    signal.pause()
+
+def start_witness(i):
+    log = get_logger("MasternodeFactor")
+    log.critical("Starting witness on slot {}".format(i))
+    witness = Witness(slot=i)
+
 
 if __name__ == "__main__":
     mn, witness, delegates = None, None, []
 
     if START_MASTERNODE:
+        log.info("Starting Masternode")
         p = Process(target=start_mn)
         p.start()
+
     if START_WITNESS:
-        p = Process(target=start_witness)
-        p.start()
+        log.info("Starting {} witnesses".format(len(Constants.Testnet.Witnesses)))
+        for i in range(len(Constants.Testnet.Witnesses)):
+            p = Process(target=start_witness, args=(i,))
+            p.start()
 
     if START_DELEGATES:
         if MULTI_PROC:
@@ -65,12 +87,10 @@ if __name__ == "__main__":
             for i in range(len(Constants.Testnet.Delegates)):
                 p = Process(target=start_delelegate, args=(i,))
                 p.start()
-            # signal.pause()
         else:
             log.debug("Starting delegate on same process")
             for i in range(len(Constants.Testnet.Delegates)):
                 d = Delegate(slot=i)
-            # signal.pause()
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.pause()

@@ -1,4 +1,5 @@
 import capnp
+import hashlib
 
 """
 Messages encapsulate data that is sent between nodes.
@@ -12,10 +13,13 @@ class MessageBaseMeta(type):
             clsobj.registry = {}
 
         # Define an "undirected" mapping between classes and their enum vals
-        # TODO hash cls name as enum val instead of using 'auto inc' which relies on order that messages are imported
-        i = len(clsobj.registry) // 2
-        clsobj.registry[clsobj] = i
-        clsobj.registry[i] = clsobj
+        m = hashlib.md5()
+        m.update(clsobj.__name__.encode())
+        l = int(m.digest().hex(),16) % pow(2, 16)
+        assert clsobj.registry.get(l) == None, 'Enum collision of message class {}!'.format(clsobj.__name__)
+
+        clsobj.registry[clsobj] = l
+        clsobj.registry[l] = clsobj
 
         return clsobj
 
@@ -81,7 +85,6 @@ class MessageBase(metaclass=MessageBaseMeta):
         """
         model = cls.from_data(cls._deserialize_data(data), validate=validate)
         return model
-
 
     @classmethod
     def from_data(cls, data: object, validate=True):

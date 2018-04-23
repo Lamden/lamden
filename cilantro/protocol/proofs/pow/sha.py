@@ -1,3 +1,10 @@
+"""This is the basic SHA3 POW check implementation in cilantro. It acts as a check on incoming transactions to act as an
+anti-spam measure
+
+Available classes:
+-SHA3POW: This class implements find and check static methods which generate viable POW solutions"""
+
+
 from cilantro.protocol.proofs import POW
 import hashlib
 import secrets

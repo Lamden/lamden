@@ -1,6 +1,7 @@
 from cilantro import Constants
 from cilantro.messages.base import MessageBase
 from cilantro.messages.utils import validate_hex
+from cilantro.db.delegate import contract
 import capnp
 
 
@@ -14,6 +15,14 @@ class TransactionBase(MessageBase):
         self.pow = Constants.Protocol.Proofs
         self.wallet = Constants.Protocol.Wallets
         self._payload_binary = None
+
+    def interpret(self, *args, **kwargs):
+        """
+        Interprets the transaction and returns the SQLAlchemy queries associated with the transaction's changes
+        :return: SQLAlchemy query objects
+        """
+        assert hasattr(type(self), 'contract'), "Transaction type {} has no contract defined".format(type(self))
+        return contract(type(self))(type(self).contract)(self, *args, **kwargs)
 
     def validate(self):
         """
