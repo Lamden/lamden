@@ -8,9 +8,9 @@ from cilantro.protocol.reactor.core import ReactorCore, CHILD_RDY_SIG
 from cilantro.protocol.reactor.executor import *
 
 
-class NetworkReactor:
+class ReactorInterface:
     def __init__(self, parent, loop):
-        self.log = get_logger("{}.NetworkReactor".format(type(parent).__name__))
+        self.log = get_logger("{}.ReactorInterface".format(type(parent).__name__))
         self.url = "ipc://reactor-" + str(random.randint(0, pow(2, 16)))
 
         # Set instance vars

@@ -1,4 +1,4 @@
-from cilantro.protocol.reactor import NetworkReactor
+from cilantro.protocol.reactor import ReactorInterface
 from cilantro.logger import get_logger
 import time
 
@@ -17,7 +17,7 @@ class Node:
             self.log = get_logger("Node")
 
         self.log.info("A Node has appeared")
-        self.reactor = NetworkReactor(parent=self)
+        self.reactor = ReactorInterface(parent=self)
         self.reactor.notify_ready()
 
     def handle_msg(self, data):

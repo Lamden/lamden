@@ -2,7 +2,7 @@ import asyncio
 from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.messages import Envelope, MessageBase, MessageMeta, ReactorCommand, TransactionContainer
-from cilantro.protocol.reactor import NetworkReactor
+from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.reactor.executor import *
 from cilantro.protocol.statemachine import StateMachine
 
@@ -15,7 +15,7 @@ class NodeBase(StateMachine):
         self.loop = asyncio.new_event_loop()
         self.nodes_registry = Constants.Testnet.AllNodes
         self.log = get_logger(type(self).__name__)
-        self.reactor = NetworkReactor(self, self.loop)
+        self.reactor = ReactorInterface(self, self.loop)
         super().__init__()
 
     # def route(self, msg: MessageBase):
@@ -101,7 +101,7 @@ class NodeBase(StateMachine):
 
 
 class Router:
-    def __init__(self, parent: StateMachine, reactor: NetworkReactor):
+    def __init__(self, parent: StateMachine, reactor: ReactorInterface):
         self.parent = parent
         self.reactor = reactor
 
@@ -111,7 +111,7 @@ class Router:
 
 
 class Composer:
-    def __init__(self, parent: StateMachine, reactor: NetworkReactor):
+    def __init__(self, parent: StateMachine, reactor: ReactorInterface):
         self.parent = parent
         self.reactor = reactor
 

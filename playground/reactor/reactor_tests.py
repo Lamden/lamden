@@ -4,7 +4,7 @@ from aioprocessing import AioQueue
 from cilantro.utils import LProcess
 
 from unittest.mock import MagicMock, call, patch
-from cilantro.protocol.reactor import NetworkReactor
+from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.reactor.executor import *
 from cilantro.messages import ReactorCommand
 from unittest import TestCase
@@ -47,7 +47,7 @@ to a queue which gets passed into the target function of the proc
 """
 
 
-@thicc_test(NetworkReactor)
+@thicc_test(ReactorInterface)
 class TestableReactor:
     def __init__(self):
         super().__init__()
@@ -80,7 +80,7 @@ class TestableReactor:
         mock_parent = MagicMock()
 
         log.debug("creating reactor")
-        reactor = NetworkReactor(mock_parent, loop)
+        reactor = ReactorInterface(mock_parent, loop)
 
         log.debug("sending ready sig to parent")
         rdy_sig_q.put('ready')

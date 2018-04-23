@@ -1,6 +1,6 @@
 from multiprocessing import Process
 import asyncio
-from cilantro.protocol.reactor import NetworkReactor, ReactorCore
+from cilantro.protocol.reactor import ReactorInterface, ReactorCore
 from cilantro.logger import get_logger
 
 
@@ -17,7 +17,7 @@ class ReactorTest:
         self.log.info("ReactorTester created")
 
         self.loop = asyncio.new_event_loop()
-        self.reactor = NetworkReactor(self, self.loop)
+        self.reactor = ReactorInterface(self, self.loop)
 
     def start(self):
         self.loop.run_forever()

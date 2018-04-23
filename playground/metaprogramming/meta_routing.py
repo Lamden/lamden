@@ -6,7 +6,7 @@ def recv_transaction(self, tx):
 
 An implementation is needed for every possible message type a node can receive.
 
-- Node extends some base class that handles networking events (ie. NetworkReactor, or some augmentation of it)
+- Node extends some base class that handles networking events (ie. ReactorInterface, or some augmentation of it)
 - Metaclass will dynamically setup hooks for receiving these networking events and routing the to appropriate decorators
 
 Should there be a "routing" object, or even config file where the network topology for a node is defined staticly?
