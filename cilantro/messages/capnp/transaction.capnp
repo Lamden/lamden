@@ -18,7 +18,7 @@ struct StandardTransaction {
     }
 }
 
-struct VoteTransaction {
+struct ElectionTransaction {
     metadata @0 :MetaData;
     payload @1 :Payload;
 
