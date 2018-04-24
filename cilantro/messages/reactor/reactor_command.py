@@ -1,31 +1,57 @@
-from cilantro.messages import MessageBase, MessageMeta
+from cilantro.utils import lazy_property
+from cilantro.messages import MessageBase, Envelope
+
 import capnp
-import command_capnp
+import reactor_capnp
+
+
+CLS_NAME = 'class_name'
+FN_NAME = 'func_name'
+CALLB = 'callback'
 
 
 class ReactorCommand(MessageBase):
+    """
+    ReactorCommand defines a data serialization format for messages passed over inproc PAIR
+    sockets between ReactorInterface (on the main proc), and ReactorCore (on daemon)
+
+    Messages from ReactorInterface --> ReactorCore are nicknamed "commands", since they specify the
+    executor name/function/kwargs that ReactorCore should run.
+    This includes required fields 'class_name' and 'func_name'. Commands which compose data over the
+    wire (i.e. pub, request, reply) must have the envelope arg specified as a valid Envelope instance.
+
+    Messages from ReactorCore --> ReactorInterface are nicknamed "callbacks", since they specify
+    some callback on the StateMachine as a function of incoming data.
+    All callbacks have a 'callback' field which is a string denoting the callback function on the router.
+    All callback excepts timeouts will have an 'envelope' property, which correspondes to the serialized Envelope capnp
+    data received from the outside world.
+    """
 
     def validate(self):
+        # TODO -- implement
         pass
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return command_capnp.ReactorCommand.from_bytes_packed(data)
+        return reactor_capnp.ReactorCommand.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, class_name: str, func_name: str, metadata: MessageMeta=None, data: MessageBase=None, **kwargs):
-        cmd = command_capnp.ReactorCommand.new_message()
+    def create_cmd(cls, class_name: str, func_name: str, envelope: Envelope=None, **kwargs):
+        kwargs[CLS_NAME] = class_name
+        kwargs[FN_NAME] = func_name
+        return cls.create(envelope=envelope, **kwargs)
 
-        cmd.className = class_name
-        cmd.funcName = func_name
+    @classmethod
+    def create_callback(cls, callback: str, envelope: Envelope=None, **kwargs):
+        kwargs[CALLB] = callback
+        return cls.create(envelope=envelope, **kwargs)
 
-        if metadata:
-            assert metadata and data, "If creating command with a binary payload, " \
-                                      "BOTH metadata and data must be passed in (not one or the other)"
-            assert issubclass(type(data), MessageBase), "data must be a subclass of MessageBase"
-            assert isinstance(metadata, MessageMeta), "Metadata must be of a MessageMeta instance"
-            cmd.data = data.serialize()
-            cmd.metadata = metadata.serialize()
+    @classmethod
+    def create(cls, envelope: Envelope=None, **kwargs):
+        cmd = reactor_capnp.ReactorCommand.new_message()
+
+        if envelope:
+            cmd.envelope.data = envelope.serialize()
 
         cmd.init('kwargs', len(kwargs))
         for i, key in enumerate(kwargs):
@@ -33,22 +59,41 @@ class ReactorCommand(MessageBase):
 
         return cls.from_data(cmd)
 
-    @property
-    def class_name(self):
-        return self._data.className
+    @lazy_property
+    def envelope(self):
+        if self._data.envelope.which() == 'unset':
+            return None
+        else:
+            return Envelope.from_bytes(self._data.envelope.data)
 
-    @property
-    def func_name(self):
-        return self._data.funcName
+    @lazy_property
+    def envelope_binary(self):
+        if self._data.envelope.which() == 'unset':
+            return None
+        else:
+            return self._data.envelope.data
 
-    @property
-    def data(self):
-        return self._data.data
-
-    @property
-    def metadata(self):
-        return self._data.metadata
-
-    @property
+    @lazy_property
     def kwargs(self):
         return {arg.key: arg.value for arg in self._data.kwargs}
+
+    @lazy_property
+    def class_name(self):
+        if CLS_NAME in self.kwargs:
+            return self.kwargs[CLS_NAME]
+        else:
+            return None
+
+    @lazy_property
+    def func_name(self):
+        if FN_NAME in self.kwargs:
+            return self.kwargs[FN_NAME]
+        else:
+            return None
+
+    @lazy_property
+    def callback(self):
+        if CALLB in self.kwargs:
+            return self.kwargs[CALLB]
+        else:
+            return None

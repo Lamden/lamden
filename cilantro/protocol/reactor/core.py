@@ -37,7 +37,7 @@ class ReactorCore:
         while True:
             self.log.debug("ReactorCore awaiting for command from main thread...")
             cmd_bin = await self.socket.recv()
-            # self.log.debug("Got cmd from queue: {}".format(cmd_bin))
+            self.log.debug("Got cmd from queue: {}".format(cmd_bin))
 
             # Should this be in a try catch? I suppose if we get a bad command from the main proc we might as well
             # blow up because this is very likely because of a development error, so no try/catch for now
@@ -52,11 +52,12 @@ class ReactorCore:
         executor_func = cmd.func_name
         kwargs = cmd.kwargs
 
-        # Add 'data' and 'metadata' keys into kwargs. They are serialized separately for performance reasons
-        if cmd.data:
-            kwargs['data'] = cmd.data
-        if cmd.metadata:
-            kwargs['metadata'] = cmd.metadata
+        # Remove class_name and func_name from kwargs
+        del(kwargs['class_name'])
+        del(kwargs['func_name'])
+
+        if cmd.envelope_binary:
+            kwargs['envelope'] = cmd.envelope_binary
 
         # Validate Command (for debugging mostly)
         assert executor_name in self.executors, "Executor name {} not found in executors {}"\

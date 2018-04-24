@@ -99,35 +99,32 @@ class TestableReactor:
         loop.run_until_complete(recv_cmd())
 
 
-    def start(self):
-        self.log.debug("starting...")
-        super().start()
-        self.log.debug("blocking...")
-
-        msg = self.rdy_sig_q.get()
-        self.log.debug("got msg: {}".format(msg))
-
-        self.log.debug("started!")
-
-
 def random_envelope():
     sk, vk = ED25519Wallet.new()
     tx = StandardTransactionBuilder.random_tx()
-    return Envelope.create(signing_key=sk, sender='me', data=tx)
+    sender = 'me'
+    return Envelope.create_from_message(message=tx, signing_key=sk, sender_id=sender)
 
 
 if __name__ == '__main__':
     log = get_logger("Main")
     log.debug("hello test")
 
-    r1 = TestableReactor()
-    r2 = TestableReactor()
+    sub = TestableReactor()
+    pub = TestableReactor()
 
-    r1.add_sub(url=URL, filter=FILTER)
+    env = random_envelope()
 
-    r2.add_pub(url=URL)
+    add_sub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=URL, filter=FILTER)
+    add_pub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=URL)
+    send_pub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__, envelope=env, filter=FILTER)
+
+    sub.send_cmd(add_sub_cmd)
+    pub.send_cmd(add_pub_cmd)
 
     import time
-    time.sleep(0.2)
+    time.sleep(1)
 
-    r2.pub(filter=FILTER, envelope=random_envelope())
+    pub.send_cmd(send_pub_cmd)
+
+    time.sleep(10)

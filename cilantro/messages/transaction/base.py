@@ -2,6 +2,7 @@ from cilantro import Constants
 from cilantro.messages.base import MessageBase
 from cilantro.messages.utils import validate_hex
 from cilantro.db.delegate import contract
+from cilantro.utils import lazy_property
 import capnp
 
 
@@ -14,7 +15,6 @@ class TransactionBase(MessageBase):
         super().__init__(data)
         self.pow = Constants.Protocol.Proofs
         self.wallet = Constants.Protocol.Wallets
-        self._payload_binary = None
 
     def interpret(self, *args, **kwargs):
         """
@@ -44,7 +44,7 @@ class TransactionBase(MessageBase):
         If the POW is valid, this method returns nothing.
         :raises: An exception if the POW is not valid.
         """
-        if not self.pow.check(self.__payload_binary(), self._data.metadata.proof.decode()):
+        if not self.pow.check(self._payload_binary, self._data.metadata.proof.decode()):
             raise Exception("Invalid proof of work for tx: {}".format(self._data))
 
     def validate_signature(self):
@@ -53,7 +53,7 @@ class TransactionBase(MessageBase):
         If the signature is valid, this method returns nothing.
         :raises: An exception if the signature is invalid
         """
-        if not self.wallet.verify(self.sender, self.__payload_binary(), self.signature):
+        if not self.wallet.verify(self.sender, self._payload_binary, self.signature):
             raise Exception("Invalid signature for tx: {}".format(self._data))
 
     def validate_metadata(self):
@@ -72,21 +72,12 @@ class TransactionBase(MessageBase):
         """
         raise NotImplementedError
 
-    def __payload_binary(self):
-        """
-        Helper method to get the underlying binary data for the payload. This is necessary because only capnp struct
-        builders have the .copy() attribute (struct readers do not), and we need to copy the payload before we can
-        generate the binary representation because otherwise the struct pointers will be messed up and the binary
-        representation will be inconsistent.
-        :return: Underlying payload data in bytes
-        """
-        if not self._payload_binary:
-            if hasattr(self._data.payload, 'copy'):
-                self._payload_binary = self._data.payload.copy().to_bytes()
-            else:
-                self._payload_binary = self._data.payload.as_builder().copy().to_bytes()
-
-        return self._payload_binary
+    @lazy_property
+    def _payload_binary(self):
+        if hasattr(self._data.payload, 'copy'):
+            return self._data.payload.copy().to_bytes()
+        else:
+            return self._data.payload.as_builder().copy().to_bytes()
 
     @property
     def proof(self):

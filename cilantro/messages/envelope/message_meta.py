@@ -18,14 +18,12 @@ class MessageMeta(MessageBase):
         pass
 
     @classmethod
-    def create(cls, type: int, signature: str, sender: str, timestamp: str, uuid: int=-1):
-        # Move signing and stuff handled here? Or should we have another factory class for that
+    def create(cls, type: int, sender: str, timestamp: str, uuid: int=-1):
         if uuid == -1:
             uuid = random.randint(0, MAX_UUID)
 
         data = envelope_capnp.MessageMeta.new_message()
         data.type = type
-        data.signature = signature
         data.timestamp = timestamp
         data.uuid = uuid
         data.sender = sender
@@ -41,13 +39,10 @@ class MessageMeta(MessageBase):
         return self._data.uuid
 
     @property
-    def signature(self):
-        return self._data.signature.decode()
-
-    @property
     def timestamp(self):
         return self._data.timestamp
 
     @property
     def sender(self):
         return self._data.sender
+

@@ -18,6 +18,8 @@ class Seal(MessageBase):
         data.signature = signature
         data.verifyingKey = verifying_key
 
+        return cls.from_data(data)
+
     @property
     def signature(self):
         return self._data.signature.decode()

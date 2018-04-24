@@ -17,7 +17,7 @@ class Node:
             self.log = get_logger("Node")
 
         self.log.info("A Node has appeared")
-        self.reactor = ReactorInterface(parent=self)
+        self.reactor = ReactorInterface(router=self)
         self.reactor.notify_ready()
 
     def handle_msg(self, data):

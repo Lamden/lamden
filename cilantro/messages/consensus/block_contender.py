@@ -1,4 +1,5 @@
 from cilantro.messages import MessageBase
+from cilantro.messages.consensus.merkle_signature import MerkleSignature
 import pickle
 
 """

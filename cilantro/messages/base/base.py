@@ -1,3 +1,4 @@
+from cilantro.utils import cache_func
 import capnp
 import hashlib
 
@@ -39,6 +40,7 @@ class MessageBase(metaclass=MessageBaseMeta):
     def __init__(self, data):
         self._data = data
 
+    @cache_func
     def serialize(self) -> bytes:
         """
         Serialize the underlying data format into bytes
@@ -102,8 +104,17 @@ class MessageBase(metaclass=MessageBaseMeta):
         return model
 
     def __eq__(self, other):
-        # TODO -- implement (check type of self._data/other._data and use compare .to_dict() if both objects capnp)
-        pass
+        assert type(self) is type(other), "Cannot compare messages of seperate classes {} and {}. " \
+                                          "Override __eq__ to support this behavior".format(type(self), type(other))
+        assert self._data, "._data is None set for LHS"
+        assert other._data, "._data is None for RHS"
+
+        if hasattr(self._data, 'to_dict') and hasattr(other._data, 'to_dict'):
+            return self._data.to_dict() == other._data.to_dict()
+        else:
+
+            raise NotImplementedError("Default __eq__ is only implement for messages that use capnp (no to_dict method "
+                                      "found on object type {} or {}".format(type(self), type(other)))
 
     def __repr__(self):
         return str(self._data)

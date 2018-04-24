@@ -33,8 +33,9 @@ class Executor(metaclass=ExecutorMeta):
     async def recv_multipart(self, socket, callback, ignore_first_frame=False):
         self.log.warning("Starting recv on socket {} with callback {}".format(socket, callback))
         while True:
+            self.log.debug("\nwaiting for multipart msg...\n")
             multi_msg = await socket.recv_multipart()
-            self.log.debug("Got multipart msg: {}".format(multi_msg))
+            self.log.debug("\n\nGot multipart msg: {}\n\n".format(multi_msg))
 
             if ignore_first_frame:
                 multi_msg = multi_msg[1:]
@@ -50,9 +51,12 @@ class SubPubExecutor(Executor):
         self.sub = None
         self.pub = None
 
-    def send_pub(self, filter: str, metadata: bytes, data: bytes):
+    def send_pub(self, filter: str, envelope: bytes):
         assert self.pub, "Attempted to publish data but publisher socket is not configured"
-        self.pub.send_multipart([filter.encode(), metadata, data])
+
+        self.log.critical("sending to filter {} with data {}".format(filter, envelope))  # TODO remove debug line
+
+        self.pub.send_multipart([filter.encode(), envelope])
 
     def add_pub(self, url):
         # TODO -- implement functionality so add_pub will close the existing socket and create a new one if we are switching urls
