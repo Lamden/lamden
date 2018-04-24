@@ -29,6 +29,10 @@ class MerkleSignature(MessageBase):
     TS = 'timestamp'
     SENDER = 'sender'
 
+    def __eq__(self, other_ms):
+        """Check two merkle signatures have identical features"""
+        return self._data == other_ms._data
+
     def validate(self):
         assert type(self._data) == dict, "_data is not a dictionary"
         assert self.SIG in self._data, "Signature field missing from _data: {}".format(self._data)

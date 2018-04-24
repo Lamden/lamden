@@ -2,9 +2,18 @@ from cilantro.messages import MessageBase, MerkleSignature
 import pickle
 
 """
-TODO -- docstring and class description 
+BlockContender is the message object that is passed between delegates during consensus state. It consists of the merkle
+signature roots of all the transactions in the block by the block validators. 
+
+BlockContender is the message object that is passed to masternode after consensus has been reached and a valid block
+has been produced. 
+
+Class:
+-BlockContender
+
 TODO -- switch this class to use capnp 
 """
+
 
 class BlockContender(MessageBase):
     """

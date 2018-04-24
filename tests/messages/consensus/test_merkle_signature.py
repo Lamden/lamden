@@ -160,7 +160,7 @@ class TestMerkleSignature(TestCase):
         self.assertEqual(valid_merkle_sig.sender, clone.sender)
 
     def test_verify(self):
-        return #TODO fix
+        return  # TODO fix
         """
         Tests that MerkleSignature.verify(...) returns true given a proper msg and vk
         """

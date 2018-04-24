@@ -1,9 +1,11 @@
 from unittest import TestCase
 from cilantro.messages import MerkleSignature, BlockContender
 from cilantro.protocol.wallets import ED25519Wallet
+import json
 
 
 TIMESTAMP = 'now'
+
 
 class BlockContenderTest(TestCase):
 
@@ -24,8 +26,6 @@ class BlockContenderTest(TestCase):
         """
         Tests that a created BlockContender has the expected properties
         """
-        # TODO -- implement
-
         msg = b'DEADBEEF'
         nodes = [1, 2]
 
@@ -35,35 +35,82 @@ class BlockContenderTest(TestCase):
 
         bc = BlockContender.create(signatures, nodes)
 
-        # TODO: assert bc.signatures = signature (they are lists so you will have to iterate over them and compare elements)
-        # TODO: would be wise to implement __eq__ in MerkleSignature to you can compare objects hella ez
+        # assert bc.signatures = signature over all signatures
+        for i in range(len(signatures)):
+            self.assertTrue(bc.signatures[i].__eq__(signatures[i])) # __eq__ way to test signatures are equal
+            self.assertTrue(bc.signatures[i], signatures[i])
 
-        # TODO: assert bc.nodes = nodes (again be weary of comparing lists)
+        for i in range(len(nodes)):
+            self.assertTrue(bc.nodes[i].__eq__(nodes[i]))
+            self.assertTrue(bc.nodes[i], nodes[i])
 
     def test_deserialize_invalid(self):
         """
         Tests that attempting to create a BlockContender from bad binary throws an assertion
         """
-        # TODO implement
+        # creating a BlockContender with bad json throws an error
+        bad_json = b'xVVVVVVVV'
+        self.assertRaises(Exception, BlockContender.create, bad_json)
 
-        # (see test_deserialization_invalid in merk sig tests for example on how to do these)
+        # tests creating a BlockContender with valid json but missing fields throws an error
+        bad_dict1 = {'sig': ['sig1', 'sig2', 'sig3'], 'nodes': None}
+        self.assertRaises(Exception, BlockContender.create, bad_dict1)
 
-        # TODO: test that creating a BlockContender with bad json throws an error
+        bad_dict2 = {'sig': None, 'nodes': [1, 2, 3]}
+        self.assertRaises(Exception, BlockContender.create, bad_dict2)
 
-        # TODO: tests creating a BlockContender with valid json but missing fields ('signature' or 'nodes' field missing) throws an error
-
-        # TODO: tests for faile when creating a BlockContender with valid json and valid fields,
+        # TODO: tests for fail when creating a BlockContender with valid json and valid fields,
         # but _data[BlockContender.SIGS] is not a list of MerkleSignature binaries
         # (i.e. if _data[BlockContender.SIGS] is a list of random garbage binary strings, an error should be thrown when trying
         # to create the BlockContender from binary because the signature cannot be deserialized into MerkleSignatures)
+        msg = b'payload'
+        nodes = [1, 2, 3, 4]
+
+        sig1, sk1, vk1 = self._create_merkle_sig(msg)
+        sig2, sk2, vk2 = self._create_merkle_sig(msg)
+        sig3, sk3, vk3 = self._create_merkle_sig(msg)
+        sig4, sk4, vk4 = self._create_merkle_sig(msg)
+
+        signatures = [sig1, b'ayo', sig3, None]  # bad signature dict
+
+        self.assertRaises(Exception, BlockContender.create, signatures, nodes)  # TODO this is not throwing Exception??
+
+
+        msg = b'payload'
+        nodes = [1, 2, 3, 4]
+
+        sig1, sk1, vk1 = self._create_merkle_sig(msg)
+        sig2, sk2, vk2 = self._create_merkle_sig(msg)
+        sig3, sk3, vk3 = self._create_merkle_sig(msg)
+        sig4, sk4, vk4 = self._create_merkle_sig(msg)
+
+        signatures = [sig1, sig2, sig3, sig4]
+
+        BlockContender.create(signatures, nodes)  # should not throw an error
 
     def test_deserialize(self):
         """
         Tests that the same object is recovered when serialized and deserialized
         """
-        # TODO implement
+        msg = b'payload'
+        nodes = [1, 2, 3, 4]
 
-        # Create a BlockContender object
-        # Serialize it
-        # Create another one from the first one's binary
-        # Compare .signatures and .nodes (again be weary of comparing lists)
+        sig1, sk1, vk1 = self._create_merkle_sig(msg)
+        sig2, sk2, vk2 = self._create_merkle_sig(msg)
+        sig3, sk3, vk3 = self._create_merkle_sig(msg)
+        sig4, sk4, vk4 = self._create_merkle_sig(msg)
+
+        signatures = [sig1, sig2, sig3, sig4]
+
+        bc = BlockContender.create(signatures, nodes)
+
+        bc_ser = bc.serialize()
+
+        clone = BlockContender.create(bc._deserialize_data(bc_ser), nodes)
+
+        # TODO fix
+        for i in range(len(signatures)):
+            self.assertEqual(bc.signatures[i], clone.signatures[i])
+
+        for i in range(len(nodes)):
+            self.assertEqual(bc.nodes[i], clone.nodes[i])
