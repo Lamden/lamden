@@ -177,7 +177,7 @@ def process_swap_tx(tx):
         return None
 
 
-@contract(None)
+@contract(StampTransaction)
 def process_stamp_tx(tx):
     q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
 
@@ -185,6 +185,7 @@ def process_stamp_tx(tx):
 
     sender_balance = 0 if not row or not row[0] else row[0]
 
+    # process logic to adding stamps, similar to a standard transaction to a stamp table
     if sender_balance >= tx.amount:
 
         new_sender_balance = sender_balance - tx.amount
@@ -194,15 +195,43 @@ def process_stamp_tx(tx):
             amount=int(new_sender_balance)
         )
 
-        swap_q = insert(tables.swaps).values(
-            sender=tx.sender,
-            receiver=tx.receiver,
-            amount=tx.amount,
-            expiration=tx.expiration,
-            hashlock=tx.hashlock
-        )
+        sq = select([tables.stamps.c.amount]).where(tables.stamps.c.wallet == tx.sender)
 
-        return balance_q, swap_q
+        stm_row = execute(sq).fetchone()
 
+        if not stm_row or not stm_row[0]:
+            stamp_q = insert(tables.stamps).values(
+                wallet=tx.sender,
+                amount=tx.amount
+            )
+
+        else:
+            stamp_q = update(tables.stamps).where(tables.stamps.c.wallet == tx.sender) \
+                .values(amount=tx.amount)
+
+        return balance_q, stamp_q
+
+    # process logic to removing stamps, which is similar to a standard transaction back to sender
     else:
-        return None
+        # make sure the stamps exist first
+        sq = select([tables.stamps.c.amount]).where(tables.stamps.c.wallet == tx.sender)
+
+        stm_row = execute(sq).fetchone()
+
+        if not stm_row or not stm_row[0]:
+            return None
+
+        elif int(stm_row[0]) >= tx.amount:
+            stamp_q = update(tables.stamps).where(tables.stamps.c.wallet == tx.sender) \
+                .values(amount=int(stm_row[0]) - tx.amount)
+
+            new_sender_balance = sender_balance + tx.amount
+
+            balance_q = update(tables.balances).values(
+                wallet=tx.sender,
+                amount=int(new_sender_balance)
+            )
+
+            return stamp_q, balance_q
+
+    return None
