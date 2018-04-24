@@ -19,13 +19,19 @@ FILTER = 'TEST_FILTER'
 TEST_TIMEOUT = 8
 TEST_CHECK_FREQ = 0.5
 
-SUCC_SIG = 'GOOD_SUCC'
-FAIL_SIG = 'BAD_ZUCK'
+SUCC_SIG = 'GOODSUCC'
+FAIL_SIG = 'BADSUCC'
 
 
 def thicc_test(test_cls):
-
+    """
+    Decorator to copy all the public API for object type test_cls to the decorated class. The decorated
+    class will be able to issue commands to the 'test_cls' on a child proc via a simple queue.
+    """
     def propogate_cmd(cmd_name):
+        """
+        Sends cmd_name
+        """
         def send_cmd(self, *args, **kwargs):
             cmd = (cmd_name, args, kwargs)
             self.cmd_q.coro_put(cmd)
@@ -42,10 +48,8 @@ def thicc_test(test_cls):
 
     return mp_testable
 
-
-@thicc_test(ReactorInterface)
-class TestableReactor:
-    def __init__(self, config_fn, assert_fn, name='TestableProcess'):
+class TTBase:
+    def __init(self, config_fn, assert_fn, name='TestableProcess'):
         super().__init__()
         self.log = get_logger(name)
         self.name = name
@@ -58,6 +62,47 @@ class TestableReactor:
 
         self.test_proc = LProcess(target=self._start_test, args=(self.sig_q, self.cmd_q))
         self.log.debug("Starting test")
+
+    def _start_proc(self):
+        """
+        Starts the process in a subprocess.
+        :return:
+        """
+        pass
+
+    def _wait_child_rdy(self):
+        pass
+
+    def teardown(self):
+        self.log.critical("\n\nTEARING DOWN\n\n")
+        self.log.info("\n ---- joining --- \n")
+        self.test_proc.join()
+        self.log.info("\n ***** JOINED ***** \n")
+
+
+
+
+@thicc_test(ReactorInterface)
+class TestableReactor:
+    def __init__(self, config_fn, assert_fn, name='TestableProcess'):
+        super().__init__()
+        self.log = get_logger(name)
+        self.name = name
+
+        self.config_fn = config_fn  # Function to configure object with mocks
+        self.assert_fn = assert_fn  # Function to run assertions on inserted mock properties
+
+        # 'cmd_q' is used to pass commands into blocking object
+        # We use AioQueue here because we want to hook it into the blocking object's event loop
+        self.cmd_q = AioQueue()
+
+        # 'sig_q' is used to block on .start() and wait for child proc, as well as to send signals to main proc
+        # We use multiprocessing.Queue here because we want it to block
+        self.sig_q = Queue()
+
+        # Create the subprocess that will run the blocking object
+        self.test_proc = LProcess(target=self._start_test, args=(self.sig_q, self.cmd_q))
+        self.log.debug("Starting test")
         self.test_proc.start()
 
         # Block until test_proc is ready
@@ -65,7 +110,7 @@ class TestableReactor:
         rdy = self.sig_q.get()
         self.log.debug("got rdy sig: {}".format(rdy))
 
-    def start(self):
+    def wait_finish(self):
         # Block until test_proc returns from testing (success or timeout)
         self.log.critical("\n ** STARTING TEST UNTIL TERMINATION ** \n")
         msg = self.sig_q.get()
@@ -79,10 +124,22 @@ class TestableReactor:
             raise Exception("Tests timed out for reactor {}".format(self.name))
 
     def teardown(self):
-        self.log.critical("\n\nTEARING DOWN\n\n")
-        self.log.critical("\n ---- joining --- \n")
+        self.log.critical("\nTEARING DOWN\n")
+        self.log.info("\n ---- joining --- \n")
         self.test_proc.join()
-        self.log.critical("\n ******* JOINED *********** \n")
+        self.log.info("\n ***** JOINED ***** \n")
+
+    def build_obj(self):
+        self.log.critical("BUILDING OBJECT!")
+
+        mock_parent = MagicMock()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        self.log.debug("creating reactor")
+        reactor = ReactorInterface(mock_parent, loop)
+
+        return reactor, mock_parent, loop
 
     def _start_test(self, rdy_sig_q, cmd_q):
         def teardown():
@@ -114,7 +171,7 @@ class TestableReactor:
                                       .format(padding, timeout))
                     break
                 except Exception as e:
-                    self.log.warning("assertion failed: {}".format(e))
+                    log.warning("assertion failed: {}".format(e))
 
                 await asyncio.sleep(TEST_CHECK_FREQ)
                 timeout -= TEST_CHECK_FREQ
@@ -127,16 +184,17 @@ class TestableReactor:
                 rdy_sig_q.put(FAIL_SIG)
 
             teardown()
-            self.log.critical("done teardown instide check_assertions")
+            self.log.critical("done teardown inside check_assertions")
 
         log = get_logger("TesterTarget")
-        mock_parent = MagicMock()
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        log.debug("creating reactor")
-        reactor = ReactorInterface(mock_parent, loop)
+        # mock_parent = MagicMock()
+        #
+        # loop = asyncio.new_event_loop()
+        # asyncio.set_event_loop(loop)
+        #
+        # log.debug("creating reactor")
+        # reactor = ReactorInterface(mock_parent, loop)
+        reactor, mock_parent, loop = self.build_obj()
 
         log.info("setting mock config")
         reactor = self.config_fn(reactor)
@@ -188,13 +246,13 @@ class IntegrationTestReactor(TestCase):
         def do_nothing(reactor: ReactorInterface):
             print("do_nothing so this should immediately pass")
             if not hasattr(reactor, '_timer'):
-                reactor._timer = 3
+                reactor._timer = 4
 
             if reactor._timer > 0:
                 reactor._timer -= TEST_CHECK_FREQ
                 raise Exception("still {} seconds left on dummy assertions".format(reactor._timer))
 
-            # raise Exception("lol u still got rekt kid")
+            # raise Exception("lol get rekt")
 
         log = get_logger("TestSubPub1")
 
@@ -216,16 +274,18 @@ class IntegrationTestReactor(TestCase):
 
         # Blocks until they finish
         log.critical("\n\nSTARTING SUB TEST\n\n")
-        sub.start()
+        sub.wait_finish()
         log.critical("\n\nSTARTING PUB TEST\n\n")
-        pub.start()
+        pub.wait_finish()
 
-
-    def test_subpub_2(self):
-        """
-        Tests sub/pub 1-3 with one message
-        """
-        pass
+    #
+    # def test_subpub_2(self):
+    #     """
+    #     Tests sub/pub 1-3 with one message
+    #     """
+    #     def configure_interface(reactor: ReactorInterface):
+    #         pass
+    #     pass
 
 
 
