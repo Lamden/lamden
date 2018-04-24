@@ -53,9 +53,6 @@ class SubPubExecutor(Executor):
 
     def send_pub(self, filter: str, envelope: bytes):
         assert self.pub, "Attempted to publish data but publisher socket is not configured"
-
-        self.log.critical("sending to filter {} with data {}".format(filter, envelope))  # TODO remove debug line
-
         self.pub.send_multipart([filter.encode(), envelope])
 
     def add_pub(self, url):

@@ -16,6 +16,9 @@ from cilantro.messages import *
 URL = 'tcp://127.0.0.1:9988'
 FILTER = 'TEST_FILTER'
 
+TEST_TIMEOUT = 10
+TEST_CHECK_FREQ = 0.1
+
 
 def thicc_test(test_cls):
 
@@ -37,31 +40,24 @@ def thicc_test(test_cls):
     return mp_testable
 
 
-"""
-change this so that we are not subclassing process, but rather doing some shit (maybe running a test!?) in another
-proc and we ...
-
-we need to have the creation of the reactor/server (whatever blocks) to happen in an isolated target function (a unit test?)
-then, we provide a class that, like the one below, copies the funcs of reactor/server class to test, and pipes them
-to a queue which gets passed into the target function of the proc
-"""
-
-
 @thicc_test(ReactorInterface)
 class TestableReactor:
-    def __init__(self):
+    def __init__(self, config_fn, assert_fn):
         super().__init__()
         self.log = get_logger("TestableProcess")
 
-        self.cmd_q = AioQueue()  # Used to pass commands into blocking object
-        self.rdy_sig_q = Queue()  # Used to block on .start() and wait for child proc
+        self.config_fn = config_fn  # Function to configure object with mocks
+        self.assert_fn = assert_fn  # Function to run assertions on inserted mock properties
 
-        self.test_proc = LProcess(target=self._start_test, args=(self.rdy_sig_q, self.cmd_q))
+        self.cmd_q = AioQueue()  # Used to pass commands into blocking object
+        self.sig_q = Queue()  # Used to block on .start() and wait for child proc
+
+        self.test_proc = LProcess(target=self._start_test, args=(self.sig_q, self.cmd_q))
         self.log.debug("Starting test")
         self.test_proc.start()
 
         self.log.debug("waiting for child ready sig")
-        rdy = self.rdy_sig_q.get()
+        rdy = self.sig_q.get()
         self.log.debug("got rdy sig: {}".format(rdy))
 
     def _start_test(self, rdy_sig_q, cmd_q):
@@ -75,6 +71,21 @@ class TestableReactor:
 
                 getattr(reactor, func)(*args, **kwargs)
 
+        async def check_assertions():
+            self.log.debug("Starting assertion checks")
+            timeout = TEST_TIMEOUT
+            while timeout > 0:
+                try:
+                    self.assert_fn(reactor)
+                    self.log.critical("Assertions successful with {} left!".format(timeout))
+                    rdy_sig_q.put("BIG TIME PLAYERS MAKE BIG TIME PLAYS")
+                    break
+                except Exception as e:
+                    self.log.warning("assertion failed: {}".format(e))
+
+                await asyncio.sleep(TEST_CHECK_FREQ)
+                timeout -= TEST_CHECK_FREQ
+
         log = get_logger("TesterTarget")
         loop = asyncio.new_event_loop()
         mock_parent = MagicMock()
@@ -82,21 +93,16 @@ class TestableReactor:
         log.debug("creating reactor")
         reactor = ReactorInterface(mock_parent, loop)
 
+        log.info("setting mock config")
+        reactor = self.config_fn(reactor)
+
+        log.critical("mock property: {}".format(reactor._run_callback))
+
         log.debug("sending ready sig to parent")
         rdy_sig_q.put('ready')
 
-        # DEBUG
-        # log.critical("creating mock tester")
-        # reactor.tester = MagicMock()
-        # reactor.tester.do_something = MagicMock()
-        # log.critical("asserting mock tester called")
-        # i = 10 / 0
-        # reactor.tester.do_something.assert_called()
-        # log.critical("done asserting called")
-        # END DEBUG
-
         log.debug("starting TestableProcess event loop")
-        loop.run_until_complete(recv_cmd())
+        loop.run_until_complete(asyncio.gather(recv_cmd(), check_assertions()))
 
 
 def random_envelope():
@@ -106,12 +112,27 @@ def random_envelope():
     return Envelope.create_from_message(message=tx, signing_key=sk, sender_id=sender)
 
 
+def configure_interface(reactor: ReactorInterface):
+    print("\n\n configing interface \n\n")
+    reactor._run_callback = MagicMock()
+    return reactor
+
+
+def run_assertions(reactor: ReactorInterface):
+    print("\n\n running assertions on reactor._run_callback {} \n\n".format(reactor._run_callback))
+    print(reactor._run_callback.assert_called())
+
+def do_nothing(reactor: ReactorInterface):
+    print("do nothing this will pass")
+    pass
+
+
 if __name__ == '__main__':
     log = get_logger("Main")
     log.debug("hello test")
 
-    sub = TestableReactor()
-    pub = TestableReactor()
+    sub = TestableReactor(configure_interface, run_assertions)
+    pub = TestableReactor(configure_interface, do_nothing)
 
     env = random_envelope()
 
@@ -127,4 +148,6 @@ if __name__ == '__main__':
 
     pub.send_cmd(send_pub_cmd)
 
-    time.sleep(10)
+    log.critical("waiting for kill switching from tester...")
+    msg = sub.sig_q.get()
+    log.critical("GOT MSG FROM TESTER PROC: {}".format(msg))

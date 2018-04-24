@@ -34,9 +34,6 @@ class BlockContender(MessageBase):
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        # TODO -- implement
-        # json loads entire data
-        # deserialize each signature
         data = pickle.loads(data)
         for i in range(len(data[cls.SIGS])):
             data[cls.SIGS][i] = MerkleSignature.from_bytes(data[cls.SIGS][i])

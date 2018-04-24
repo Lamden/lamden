@@ -53,10 +53,10 @@ class ReactorInterface:
             args = list(args)
             self.log.debug("Got callback <{}> with args {}".format(callback, args))
 
-            self._run_callback(callback, args)
+            self._run_callback(callback, args[0])
 
-    def _run_callback(self, callback, args):
-        self.log.debug("Running callback '{}' with args {}".format(callback, args))
+    def _run_callback(self, callback, envelope):
+        self.log.debug("Running callback '{}' with envelope {}".format(callback, envelope))
 
         # TODO -- engineer less hacky way to do this that doesnt explicitly rely on multiframe positions
         # meta, payload = args[-2:]
