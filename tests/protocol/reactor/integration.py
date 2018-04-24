@@ -221,6 +221,14 @@ class IntegrationTestReactor(TestCase):
         pub.start()
 
 
+    def test_subpub_2(self):
+        """
+        Tests sub/pub 1-3 with one message
+        """
+        pass
+
+
+
 
 
 
