@@ -61,3 +61,19 @@ struct StampTransaction {
         amount @1 :Int64;
     }
 }
+
+struct ElectionInitiationTransaction {
+    enum Method {
+      initiate @0;
+      finalize @1;
+    }
+
+    metadata @0 :MetaData;
+    payload @1 :Payload;
+
+    struct Payload {
+        sender @0 :Data;
+        policy @1 :Data;
+        method @2 :Method;
+    }
+}
