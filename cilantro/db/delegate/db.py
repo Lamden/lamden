@@ -16,6 +16,7 @@ import os
 from cilantro.logger import get_logger
 from sqlalchemy import *
 from sqlalchemy.sql.visitors import *
+from sqlalchemy.sql.sqltypes import *
 from sqlalchemy.sql.functions import coalesce
 from sqlalchemy.sql.selectable import Select
 
@@ -94,7 +95,19 @@ def create_db(name):
     votes = Table('votes', metadata,
                   Column('wallet', String(64), nullable=False),
                   Column('policy', String(64), nullable=False),
-                  Column('choice', String(64), nullable=False))
+                  Column('choice', String(64), nullable=False),
+                  Column('round', Integer))
+
+    stamps = Table('stamps', metadata,
+                   Column('wallet', String(64)),
+                   Column('amount', Float(precision=4), nullable=False))
+
+    constants = Table('constants', metadata,
+                      Column('policy', String(64), nullable=False),
+                      Column('type', Enum('discrete', 'continuous', name='variable'), nullable=False),
+                      Column('last_election', DateTime, nullable=False),
+                      Column('value', BLOB, nullable=True),
+                      Column('round', Integer, nullable=False))
 
     mapping = {}
 
@@ -112,7 +125,13 @@ def create_db(name):
     db.execute('use {};'.format(name))
     metadata.create_all(db)
 
-    tables = type('Tables', (object,), {'balances': balances, 'swaps': swaps, 'votes': votes, 'mapping': mapping})
+    tables = type('Tables', (object,),
+                  {'balances': balances,
+                   'swaps': swaps,
+                   'votes': votes,
+                   'stamps': stamps,
+                   'constants': constants,
+                   'mapping': mapping})
 
     return db, tables
 
