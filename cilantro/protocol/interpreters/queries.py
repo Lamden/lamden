@@ -175,3 +175,34 @@ def process_swap_tx(tx):
 
     else:
         return None
+
+
+@contract(None)
+def process_stamp_tx(tx):
+    q = select([tables.balances.c.amount]).where(tables.balances.c.wallet == tx.sender)
+
+    row = execute(q).fetchone()
+
+    sender_balance = 0 if not row or not row[0] else row[0]
+
+    if sender_balance >= tx.amount:
+
+        new_sender_balance = sender_balance - tx.amount
+
+        balance_q = update(tables.balances).values(
+            wallet=tx.sender,
+            amount=int(new_sender_balance)
+        )
+
+        swap_q = insert(tables.swaps).values(
+            sender=tx.sender,
+            receiver=tx.receiver,
+            amount=tx.amount,
+            expiration=tx.expiration,
+            hashlock=tx.hashlock
+        )
+
+        return balance_q, swap_q
+
+    else:
+        return None
