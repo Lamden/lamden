@@ -242,7 +242,11 @@ def process_election_tx(tx):
     # command = 0, initiate
     # command = 1, finalize
 
+    q = select([tables.constants]).where(tables.constants.c.policy == tx.policy)
+    m = select([tables.constants]).where(tables.constants.c.policy == 'masternodes')
+
     if tx.method == 'initiate':
+
         pass
     elif tx.method == 'finalize':
         pass

@@ -109,13 +109,13 @@ def create_db(name):
                       Column('election_length', Integer, nullable=False), # represented in minutes
                       Column('election_frequency', Integer, nullable=False), # represented in minutes
                       Column('max_votes', Integer, nullable=False),
-                      Column('value', String(64), nullable=True),
+                      Column('value', TEXT, nullable=True),
                       Column('round', Integer, nullable=False))
 
     blocks = Table('blocks', metadata,
                    Column('root', String(64), nullable=False),
-                   Column('tree', String(64), nullable=False),
-                   Column('signatures', String(64), nullable=False),
+                   Column('tree', TEXT, nullable=False),
+                   Column('signatures', TEXT, nullable=False),
                    Column('number', Integer, nullable=False))
 
     transactions = Table('transactions', metadata,
