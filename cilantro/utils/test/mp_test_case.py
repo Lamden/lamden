@@ -1,8 +1,12 @@
-from unittest import TestCase
+import asyncio
+import zmq.asyncio
 import time
+from unittest import TestCase
 from cilantro.logger import get_logger
 from cilantro.utils.test.mp_test import MPTesterBase, SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC
 
+# URL of orchestration node. TODO -- set this to env vars
+URL = "tcp://127.0.0.1:5020"
 
 TEST_TIMEOUT = 5
 TEST_POLL_FREQ = 0.25
@@ -10,9 +14,14 @@ TEST_POLL_FREQ = 0.25
 
 class MPTestCase(TestCase):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.log = get_logger("MPTestOrchestrater")
+
     def setUp(self):
         super().setUp()
-        assert len(MPTesterBase.testers) == 0, "setUp called but MPTesterBase._testers is not empty ({})".format(MPTesterBase.testers)
+        assert len(MPTesterBase.testers) == 0, "setUp called but MPTesterBase._testers is not empty ({})"\
+                                                .format(MPTesterBase.testers)
         # print("---- set up called ----")
 
     def tearDown(self):
@@ -20,10 +29,6 @@ class MPTestCase(TestCase):
         MPTesterBase.testers.clear()
         # print("%%%% TEARDOWN CALLED %%%%%")
         # self.log.critical("ACTIVE TESTERS: {}".format(MPTesterBase.testers))
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.log = get_logger("ThiccTester")
 
     def start(self):
         # self.log.critical("\nSTARTING TEST WITH TESTERS {}\n".format(MPTesterBase.testers))
@@ -39,7 +44,8 @@ class MPTestCase(TestCase):
 
         self.log.debug("Cleaning up tester processes")
         for t in actives + passives + fails:
-            t.cmd_q.put(SIG_ABORT)
+            # t.cmd_q.put(SIG_ABORT)
+            t.cmd_socket.send_pyobj(SIG_ABORT)
             t.teardown()
 
         # If there are no active testers left and none of them failed, we win

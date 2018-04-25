@@ -108,7 +108,7 @@ class TestReactorInterfacePubSub(MPTestCase):
 
         self.start()
 
-    # TODO -- same test as above but assertions fails testing  
+    # TODO -- same test as above but assertions fails testing
 
     def test_1_1_n_delay(self):
         """
@@ -152,7 +152,6 @@ class TestReactorInterfacePubSub(MPTestCase):
         time.sleep(0.2)  # To allow both pubs to go through
 
         self.start()
-
 
     def test_pubsub_1_1_n_filters(self):
         """

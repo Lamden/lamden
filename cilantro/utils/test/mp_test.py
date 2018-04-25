@@ -1,8 +1,9 @@
 """
 Integration testing tools for processes with blocking event loops
 """
-
 import asyncio
+import zmq.asyncio
+import random
 from multiprocessing import Queue
 from aioprocessing import AioQueue
 from cilantro.utils.lprocess import LProcess
@@ -30,7 +31,7 @@ def mp_testable(test_cls):
         """
         def send_cmd(self, *args, **kwargs):
             cmd = (cmd_name, args, kwargs)
-            self.cmd_q.coro_put(cmd)
+            self.cmd_socket.send_pyobj(cmd)
         return send_cmd
 
     def _mp_testable(cls):
@@ -47,6 +48,16 @@ def mp_testable(test_cls):
     return _mp_testable
 
 
+def _gen_url(name=''):
+    """
+    Helper method to generate a random URL for use in a PAIR socket
+    """
+    # TODO set host name from env vars if on VM
+    HOST_NAME = '127.0.0.1'  # or node name (i.e delegate_1)
+    rand_num = random.randint(0, pow(2, 16))
+    return "ipc://mptest-{}-{}".format(HOST_NAME, rand_num)
+
+
 class MPTesterBase:
     """
     Objects with blocking event loops can be
@@ -59,13 +70,16 @@ class MPTesterBase:
         super().__init__()
         self.log = get_logger(name)
         self.name = name
+        self.url = _gen_url(name)
 
         self.config_fn = config_fn  # Function to configure object with mocks
         self.assert_fn = assert_fn  # Function to run assertions on said mocks
 
-        # 'cmd_q' is used to proxy commands to blocking object running in a child process
+        # 'cmd_socket' is used to proxy commands to blocking object running in a child process (possibly on a VM)
         # We use AioQueue here because we want to hook it into the blocking object's process' event loop
-        self.cmd_q = AioQueue()
+        self.ctx = zmq.Context()
+        self.cmd_socket = self.ctx.socket(socket_type=zmq.PAIR)
+        self.cmd_socket.bind(self.url)
 
         # 'sig_q' is used to block on .start() and wait for child proc, as well as to send signals to main proc
         # We use multiprocessing.Queue here because we want it to block
@@ -80,6 +94,7 @@ class MPTesterBase:
 
     def start_test(self):
         self.test_proc.start()
+
         # Block until test_proc is ready
         try:
             sig = self.sig_q.get(timeout=1)
@@ -101,6 +116,7 @@ class MPTesterBase:
 
     def teardown(self):
         # self.log.critical("\n\nTEARING DOWN\n\n")
+        self.cmd_socket.close()
         # self.log.debug("---- joining {} ---".format(self.test_proc.name))
         self.test_proc.join()
         # self.log.debug("***** {} joined *****".format(self.test_proc.name))
@@ -116,7 +132,8 @@ class MPTesterBase:
             of the format (func_name: str, args: list, kwargs: dict).
             """
             while True:
-                cmd = await self.cmd_q.coro_get()
+                # cmd = await self.cmd_q.coro_get()
+                cmd = await socket.recv_pyobj()
 
                 if cmd == SIG_ABORT:
                     # log.critical("\n!!!!!\nGOT ABORT SIG\n!!!!!\n")
@@ -160,7 +177,10 @@ class MPTesterBase:
             Stop all tasks and close this processes event loop. Invoked after we successfully pass all assertions, or
             timeout.
             """
-            log.info("STOPPING LOOP")
+            log.info("Tearing down")
+            # log.info("Closing pair socket")
+            socket.close()
+            # log.info("Stopping loop")
             loop.stop()
 
         def __start_test():
@@ -192,12 +212,18 @@ class MPTesterBase:
                 return str(e)
 
         # We create the blocking tester object, and configure it with mock objects using a function passed in
-        # Then, we ensure futures __recv_cmd() to read self.sig_q to proxy commands, and __check_assertions() to
+        # Then, we ensure futures __recv_cmd() to read from cmd_socket for proxy'd commands, and __check_assertions() to
         # check assertions on a scheduled basis until they complete or until we get a SIG_ABORT from main thread
         log = get_logger("TesterProc[{}]".format(self.name))
 
         tester_obj, loop = self.__class__.build_obj()
         assert isinstance(loop, asyncio.BaseEventLoop), "Got back loop that is not an instance of asyncio.BaseEventLoop"
+        asyncio.set_event_loop(loop)
+
+        # Connect to parent process over ipc PAIR socket
+        ctx = zmq.asyncio.Context()
+        socket = ctx.socket(socket_type=zmq.PAIR)
+        socket.connect(self.url)
 
         if self.config_fn:
             tester_obj = self.config_fn(tester_obj)

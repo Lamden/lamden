@@ -41,9 +41,7 @@ class ReactorCore:
 
             # Should this be in a try catch? I suppose if we get a bad command from the main proc we might as well
             # blow up because this is very likely because of a development error, so no try/catch for now
-            self.log.critical("\n\nabout to sketch\n\n")
             cmd = ReactorCommand.from_bytes(cmd_bin)
-            self.log.critical("\ndone sketch\n")
             self.execute_cmd(cmd)
 
     def execute_cmd(self, cmd: ReactorCommand):
