@@ -1,5 +1,5 @@
 """
-Thicc integration tests for processes with blocking event loops
+Integration testing tools for processes with blocking event loops
 """
 
 import asyncio

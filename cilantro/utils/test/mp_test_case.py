@@ -3,6 +3,7 @@ import time
 from cilantro.logger import get_logger
 from cilantro.utils.test.mp_test import MPTesterBase, SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC
 
+
 TEST_TIMEOUT = 5
 TEST_POLL_FREQ = 0.25
 
@@ -63,7 +64,7 @@ class MPTestCase(TestCase):
             for t in actives:
                 try:
                     msg = t.sig_q.get_nowait()
-                    self.log.critical("\n\nGOT MSG {} FROM TESTER <{}>\n".format(msg, t))
+                    self.log.critical("\nGOT MSG {} FROM TESTER <{}>\n".format(msg, t))
                     actives.remove(t)
                     if msg == SIG_SUCC:
                         passives.append(t)

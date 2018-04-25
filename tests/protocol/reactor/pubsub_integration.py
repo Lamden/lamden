@@ -13,6 +13,9 @@ import time
 URL = 'tcp://127.0.0.1:9988'
 FILTER = 'TEST_FILTER'
 
+FILTERS = ['FILTER_' + str(i) for i in range(100)]
+URLS = ['tcp://127.0.0.1:' + str(i) for i in range(9000, 9999, 10)]
+
 
 def random_envelope():
     sk, vk = ED25519Wallet.new()
@@ -101,9 +104,11 @@ class TestReactorInterfacePubSub(MPTestCase):
         pub.send_cmd(send_pub_cmd1)
         pub.send_cmd(send_pub_cmd2)
 
-        time.sleep(0.2)  # To allow both pubs to go through
+        time.sleep(0.2)  # Give time for both pubs to go through
 
         self.start()
+
+    # TODO -- same test as above but assertions fails testing  
 
     def test_1_1_n_delay(self):
         """
@@ -120,7 +125,7 @@ class TestReactorInterfacePubSub(MPTestCase):
             reactor._run_callback.assert_has_calls([
                 call(callback, env1.serialize()),
                 call(callback, env2.serialize())],
-                any_order=True)
+                any_order=False)
 
         env1 = random_envelope()
         env2 = random_envelope()
@@ -139,7 +144,9 @@ class TestReactorInterfacePubSub(MPTestCase):
         sub.send_cmd(add_sub_cmd)
         pub.send_cmd(add_pub_cmd)
         time.sleep(0.2)
+
         pub.send_cmd(send_pub_cmd1)
+        time.sleep(0.1) # Give time for first message to go through first
         pub.send_cmd(send_pub_cmd2)
 
         time.sleep(0.2)  # To allow both pubs to go through
@@ -151,8 +158,33 @@ class TestReactorInterfacePubSub(MPTestCase):
         """
         Test pub/sub 1-1 with multiple filters, only some of which should be received
         """
-        # TODO -- implement
-        self.assertTrue('cats' == 'cats')
+        def configure_interface(reactor: ReactorInterface):
+            reactor._run_callback = MagicMock()
+            return reactor
+
+        def run_assertions(reactor: ReactorInterface):
+            callback = 'route'
+            data = env.serialize()
+            reactor._run_callback.assert_called_once_with(callback, data)
+
+        env = random_envelope()
+        env2 = random_envelope()
+
+        sub = MPReactorInterface(config_fn=configure_interface, assert_fn=run_assertions, name='** SUB')
+        pub = MPReactorInterface(name='++ PUB')
+
+        add_sub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=URL,
+                                                filter=FILTER)
+        add_pub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=URL)
+        send_pub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__,
+                                                 envelope=env, filter=FILTER)
+
+        sub.send_cmd(add_sub_cmd)
+        pub.send_cmd(add_pub_cmd)
+        time.sleep(0.2)  # To allow time for subs to connect to pub before pub sends data
+        pub.send_cmd(send_pub_cmd)
+
+        self.start()
 
     def test_pubsub_1_n_n_filters(self):
         """
