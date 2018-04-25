@@ -1,3 +1,5 @@
+import hashlib
+
 """
 Messages encapsulate data that is sent between nodes.
 """
@@ -12,7 +14,11 @@ class MessageMeta(type):
         #print("Adding to registry: ", clsobj)
 
         # Define an "undirected" mapping between classes and their enum vals
-        l = len(clsobj.registry) // 2
+        m = hashlib.md5()
+        m.update(clsobj.__name__.encode())
+        l = int(m.digest().hex(),16) % pow(2, 16)
+        assert clsobj.registry.get(l) == None, 'Enum collision of message class {}!'.format(clsobj.__name__)
+
         clsobj.registry[clsobj] = l
         clsobj.registry[l] = clsobj
 
