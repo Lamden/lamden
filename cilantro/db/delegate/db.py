@@ -109,6 +109,16 @@ def create_db(name):
                       Column('value', BLOB, nullable=True),
                       Column('round', Integer, nullable=False))
 
+    blocks = Table('blocks', metadata,
+                   Column('root', String(64), nullable=False),
+                   Column('tree', BLOB, nullable=False),
+                   Column('signatures', BLOB, nullable=False),
+                   Column('number', Integer, nullable=False))
+
+    transactions = Table('transactions', metadata,
+                         Column('hash', String(64), nullable=False),
+                         Column('value', BLOB, nullable=False))
+
     mapping = {}
 
     # create copies of the tables to hold temporary scratch by iterating through the metadata
@@ -131,6 +141,8 @@ def create_db(name):
                    'votes': votes,
                    'stamps': stamps,
                    'constants': constants,
+                   'blocks': blocks,
+                   'transactions': transactions,
                    'mapping': mapping})
 
     return db, tables
