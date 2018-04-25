@@ -52,6 +52,9 @@ class ED25519Wallet(Wallet):
         v = nacl.signing.VerifyKey(v)
         try:
             v.verify(msg, sig)
+        except nacl.exceptions.BadSignatureError:
+            print('Bad sig kiddo')
+            return False
         except Exception:
             return False
         return True

@@ -19,6 +19,7 @@ def validate_hex(hex_str, length=None, field_name="", raise_err=True):
         return handle_err(Exception("Field {} was invalid in length. Expected length of {} but length was {}. "
                                     "Field value={}".format(field_name, length, len(hex_str), hex_str)))
 
+    return True
 
 def int_to_decimal(int_val):
     val = str(int_val)

@@ -160,7 +160,6 @@ class TestMerkleSignature(TestCase):
         self.assertEqual(valid_merkle_sig.sender, clone.sender)
 
     def test_verify(self):
-        return  # TODO fix
         """
         Tests that MerkleSignature.verify(...) returns true given a proper msg and vk
         """
@@ -171,7 +170,7 @@ class TestMerkleSignature(TestCase):
         signature = ED25519Wallet.sign(sk, msg)
         ms = MerkleSignature.create(sig_hex=signature, timestamp=timestamp, sender=vk)
 
-        self.assertTrue(ms.verify(signature, ms.sender))
+        ms.verify(ms, vk)
         #
         # # Test merkle tree validation returns false for incorrect verifying (public) key
         # sk1, vk1 = ED25519Wallet.new()
