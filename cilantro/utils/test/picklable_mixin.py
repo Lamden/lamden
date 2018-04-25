@@ -1,11 +1,12 @@
-from cilantro.logger import get_logger
-
-
 """
 This class is a drop-in mixin to add support for pickling objects that have loggers. By default, loggers are not
 picklable (basically b/c they use some non-picklable lock objects), thus any logger objects must be removed from the
-object before they are pickled, and recreated when they are unloaded. 
+object before they are pickled, and recreated when they are unloaded.
+
+Assumes the Logger object is an instance property called 'log'
 """
+
+from cilantro.logger import get_logger
 
 LOG_NAME = 'log'
 

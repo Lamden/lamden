@@ -9,10 +9,10 @@ from cilantro.protocol.statemachine import StateMachine
 
 class NodeBase(StateMachine):
 
-    def __init__(self, url=None, signing_key=None):
+    def __init__(self, url=None, signing_key=None, loop=None):
         self.url = url
         self.signing_key = signing_key
-        self.loop = asyncio.new_event_loop()
+        self.loop = loop or asyncio.new_event_loop()
         self.nodes_registry = Constants.Testnet.AllNodes
         self.log = get_logger(type(self).__name__)
         self.reactor = ReactorInterface(self, self.loop)

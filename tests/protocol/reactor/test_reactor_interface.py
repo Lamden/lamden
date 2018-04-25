@@ -18,7 +18,6 @@ def AsyncMock(*args, **kwargs):
     return mock_coro
 
 
-
 class TestReactorInterface(TestCase):
 
     @patch('cilantro.protocol.reactor.interface.LProcess')
