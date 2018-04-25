@@ -45,7 +45,7 @@ class MPTestCase(TestCase):
         self.log.debug("Cleaning up tester processes")
         for t in actives + passives + fails:
             # t.cmd_q.put(SIG_ABORT)
-            t.cmd_socket.send_pyobj(SIG_ABORT)
+            t.socket.send_pyobj(SIG_ABORT)
             t.teardown()
 
         # If there are no active testers left and none of them failed, we win
@@ -69,7 +69,7 @@ class MPTestCase(TestCase):
         while timeout > 0:
             for t in actives:
                 try:
-                    msg = t.sig_q.get_nowait()
+                    msg = t.socket.recv(flags=zmq.NOBLOCK)
                     self.log.critical("\nGOT MSG {} FROM TESTER <{}>\n".format(msg, t))
                     actives.remove(t)
                     if msg == SIG_SUCC:

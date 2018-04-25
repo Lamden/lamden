@@ -20,6 +20,9 @@ TEST_TIMEOUT = 4
 TEST_POLL_FREQ = 0.25
 
 
+CHILD_PROC_TIMEOUT = 1
+
+
 def mp_testable(test_cls):
     """
     Decorator to copy all the public API for object type test_cls to the decorated class. The decorated
@@ -31,7 +34,7 @@ def mp_testable(test_cls):
         """
         def send_cmd(self, *args, **kwargs):
             cmd = (cmd_name, args, kwargs)
-            self.cmd_socket.send_pyobj(cmd)
+            self.socket.send_pyobj(cmd)
         return send_cmd
 
     def _mp_testable(cls):
@@ -55,7 +58,7 @@ def _gen_url(name=''):
     # TODO set host name from env vars if on VM
     HOST_NAME = '127.0.0.1'  # or node name (i.e delegate_1)
     rand_num = random.randint(0, pow(2, 16))
-    return "ipc://mptest-{}-{}".format(HOST_NAME, rand_num)
+    return "ipc://mptest-{}-{}-{}".format(name, HOST_NAME, rand_num)
 
 
 class MPTesterBase:
@@ -67,7 +70,6 @@ class MPTesterBase:
 
     def __init__(self, config_fn=None, assert_fn=None, name='TestableProcess'):
         super().__init__()
-        super().__init__()
         self.log = get_logger(name)
         self.name = name
         self.url = _gen_url(name)
@@ -75,15 +77,15 @@ class MPTesterBase:
         self.config_fn = config_fn  # Function to configure object with mocks
         self.assert_fn = assert_fn  # Function to run assertions on said mocks
 
-        # 'cmd_socket' is used to proxy commands to blocking object running in a child process (possibly on a VM)
-        # We use AioQueue here because we want to hook it into the blocking object's process' event loop
+        # 'socket' is used to proxy commands to blocking object running in a child process (possibly on a VM)
         self.ctx = zmq.Context()
-        self.cmd_socket = self.ctx.socket(socket_type=zmq.PAIR)
-        self.cmd_socket.bind(self.url)
+        self.socket = self.ctx.socket(socket_type=zmq.PAIR)
+        self.socket.bind(self.url)
 
-        # 'sig_q' is used to block on .start() and wait for child proc, as well as to send signals to main proc
-        # We use multiprocessing.Queue here because we want it to block
-        self.sig_q = Queue()
+        # 'sig_socket' is used to block on .start() and wait for child proc, as well as to send signals to main proc
+        #self.sig_q = Queue()
+        # self.sig_socket = self.ctx.socket(socket_type=zmq.PAIR)
+
 
         # Add this object to the registry of testers
         MPTesterBase.testers.append(self)
@@ -96,11 +98,16 @@ class MPTesterBase:
         self.test_proc.start()
 
         # Block until test_proc is ready
-        try:
-            sig = self.sig_q.get(timeout=1)
-            self.log.debug("Starting test")
-        except Exception as e:
-            self.log.error("Child did not send ready sig yet in reasonable time (is tester object init failing?)")
+        # try:
+        #     sig = self.sig_q.get(timeout=1)
+        #     self.log.debug("Starting test")
+        # except Exception as e:
+        #     self.log.error("Child did not send ready sig yet in reasonable time (is tester object init failing?)")
+        # TODO -- implement timeouts for this
+        self.log.critical("waiting for rdy sig")
+        msg = self.socket.recv_pyobj()
+        assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
+        self.log.critical("GOT RDY SIG: {}".format(msg))
 
     @classmethod
     def build_obj(cls) -> tuple:
@@ -116,7 +123,7 @@ class MPTesterBase:
 
     def teardown(self):
         # self.log.critical("\n\nTEARING DOWN\n\n")
-        self.cmd_socket.close()
+        self.socket.close()
         # self.log.debug("---- joining {} ---".format(self.test_proc.name))
         self.test_proc.join()
         # self.log.debug("***** {} joined *****".format(self.test_proc.name))
@@ -170,7 +177,8 @@ class MPTesterBase:
 
             # Once out of the assertion checking loop, send success to main thread
             log.debug("\n\nputting ready sig in queue\n\n")
-            self.sig_q.put(SIG_SUCC)
+            # self.sig_q.put(SIG_SUCC)
+            socket.send(SIG_SUCC)
 
         def __teardown():
             """
@@ -188,7 +196,8 @@ class MPTesterBase:
             Sends ready signal to parent process, and then starts the event loop in this process
             """
             log.debug("sending ready sig to parent")
-            self.sig_q.put('ready')
+            # self.sig_q.put('ready')
+            socket.send_pyobj(SIG_RDY)
 
             asyncio.ensure_future(__recv_cmd())
             if self.assert_fn:
