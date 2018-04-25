@@ -82,11 +82,6 @@ class MPTesterBase:
         self.socket = self.ctx.socket(socket_type=zmq.PAIR)
         self.socket.bind(self.url)
 
-        # 'sig_socket' is used to block on .start() and wait for child proc, as well as to send signals to main proc
-        #self.sig_q = Queue()
-        # self.sig_socket = self.ctx.socket(socket_type=zmq.PAIR)
-
-
         # Add this object to the registry of testers
         MPTesterBase.testers.append(self)
 
