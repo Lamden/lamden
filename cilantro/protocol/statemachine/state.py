@@ -54,13 +54,6 @@ class StateMeta(type):
         clsobj = super().__new__(cls, clsname, bases, clsdict)
         clsobj.log = get_logger(clsname)
 
-        # print("Creating state meta for clsname: ", clsname)
-        # print("bases: ", bases)
-        # print("clsdict: ", clsdict)
-        # print("vars: ", vars(clsobj))
-        # print("dir: ", dir(clsobj))
-        # print("\n")
-
         # Add debug decorator to run/exit/enter methods
         for name, val in vars(clsobj).items():
             if callable(val) and name in DEBUG_FUNCS:

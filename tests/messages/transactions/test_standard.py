@@ -25,14 +25,14 @@ class TestStandardTransaction(TestCase):
         self.assertEqual(tx_struct.metadata.proof.decode(), tx_object.proof)
         self.assertEqual(tx_struct.metadata.signature.decode(), tx_object.signature)
         self.assertEqual(tx_struct.payload.sender.decode(), tx_object.sender)
-        self.assertEqual(int_to_decimal(tx_struct.payload.amount), tx_object.amount)
+        self.assertEqual(tx_struct.payload.amount, tx_object.amount)
         self.assertEqual(tx_struct.payload.receiver.decode(), tx_object.receiver)
 
     def test_from_bytes(self):
         """
         Tests from_bytes with a valid serialized capnp struct (no validation)
         """
-        tx_struct = TestStandardTransaction.create_tx_struct(3.14)
+        tx_struct = TestStandardTransaction.create_tx_struct(314)
         tx = StandardTransaction.from_bytes(tx_struct.to_bytes_packed(), validate=False)
         self.__assert_struct_equal_object(tx_struct, tx)
 
@@ -153,3 +153,26 @@ class TestStandardTransaction(TestCase):
         tx_struct = TestStandardTransaction.create_tx_struct(100)
         struct_binary = tx_struct.to_bytes_packed()
         tx = StandardTransaction.from_data(tx_struct, validate=False)
+
+        self.assertTrue(True)
+
+    def test_builder_serializiation(self):
+        """
+        Tests serialization/deserialization using the StandardTransactionBuilder object
+        """
+        tx = StandardTransactionBuilder.random_tx()
+        clone = StandardTransaction.from_bytes(tx.serialize())
+
+        self.assertTrue(True)
+
+    def test_builder_reserialization(self):
+        """
+        Tests that a transaction object can be loaded from binary created using StandardTransactionBuilder, and then
+        properly serialized again
+        """
+        tx = StandardTransactionBuilder.random_tx()
+        clone = StandardTransaction.from_bytes(tx.serialize())
+        clone.serialize()
+
+        self.assertTrue(True)
+
