@@ -15,16 +15,14 @@ calls on the reactor
 Will guarantee traversals in lg(n) times where n is the # of blocks
 
 """
-from cilantro.nodes import NodeBase
-from cilantro.protocol.reactor import NetworkReactor, ReactorCore
-from cilantro.logger import get_logger
+
 from functools import wraps
 import random
-
-P = 0.8
+P = 0.36
 
 def do_nothing(*args, **kwargs):
-    print("!!! DOING NOTHING !!!\nargs: {}\n**kwargs: {}".format(args, kwargs))
+    # print("!!! DOING NOTHING !!!\nargs: {}\n**kwargs: {}".format(args, kwargs))
+    print("DOING NOTHING")
 
 def sketchy_execute(prob_fail):
     def decorate(func):
@@ -40,6 +38,7 @@ def sketchy_execute(prob_fail):
         return wrapper
     return decorate
 
+
 class RogueMeta(type):
     _OVERWRITES = ('route', 'route_req', 'route_timeout')
 
@@ -51,19 +50,12 @@ class RogueMeta(type):
         print("clsdict: ", clsdict)
         print("dir: ", dir(clsobj))
 
-        for name in dir(clsdict):
+        for name in dir(clsobj):
             if name in cls._OVERWRITES:
                 print("\n\n***replacing {} with sketchy executor".format(name))
                 setattr(clsobj, name, sketchy_execute(P)(getattr(clsobj, name)))
+            else:
+                print("skipping name {}".format(name))
 
         return clsobj
-
-if __name__ == "__main__":
-    pass
-
-# class RogueNode(NodeBase):
-#
-#     def __init__(self, url=None, signing_key=None):
-#         super().__init__(url, signing_key)
-#         self.reactor.reactor.execute_cmd = sketchy_execute(0.8)(self.reactor.execute_cmd)
 

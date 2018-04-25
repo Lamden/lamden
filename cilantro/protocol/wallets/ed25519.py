@@ -20,7 +20,13 @@ class ED25519Wallet(Wallet):
         else:
             s = nacl.signing.SigningKey.generate()
         v = s.verify_key
-        return (s, v)
+        return s, v
+
+    @classmethod
+    def get_vk(cls, s):
+        s, v = ED25519Wallet.format_to_keys(s)
+        s, v = ED25519Wallet.keys_to_format(s, v)
+        return v
 
     @classmethod
     def keys_to_format(cls, s, v):

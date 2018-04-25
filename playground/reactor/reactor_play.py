@@ -1,6 +1,6 @@
 from cilantro.logger import get_logger
 import time
-from cilantro.protocol.reactor import NetworkReactor, ReactorCore, Command
+from cilantro.protocol.reactor import ReactorInterface, ReactorCore, Command
 from multiprocessing import Process
 
 URL = "tcp://127.0.0.1:5566"
@@ -13,7 +13,7 @@ class SlowInitNode:
     def __init__(self):
         self.log = get_logger("SlowInitNode")
         self.log.info("-- Test Node Init-ing --")
-        self.reactor = NetworkReactor(self)
+        self.reactor = ReactorInterface(self)
 
         self.reactor.execute(Command.ADD_SUB, url=URL, callback='do_something_else')
 
@@ -36,7 +36,7 @@ class PubSubNode:
         self.log = get_logger("PubSubNode")
         self.log.info("-- PubSubNode Init-ing --")
 
-        self.reactor = NetworkReactor(self)
+        self.reactor = ReactorInterface(self)
         self.reactor.execute(Command.ADD_SUB, url=URL, callback='do_something')
         self.reactor.execute(Command.ADD_PUB, url=URL)
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     # time.sleep(5)
 
     # q = aioprocessing.AioQueue()
-    # reactor = NetworkReactor(queue=q)
+    # reactor = ReactorInterface(queue=q)
     # reactor.start()
     #
     # q.coro_put(Command(Command.SUB, url=URL, callback=do_something))

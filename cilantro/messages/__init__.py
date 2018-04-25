@@ -1,12 +1,19 @@
 from cilantro.messages.base import MessageBase
-from cilantro.messages.envelope import Envelope
 
-from cilantro.messages.transaction import TransactionBase
-from cilantro.messages.transaction import StandardTransaction, StandardTransactionBuilder
-from cilantro.messages.transaction import VoteTransaction, VoteTransactionBuilder
-from cilantro.messages.transaction import SwapTransaction, SwapTransactionBuilder
-from cilantro.messages.transaction import RedeemTransaction, RedeemTransactionBuilder
+from cilantro.messages.envelope.seal import Seal
+from cilantro.messages.envelope.message_meta import MessageMeta
+from cilantro.messages.envelope.envelope import Envelope
 
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.consensus.block_data import BlockDataRequest, BlockDataReply
+from cilantro.messages.reactor.reactor_command import ReactorCommand
+from cilantro.messages.transaction.standard import TransactionBase
+from cilantro.messages.transaction.container import TransactionContainer
+
+# from cilantro.messages.consensus import MerkleSignature, BlockContender, BlockDataRequest, BlockDataReply
+
+# from cilantro.messages.transaction.standard import StandardTransaction, StandardTransactionBuilder
+# from cilantro.messages.transaction.vote import VoteTransaction, VoteTransactionBuilder
+# from cilantro.messages.transaction.swap import SwapTransaction, SwapTransactionBuilder
+# from cilantro.messages.transaction.redeem import RedeemTransaction, RedeemTransactionBuilder

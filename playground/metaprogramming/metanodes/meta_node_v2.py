@@ -3,7 +3,7 @@ Extends upon V1 to support state machine
 """
 
 from cilantro.logger import get_logger
-from cilantro.protocol.reactor import NetworkReactor
+from cilantro.protocol.reactor import ReactorInterface
 from cilantro.messages import Envelope, MessageBase
 from cilantro.protocol.statemachine import StateMachine, State, EmptyState, recv
 
@@ -81,7 +81,7 @@ class NodeBase(StateMachine):
 
     def __init__(self, url):
         self.url = url
-        self.reactor = NetworkReactor(self)
+        self.reactor = ReactorInterface(self)
         self.log = get_logger(type(self).__name__)
         super().__init__()
 
