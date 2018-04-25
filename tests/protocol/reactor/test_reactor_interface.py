@@ -90,21 +90,6 @@ class TestReactorInterface(TestCase):
         loop.run_until_complete.assert_called()
         async_mock.ensure_future.assert_called()
 
-    # @patch('cilantro.protocol.reactor.interface.LProcess')
-    # @patch('zmq.asyncio.Context')
-    # @patch('cilantro.protocol.reactor.interface.asyncio')
-    # def test_wait_child_rdy(self, async_mock: MagicMock, ctx: MagicMock, lproc: MagicMock):
-    #     """
-    #     Tests that receiving the correct message from the child proc unblocks the init process
-    #     """
-    #     loop = MagicMock()
-    #     router = MagicMock()
-    #
-    #     reactor = ReactorInterface(router, loop)
-    #
-    #     loop.run_until_complete.assert_called()
-    #     async_mock.ensure_future.assert_called()
-
     @patch('cilantro.protocol.reactor.interface.LProcess')
     @patch('zmq.asyncio.Context')
     @patch('cilantro.protocol.reactor.interface.asyncio')
