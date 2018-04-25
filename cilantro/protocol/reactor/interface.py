@@ -3,7 +3,7 @@ import zmq.asyncio
 from cilantro.utils import LProcess
 import random
 from cilantro.logger import get_logger
-from cilantro.messages import MessageMeta, MessageBase, Envelope, ReactorCommand
+from cilantro.messages import ReactorCommand
 from cilantro.protocol.reactor.core import ReactorCore, CHILD_RDY_SIG
 
 

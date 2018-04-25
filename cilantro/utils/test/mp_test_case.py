@@ -1,33 +1,33 @@
 from unittest import TestCase
 import time
 from cilantro.logger import get_logger
-from cilantro.utils.test.thicc_test import TTBase, SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC
+from cilantro.utils.test.mp_test import MPTesterBase, SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC
 
 TEST_TIMEOUT = 5
 TEST_POLL_FREQ = 0.25
 
 
-class ThiccTestCase(TestCase):
+class MPTestCase(TestCase):
 
     def setUp(self):
         super().setUp()
-        assert len(TTBase.testers) == 0, "setUp called but TTBase._testers is not empty ({})".format(TTBase.testers)
+        assert len(MPTesterBase.testers) == 0, "setUp called but MPTesterBase._testers is not empty ({})".format(MPTesterBase.testers)
         # print("---- set up called ----")
 
     def tearDown(self):
         super().tearDown()
-        TTBase.testers.clear()
+        MPTesterBase.testers.clear()
         # print("%%%% TEARDOWN CALLED %%%%%")
-        # self.log.critical("ACTIVE TESTERS: {}".format(TTBase.testers))
+        # self.log.critical("ACTIVE TESTERS: {}".format(MPTesterBase.testers))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("ThiccTester")
 
     def start(self):
-        # self.log.critical("\nSTARTING TEST WITH TESTERS {}\n".format(TTBase.testers))
-        assert len(TTBase.testers) > 0, "start() called, but list of testers empty (TTBase._testers={})"\
-                                         .format(TTBase.testers)
+        # self.log.critical("\nSTARTING TEST WITH TESTERS {}\n".format(MPTesterBase.testers))
+        assert len(MPTesterBase.testers) > 0, "start() called, but list of testers empty (MPTesterBase._testers={})"\
+                                         .format(MPTesterBase.testers)
 
         # We organize all registered testers into 'active' testers, which are passed in an assertions function,
         # and 'passive' testers which do not make assertions but still interact with other testers.
@@ -54,8 +54,8 @@ class ThiccTestCase(TestCase):
             raise Exception()
 
     def _poll_testers(self) -> tuple:
-        actives = [t for t in TTBase.testers if t.assert_fn]
-        passives = [t for t in TTBase.testers if not t.assert_fn]
+        actives = [t for t in MPTesterBase.testers if t.assert_fn]
+        passives = [t for t in MPTesterBase.testers if not t.assert_fn]
         fails = []
 
         timeout = TEST_TIMEOUT

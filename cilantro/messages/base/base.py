@@ -1,4 +1,4 @@
-from cilantro.utils import cache_func
+from cilantro.utils.lazy_property import lazy_func
 import capnp
 import hashlib
 
@@ -40,7 +40,7 @@ class MessageBase(metaclass=MessageBaseMeta):
     def __init__(self, data):
         self._data = data
 
-    @cache_func
+    @lazy_func
     def serialize(self) -> bytes:
         """
         Serialize the underlying data format into bytes

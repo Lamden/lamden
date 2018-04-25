@@ -35,7 +35,7 @@ def lazy_property(fn):
     return _lazy_property
 
 
-def cache_func(fn):
+def lazy_func(fn):
     """
     Slap this decorator on a func and memoize it like aint nothin
     """

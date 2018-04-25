@@ -5,11 +5,9 @@ Thicc integration tests for processes with blocking event loops
 import asyncio
 from multiprocessing import Queue
 from aioprocessing import AioQueue
-from cilantro.utils import LProcess
+from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger
 
-# DEBUG
-from cilantro.protocol.reactor import ReactorInterface
 
 SIG_RDY = b'IM RDY'
 SIG_SUCC = b'GOODSUCC'
@@ -21,10 +19,10 @@ TEST_TIMEOUT = 4
 TEST_POLL_FREQ = 0.25
 
 
-def thicc_testable(test_cls):
+def mp_testable(test_cls):
     """
     Decorator to copy all the public API for object type test_cls to the decorated class. The decorated
-    TTBase subclass will be able to proxy commands to the 'test_cls' instance on a child process via a queue.
+    MPTesterBase subclass will be able to proxy commands to the 'test_cls' instance on a child process via a queue.
     """
     def propogate_cmd(cmd_name):
         """
@@ -35,7 +33,7 @@ def thicc_testable(test_cls):
             self.cmd_q.coro_put(cmd)
         return send_cmd
 
-    def mp_testable(cls):
+    def _mp_testable(cls):
         cls.test_cls = test_cls
 
         # Only copy non-internal and callable methods
@@ -46,10 +44,13 @@ def thicc_testable(test_cls):
 
         return cls
 
-    return mp_testable
+    return _mp_testable
 
 
-class TTBase:
+class MPTesterBase:
+    """
+    Objects with blocking event loops can be
+    """
     testers = []
     tester_cls = 'UNSET'
 
@@ -71,7 +72,7 @@ class TTBase:
         self.sig_q = Queue()
 
         # Add this object to the registry of testers
-        TTBase.testers.append(self)
+        MPTesterBase.testers.append(self)
 
         # Create and start the subprocess that will run the blocking object
         self.test_proc = LProcess(target=self._run_test_proc)
@@ -85,7 +86,6 @@ class TTBase:
             self.log.debug("Starting test")
         except Exception as e:
             self.log.error("Child did not send ready sig yet in reasonable time (is tester object init failing?)")
-
 
     @classmethod
     def build_obj(cls) -> tuple:

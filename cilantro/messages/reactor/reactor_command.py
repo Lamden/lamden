@@ -48,6 +48,9 @@ class ReactorCommand(MessageBase):
 
     @classmethod
     def create(cls, envelope: Envelope=None, **kwargs):
+        if envelope:
+            assert isinstance(envelope, Envelope), "'envelope' kwarg must be an Envelope instance"
+
         cmd = reactor_capnp.ReactorCommand.new_message()
 
         if envelope:
@@ -75,6 +78,7 @@ class ReactorCommand(MessageBase):
 
     @lazy_property
     def kwargs(self):
+        # TODO -- is this too inefficient to build a python dict everytime this object is read? Lowkey yes.
         return {arg.key: arg.value for arg in self._data.kwargs}
 
     @lazy_property
@@ -97,3 +101,8 @@ class ReactorCommand(MessageBase):
             return self.kwargs[CALLB]
         else:
             return None
+
+    def __eq__(self, other):
+        my_kwargs, other_kwargs = self.kwargs, other.kwargs
+        my_kwargs['env_bin'], other_kwargs['env_bin'] = self.envelope_binary, other.envelope_binary
+        return self.kwargs == other.kwargs
