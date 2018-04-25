@@ -235,3 +235,16 @@ def process_stamp_tx(tx):
             return stamp_q, balance_q
 
     return None
+
+
+@contract(ElectionTransaction)
+def process_election_tx(tx):
+    # command = 0, initiate
+    # command = 1, finalize
+
+    if tx.method == 'initiate':
+        pass
+    elif tx.method == 'finalize':
+        pass
+
+    return None

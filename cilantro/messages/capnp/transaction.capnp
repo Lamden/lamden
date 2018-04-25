@@ -18,7 +18,7 @@ struct StandardTransaction {
     }
 }
 
-struct ElectionTransaction {
+struct VoteTransaction {
     metadata @0 :MetaData;
     payload @1 :Payload;
 
@@ -42,7 +42,7 @@ struct SwapTransaction {
     }
 }
 
-struct StampTransaction {
+struct RedeemTransaction {
     metadata @0 :MetaData;
     payload @1 :Payload;
 
@@ -62,7 +62,7 @@ struct StampTransaction {
     }
 }
 
-struct ElectionInitiationTransaction {
+struct ElectionTransaction {
     enum Method {
       initiate @0;
       finalize @1;

@@ -1,0 +1,32 @@
+{
+	"balances" : [
+		{
+			"wallet": "",
+			"amount": 123
+		},
+		{
+			"wallet": "",
+			"amount": 123
+		},
+		{
+			"wallet": "",
+			"amount": 123
+		},
+		{
+			"wallet": "",
+			"amount": 123
+		}
+	],
+	"constants" : [
+		{
+			"policy" : "something",
+			"type" : "multi_discrete",
+			"last_election" : 0,
+			"election_length" : 168,
+			"election_frequency" : 336,
+			"max_votes" : 0,
+			"value" : "something",
+			"round" : 0
+		}
+	]
+}

@@ -23,8 +23,8 @@ class ElectionTransaction(TransactionBase):
         return self._data.payload.policy.decode()
 
     @property
-    def amount(self):
-        return self._data.payload.amount
+    def method(self):
+        return self._data.payload.method
 
 
 class ElectionTransactionBuilder:
@@ -38,7 +38,7 @@ class ElectionTransactionBuilder:
 
         tx.payload.sender = sender_v
         tx.payload.policy = policy
-        tx.payload.amount = method
+        tx.payload.method = method
         payload_binary = tx.payload.copy().to_bytes()
 
         tx.metadata.proof = Constants.Protocol.Proofs.find(payload_binary)[0]

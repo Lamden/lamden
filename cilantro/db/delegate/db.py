@@ -104,20 +104,23 @@ def create_db(name):
 
     constants = Table('constants', metadata,
                       Column('policy', String(64), nullable=False),
-                      Column('type', Enum('discrete', 'continuous', name='variable'), nullable=False),
-                      Column('last_election', DateTime, nullable=False),
-                      Column('value', BLOB, nullable=True),
+                      Column('type', Enum('discrete', 'continuous', 'multi_discrete', name='variable'), nullable=False),
+                      Column('last_election', DateTime, nullable=False), # represented as unix time stamp to minute
+                      Column('election_length', Integer, nullable=False), # represented in minutes
+                      Column('election_frequency', Integer, nullable=False), # represented in minutes
+                      Column('max_votes', Integer, nullable=False),
+                      Column('value', String(64), nullable=True),
                       Column('round', Integer, nullable=False))
 
     blocks = Table('blocks', metadata,
                    Column('root', String(64), nullable=False),
-                   Column('tree', BLOB, nullable=False),
-                   Column('signatures', BLOB, nullable=False),
+                   Column('tree', String(64), nullable=False),
+                   Column('signatures', String(64), nullable=False),
                    Column('number', Integer, nullable=False))
 
     transactions = Table('transactions', metadata,
                          Column('hash', String(64), nullable=False),
-                         Column('value', BLOB, nullable=False))
+                         Column('value', String(64), nullable=False))
 
     mapping = {}
 
@@ -257,5 +260,3 @@ class DB(metaclass=DBSingletonMeta):
     def execute(self, query) :
         self.log.debug("Executing query {}".format(query))
         return self.db.execute(query)
-
-
