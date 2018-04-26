@@ -52,6 +52,7 @@ class ReactorCore:
         executor_func = cmd.func_name
         kwargs = cmd.kwargs
 
+        self.log.critical("\n\n\n\n\n\nGOT CMD: {}".format(cmd))
         # Remove class_name and func_name from kwargs
         del(kwargs['class_name'])
         del(kwargs['func_name'])

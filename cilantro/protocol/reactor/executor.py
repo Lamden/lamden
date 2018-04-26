@@ -1,6 +1,7 @@
 import asyncio
 import zmq.asyncio
 from cilantro.logger import get_logger
+from cilantro.messages import ReactorCommand
 
 
 # TODO add some API for hooking this stuff up programatically instead of statically defining the callbacks
@@ -34,15 +35,28 @@ class Executor(metaclass=ExecutorMeta):
         self.log.warning("Starting recv on socket {} with callback {}".format(socket, callback))
         while True:
             self.log.debug("\nwaiting for multipart msg...\n")
-            multi_msg = await socket.recv_multipart()
-            self.log.debug("\n\nGot multipart msg: {}\n\n".format(multi_msg))
+            msg = await socket.recv_multipart()
+            self.log.debug("\n\nGot multipart msg: {}\n\n".format(msg))
+            assert len(msg) == 2, "Expected a multi_msg of len 2 with (header, envelope) but got {}".format(msg)
 
-            if ignore_first_frame:
-                multi_msg = multi_msg[1:]
-            self.call_on_mt(callback, *multi_msg)
+            header = None if ignore_first_frame else msg[0]
+            env = msg[1]
 
-    def call_on_mt(self, callback, *args):
-        self.inproc_socket.send_pyobj((callback, args))
+            self.call_on_mt(callback, header=header, envelope_binary=env)
+
+            # if ignore_first_frame:
+            #     multi_msg = multi_msg[1:]
+            # self.call_on_mt(callback, *multi_msg)
+
+    def call_on_mt(self, callback, header: bytes=None, envelope_binary: bytes=None, **kwargs):
+        if header:
+            # TODO -- make header a convenience property or constant on reactor callback
+            kwargs['header'] = header
+
+        cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary, **kwargs)
+        self.log.debug("Executor sending callback cmd: {}".format(cmd))
+        self.inproc_socket.send(cmd.serialize())
+        # self.inproc_socket.send_pyobj((callback, args))
 
 
 class SubPubExecutor(Executor):

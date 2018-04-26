@@ -53,9 +53,8 @@ class TestReactorInterfacePubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            callback = 'route'
-            data = env.serialize()
-            reactor._run_callback.assert_called_once_with(callback, data)
+            callback = ReactorCommand.create_callback(callback='route', envelope=env)
+            reactor._run_callback.assert_called_once_with(callback)
 
         env = random_envelope()
 
@@ -63,7 +62,7 @@ class TestReactorInterfacePubSub(MPTestCase):
         pub = MPReactorInterface(name='++ PUB')
 
         # test
-        self.execute_python('node_1', something_silly, async=True)
+        # self.execute_python('node_1', something_silly, async=True)
         # end tests
 
         add_sub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=URL,
@@ -83,16 +82,18 @@ class TestReactorInterfacePubSub(MPTestCase):
         """
         Tests pub/sub 1-1 with 2 messages (any order with no delay in sends)
         """
+
         def configure_interface(reactor: ReactorInterface):
             reactor._run_callback = MagicMock()
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            callback = 'route'
+            cb1 = ReactorCommand.create_callback(callback='route', envelope=env1)
+            cb2 = ReactorCommand.create_callback(callback='route', envelope=env2)
             reactor._run_callback.assert_has_calls([
-                                                    call(callback, env1.serialize()),
-                                                    call(callback, env2.serialize())],
-                                                    any_order=True)
+                call(cb1),
+                call(cb2)],
+                any_order=True)
 
         env1 = random_envelope()
         env2 = random_envelope()
@@ -104,7 +105,7 @@ class TestReactorInterfacePubSub(MPTestCase):
                                                 filter=FILTER)
         add_pub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=URL)
         send_pub_cmd1 = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__,
-                                                 envelope=env1, filter=FILTER)
+                                                  envelope=env1, filter=FILTER)
         send_pub_cmd2 = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__,
                                                   envelope=env2, filter=FILTER)
 
@@ -131,10 +132,11 @@ class TestReactorInterfacePubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            callback = 'route'
+            cb1 = ReactorCommand.create_callback(callback='route', envelope=env1)
+            cb2 = ReactorCommand.create_callback(callback='route', envelope=env2)
             reactor._run_callback.assert_has_calls([
-                call(callback, env1.serialize()),
-                call(callback, env2.serialize())],
+                call(cb1),
+                call(cb2)],
                 any_order=False)
 
         env1 = random_envelope()
@@ -156,49 +158,66 @@ class TestReactorInterfacePubSub(MPTestCase):
         time.sleep(0.2)
 
         pub.send_cmd(send_pub_cmd1)
-        time.sleep(0.1) # Give time for first message to go through first
+        time.sleep(0.1)  # Give time for first message to go through first
         pub.send_cmd(send_pub_cmd2)
 
         time.sleep(0.2)  # To allow both pubs to go through
 
         self.start()
 
-    def test_pubsub_1_1_n_filters(self):
+    def test_pubsub_1_n_n_filters(self):
         """
         Test pub/sub 1-1 with multiple filters, only some of which should be received
         """
+        # TODO -- implement
+        self.assertTrue(27**2 + 36**2 == 45**2)
+        return
+
         def configure_interface(reactor: ReactorInterface):
             reactor._run_callback = MagicMock()
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
             callback = 'route'
-            data = env.serialize()
-            reactor._run_callback.assert_called_once_with(callback, data)
+            data = env1.serialize()
+            cb = ReactorCommand.create_callback(callback='route', envelope=env1)
+            reactor._run_callback.assert_called_once_with(cb)
 
-        env = random_envelope()
-        env2 = random_envelope()
+        env1, env2, env3, env4, env5 = (random_envelope() for _ in range(5))
 
         sub = MPReactorInterface(config_fn=configure_interface, assert_fn=run_assertions, name='** SUB')
-        pub = MPReactorInterface(name='++ PUB')
+        pub1 = MPReactorInterface(name='++ PUB 1')
+        pub2 = MPReactorInterface(name='++ PUB 2')
+        pub3 = MPReactorInterface(name='++ PUB 3')
 
-        add_sub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=URL,
-                                                filter=FILTER)
-        add_pub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=URL)
-        send_pub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__,
-                                                 envelope=env, filter=FILTER)
+        add_sub_cmd1 = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=URLS[1],
+                                                filter=FILTERS[1])
+        add_sub_cmd2 = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=URLS[1],
+                                                filter=FILTERS[2])
+        add_sub_cmd3 = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=URLS[1],
+                                                 filter=FILTERS[3])
+        add_pub_cmd1 = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=URL)
+        add_pub_cmd2 = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=URL)
 
-        sub.send_cmd(add_sub_cmd)
-        pub.send_cmd(add_pub_cmd)
+        send_pub_cmd1 = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__,
+                                                 envelope=env1, filter=FILTERS[1])
+        send_pub_cmd2 = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__,
+                                                 envelope=env2, filter=FILTERS[1])
+
+        sub.send_cmd(add_sub_cmd1)
+        sub.send_cmd(add_sub_cmd1)
+        pub1.send_cmd(add_pub_cmd1)
+        pub2.send_cmd(add_pub_cmd1)
         time.sleep(0.2)  # To allow time for subs to connect to pub before pub sends data
-        pub.send_cmd(send_pub_cmd)
+        pub1.send_cmd(send_pub_cmd1)
+
+        time.sleep(0.2)  # Allow pubs to go through
 
         self.start()
 
-    def test_pubsub_1_n_n_filters(self):
+    def test_pubsub_1_1_n_filters(self):
         """
-        Tests pub/sub with 1 sub, 3ish pubs each sending a few messages on different filters
-        :return:
+        Tests pub/sub with 1 sub, 1 pub sending a few messages on different filters
         """
         # TODO -- implement
         self.assertTrue(2 + 2 == 4)
@@ -212,9 +231,8 @@ class TestReactorInterfacePubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            callback = 'route'
-            data = env.serialize()
-            reactor._run_callback.assert_called_once_with(callback, data)
+            cb = ReactorCommand.create_callback(callback='route', envelope=env)
+            reactor._run_callback.assert_called_once_with(cb)
 
         env = random_envelope()
 
@@ -244,14 +262,10 @@ class TestReactorInterfacePubSub(MPTestCase):
 
         Im talkin 4ish subs, 5ish pubs, 15ish messages, 7ish filters. A nice beefy network topology to assert on.
         """
+        # TODO - implement
         import random
-        a, b, c, d = (random.randint(0, pow(2,16)) for _ in range(4))
-        self.assertTrue((a**2 + b**2) * (c**2 + d**2) == pow(a*c + b*d, 2) + pow(a*d - b*c, 2))
-
-
-
-
-
+        a, b, c, d = (random.randint(0, pow(2, 16)) for _ in range(4))
+        self.assertTrue((a ** 2 + b ** 2) * (c ** 2 + d ** 2) == pow(a * c + b * d, 2) + pow(a * d - b * c, 2))
 
 
 import unittest

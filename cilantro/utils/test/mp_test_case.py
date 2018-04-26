@@ -15,7 +15,7 @@ from cilantro.utils.test.mp_test import MPTesterBase, SIG_ABORT, SIG_FAIL, SIG_R
 URL = "tcp://127.0.0.1:5020"
 
 TEST_TIMEOUT = 5
-TEST_POLL_FREQ = 0.25
+TEST_POLL_FREQ = 0.1
 
 
 class MPTestCase(TestCase):
@@ -63,20 +63,20 @@ class MPTestCase(TestCase):
         assert len(MPTesterBase.testers) == 0, "setUp called but MPTesterBase._testers is not empty ({})"\
                                                 .format(MPTesterBase.testers)
 
-        if not self._is_setup:
-            self.__class__._is_setup = True
-            self.testdir = '{}/{}'.format(self.logdir, self.testname)
-            try: shutil.rmtree(self.testdir)
-            except: pass
-            os.environ['TEST_NAME'] = self.testname
-            self.run_script('--clean')
-            self.run_script('--compose_file {} --docker_dir {} &'.format(
-                self.compose_file,
-                self.docker_dir
-            ))
-            print('Running test "{}" and waiting for {}s...'.format(self.testname, self.waittime))
-            time.sleep(self.waittime)
-            sys.stdout.flush()
+        # if not self._is_setup:
+        #     self.__class__._is_setup = True
+        #     self.testdir = '{}/{}'.format(self.logdir, self.testname)
+        #     try: shutil.rmtree(self.testdir)
+        #     except: pass
+        #     os.environ['TEST_NAME'] = self.testname
+        #     self.run_script('--clean')
+        #     self.run_script('--compose_file {} --docker_dir {} &'.format(
+        #         self.compose_file,
+        #         self.docker_dir
+        #     ))
+        #     print('Running test "{}" and waiting for {}s...'.format(self.testname, self.waittime))
+        #     time.sleep(self.waittime)
+        #     sys.stdout.flush()
         # print("---- set up called ----")
 
     def tearDown(self):

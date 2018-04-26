@@ -156,7 +156,7 @@ class TestReactorInterfacePubSub(MPTestCase):
         time.sleep(0.2)
 
         pub.send_cmd(send_pub_cmd1)
-        time.sleep(0.1) # Give time for first message to go through first
+        time.sleep(0.1)  # Give time for first message to go through first
         pub.send_cmd(send_pub_cmd2)
 
         time.sleep(0.2)  # To allow both pubs to go through
@@ -180,7 +180,8 @@ class TestReactorInterfacePubSub(MPTestCase):
         env2 = random_envelope()
 
         sub = MPReactorInterface(config_fn=configure_interface, assert_fn=run_assertions, name='** SUB')
-        pub = MPReactorInterface(name='++ PUB')
+        pub = MPReactorInterface(name='++ PUB 1')
+        pub = MPReactorInterface(name='++ PUB 2')
 
         add_sub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=URL,
                                                 filter=FILTER)
@@ -192,6 +193,8 @@ class TestReactorInterfacePubSub(MPTestCase):
         pub.send_cmd(add_pub_cmd)
         time.sleep(0.2)  # To allow time for subs to connect to pub before pub sends data
         pub.send_cmd(send_pub_cmd)
+
+        time.sleep(0.2) # Allow pubs to go through
 
         self.start()
 
