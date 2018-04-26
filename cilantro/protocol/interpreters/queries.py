@@ -259,10 +259,16 @@ def process_election_tx(tx):
 
     assert policy or policy[0], "Policy does not exist."
 
-    if tx.method == 'initiate':
+    assert dict(policy)['in_vote'] is False, 'Policy is currently being voted on'
 
-        pass
-    elif tx.method == 'finalize':
-        pass
+    now_in_hours = int(time.time() / 60 / 60)
 
-    return None
+    assert now_in_hours - dict(policy)['last_election'] > dict(policy)['election_frequency'], \
+        'It is too soon to start another election on this policy.'
+
+    policy_q = update(tables.constants).values(
+        policy=tx.policy,
+        in_vote=True
+    )
+
+    return policy_q

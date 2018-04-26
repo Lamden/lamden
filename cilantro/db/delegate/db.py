@@ -110,6 +110,8 @@ def create_db(name):
                       Column('election_frequency', Integer, nullable=False), # represented in minutes
                       Column('max_votes', Integer, nullable=False),
                       Column('value', TEXT, nullable=True),
+                      Column('in_vote', Boolean, nullable=False),
+                      Column('permissions', Integer, nullable=False),
                       Column('round', Integer, nullable=False))
 
     blocks = Table('blocks', metadata,
