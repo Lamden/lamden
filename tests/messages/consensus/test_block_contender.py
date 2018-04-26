@@ -96,3 +96,8 @@ class BlockContenderTest(TestCase):
 
         for i in range(len(nodes)):
             self.assertEqual(bc.nodes[i], clone.nodes[i])
+
+    # TODO test invalid deserialize with a list of 'bad' signatures, ie sigs that are not valid MerkleSignature binaries
+    # manually create the json binary to deserialize an object, by creating a dict with 'nodes' as a list of whatever
+    # and 'signatures', which is a list of bad binary strings, ie [b'lol', b'sup', b'cats'], and then json.dumps that
+    # thing. Assure an error is rasied when you try to BlockContender.from_bytes(...) on that bad json binary
