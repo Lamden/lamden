@@ -239,11 +239,25 @@ def process_stamp_tx(tx):
 
 @contract(ElectionTransaction)
 def process_election_tx(tx):
-    # command = 0, initiate
-    # command = 1, finalize
 
     q = select([tables.constants]).where(tables.constants.c.policy == tx.policy)
     m = select([tables.constants]).where(tables.constants.c.policy == 'masternodes')
+
+    mn_payload = execute(m).fetchone()
+
+    assert mn_payload or mn_payload[0], 'Masternode policy table does not exist.'
+
+    # extract masternodes from single masternode payload
+    mn_list = []
+    while len(mn_payload) > 0:
+        mn_list.append(mn_payload[:64])
+        mn_payload = mn_payload[64:]
+
+    assert tx.sender in mn_list, "Sender is not a Masternode."
+
+    policy = execute(q).fetchone()
+
+    assert policy or policy[0], "Policy does not exist."
 
     if tx.method == 'initiate':
 

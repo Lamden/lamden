@@ -26,20 +26,24 @@ with DB('{}_{}'.format(DB_NAME, 0)) as db:
 
     masternodes = []
     delegates = []
+    witnesses = []
 
     # add state for tables that are not masternodes and delegates as those get treated differently
     for k in j.keys():
         for item in j[k]:
-            if k != 'masternodes' and k != 'delegates':
+            if k != 'masternodes' and k != 'delegates' and k != 'witnesses':
                 t = getattr(db.tables, k)
                 db.execute(t.insert(item))
             elif k == 'masternodes':
                 masternodes.append(item)
             elif k == 'delegates':
                 delegates.append(item)
+            elif k == 'witnesses':
+                witnesses.append(item)
 
-    # sort masternodes and delegates lexigraphically for determinism
-
+    # add the masternodes and delegates to the policy table. this is so that users can easily add wallets to the
+    # constitution and
     t = getattr(db.tables, 'constants')
     db.execute(t.insert(get_policy_for_node_list(masternodes, 'masternodes')))
     db.execute(t.insert(get_policy_for_node_list(delegates, 'delegates')))
+    db.execute(t.insert(get_policy_for_node_list(witnesses, 'witnesses')))
