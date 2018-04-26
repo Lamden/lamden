@@ -50,10 +50,52 @@ def process_std_tx(tx):
 
 @contract(VoteTransaction)
 def process_vote_tx(tx):
+
+    def assert_sender_has_permissions(node_type):
+        m = select([tables.constants]).where(tables.constants.c.policy == node_type)
+
+        payload = execute(m).fetchone()
+
+        assert payload or payload[0], '{} policy table does not exist.'.format(node_type)
+
+        # extract masternodes from single masternode payload
+        l = []
+        while len(payload) > 0:
+            l.append(payload[:64])
+            payload = payload[64:]
+
+        assert tx.sender in l, "Sender is not a {}.".format(node_type)
+
+    p = select([tables.constants]).where(tables.constants.c.policy == tx.policy)
+
+    policy = p.fetchone()
+
+    assert policy or policy[0], "Policy does not exist."
+
+    permissions = dict(policy)['permissions']
+
+    assert permissions < 8, 'Permission value is an overflow. Must be less than 8.'
+
+    permissions = bin(permissions)[:2]
+
+    masternode_required = True if permissions[0] == '1' else False
+    delegate_required = True if permissions[1] == '1' else False
+    witness_required = True if permissions[2] == '1' else False
+
+    if masternode_required:
+        assert_sender_has_permissions('masternodes')
+
+    if delegate_required:
+        assert_sender_has_permissions('delegates')
+
+    if witness_required:
+        assert_sender_has_permissions('witnesses')
+
     q = insert(tables.votes).values(
                 wallet=tx.sender,
                 policy=tx.policy,
-                choice=tx.choice
+                choice=tx.choice,
+                round=dict(policy)['round']
             )
     return q
 
@@ -268,7 +310,8 @@ def process_election_tx(tx):
 
     policy_q = update(tables.constants).values(
         policy=tx.policy,
-        in_vote=True
+        in_vote=True,
+        round=dict(policy)['round'] + 1
     )
 
     return policy_q
