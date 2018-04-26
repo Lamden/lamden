@@ -1,6 +1,6 @@
-from cilantro.messages import MessageBase, MerkleSignature
+from cilantro.messages import MessageBase
 from cilantro.utils import lazy_property, set_lazy_property
-# from cilantro.messages.consensus.merkle_signature import MerkleSignature
+from cilantro.messages.consensus.merkle_signature import MerkleSignature
 import pickle
 
 """

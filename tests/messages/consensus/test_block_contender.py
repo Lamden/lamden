@@ -8,7 +8,6 @@ TIMESTAMP = 'now'
 
 
 class BlockContenderTest(TestCase):
-
     def _create_merkle_sig(self, msg: bytes):
         """
         Helper method to create a MerkleSignature and wallet keys
@@ -22,7 +21,7 @@ class BlockContenderTest(TestCase):
 
         return ms, sk, vk
 
-    def test_creation(self):
+    def test_bc_creation(self):
         """
         Tests that a created BlockContender has the expected properties
         """
@@ -42,7 +41,7 @@ class BlockContenderTest(TestCase):
         for i in range(len(nodes)):
             self.assertTrue(bc.nodes[i].__eq__(nodes[i]))
 
-    def test_deserialize_invalid(self):
+    def test_create_bc_bad_json(self):
         """
         Tests that attempting to create a BlockContender from bad binary throws an assertion
         """
@@ -50,6 +49,7 @@ class BlockContenderTest(TestCase):
         bad_json = b'xVVVVVVVV'
         self.assertRaises(Exception, BlockContender.create, bad_json)
 
+    def test_create_bc_missing_fields(self):
         # tests creating a BlockContender with valid json but missing fields throws an error
         bad_dict1 = {'sig': ['sig1', 'sig2', 'sig3'], 'nodes': None}
         self.assertRaises(Exception, BlockContender.create, bad_dict1)
@@ -57,6 +57,7 @@ class BlockContenderTest(TestCase):
         bad_dict2 = {'sig': None, 'nodes': [1, 2, 3]}
         self.assertRaises(Exception, BlockContender.create, bad_dict2)
 
+    def test_create_bc_normal_fields(self):
         msg = b'payload'
         nodes = [1, 2, 3, 4]
 
@@ -69,7 +70,7 @@ class BlockContenderTest(TestCase):
 
         BlockContender.create(signatures, nodes)  # should not throw an error
 
-    def test_deserialize(self):
+    def test_deserialize_valid_object(self):
         """
         Tests that the same object is recovered when serialized and deserialized
         """
@@ -88,16 +89,16 @@ class BlockContenderTest(TestCase):
         bc_ser = bc.serialize()
 
         clone = BlockContender.from_bytes(bc_ser)
-        print(clone)
 
-        # TODO fix
         for i in range(len(signatures)):
             self.assertEqual(bc.signatures[i], clone.signatures[i])
 
         for i in range(len(nodes)):
             self.assertEqual(bc.nodes[i], clone.nodes[i])
 
-    # TODO test invalid deserialize with a list of 'bad' signatures, ie sigs that are not valid MerkleSignature binaries
-    # manually create the json binary to deserialize an object, by creating a dict with 'nodes' as a list of whatever
-    # and 'signatures', which is a list of bad binary strings, ie [b'lol', b'sup', b'cats'], and then json.dumps that
-    # thing. Assure an error is rasied when you try to BlockContender.from_bytes(...) on that bad json binary
+    def test_deserialize_invalid_object(self):
+        bad_json = {'nodes': [1,2,3,4], 'signatures': [b'lol'.decode('utf-8'), b'sup'.decode('utf-8'),
+                                                       b'cats'.decode('utf-8')]}
+        bad_bc = json.dumps(bad_json)
+
+        self.assertRaises(TypeError, BlockContender.from_bytes, bad_bc)  # type error

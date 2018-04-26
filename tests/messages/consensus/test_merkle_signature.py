@@ -20,7 +20,7 @@ class TestMerkleSignature(TestCase):
         self.assertEqual(ms.timestamp, timestamp)
         self.assertEqual(ms.sender, vk)
 
-    def test_invalid_signature(self):
+    def test_invalid_signature_nonhex(self):
         """
         Tests that an error is raised during validation if an invalid signature is passed (nonhex, or length != 128)
         """
@@ -33,16 +33,23 @@ class TestMerkleSignature(TestCase):
         nonhex = MerkleSignature.create(sig_hex=sig, timestamp=timestamp, sender=vk, validate=False)
         self.assertRaises(Exception, nonhex.validate)
 
+    def test_invalid_signature_bad_length(self):
         # Test signature incorrect length (but valid hex)
+        sk, vk = ED25519Wallet.new()
+        timestamp = 'now'
         sig = ''.join(('A' for _ in range(100)))
         wrong_len = MerkleSignature.create(sig_hex=sig, timestamp=timestamp, sender=vk, validate=False)
         self.assertRaises(Exception, wrong_len.validate)
 
+    def test_validate_catches_bad_sig(self):
         # test that validate is called by default and throws an exception with bad sig
+        sk, vk = ED25519Wallet.new()
         sig = ''.join(('X' for _ in range(128)))
+        timestamp = 'now'
+
         self.assertRaises(Exception, MerkleSignature.create, sig_hex=sig, timestamp=timestamp, sender=vk)
 
-    def test_invalid_sender(self):
+    def test_invalid_sender_wrong_sender(self):
         """
         Tests that an error is raised during creation if an invalid sender field is passed in. A sender should be a
         64 character hex string verifying key.
@@ -57,6 +64,7 @@ class TestMerkleSignature(TestCase):
         bad_public_key = MerkleSignature.create(sig_hex=signature, timestamp=timestamp, sender=vk_bad)
         self.assertRaises(Exception, bad_public_key)
 
+    def test_valid_sender(self):
         # Confirm no error when correct public key is used
         msg = b'this is a pretend merkle tree hash'
         sk, vk = ED25519Wallet.new()
@@ -65,6 +73,7 @@ class TestMerkleSignature(TestCase):
         timestamp = 'now'
         MerkleSignature.create(sig_hex=signature, timestamp=timestamp, sender=vk)  # no error thrown
 
+    def test_invalid_sender_bad_hash(self):
         # Test an error is thrown when created with a sender of not valid hash
         msg = b'this is a pretend merkle tree hash'
         sk, vk = ED25519Wallet.new()
@@ -75,6 +84,7 @@ class TestMerkleSignature(TestCase):
         self.assertRaises(Exception, MerkleSignature.create(sig_hex=signature, timestamp=timestamp, sender=vk_bad_hash,
                                                             validate=False))
 
+    def test_invalid_sender_bad_pk_length(self):
         # Test an error is thrown when created with a sender of invalid length (not 64)
         msg = b'this is a pretend merkle tree hash'
         sk, vk = ED25519Wallet.new()
@@ -97,7 +107,7 @@ class TestMerkleSignature(TestCase):
         timestamp = 99
         self.assertRaises(TypeError, MerkleSignature.create(sig_hex=signature, timestamp=timestamp, sender=vk))
 
-    def test_deserialization_invalid(self):
+    def test_deserialization_invalid_json(self):
         """
         Tests that attempting to deserialize a MerkleSignature from a bad binary (not json, not valid fields, ect) throws
         as error
@@ -106,12 +116,14 @@ class TestMerkleSignature(TestCase):
         bad_json = b'lololololol()**[][]XXX-----!!!!!'
         self.assertRaises(json.decoder.JSONDecodeError, MerkleSignature.from_bytes, bad_json)
 
+    def test_deserialization_missing_fields(self):
         # Test valid json but missing fields
         sig = ''.join(('A' for _ in range(128)))
         d = {MerkleSignature.SIG: sig, MerkleSignature.TS: 'now'}
         binary = json.dumps(d).encode()
         self.assertRaises(AssertionError, MerkleSignature.from_bytes, binary)
 
+    def test_deserialization_bad_sk_length(self):
         # Test valid json but signature (private key) is of the wrong length
         msg = b'this is a pretend merkle tree hash'
         sk, vk = ED25519Wallet.new()
@@ -121,6 +133,7 @@ class TestMerkleSignature(TestCase):
         binary = json.dumps(d).encode()
         self.assertRaises(Exception, MerkleSignature.from_bytes, binary)
 
+    def test_deserialization_bad_sk_hex(self):
         # Test valid json but signature (private key) not proper hex
         msg = b'this is a pretend merkle tree hash'
         sk, vk = ED25519Wallet.new()
@@ -130,6 +143,7 @@ class TestMerkleSignature(TestCase):
         binary = json.dumps(d).encode()
         self.assertRaises(Exception, MerkleSignature.from_bytes, binary)
 
+    def test_deserialization_valid_json(self):
         # Test valid json throws no errors
         msg = b'this is a pretend merkle tree hash'
         sk, vk = ED25519Wallet.new()
@@ -159,7 +173,7 @@ class TestMerkleSignature(TestCase):
         self.assertEqual(valid_merkle_sig.timestamp, clone.timestamp)
         self.assertEqual(valid_merkle_sig.sender, clone.sender)
 
-    def test_verify(self):
+    def test_verify_valid_ms(self):
         """
         Tests that MerkleSignature.verify(...) returns true given a proper msg and vk
         """
@@ -172,11 +186,14 @@ class TestMerkleSignature(TestCase):
 
         self.assertTrue(ms.verify(msg, vk))
 
+    def test_verify_wrong_ms(self):
         # Test merkle tree validation returns false for incorrect verifying (public) key
+        msg = b'this is a pretend merkle tree hash'
+        timestamp = 'now'
+        sk, vk = ED25519Wallet.new()
+        signature = ED25519Wallet.sign(sk, msg)
+        ms = MerkleSignature.create(sig_hex=signature, timestamp=timestamp, sender=vk)
+
         sk1, vk1 = ED25519Wallet.new()
-        signature = ED25519Wallet.sign(sk1, msg)
-        ms1 = MerkleSignature.create(sig_hex=signature, timestamp=timestamp, sender=vk1)
 
         self.assertFalse(ms.verify(msg, vk1))
-        #
-        # # TODO -- assert that ms.verify(msg, vk') returns False for invalid verifying key vk' (not hex or wrong length)
