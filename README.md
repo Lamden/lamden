@@ -2,11 +2,17 @@
 
 [![Coverage Status](https://coveralls.io/repos/github/Lamden/cilantro/badge.svg?branch=master)](https://coveralls.io/github/Lamden/cilantro?branch=master)
 
-Cilantro is an enterprise level blockchain that is focused on high throughput and scalability. Cilantro can process
-thousands of transactions per second and incorporates a smart contract language called Seneca to provide advanced user functionality.
-Features such as staking and anti-spam measures are also included out of the box.
+Cilantro is a piece of software that allows the modular construction of blockchains. It is the piece of the puzzle that allows rapid development of decentralized systems while not restricting the possibilities of what said system can do. Lamden’s main deployment of Cilantro is for atomic swaps via the Clove protocol. This deployment is what holds the Lamden Tau coin and is what our first decentralized application will be for the public.
+
+What this deployment serves is two purposes: one, provide free and fast transactions and atomic swaps to introduce true interoperability to the crypto space in a way that is not controlled by a singular party, and two, demonstrate a successful deployment of the Lamden suite to create a brand new blockchain application.
+
+
+
 
 ## Technical Details
+Cilantro is an enterprise level blockchain that is focused on high throughput and scalability. Cilantro can process
+thousands of transactions per second and incorporates a smart contract language called Seneca to provide advanced user functionality. Features such as staking and anti-spam measures are also included out of the box.
+
 
 Cilantro is built utilizing the ZeroMQ messaging platform. ZMQ is respected networking library that
 provides advanced socket functionality and several useful message patterns that work well in an asynchronous framework.
