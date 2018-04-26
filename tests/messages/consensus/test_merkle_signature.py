@@ -170,13 +170,13 @@ class TestMerkleSignature(TestCase):
         signature = ED25519Wallet.sign(sk, msg)
         ms = MerkleSignature.create(sig_hex=signature, timestamp=timestamp, sender=vk)
 
-        ms.verify(ms, vk)
-        #
-        # # Test merkle tree validation returns false for incorrect verifying (public) key
-        # sk1, vk1 = ED25519Wallet.new()
-        # signature = ED25519Wallet.sign(sk1, msg)
-        # ms1 = MerkleSignature.create(sig_hex=signature, timestamp=timestamp, sender=vk1)
-        #
-        # self.assertFalse(ms.verify(msg, vk1))
+        self.assertTrue(ms.verify(msg, vk))
+
+        # Test merkle tree validation returns false for incorrect verifying (public) key
+        sk1, vk1 = ED25519Wallet.new()
+        signature = ED25519Wallet.sign(sk1, msg)
+        ms1 = MerkleSignature.create(sig_hex=signature, timestamp=timestamp, sender=vk1)
+
+        self.assertFalse(ms.verify(msg, vk1))
         #
         # # TODO -- assert that ms.verify(msg, vk') returns False for invalid verifying key vk' (not hex or wrong length)

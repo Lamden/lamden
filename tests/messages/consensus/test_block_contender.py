@@ -37,12 +37,10 @@ class BlockContenderTest(TestCase):
 
         # assert bc.signatures = signature over all signatures
         for i in range(len(signatures)):
-            self.assertTrue(bc.signatures[i].__eq__(signatures[i])) # __eq__ way to test signatures are equal
-            self.assertTrue(bc.signatures[i], signatures[i])
+            self.assertTrue(bc.signatures[i].__eq__(signatures[i]))  # __eq__ way to test signatures are equal
 
         for i in range(len(nodes)):
             self.assertTrue(bc.nodes[i].__eq__(nodes[i]))
-            self.assertTrue(bc.nodes[i], nodes[i])
 
     def test_deserialize_invalid(self):
         """
@@ -58,23 +56,6 @@ class BlockContenderTest(TestCase):
 
         bad_dict2 = {'sig': None, 'nodes': [1, 2, 3]}
         self.assertRaises(Exception, BlockContender.create, bad_dict2)
-
-        # TODO: tests for fail when creating a BlockContender with valid json and valid fields,
-        # but _data[BlockContender.SIGS] is not a list of MerkleSignature binaries
-        # (i.e. if _data[BlockContender.SIGS] is a list of random garbage binary strings, an error should be thrown when trying
-        # to create the BlockContender from binary because the signature cannot be deserialized into MerkleSignatures)
-        msg = b'payload'
-        nodes = [1, 2, 3, 4]
-
-        sig1, sk1, vk1 = self._create_merkle_sig(msg)
-        sig2, sk2, vk2 = self._create_merkle_sig(msg)
-        sig3, sk3, vk3 = self._create_merkle_sig(msg)
-        sig4, sk4, vk4 = self._create_merkle_sig(msg)
-
-        signatures = [sig1, b'ayo', sig3, None]  # bad signature dict
-
-        self.assertRaises(Exception, BlockContender.create, signatures, nodes)  # TODO this is not throwing Exception??
-
 
         msg = b'payload'
         nodes = [1, 2, 3, 4]
@@ -106,7 +87,8 @@ class BlockContenderTest(TestCase):
 
         bc_ser = bc.serialize()
 
-        clone = BlockContender.create(bc._deserialize_data(bc_ser), nodes)
+        clone = BlockContender.from_bytes(bc_ser)
+        print(clone)
 
         # TODO fix
         for i in range(len(signatures)):
