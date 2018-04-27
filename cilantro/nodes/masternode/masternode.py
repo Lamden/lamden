@@ -126,6 +126,7 @@ class MNRunState(MNBaseState):
             self.parent.reactor.request(url=TestNetURLHelper.dealroute_url(replier), data=Envelope.create(req), timeout=1)
 
     def compute_hash_of_nodes(self, nodes) -> str:
+        # TODO -- i think the merkle tree can do this for us..?
         self.log.critical("Masternode computing hash of nodes...")
         h = hashlib.sha3_256()
         [h.update(o) for o in nodes]
