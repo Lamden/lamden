@@ -89,8 +89,8 @@ class TestReactorDealerRouter(MPTestCase):
 
         def config_router(reactor: ReactorInterface):
             def reply_effect(*args, **kwargs):
-                log = get_logger("ASSERT ROUTER SIDE EFFECT WTIH")
-                log.critical("\n\n sending reply command... \n\n")
+                # log = get_logger("ASSERT ROUTER SIDE EFFECT WTIH")
+                # log.critical("\n\n sending reply command... \n\n")
                 reactor.send_cmd(reply)
                 dealer.send_cmd(reply)
 
@@ -136,5 +136,56 @@ class TestReactorDealerRouter(MPTestCase):
         time.sleep(0.2)
 
         dealer.send_cmd(request)
+
+        self.start()
+
+    def test_req_reply_1_1_n(self):
+        """
+        Tests mutiple request/reply round trips between dealer and router.
+        """
+        self.assertEqual('hi', 'hi')
+
+    def test_req_1_n_1(self):
+        """
+        Tests req from 1 dealer to 2 routers.
+        """
+        def run_assertions(reactor: ReactorInterface):
+            cb = ReactorCommand.create_callback(callback=REQ_CALLBACK, envelope=env, header=DEALER_ID)
+            reactor._run_callback.assert_called_once_with(cb)
+
+        DEALER_URL = URLS[0]
+        DEALER_ID = "id-" + DEALER_URL  # irl this would a node's vk
+        ROUTER1_URL = URLS[0]
+        ROUTER2_URL = URLS[1]
+
+        env = random_envelope()
+
+        dealer = MPReactorInterface(name='DEALER')
+        router1 = MPReactorInterface(config_fn=config_reactor, assert_fn=run_assertions, name='ROUTER 1')
+        router2 = MPReactorInterface(config_fn=config_reactor, assert_fn=run_assertions, name='ROUTER 2')
+
+        add_dealer = ReactorCommand.create_cmd(class_name=DealerRouterExecutor.__name__,
+                                                   func_name=DealerRouterExecutor.add_dealer.__name__,
+                                                   url=ROUTER1_URL, id=DEALER_ID)
+        add_router1 = ReactorCommand.create_cmd(class_name=DealerRouterExecutor.__name__,
+                                                   func_name=DealerRouterExecutor.add_router.__name__,
+                                                   url=ROUTER1_URL)
+        add_router2 = ReactorCommand.create_cmd(class_name=DealerRouterExecutor.__name__,
+                                                func_name=DealerRouterExecutor.add_router.__name__,
+                                                url=ROUTER2_URL)
+        request1 = ReactorCommand.create_cmd(class_name=DealerRouterExecutor.__name__,
+                                                func_name=DealerRouterExecutor.request.__name__,
+                                                url=ROUTER1_URL,  envelope=env)
+        request2 = ReactorCommand.create_cmd(class_name=DealerRouterExecutor.__name__,
+                                             func_name=DealerRouterExecutor.request.__name__,
+                                             url=ROUTER2_URL, envelope=env)
+
+        dealer.send_cmd(add_dealer)
+        router1.send_cmd(add_router1)
+        router2.send_cmd(add_router2)
+
+        time.sleep(0.2)
+        dealer.send_cmd(request1)
+        dealer.send_cmd(request2)
 
         self.start()
