@@ -9,7 +9,7 @@
 from cilantro import Constants
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, recv, recv_req, timeout
-from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply
+from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, MessageMeta
 from cilantro.utils import TestNetURLHelper
 from aiohttp import web
 import asyncio
@@ -24,8 +24,15 @@ class MNBaseState(State):
 
     @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
-        self.log.critical("mn about to pub")
-        self.parent.reactor.pub(url=TestNetURLHelper.pubsub_url(self.parent.url), data=Envelope.create(tx))
+        self.log.critical("mn about to pub for tx {}".format(tx))
+
+        try:
+            env = Envelope.create(signing_key=self.parent.signing_key, sender=self.parent.url, data=tx)
+            self.log.critical("env created: {}".format(env))
+            self.parent.reactor.pub(filter=Constants.ZmqFilters.WitnessMasternode, envelope=env)
+        except Exception as e:
+            self.log.error("Erorr sending tx: {}".format(e))
+
         self.log.critical("published on our url: {}".format(TestNetURLHelper.pubsub_url(self.parent.url)))
         return web.Response(text="Successfully published transaction: {}".format(tx))
 
@@ -60,7 +67,7 @@ class MNRunState(MNBaseState):
     def __init__(self, state_machine=None):
         super().__init__(state_machine=state_machine)
         self.app = web.Application()
-        self.loop = asyncio.new_event_loop()
+        # self.loop = asyncio.new_event_loop()
         self.app.router.add_post('/', self.parent.route_http)
 
         self.block_contenders = []
@@ -70,21 +77,15 @@ class MNRunState(MNBaseState):
         self.is_updating = False
 
     def enter(self, prev_state):
-        asyncio.set_event_loop(self.loop)
-        # ^ should this just be in init?
+        asyncio.set_event_loop(self.parent.loop)
 
     def run(self):
         self.log.info("Starting web server")
         web.run_app(self.app, host='0.0.0.0',#Constants.Testnet.Masternode.Host,
                     port=int(Constants.Testnet.Masternode.ExternalPort))
-        # ^ this blocks I think? Or maybe not cause he's on a new event loop..?
 
     def exit(self, next_state):
         pass
-        # TODO -- reset state vars (node_states, transactions, ect)
-        # TODO -- stop web server, event loop
-        # Or is it blocking? ...
-        # And if its blocking that means we can't receive on ZMQ sockets right?
 
     @recv_req(BlockContender)
     def recv_block(self, block: BlockContender, id):
@@ -125,6 +126,7 @@ class MNRunState(MNBaseState):
             self.parent.reactor.request(url=TestNetURLHelper.dealroute_url(replier), data=Envelope.create(req), timeout=1)
 
     def compute_hash_of_nodes(self, nodes) -> str:
+        # TODO -- i think the merkle tree can do this for us..?
         self.log.critical("Masternode computing hash of nodes...")
         h = hashlib.sha3_256()
         [h.update(o) for o in nodes]
@@ -149,10 +151,10 @@ class MNRunState(MNBaseState):
             self.log.error("Received block data reply but not in updating state (reply={})".format(reply))
             return
 
-        self.log.critical("masternode got block data reply: {}".format(reply))
+        self.log.debug("masternode got block data reply: {}".format(reply))
         tx_hash = reply.tx_hash
-        self.log.critical("BlockReply tx hash: {}".format(tx_hash))
-        self.log.critical("Pending transactions: {}".format(self.tx_hashes))
+        self.log.debug("BlockReply tx hash: {}".format(tx_hash))
+        self.log.debug("Pending transactions: {}".format(self.tx_hashes))
         if tx_hash in self.tx_hashes:
             self.retrieved_txs[tx_hash] = reply.raw_tx
         else:
@@ -169,12 +171,17 @@ class MNRunState(MNBaseState):
         self.log.critical("BlockDataRequest timed out for url {} with request data {}".format(url, request))
         pass
 
+
 class MNNewBlockState(MNBaseState): pass
 
 
 class Masternode(NodeBase):
     _INIT_STATE = MNBootState
     _STATES = [MNBootState, MNRunState]
+
     def __init__(self, url=Constants.Testnet.Masternode.InternalUrl, signing_key=Constants.Testnet.Masternode.Sk):
         super().__init__(url=url, signing_key=signing_key)
+        self.log.critical("hey, about to call self.start()")
         self.start()
+        self.log.critical("hey self.start() is not block!!!!!!!!")
+        self.loop.run_until_complete()

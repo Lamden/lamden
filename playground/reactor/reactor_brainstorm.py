@@ -113,7 +113,7 @@ class NetworkReactor(Thread):
 
     def __init__(self, queue):
         super().__init__()
-        self.log = get_logger("NetworkReactor")
+        self.log = get_logger("ReactorInterface")
         self.queue = queue
 
         # Does this need to be inside run()? I think it might bruh
@@ -240,7 +240,7 @@ class RemoveSubCommand(Command):
 # if __name__ == "__main__":
 #     log = get_logger("Main")
 #     q = aioprocessing.AioQueue()
-#     reactor = NetworkReactor(queue=q)
+#     reactor = ReactorInterface(queue=q)
 #     reactor.start()
 #
 #     q.coro_put("Hi This Is An Item")

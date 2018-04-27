@@ -56,11 +56,13 @@ class DelegateBootState(DelegateBaseState):
         # Sub to other delegates
         for delegate in [d for d in Constants.Testnet.Delegates if d['url'] != self.parent.url]:
             self.log.info("{} subscribing to delegate {}".format(self.parent.url, delegate['url']))
-            self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(delegate['url']))
+            self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(delegate['url']),
+                                        filter=Constants.ZmqFilters.DelegateDelegate)
         # Sub to witnesses
         for witness in Constants.Testnet.Witnesses:
             self.log.info("{} subscribing to witness {}".format(self.parent.url, witness['url']))
-            self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(witness['url']))
+            self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(witness['url']),
+                                        filter=Constants.ZmqFilters.WitnessDelegate)
 
         # Pub on our own url
         self.parent.reactor.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
@@ -272,3 +274,5 @@ class Delegate(NodeBase):
         self.interpreter = VanillaInterpreter()
 
         self.start()
+        self.log.critical("delegate sm started")
+        self.loop.run_forever()

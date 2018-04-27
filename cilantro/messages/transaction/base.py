@@ -2,6 +2,7 @@ from cilantro import Constants
 from cilantro.messages.base import MessageBase
 from cilantro.messages.utils import validate_hex
 from cilantro.db.delegate import contract
+from cilantro.utils import lazy_property
 import capnp
 
 
@@ -14,6 +15,14 @@ class TransactionBase(MessageBase):
         super().__init__(data)
         self.pow = Constants.Protocol.Proofs
         self.wallet = Constants.Protocol.Wallets
+
+    def interpret(self, *args, **kwargs):
+        """
+        Interprets the transaction and returns the SQLAlchemy queries associated with the transaction's changes
+        :return: SQLAlchemy query objects
+        """
+        assert hasattr(type(self), 'contract'), "Transaction type {} has no contract defined".format(type(self))
+        return contract(type(self))(type(self).contract)(self, *args, **kwargs)
 
     def validate(self):
         """
@@ -35,8 +44,7 @@ class TransactionBase(MessageBase):
         If the POW is valid, this method returns nothing.
         :raises: An exception if the POW is not valid.
         """
-        payload_binary = self._data.payload.as_builder().copy().to_bytes()
-        if not self.pow.check(payload_binary, self._data.metadata.proof.decode()):
+        if not self.pow.check(self._payload_binary, self._data.metadata.proof.decode()):
             raise Exception("Invalid proof of work for tx: {}".format(self._data))
 
     def validate_signature(self):
@@ -45,8 +53,7 @@ class TransactionBase(MessageBase):
         If the signature is valid, this method returns nothing.
         :raises: An exception if the signature is invalid
         """
-        payload_binary = self._data.payload.as_builder().copy().to_bytes()
-        if not self.wallet.verify(self.sender, payload_binary, self.signature):
+        if not self.wallet.verify(self.sender, self._payload_binary, self.signature):
             raise Exception("Invalid signature for tx: {}".format(self._data))
 
     def validate_metadata(self):
@@ -65,13 +72,12 @@ class TransactionBase(MessageBase):
         """
         raise NotImplementedError
 
-    def interpret(self, *args, **kwargs):
-        """
-        Interprets the transaction and returns the SQLAlchemy queries associated with the transaction's changes
-        :return: SQLAlchemy query objects
-        """
-        assert hasattr(type(self), 'contract'), "Transaction type {} has no contract defined".format(type(self))
-        return contract(type(self))(type(self).contract)(self, *args, **kwargs)
+    @lazy_property
+    def _payload_binary(self):
+        if hasattr(self._data.payload, 'copy'):
+            return self._data.payload.copy().to_bytes()
+        else:
+            return self._data.payload.as_builder().copy().to_bytes()
 
     @property
     def proof(self):

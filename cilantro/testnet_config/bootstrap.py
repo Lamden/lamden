@@ -55,21 +55,18 @@ def start_delelegate(i):
     seed_wallets()
 
     d = Delegate(slot=i)
-    signal.pause()
 
 
 def start_mn():
     log = get_logger("MasternodeFactor")
     log.critical("\n***Starting Masternode\n")
     mn = Masternode()
-    signal.pause()
 
 
 def start_witness(i):
     log = get_logger("MasternodeFactor")
     log.critical("Starting witness on slot {}".format(i))
     witness = Witness(slot=i)
-    signal.pause()
 
 
 if __name__ == "__main__":
@@ -92,12 +89,10 @@ if __name__ == "__main__":
             for i in range(len(Constants.Testnet.Delegates)):
                 p = Process(target=start_delelegate, args=(i,))
                 p.start()
-            signal.pause()
         else:
             log.debug("Starting delegate on same process")
             for i in range(len(Constants.Testnet.Delegates)):
                 d = Delegate(slot=i)
-            signal.pause()
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.pause()

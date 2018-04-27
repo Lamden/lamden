@@ -5,7 +5,7 @@ This version is NOT configured to work with StateMachine
 """
 
 from cilantro.logger import get_logger
-from cilantro.protocol.reactor import NetworkReactor
+from cilantro.protocol.reactor import ReactorInterface
 from cilantro.messages import Envelope, MessageBase
 from cilantro.protocol.statemachine import StateMachine, State
 
@@ -46,7 +46,7 @@ class NodeBase(metaclass=NodeMeta):
 
     def __init__(self, url):
         self.url = url
-        self.reactor = NetworkReactor(self)
+        self.reactor = ReactorInterface(self)
 
     def route(self, msg_binary: bytes):
         msg = None

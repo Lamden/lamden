@@ -14,6 +14,7 @@ TODO -- switch this class to use capnp
 
 
 class BlockDataRequest(MessageBase):
+    """Masternode sends block data request with specific hash as argument"""
     def validate(self):
         pass
 

@@ -7,9 +7,6 @@ import transaction_capnp
 
 
 class StandardTransaction(TransactionBase):
-
-    name = "STANDARD_TX"
-
     @classmethod
     def _deserialize_data(cls, data: bytes):
         return transaction_capnp.StandardTransaction.from_bytes_packed(data)
@@ -24,6 +21,7 @@ class StandardTransaction(TransactionBase):
     def receiver(self):
         return self._data.payload.receiver.decode()
 
+    # TODO -- implement an agreeable fixed point solution
     @property
     def amount(self):
         return self._data.payload.amount
@@ -40,6 +38,10 @@ class StandardTransactionBuilder:
         # amount *= pow(10, Constants.Protocol.DecimalPrecision)
         # if type(amount) == float:
         #     amount = int(round(amount, 0))
+
+        # Quick assertion for now since we dont support real number amounts
+        assert type(amount) is int, "Transaction amount must be an integer (fixed point precision not yet supported)"
+
 
         tx = transaction_capnp.StandardTransaction.new_message()
 
@@ -61,8 +63,8 @@ class StandardTransactionBuilder:
     @staticmethod
     def random_tx():
         import random
-        MULT = 1000
+        MAX_AMT = 1000
 
         s = Constants.Protocol.Wallets.new()
         r = Constants.Protocol.Wallets.new()
-        return StandardTransactionBuilder.create_tx(s[0], s[1], r[1], int(random.random() * MULT))
+        return StandardTransactionBuilder.create_tx(s[0], s[1], r[1], random.randint(1, MAX_AMT))
