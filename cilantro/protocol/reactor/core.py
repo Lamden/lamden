@@ -37,7 +37,7 @@ class ReactorCore:
         while True:
             self.log.debug("ReactorCore awaiting for command from main thread...")
             cmd_bin = await self.socket.recv()
-            self.log.debug("Got cmd from queue: {}".format(cmd_bin))
+            # self.log.debug("Got cmd from queue: {}".format(cmd_bin))
 
             # Should this be in a try catch? I suppose if we get a bad command from the main proc we might as well
             # blow up because this is very likely because of a development error, so no try/catch for now
@@ -46,13 +46,12 @@ class ReactorCore:
 
     def execute_cmd(self, cmd: ReactorCommand):
         assert isinstance(cmd, ReactorCommand), "Cannot execute cmd {} that is not a ReactorCommand object".format(cmd)
-        self.log.debug("Executing cmd {}.{} with kwargs {}".format(cmd.func_name, cmd.class_name, cmd.kwargs))
+        self.log.debug("Executing cmd".format(cmd))
 
         executor_name = cmd.class_name
         executor_func = cmd.func_name
         kwargs = cmd.kwargs
 
-        self.log.critical("\n\n\n\n\n\nGOT CMD: {}".format(cmd))
         # Remove class_name and func_name from kwargs
         del(kwargs['class_name'])
         del(kwargs['func_name'])

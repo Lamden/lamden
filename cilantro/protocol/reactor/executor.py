@@ -106,7 +106,7 @@ class DealerRouterExecutor(Executor):
         super().__init__(loop, context, inproc_socket)
 
         # TODO -- make a list/hash of dealer sockets
-        self.dealer = None
+        self.dealers = {}
         self.router = None
 
     def add_router(self, url):
@@ -118,18 +118,21 @@ class DealerRouterExecutor(Executor):
         asyncio.ensure_future(self.recv_multipart(self.router, REQ_CALLBACK))
 
     def add_dealer(self, url, id):
-        if not self.dealer:
-            self.log.info("Creating dealer socket with id {}".format(id))
-            self.dealer = self.context.socket(socket_type=zmq.DEALER)
-            self.dealer.identity = id.encode('ascii')
-            asyncio.ensure_future(self.recv_multipart(self.dealer, DEAL_CALLBACK, ignore_first_frame=True))
+        assert url not in self.dealers, "Url {} already in self.dealers {}".format(url, self.dealers)
+        self.log.info("Creating dealer socket for url {} with id {}".format(url, id))
+        self.dealers[url] = self.context.socket(socket_type=zmq.DEALER)
+        self.dealers[url].identity = id.encode('ascii')
 
-        self.log.info("Dealing socket connecting to url {}".format(url))
-        self.dealer.connect(url)
+        # TODO -- store this future so we can cancel it later
+        future = asyncio.ensure_future(self.recv_multipart(self.dealers[url], DEAL_CALLBACK,
+                                                           ignore_first_frame=True))
+
+        self.log.info("Dealer socket connecting to url {}".format(url))
+        self.dealers[url].connect(url)
 
     def request(self, url, envelope, timeout=0):
-        # NOTICE URL IS NOT BEING USED!!!! TODO -- add list of dealer socket and assert URL is in that list of sockets
-        assert self.dealer, "Attempted to make request but dealer socket is not set"
+        assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
+            .format(url, self.dealers)
         timeout = int(timeout)
         self.log.debug("Composing request to url {}\ntimeout: {}\nenvelope: {}".format(url, timeout, envelope))
 
@@ -137,12 +140,13 @@ class DealerRouterExecutor(Executor):
             # TODO -- timeout functionality
             pass
 
-        self.dealer.send_multipart([envelope])
+        self.dealers[url].send_multipart([envelope])
 
     def reply(self, id, envelope):
         # TODO error propgation
+        # i  = 10 / 0
         # TODO are we not propagating exceptions properly? This error above does not get outputed in a test..?
-        self.log.critical("\n\n\n\n sending reply to id {} with env {} \n\n\n\n".format(id, envelope))
+        # self.log.critical("\n\n\n\n sending reply to id {} with env {} \n\n\n\n".format(id, envelope))
         assert self.router, "Attempted to reply but router socket is not set"
         self.router.send_multipart([id.encode(), envelope])
 

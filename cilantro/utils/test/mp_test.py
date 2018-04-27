@@ -10,14 +10,14 @@ from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger
 
 
+TEST_TIMEOUT = 4
+TEST_POLL_FREQ = 0.25
+
+
 SIG_RDY = b'IM RDY'
 SIG_SUCC = b'GOODSUCC'
 SIG_FAIL = b'BADSUCC'
 SIG_ABORT = b'NOSUCC'
-
-
-TEST_TIMEOUT = 4
-TEST_POLL_FREQ = 0.25
 
 
 CHILD_PROC_TIMEOUT = 1
@@ -278,6 +278,10 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
         log.debug("sending ready sig to parent")
         socket.send_pyobj(SIG_RDY)
 
+        # TODO
+        # This is questionable pattern. I feel like i should be awaiting these futures not just
+        # "fire and forgetting" them especially since __recv_cmd is infinite. It should be awaited until an abort sig
+        # is received, or canceled if assertions pass.
         asyncio.ensure_future(__recv_cmd())
         if assert_fn:
             asyncio.ensure_future(__check_assertions())
@@ -389,8 +393,6 @@ class MPTesterBase:
         # self.log.debug("---- joining {} ---".format(self.test_proc.name))
         self.test_proc.join()
         # self.log.debug("***** {} joined *****".format(self.test_proc.name))
-
-
 
     def __repr__(self):
         return self.name + "  " + str(type(self))
