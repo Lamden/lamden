@@ -1,9 +1,7 @@
-
 from unittest.mock import MagicMock, call, patch
 from cilantro.messages import *
 from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.protocol.reactor import ReactorInterface
-from cilantro.protocol.reactor.core import CHILD_RDY_SIG
 from cilantro.protocol.reactor.executor import *
 from cilantro.messages import ReactorCommand
 from cilantro.utils.test import MPTesterBase, MPTestCase, mp_testable
@@ -43,7 +41,7 @@ def something_silly():
     log.critical("\n\n\nasl;fjl;jkl;fadsfkl;jkl;adsjfkl;j234u23l;e2kfj23423890490-f8\n\n\n")
 
 
-class TestReactorInterfacePubSub(MPTestCase):
+class TestReactorPubSub(MPTestCase):
     def test_1_1_1(self):
         """
         Tests pub/sub 1-1 (one sub one pub) with one message
@@ -53,7 +51,7 @@ class TestReactorInterfacePubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            callback = ReactorCommand.create_callback(callback='route', envelope=env)
+            callback = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env)
             reactor._run_callback.assert_called_once_with(callback)
 
         env = random_envelope()
@@ -88,8 +86,8 @@ class TestReactorInterfacePubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            cb1 = ReactorCommand.create_callback(callback='route', envelope=env1)
-            cb2 = ReactorCommand.create_callback(callback='route', envelope=env2)
+            cb1 = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env1)
+            cb2 = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env2)
             reactor._run_callback.assert_has_calls([
                 call(cb1),
                 call(cb2)],
@@ -132,8 +130,8 @@ class TestReactorInterfacePubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            cb1 = ReactorCommand.create_callback(callback='route', envelope=env1)
-            cb2 = ReactorCommand.create_callback(callback='route', envelope=env2)
+            cb1 = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env1)
+            cb2 = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env2)
             reactor._run_callback.assert_has_calls([
                 call(cb1),
                 call(cb2)],
@@ -178,9 +176,7 @@ class TestReactorInterfacePubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            callback = 'route'
-            data = env1.serialize()
-            cb = ReactorCommand.create_callback(callback='route', envelope=env1)
+            cb = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env1)
             reactor._run_callback.assert_called_once_with(cb)
 
         env1, env2, env3, env4, env5 = (random_envelope() for _ in range(5))
@@ -231,7 +227,7 @@ class TestReactorInterfacePubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            cb = ReactorCommand.create_callback(callback='route', envelope=env)
+            cb = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env)
             reactor._run_callback.assert_called_once_with(cb)
 
         env = random_envelope()
