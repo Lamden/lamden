@@ -1,4 +1,4 @@
-@0xb06e5cc550bd0e32
+@0xb06e5cc550bd0e32;
 
 struct Value {
  # Represents a value, e.g. a field default value, constant value, or annotation value.

@@ -1,12 +1,13 @@
 import asyncio
 import zmq.asyncio
 from cilantro.logger import get_logger
+from cilantro.messages import ReactorCommand
 
 
 # TODO add some API for hooking this stuff up programatically instead of statically defining the callbacks
 SUB_CALLBACK = 'route'
 DEAL_CALLBACK = 'route'
-ROUTE_CALLBACK = 'route_req'
+REQ_CALLBACK = 'route_req'
 TIMEOUT_CALLBACK = 'route_timeout'
 
 
@@ -34,15 +35,28 @@ class Executor(metaclass=ExecutorMeta):
         self.log.warning("Starting recv on socket {} with callback {}".format(socket, callback))
         while True:
             self.log.debug("\nwaiting for multipart msg...\n")
-            multi_msg = await socket.recv_multipart()
-            self.log.debug("\n\nGot multipart msg: {}\n\n".format(multi_msg))
+            msg = await socket.recv_multipart()
+            self.log.debug("\n\nGot multipart msg: {}\n\n".format(msg))
 
             if ignore_first_frame:
-                multi_msg = multi_msg[1:]
-            self.call_on_mt(callback, *multi_msg)
+                assert len(msg) == 1, "ignore_first_frame is true, meaning we should get a msg of length 1 (no header)."
+                header = None
+            else:
+                assert len(msg) == 2, "ignore_first_frame is false; Expected a multi_msg of len 2 with " \
+                                      "(header, envelope) but got {}".format(msg)
+                header = msg[0].decode()
 
-    def call_on_mt(self, callback, *args):
-        self.inproc_socket.send_pyobj((callback, args))
+            env = msg[-1]
+            self.call_on_mt(callback, header=header, envelope_binary=env)
+
+    def call_on_mt(self, callback, header: bytes=None, envelope_binary: bytes=None, **kwargs):
+        if header:
+            # TODO -- make header a convenience property or constant on reactor callback
+            kwargs['header'] = header
+
+        cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary, **kwargs)
+        self.log.debug("Executor sending callback cmd: {}".format(cmd))
+        self.inproc_socket.send(cmd.serialize())
 
 
 class SubPubExecutor(Executor):
@@ -90,7 +104,9 @@ class SubPubExecutor(Executor):
 class DealerRouterExecutor(Executor):
     def __init__(self, loop, context, inproc_socket):
         super().__init__(loop, context, inproc_socket)
-        self.dealer = None
+
+        # TODO -- make a list/hash of dealer sockets
+        self.dealers = {}
         self.router = None
 
     def add_router(self, url):
@@ -99,32 +115,40 @@ class DealerRouterExecutor(Executor):
         self.log.info("Creating router socket on url {}".format(url))
         self.router = self.context.socket(socket_type=zmq.ROUTER)
         self.router.bind(url)
-        asyncio.ensure_future(self.recv_multipart(self.router, ROUTE_CALLBACK))
+        asyncio.ensure_future(self.recv_multipart(self.router, REQ_CALLBACK))
 
     def add_dealer(self, url, id):
-        if not self.dealer:
-            self.log.info("Creating dealer socket with id {}".format(id))
-            self.dealer = self.context.socket(socket_type=zmq.DEALER)
-            self.dealer.identity = id.encode('ascii')
-            asyncio.ensure_future(self.recv_multipart(self.dealer, DEAL_CALLBACK))
+        assert url not in self.dealers, "Url {} already in self.dealers {}".format(url, self.dealers)
+        self.log.info("Creating dealer socket for url {} with id {}".format(url, id))
+        self.dealers[url] = self.context.socket(socket_type=zmq.DEALER)
+        self.dealers[url].identity = id.encode('ascii')
 
-        self.log.info("Dealing socket connecting to url {}".format(url))
-        self.dealer.connect(url)
+        # TODO -- store this future so we can cancel it later
+        future = asyncio.ensure_future(self.recv_multipart(self.dealers[url], DEAL_CALLBACK,
+                                                           ignore_first_frame=True))
 
-    def request(self, url, timeout, metadata, data):
-        assert self.dealer, "Attempted to make request but dealer socket is not set"
-        self.log.debug("Composing request to url {}\ntimeout: {}\nmetadata: {}\ndata: {}"
-                       .format(url, timeout, metadata, data))
+        self.log.info("Dealer socket connecting to url {}".format(url))
+        self.dealers[url].connect(url)
+
+    def request(self, url, envelope, timeout=0):
+        assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
+            .format(url, self.dealers)
+        timeout = int(timeout)
+        self.log.debug("Composing request to url {}\ntimeout: {}\nenvelope: {}".format(url, timeout, envelope))
 
         if timeout > 0:
-            self.log.debug("Setting timeout of {} for request at url {} with data {}".format(timeout, url, data))
             # TODO -- timeout functionality
+            pass
 
-        self.dealer.send_multipart([metadata, data])
+        self.dealers[url].send_multipart([envelope])
 
-    def reply(self, url, id, metadata, data):
-        assert self.router, "Attempted to reply on url {} but router socket is not set".format(url)
-        self.router.send_multipart([id, metadata, data])
+    def reply(self, id, envelope):
+        # TODO error propgation
+        # i  = 10 / 0
+        # TODO are we not propagating exceptions properly? This error above does not get outputed in a test..?
+        # self.log.critical("\n\n\n\n sending reply to id {} with env {} \n\n\n\n".format(id, envelope))
+        assert self.router, "Attempted to reply but router socket is not set"
+        self.router.send_multipart([id.encode(), envelope])
 
     def remove_router(self, url):
         # TODO -- implement

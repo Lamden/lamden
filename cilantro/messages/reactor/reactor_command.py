@@ -5,9 +5,11 @@ import capnp
 import reactor_capnp
 
 
+# We create convenience properties for commonly used fields on ReactorCommands,
 CLS_NAME = 'class_name'
 FN_NAME = 'func_name'
 CALLB = 'callback'
+HEADER = 'header'
 
 
 class ReactorCommand(MessageBase):
@@ -42,19 +44,23 @@ class ReactorCommand(MessageBase):
         return cls.create(envelope=envelope, **kwargs)
 
     @classmethod
-    def create_callback(cls, callback: str, envelope: Envelope=None, **kwargs):
+    def create_callback(cls, callback: str, envelope: Envelope=None, envelope_binary: bytes=None, **kwargs):
+        # TODO -- simplify API for command creation process
         kwargs[CALLB] = callback
-        return cls.create(envelope=envelope, **kwargs)
+        return cls.create(envelope=envelope, envelope_binary=envelope_binary, **kwargs)
 
     @classmethod
-    def create(cls, envelope: Envelope=None, **kwargs):
-        if envelope:
-            assert isinstance(envelope, Envelope), "'envelope' kwarg must be an Envelope instance"
+    def create(cls, envelope: Envelope=None, envelope_binary: bytes=None, **kwargs):
+        assert not (envelope and envelope_binary), "Either envelope or envelope_binary should be passed in (not both)"
 
         cmd = reactor_capnp.ReactorCommand.new_message()
 
         if envelope:
+            assert isinstance(envelope, Envelope), "'envelope' kwarg must be an Envelope instance"
             cmd.envelope.data = envelope.serialize()
+        if envelope_binary:
+            assert isinstance(envelope_binary, bytes), "'envelope_binary' must be bytes"
+            cmd.envelope.data = envelope_binary
 
         cmd.init('kwargs', len(kwargs))
         for i, key in enumerate(kwargs):
@@ -78,31 +84,26 @@ class ReactorCommand(MessageBase):
 
     @lazy_property
     def kwargs(self):
-        # TODO -- is this too inefficient to build a python dict everytime this object is read? Lowkey yes.
         return {arg.key: arg.value for arg in self._data.kwargs}
 
-    @lazy_property
+    @property
     def class_name(self):
-        if CLS_NAME in self.kwargs:
-            return self.kwargs[CLS_NAME]
-        else:
-            return None
+        return self.kwargs.get(CLS_NAME)
 
-    @lazy_property
+    @property
     def func_name(self):
-        if FN_NAME in self.kwargs:
-            return self.kwargs[FN_NAME]
-        else:
-            return None
+        return self.kwargs.get(FN_NAME)
 
-    @lazy_property
+    @property
     def callback(self):
-        if CALLB in self.kwargs:
-            return self.kwargs[CALLB]
-        else:
-            return None
+        return self.kwargs.get(CALLB)
+
+    @property
+    def header(self):
+        return self.kwargs.get(HEADER)
 
     def __eq__(self, other):
         my_kwargs, other_kwargs = self.kwargs, other.kwargs
+        # manually copy envelope binary to kwaargs for comparison
         my_kwargs['env_bin'], other_kwargs['env_bin'] = self.envelope_binary, other.envelope_binary
         return self.kwargs == other.kwargs
