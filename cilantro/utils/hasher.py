@@ -38,7 +38,7 @@ class Hasher:
         h = hashlib.new(algorithm)
         h.update(data)
         binary = h.digest()
-        
+
         if return_bytes:
             return binary
         else:
