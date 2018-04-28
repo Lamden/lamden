@@ -32,6 +32,9 @@ class ReactorInterface:
         self.loop.run_until_complete(self._wait_child_rdy())
 
         # Start listening to messages from reactor proc
+        # TODO -- is this infinite fire/forget chill? Should this future be awaited somewhere?
+        # Kind of a sketch pattern we got going on here, since there isnt really a well defined way to capture
+        # exceptions in the coroutine...
         asyncio.ensure_future(self._recv_messages())
 
     def _start_reactor(self, url, p_name):
@@ -59,8 +62,9 @@ class ReactorInterface:
 
             self._run_callback(callback)
 
-    def _run_callback(self, callback):
+    def _run_callback(self, callback: ReactorCommand):
         self.log.debug("Running callback cmd {}".format(callback))
+        self.router.route_callback(callback)
 
         # TODO -- engineer less hacky way to do this that doesnt explicitly rely on multiframe positions
         # meta, payload = args[-2:]

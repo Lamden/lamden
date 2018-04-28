@@ -13,6 +13,27 @@ class Composer:
         self.sender_id = sender_id
         self.verifying_key = Constants.Protocol.Wallets.get_vk(self.signing_key)
 
+    def _package_data(self, data, is_reply=False) -> Envelope:
+        """
+        fuck docstrings
+        :param data:
+        :return:
+        """
+        if is_reply:
+            # TODO -- reply logic
+            pass
+
+        if type(data) is Envelope:
+            env = data
+        elif issubclass(type(data), MessageBase):
+            env = Envelope.create_from_message(message=data, signing_key=self.signing_key, sender_id=self.sender_id,
+                                               verifying_key=self.verifying_key)
+        else:
+            raise ValueError("'Data' should be be an Envelope instance, or a MessageBase subclass. Got {} instead."
+                             .format(data))
+
+        return env
+
     def notify_ready(self):
         self.log.critical("NOTIFIY READY")
         # TODO -- implement (add queue of tx, flush on notify ready, pause on notify_pause
@@ -46,13 +67,7 @@ class Composer:
         :param filter: A string to use as the filter frame
         :param data: An instance of Envelope, or subclass of MessageBase.
         """
-        if type(data) is Envelope:
-            env = data
-        else:
-            assert issubclass(type(data), MessageBase), "Data for envelope must be an Envelope or MessageBase instance"
-            env = Envelope.create_from_message(message=data, signing_key=self.signing_key, sender_id=self.sender_id,
-                                               verifying_key=self.verifying_key)
-
+        env = self._package_data(data)
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__, filter=filter,
                                         envelope=env)
         self.interface.send_cmd(cmd)
@@ -71,35 +86,37 @@ class Composer:
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_pub.__name__, url=url)
         self.interface.send_cmd(cmd)
 
-    # TODO -- implement this shit
-    # def add_dealer(self, url: str, id):
-    #     """
-    #     needs 'url', 'callback', and 'id'
-    #     """
-    #     cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__,
-    #                                 url=url, id=id)
-    #     self.interface.send_cmd(cmd)
-    #
-    # def add_router(self, url: str):
-    #     """
-    #     needs 'url', 'callback'
-    #     """
-    #     cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, url=url)
-    #     self.interface.send_cmd(cmd)
-    #
-    # def request(self, url: str, metadata: MessageMeta, data: MessageBase, timeout=0):
-    #     """
-    #     'url', 'data', 'timeout' ... must add_dealer first with the url
-    #     Timeout is a int in miliseconds
-    #     """
-    #     cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, url=url,
-    #                                 metadata=metadata, data=data, timeout=timeout)
-    #     self.interface.send_cmd(cmd)
-    #
-    # def reply(self, url: str, id: str, metadata: MessageMeta, data: MessageBase):
-    #     """
-    #     'url', 'data', and 'id' ... must add_router first with url
-    #     """
-    #     cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.reply.__name__, url=url, id=id,
-    #                                 metadata=metadata, data=data)
-    #     self.interface.send_cmd(cmd)
+    def add_dealer(self, url: str, id):
+        """
+        needs 'url', 'callback', and 'id'
+        """
+        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__,
+                                        url=url, id=id)
+        self.interface.send_cmd(cmd)
+
+    def add_router(self, url: str):
+        """
+        needs 'url', 'callback'
+        """
+        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, url=url)
+        self.interface.send_cmd(cmd)
+
+    def request(self, url: str, data, timeout=0):
+        """
+        'url', 'data', 'timeout' ... must add_dealer first with the url
+        Timeout is a int in miliseconds
+        """
+        env = self._package_data(data)
+        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, url=url,
+                                        envelope=env, timeout=timeout)
+        self.interface.send_cmd(cmd)
+
+    def reply(self, url: str, id: str, data):
+        """
+        'url', 'data', and 'id' ... must add_router first with url
+        """
+        # TODO do this
+        env = self._package_data(data, is_reply=True)
+        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.reply.__name__, url=url,
+                                        id=id, envelope=env)
+        self.interface.send_cmd(cmd)

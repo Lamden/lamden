@@ -14,6 +14,7 @@ class Envelope(MessageBase):
     def _deserialize_data(cls, data: bytes):
         return envelope_capnp.Envelope.from_bytes_packed(data)
 
+    # TODO -- method to create a message with an envelope (i.e. preset uuid?)
     @classmethod
     def create_from_message(cls, message: MessageBase, signing_key: str, sender_id: str, verifying_key: str=None):
         assert issubclass(type(message), MessageBase), "message arg must be a MessageBase subclass"

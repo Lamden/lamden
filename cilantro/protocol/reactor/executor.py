@@ -5,10 +5,9 @@ from cilantro.messages import ReactorCommand
 
 
 # TODO add some API for hooking this stuff up programatically instead of statically defining the callbacks
-SUB_CALLBACK = 'route'
-DEAL_CALLBACK = 'route'
-REQ_CALLBACK = 'route_req'
-TIMEOUT_CALLBACK = 'route_timeout'
+ROUTE_CALLBACK = 'route'
+ROUTE_REQ_CALLBACK = 'route_req'
+ROUTE_TIMEOUT_CALLBACK = 'route_timeout'
 
 
 class ExecutorMeta(type):
@@ -39,7 +38,6 @@ class Executor(metaclass=ExecutorMeta):
             self.log.debug("\n\nGot multipart msg: {}\n\n".format(msg))
 
             if ignore_first_frame:
-                assert len(msg) == 1, "ignore_first_frame is true, meaning we should get a msg of length 1 (no header)."
                 header = None
             else:
                 assert len(msg) == 2, "ignore_first_frame is false; Expected a multi_msg of len 2 with " \
@@ -83,7 +81,7 @@ class SubPubExecutor(Executor):
         if not self.sub:
             self.log.info("Creating subscriber socket")
             self.sub = self.context.socket(socket_type=zmq.SUB)
-            asyncio.ensure_future(self.recv_multipart(self.sub, SUB_CALLBACK, ignore_first_frame=True))
+            asyncio.ensure_future(self.recv_multipart(self.sub, ROUTE_CALLBACK, ignore_first_frame=True))
 
         self.log.info("Subscribing to url {} with filter {}".format(url, filter))
         self.sub.connect(url)
@@ -105,7 +103,7 @@ class DealerRouterExecutor(Executor):
     def __init__(self, loop, context, inproc_socket):
         super().__init__(loop, context, inproc_socket)
 
-        # TODO -- make a list/hash of dealer sockets
+        # TODO -- make a simple data structure for storing these sockets and their associated futures by key URL
         self.dealers = {}
         self.router = None
 
@@ -115,7 +113,7 @@ class DealerRouterExecutor(Executor):
         self.log.info("Creating router socket on url {}".format(url))
         self.router = self.context.socket(socket_type=zmq.ROUTER)
         self.router.bind(url)
-        asyncio.ensure_future(self.recv_multipart(self.router, REQ_CALLBACK))
+        asyncio.ensure_future(self.recv_multipart(self.router, ROUTE_REQ_CALLBACK))
 
     def add_dealer(self, url, id):
         assert url not in self.dealers, "Url {} already in self.dealers {}".format(url, self.dealers)
@@ -124,7 +122,7 @@ class DealerRouterExecutor(Executor):
         self.dealers[url].identity = id.encode('ascii')
 
         # TODO -- store this future so we can cancel it later
-        future = asyncio.ensure_future(self.recv_multipart(self.dealers[url], DEAL_CALLBACK,
+        future = asyncio.ensure_future(self.recv_multipart(self.dealers[url], ROUTE_CALLBACK,
                                                            ignore_first_frame=True))
 
         self.log.info("Dealer socket connecting to url {}".format(url))
