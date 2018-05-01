@@ -1,7 +1,7 @@
 import asyncio
 import zmq.asyncio
 from cilantro.logger import get_logger
-from cilantro.messages import ReactorCommand
+from cilantro.messages import ReactorCommand, Envelope
 
 
 # TODO add some API for hooking this stuff up programatically instead of statically defining the callbacks
@@ -45,16 +45,44 @@ class Executor(metaclass=ExecutorMeta):
                 header = msg[0].decode()
 
             env = msg[-1]
-            self.call_on_mt(callback, header=header, envelope_binary=env)
+            self._process_envelope(callback, header=header, envelope_binary=env)
 
-    def call_on_mt(self, callback, header: bytes=None, envelope_binary: bytes=None, **kwargs):
+    def _process_envelope(self, callback, header, envelope_binary):
+        # Validate envelope if this is not a TIMEOUT callback
+        if callback != ROUTE_TIMEOUT_CALLBACK:
+            self._validate_envelope(envelope_binary)
+
+        # TODO -- where to check if the header is equal to the id frame? These validation checks are getting very
+        # ad hoc and sketch...
+
+        # Check if this a reply envelope that we have been waiting for, and cancel its callback if so
+        if callback == ROUTE_CALLBACK:
+            # TODO -- implement
+            pass
+
+        # Send callback to main process
         if header:
-            # TODO -- make header a convenience property or constant on reactor callback
-            kwargs['header'] = header
-
-        cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary, **kwargs)
+            cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary, header=header)
+        else:
+            cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary)
         self.log.debug("Executor sending callback cmd: {}".format(cmd))
         self.inproc_socket.send(cmd.serialize())
+
+    def _validate_envelope(self, envelope_binary) -> bool:
+        # Deserialize envelope
+        env = None
+        try:
+            env = Envelope.from_bytes(envelope_binary)
+        except Exception as e:
+            self.log.error("\n\n\nError deserializing envelope: {}\n\n\n".format(e))
+            return False
+
+        # Check seal
+        if not env.verify_seal():
+            self.log.error("Seal could not be verified for envelope {}".format(env))
+            return False
+
+        return True
 
 
 class SubPubExecutor(Executor):

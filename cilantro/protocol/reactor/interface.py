@@ -5,6 +5,7 @@ import random
 from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand
 from cilantro.protocol.reactor.core import ReactorCore, CHILD_RDY_SIG
+# from cilantro.protocol.transport.router import Router
 
 
 class ReactorInterface:
@@ -32,7 +33,8 @@ class ReactorInterface:
         self.loop.run_until_complete(self._wait_child_rdy())
 
         # Start listening to messages from reactor proc
-        # TODO -- is this infinite fire/forget chill? Should this future be awaited somewhere?
+        # TODO:
+        # is this infinite fire/forget chill? Should this future be awaited somewhere?
         # Kind of a sketch pattern we got going on here, since there isnt really a well defined way to capture
         # exceptions in the coroutine...
         asyncio.ensure_future(self._recv_messages())
@@ -43,7 +45,7 @@ class ReactorInterface:
     async def _wait_child_rdy(self):
         self.log.debug("Waiting for ready sig from child proc...")
         msg = await self.socket.recv()
-        assert msg == CHILD_RDY_SIG, "Got unexpected rdy sig from child proc (got '{}', but expected '{}')"\
+        assert msg == CHILD_RDY_SIG, "Got unexpected rdy sig from child proc (got '{}', but expected '{}')" \
             .format(msg, CHILD_RDY_SIG)
         self.log.debug("Got ready sig from child proc: {}".format(msg))
 
@@ -52,8 +54,6 @@ class ReactorInterface:
         while True:
             # TODO refactor and pretty this up
             self.log.debug("Waiting for callback...")
-            # callback, args = await self.socket.recv_pyobj()
-            # args = list(args)
             msg = await self.socket.recv()
 
             callback = ReactorCommand.from_bytes(msg)
@@ -65,13 +65,6 @@ class ReactorInterface:
     def _run_callback(self, callback: ReactorCommand):
         self.log.debug("Running callback cmd {}".format(callback))
         self.router.route_callback(callback)
-
-        # TODO -- engineer less hacky way to do this that doesnt explicitly rely on multiframe positions
-        # meta, payload = args[-2:]
-        # envelope = Envelope.from_bytes(payload=payload, message_meta=meta)
-        # new_args = args[:-2] + [envelope]
-        #
-        # getattr(self.router, callback)(*new_args)
 
     def notify_ready(self):
         self.log.critical("NOTIFIY READY")

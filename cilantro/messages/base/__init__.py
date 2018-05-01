@@ -1,1 +1,0 @@
-from cilantro.messages.base.base import MessageBase

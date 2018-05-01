@@ -1,5 +1,5 @@
 from cilantro import Constants
-from cilantro.messages.base import MessageBase
+from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
 from cilantro.db.delegate import contract
 from cilantro.utils import lazy_property

@@ -1,7 +1,12 @@
 from cilantro import Constants
 from cilantro.messages import MessageBase, ReactorCommand, Envelope
-from cilantro.protocol.reactor import ReactorInterface
+from cilantro.protocol.reactor.interface import ReactorInterface
 from cilantro.protocol.reactor.executor import *
+
+
+"""
+TODO docstring
+"""
 
 
 class Composer:
@@ -9,30 +14,22 @@ class Composer:
     def __init__(self, interface: ReactorInterface, signing_key: str, sender_id: str):
         super().__init__()
         self.interface = interface
-        self.signing_key = signing_key
         self.sender_id = sender_id
+        self.signing_key = signing_key
         self.verifying_key = Constants.Protocol.Wallets.get_vk(self.signing_key)
+        self.log = get_logger("Composer")
 
-    def _package_data(self, data, is_reply=False) -> Envelope:
+    def _package_msg(self, msg: MessageBase) -> Envelope:
         """
-        fuck docstrings
-        :param data:
-        :return:
+        Convenience method to package a message into an envelope
+        :param msg: The MessageBase instance to package
+        :return: An Envelope instance
         """
-        if is_reply:
-            # TODO -- reply logic
-            pass
+        assert type(msg) is not Envelope, "Attempted to package a 'message' that is already an envelope"
+        assert issubclass(type(msg), MessageBase), "Attempted to package a message that is not a MessageBase subclass"
 
-        if type(data) is Envelope:
-            env = data
-        elif issubclass(type(data), MessageBase):
-            env = Envelope.create_from_message(message=data, signing_key=self.signing_key, sender_id=self.sender_id,
-                                               verifying_key=self.verifying_key)
-        else:
-            raise ValueError("'Data' should be be an Envelope instance, or a MessageBase subclass. Got {} instead."
-                             .format(data))
-
-        return env
+        return Envelope.create_from_message(message=msg, signing_key=self.signing_key, sender_id=self.sender_id,
+                                            verifying_key=self.verifying_key)
 
     def notify_ready(self):
         self.log.critical("NOTIFIY READY")
@@ -59,17 +56,26 @@ class Composer:
                                         filter=filter)
         self.interface.send_cmd(cmd)
 
-    def pub(self, filter: str, data):
+    def send_pub_msg(self, filter: str, message: MessageBase):
         """
         Publish data with filter frame 'filter'. If data is an envelope, this envelope will be passed sent to the
         ReactorCore. If data is a MessageBase, An envelope (including a seal and the metadata) will be created from
         the MessageBase.
         :param filter: A string to use as the filter frame
-        :param data: An instance of Envelope, or subclass of MessageBase.
+        :param message: A MessageBase subclass
         """
-        env = self._package_data(data)
+        self.send_pub_env(self._package_msg(message))
+
+    def send_pub_env(self, filter: str, envelope: Envelope):
+        """
+        Publish data with filter frame 'filter'. If data is an envelope, this envelope will be passed sent to the
+        ReactorCore. If data is a MessageBase, An envelope (including a seal and the metadata) will be created from
+        the MessageBase.
+        :param filter: A string to use as the filter frame
+        :param envelope: An instance of Envelope, or subclass of MessageBase.
+        """
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__, filter=filter,
-                                        envelope=env)
+                                        envelope=envelope)
         self.interface.send_cmd(cmd)
 
     def add_pub(self, url: str):
@@ -86,12 +92,12 @@ class Composer:
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_pub.__name__, url=url)
         self.interface.send_cmd(cmd)
 
-    def add_dealer(self, url: str, id):
+    def add_dealer(self, url: str):
         """
-        needs 'url', 'callback', and 'id'
+        needs 'url', and 'id'
         """
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__,
-                                        url=url, id=id)
+                                        url=url, id=self.verifying_key)
         self.interface.send_cmd(cmd)
 
     def add_router(self, url: str):
@@ -101,22 +107,43 @@ class Composer:
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, url=url)
         self.interface.send_cmd(cmd)
 
-    def request(self, url: str, data, timeout=0):
+    def send_request_msg(self, url: str, message: MessageBase, timeout=0):
         """
         'url', 'data', 'timeout' ... must add_dealer first with the url
         Timeout is a int in miliseconds
         """
-        env = self._package_data(data)
+        self.send_request_env(self._package_msg(message))
+
+    def send_request_env(self, url: str, envelope: Envelope, timeout=0):
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, url=url,
-                                        envelope=env, timeout=timeout)
+                                        envelope=envelope, timeout=timeout)
         self.interface.send_cmd(cmd)
 
-    def reply(self, url: str, id: str, data):
+
+    """
+    lets see
+    we need to know the ID of the sender. This is tricky because its not inside the request_envelope, but rather
+    is sent as an entirely different frame. We could assume that the dealer socket id is always their verifying key 
+    (is this too long?). And then, we we get a message in, we assert the signature is valid (which proves their vk), 
+    and then assert header frame is their vk, confirming the dealer socket id has been set up properly (on the receving
+    end that is)
+    
+    !!! this doesnt work with relaying. But req/reply will never be relayed? only pub/sub will be relayed? or is that 
+    sketch.... we should ahve the option to relay any kind of transaction. IF it is not pub/sub, then this guy should
+    not even process the request. The state machine shoudl not touch it. The 'relay' operation is done by the router
+    slapping its id to the zmq messages address stack
+     -- ok so fuck relaying requests ya?
+    
+    """
+    def send_reply(self, url: str, header: str, message: MessageBase, request_envelope: Envelope):
         """
         'url', 'data', and 'id' ... must add_router first with url
         """
         # TODO do this
-        env = self._package_data(data, is_reply=True)
+        # TODO get envelope uuid's hash % UUID SIZE (which is its sender uuid)
+        # create convenience fucn for that
+
+        env = self._package_msg(message)
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.reply.__name__, url=url,
                                         id=id, envelope=env)
         self.interface.send_cmd(cmd)
