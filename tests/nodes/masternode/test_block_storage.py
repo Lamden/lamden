@@ -2,6 +2,7 @@ from unittest import TestCase
 from cilantro.messages import *
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.db.delegate import DB, DB_NAME
 
 """
 1) MN Gets a block contender containing a the leaves of the tree, and a list of signed merkle trees
@@ -59,8 +60,33 @@ class TestMNBlockchainStorage(TestCase):
         # Ok, this is what MN would have.
         # - A dict of block data, that is a mapping of tx hashes --> tx binaries
         # - A list of signatures from the block contender
-        print("\n\n\n got block_txs: {}\n\n\n".format(block_txs))
-        print("\n\n got signatures: {} \n\n".format(signatures))
+
+        with DB('{}_{}'.format(DB_NAME, 0)) as db:
+
+            signature_text = ''
+
+            for i in signatures:
+                signature_text += i.signature
+                signature_text += i.sender
+
+            merkle_text = ''.join(m.hex() for m in merkle.nodes)
+
+            root = merkle.root().hex()
+
+            t = db.tables.blocks
+
+            db.execute(t.insert({
+                'root': root,
+                'tree': merkle_text,
+                'signatures': signature_text
+            }))
+
+            for k, v in block_txs.items():
+                t = db.tables.transactions
+                db.execute(t.insert({
+                    'key': k.hex(),
+                    'value': v.hex()
+                }))
 
         a, b, c, d = 69, 1337, 1729, 9000
         self.assertTrue((a ** 2 + b ** 2) * (c ** 2 + d ** 2) == pow(a * c + b * d, 2) + pow(a * d - b * c, 2))

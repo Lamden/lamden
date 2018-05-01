@@ -51,12 +51,12 @@ def process_std_tx(tx):
 @contract(VoteTransaction)
 def process_vote_tx(tx):
 
-    def assert_sender_has_permissions(node_type):
+    def assert_sender_has_permissions(tx, node_type):
         m = select([tables.constants]).where(tables.constants.c.policy == node_type)
 
-        payload = execute(m).fetchone()
+        payload = execute(m).fetchall()
 
-        assert payload or payload[0], '{} policy table does not exist.'.format(node_type)
+        assert payload or payload[0], '{} node table does not exist.'.format(node_type)
 
         # extract masternodes from single masternode payload
         l = []
@@ -66,12 +66,20 @@ def process_vote_tx(tx):
 
         assert tx.sender in l, "Sender is not a {}.".format(node_type)
 
+    def assert_correct_choice_payload(tx):
+        pass
+
+    # attempt to lookup the policy and assert it is there
     p = select([tables.constants]).where(tables.constants.c.policy == tx.policy)
 
     policy = p.fetchone()
 
     assert policy or policy[0], "Policy does not exist."
 
+    # assert that its vote time
+    assert dict(policy)['in_vote'], 'Policy cannot be voted on at this time'
+
+    # assert that the sender is allowed to vote on this policy
     permissions = dict(policy)['permissions']
 
     assert permissions < 8, 'Permission value is an overflow. Must be less than 8.'
@@ -83,21 +91,41 @@ def process_vote_tx(tx):
     witness_required = True if permissions[2] == '1' else False
 
     if masternode_required:
-        assert_sender_has_permissions('masternodes')
+        assert_sender_has_permissions(tx, 'masternodes')
 
     if delegate_required:
-        assert_sender_has_permissions('delegates')
+        assert_sender_has_permissions(tx, 'delegates')
 
     if witness_required:
-        assert_sender_has_permissions('witnesses')
+        assert_sender_has_permissions(tx, 'witnesses')
 
-    q = insert(tables.votes).values(
-                wallet=tx.sender,
-                policy=tx.policy,
-                choice=tx.choice,
-                round=dict(policy)['round']
-            )
-    return q
+    # find if the sender has already voted on this policy. If so, update rather than insert
+    v = select(tables.votes).where(
+        and_(
+            tables.votes.c.wallet == tx.sender,
+            tables.votes.c.policy == tx.policy,
+            tables.votes.c.round == dict(policy)['round']
+        )
+    )
+
+    previous_vote = v.fetchone()
+
+    if not previous_vote or previous_vote[0]:
+        q = insert(tables.votes).values(
+                    wallet=tx.sender,
+                    policy=tx.policy,
+                    choice=tx.choice,
+                    round=dict(policy)['round']
+                )
+        return q
+    else:
+        q = update(tables.votes).values(
+            wallet=tx.sender,
+            policy=tx.policy,
+            choice=tx.choice,
+            round=dict(policy)['round']
+        )
+        return q
 
 
 @contract(RedeemTransaction)
@@ -301,17 +329,22 @@ def process_election_tx(tx):
 
     assert policy or policy[0], "Policy does not exist."
 
-    assert dict(policy)['in_vote'] is False, 'Policy is currently being voted on'
+    if tx.command == 'initiate':
 
-    now_in_hours = int(time.time() / 60 / 60)
+        assert dict(policy)['in_vote'] is False, 'Policy is currently being voted on'
 
-    assert now_in_hours - dict(policy)['last_election'] > dict(policy)['election_frequency'], \
-        'It is too soon to start another election on this policy.'
+        now_in_hours = int(time.time() / 60 / 60)
 
-    policy_q = update(tables.constants).values(
-        policy=tx.policy,
-        in_vote=True,
-        round=dict(policy)['round'] + 1
-    )
+        assert now_in_hours - dict(policy)['last_election_end'] > dict(policy)['election_frequency'], \
+            'It is too soon to start another election on this policy.'
 
-    return policy_q
+        policy_q = update(tables.constants).values(
+            policy=tx.policy,
+            in_vote=True,
+            round=dict(policy)['round'] + 1
+        )
+
+        return policy_q
+
+    if tx.command == 'finalize':
+        # end the election

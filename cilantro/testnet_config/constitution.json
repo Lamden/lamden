@@ -21,7 +21,8 @@
     {
       "policy" : "something",
       "type" : "multi_discrete",
-      "last_election" : 0,
+      "last_election_start" : 0,
+      "last_election_end" : 0,
       "election_length" : 168,
       "election_frequency" : 336,
       "max_votes" : 0,

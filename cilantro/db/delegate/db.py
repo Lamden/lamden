@@ -104,7 +104,8 @@ def create_db(name):
     constants = Table('constants', metadata,
                       Column('policy', String(64), nullable=False),
                       Column('type', Enum('discrete', 'continuous', 'multi_discrete', name='variable'), nullable=False),
-                      Column('last_election', DateTime, nullable=False), # represented as unix time stamp to minute
+                      Column('last_election_start', DateTime, nullable=False), # represented as unix time stamp to minute
+                      Column('last_election_end', DateTime, nullable=False),
                       Column('election_length', Integer, nullable=False), # represented in minutes
                       Column('election_frequency', Integer, nullable=False), # represented in minutes
                       Column('max_votes', Integer, nullable=False),
@@ -114,14 +115,14 @@ def create_db(name):
                       Column('round', Integer, nullable=False))
 
     blocks = Table('blocks', metadata,
+                   Column('number', Integer, primary_key=True),
                    Column('root', String(64), nullable=False),
                    Column('tree', TEXT, nullable=False),
-                   Column('signatures', TEXT, nullable=False),
-                   Column('number', Integer, nullable=False))
+                   Column('signatures', TEXT, nullable=False))
 
     transactions = Table('transactions', metadata,
-                         Column('hash', String(64), nullable=False),
-                         Column('value', String(64), nullable=False))
+                         Column('key', String(64), nullable=False),
+                         Column('value', TEXT, nullable=False))
 
     mapping = {}
 
