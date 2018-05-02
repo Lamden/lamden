@@ -12,7 +12,7 @@ W = Constants.Protocol.Wallets
 
 class NodeFactory:
     @staticmethod
-    def build_mock_node(signing_key: str, loop):
+    def build_mock_node(signing_key: str, loop) -> MagicMock:
         sm = MagicMock()
         router = Router(statemachine=sm)
         interface = ReactorInterface(router=router, loop=loop)
@@ -35,7 +35,8 @@ class NodeFactory:
         loop.run_forever()
 
     @staticmethod
-    def build_masternode(loop, signing_key=Constants.Testnet.Masternode.Sk, url=Constants.Testnet.Masternode.InternalUrl):
+    def build_masternode(loop, signing_key=Constants.Testnet.Masternode.Sk,
+                         url=Constants.Testnet.Masternode.InternalUrl) -> Masternode:
         mn = Masternode(signing_key=signing_key, url=url)
         router = Router(statemachine=mn)
         interface = ReactorInterface(router=router, loop=loop)
@@ -55,5 +56,19 @@ class NodeFactory:
 
         mn = NodeFactory.build_masternode(loop=loop, signing_key=signing_key, url=url)
 
-        loop.run_forever()
+        mn.start()
 
+    @staticmethod
+    def build_witness(loop, signing_key, url) -> Witness:
+        w = Witness(url=url, signing_key=signing_key)
+        router = Router(statemachine=w)
+        interface = ReactorInterface(router=router, loop=loop)
+        composer = Composer(interface=interface, signing_key=signing_key, sender_id=W.get_vk(signing_key))
+
+        # TODO -- set composer on W?
+
+        return w
+
+    @staticmethod
+    def run_witness(signing_key, url):
+        w = NodeFactory.build_witness()
