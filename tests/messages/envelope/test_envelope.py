@@ -51,7 +51,37 @@ class TestEnvelope(TestCase):
         self.assertEqual(env.meta, meta)
         self.assertEqual(env.message, message)
 
-    # TODO: test create_from_object with invalid objects
+    def test_create_from_bad_seal(self):
+        """
+        Test envelope creation with bad seal
+        """
+        seal = 'hi im a bad seal'
+        meta = self._default_meta()
+        message = self._default_msg()
+
+        self.assertRaises(Exception, Envelope.create_from_objects, seal, meta, message.serialize())
+
+    def test_create_from_bad_meta(self):
+        """
+        Test envelope creation with bad seal
+        """
+        seal = self._default_seal()
+        meta = 'hi im a bad message meta'
+        message = self._default_msg()
+
+        self.assertRaises(Exception, Envelope.create_from_objects, seal, meta, message.serialize())
+
+    def test_create_from_bad_message(self):
+        """
+        Test envelope creation with bad seal
+        """
+        seal = self._default_seal()
+        meta = self._default_meta()
+        message = 'hi this is a string message with no redeeming qualities'
+
+        self.assertRaises(Exception, Envelope.create_from_objects, seal, meta, message)  # this is not throwing error?
+
+        # TODO fix
 
     def test_create_from_message(self):
         """
@@ -70,7 +100,42 @@ class TestEnvelope(TestCase):
 
     # TODO: test create_from_message with invalid args
 
-    # TODO: test create_from_message passing in sk does and incorrect vk
+    def test_create_from_message_bad_msg(self):
+        """
+        Tests create_from_message with invalid message
+        """
+        sk, vk = W.new()
+        msg = 'hi im a bad message'
+        sender = 'dat boi'
+
+        self.assertRaises(Exception, Envelope.create_from_message, msg, sk, sender)
+
+    def test_create_from_message_bad_sk(self):
+        """
+        Tests create_from_message with invalid sk
+        """
+        sk = 'A' * 127
+        msg = 'hi im a bad message'
+        sender = 'dat boi'
+
+        self.assertRaises(Exception, Envelope.create_from_message, msg, sk, sender)
+
+    def test_create_from_message_bad_keypair(self):
+        """
+        test create_from_message passing in sk does and incorrect vk
+        """
+        sk, vk = W.new()
+        sk1, vk1 = W.new()
+        msg = self._default_msg()
+        sender = 'dat boi'
+
+        env = Envelope.create_from_message(message=msg, signing_key=sk, sender_id=sender, verifying_key=vk)  # no error
+
+        self.assertEqual(env.seal.verifying_key, vk)
+
+        self.assertRaises(Exception, Envelope.create_from_message, msg, sk, sender, vk1)  # TODO error with bad vk
+
+        self.assertEqual(env.seal.verifying_key, vk1)
 
     def test_serialize_from_objects(self):
         """
