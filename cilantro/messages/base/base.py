@@ -17,7 +17,7 @@ class MessageBaseMeta(type):
         m = hashlib.md5()
         m.update(clsobj.__name__.encode())
         l = int(m.digest().hex(),16) % pow(2, 16)
-        assert clsobj.registry.get(l) == None, 'Enum collision of message class {}!'.format(clsobj.__name__)
+        assert clsobj.registry.get(l) == None, 'Registry enum collision of message class {}!'.format(clsobj.__name__)
 
         clsobj.registry[clsobj] = l
         clsobj.registry[l] = clsobj
@@ -30,9 +30,10 @@ class MessageBase(metaclass=MessageBaseMeta):
     MessageBase is the abstract class which defines required methods for any data model that is passed between nodes.
     All messages which are transmitted between nodes (i.e. transaction, blocks, routing tables, ect) must subclass this.
 
-    Message are essentially just a wrapper around the underlying data interchange format (Captain Proto or JSON), which
-    provide convenient methods for manipulating, reading, and computing functions of the data. This must implement
-    _deserialize_data(..), as well as serialize(..) if the underlying data (_data) is not capnp.
+    Messages are essentially just a wrapper around the underlying data interchange format (Captain Proto or JSON), which
+    provide convenient methods for manipulating, reading, and computing functions of the data. All subclasses must implement
+    _deserialize_data(..) and validate(). If the underlying data (_data) is not capnp, they must
+    also implement serialize()
 
     Messages can also provide an interface for executing RPC on the data between nodes.
     """

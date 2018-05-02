@@ -49,14 +49,18 @@ class ReactorInterface:
         while True:
             # TODO refactor and pretty this up
             self.log.debug("Waiting for callback...")
-            callback, args = await self.socket.recv_pyobj()
-            args = list(args)
-            self.log.debug("Got callback <{}> with args {}".format(callback, args))
+            # callback, args = await self.socket.recv_pyobj()
+            # args = list(args)
+            msg = await self.socket.recv()
 
-            self._run_callback(callback, args[0])
+            callback = ReactorCommand.from_bytes(msg)
 
-    def _run_callback(self, callback, envelope):
-        self.log.debug("Running callback '{}' with envelope {}".format(callback, envelope))
+            self.log.debug("Got callback cmd <{}>".format(callback))
+
+            self._run_callback(callback)
+
+    def _run_callback(self, callback):
+        self.log.debug("Running callback cmd {}".format(callback))
 
         # TODO -- engineer less hacky way to do this that doesnt explicitly rely on multiframe positions
         # meta, payload = args[-2:]

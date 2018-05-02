@@ -37,7 +37,7 @@ def lazy_property(fn):
 
 def lazy_func(fn):
     """
-    Slap this decorator on a func and memoize it like aint nothin
+    Slap this decorator on a func and memoize it (assumes func has no input or is called with same input every time)
     """
     func_name = _lp_name(fn.__name__)
 
