@@ -1,3 +1,15 @@
+"""The db module for delegate is for bootstrapping the in-memory database for delegate nodes to store scratch and
+execute smart contracts
+
+Functions include:
+-create_db
+-execute (execute smart contract query)
+
+Classes include:
+-DBSingletonMeta
+-DB (which inherits from DBSingletonMeta)
+"""
+
 from multiprocessing import Lock
 import os
 
@@ -15,15 +27,14 @@ SCRATCH_PREFIX = 'scratch_'
 
 def contract(tx_type):
     def decorate(tx_func):
-        print("Setting tx type {} to use contract {}".format(tx_type, tx_func))
+        # print("Setting tx type {} to use contract {}".format(tx_type, tx_func))
         tx_type.contract = tx_func
 
         @wraps(tx_func)
         def format_query(*args, compile_deltas=True, **kwargs):
             # Dynamically inject 'tables' into namespace of function to use this context's instance of db
-            print("** \n\n COMPILE DELTAS: {} \n\n *".format(compile_deltas))
             with DB() as db:
-                print("\ndynamically injecting tables\n")
+                # print("\ndynamically injecting tables\n")
                 tx_func.__globals__['tables'] = db.tables
 
             deltas = tx_func(*args, **kwargs)

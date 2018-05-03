@@ -1,10 +1,14 @@
 @0x8cff3844f3101ec9;
 
+struct TransactionContainer {
+    type @0 :UInt32;
+    payload @1 :Data;
+}
+
 struct MetaData {
     proof @0 :Data;
     signature @1 :Data;
-    nonce @2 :Data;
-    timestamp @3 :Float32;
+    timestamp @2 :Float32;
 }
 
 struct StandardTransaction {

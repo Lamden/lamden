@@ -1,1 +1,2 @@
 from cilantro.protocol.structures.merkle_tree import MerkleTree
+from cilantro.protocol.structures.envelope_auth import EnvelopeAuth

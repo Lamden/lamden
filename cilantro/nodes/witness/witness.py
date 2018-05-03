@@ -26,11 +26,13 @@ class WitnessBaseState(State):
 
 
 class WitnessBootState(WitnessBaseState):
+    """Witness boot state has witness sub to masternode and establish a pub socket and router socket"""
     def enter(self, prev_state):
         self.parent.reactor.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
         self.parent.reactor.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
 
-        self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl))
+        self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
+                                    filter=Constants.Testnet.ZmqFilters.WitnessMasternode)
         self.log.critical("Witness subscribing to URL: {}"
                           .format(TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl)))
 
@@ -42,10 +44,12 @@ class WitnessBootState(WitnessBaseState):
 
 
 class WitnessRunState(WitnessBaseState):
+    """Witness run state has the witness receive transactions sent from masternode"""
     @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
-        env = Envelope.create(tx)
-        self.parent.reactor.pub(url=self.parent.url, data=env)
+        self.log.critical("ayyyy witness got tx: {}".format(tx))
+        env = Envelope.create(signing_key=self.parent.signing_key, sender=self.parent.url, data=tx)
+        self.parent.reactor.pub(envelope=env, filter=Constants.ZmqFilters.WitnessDelegate)
 
 
 class Witness(NodeBase):
@@ -59,4 +63,7 @@ class Witness(NodeBase):
             signing_key = node_info['sk']
         super().__init__(url=url, signing_key=signing_key)
         self.log.info("Witness being created on slot {} with url {}".format(slot, url))
+        self.log.critical("starting witness sm")
         self.start()
+        self.log.critical("witness sm started (is this blocking..?)")
+        self.loop.run_forever()

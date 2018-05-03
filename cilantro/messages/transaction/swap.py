@@ -1,11 +1,11 @@
 from cilantro import Constants
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.utils import validate_hex, int_to_decimal
+import time
 
 import capnp
 import transaction_capnp
 
-import time
 
 class SwapTransaction(TransactionBase):
 

@@ -50,15 +50,19 @@ class DelegateBaseState(State):
 
 
 class DelegateBootState(DelegateBaseState):
+    """Delegate Boot State consists of subscribing to all delegates/all witnesses as well as publishing to own url
+    Also the delegate adds a router and dealer socket so masternode can identify which delegate is communicating"""
     def enter(self, prev_state):
         # Sub to other delegates
         for delegate in [d for d in Constants.Testnet.Delegates if d['url'] != self.parent.url]:
             self.log.info("{} subscribing to delegate {}".format(self.parent.url, delegate['url']))
-            self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(delegate['url']))
+            self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(delegate['url']),
+                                        filter=Constants.ZmqFilters.DelegateDelegate)
         # Sub to witnesses
         for witness in Constants.Testnet.Witnesses:
             self.log.info("{} subscribing to witness {}".format(self.parent.url, witness['url']))
-            self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(witness['url']))
+            self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(witness['url']),
+                                        filter=Constants.ZmqFilters.WitnessDelegate)
 
         # Pub on our own url
         self.parent.reactor.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
@@ -78,6 +82,9 @@ class DelegateBootState(DelegateBaseState):
 
 
 class DelegateInterpretState(DelegateBaseState):
+    """Delegate interpret state has the delegate receive and interpret that transactions are valid according to the
+    interpreter chosen. Once the number of transactions in the queue exceeds the size or a time interval is reached the
+    delegate moves into consensus state"""
     def __init__(self, state_machine=None):
         super().__init__(state_machine=state_machine)
 
@@ -111,6 +118,8 @@ class DelegateInterpretState(DelegateBaseState):
 
 
 class DelegateConsensusState(DelegateBaseState):
+    """Consensus state is where delegates pass around a merkelized version of their transaction queues, publish them to
+    one another, confirm the signature is valid, and then vote/tally the results"""
     NUM_DELEGATES = len(Constants.Testnet.Delegates)
 
     def __init__(self, state_machine=None):
@@ -254,7 +263,7 @@ class Delegate(NodeBase):
         super().__init__(url=url, signing_key=signing_key)
 
         self.log = get_logger("Delegate-#{}".format(slot), auto_bg_val=slot)
-        self.log.info("Delegate being created on slot {} with url {}".format(url, signing_key))
+        self.log.info("Delegate being created on slot {} with url {} and signing_key {}".format(slot, url, signing_key))
 
         # Shared between states
         self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
@@ -265,3 +274,5 @@ class Delegate(NodeBase):
         self.interpreter = VanillaInterpreter()
 
         self.start()
+        self.log.critical("delegate sm started")
+        self.loop.run_forever()

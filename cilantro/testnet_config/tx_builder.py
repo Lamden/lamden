@@ -1,13 +1,17 @@
 import requests
+import os
 from cilantro import Constants
-from cilantro.messages import StandardTransaction, StandardTransactionBuilder, Envelope, VoteTransaction, VoteTransactionBuilder, SwapTransaction, SwapTransactionBuilder
+from cilantro.messages import StandardTransaction, StandardTransactionBuilder, TransactionContainer, VoteTransaction, VoteTransactionBuilder, SwapTransaction, SwapTransactionBuilder
+from cilantro.db.delegate.backend import *
 from cilantro.utils import Encoder as E
 from cilantro.logger import get_logger
 from cilantro.db.delegate import *
-
 from cilantro.protocol.interpreters.queries import *
 
-MN_URL = 'http://127.0.0.1:8080'
+
+
+
+MN_URL = "http://{}:8080".format(os.getenv('MASTERNODE', '127.0.0.1'))
 
 STU = ('db929395f15937f023b4682995634b9dc19b1a2b32799f1f67d6f080b742cdb1',
  '324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502')
@@ -34,12 +38,15 @@ def send_tx(sender, receiver, amount):
         receiver = receiver[1]
 
     tx = StandardTransactionBuilder.create_tx(sender[0], sender[1], receiver, amount)
-    r = requests.post(MN_URL, data=Envelope.create(tx).serialize())
+    # r = requests.post(MN_URL, data=Envelope.create(tx).serialize())
+    r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
+    print("Request status code: {}".format(r.status_code))
+
 
 
 def send_vote():
     tx = VoteTransactionBuilder.random_tx()
-    r = requests.post(MN_URL, data=Envelope.create(tx).serialize())
+    r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
 
 # def send_swap():
 #     tx = SwapTransactionBuilder.random_tx()

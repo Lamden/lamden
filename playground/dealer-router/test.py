@@ -1,4 +1,4 @@
-from cilantro.protocol.reactor import NetworkReactor
+from cilantro.protocol.reactor import ReactorInterface
 from cilantro.logger import get_logger
 import time
 
@@ -8,7 +8,7 @@ URL = 'tcp://127.0.0.1:3530'
 class Requester:
     _ID = 'ASS'
     def __init__(self):
-        self.reactor = NetworkReactor(self)
+        self.reactor = ReactorInterface(self)
         self.log = get_logger("Requester")
         self.reactor.add_dealer(url=URL, callback='handle_reply', id=self._ID)
         self.reactor.notify_ready()
@@ -22,7 +22,7 @@ class Requester:
 
 class Replier:
     def __init__(self):
-        self.reactor = NetworkReactor(self)
+        self.reactor = ReactorInterface(self)
         self.log = get_logger("Replier")
         self.reactor.add_router(url=URL, callback='handle_request')
         self.reactor.notify_ready()
