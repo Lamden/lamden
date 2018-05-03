@@ -40,21 +40,24 @@ class WitnessBootState(WitnessBaseState):
         self.parent.transition(WitnessRunState)
 
     def exit(self, next_state):
-        self.parent.composer.notify_ready()
+        pass
 
 
 class WitnessRunState(WitnessBaseState):
     """Witness run state has the witness receive transactions sent from masternode"""
+
+    # TODO .. solution to 'relay' pub envelopes
+    # from MN to a delegate. Hacko is just to create a new envelope
+    # (but then UUID will be diff, and so will sig/og sender!) ...
+    # thus for relaying messages, if we arent doing anything to it,
+    # we may as well pass that mfker along in the ReactorDaemon. Right? ... if we arent doing any checks/processing
+    # on it in the SM, why bother piping the data all the way to main
+    # thread and then back to daemon, right?
     @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
-        self.log.critical("ayyyy witness got tx: {}".format(tx))
-
-        # TODO .. fix envelope creation process. Really here we would like to 'relay' the envelope
-        # from MN to a delegate. Hacko is just to create a new envelope.
-
-
-        # env = Envelope.create(signing_key=self.parent.signing_key, sender=self.parent.url, data=tx)
-        # self.parent.reactor.pub(envelope=env, filter=Constants.ZmqFilters.WitnessDelegate)
+        self.log.critical("ayyyy witness got tx: {}".format(tx))  # debug line, remove later
+        self.parent.composer.send_pub_msg(message=tx, filter=Constants.ZmqFilters.WitnessDelegate)
+        self.log.critical("witness published dat tx to the homies")  # debug line, remove later
 
 
 class Witness(NodeBase):

@@ -24,14 +24,9 @@ class MNBaseState(State):
 
     @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
-        self.log.critical("mn about to pub for tx {}".format(tx))
-
-            # env = Envelope.create(signing_key=self.parent.signing_key, sender=self.parent.url, data=tx)
-            # self.log.critical("env created: {}".format(env))
-            # self.parent.reactor.pub(filter=Constants.ZmqFilters.WitnessMasternode, envelope=env)
+        self.log.critical("mn about to pub for tx {}".format(tx))  # debug line
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=tx)
-
-        self.log.critical("published on our url: {}".format(TestNetURLHelper.pubsub_url(self.parent.url)))
+        self.log.critical("published on our url: {}".format(TestNetURLHelper.pubsub_url(self.parent.url)))  # debug line
 
     @recv_req(BlockContender)
     def recv_block(self, block: BlockContender, id):
@@ -51,7 +46,7 @@ class MNBootState(MNBaseState):
         self.parent.transition(MNRunState)
 
     def exit(self, next_state):
-        self.parent.composer.notify_ready()
+        pass
 
     @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
@@ -73,12 +68,11 @@ class MNRunState(MNBaseState):
         self.is_updating = False
 
     def enter(self, prev_state):
-        asyncio.set_event_loop(self.parent.loop)
+        asyncio.set_event_loop(self.parent.loop)  # pretty sure this is unnecessary  - davis
 
     def run(self):
         self.log.info("Starting web server")
-        web.run_app(self.app, host='0.0.0.0',#Constants.Testnet.Masternode.Host,
-                    port=int(Constants.Testnet.Masternode.ExternalPort))
+        web.run_app(self.app, host='0.0.0.0', port=int(Constants.Testnet.Masternode.ExternalPort))
 
     def exit(self, next_state):
         pass

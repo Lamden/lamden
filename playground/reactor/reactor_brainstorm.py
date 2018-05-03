@@ -291,7 +291,7 @@ class ReactorCore(Thread):
 
     def run(self):
         super().run()
-        self.log.debug("ReactorCore Run started")
+        self.log.debug("ReactorDaemon Run started")
 
         self.sockets = {'PUB': {}, 'SUB': {}}
         self.ctx = zmq.asyncio.Context()

@@ -16,16 +16,21 @@ class Envelope(MessageBase):
 
     # TODO -- method to create a message with an envelope (i.e. preset uuid?)
     @classmethod
-    def create_from_message(cls, message: MessageBase, signing_key: str, sender_id: str, verifying_key: str=None):
+    def create_from_message(cls, message: MessageBase, signing_key: str, verifying_key: str=None, uuid: int=-1):
         assert issubclass(type(message), MessageBase), "message arg must be a MessageBase subclass"
         assert type(message) in MessageBase.registry, "Message type {} not found in registry {}"\
             .format(type(message), MessageBase.registry)
         # TODO -- verify sk (valid hex, 128 char)
 
+        # TODO get rid of sender_id, fuck that shit, we got the VK on the seal and that shoudl be all we need
+
+        # TODO add either another factory method, or add a default uuid arg to this func so we can create message meta
+        # with a predetermined uuid (this is for creatnig reply envelopes)
+
         # Create MessageMeta
         t = MessageBase.registry[type(message)]
         timestamp = str(time.time())
-        meta = MessageMeta.create(type=t, sender=sender_id, timestamp=timestamp)
+        meta = MessageMeta.create(type=t, timestamp=timestamp, uuid=uuid)
 
         # Create Seal
         if not verifying_key:

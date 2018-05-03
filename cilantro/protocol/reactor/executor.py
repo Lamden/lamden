@@ -33,9 +33,9 @@ class Executor(metaclass=ExecutorMeta):
     async def recv_multipart(self, socket, callback, ignore_first_frame=False):
         self.log.warning("Starting recv on socket {} with callback {}".format(socket, callback))
         while True:
-            self.log.debug("\nwaiting for multipart msg...\n")
+            self.log.debug("waiting for multipart msg...")
             msg = await socket.recv_multipart()
-            self.log.debug("\n\nGot multipart msg: {}\n\n".format(msg))
+            self.log.debug("Got multipart msg: {}".format(msg))
 
             if ignore_first_frame:
                 header = None
@@ -50,10 +50,7 @@ class Executor(metaclass=ExecutorMeta):
     def _process_envelope(self, callback, header, envelope_binary):
         # Validate envelope if this is not a TIMEOUT callback
         if callback != ROUTE_TIMEOUT_CALLBACK:
-            self._validate_envelope(envelope_binary)
-
-        # TODO -- where to check if the header is equal to the id frame? These validation checks are getting very
-        # ad hoc and sketch...
+            self._validate_envelope(envelope_binary, header)
 
         # Check if this a reply envelope that we have been waiting for, and cancel its callback if so
         if callback == ROUTE_CALLBACK:
@@ -68,7 +65,9 @@ class Executor(metaclass=ExecutorMeta):
         self.log.debug("Executor sending callback cmd: {}".format(cmd))
         self.inproc_socket.send(cmd.serialize())
 
-    def _validate_envelope(self, envelope_binary) -> bool:
+    def _validate_envelope(self, envelope_binary, header) -> bool:
+        # TODO -- more robust and less ad-hoc zmq multipart msg validation
+
         # Deserialize envelope
         env = None
         try:
@@ -79,9 +78,17 @@ class Executor(metaclass=ExecutorMeta):
 
         # Check seal
         if not env.verify_seal():
-            self.log.error("Seal could not be verified for envelope {}".format(env))
+            self.log.error("\n\n\nSeal could not be verified for envelope {}\n\n\n".format(env))
             return False
 
+        # If header is not none (meaning this is a ROUTE msg with an ID frame), then verify that the ID frame is
+        # the same as the vk on the seal
+        if header and (header != env.seal.verifying_key):
+            self.log.error("Header frame {} does not match seal's vk {}\nfor envelope {}"
+                           .format(header, env.seal.verifying_key, env))
+            return False
+
+        # If none of the above checks returned false, this envelope should be g00d
         return True
 
 
