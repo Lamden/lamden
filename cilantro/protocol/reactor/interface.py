@@ -37,7 +37,9 @@ class ReactorInterface:
         # is this infinite fire/forget chill? Should this future be awaited somewhere?
         # Kind of a sketch pattern we got going on here, since there isnt really a well defined way to capture
         # exceptions in the coroutine...
-        asyncio.ensure_future(self._recv_messages())
+
+        # TODO: clean this up somewhere
+        self.deamon_future = asyncio.ensure_future(self._recv_messages())
 
     def _start_reactor(self, url, p_name):
         reactor = ReactorCore(url=url, p_name=p_name)
@@ -52,19 +54,30 @@ class ReactorInterface:
     async def _recv_messages(self):
         self.log.debug("~~ Reactor listening to messages from ReactorCore ~~")
         while True:
-            # TODO refactor and pretty this up
             self.log.debug("Waiting for callback...")
             msg = await self.socket.recv()
+
+            # DEBUG TODO remove this
+            # self.log.critical("\n\n ReactorInterface finna die\n\n")
+            # i = 10 / 0
+            # self.log.critical("\n\n i ded \n\n")  # should not print
+            # END DEBUG
 
             callback = ReactorCommand.from_bytes(msg)
 
             self.log.debug("Got callback cmd <{}>".format(callback))
 
-            self._run_callback(callback)
+            result = await self._run_callback(callback)
+            self.log.critical("GOT RESULT FROM RUNNING CALLBACK: {}".format(result))
 
-    def _run_callback(self, callback: ReactorCommand):
+    async def _run_callback(self, callback: ReactorCommand):
         self.log.debug("Running callback cmd {}".format(callback))
         self.router.route_callback(callback)
+        return "monkeys"
+
+    # def _run_callback(self, callback: ReactorCommand):
+    #     self.log.debug("Running callback cmd {}".format(callback))
+    #     self.router.route_callback(callback)
 
     def notify_ready(self):
         self.log.critical("NOTIFIY READY")

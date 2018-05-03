@@ -1,15 +1,15 @@
-'''
+"""
     Masternode
     These are the entry points to the blockchain and pass messages on throughout the system. They are also the cold
     storage points for the blockchain once consumption is done by the network.
 
     They have no say as to what is 'right,' as governance is ultimately up to the network. However, they can monitor
     the behavior of nodes and tell the network who is misbehaving.
-'''
+"""
 from cilantro import Constants
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, recv, recv_req, timeout
-from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, MessageMeta
+from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, TransactionContainer
 from cilantro.utils import TestNetURLHelper
 from aiohttp import web
 import asyncio
@@ -26,15 +26,12 @@ class MNBaseState(State):
     def recv_tx(self, tx: TransactionBase):
         self.log.critical("mn about to pub for tx {}".format(tx))
 
-        try:
-            env = Envelope.create(signing_key=self.parent.signing_key, sender=self.parent.url, data=tx)
-            self.log.critical("env created: {}".format(env))
-            self.parent.reactor.pub(filter=Constants.ZmqFilters.WitnessMasternode, envelope=env)
-        except Exception as e:
-            self.log.error("Erorr sending tx: {}".format(e))
+            # env = Envelope.create(signing_key=self.parent.signing_key, sender=self.parent.url, data=tx)
+            # self.log.critical("env created: {}".format(env))
+            # self.parent.reactor.pub(filter=Constants.ZmqFilters.WitnessMasternode, envelope=env)
+        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=tx)
 
         self.log.critical("published on our url: {}".format(TestNetURLHelper.pubsub_url(self.parent.url)))
-        return web.Response(text="Successfully published transaction: {}".format(tx))
 
     @recv_req(BlockContender)
     def recv_block(self, block: BlockContender, id):
@@ -47,14 +44,14 @@ class MNBaseState(State):
 class MNBootState(MNBaseState):
     def enter(self, prev_state):
         self.log.critical("MN URL: {}".format(self.parent.url))
-        self.parent.reactor.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
-        self.parent.reactor.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
+        self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
+        self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
 
     def run(self):
         self.parent.transition(MNRunState)
 
     def exit(self, next_state):
-        self.parent.reactor.notify_ready()
+        self.parent.composer.notify_ready()
 
     @recv(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
@@ -64,10 +61,9 @@ class MNBootState(MNBaseState):
 class MNRunState(MNBaseState):
     NODE_AVAILABLE, NODE_AWAITING, NODE_TIMEOUT = range(3)
 
-    def __init__(self, state_machine=None):
+    def __init__(self, state_machine):
         super().__init__(state_machine=state_machine)
         self.app = web.Application()
-        # self.loop = asyncio.new_event_loop()
         self.app.router.add_post('/', self.parent.route_http)
 
         self.block_contenders = []
@@ -109,7 +105,7 @@ class MNRunState(MNBaseState):
 
         for sig in block.signatures:
             self.node_states[sig.sender] = self.NODE_AVAILABLE
-            self.parent.reactor.add_dealer(url=TestNetURLHelper.dealroute_url(sig.sender), id=self.parent.url)
+            self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(sig.sender), id=self.parent.url)
             import time
             time.sleep(0.2)
 
@@ -123,7 +119,9 @@ class MNRunState(MNBaseState):
             replier = repliers[i % len(repliers)]
             req = BlockDataRequest.create(tx)
             self.log.critical("Requesting tx hash {} from URL {}".format(tx, replier))
-            self.parent.reactor.request(url=TestNetURLHelper.dealroute_url(replier), data=Envelope.create(req), timeout=1)
+
+            # TODO -- fix this to use new envelope creation process
+            self.parent.composer.request(url=TestNetURLHelper.dealroute_url(replier), data=Envelope.create(req), timeout=1)
 
     def compute_hash_of_nodes(self, nodes) -> str:
         self.log.critical("Masternode computing hash of nodes...")
@@ -178,9 +176,22 @@ class Masternode(NodeBase):
     _INIT_STATE = MNBootState
     _STATES = [MNBootState, MNRunState]
 
-    def __init__(self, url=Constants.Testnet.Masternode.InternalUrl, signing_key=Constants.Testnet.Masternode.Sk):
-        super().__init__(url=url, signing_key=signing_key)
-        self.log.critical("hey, about to call self.start()")
-        self.start()
-        self.log.critical("hey self.start() is not block!!!!!!!!")
-        self.loop.run_until_complete()
+    async def route_http(self, request):
+        self.log.critical("Got request {}".format(request))
+        raw_data = await request.content.read()
+
+        self.log.critical("Got raw_data: {}".format(raw_data))
+        container = TransactionContainer.from_bytes(raw_data)
+
+        self.log.critical("Got container: {}".format(container))
+        tx = container.open()
+
+        self.log.critical("Got tx: {}".format(tx))
+
+        try:
+            self.state._receivers[type(tx)](self.state, tx)
+            return web.Response(text="Successfully published transaction: {}".format(tx))
+        except Exception as e:
+            return web.Response(text="fukt up processing request with err: {}".format(e))
+    # def __init__(self, loop, url, signing_key):
+    #     super().__init__(url=url, signing_key=signing_key, loop=loop)

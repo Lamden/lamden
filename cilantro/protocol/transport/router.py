@@ -46,6 +46,11 @@ class Router:
         Routes an envelope to the appropriate @input receiver
         """
         self.log.debug("Routing envelope: {}".format(env))
+
+        self.log.critical("\n\n FINNA DESTRUCT \n\n")
+        i = 10 / 0
+        self.log.critical("\n\n i ded \n\n")
+
         assert type(env.message) in self.sm.state._receivers, "State {} has no implemented receiver for {} in " \
                                                               "_receivers {}".format(self.sm.state, type(env.message),
                                                                                      self.sm.state._receivers)
@@ -55,7 +60,7 @@ class Router:
         """
         Should be for internal use only.
         Routes a reply envelope to the appropriate @input receiver. This is different that a 'regular' (non request)
-        envelope, because data returend to the @input function will be packaged as a reply and sent off to the daemon
+        envelope, because data returned to the @input function will be packaged as a reply and sent off to the daemon
         by the composer
         """
         self.log.debug("Routing request envelope: {}".format(env))

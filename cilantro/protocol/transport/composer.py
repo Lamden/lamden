@@ -64,7 +64,7 @@ class Composer:
         :param filter: A string to use as the filter frame
         :param message: A MessageBase subclass
         """
-        self.send_pub_env(self._package_msg(message))
+        self.send_pub_env(filter=filter, envelope=self._package_msg(message))
 
     def send_pub_env(self, filter: str, envelope: Envelope):
         """

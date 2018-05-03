@@ -1,6 +1,5 @@
 from cilantro import Constants
 from cilantro.logger import get_logger
-from cilantro.messages import TransactionContainer, Envelope
 from cilantro.protocol.transport import Composer
 from cilantro.protocol.statemachine import StateMachine
 # from cilantro.protocol.reactor.executor import *
@@ -17,7 +16,7 @@ class NodeBase(StateMachine):
         self.signing_key = signing_key
 
         self.loop = loop
-        self.composer = None
+        self._composer = None
 
         self.nodes_registry = Constants.Testnet.AllNodes  # TODO move away from this once we get dat good overlay net
 
@@ -39,13 +38,14 @@ class NodeBase(StateMachine):
 
     @property
     def composer(self):
-        return self.composer
+        return self._composer
 
     @composer.setter
     def composer(self, val):
+        print("\n\n\n SETTING COMPOSER TO VAL: {}\n\n\n".format(val))
         assert isinstance(val, Composer), ".composer property must be a Composer instance"
         assert self.composer is None, "Composer is already set (composer should only be set once during creation)"
-        self.composer = val
+        self._composer = val
 
     # def route(self, msg: MessageBase):
     #     if type(msg) in self.state._receivers:
@@ -110,14 +110,6 @@ class NodeBase(StateMachine):
     #
     #     self.state._timeouts[type(msg)](self.state, msg)
 
-    # TODO -- move this to masternode base
-    async def route_http(self, request):
-        self.log.critical("Got request {}".format(request))
-        raw_data = await request.content.read()
-        self.log.critical("Got raw_data: {}".format(raw_data))
-        container = TransactionContainer.from_bytes(raw_data)
-        self.log.critical("Got container: {}".format(container))
-        tx = container.open()
-        self.log.critical("Got tx: {}".format(tx))
-        self.state._receivers[type(tx)](self.state, tx)
+
+
 

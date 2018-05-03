@@ -37,15 +37,12 @@ class NodeFactory:
     @staticmethod
     def build_masternode(loop, signing_key=Constants.Testnet.Masternode.Sk,
                          url=Constants.Testnet.Masternode.InternalUrl) -> Masternode:
-        mn = Masternode(signing_key=signing_key, url=url)
+        mn = Masternode(signing_key=signing_key, url=url, loop=loop)
         router = Router(statemachine=mn)
         interface = ReactorInterface(router=router, loop=loop)
         composer = Composer(interface=interface, signing_key=signing_key, sender_id=W.get_vk(signing_key))
 
-        # irl we would just set composer, but for testing purposes we setting them all
         mn.composer = composer
-        mn.router = router
-        mn.interface = interface
 
         return mn
 
@@ -60,15 +57,26 @@ class NodeFactory:
 
     @staticmethod
     def build_witness(loop, signing_key, url) -> Witness:
-        w = Witness(url=url, signing_key=signing_key)
+        w = Witness(loop=loop, url=url, signing_key=signing_key)
         router = Router(statemachine=w)
         interface = ReactorInterface(router=router, loop=loop)
         composer = Composer(interface=interface, signing_key=signing_key, sender_id=W.get_vk(signing_key))
 
-        # TODO -- set composer on W?
+        w.composer = composer
 
         return w
 
     @staticmethod
-    def run_witness(signing_key, url):
-        w = NodeFactory.build_witness()
+    def run_witness(signing_key='51066195e63be3c8d5c14d3c1561b90a1f0f0789b5c2b44254a4a211edac1ec6',
+                    url='tcp://127.0.0.1:6000'):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        w = NodeFactory.build_witness(loop=loop, signing_key=signing_key, url=url)
+
+        w.start()
+
+
+# TEST CODE
+# NodeFactory.run_masternode()
+# END TEST
