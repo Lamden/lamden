@@ -180,10 +180,26 @@ class TestEnvelope(TestCase):
 
         self.assertFalse(env.verify_seal())
 
-    # TODO: implement and test validation
+    def test_validate_envelope(self):
+        """
+        Tests validate envelope function
+        """
+        meta = self._default_meta()
+        message = self._default_msg()
+        sk, vk = W.new()
 
-    # TODO: test message deserialization
+        signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
+        seal = Seal.create(signature=signature, verifying_key=vk)
 
+        env = Envelope.create_from_objects(seal=seal, meta=meta, message=message.serialize())
+
+        print('\n\n', env._data, '\n\n', type(env._data))
+
+        env.validate()
+
+    def test_message_deserialization(self):
+        message_data = b'hi im byte message data'
+        return self.from_bytes_packed(message_data)
 
 
 
