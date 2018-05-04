@@ -46,7 +46,7 @@ class ReactorDaemon:
 
     def execute_cmd(self, cmd: ReactorCommand):
         assert isinstance(cmd, ReactorCommand), "Cannot execute cmd {} that is not a ReactorCommand object".format(cmd)
-        self.log.debug("Executing cmd".format(cmd))
+        self.log.debug("Executing cmd {}".format(cmd))
 
         executor_name = cmd.class_name
         executor_func = cmd.func_name

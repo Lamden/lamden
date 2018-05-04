@@ -20,8 +20,9 @@ class Hasher:
     def _cast_to_bytes(data) -> bytes:
         """
         Attempts to auto-cast the data to bytes, raising an error if not possible
-        :param data:
-        :return:
+        :param data: The data to attempt to cast to bytes
+        :return: Bytes
+        :raises: An assertion if data is a non-trivial type that could not be casted to bytes
         """
         # MessageBase imported here to fix cyclic imports...TODO -- find a better fix for this
         from cilantro.messages import MessageBase
