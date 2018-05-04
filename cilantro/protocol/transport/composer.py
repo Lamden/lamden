@@ -2,12 +2,12 @@ from cilantro import Constants
 from cilantro.messages import MessageBase, ReactorCommand, Envelope
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.reactor.executor import *
-
+from cilantro.logger import get_logger
 
 class Composer:
 
     def __init__(self, interface: ReactorInterface, signing_key: str, sender_id: str):
-        super().__init__()
+        self.log = get_logger("Composer")
         self.interface = interface
         self.signing_key = signing_key
         self.sender_id = sender_id
@@ -27,6 +27,7 @@ class Composer:
         Requires kwargs 'url' of subscriber (IP to sub to as a string), and 'filter', the filter to use subscribe under
         (as a string)
         """
+
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=url, filter=filter)
         self.interface.send_cmd(cmd)
 

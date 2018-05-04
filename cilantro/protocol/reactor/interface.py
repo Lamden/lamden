@@ -48,19 +48,19 @@ class ReactorInterface:
         self.log.debug("~~ Reactor listening to messages from ReactorCore ~~")
         while True:
             # TODO refactor and pretty this up
-            self.log.debug("Waiting for callback...")
+            # self.log.debug("Waiting for callback...")
             # callback, args = await self.socket.recv_pyobj()
             # args = list(args)
             msg = await self.socket.recv()
-
+            
             callback = ReactorCommand.from_bytes(msg)
 
-            self.log.debug("Got callback cmd <{}>".format(callback))
+            # self.log.debug("Got callback cmd <{}>".format(callback))
 
             self._run_callback(callback)
 
     def _run_callback(self, callback):
-        self.log.debug("Running callback cmd {}".format(callback))
+        # self.log.debug("Running callback cmd {}".format(callback))
 
         # TODO -- engineer less hacky way to do this that doesnt explicitly rely on multiframe positions
         # meta, payload = args[-2:]
@@ -68,6 +68,7 @@ class ReactorInterface:
         # new_args = args[:-2] + [envelope]
         #
         # getattr(self.router, callback)(*new_args)
+        pass
 
     def notify_ready(self):
         self.log.critical("NOTIFIY READY")
