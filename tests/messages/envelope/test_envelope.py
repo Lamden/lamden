@@ -5,6 +5,7 @@ from cilantro.protocol.structures import EnvelopeAuth
 
 W = Constants.Protocol.Wallets
 
+# TODO createfrommessage
 
 class TestEnvelope(TestCase):
 
@@ -15,10 +16,9 @@ class TestEnvelope(TestCase):
         """
         t = MessageBase.registry[type(self._default_msg())]
         timestamp = 'now'
-        sender = 'me'
         uuid = 1260
 
-        mm = MessageMeta.create(type=t, sender=sender, timestamp=timestamp, uuid=uuid)
+        mm = MessageMeta.create(type=t, timestamp=timestamp, uuid=uuid)
         return mm
 
     def _default_seal(self):
@@ -91,11 +91,10 @@ class TestEnvelope(TestCase):
         msg = self._default_msg()
         sender = 'dat boi'
 
-        env = Envelope.create_from_message(message=msg, signing_key=sk, sender_id=sender)
+        env = Envelope.create_from_message(message=msg, signing_key=sk)
 
         self.assertTrue(env.verify_seal())
         self.assertEqual(env.message, msg)
-        self.assertEqual(env.meta.sender, sender)
         self.assertEqual(env.seal.verifying_key, vk)
 
     # TODO: test create_from_message with invalid args
@@ -108,7 +107,7 @@ class TestEnvelope(TestCase):
         msg = 'hi im a bad message'
         sender = 'dat boi'
 
-        self.assertRaises(Exception, Envelope.create_from_message, msg, sk, sender)
+        self.assertRaises(Exception, Envelope.create_from_message, msg, sk, vk)
 
     def test_create_from_message_bad_sk(self):
         """
@@ -129,13 +128,13 @@ class TestEnvelope(TestCase):
         msg = self._default_msg()
         sender = 'dat boi'
 
-        env = Envelope.create_from_message(message=msg, signing_key=sk, sender_id=sender, verifying_key=vk)  # no error
+        env = Envelope.create_from_message(message=msg, signing_key=sk, verifying_key=vk)  # no error
 
         self.assertEqual(env.seal.verifying_key, vk)
 
-        self.assertRaises(Exception, Envelope.create_from_message, msg, sk, sender, vk1)  # TODO error with bad vk
+        self.assertRaises(Exception, Envelope.create_from_message, msg, sk, sender, vk1)
 
-        self.assertEqual(env.seal.verifying_key, vk1)
+        self.assertNotEqual(env.seal.verifying_key, vk1)
 
     def test_serialize_from_objects(self):
         """
@@ -197,9 +196,15 @@ class TestEnvelope(TestCase):
 
         env.validate()
 
-    def test_message_deserialization(self):
-        message_data = b'hi im byte message data'
-        return self.from_bytes_packed(message_data)
+    def test_validate_bad_seal(self):
+        pass
+
+    def test_validate_bad_metadata(self):
+        pass
+
+    def test_validate_bad_message(self):
+        pass
+
 
 
 

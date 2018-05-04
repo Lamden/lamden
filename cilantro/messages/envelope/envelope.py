@@ -59,14 +59,9 @@ class Envelope(MessageBase):
         return obj
 
     def validate(self):
-        # Try to access .seal/.meta./.message to make sure they deserialize properly
-        # assert type(self._data) == capnp.lib.capnp._DynamicStructBuilder, "envelopes's _data must be a capnp struct"\
-        #    .format(self._data)
-        # assert self.seal in self._data, "seal missing from data {}".format(self._data)
-        # assert self.meta in self._data, "meta field missing from data {}".format(self._data)
-        # assert self.message in self._data, "message missing from data {}".format(self._data)
-        pass
-        # TODO verify
+        assert self.seal
+        assert self.meta
+        assert self.message
 
     def verify_seal(self):
         return EnvelopeAuth.verify_seal(seal=self.seal, meta=self.meta_binary, message=self.message_binary)
