@@ -88,6 +88,7 @@ class StateMeta(type):
         subs.extend(new_subs)
         for sub in new_subs:
             subs.extend(StateMeta.get_subclasses(sub, subs=subs))
+
         return subs
 
 

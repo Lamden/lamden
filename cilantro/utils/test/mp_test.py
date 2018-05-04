@@ -337,7 +337,7 @@ class MPTesterBase:
     testers = []
     tester_cls = 'UNSET'
 
-    def __init__(self, config_fn=None, assert_fn=None, name='TestableProcess'):
+    def __init__(self, config_fn=None, assert_fn=None, name='TestableProcess', *args, **kwargs):
         super().__init__()
         self.log = get_logger(name)
         self.name = name
@@ -354,8 +354,13 @@ class MPTesterBase:
         # Add this object to the registry of testers
         MPTesterBase.testers.append(self)
 
+        # Create a wrapper around the build_obj with args and kwargs. We do this b/c this function will actually be
+        # invoked in a separate process/machine, thus we need to capture the function call to serialize it and send
+        # it across a socket
+        build_fn = wrap_func(type(self).build_obj, *args, **kwargs)
+
         # Create and start the subprocess that will run the blocking object
-        self.test_proc = LProcess(target=_run_test_proc, args=(self.name, self.url, type(self).build_obj,
+        self.test_proc = LProcess(target=_run_test_proc, args=(self.name, self.url, build_fn,
                                                                self.config_fn, self.assert_fn,))
         self.start_test()
 
@@ -374,9 +379,8 @@ class MPTesterBase:
         assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
         self.log.critical("GOT RDY SIG: {}".format(msg))
 
-
     @classmethod
-    def build_obj(cls) -> tuple:
+    def build_obj(cls, *args, **kwargs) -> tuple:
         """
         Override to define how the blocking object should be initialized. Must return 2 element tuple, in the order
         <loop> (an EventLoop instance), and <object> (an instance of the blocking object to test).
