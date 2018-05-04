@@ -56,23 +56,22 @@ class DelegateBootState(DelegateBaseState):
         # Sub to other delegates
         for delegate in [d for d in Constants.Testnet.Delegates if d['url'] != self.parent.url]:
             self.log.info("{} subscribing to delegate {}".format(self.parent.url, delegate['url']))
-            self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(delegate['url']),
+            self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(delegate['url']),
                                         filter=Constants.ZmqFilters.DelegateDelegate)
         # Sub to witnesses
         for witness in Constants.Testnet.Witnesses:
             self.log.info("{} subscribing to witness {}".format(self.parent.url, witness['url']))
-            self.parent.reactor.add_sub(url=TestNetURLHelper.pubsub_url(witness['url']),
+            self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(witness['url']),
                                         filter=Constants.ZmqFilters.WitnessDelegate)
 
         # Pub on our own url
-        self.parent.reactor.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
+        self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
 
         # Add router socket
-        self.parent.reactor.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
+        self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
 
         # Add dealer socket for Masternode
-        self.parent.reactor.add_dealer(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl),
-                                       id=self.parent.url)
+        self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
 
     def run(self):
         self.parent.transition(DelegateInterpretState)
@@ -218,7 +217,7 @@ class DelegateUpdateState(DelegateBaseState): pass
 #     def decorate(func):
 #         @wraps(func)
 #         def wrapper(*args, **kwargs):
-#             # print("UR BOY HAS INJECTED A SKETCH EXECUTE FUNC LOL LFG")
+#             # print("UR BOY HAS INJECTED A SKETCH EXECUTE FUNC LOL GLHF")
 #             if random.random() < prob_fail:
 #                 print("!!! not running func")
 #                 return do_nothing(*args, **kwargs)
@@ -255,12 +254,12 @@ class Delegate(NodeBase):
     _INIT_STATE = DelegateBootState
     _STATES = [DelegateBootState, DelegateInterpretState, DelegateConsensusState, DelegateUpdateState]
 
-    def __init__(self, url=None, signing_key=None, slot=0):
+    def __init__(self, loop, url=None, signing_key=None, slot=0):
         if url is None and signing_key is None:
             node_info = Constants.Testnet.Delegates[slot]
             url = node_info['url']
             signing_key = node_info['sk']
-        super().__init__(url=url, signing_key=signing_key)
+        super().__init__(loop=loop, url=url, signing_key=signing_key)
 
         self.log = get_logger("Delegate-#{}".format(slot), auto_bg_val=slot)
         self.log.info("Delegate being created on slot {} with url {} and signing_key {}".format(slot, url, signing_key))
@@ -272,7 +271,3 @@ class Delegate(NodeBase):
         # states on transition, i.e sm.transition(NextState, arg1='hello', arg2='let_do+it')
         # and the enter(...) of the next state should have these args
         self.interpreter = VanillaInterpreter()
-
-        self.start()
-        self.log.critical("delegate sm started")
-        self.loop.run_forever()

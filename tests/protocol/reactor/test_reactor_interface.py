@@ -35,7 +35,6 @@ class TestReactorInterface(TestCase):
         self.assertTrue(reactor.router is router)
         async_mock.set_event_loop.assert_called_with(loop)
 
-
     @patch('cilantro.protocol.reactor.interface.LProcess')
     @patch('zmq.asyncio.Context')
     @patch('cilantro.protocol.reactor.interface.asyncio')
@@ -64,6 +63,8 @@ class TestReactorInterface(TestCase):
         """
         Tests that init creates a context and a ZMQ Pair socket
         """
+        print("\n[inside test case] lproc is: {}\n".format(lproc))
+
         loop = MagicMock()
         router = MagicMock()
 
