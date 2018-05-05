@@ -15,22 +15,10 @@ class PubNode(BaseNode, GroupMixin):
         self.regroup(self.load_ips(ip_list))
         # self.regroup(discover())
 
-    async def designate_next_group(self, max_group_size=4):
-        # Update the idxs so it will send to the ports that specific subscribers listens to
-        old_ports, new_ports = self.update_group_idxs(key=None, max_group_size=max_group_size)
-        # remove any old ports that will not be in the resulting group
-        #   ONLY IF it is above the max_group_size
-        if len(old_ports) + len(new_ports) > max_group_size:
-            for port in (old_ports+new_ports)[:-max_group_size]:
-                self.composer.remove_pub(url="tcp://{}:{}".format(self.host, port))
-        # add any new ports that is not already in the old ports
-        for port in new_ports:
-            self.composer.add_pub(url="tcp://{}:{}".format(self.host, port))
-
     async def debug_forever_pub(self):
         while True:
             payload = 'random-payload-{}'.format(uuid.uuid4().hex)
-            await self.designate_next_group()
+            self.designate_next_group()
             self.composer.pub(data=DebugMsg(payload), filter='')
             await asyncio.sleep(1)
 

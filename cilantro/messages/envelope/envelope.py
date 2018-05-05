@@ -84,7 +84,6 @@ class Envelope(MessageBase):
         return MessageBase.registry[self.meta.type].from_bytes(self.message_binary)
 
 
-
 # class Envelope(PicklableMixin):
 #     """
 #     An envelope is a convenience wrapper around a message's metadata (MessageMeta) and its
@@ -185,9 +184,3 @@ class Envelope(MessageBase):
 #             self._raw_metadata = self.metadata.serialize()
 #
 #         return self._raw_metadata
-
-
-
-
-
-

@@ -45,16 +45,17 @@ class Executor(metaclass=ExecutorMeta):
                                       "(header, envelope) but got {}".format(msg)
                 header = msg[0].decode()
 
-            env = msg[-1]
-            env_data = Envelope._deserialize_data(env)
-            env_meta = env_data.meta
-            if self.duplication.get(env_meta):
+            env_binary = msg[-1]
+            env = Envelope.from_bytes(env_binary)
+            env_meta = env.meta
+            if self.duplication.get(env_meta.uuid):
                 # Time difference less than 5 seconds is considered a collision or the same message
-                if float(self.duplication[env_meta.uuid]) - float(env_meta.timestamp) > 5:
+                if float(env_meta.timestamp) - float(self.duplication[env_meta.uuid]) < 5:
+                    self.log.debug("skiipping duplicate env {}".format(env))
                     continue
             self.duplication[env_meta.uuid] = env_meta.timestamp
-            self.log.debug('received envelope:\n{}'.format(env_data))
-            self.call_on_mt(callback, header=header, envelope_binary=env)
+            self.log.debug('received envelope:\n{}'.format(env))
+            self.call_on_mt(callback, header=header, envelope_binary=env_binary)
 
     def call_on_mt(self, callback, header: bytes=None, envelope_binary: bytes=None, **kwargs):
         if header:
@@ -69,13 +70,13 @@ class Executor(metaclass=ExecutorMeta):
 class SubPubExecutor(Executor):
     def __init__(self, loop, context, inproc_socket):
         super().__init__(loop, context, inproc_socket)
-        self.subs = {}
+        self.sub = None
         self.pubs = {}
 
     def send_pub(self, filter: str, envelope: bytes):
         assert len(self.pubs) != 0, "Attempted to publish data but publisher socket is not configured"
         for url in self.pubs:
-            self.log.info("Publishing to... {} the envelope: {}".format(url, envelope))
+            self.log.debug("Publishing to... {} the envelope: {}".format(url, Envelope.from_bytes(envelope)))
             # self.log.info("Publishing to... {}".format(url))
             self.pubs[url].send_multipart([filter.encode(), envelope])
 
@@ -88,23 +89,22 @@ class SubPubExecutor(Executor):
         self.log.info("Creating publisher socket on url {}".format(url))
         self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
         self.pubs[url].bind(url)
+        time.sleep(0.2)
 
     def add_sub(self, url: str, filter: str):
-        if not self.subs.get(url):
+        if not self.sub:
             self.log.info("Creating subscriber socket")
-            self.subs[url] = self.context.socket(socket_type=zmq.SUB)
-            asyncio.ensure_future(self.recv_multipart(self.subs[url], SUB_CALLBACK, ignore_first_frame=True))
+            self.sub = self.context.socket(socket_type=zmq.SUB)
+            asyncio.ensure_future(self.recv_multipart(self.sub, SUB_CALLBACK, ignore_first_frame=True))
 
         self.log.info("Subscribing to url {} with filter '{}'".format(url, filter))
-        self.subs[url].connect(url)
-        self.subs[url].setsockopt(zmq.SUBSCRIBE, filter.encode())
+        self.sub.connect(url)
+        self.sub.setsockopt(zmq.SUBSCRIBE, filter.encode())
 
     def remove_sub(self, url: str, msg_filter: str):
-        assert self.subs.get(url), "Remove sub command invoked but sub socket is not set"
-        self.subs[url].setsockopt(zmq.UNSUBSCRIBE, msg_filter.encode())
-        self.subs[url].disconnect(url)
-        self.subs[url].close()
-        del self.subs[url]
+        assert self.sub, "Remove sub command invoked but sub socket is not set"
+        self.sub.setsockopt(zmq.UNSUBSCRIBE, msg_filter.encode())
+        self.sub.disconnect(url)
 
     def remove_pub(self, url: str):
         assert self.pubs.get(url), "Remove pub command invoked but pub socket is not set"
