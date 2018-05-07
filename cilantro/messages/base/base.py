@@ -17,7 +17,7 @@ class MessageBaseMeta(type):
         m = hashlib.md5()
         m.update(clsobj.__name__.encode())
         l = int(m.digest().hex(),16) % pow(2, 16)
-        assert clsobj.registry.get(l) == None, 'Registry enum collision of message class {}!'.format(clsobj.__name__)
+        assert clsobj.registry.get(l) is None, 'Registry enum collision of message class {}!'.format(clsobj.__name__)
 
         clsobj.registry[clsobj] = l
         clsobj.registry[l] = clsobj

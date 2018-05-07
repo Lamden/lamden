@@ -13,10 +13,9 @@ class TestMessageMeta(TestCase):
         sender = 'me'
         uuid = 1260
 
-        mm = MessageMeta.create(type=type, sender=sender, timestamp=timestamp, uuid=uuid)
+        mm = MessageMeta.create(type=type, timestamp=timestamp, uuid=uuid)
 
         self.assertEqual(mm.type, type)
-        self.assertEqual(mm.sender, sender)
         self.assertEqual(mm.timestamp, timestamp)
         self.assertEqual(mm.uuid, uuid)
 
@@ -26,9 +25,8 @@ class TestMessageMeta(TestCase):
         """
         type = 1
         timestamp = 'now'
-        sender = 'me'
 
-        mm = MessageMeta.create(type=type, sender=sender, timestamp=timestamp)
+        mm = MessageMeta.create(type=type, timestamp=timestamp)
 
         self.assertTrue(mm.uuid)
 
@@ -38,11 +36,10 @@ class TestMessageMeta(TestCase):
         """
         type = 1
         timestamp = 'now'
-        sender = 'me'
         uuid = 1260
 
-        mm = MessageMeta.create(type=type, sender=sender, timestamp=timestamp, uuid=uuid)
-        mm2 = MessageMeta.create(type=type, sender=sender, timestamp=timestamp, uuid=uuid)
+        mm = MessageMeta.create(type=type, timestamp=timestamp, uuid=uuid)
+        mm2 = MessageMeta.create(type=type, timestamp=timestamp, uuid=uuid)
 
         self.assertEqual(mm, mm2)
 
@@ -52,10 +49,9 @@ class TestMessageMeta(TestCase):
         """
         type = 1
         timestamp = 'now'
-        sender = 'me'
         uuid = 1260
 
-        mm = MessageMeta.create(type=type, sender=sender, timestamp=timestamp, uuid=uuid)
+        mm = MessageMeta.create(type=type, timestamp=timestamp, uuid=uuid)
         mm_clone = (MessageMeta.from_bytes(mm.serialize()))
 
         self.assertEqual(mm, mm_clone)

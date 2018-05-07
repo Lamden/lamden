@@ -13,4 +13,4 @@ class BaseNode:
         self.loop = asyncio.get_event_loop()
         self.reactor = ReactorInterface(self, self.loop)
         self.wallet = ED25519Wallet()
-        self.composer = Composer(self.reactor, self.wallet.s, uuid.uuid4().hex)
+        self.composer = Composer(self.reactor, self.wallet.s)

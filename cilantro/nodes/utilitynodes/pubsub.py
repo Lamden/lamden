@@ -1,11 +1,18 @@
 from cilantro.logger import get_logger
-from cilantro.nodes.utilitynodes import BaseNode, DebugMsg
+from cilantro.nodes.utilitynodes import BaseNode
 from cilantro.nodes.utilitynodes.mixins import GroupMixin
-import asyncio, uuid, os, warnings
+from cilantro.messages import *
+from cilantro.protocol.wallets import ED25519Wallet
+import asyncio, os, warnings
 
 log = get_logger("Main")
 log.debug("-- MAIN THREAD ({}) --".format(os.getenv('HOST_IP', '127.0.0.1')))
 ip_list = os.getenv('NODE','127.0.0.1').split(',')[1:8]
+
+def random_envelope():
+    sk, vk = ED25519Wallet.new()
+    tx = StandardTransactionBuilder.random_tx()
+    return Envelope.create_from_message(message=tx, signing_key=sk, verifying_key=vk)
 
 class PubNode(BaseNode, GroupMixin):
     def __init__(self, mode='rolling_group'):
@@ -17,9 +24,8 @@ class PubNode(BaseNode, GroupMixin):
 
     async def debug_forever_pub(self):
         while True:
-            payload = 'random-payload-{}'.format(uuid.uuid4().hex)
             self.designate_next_group()
-            self.composer.pub(data=DebugMsg(payload), filter='')
+            self.composer.send_pub(envelope=random_envelope(), filter='')
             await asyncio.sleep(1)
 
 class SubNode(BaseNode, GroupMixin):

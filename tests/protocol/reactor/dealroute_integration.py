@@ -49,7 +49,7 @@ class TestReactorDealerRouter(MPTestCase):
         Tests dealer router 1/1 (1 dealer, 1 router) with 1 message request (dealer sends router 1 message)
         """
         def run_assertions(reactor: ReactorInterface):
-            cb = ReactorCommand.create_callback(callback=REQ_CALLBACK, envelope=env, header=DEALER_ID)
+            cb = ReactorCommand.create_callback(callback=ROUTE_REQ_CALLBACK, envelope=env, header=DEALER_ID)
             reactor._run_callback.assert_called_once_with(cb)
 
         DEALER_URL = URLS[0]
@@ -99,11 +99,11 @@ class TestReactorDealerRouter(MPTestCase):
             return reactor
 
         def assert_dealer(reactor: ReactorInterface):
-            cb = ReactorCommand.create_callback(callback=DEAL_CALLBACK, envelope=rep_env)
+            cb = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=rep_env)
             reactor._run_callback.assert_called_once_with(cb)
 
         def assert_router(reactor: ReactorInterface):
-            cb = ReactorCommand.create_callback(callback=REQ_CALLBACK, envelope=req_env, header=DEALER_ID)
+            cb = ReactorCommand.create_callback(callback=ROUTE_REQ_CALLBACK, envelope=req_env, header=DEALER_ID)
             reactor._run_callback.assert_called_once_with(cb)
             # reactor._run_callback.side_effect = reply_effect
 
@@ -150,7 +150,7 @@ class TestReactorDealerRouter(MPTestCase):
         Tests req from 1 dealer to 2 routers.
         """
         def run_assertions(reactor: ReactorInterface):
-            cb = ReactorCommand.create_callback(callback=REQ_CALLBACK, envelope=env, header=DEALER_ID)
+            cb = ReactorCommand.create_callback(callback=ROUTE_REQ_CALLBACK, envelope=env, header=DEALER_ID)
             reactor._run_callback.assert_called_once_with(cb)
 
         DEALER_URL = URLS[0]
