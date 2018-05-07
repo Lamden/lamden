@@ -35,5 +35,6 @@ class TransactionContainer(MessageBase):
         :param validate: If we should call .validate() after deserializing the message
         :return: The deserialized TransactionBase instance
         """
-        assert self._data.type in MessageBase.registry, "MessageBase type {} not found in registry {}".format(self._data.type, MessageBase.registry)
+        assert self._data.type in MessageBase.registry, "MessageBase type {} not found in registry {}"\
+                                                        .format(self._data.type, MessageBase.registry)
         return MessageBase.registry[self._data.type].from_bytes(self._data.payload, validate=validate)

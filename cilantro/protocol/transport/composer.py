@@ -2,6 +2,7 @@ from cilantro import Constants
 from cilantro.messages import MessageBase, ReactorCommand, Envelope
 from cilantro.protocol.reactor.interface import ReactorInterface
 from cilantro.protocol.reactor.executor import *
+from cilantro.protocol.structures import EnvelopeAuth
 
 
 """
@@ -40,9 +41,10 @@ class Composer:
         """
         self.log.info("Creating REPLY envelope with msg type {} for request envelope {}".format(type(reply), req_env))
         request_uuid = req_env.meta.uuid
-        # TODO -- implement once you write the appropriate factory method on Envelope for creating them with a
-        # predetermined uuid
-        pass
+        reply_uuid = EnvelopeAuth.reply_uuid(request_uuid)
+
+        return Envelope.create_from_message(message=reply, signing_key=self.signing_key,
+                                            verifying_key=self.verifying_key, uuid=reply_uuid)
 
     def resume(self):
         self.log.info("Resuming ReactorInterface")
@@ -132,7 +134,7 @@ class Composer:
         """
         TODO docstring
         """
-        self.send_request_env(self._package_msg(message))
+        self.send_request_env(url=url, envelope=self._package_msg(message), timeout=timeout)
 
     def send_request_env(self, url: str, envelope: Envelope, timeout=0):
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, url=url,
@@ -142,16 +144,14 @@ class Composer:
     def send_reply(self, message: MessageBase, request_envelope: Envelope):
         """
         Send a reply message (via a Router socket) for the original reqeust in request_envelope (which came from a
-        Dealer socket).
+        Dealer socket). Replies envelope are created as a deterministic function of their original request envelope,
+        so that both parties (the sender and receiver) are in agreement on what the reply envelope should look like
+        :param message: A MessageBase instance that denotes the reply data
+        :param request_envelope: An Envelope instance that denotes the envelope of the original request that we are
+        replying to
         """
-        # TODO do this
-        # TODO get envelope uuid's hash % UUID SIZE (which is its sender uuid)
-        # create convenience fucn for that
-
-        # request_envelope.seal.verifying_key will be the ID to send...we just need to package an envelope and fix the
-        # uuid
-
-        env = self._package_msg(message)
-        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.reply.__name__, url=url,
-                                        id=id, envelope=env)
+        requester_id = request_envelope.seal.verifying_key
+        reply_env = self._package_reply(reply=message, req_env=request_envelope)
+        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.reply.__name__,
+                                        id=requester_id, envelope=reply_env)
         self.interface.send_cmd(cmd)
