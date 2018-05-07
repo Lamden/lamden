@@ -1,4 +1,5 @@
 from cilantro import Constants
+from cilantro.utils import Hasher
 from cilantro.messages import MessageBase, Seal, MessageMeta
 
 
@@ -38,3 +39,12 @@ class EnvelopeAuth:
             message = message.serialize()
 
         return W.sign(signing_key, meta + message)
+
+    @staticmethod
+    def reply_uuid(request_uuid: int):
+        """
+        Returns the associated reply UUID for some request UUID. This is simply the SHA3 256 hash of the request's UUID.
+        :param request_uuid: The request UUID to generate a reply UUID for
+        :return: An int, denoting the reply UUID associated with the passed in request UUID
+        """
+        return Hasher.hash(request_uuid, algorithm=Hasher.Alg.SHA3_256)
