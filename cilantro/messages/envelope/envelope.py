@@ -22,11 +22,6 @@ class Envelope(MessageBase):
             .format(type(message), MessageBase.registry)
         # TODO -- verify sk (valid hex, 128 char)
 
-        # TODO get rid of sender_id, fuck that shit, we got the VK on the seal and that shoudl be all we need
-
-        # TODO add either another factory method, or add a default uuid arg to this func so we can create message meta
-        # with a predetermined uuid (this is for creatnig reply envelopes)
-
         # Create MessageMeta
         t = MessageBase.registry[type(message)]
         timestamp = str(time.time())
