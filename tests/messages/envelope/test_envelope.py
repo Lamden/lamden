@@ -5,7 +5,7 @@ from cilantro.protocol.structures import EnvelopeAuth
 
 W = Constants.Protocol.Wallets
 
-# TODO createfrommessage
+# TODO createfrommessage instead of fromobjects
 
 class TestEnvelope(TestCase):
 
