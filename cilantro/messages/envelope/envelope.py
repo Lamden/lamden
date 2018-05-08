@@ -7,6 +7,16 @@ import time
 import capnp
 import envelope_capnp
 
+"""
+An envelope is a structure that encapsulates all messages passed between nodes on the cilantro network
+An envelope consists of the following types:
+Seal (args: private key, public key)
+Metadata (args: type, timestamp, uuid)
+Message (binary field)
+
+An envelope's metadata UUID is using to match REQ/REP sockets and route packets to the correct party on the network
+"""
+
 
 class Envelope(MessageBase):
 

@@ -5,10 +5,9 @@ from cilantro.protocol.structures import EnvelopeAuth
 
 W = Constants.Protocol.Wallets
 
-# TODO createfrommessage instead of fromobjects
 
-class TestEnvelope(TestCase):
-
+class TestenvelopefromObjects(TestCase):
+    """Envelope tests using Envelope.create_from_objects() directly to create envelopes"""
     def _default_meta(self):
         """
         Helper method to build message_meta
@@ -63,7 +62,7 @@ class TestEnvelope(TestCase):
 
     def test_create_from_bad_meta(self):
         """
-        Test envelope creation with bad seal
+        Test envelope creation with bad meta
         """
         seal = self._default_seal()
         meta = 'hi im a bad message meta'
@@ -73,7 +72,7 @@ class TestEnvelope(TestCase):
 
     def test_create_from_bad_message(self):
         """
-        Test envelope creation with bad seal
+        Test envelope creation with bad message
         """
         seal = self._default_seal()
         meta = self._default_meta()
@@ -81,7 +80,54 @@ class TestEnvelope(TestCase):
 
         self.assertRaises(Exception, Envelope.create_from_objects, seal, meta, message)  # this is not throwing error?
 
-        # TODO fix
+        # TODO fix - message is not bytes
+
+    def test_verify_seal_invalid(self):
+        """
+        Tests verifying a seal with an invalid signature
+        """
+        meta = self._default_meta()
+        message = self._default_msg()
+        sk, vk = W.new()
+        sk_prime = 'A' * 64
+
+        signature = EnvelopeAuth.seal(signing_key=sk_prime, meta=meta, message=message)
+        seal = Seal.create(signature=signature, verifying_key=vk)
+
+        env = Envelope.create_from_objects(seal=seal, meta=meta, message=message.serialize())
+
+        env.verify_seal()
+
+
+class TestenvelopefromMessage(TestCase):
+    """Envelope tests using Envelope.create_from_message() to create envelopes (the intended way)"""
+    def _default_meta(self):
+        """
+        Helper method to build message_meta
+        :return: a MessageMeta instance
+        """
+        t = MessageBase.registry[type(self._default_msg())]
+        timestamp = 'now'
+        uuid = 1260
+
+        mm = MessageMeta.create(type=t, timestamp=timestamp, uuid=uuid)
+        return mm
+
+    def _default_seal(self):
+        """
+        Helper method to build a Seal
+        :return: a Seal instance
+        """
+        sig = 'A' * 128
+        vk = 'A' * 68
+        return Seal.create(signature=sig, verifying_key=vk)
+
+    def _default_msg(self):
+        # TODO -- write default TestMessage class
+        # We should really have a default TestMessage object that is a bare-minimum subclass of MessageBase
+        # instead of using other live objects for these kinds of tests
+        message = StandardTransactionBuilder.random_tx()
+        return message
 
     def test_create_from_message(self):
         """
@@ -89,7 +135,6 @@ class TestEnvelope(TestCase):
         """
         sk, vk = W.new()
         msg = self._default_msg()
-        sender = 'dat boi'
 
         env = Envelope.create_from_message(message=msg, signing_key=sk)
 
@@ -97,15 +142,12 @@ class TestEnvelope(TestCase):
         self.assertEqual(env.message, msg)
         self.assertEqual(env.seal.verifying_key, vk)
 
-    # TODO: test create_from_message with invalid args
-
     def test_create_from_message_bad_msg(self):
         """
         Tests create_from_message with invalid message
         """
         sk, vk = W.new()
         msg = 'hi im a bad message'
-        sender = 'dat boi'
 
         self.assertRaises(Exception, Envelope.create_from_message, msg, sk, vk)
 
@@ -114,10 +156,9 @@ class TestEnvelope(TestCase):
         Tests create_from_message with invalid sk
         """
         sk = 'A' * 127
-        msg = 'hi im a bad message'
-        sender = 'dat boi'
+        msg = self._default_msg()
 
-        self.assertRaises(Exception, Envelope.create_from_message, msg, sk, sender)
+        self.assertRaises(Exception, Envelope.create_from_message, msg, sk)
 
     def test_create_from_message_bad_keypair(self):
         """
@@ -140,11 +181,10 @@ class TestEnvelope(TestCase):
         """
         Tests that serialize/deserialize are inverse operations with from_objects factory function
         """
-        seal = self._default_seal()
-        meta = self._default_meta()
+        sk, vk = W.new()
         message = self._default_msg()
 
-        env = Envelope.create_from_objects(seal=seal, meta=meta, message=message.serialize())
+        env = Envelope.create_from_message(message=message, signing_key=sk, verifying_key=vk)
 
         self.assertEqual(env, Envelope.from_bytes(env.serialize()))
 
@@ -159,25 +199,9 @@ class TestEnvelope(TestCase):
         signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
         seal = Seal.create(signature=signature, verifying_key=vk)
 
-        env = Envelope.create_from_objects(seal=seal, meta=meta, message=message.serialize())
+        env = Envelope.create_from_message(message=message, signing_key=sk, verifying_key=vk)
 
-        self.assertTrue(env.verify_seal())
-
-    def test_verify_seal_invalid(self):
-        """
-        Tests verifying a seal with an invalid signature
-        """
-        meta = self._default_meta()
-        message = self._default_msg()
-        sk, vk = W.new()
-        sk_prime = 'A' * 64
-
-        signature = EnvelopeAuth.seal(signing_key=sk_prime, meta=meta, message=message)
-        seal = Seal.create(signature=signature, verifying_key=vk)
-
-        env = Envelope.create_from_objects(seal=seal, meta=meta, message=message.serialize())
-
-        self.assertFalse(env.verify_seal())
+        self.assertTrue(env.verify_seal)
 
     def test_validate_envelope(self):
         """
@@ -192,12 +216,26 @@ class TestEnvelope(TestCase):
 
         env = Envelope.create_from_objects(seal=seal, meta=meta, message=message.serialize())
 
-        print('\n\n', env._data, '\n\n', type(env._data))
+        # print('\n\n', env._data, '\n\n', type(env._data))
 
         env.validate()
 
     def test_validate_bad_seal(self):
-        pass
+        meta = self._default_meta()
+        message = self._default_msg()
+        sk, vk = W.new()
+        sk2, vk2 = W.new()
+
+        signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
+        signature2 = EnvelopeAuth.seal(signing_key=sk2, meta=meta, message=message)
+
+        seal = Seal.create(signature=signature, verifying_key=vk2)
+
+        env = Envelope.create_from_objects(seal=seal, meta=meta, message=message.serialize())
+
+        # print('\n\n', env._data, '\n\n', type(env._data))
+
+        env.verify_seal()
 
     def test_validate_bad_metadata(self):
         pass
