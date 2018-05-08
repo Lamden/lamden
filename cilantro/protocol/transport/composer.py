@@ -86,7 +86,7 @@ class Composer:
         """
         self.send_pub_env(filter=filter, envelope=self._package_msg(message))
 
-    def send_pub(self, filter: str, envelope: Envelope):
+    def send_pub_env(self, filter: str, envelope: Envelope):
         """
         Publish envelope with filter frame 'filter'.
         :param filter: A string to use as the filter frame
@@ -127,6 +127,10 @@ class Composer:
         :param url: The URL the router socket should BIND to
         """
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, url=url)
+        self.interface.send_cmd(cmd)
+
+    def send_heartbeat(self, url: str):
+        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.beat.__name__, url=url)
         self.interface.send_cmd(cmd)
 
     def send_request_msg(self, url: str, message: MessageBase, timeout=0):

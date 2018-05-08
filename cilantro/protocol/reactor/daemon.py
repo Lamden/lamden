@@ -1,8 +1,9 @@
-import asyncio
+import asyncio, os
 import zmq.asyncio
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages import ReactorCommand
+from cilantro.protocol.networks import Discovery
 
 
 CHILD_RDY_SIG = b'ReactorDaemon Process Ready'
@@ -25,6 +26,10 @@ class ReactorDaemon:
 
         self.executors = {name: executor(self.loop, self.context, self.socket)
                           for name, executor in Executor.registry.items()}
+
+        self.discoverer = Discovery(self.context)
+        self.discoverer.listen_for_crawlers()
+        self.discoverer.discover('test' if os.getenv('TEST_NAME') else 'neighborhood')
 
         self.loop.run_until_complete(self._recv_messages())
 

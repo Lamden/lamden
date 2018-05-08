@@ -1,8 +1,8 @@
 from cilantro.logger import get_logger
 from cilantro.nodes.utilitynodes import BaseNode
-from cilantro.nodes.utilitynodes.mixins import GroupMixin
 from cilantro.messages import *
 from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.networks import *
 import asyncio, os, warnings
 
 log = get_logger("Main")
@@ -14,27 +14,19 @@ def random_envelope():
     tx = StandardTransactionBuilder.random_tx()
     return Envelope.create_from_message(message=tx, signing_key=sk, verifying_key=vk)
 
-class PubNode(BaseNode, GroupMixin):
-    def __init__(self, mode='rolling_group'):
+class PubNode(BaseNode, Grouping):
+    def __init__(self):
         super(PubNode, self).__init__()
-        self.mode = mode # 'rolling_group' or 'random_group' or 'random_subgroup' or 'all_target_groups'
-        self.idxs = []
-        self.regroup(self.load_ips(ip_list))
-        # self.regroup(discover())
 
     async def debug_forever_pub(self):
         while True:
             self.designate_next_group()
-            self.composer.send_pub(envelope=random_envelope(), filter='')
+            self.composer.send_pub_env(envelope=random_envelope(), filter='')
             await asyncio.sleep(1)
 
-class SubNode(BaseNode, GroupMixin):
-    def __init__(self, pub_ip, mode='rolling_group'):
+class SubNode(BaseNode, Grouping):
+    def __init__(self, pub_ip):
         super(SubNode, self).__init__()
-        self.regroup(self.load_ips(ip_list))
-        # self.regroup(discover())
-        for idx in self.nodes[os.getenv('HOST_IP')]['groups']:
-            self.composer.add_sub(url="tcp://{}:{}".format(pub_ip, self.groups[idx]['port']), filter='')
 
 if __name__ == "__main__":
     publisher = PubNode()

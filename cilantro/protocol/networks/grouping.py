@@ -1,14 +1,11 @@
+from cilantro.protocol.networks import *
+
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
-class GroupMixin:
-    def load_ips(self, ips):
-        return {ip: {
-            'ip': ip,
-            'groups': []
-        } for ip in ips}
-
+class Grouping:
     def update_group_idxs(self, key=None, max_group_size=32):
+        if not hasattr(self, 'idxs'): self.idxs = []
         old_ports = [self.groups[idx]['port'] for idx in self.idxs]
         new_idxs = []
         if self.mode == 'all_target_groups':
@@ -71,8 +68,8 @@ class GroupMixin:
             self.composer.add_pub(url="tcp://{}:{}".format(self.host, port))
 
 if __name__ == '__main__':
-    gmi = GroupMixin()
-    nodes = gmi.load_ips(["172.29.5.1","172.29.5.2","172.29.5.3","172.29.5.4","172.29.5.5","172.29.5.6","172.29.5.7","172.29.5.8"])
+    gmi = Grouping()
+    nodes = load_ips(["172.29.5.1","172.29.5.2","172.29.5.3","172.29.5.4","172.29.5.5","172.29.5.6","172.29.5.7","172.29.5.8"])
     gmi.regroup(nodes)
     mapsss = {}
     for i in gmi.groups:

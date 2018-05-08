@@ -45,16 +45,20 @@ class Executor(metaclass=ExecutorMeta):
                 header = msg[0].decode()
 
             env_binary = msg[-1]
-            env = Envelope.from_bytes(env_binary)
-            env_meta = env.meta
-            if self.duplication.get(env_meta.uuid):
-                # Time difference less than 5 seconds is considered a collision or the same message
-                if float(env_meta.timestamp) - float(self.duplication[env_meta.uuid]) < 5:
-                    self.log.debug("skiipping duplicate env {}".format(env))
-                    continue
-            self.duplication[env_meta.uuid] = env_meta.timestamp
-            self.log.debug('received envelope:\n{}'.format(env))
-            self.call_on_mt(callback, header=header, envelope_binary=env_binary)
+
+            if env_binary == b'beat':
+                self.echo(id=msg[0])
+            else:
+                env = Envelope.from_bytes(env_binary)
+                env_meta = env.meta
+                if self.duplication.get(env_meta.uuid):
+                    # Time difference less than 5 seconds is considered a collision or the same message
+                    if float(env_meta.timestamp) - float(self.duplication[env_meta.uuid]) < 5:
+                        self.log.debug("skiipping duplicate env {}".format(env))
+                        continue
+                self.duplication[env_meta.uuid] = env_meta.timestamp
+                self.log.debug('received envelope:\n{}'.format(env))
+                self.call_on_mt(callback, header=header, envelope_binary=env_binary)
 
     def call_on_mt(self, callback, header: bytes=None, envelope_binary: bytes=None, **kwargs):
         if header:
@@ -124,7 +128,7 @@ class SubPubExecutor(Executor):
             # self.log.info("Publishing to... {}".format(url))
             self.pubs[url].send_multipart([filter.encode(), envelope])
 
-    def add_pub(self, url):
+    def add_pub(self, url: str):
         # TODO -- implement functionality so add_pub will close the existing socket and create a new one if we are switching urls
         if self.pubs.get(url):
             self.log.error("Attempted to add publisher on url {} but publisher socket already configured.".format(url))
@@ -165,7 +169,7 @@ class DealerRouterExecutor(Executor):
         self.dealers = {}
         self.router = None
 
-    def add_router(self, url):
+    def add_router(self, url: str):
         assert self.router is None, "Attempted to add router socket on url {} but router socket already configured".format(url)
 
         self.log.info("Creating router socket on url {}".format(url))
@@ -173,7 +177,7 @@ class DealerRouterExecutor(Executor):
         self.router.bind(url)
         asyncio.ensure_future(self.recv_multipart(self.router, ROUTE_REQ_CALLBACK))
 
-    def add_dealer(self, url, id):
+    def add_dealer(self, url: str, id: str):
         assert url not in self.dealers, "Url {} already in self.dealers {}".format(url, self.dealers)
         self.log.info("Creating dealer socket for url {} with id {}".format(url, id))
         self.dealers[url] = self.context.socket(socket_type=zmq.DEALER)
@@ -185,6 +189,21 @@ class DealerRouterExecutor(Executor):
 
         self.log.info("Dealer socket connecting to url {}".format(url))
         self.dealers[url].connect(url)
+
+    def beat(self, url: str, timeout=0):
+        assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
+            .format(url, self.dealers)
+        timeout = int(timeout)
+        self.log.debug("Composing request to url {} with timeout: {}".format(url, timeout))
+        if timeout > 0:
+            # TODO -- timeout functionality
+            pass
+
+        self.dealers[url].send_multipart([b'beat'])
+
+    def echo(self, id):
+        assert self.router, "Attempted to reply but router socket is not set"
+        self.router.send_multipart([id, b'echo'])
 
     def request(self, url, envelope, timeout=0):
         assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
