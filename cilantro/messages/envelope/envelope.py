@@ -7,6 +7,16 @@ import time
 import capnp
 import envelope_capnp
 
+"""
+An envelope is a structure that encapsulates all messages passed between nodes on the cilantro network
+An envelope consists of the following types:
+Seal (args: private key, public key)
+Metadata (args: type, timestamp, uuid)
+Message (binary field)
+
+An envelope's metadata UUID is using to match REQ/REP sockets and route packets to the correct party on the network
+"""
+
 
 class Envelope(MessageBase):
 
@@ -21,11 +31,6 @@ class Envelope(MessageBase):
         assert type(message) in MessageBase.registry, "Message type {} not found in registry {}"\
             .format(type(message), MessageBase.registry)
         # TODO -- verify sk (valid hex, 128 char)
-
-        # TODO get rid of sender_id, fuck that shit, we got the VK on the seal and that shoudl be all we need
-
-        # TODO add either another factory method, or add a default uuid arg to this func so we can create message meta
-        # with a predetermined uuid (this is for creatnig reply envelopes)
 
         # Create MessageMeta
         t = MessageBase.registry[type(message)]
@@ -46,6 +51,7 @@ class Envelope(MessageBase):
 
     @classmethod
     def create_from_objects(cls, seal: Seal, meta: MessageMeta, message: bytes):
+        assert type(message) is bytes, "Message arg must be bytes"
         data = envelope_capnp.Envelope.new_message()
         data.seal = seal._data
         data.meta = meta._data
@@ -59,9 +65,9 @@ class Envelope(MessageBase):
         return obj
 
     def validate(self):
-        # TODO -- implement
-        # Try to access .seal/.meta./.message to make sure they deserialize properly
-        pass
+        assert self.seal
+        assert self.meta
+        assert self.message
 
     def verify_seal(self):
         return EnvelopeAuth.verify_seal(seal=self.seal, meta=self.meta_binary, message=self.message_binary)

@@ -6,7 +6,6 @@ import asyncio
 from unittest.mock import MagicMock
 
 
-
 W = Constants.Protocol.Wallets
 
 
@@ -22,7 +21,6 @@ class NodeFactory:
         node.composer = composer
 
         return node
-
 
     @staticmethod
     def run_masternode(signing_key=Constants.Testnet.Masternode.Sk, url=Constants.Testnet.Masternode.InternalUrl):
