@@ -48,3 +48,4 @@ class EnvelopeAuth:
         :return: An int, denoting the reply UUID associated with the passed in request UUID
         """
         return Hasher.hash(request_uuid, algorithm=Hasher.Alg.SHA3_256)
+

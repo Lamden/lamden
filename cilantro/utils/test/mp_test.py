@@ -4,6 +4,7 @@ Integration testing tools for processes with blocking event loops
 import asyncio
 import zmq.asyncio
 import random
+import inspect
 from multiprocessing import Queue
 from aioprocessing import AioQueue
 from cilantro.utils.lprocess import LProcess
@@ -89,8 +90,6 @@ def build_reactor_obj(cls) -> tuple:
 
     return reactor, loop
 
-
-
 def _gen_url(name=''):
     """
     Helper method to generate a random URL for use in a PAIR socket
@@ -99,7 +98,6 @@ def _gen_url(name=''):
     HOST_NAME = '127.0.0.1'  # or node name (i.e delegate_1)
     rand_num = random.randint(0, pow(2, 16))
     return "ipc://mptest-{}-{}-{}".format(name, HOST_NAME, rand_num)
-
 
 def start_vm_test(name, url, build_fn, config_fn, assert_fn):
     """
@@ -232,7 +230,13 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
                 return
 
             func, args, kwargs = cmd
-            getattr(tester_obj, func)(*args, **kwargs)
+            output = getattr(tester_obj, func)(*args, **kwargs)
+
+            # If result is coroutine, run it in the event loop
+            if inspect.iscoroutine(output):
+                log.debug("Coroutine detect for func name {}, running it in event loop".format(func))
+                result = await asyncio.ensure_future(output)
+                log.debug("Got result from coroutine {}\nresult: {}".format(func, result))
             # log.critical("got cmd: {}".format(cmd))
             # log.critical("cmd name: {}\nkwargs: {}".format(func, kwargs))
 

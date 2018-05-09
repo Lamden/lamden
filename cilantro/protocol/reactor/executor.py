@@ -9,6 +9,7 @@ ROUTE_CALLBACK = 'route'
 ROUTE_REQ_CALLBACK = 'route_req'
 ROUTE_TIMEOUT_CALLBACK = 'route_timeout'
 
+import asyncio.protocols
 
 class ExecutorMeta(type):
     def __new__(cls, clsname, bases, clsdict):
@@ -176,10 +177,6 @@ class DealerRouterExecutor(Executor):
         self.dealers[url].send_multipart([envelope])
 
     def reply(self, id, envelope):
-        # TODO error propgation
-        # i  = 10 / 0
-        # TODO are we not propagating exceptions properly? This error above does not get outputed in a test..?
-        # self.log.critical("\n\n\n\n sending reply to id {} with env {} \n\n\n\n".format(id, envelope))
         assert self.router, "Attempted to reply but router socket is not set"
         self.router.send_multipart([id.encode(), envelope])
 
