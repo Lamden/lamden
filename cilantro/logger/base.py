@@ -12,33 +12,29 @@ import sys
 
 global get_logger
 
+REDIRECT_STDOUT = True
+# Class to bridge a stream and a logger. We use this to write stdout/stderr to our log files
+class LoggerWriter:
+    def __init__(self, level):
+        self.level = level
+
+    def write(self, message):
+        if message != '\n':
+            self.level(message)
+
+    def flush(self):
+        return
+
 if not os.getenv('TEST_NAME'):
     # True will output stdout/stderr to log files however we lose support of colored logging in the PyCharm console
     # False does not output stdout/stderr to log files, but will retain coloring in PyCharm console
     # This is a temporary solution. Only reason we can't have both is because I can't figure out how :sigh:
-    REDIRECT_STDOUT = False
-
-
-
 
     # Constants for configuring colored logger
     lvl_styles = coloredlogs.DEFAULT_LEVEL_STYLES
     COLORS = ('blue', 'cyan', 'green', 'magenta', 'red', 'yellow', 'white')
     LVLS = ('debug', 'info', 'warning', 'error', 'critical')
     P = pow(2, 31) - 1
-
-
-    # Class to bridge a stream and a logger. We use this to write stdout/stderr to our log files
-    class LoggerWriter:
-        def __init__(self, level):
-            self.level = level
-
-        def write(self, message):
-            if message != '\n':
-                self.level(message)
-
-        def flush(self):
-            return
 
 
     def get_logger(name='', bg_color=None, auto_bg_val=None):
@@ -70,6 +66,7 @@ if not os.getenv('TEST_NAME'):
 
     # Configure logger from config file cilantro/conf/cilantro_logger.ini
     path = os.path.dirname(Path(__file__).parents[0])
+    os.makedirs(os.path.join(os.path.dirname(path), 'logs'), exist_ok=True)
     os.chdir(path)
     path += "/conf"
     loggerIniFile = path + "/cilantro_logger.ini"
@@ -88,7 +85,6 @@ else:
         import sys
         filedir = "logs/{}".format(os.getenv('TEST_NAME'))
         filename = "{}/{}.log".format(filedir, os.getenv('HOSTNAME'))
-        print(filedir, filename)
         os.makedirs(filedir, exist_ok=True)
         filehandlers = [logging.FileHandler(filename)]
         logging.basicConfig(
@@ -97,3 +93,8 @@ else:
             level=logging.DEBUG
         )
         return logging.getLogger(name)
+    if REDIRECT_STDOUT:
+        out_log = logging.getLogger('STDOUT')
+        err_log = logging.getLogger("STDERR")
+        sys.stderr = LoggerWriter(err_log.error)
+        sys.stdout = LoggerWriter(out_log.debug)

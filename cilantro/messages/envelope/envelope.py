@@ -94,7 +94,3 @@ class Envelope(MessageBase):
             .format(self.meta.type, MessageBase.registry)
 
         return MessageBase.registry[self.meta.type].from_bytes(self.message_binary)
-
-
-
-
