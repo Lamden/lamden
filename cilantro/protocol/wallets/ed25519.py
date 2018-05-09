@@ -59,7 +59,6 @@ class ED25519Wallet(Wallet):
         try:
             v.verify(msg, sig)
         except nacl.exceptions.BadSignatureError:
-            print('Bad sig kiddo')
             return False
         except Exception:
             return False

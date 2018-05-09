@@ -45,8 +45,3 @@ class NodeBase(StateMachine):
         assert isinstance(val, Composer), ".composer property must be a Composer instance"
         assert self.composer is None, "Composer is already set (composer should only be set once during creation)"
         self._composer = val
-
-
-
-
-

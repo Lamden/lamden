@@ -2,19 +2,19 @@ from cilantro import Constants
 from cilantro.messages import MessageBase, ReactorCommand, Envelope
 from cilantro.protocol.reactor.interface import ReactorInterface
 from cilantro.protocol.reactor.executor import *
+from cilantro.logger import get_logger
 from cilantro.protocol.structures import EnvelopeAuth
-
 
 """
 The Composer class serves as a high level API for a StateMachine (application layer) to execute networking commands on
-the ReactorDaemon process. It creates  
+the ReactorDaemon process. It creates
 """
 
 
 class Composer:
-
     def __init__(self, interface: ReactorInterface, signing_key: str):
         super().__init__()
+        self.log = get_logger("Composer")
         self.interface = interface
         self.signing_key = signing_key
         self.verifying_key = Constants.Protocol.Wallets.get_vk(self.signing_key)
@@ -61,6 +61,7 @@ class Composer:
         :param filter: The filter to subscribe to. Only data published with this filter will be received. Currently,
         only one filter per CONNECT is supported.
         """
+
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=url, filter=filter)
         self.interface.send_cmd(cmd)
 
@@ -128,6 +129,10 @@ class Composer:
         :param url: The URL the router socket should BIND to
         """
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, url=url)
+        self.interface.send_cmd(cmd)
+
+    def send_heartbeat(self, url: str):
+        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.beat.__name__, url=url)
         self.interface.send_cmd(cmd)
 
     def send_request_msg(self, url: str, message: MessageBase, timeout=0):
