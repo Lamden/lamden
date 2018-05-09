@@ -51,6 +51,7 @@ class Envelope(MessageBase):
 
     @classmethod
     def create_from_objects(cls, seal: Seal, meta: MessageMeta, message: bytes):
+        assert type(message) is bytes, "Message arg must be bytes"
         data = envelope_capnp.Envelope.new_message()
         data.seal = seal._data
         data.meta = meta._data
