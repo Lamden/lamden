@@ -54,18 +54,19 @@ class Composer:
         self.log.info("Pausing ReactorInterface")
         self.interface.notify_pause()
 
-    def add_sub(self, url: str, filter: str):
+    def add_sub(self, filter: str, url: str='', node_vk: str=''):
         """
         Connects the subscriber socket to listen to 'URL' with filter 'filter'.
         :param url: The URL to CONNECT the sub socket to (ex 'tcp://17.1.3.4:4200')
         :param filter: The filter to subscribe to. Only data published with this filter will be received. Currently,
         only one filter per CONNECT is supported.
         """
-
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=url, filter=filter)
+        kwargs = self._url_or_vk(url=url, vk=node_vk)
+        kwargs['filter'] = filter
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, **kwargs)
         self.interface.send_cmd(cmd)
 
-    def remove_sub(self, url: str, filter: str):
+    def remove_sub(self, filter: str, url: str='', node_vk: str=''):
         """
         Stop subscribing to a URL and filter. Note that all other subscriber connections will drop this filter as well
         (so if there is another URL you are subscribing to with the same filter, that sub will no longer work). The
@@ -73,10 +74,16 @@ class Composer:
 
         If you wish to stop subscribing to a URL, but not necessarily a filter, then call this method and pass in an
         empty string to FILTER. For example, a delegate might want to stop subscribing to a particular witness, but not
-        all witnesses. (TODO -- test this behavior)
+        all witnesses.
+
+        :param filter: The filter to subscribe to. Only multipart messages with this filter as the first frame will be
+        received
+        :param url: The URL of the router that the created dealer socket should CONNECT to.
+        :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, url=url,
-                                        filter=filter)
+        kwargs = self._url_or_vk(url=url, vk=node_vk)
+        kwargs['filter'] = filter
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, **kwargs)
         self.interface.send_cmd(cmd)
 
     def send_pub_msg(self, filter: str, message: MessageBase):
@@ -98,52 +105,58 @@ class Composer:
                                         envelope=envelope)
         self.interface.send_cmd(cmd)
 
-    def add_pub(self, url: str):
+    def add_pub(self, url: str='', node_vk: str=''):
         """
         Create a publisher socket that BINDS to 'url'
-        :param url: The URL to BIND the pub socket to (ex 'tcp://17.1.3.4:4200')
+        :param url: The URL to publish under. 
+        :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=url)
+        kwargs = self._url_or_vk(url=url, vk=node_vk)
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, **kwargs)
         self.interface.send_cmd(cmd)
 
-    def remove_pub(self, url: str):
+    def remove_pub(self, url: str='', node_vk: str=''):
         """
-        TODO docstring
+        Removes a publisher (duh)
+        :param url: The URL of the router that the created dealer socket should CONNECT to.
+        :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_pub.__name__, url=url)
+        kwargs = self._url_or_vk(url=url, vk=node_vk)
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_pub.__name__, **kwargs)
         self.interface.send_cmd(cmd)
 
-    def add_dealer(self, url: str):
+    def add_dealer(self, url: str='', node_vk: str=''):
         """
         Add a dealer socket at url. Dealers are like 'async requesters', and can connect to a single Router socket (1-1)
+        (side note: A router socket, however, can connect to N dealers)
         'id' socketopt for the dealer socket will be this node's verifying key
-        :param url: The URL of the router that the created dealer socket should CONNECT to
+        :param url: The URL of the router that the created dealer socket should CONNECT to.
+        :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__,
-                                        url=url, id=self.verifying_key)
+        kwargs = self._url_or_vk(url=url, vk=node_vk)
+        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__, **kwargs)
         self.interface.send_cmd(cmd)
 
-    def add_router(self, url: str):
+    def add_router(self, url: str='', node_vk: str=''):
         """
         Add a router socket at url. Routers are like 'async repliers', and can connect to many Dealer sockets (N-1)
         :param url: The URL the router socket should BIND to
         """
-        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, url=url)
+        kwargs = self._url_or_vk(url=url, vk=node_vk)
+        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, **kwargs)
         self.interface.send_cmd(cmd)
 
-    def send_heartbeat(self, url: str):
-        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.beat.__name__, url=url)
-        self.interface.send_cmd(cmd)
-
-    def send_request_msg(self, url: str, message: MessageBase, timeout=0):
+    def send_request_msg(self, message: MessageBase, timeout=0, url: str='', node_vk: str=''):
         """
         TODO docstring
         """
-        self.send_request_env(url=url, envelope=self._package_msg(message), timeout=timeout)
+        self.send_request_env(url=url, node_vk=node_vk, envelope=self._package_msg(message), timeout=timeout)
 
-    def send_request_env(self, url: str, envelope: Envelope, timeout=0):
-        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, url=url,
-                                        envelope=envelope, timeout=timeout)
+    def send_request_env(self, envelope: Envelope, timeout=0, url: str='', node_vk: str=''):
+        kwargs = self._url_or_vk(url=url, vk=node_vk)
+        kwargs['timeout'] = timeout
+        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, **kwargs,
+                                        envelope=envelope)
         self.interface.send_cmd(cmd)
 
     def send_reply(self, message: MessageBase, request_envelope: Envelope):
@@ -160,3 +173,27 @@ class Composer:
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.reply.__name__,
                                         id=requester_id, envelope=reply_env)
         self.interface.send_cmd(cmd)
+
+    def _url_or_vk(self, url: str, vk: str) -> dict:
+        """
+        Utility method to coalesce url and vk. Also does validation on the URL/VK. Returns a tuple (key, vk/url), where
+        key is either 'url' or 'node_vk'. This can be used to set the appropriate key in the kwargs passed
+        to ReactorCommand
+        :param url: A URL, with transport://ip:port, ie. 'tcp://12.3.4.5:5000'
+        :param vk: A node's id (its verifying key), ie 64 characters valid hex
+        :return: A 1 element dict {key: url/vk}. Key is either 'url' or 'vk', depending on which is passed in,
+        and url/vk is one or the other.
+        """
+        # Assert that either URL or VK is set, but not both
+        # (not url and not vk) or
+        assert (bool(url) ^ bool(vk)), "Either one of 'url'/'node_vk' must be passed into the composer (not both)"
+
+        # TODO validate url and vk
+
+        if url:
+            return {'url': url}
+        if vk:
+            return {'node_vk': vk}
+
+
+

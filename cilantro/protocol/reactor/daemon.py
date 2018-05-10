@@ -6,6 +6,9 @@ from cilantro.messages import ReactorCommand
 from cilantro.protocol.networks import Discovery
 
 
+from kademlia.network import Server
+
+
 CHILD_RDY_SIG = b'ReactorDaemon Process Ready'
 
 
@@ -20,18 +23,26 @@ class ReactorDaemon:
 
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
+
         self.context = zmq.asyncio.Context()
-        self.socket = self.context.socket(zmq.PAIR)
+        self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
         self.socket.connect(self.url)
 
         self.executors = {name: executor(self.loop, self.context, self.socket)
                           for name, executor in Executor.registry.items()}
 
+        # Start discovery service
         self.discoverer = Discovery(self.context)
-        self.discoverer.listen_for_crawlers()
-        self.discoverer.discover('test' if os.getenv('TEST_NAME') else 'neighborhood')
+        # self.discoverer.listen_for_crawlers()
 
-        self.loop.run_until_complete(self._recv_messages())
+        self.log.info("Starting discovery sweep")
+        cilantro_ips = self.discoverer.discover('test' if os.getenv('TEST_NAME') else 'neighborhood')
+        self.log.info("Discovery sweep finished with ips: {}".format(cilantro_ips))
+
+        # TODO bootstrap overlay network with cilantro IPss
+
+        # Start listening to main thread as well as outside discovery pings
+        self.loop.run_until_complete(asyncio.gather(self._recv_messages(), self.discoverer.listen_for_crawlers()))
 
     async def _recv_messages(self):
         # Notify parent proc that this proc is ready
@@ -58,20 +69,9 @@ class ReactorDaemon:
 
         self.log.debug("Executing cmd {}".format(cmd))
 
+        executor_name, executor_func, kwargs = self._parse_cmd(cmd)
 
-        executor_func, executor_name, kwargs = self._parse_cmd(cmd)
-        # executor_name = cmd.class_name
-        # executor_func = cmd.func_name
-        # kwargs = cmd.kwargs
-        #
-        # # Remove class_name and func_name from kwargs. We just need these to lookup the function to call
-        # del(kwargs['class_name'])
-        # del(kwargs['func_name'])
-        #
-        # if cmd.envelope_binary:
-        #     kwargs['envelope'] = cmd.envelope_binary
-
-        # Validate Command (for debugging mostly)
+        # Sanity checks (for catching bugs mostly)
         assert executor_name in self.executors, "Executor name {} not found in executors {}"\
             .format(executor_name, self.executors)
         assert hasattr(self.executors[executor_name], executor_func), "Function {} not found on executor class {}"\
@@ -100,3 +100,12 @@ class ReactorDaemon:
 
         # Lookup 'node_id' (which is a verifying key), and set lookup the corresponding IP and set that to URL
         # if necessary
+        # assert either (url XOR node_vk) or both don't exist in kwargs
+        # if noke_vk is in there, lookup to appropriate url
+        # how to handle ports now? should we just have set ports for all the grouping????
+        # TODO -- implement this functionality
+
+        return executor_name, executor_func, kwargs
+
+
+

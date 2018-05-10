@@ -1,7 +1,9 @@
 from cilantro.protocol.networks import *
+import random, pprint
 
-import pprint
+
 pp = pprint.PrettyPrinter(indent=4)
+
 
 class Grouping:
     def update_group_idxs(self, key=None, max_group_size=32):
@@ -67,16 +69,16 @@ class Grouping:
         for port in new_ports:
             self.composer.add_pub(url="tcp://{}:{}".format(self.host, port))
 
-if __name__ == '__main__':
-    gmi = Grouping()
-    nodes = load_ips(["172.29.5.1","172.29.5.2","172.29.5.3","172.29.5.4","172.29.5.5","172.29.5.6","172.29.5.7","172.29.5.8"])
-    gmi.regroup(nodes)
-    mapsss = {}
-    for i in gmi.groups:
-        g = gmi.groups[i]
-        for item in g['nodes']:
-            if not mapsss.get(item['key']):
-                mapsss[item['key']] = []
-            mapsss[item['key']].append(g['port'])
-    pp.pprint(gmi.groups)
-    pp.pprint(mapsss)
+# if __name__ == '__main__':
+#     gmi = Grouping()
+#     nodes = load_ips(["172.29.5.1","172.29.5.2","172.29.5.3","172.29.5.4","172.29.5.5","172.29.5.6","172.29.5.7","172.29.5.8"])
+#     gmi.regroup(nodes)
+#     mapsss = {}
+#     for i in gmi.groups:
+#         g = gmi.groups[i]
+#         for item in g['nodes']:
+#             if not mapsss.get(item['key']):
+#                 mapsss[item['key']] = []
+#             mapsss[item['key']].append(g['port'])
+#     pp.pprint(gmi.groups)
+#     pp.pprint(mapsss)

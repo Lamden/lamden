@@ -5,11 +5,11 @@ import random
 from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand
 from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG
-from cilantro.protocol.transport.router import Router
+# from cilantro.protocol.transport.router import Router
 
 
 class ReactorInterface:
-    def __init__(self, router: Router, loop):
+    def __init__(self, router, loop):
         self.log = get_logger("{}.ReactorInterface".format(type(router).__name__))
         self.url = "ipc://reactor-" + str(random.randint(0, pow(2, 16)))
 

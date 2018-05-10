@@ -2,13 +2,14 @@ import asyncio, time
 import zmq.asyncio
 from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand, Envelope
+from collections import defaultdict
 
-# TODO add some API for hooking this stuff up programatically instead of statically defining the callbacks
+
+# Callbacks for routing incoming envelopes back to the application layer
 ROUTE_CALLBACK = 'route'
 ROUTE_REQ_CALLBACK = 'route_req'
 ROUTE_TIMEOUT_CALLBACK = 'route_timeout'
 
-import asyncio.protocols
 
 class ExecutorMeta(type):
     def __new__(cls, clsname, bases, clsdict):
@@ -47,19 +48,22 @@ class Executor(metaclass=ExecutorMeta):
 
             env_binary = msg[-1]
 
-            if env_binary == b'beat':
-                self.echo(id=msg[0])
-            else:
+            try:
                 env = Envelope.from_bytes(env_binary)
-                env_meta = env.meta
-                if self.duplication.get(env_meta.uuid):
-                    # Time difference less than 5 seconds is considered a collision or the same message
-                    if float(env_meta.timestamp) - float(self.duplication[env_meta.uuid]) < 5:
-                        self.log.debug("skiipping duplicate env {}".format(env))
-                        continue
-                self.duplication[env_meta.uuid] = env_meta.timestamp
-                self.log.debug('received envelope:\n{}'.format(env))
-                self.call_on_mt(callback, header=header, envelope_binary=env_binary)
+            except Exception as e:
+                self.log.error("Error deserializing envelope: {}\n env binary: {}".format(e, env_binary))
+                return
+
+            env_meta = env.meta
+            if self.duplication.get(env_meta.uuid):
+                # Time difference less than 5 seconds is considered a collision or the same message
+                if float(env_meta.timestamp) - float(self.duplication[env_meta.uuid]) < 5:
+                    self.log.debug("skipping duplicate env {}".format(env))
+                    continue
+
+            self.duplication[env_meta.uuid] = env_meta.timestamp
+            self.log.debug('received envelope:\n{}'.format(env))
+            self.call_on_mt(callback, header=header, envelope_binary=env_binary)
 
     def call_on_mt(self, callback, header: bytes=None, envelope_binary: bytes=None, **kwargs):
         if header:
@@ -120,6 +124,7 @@ class SubPubExecutor(Executor):
     def __init__(self, loop, context, inproc_socket):
         super().__init__(loop, context, inproc_socket)
         self.sub = None
+        self.sub_future = None
         self.pubs = {}
 
     def send_pub(self, filter: str, envelope: bytes):
@@ -130,7 +135,6 @@ class SubPubExecutor(Executor):
             self.pubs[url].send_multipart([filter.encode(), envelope])
 
     def add_pub(self, url: str):
-        # TODO -- implement functionality so add_pub will close the existing socket and create a new one if we are switching urls
         if self.pubs.get(url):
             self.log.error("Attempted to add publisher on url {} but publisher socket already configured.".format(url))
             return
@@ -144,7 +148,7 @@ class SubPubExecutor(Executor):
         if not self.sub:
             self.log.info("Creating subscriber socket")
             self.sub = self.context.socket(socket_type=zmq.SUB)
-            asyncio.ensure_future(self.recv_multipart(self.sub, ROUTE_CALLBACK, ignore_first_frame=True))
+            self.sub_future = asyncio.ensure_future(self.recv_multipart(self.sub, ROUTE_CALLBACK, ignore_first_frame=True))
 
         self.log.info("Subscribing to url {} with filter '{}'".format(url, filter))
         self.sub.connect(url)
@@ -163,11 +167,16 @@ class SubPubExecutor(Executor):
 
 
 class DealerRouterExecutor(Executor):
+    SOCK = 'socket'
+    FUTURE = 'future'
+
     def __init__(self, loop, context, inproc_socket):
         super().__init__(loop, context, inproc_socket)
 
-        # TODO -- make a simple data structure for storing these sockets and their associated futures by key URL
-        self.dealers = {}
+        # 'dealers' is a simple nested dict for holding sockets by URL as well as their associated recv futures
+        # key for 'dealers' is socket URL, and value is another dict with keys 'socket' (value is Socket instance)
+        # and 'future' (value is asyncio future instance)
+        self.dealers = defaultdict(dict)
         self.router = None
 
     def add_router(self, url: str):
@@ -181,30 +190,17 @@ class DealerRouterExecutor(Executor):
     def add_dealer(self, url: str, id: str):
         assert url not in self.dealers, "Url {} already in self.dealers {}".format(url, self.dealers)
         self.log.info("Creating dealer socket for url {} with id {}".format(url, id))
-        self.dealers[url] = self.context.socket(socket_type=zmq.DEALER)
-        self.dealers[url].identity = id.encode('ascii')
 
-        # TODO -- store this future so we can cancel it later
+        socket = self.context.socket(socket_type=zmq.DEALER)
+        socket.identity = id.encode('ascii')
         future = asyncio.ensure_future(self.recv_multipart(self.dealers[url], ROUTE_CALLBACK,
                                                            ignore_first_frame=True))
 
         self.log.info("Dealer socket connecting to url {}".format(url))
-        self.dealers[url].connect(url)
+        socket.connect(url)
 
-    def beat(self, url: str, timeout=0):
-        assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
-            .format(url, self.dealers)
-        timeout = int(timeout)
-        self.log.debug("Composing request to url {} with timeout: {}".format(url, timeout))
-        if timeout > 0:
-            # TODO -- timeout functionality
-            pass
-
-        self.dealers[url].send_multipart([b'beat'])
-
-    def echo(self, id):
-        assert self.router, "Attempted to reply but router socket is not set"
-        self.router.send_multipart([id, b'echo'])
+        self.dealers[url][DealerRouterExecutor.SOCK] = socket
+        self.dealers[url][DealerRouterExecutor.FUTURE] = future
 
     def request(self, url, envelope, timeout=0):
         assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
@@ -223,11 +219,30 @@ class DealerRouterExecutor(Executor):
         self.router.send_multipart([id.encode(), envelope])
 
     def remove_router(self, url):
-        # TODO -- implement
+        assert self.router, "Tried to remove router but self.router is not set"
+        self.log.info("Removing router at url {}".format(url))
         self.log.critical("remove router not implemented")
         raise NotImplementedError
 
-    def remove_dealer(self, url, id):
-        # TODO -- implement
-        self.log.critical("remove dealer not implemented")
-        raise NotImplementedError
+    def remove_dealer(self, url, id=''):
+        assert url in self.dealers, "Attempted to remove dealer url {} that is not in list of dealers {}"\
+            .format(url, self.dealers)
+
+        self.log.info("Removing dealer at url {} with id {}".format(url, id))
+
+        socket = self.dealers[url][DealerRouterExecutor.SOCK]
+        future = self.dealers[url][DealerRouterExecutor.FUTURE]
+
+        # Clean up socket and cancel future
+        socket.disconnect(url)
+        socket.close()
+        future.cancel()  # TODO will this work if the future is currently running?
+
+        # 'destroy' references to socket/future (not sure if this is necessary tbh but shouldn't hurt)
+        self.dealers[url][DealerRouterExecutor.SOCK] = None
+        self.dealers[url][DealerRouterExecutor.FUTURE] = None
+
+        del(self.dealers[url])
+
+
+
