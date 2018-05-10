@@ -36,6 +36,7 @@ def signal_handler(signal, frame):
         log.debug('You pressed Ctrl+C!')
         sys.exit(0)
 
+
 def start_delelegate(i):
     def seed_wallets(amount=10000):
         log.critical("Seeding wallets with amount {}".format(amount))
@@ -54,6 +55,7 @@ def start_delelegate(i):
     seed_wallets()
 
     d = Delegate(slot=i)
+
 
 def start_mn():
     log = get_logger("MasternodeFactor")
