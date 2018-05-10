@@ -1,11 +1,9 @@
+from cilantro import Constants
 from cilantro.messages import MessageBase
 import capnp
 import envelope_capnp
 
 import random
-
-
-MAX_UUID = pow(2, 32)
 
 
 class MessageMeta(MessageBase):
@@ -18,15 +16,14 @@ class MessageMeta(MessageBase):
         pass
 
     @classmethod
-    def create(cls, type: int, sender: str, timestamp: str, uuid: int=-1):
+    def create(cls, type: int, timestamp: str, uuid: int=-1):
         if uuid == -1:
-            uuid = random.randint(0, MAX_UUID)
+            uuid = random.randint(0, Constants.Protocol.MaxUuid)
 
         data = envelope_capnp.MessageMeta.new_message()
         data.type = type
         data.timestamp = timestamp
         data.uuid = uuid
-        data.sender = sender
 
         return cls.from_data(data)
 
@@ -42,7 +39,4 @@ class MessageMeta(MessageBase):
     def timestamp(self):
         return self._data.timestamp
 
-    @property
-    def sender(self):
-        return self._data.sender
 

@@ -15,14 +15,14 @@ HEADER = 'header'
 class ReactorCommand(MessageBase):
     """
     ReactorCommand defines a data serialization format for messages passed over inproc PAIR
-    sockets between ReactorInterface (on the main proc), and ReactorCore (on daemon)
+    sockets between ReactorInterface (on the main proc), and ReactorDaemon (on daemon)
 
-    Messages from ReactorInterface --> ReactorCore are nicknamed "commands", since they specify the
-    executor name/function/kwargs that ReactorCore should run.
+    Messages from ReactorInterface --> ReactorDaemon are nicknamed "commands", since they specify the
+    executor name/function/kwargs that ReactorDaemon should run.
     This includes required fields 'class_name' and 'func_name'. Commands which compose data over the
     wire (i.e. pub, request, reply) must have the envelope arg specified as a valid Envelope instance.
 
-    Messages from ReactorCore --> ReactorInterface are nicknamed "callbacks", since they specify
+    Messages from ReactorDaemon --> ReactorInterface are nicknamed "callbacks", since they specify
     some callback on the StateMachine as a function of incoming data.
     All callbacks have a 'callback' field which is a string denoting the callback function on the router.
     All callback excepts timeouts will have an 'envelope' property, which correspondes to the serialized Envelope capnp

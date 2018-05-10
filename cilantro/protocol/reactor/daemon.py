@@ -1,17 +1,18 @@
-import asyncio
+import asyncio, os
 import zmq.asyncio
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages import ReactorCommand
+from cilantro.protocol.networks import Discovery
 
 
-CHILD_RDY_SIG = b'ReactorCore Process Ready'
+CHILD_RDY_SIG = b'ReactorDaemon Process Ready'
 
 
-class ReactorCore:
+class ReactorDaemon:
     def __init__(self, url, p_name=''):
-        self.log = get_logger("{}.ReactorCore".format(p_name))
-        self.log.info("ReactorCore started with url {}".format(url))
+        self.log = get_logger("{}.ReactorDaemon".format(p_name))
+        self.log.info("ReactorDaemon started with url {}".format(url))
         self.url = url
 
         # Comment out below for more granularity in debugging
@@ -26,6 +27,10 @@ class ReactorCore:
         self.executors = {name: executor(self.loop, self.context, self.socket)
                           for name, executor in Executor.registry.items()}
 
+        self.discoverer = Discovery(self.context)
+        self.discoverer.listen_for_crawlers()
+        self.discoverer.discover('test' if os.getenv('TEST_NAME') else 'neighborhood')
+
         self.loop.run_until_complete(self._recv_messages())
 
     async def _recv_messages(self):
@@ -35,7 +40,7 @@ class ReactorCore:
 
         self.log.warning("-- Starting Recv on PAIR Socket at {} --".format(self.url))
         while True:
-            self.log.debug("ReactorCore awaiting for command from main thread...")
+            self.log.debug("ReactorDaemon awaiting for command from main thread...")
             cmd_bin = await self.socket.recv()
             # self.log.debug("Got cmd from queue: {}".format(cmd_bin))
 
@@ -46,7 +51,8 @@ class ReactorCore:
 
     def execute_cmd(self, cmd: ReactorCommand):
         assert isinstance(cmd, ReactorCommand), "Cannot execute cmd {} that is not a ReactorCommand object".format(cmd)
-        self.log.debug("Executing cmd".format(cmd))
+
+        self.log.debug("Executing cmd {}".format(cmd))
 
         executor_name = cmd.class_name
         executor_func = cmd.func_name

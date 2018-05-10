@@ -22,3 +22,6 @@ cilantro/faucet.json
 
 # LOGS
 **/logs
+
+# Data
+cilantro/protocol/networks/data

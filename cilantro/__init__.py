@@ -33,7 +33,6 @@ def config_testnet(testnet: dict) -> dict:
     all_nodes = {}
 
     if os.getenv('MASTERNODE'):
-        print("\n\n BOOTSTRAPING NODE URL's FROM ENV VARS")
         masternode = os.getenv('MASTERNODE')
         delegates = os.getenv('DELEGATE').split(',')
         witnesses = os.getenv('WITNESS').split(',')
@@ -57,7 +56,6 @@ def config_testnet(testnet: dict) -> dict:
                 all_nodes[url] = vk
             testnet[key] = nodes
     else:
-        print("\n\n BOOTSTRAPPING NODE URL's FROM CONFIG.JSON")
         mn_url = testnet['masternode']['internal-url']
         mn_sk, mn_vk = gen_keypair(mn_url)
         testnet['masternode']['vk'] = mn_vk
@@ -87,6 +85,7 @@ def config_testnet(testnet: dict) -> dict:
 path = os.path.join(os.path.dirname(__file__), 'config.json')
 config = json.load(open(path))
 
+# Add /messages/capnp to Python path. We need these loaded for capnp magic imports
 sys.path.append(os.path.dirname(__file__) + '/messages/capnp')
 
 
@@ -136,3 +135,7 @@ Constants.Protocol.Interpreters = getattr(c, Constants.Protocol.Interpreters)
 
 # Config fixed point decimals
 getcontext().prec = Constants.Protocol.SignificantDigits
+
+# Load all messages classes. We need Python to interpret all of the class definitions, so the metaprogramming hooks
+# are executed properly and the MessageBase registry is created (the MessageBase.registry)
+# from cilantro.messages import *

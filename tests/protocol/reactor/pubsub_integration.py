@@ -51,7 +51,7 @@ class TestReactorPubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            callback = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env)
+            callback = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env)
             reactor._run_callback.assert_called_once_with(callback)
 
         env = random_envelope()
@@ -86,8 +86,8 @@ class TestReactorPubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            cb1 = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env1)
-            cb2 = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env2)
+            cb1 = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env1)
+            cb2 = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env2)
             reactor._run_callback.assert_has_calls([
                 call(cb1),
                 call(cb2)],
@@ -130,8 +130,8 @@ class TestReactorPubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            cb1 = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env1)
-            cb2 = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env2)
+            cb1 = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env1)
+            cb2 = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env2)
             reactor._run_callback.assert_has_calls([
                 call(cb1),
                 call(cb2)],
@@ -176,7 +176,7 @@ class TestReactorPubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            cb = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env1)
+            cb = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env1)
             reactor._run_callback.assert_called_once_with(cb)
 
         env1, env2, env3, env4, env5 = (random_envelope() for _ in range(5))
@@ -227,7 +227,7 @@ class TestReactorPubSub(MPTestCase):
             return reactor
 
         def run_assertions(reactor: ReactorInterface):
-            cb = ReactorCommand.create_callback(callback=SUB_CALLBACK, envelope=env)
+            cb = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env)
             reactor._run_callback.assert_called_once_with(cb)
 
         env = random_envelope()
