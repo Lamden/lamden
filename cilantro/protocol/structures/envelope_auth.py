@@ -1,10 +1,11 @@
 from cilantro import Constants
 from cilantro.utils import Hasher
 from cilantro.messages import MessageBase, Seal, MessageMeta
-
+import math
 
 W = Constants.Protocol.Wallets
 
+UUID_SIZE = int(math.log2(Constants.Protocol.MaxUuid))  # size of UUID field on messagemeta struct as number of bits
 
 class EnvelopeAuth:
 
@@ -47,5 +48,11 @@ class EnvelopeAuth:
         :param request_uuid: The request UUID to generate a reply UUID for
         :return: An int, denoting the reply UUID associated with the passed in request UUID
         """
-        return Hasher.hash(request_uuid, algorithm=Hasher.Alg.SHA3_256)
+        int_binary = Hasher.hash(request_uuid, algorithm=Hasher.Alg.SHAKE_128, digest_len=UUID_SIZE//8, return_bytes=True)
+        rep_uuid = int.from_bytes(int_binary, byteorder='little')  # capnp int fields encoded in little endian
+
+        # This assertion is for debugging only. Remove for production.
+        assert rep_uuid <= Constants.Protocol.MaxUuid, "OH NO! Got reply uuid greater than MaxUUID! LOGIC ERROR!!!"
+
+        return rep_uuid
 

@@ -11,8 +11,8 @@ from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger
 
 
-TEST_TIMEOUT = 4
 TEST_POLL_FREQ = 0.25
+CHILD_PROC_TIMEOUT = 1
 
 
 SIG_RDY = b'IM RDY'
@@ -21,10 +21,7 @@ SIG_FAIL = b'BADSUCC'
 SIG_ABORT = b'NOSUCC'
 
 
-CHILD_PROC_TIMEOUT = 1
-
-
-# TODO -- move this thang to a better home
+# TODO -- move these thangs to a better home
 import os
 import dill
 
@@ -233,7 +230,7 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
             output = getattr(tester_obj, func)(*args, **kwargs)
 
             # If result is coroutine, run it in the event loop
-            if inspect.iscoroutine(output):
+            if output and inspect.iscoroutine(output):
                 log.debug("Coroutine detect for func name {}, running it in event loop".format(func))
                 result = await asyncio.ensure_future(output)
                 log.debug("Got result from coroutine {}\nresult: {}".format(func, result))

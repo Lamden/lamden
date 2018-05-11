@@ -18,7 +18,6 @@ URLS = ['tcp://127.0.0.1:' + str(i) for i in range(9000, 9999, 10)]
 def random_envelope():
     sk, vk = ED25519Wallet.new()
     tx = StandardTransactionBuilder.random_tx()
-    sender = 'me'
     return Envelope.create_from_message(message=tx, signing_key=sk)
 
 
@@ -31,6 +30,8 @@ class MPReactorInterface(MPTesterBase):
         asyncio.set_event_loop(loop)
 
         reactor = ReactorInterface(mock_parent, loop=loop)
+
+        asyncio.ensure_future(reactor._recv_messages())
 
         return reactor, loop
 

@@ -32,17 +32,17 @@ class ReactorDaemon:
                           for name, executor in Executor.registry.items()}
 
         # Start discovery service
-        self.discoverer = Discovery(self.context)
-        # self.discoverer.listen_for_crawlers()
+        # self.discoverer = Discovery(self.context)
 
-        self.log.info("Starting discovery sweep")
-        cilantro_ips = self.discoverer.discover('test' if os.getenv('TEST_NAME') else 'neighborhood')
-        self.log.info("Discovery sweep finished with ips: {}".format(cilantro_ips))
+        # self.log.info("Starting discovery sweep")
+        # cilantro_ips = self.discoverer.discover('test' if os.getenv('TEST_NAME') else 'neighborhood')
+        # self.log.info("Discovery sweep finished with ips: {}".format(cilantro_ips))
 
         # TODO bootstrap overlay network with cilantro IPss
 
         # Start listening to main thread as well as outside discovery pings
-        self.loop.run_until_complete(asyncio.gather(self._recv_messages(), self.discoverer.listen_for_crawlers()))
+        # self.loop.run_until_complete(asyncio.gather(self._recv_messages(), self.discoverer.listen_for_crawlers()))
+        self.loop.run_until_complete(self._recv_messages())
 
     async def _recv_messages(self):
         # Notify parent proc that this proc is ready

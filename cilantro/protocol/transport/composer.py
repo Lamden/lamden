@@ -39,7 +39,7 @@ class Composer:
         :param req_env: The original request envelope (an instance of Envelope)
         :return: An Envelope instance
         """
-        self.log.info("Creating REPLY envelope with msg type {} for request envelope {}".format(type(reply), req_env))
+        self.log.debug("Creating REPLY envelope with msg type {} for request envelope {}".format(type(reply), req_env))
         request_uuid = req_env.meta.uuid
         reply_uuid = EnvelopeAuth.reply_uuid(request_uuid)
 
@@ -62,8 +62,7 @@ class Composer:
         only one filter per CONNECT is supported.
         """
         kwargs = self._url_or_vk(url=url, vk=node_vk)
-        kwargs['filter'] = filter
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, **kwargs)
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, filter=filter, **kwargs)
         self.interface.send_cmd(cmd)
 
     def remove_sub(self, filter: str, url: str='', node_vk: str=''):
@@ -82,8 +81,7 @@ class Composer:
         :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
         kwargs = self._url_or_vk(url=url, vk=node_vk)
-        kwargs['filter'] = filter
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, **kwargs)
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, filter=filter, **kwargs)
         self.interface.send_cmd(cmd)
 
     def send_pub_msg(self, filter: str, message: MessageBase):
@@ -134,13 +132,15 @@ class Composer:
         :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
         kwargs = self._url_or_vk(url=url, vk=node_vk)
-        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__, **kwargs)
+        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__,
+                                        id=self.verifying_key, **kwargs)
         self.interface.send_cmd(cmd)
 
     def add_router(self, url: str='', node_vk: str=''):
         """
         Add a router socket at url. Routers are like 'async repliers', and can connect to many Dealer sockets (N-1)
         :param url: The URL the router socket should BIND to
+        :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
         kwargs = self._url_or_vk(url=url, vk=node_vk)
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, **kwargs)
@@ -153,10 +153,13 @@ class Composer:
         self.send_request_env(url=url, node_vk=node_vk, envelope=self._package_msg(message), timeout=timeout)
 
     def send_request_env(self, envelope: Envelope, timeout=0, url: str='', node_vk: str=''):
+        self.log.critical("\n\n SENDING REQUST ENV, ENV UUID: {} \n\n".format(envelope.meta.uuid))  # remove this
+
         kwargs = self._url_or_vk(url=url, vk=node_vk)
-        kwargs['timeout'] = timeout
+        reply_uuid = EnvelopeAuth.reply_uuid(envelope.meta.uuid)
+
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, **kwargs,
-                                        envelope=envelope)
+                                        envelope=envelope, timeout=timeout, reply_uuid=reply_uuid)
         self.interface.send_cmd(cmd)
 
     def send_reply(self, message: MessageBase, request_envelope: Envelope):
@@ -185,7 +188,6 @@ class Composer:
         and url/vk is one or the other.
         """
         # Assert that either URL or VK is set, but not both
-        # (not url and not vk) or
         assert (bool(url) ^ bool(vk)), "Either one of 'url'/'node_vk' must be passed into the composer (not both)"
 
         # TODO validate url and vk

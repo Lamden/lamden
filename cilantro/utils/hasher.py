@@ -1,7 +1,6 @@
 """
 Utility class for hashing thangs
 """
-
 import hashlib
 
 
@@ -14,6 +13,10 @@ class Hasher:
         SHA3_256 = 'sha3_256'
         SHA1 = 'sha1'
         RIPE = 'ripemd160'
+        SHAKE_128 = 'shake_128'
+        SHAKE_256 = 'shake_256'
+
+    DEFAULT_ALG = Alg.SHA3_256
 
     class Test:
         SOME_PROP = 1
@@ -26,7 +29,7 @@ class Hasher:
         :return: Bytes
         :raises: An assertion if data is a non-trivial type that could not be casted to bytes
         """
-        # MessageBase imported here to fix cyclic imports...TODO -- find a better solution for this
+        # MessageBase imported here to fix cyclic imports...TODO -- fix dependencies
         from cilantro.messages import MessageBase
 
         t = type(data)
@@ -34,7 +37,9 @@ class Hasher:
         if t is str:
             data = data.encode()
         elif t is int:
-            data = bytes(data)
+            # data = bytes.fromhex(hex(data))  # how does one int --> bytes ...
+            # feast your eyes upon this forbidden hack
+            data = str(data).encode()  # TODO not this lmao
         elif issubclass(t, MessageBase):
             data = data.serialize()
 
@@ -43,34 +48,52 @@ class Hasher:
         return data
 
     @staticmethod
-    def _read_hasher(hasher, return_bytes=False):
-        binary = hasher.digest()
+    def _read_hasher(hasher, return_bytes=False, digest_len=0):
+        if digest_len > 0:
+            binary = hasher.digest(digest_len)
+        else:
+            binary = hasher.digest()
+
         if return_bytes:
             return binary
         else:
             return binary.hex()
 
     @staticmethod
-    def hash(data, algorithm=Alg.MD5, return_bytes=False) -> bytes or str:
+    def hash(data, algorithm=DEFAULT_ALG, return_bytes=False, digest_len: int=0) -> bytes or str:
         """
-        Attempts to automatically cast the data to bytes, and hash it. If data is an iterable, the
-        elements will be iterated, serialized, and hashed.
+        Attempts to automatically cast the data to bytes, and hash it. If digest_len is specified, shake_256 will be
+        used (unless algorithm is set to shake_128) to compute a variable size digest.
         :param data: The data to be hashes. This method will do its best to infer its type and cast it to bytes, but
         to be sure it will work you can pass in bytes explicity
-        :param algorithm: The algorithm to use (a property of Hasher.Alg
+        :param algorithm: The algorithm to use (a property of Hasher.Alg)
         :param return_bytes: If true, returns the hash as bytes. Otherwise, returns a hex string
+        :param digest_len: The optional length of the digest (as an int). Max is 256.
+         If this is specified, algorithm must be either Alg.SHAKE_256 or Alg.SHAKE_128
         :return: A string containing the hex digest of the resulting hash. If return_bytes is True, then this hex string
         is returned in binary format
         """
         data = Hasher._cast_to_bytes(data)
 
+        if digest_len > 0:
+            if algorithm != Hasher.DEFAULT_ALG:
+                assert algorithm in (Hasher.Alg.SHAKE_128, Hasher.Alg.SHAKE_256), \
+                    "If digest_len is set, algorithm must be Alg.SHAKE_128 or Alg.SHAKE_256"
+            else:
+                algorithm = Hasher.Alg.SHAKE_256
+
+            assert digest_len <= 256//8, "digest_len must be less than or equal to 32"
+
+            if digest_len > 128//8:
+                assert algorithm == Hasher.Alg.SHAKE_256, "digest_len greater than 16 must use SHAKE_256"
+
         h = hashlib.new(algorithm)
         h.update(data)
 
-        return Hasher._read_hasher(h, return_bytes=return_bytes)
+        return Hasher._read_hasher(h, return_bytes=return_bytes, digest_len=digest_len)
 
     @staticmethod
-    def hash_iterable(iterable, algorithm=Alg.SHA3_256, return_bytes=False) -> bytes or str:
+    def hash_iterable(iterable, algorithm=DEFAULT_ALG, return_bytes=False) -> bytes or str:
         """
         Hashes an iterable by casting all its elements to bytes (if necessary), concatenating them, and then hashing
         the resulting binary

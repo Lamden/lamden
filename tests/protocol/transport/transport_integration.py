@@ -24,18 +24,20 @@ FILTERS = ['FILTER_' + str(i) for i in range(100)]
 URLS = ['tcp://127.0.0.1:' + str(i) for i in range(9000, 9999, 10)]
 
 
-def random_envelope():
-    sk, vk = ED25519Wallet.new()
-    tx = StandardTransactionBuilder.random_tx()
-    sender = 'me'
-    return Envelope.create_from_message(message=tx, signing_key=sk, sender_id=sender)
+def random_msg():
+    return StandardTransactionBuilder.random_tx()
+
+def random_envelope(sk=None, tx=None):
+    sk = sk or ED25519Wallet.new()[0]
+    tx = tx or random_msg()
+    return Envelope.create_from_message(message=tx, signing_key=sk)
 
 
 # TODO -- support multiple classes mp_testable? or is this sketch
 @mp_testable(Composer)
 class MPComposer(MPTesterBase):
     @classmethod
-    def build_obj(cls, sk, sender_id) -> tuple:
+    def build_obj(cls, sk) -> tuple:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
@@ -44,7 +46,9 @@ class MPComposer(MPTesterBase):
         router = MagicMock()
 
         reactor = ReactorInterface(router=router, loop=loop)
-        composer = Composer(interface=reactor, signing_key=sk, sender_id=sender_id)
+        composer = Composer(interface=reactor, signing_key=sk)
+
+        asyncio.ensure_future(reactor._recv_messages())
 
         return composer, loop
 
@@ -70,21 +74,17 @@ class TransportIntegrationTest(MPTestCase):
         Tests pub/sub 1-1 (one sub one pub) with one message
         """
         def configure(composer: Composer):
-            composer.interface._run_callback = MagicMock()
+            composer.interface.router = MagicMock()
             return composer
-            # reactor._run_callback = MagicMock()
-            # return reactor
 
         def run_assertions(composer: Composer):
             callback = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env)
-            composer.interface._run_callback.assert_called_once_with(callback)
-            # raise Exception("get rekt")
+            composer.interface.router.route_callback.assert_called_once_with(callback)
 
         env = random_envelope()
 
-        sub = MPComposer(config_fn=configure, assert_fn=run_assertions, name='** SUB',
-                         sender_id='** SUB', sk=sk1)
-        pub = MPComposer(name='++ PUB', sender_id='++ PUB', sk=sk2)
+        sub = MPComposer(config_fn=configure, assert_fn=run_assertions, name='** SUB', sk=sk1)
+        pub = MPComposer(name='++ PUB', sk=sk2)
 
         sub.add_sub(url=URL, filter=FILTER)
         pub.add_pub(url=URL)
@@ -95,47 +95,76 @@ class TransportIntegrationTest(MPTestCase):
 
         self.start()
 
-        # test
-        # self.execute_python('node_1', something_silly, async=True)
-        # end tests
+    # TODO actually add multiple filters on this thing...
+    def test_pubsub_1_1_1_mult_filters(self):
+        """
+        Tests pub/sub 1-1 (one sub one pub) with 2 message each on a different filter
+        """
+        def configure(composer: Composer):
+            composer.interface.router = MagicMock()
+            return composer
 
-        # add_sub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, url=URL,
-        #                                         filter=FILTER)
-        # add_pub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=URL)
-        # send_pub_cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__,
-        #                                          envelope=env, filter=FILTER)
-        #
-        # sub.send_cmd(add_sub_cmd)
-        # pub.send_cmd(add_pub_cmd)
-        # time.sleep(0.2)  # To allow time for subs to connect to pub before pub sends data
-        # pub.send_cmd(send_pub_cmd)
+        def run_assertions(composer: Composer):
+            callback = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env1)
+            composer.interface.router.route_callback.assert_called_once_with(callback)
+
+        env1 = random_envelope()
+        env2 = random_envelope()
+
+        sub = MPComposer(config_fn=configure, assert_fn=run_assertions, name='** SUB', sk=sk1)
+        pub = MPComposer(name='++ PUB', sk=sk2)
+
+        sub.add_sub(url=URL, filter=FILTER)
+        pub.add_pub(url=URL)
+
+        time.sleep(0.2)
+
+        pub.send_pub_env(filter=FILTER, envelope=env1)
+
+        self.start()
 
     def test_req_reply_1_1_1(self):
         """
         Tests request/reply 1_1_1
         """
-        def configure(composer: Composer):
-            composer.interface._run_callback = MagicMock()
+        def config_router(composer: Composer):
+            def reply(*args, **kwargs):  # do i need the *args **kwargs ??
+                composer.send_reply(message=reply_msg, request_envelope=request_env)
+
+            composer.interface.router = MagicMock()
+            composer.interface.router.route_callback.side_effect = reply
             return composer
 
-        def run_assertions(composer: Composer):
-            cb = ReactorCommand.create_callback(callback=ROUTE_REQ_CALLBACK, envelope=env, header=dealer_id)
-            composer.interface._run_callback.assert_called_once_with(cb)
+        def config_dealer(composer: Composer):
+            composer.interface.router = MagicMock()
+            return composer
 
-        dealer_url = URLS[0]
+        def assert_dealer(dealer: Composer):
+            cb = ReactorCommand.create_callback(callback=R)
+
+        def assert_router(composer: Composer):
+            cb = ReactorCommand.create_callback(callback=ROUTE_REQ_CALLBACK, envelope=request_env, header=dealer_id)
+            composer.interface.router.route_callback.assert_called_once_with(cb)
+
         dealer_id = vk1
+        dealer_sk = sk1
+        router_sk = sk2
         router_url = URLS[1]
 
-        env = random_envelope()
+        request_env = random_envelope(sk=dealer_sk)
+        reply_msg = random_msg()
 
-        dealer = MPComposer(name='DEALER', sender_id='DEALER', sk=sk1)
-        router = MPComposer(config_fn=configure, assert_fn=run_assertions, name='ROUTER', sender_id='ROUTER', sk=sk2)
+        dealer = MPComposer(name='DEALER', sk=sk1, config_fn=config_dealer, assert_fn=assert_dealer)
+        router = MPComposer(config_fn=config_router, assert_fn=assert_router, name='ROUTER', sk=router_sk)
 
-        dealer.add_dealer(url=router_url, id=dealer_id)
+        self.log.critical("\n\n adding dealer socket \n\n")
+        dealer.add_dealer(url=router_url)
+        self.log.critical("\n\n adding router socket \n\n")
         router.add_router(url=router_url)
 
         time.sleep(0.2)
 
-        dealer.send_request_env(url=router_url, envelope=env)
+        self.log.critical("\n\n bout to send request... \n\n")
+        dealer.send_request_env(url=router_url, envelope=request_env)
 
         self.start()
