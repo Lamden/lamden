@@ -21,7 +21,7 @@ ROUTE_TIMEOUT_CALLBACK = 'route_timeout'
 _SOCKET = 'socket'
 _HANDLER = 'handler'
 
-
+from kademlia.network import Server
 """
 Can i store the futures for recv and such, and await the recv in the add_sub/add_dealer/ect func?
 This way any error downstream from recv will propagate back to the add_sub/add_-- func calls
@@ -63,11 +63,11 @@ class Executor(metaclass=ExecutorMeta):
             msg = await socket.recv_multipart()
 
             self.log.debug("Got multipart msg: {}".format(msg))
-            assert len(msg) == 2, "Expected a multiframe msg of len 2 with (header, envelope) but got {}".format(msg)
 
             if ignore_first_frame:
                 header = None
             else:
+                assert len(msg) == 2, "Expected 2 frames (header, envelope) but got {}".format(msg)
                 header = msg[0].decode()
 
             env_binary = msg[-1]

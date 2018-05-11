@@ -280,7 +280,7 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
         socket.send_pyobj(SIG_RDY)
 
         # TODO
-        # This is questionable pattern. I feel like i should be awaiting these futures not just
+        # This is v questionable pattern. I feel like i should be awaiting these futures not just
         # "fire and forgetting" them especially since __recv_cmd is infinite. It should be awaited until an abort sig
         # is received, or canceled if assertions pass.
         asyncio.ensure_future(__recv_cmd())
@@ -322,18 +322,11 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
         tester_obj = config_fn(tester_obj)
 
     __start_test()
-    # try:
-    #     __start_test()
-    #     log.critical("\n\n\n done with __start_test()\n\n")
-    # except Exception as e:
-    #     log.critical("\n\n\n error within __start_test().. {}\n\n".format(e))
-    # finally:
-    #     log.critical("\n\n finally block \n\n")
 
 
 class MPTesterBase:
     """
-    docstring
+    TODO docstring
     """
     testers = []
     tester_cls = 'UNSET'

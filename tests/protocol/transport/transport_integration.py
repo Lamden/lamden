@@ -140,7 +140,13 @@ class TransportIntegrationTest(MPTestCase):
             return composer
 
         def assert_dealer(dealer: Composer):
-            cb = ReactorCommand.create_callback(callback=R)
+            # cb = ReactorCommand.create_callback(callback=)
+            """
+            either i run a func to validate the envelope that gets passed as an arg to mock router,
+            or we abstract out the envelope creation process s.t. we can create the same env outside of the composer
+            as the one that gets created internally (then we would need unit tests to make sure that works first)
+            """
+            raise Exception('get rekt')
 
         def assert_router(composer: Composer):
             cb = ReactorCommand.create_callback(callback=ROUTE_REQ_CALLBACK, envelope=request_env, header=dealer_id)

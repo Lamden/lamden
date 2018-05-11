@@ -4,7 +4,7 @@ from cilantro.logger import get_logger
 from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages import ReactorCommand
 from cilantro.protocol.networks import Discovery
-
+import inspect
 
 from kademlia.network import Server
 
@@ -78,7 +78,15 @@ class ReactorDaemon:
             .format(executor_func, self.executors[executor_name])
 
         # Execute command
-        getattr(self.executors[executor_name], executor_func)(**kwargs)
+        output = getattr(self.executors[executor_name], executor_func)(**kwargs)
+
+        # AAAAH WHAT TO DO HERE HOW TO NOT FIRE AND FORGET AND ALSO NOT BLOCK
+        # if output and inspect.iscoroutine(output):
+        #     self.log.debug("Coroutine detect for func name {}, running it in event loop".format(func))
+        #     result = await asyncio.ensure_future(output)
+        #     asyncio.ensure_future(output)
+        #     self.log.debug("Got result from coroutine {}\nresult: {}".format(func, result))
+
 
     def _parse_cmd(self, cmd: ReactorCommand):
         """

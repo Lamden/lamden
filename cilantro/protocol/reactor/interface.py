@@ -11,7 +11,7 @@ from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG
 class ReactorInterface:
     def __init__(self, router, loop):
         self.log = get_logger("{}.ReactorInterface".format(type(router).__name__))
-        self.url = "ipc://reactor-" + str(random.randint(0, pow(2, 16)))
+        self.url = "ipc://ReactorIPC-" + str(random.randint(0, pow(2, 16)))
 
         # Set instance vars
         self.router = router
