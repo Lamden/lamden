@@ -1,6 +1,8 @@
 from cilantro.db.delegate.db import DB, execute, contract
 from sqlalchemy import select, insert, update, delete, and_
-from cilantro.messages import StandardTransaction, SwapTransaction, RedeemTransaction, VoteTransaction
+from cilantro.messages import StandardTransaction, SwapTransaction, RedeemTransaction, VoteTransaction, \
+    StampTransaction, ElectionTransaction
+
 import hashlib
 import time
 
@@ -347,4 +349,4 @@ def process_election_tx(tx):
         return policy_q
 
     if tx.command == 'finalize':
-        # end the election
+        pass  # TODO end the election
