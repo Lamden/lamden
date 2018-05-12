@@ -14,3 +14,7 @@ from cilantro.messages.transaction.standard import StandardTransaction, Standard
 from cilantro.messages.transaction.vote import VoteTransaction, VoteTransactionBuilder
 from cilantro.messages.transaction.swap import SwapTransaction, SwapTransactionBuilder
 from cilantro.messages.transaction.redeem import RedeemTransaction, RedeemTransactionBuilder
+from cilantro.messages.transaction.stamp import StampTransaction
+from cilantro.messages.transaction.election import ElectionTransaction
+
+
