@@ -16,6 +16,7 @@ import os
 from cilantro.logger import get_logger
 from sqlalchemy import *
 from sqlalchemy.sql.visitors import *
+from sqlalchemy.sql.sqltypes import *
 from sqlalchemy.sql.functions import coalesce
 from sqlalchemy.sql.selectable import Select
 
@@ -93,7 +94,35 @@ def create_db(name):
     votes = Table('votes', metadata,
                   Column('wallet', String(64), nullable=False),
                   Column('policy', String(64), nullable=False),
-                  Column('choice', String(64), nullable=False))
+                  Column('choice', String(64), nullable=False),
+                  Column('round', Integer))
+
+    stamps = Table('stamps', metadata,
+                   Column('wallet', String(64)),
+                   Column('amount', Float(precision=4), nullable=False))
+
+    constants = Table('constants', metadata,
+                      Column('policy', String(64), nullable=False),
+                      Column('type', Enum('discrete', 'continuous', 'multi_discrete', name='variable'), nullable=False),
+                      Column('last_election_start', DateTime, nullable=False), # represented as unix time stamp to minute
+                      Column('last_election_end', DateTime, nullable=False),
+                      Column('election_length', Integer, nullable=False), # represented in minutes
+                      Column('election_frequency', Integer, nullable=False), # represented in minutes
+                      Column('max_votes', Integer, nullable=False),
+                      Column('value', TEXT, nullable=True),
+                      Column('in_vote', Boolean, nullable=False),
+                      Column('permissions', Integer, nullable=False),
+                      Column('round', Integer, nullable=False))
+
+    blocks = Table('blocks', metadata,
+                   Column('number', Integer, primary_key=True),
+                   Column('root', String(64), nullable=False),
+                   Column('tree', TEXT, nullable=False),
+                   Column('signatures', TEXT, nullable=False))
+
+    transactions = Table('transactions', metadata,
+                         Column('key', String(64), nullable=False),
+                         Column('value', TEXT, nullable=False))
 
     mapping = {}
 
@@ -111,7 +140,15 @@ def create_db(name):
     db.execute('use {};'.format(name))
     metadata.create_all(db)
 
-    tables = type('Tables', (object,), {'balances': balances, 'swaps': swaps, 'votes': votes, 'mapping': mapping})
+    tables = type('Tables', (object,),
+                  {'balances': balances,
+                   'swaps': swaps,
+                   'votes': votes,
+                   'stamps': stamps,
+                   'constants': constants,
+                   'blocks': blocks,
+                   'transactions': transactions,
+                   'mapping': mapping})
 
     return db, tables
 
@@ -225,5 +262,3 @@ class DB(metaclass=DBSingletonMeta):
     def execute(self, query) :
         self.log.debug("Executing query {}".format(query))
         return self.db.execute(query)
-
-

@@ -55,3 +55,29 @@ struct RedeemTransaction {
         secret @1 :Data;
     }
 }
+
+struct StampTransaction {
+    metadata @0 :MetaData;
+    payload @1 :Payload;
+
+    struct Payload {
+        sender @0 :Data;
+        amount @1 :Int64;
+    }
+}
+
+struct ElectionTransaction {
+    enum Method {
+      initiate @0;
+      finalize @1;
+    }
+
+    metadata @0 :MetaData;
+    payload @1 :Payload;
+
+    struct Payload {
+        sender @0 :Data;
+        policy @1 :Data;
+        method @2 :Method;
+    }
+}

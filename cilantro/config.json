@@ -5,7 +5,9 @@
     "interpreters": "VanillaInterpreter",
     "significant-digits": 19,
     "decimal-precision": 4,
-    "max-uuid": 4294967295
+    "max-uuid": 4294967295,
+    "dupe-table-size": 10000,
+    "request-table-size": 10000
   },
   "mongo-constants": {
     "db-name": "cilantro",

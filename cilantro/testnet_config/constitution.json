@@ -1,0 +1,56 @@
+{
+  "balances" : [
+    {
+      "wallet": "",
+      "amount": 123
+    },
+    {
+      "wallet": "",
+      "amount": 123
+    },
+    {
+      "wallet": "",
+      "amount": 123
+    },
+    {
+      "wallet": "",
+      "amount": 123
+    }
+  ],
+  "constants" : [
+    {
+      "policy" : "something",
+      "type" : "multi_discrete",
+      "last_election_start" : 0,
+      "last_election_end" : 0,
+      "election_length" : 168,
+      "election_frequency" : 336,
+      "max_votes" : 0,
+      "value" : "something",
+      "round" : 0,
+      "in_vote" : false,
+      "permissions" : 7
+    }
+  ],
+  "masternodes" : [
+    "f3602e5317022e0a59c3a85ee5751e8f68437cef690878cdd090f82a052685d0",
+    "ef57e67775636f37d80225ad6c26e7c327ab558599c4a08896b974d44fa46c06",
+    "324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502",
+    "a103715914a7aae8dd8fddba945ab63a169dfe6e37f79b4a58bcf85bfd681694",
+    "20da05fdba92449732b3871cc542a058075446fedb41430ee882e99f9091cc4d"
+  ],
+  "delegates" : [
+    "f3602e5317022e0a59c3a85ee5751e8f68437cef690878cdd090f82a052685d0",
+    "ef57e67775636f37d80225ad6c26e7c327ab558599c4a08896b974d44fa46c06",
+    "324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502",
+    "a103715914a7aae8dd8fddba945ab63a169dfe6e37f79b4a58bcf85bfd681694",
+    "20da05fdba92449732b3871cc542a058075446fedb41430ee882e99f9091cc4d"
+  ],
+  "witnesses" : [
+    "f3602e5317022e0a59c3a85ee5751e8f68437cef690878cdd090f82a052685d0",
+    "ef57e67775636f37d80225ad6c26e7c327ab558599c4a08896b974d44fa46c06",
+    "324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502",
+    "a103715914a7aae8dd8fddba945ab63a169dfe6e37f79b4a58bcf85bfd681694",
+    "20da05fdba92449732b3871cc542a058075446fedb41430ee882e99f9091cc4d"
+  ]
+}

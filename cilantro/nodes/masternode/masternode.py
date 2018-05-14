@@ -39,8 +39,10 @@ class MNBaseState(State):
 class MNBootState(MNBaseState):
     def enter(self, prev_state):
         self.log.critical("MN URL: {}".format(self.parent.url))
-        self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
+        # self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
         self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
+
+        # Configure witness groups
 
     def run(self):
         self.parent.transition(MNRunState)
@@ -118,6 +120,7 @@ class MNRunState(MNBaseState):
             self.parent.composer.request(url=TestNetURLHelper.dealroute_url(replier), data=Envelope.create(req), timeout=1)
 
     def compute_hash_of_nodes(self, nodes) -> str:
+        # TODO -- i think the merkle tree can do this for us..?
         self.log.critical("Masternode computing hash of nodes...")
         h = hashlib.sha3_256()
         [h.update(o) for o in nodes]

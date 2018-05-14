@@ -5,6 +5,10 @@ from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages import ReactorCommand
 from kademlia.dht import DHT
 from cilantro import Constants
+import inspect
+
+import uvloop
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 CHILD_RDY_SIG = b'ReactorDaemon Process Ready'
 
@@ -24,7 +28,7 @@ class ReactorDaemon:
         asyncio.set_event_loop(self.loop)
 
         self.context = zmq.asyncio.Context()
-        self.socket = self.context.socket(zmq.PAIR)
+        self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
         self.socket.connect(self.url)
 
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
@@ -48,28 +52,24 @@ class ReactorDaemon:
             cmd_bin = await self.socket.recv()
             # self.log.debug("Got cmd from queue: {}".format(cmd_bin))
 
-            # Should this be in a try catch? I suppose if we get a bad command from the main proc we might as well
+            # Should from_bytes be in a try/catch? I suppose if we get a bad command from the main proc we might as well
             # blow up because this is very likely because of a development error, so no try/catch for now
             cmd = ReactorCommand.from_bytes(cmd_bin)
-            self.execute_cmd(cmd)
 
-    def execute_cmd(self, cmd: ReactorCommand):
+            self._execute_cmd(cmd)
+
+    def _execute_cmd(self, cmd: ReactorCommand):
+        """
+        Propagates a command to the appropriate executor
+        :param cmd: an instance of ReactorCommand
+        """
         assert isinstance(cmd, ReactorCommand), "Cannot execute cmd {} that is not a ReactorCommand object".format(cmd)
 
         self.log.debug("Executing cmd {}".format(cmd))
 
-        executor_name = cmd.class_name
-        executor_func = cmd.func_name
-        kwargs = cmd.kwargs
+        executor_name, executor_func, kwargs = self._parse_cmd(cmd)
 
-        # Remove class_name and func_name from kwargs
-        del(kwargs['class_name'])
-        del(kwargs['func_name'])
-
-        if cmd.envelope_binary:
-            kwargs['envelope'] = cmd.envelope_binary
-
-        # Validate Command (for debugging mostly)
+        # Sanity checks (for catching bugs mostly)
         assert executor_name in self.executors, "Executor name {} not found in executors {}"\
             .format(executor_name, self.executors)
         assert hasattr(self.executors[executor_name], executor_func), "Function {} not found on executor class {}"\
@@ -77,3 +77,30 @@ class ReactorDaemon:
 
         # Execute command
         getattr(self.executors[executor_name], executor_func)(**kwargs)
+
+    def _parse_cmd(self, cmd: ReactorCommand):
+        """
+        Parses a cmd for execution, by extracting/preparing the necessary kwargs for execution.
+        :param cmd: an instance of ReactorCommand
+        :return: A tuple of 3 elements (executor_name, executor_func, kwargs)
+        """
+        executor_name = cmd.class_name
+        executor_func = cmd.func_name
+        kwargs = cmd.kwargs
+
+        # Remove class_name and func_name from kwargs. We just need these to lookup the function to call
+        del(kwargs['class_name'])
+        del(kwargs['func_name'])
+
+        # Add envelope to kwargs if its in the reactor command
+        if cmd.envelope_binary:
+            kwargs['envelope'] = cmd.envelope_binary
+
+        # Lookup 'node_id' (which is a verifying key), and set lookup the corresponding IP and set that to URL
+        # if necessary
+        # assert either (url XOR node_vk) or both don't exist in kwargs
+        # if noke_vk is in there, lookup to appropriate url
+        # how to handle ports now? should we just have set ports for all the grouping????
+        # TODO -- implement this functionality
+
+        return executor_name, executor_func, kwargs

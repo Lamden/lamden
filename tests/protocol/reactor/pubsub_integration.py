@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, call, patch
 from cilantro.messages import *
 from cilantro.protocol.wallets import ED25519Wallet
-from cilantro.protocol.reactor import ReactorInterface
+from cilantro.protocol.reactor.interface import ReactorInterface
 from cilantro.protocol.reactor.executor import *
 from cilantro.messages import ReactorCommand
 from cilantro.utils.test import MPTesterBase, MPTestCase, mp_testable
@@ -18,8 +18,7 @@ URLS = ['tcp://127.0.0.1:' + str(i) for i in range(9000, 9999, 10)]
 def random_envelope():
     sk, vk = ED25519Wallet.new()
     tx = StandardTransactionBuilder.random_tx()
-    sender = 'me'
-    return Envelope.create_from_message(message=tx, signing_key=sk, sender_id=sender)
+    return Envelope.create_from_message(message=tx, signing_key=sk)
 
 
 @mp_testable(ReactorInterface)
@@ -31,6 +30,8 @@ class MPReactorInterface(MPTesterBase):
         asyncio.set_event_loop(loop)
 
         reactor = ReactorInterface(mock_parent, loop=loop)
+
+        asyncio.ensure_future(reactor._recv_messages())
 
         return reactor, loop
 

@@ -7,17 +7,17 @@ SOCKET_LIMIT = 2500
 resource.setrlimit(resource.RLIMIT_NOFILE, (SOCKET_LIMIT, SOCKET_LIMIT))
 
 class Discovery:
-    def __init__(self, context):
+    def __init__(self, context, port=31337):
         self.context = context
+        self.port = port
         self.log = get_logger("Crawler")
 
-    def listen_for_crawlers(self, port=31337):
-        self.port = port
+    def listen_for_crawlers(self):
         self.socket = self.context.socket(zmq.REP)
         self.socket.bind("tcp://*:{}".format(self.port))
         self.log.debug('Listening to the world on port {}...'.format(self.port))
-        asyncio.ensure_future(self._listen_for_crawlers())
         time.sleep(0.1)
+        return asyncio.ensure_future(self._listen_for_crawlers())
 
     async def _listen_for_crawlers(self):
         while True:
@@ -46,7 +46,7 @@ class Discovery:
             results += self.scan_all(ips[host])
         self.discovered_nodes = results
         self.log.debug(self.discovered_nodes)
-        self.log.debug('Done.')
+        self.log.debug('Done with discovery scan.')
         return results
 
     def scan_all(self, ips, poll_time=250):
