@@ -57,5 +57,10 @@
     "delegate-delegate": 1,
     "masternode-delegate": 2,
     "witness-delegate": 3
+  },
+  "overlay": {
+    "alpha": 3,
+    "ksize": 20,
+    "max-peers": 64
   }
 }

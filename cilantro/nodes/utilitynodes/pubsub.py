@@ -21,6 +21,7 @@ class PubNode(BaseNode, Grouping):
     async def debug_forever_pub(self):
         while True:
             self.designate_next_group()
+            print('doing this node')
             self.composer.send_pub_env(envelope=random_envelope(), filter='')
             await asyncio.sleep(1)
 

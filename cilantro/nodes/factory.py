@@ -15,7 +15,7 @@ class NodeFactory:
     def _build_node(loop, signing_key, url, node_cls) -> NodeBase:
         node = node_cls(signing_key=signing_key, url=url, loop=loop)
         router = Router(statemachine=node)
-        interface = ReactorInterface(router=router, loop=loop)
+        interface = ReactorInterface(router=router, loop=loop, signing_key=signing_key)
         composer = Composer(interface=interface, signing_key=signing_key)
 
         node.composer = composer

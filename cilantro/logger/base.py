@@ -86,7 +86,9 @@ else:
         filedir = "logs/{}".format(os.getenv('TEST_NAME'))
         filename = "{}/{}.log".format(filedir, os.getenv('HOSTNAME'))
         os.makedirs(filedir, exist_ok=True)
-        filehandlers = [logging.FileHandler(filename)]
+        filehandlers = [
+            logging.FileHandler(filename)
+        ]
         logging.basicConfig(
             format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
             handlers=filehandlers,
