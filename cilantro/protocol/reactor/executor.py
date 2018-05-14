@@ -49,7 +49,7 @@ class Executor(metaclass=ExecutorMeta):
 
     def add_listener(self, listener_fn, *args, **kwargs):
         # listener_fn must be a coro
-        self.log.info("\n\nadd_listener scheduling future {} with args {} and kwargs {}\n\n".format(listener_fn, args, kwargs))
+        self.log.info("add_listener scheduling future {} with args {} and kwargs {}".format(listener_fn, args, kwargs))
         return asyncio.ensure_future(self._listen(listener_fn, *args, **kwargs))
 
     async def _listen(self, listener_fn, *args, **kwargs):
@@ -182,26 +182,10 @@ class SubPubExecutor(Executor):
         if filter not in self.sub_filters:
             self.add_sub_filter(filter)
 
-        # NEW APPROACH (with error handling)
         if not self.sub_handler:
             self.log.info("Starting listener event for subscriber socket")
             self.sub_handler = self.add_listener(self.recv_multipart, socket=self.sub, callback_fn=self._recv_pub_env,
                                                  ignore_first_frame=True)
-
-        # OLD APPROACH
-        # asyncio.ensure_future(self.recv_multipart(socket=self.sub, callback_fn=self._recv_pub_env, ignore_first_frame=True))
-
-    def remove_sub(self, url: str, filter: str):
-        assert isinstance(filter, str), "'filter' arg must be a string"
-        assert self.sub, "Remove sub command invoked but sub socket is not set"
-        assert url in self.sub_urls, "Attempted to remove a sub that was not registered in self.sub_urls"
-        assert filter in self.sub_filters, "Attempted ro remove a sub /w filter that is not registered self.sub_filters"
-
-        self.sub.setsockopt(zmq.UNSUBSCRIBE, filter.encode())
-        self.sub.disconnect(url)
-
-        self.sub_urls.remove(url)
-        self.sub_filters.remove(filter)
 
     def add_sub_url(self, url: str):
         assert url not in self.sub_urls, "Attempted to add_sub with URL that is already in self.sub_urls"
@@ -217,6 +201,32 @@ class SubPubExecutor(Executor):
         self.log.info("Adding filter {} to subscriber socket".format(filter))
         self.sub_filters.add(filter)
         self.sub.setsockopt(zmq.SUBSCRIBE, filter.encode())
+
+    def remove_sub(self, url: str, filter: str):
+        assert isinstance(filter, str), "'filter' arg must be a string"
+        assert self.sub, "Remove sub command invoked but sub socket is not set"
+        assert url in self.sub_urls, "Attempted to remove a sub that was not registered in self.sub_urls"
+        assert filter in self.sub_filters, "Attempted ro remove a sub /w filter that is not registered self.sub_filters"
+
+        self.remove_sub_url(url)
+        self.remove_sub_filter(filter)
+
+    def remove_sub_url(self, url: str):
+        assert url in self.sub_urls, "Attempted to remove a URL {} that is not in self.sub_urls"
+        assert self.sub, "Sub socket must be set before you can do any remove operation"
+
+        self.log.debug("Removing sub url {}".format(url))
+        self.sub.disconnect(url)
+        self.sub_urls.remove(url)
+
+    def remove_sub_filter(self, filter: str):
+        assert isinstance(filter, str), "'filter' arg must be a string"
+        assert filter in self.sub_filters
+        assert self.sub, "Sub socket must be set before you can do any remove operation"
+
+        self.log.debug("Removing sub filter {}".format(filter))
+        self.sub.setsockopt(zmq.UNSUBSCRIBE, filter.encode())
+        self.sub_filters.remove(filter)
 
     def remove_pub(self, url: str):
         assert url in self.pubs, "Remove pub command invoked but pub socket is not set"

@@ -84,6 +84,27 @@ class Composer:
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, filter=filter, **kwargs)
         self.interface.send_cmd(cmd)
 
+    def remove_sub_url(self, url: str='', node_vk: str=''):
+        """
+        Disconnects the sub URL from url. Unlike the remove_sub API, this does not remove a filter from the
+        socket. It only disconnects from the url.
+        received
+        :param url: The URL of the router that the created dealer socket should CONNECT to.
+        :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
+        """
+        kwargs = self._url_or_vk(url=url, vk=node_vk)
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub_url.__name__, **kwargs)
+        self.interface.send_cmd(cmd)
+
+    def remove_sub_filter(self, filter: str):
+        """
+        Removes a filters from the sub socket. Unlike the remove_sub API, this does not disconnect a URL. It only
+        unsubscribes to 'filter
+        :param filter: A string to use as the filter frame. This filter will be unsubscribed.
+        """
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub_filter.__name__, filter=filter)
+        self.interface.send_cmd(cmd)
+
     def send_pub_msg(self, filter: str, message: MessageBase):
         """
         Publish data with filter frame 'filter'. An envelope (including a seal and the metadata) will be created from
