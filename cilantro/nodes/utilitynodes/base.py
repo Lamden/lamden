@@ -11,6 +11,6 @@ class BaseNode:
         self.port = int(os.getenv('PORT', 31337))
         self.host = os.getenv('HOST_IP', '127.0.0.1')
         self.loop = asyncio.get_event_loop()
-        self.reactor = ReactorInterface(self, self.loop)
         self.wallet = ED25519Wallet()
+        self.reactor = ReactorInterface(self, self.loop, self.wallet.s)
         self.composer = Composer(self.reactor, self.wallet.s)

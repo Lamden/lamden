@@ -3,33 +3,37 @@ import zmq.asyncio
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages import ReactorCommand
-from cilantro.protocol.networks import Discovery
-
+from kademlia.dht import DHT
+from cilantro import Constants
 
 CHILD_RDY_SIG = b'ReactorDaemon Process Ready'
 
 
 class ReactorDaemon:
-    def __init__(self, url, p_name=''):
+    def __init__(self, url, p_name='', sk=None):
         self.log = get_logger("{}.ReactorDaemon".format(p_name))
         self.log.info("ReactorDaemon started with url {}".format(url))
         self.url = url
+
+        self.log.critical("THIS SHOULD PRINT IF IT DOESNT VMNET IS NOT UPGRADING")
 
         # Comment out below for more granularity in debugging
         # self.log.setLevel(logging.INFO)
 
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
+
         self.context = zmq.asyncio.Context()
         self.socket = self.context.socket(zmq.PAIR)
         self.socket.connect(self.url)
 
+        self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
+        self.dht = DHT(node_id=sk, mode=self.discovery_mode, loop=self.loop,
+                       ctx=self.context, alpha=Constants.Overlay.Alpha,
+                       ksize=Constants.Overlay.Ksize, max_peers=Constants.Overlay.MaxPeers)
+
         self.executors = {name: executor(self.loop, self.context, self.socket)
                           for name, executor in Executor.registry.items()}
-
-        self.discoverer = Discovery(self.context)
-        self.discoverer.listen_for_crawlers()
-        self.discoverer.discover('test' if os.getenv('TEST_NAME') else 'neighborhood')
 
         self.loop.run_until_complete(self._recv_messages())
 
