@@ -119,6 +119,11 @@ class MPTestCase(TestCase):
             raise Exception()
 
     def _poll_testers(self) -> tuple:
+        start_msg = '\n' + '~' * 80 + '\n' + '~' * 80
+        start_msg += '\n\t\t\t ASSERTION POLLING STARTING WITH FREQ {}\n'.format(TESTER_POLL_FREQ)
+        start_msg += '~' * 80 + '\n' + '~' * 80
+        self.log.critical(start_msg)
+
         actives = [t for t in MPTesterBase.testers if t.assert_fn]
         passives = [t for t in MPTesterBase.testers if not t.assert_fn]
         fails = []

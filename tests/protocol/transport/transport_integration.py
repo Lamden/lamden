@@ -37,11 +37,12 @@ def random_envelope(sk=None, tx=None):
 @mp_testable(Composer)
 class MPComposer(MPTesterBase):
     @classmethod
-    def build_obj(cls, sk) -> tuple:
+    def build_obj(cls, sk, name='') -> tuple:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
         mock_sm = MagicMock(spec=StateMachine)
+        mock_sm.__name__ = name
         # router = Router(mock_sm)
         router = MagicMock()
 
@@ -95,6 +96,58 @@ class TransportIntegrationTest(MPTestCase):
 
         self.start()
 
+    def test_pubsub_n_1_n_removesub(self):
+        """
+        Tests pub/sub n-1, with a sub removing a publisher after its first message
+        """
+        def configure(composer: Composer):
+            composer.interface.router.route_callback = MagicMock()
+            return composer
+
+        def assert_sub(composer: Composer):
+            callback1 = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env1)
+            callback2 = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env2)
+            calls = [call(callback1), call(callback2)]
+
+            # i = 10 / 0
+
+            call_args = composer.interface.router.route_callback.call_args_list
+
+            assert len(call_args) == 2, "route_callback should be called exactly twice, not {} times with {}"\
+                                        .format(len(call_args), call_args)
+            composer.interface.router.route_callback.assert_has_calls(calls, any_order=True)
+
+        env1 = random_envelope()
+        env2 = random_envelope()
+        env3 = random_envelope()
+
+        sub = MPComposer(config_fn=configure, assert_fn=assert_sub, name='** SUB', sk=sk1)
+        pub1 = MPComposer(name='++ PUB 1', sk=sk2)
+        pub2 = MPComposer(name='++ PUB 2', sk=sk3)
+
+        sub.add_sub(url=URLS[0], filter=FILTER)  # sub to pub1
+        sub.add_sub(url=URLS[1], filter=FILTER)  # sub to pub2
+
+        pub1.add_pub(url=URLS[0])
+        pub2.add_pub(url=URLS[1])
+
+        time.sleep(0.2)
+
+        pub1.send_pub_env(filter=FILTER, envelope=env1)
+        pub2.send_pub_env(filter=FILTER, envelope=env2)
+
+        time.sleep(0.1)  # allow messages to go through
+        # sub.remove_sub_url(url=URLS[1])  # unsub to pub2
+        time.sleep(0.1)  # allow remove_sub_url command to go through
+
+        pub2.send_pub_env(filter=FILTER, envelope=env3)  # this should not be recv by sub, as he removed this guy's url
+
+        time.sleep(0.5)  # allow messages to go through before we start checking assertions
+
+        self.start()
+
+
+
     def test_pubsub_1_1_2_mult_filters(self):
         """
         Tests pub/sub 1-1 (one sub one pub) with 2 message each on a different filter
@@ -127,8 +180,6 @@ class TransportIntegrationTest(MPTestCase):
 
         self.start()
 
-
-    # TODO FIX THIS (figure out how to validate env.messsage = reply_msg)..ithink we can use "call_args_list"
     def test_req_reply_1_1_1(self):
         """
         Tests request/reply 1_1_1
@@ -146,21 +197,15 @@ class TransportIntegrationTest(MPTestCase):
             return composer
 
         def assert_dealer(composer: Composer):
-            def assert_correct_args(*args, **kwargs):
-                log = get_logger("ASSERT_DEALER")
-                log.critical("ASSERT_CORRECT_ARGS called with args={}, and kwargs={}".format(args, kwargs))
+            args = composer.interface.router.route_callback.call_args_list
 
-                assert len(args) == 1, "Expected one arg to be passed into route_callback (the envelope)"
+            assert len(args) == 1, "dealer's route_callback should of only been called once (with the reply env)"
 
-                env = args[0]
+            call = args[0]
+            callback_cmd = call[0][0]
 
-                assert env.message == reply_msg, "Reply Envelope message != to reply message!!! OH MAYNE"
-
-                raise Exception("get rekt from the inside kid!!!")  # this is not reking the test through...hmm
-
-            composer.interface.router.route_callback.side_effect = assert_correct_args
-
-            raise Exception("get rekt u scrub")
+            assert isinstance(callback_cmd, ReactorCommand), "arg of route_callback should be a ReactorCommand"
+            assert callback_cmd.envelope.message == reply_msg, "Callback's envelope's message should be the reply_msg"
 
         def assert_router(composer: Composer):
             cb = ReactorCommand.create_callback(callback=ROUTE_REQ_CALLBACK, envelope=request_env, header=dealer_id)

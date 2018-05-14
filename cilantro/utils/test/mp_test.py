@@ -258,7 +258,7 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
             await asyncio.sleep(ASSERTS_POLL_FREQ)
 
         # Once out of the assertion checking loop, send success to main thread
-        log.debug("\n\nputting ready sig in queue\n\n")
+        log.debug("\n\nassertions passed! putting ready sig in queue\n\n")
         socket.send(SIG_SUCC)
 
     def __teardown():
