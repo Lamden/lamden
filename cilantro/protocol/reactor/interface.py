@@ -9,7 +9,7 @@ from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG
 
 
 class ReactorInterface:
-    def __init__(self, router: Router, loop, signing_key):
+    def __init__(self, router, loop, signing_key):
         self.log = get_logger("{}.ReactorInterface".format(type(router).__name__))
         self.url = "ipc://ReactorIPC-" + str(random.randint(0, pow(2, 16)))
 
