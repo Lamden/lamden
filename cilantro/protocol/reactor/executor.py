@@ -1,12 +1,26 @@
-import asyncio, time
-import zmq.asyncio
+from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand, Envelope
+from collections import defaultdict
+from cilantro.protocol.structures import CappedSet, EnvelopeAuth
+import traceback
 
-# TODO add some API for hooking this stuff up programatically instead of statically defining the callbacks
+import asyncio, time
+import zmq.asyncio
+
+from typing import Union
+import types
+
+
+# Callbacks for routing incoming envelopes back to the application layer
 ROUTE_CALLBACK = 'route'
 ROUTE_REQ_CALLBACK = 'route_req'
 ROUTE_TIMEOUT_CALLBACK = 'route_timeout'
+
+
+# Internal constants (used as keys)
+_SOCKET = 'socket'
+_HANDLER = 'handler'
 
 
 class ExecutorMeta(type):
@@ -16,80 +30,77 @@ class ExecutorMeta(type):
 
         if not hasattr(clsobj, 'registry'):
             clsobj.registry = {}
-        if clsobj.__name__ != 'Executor':
+
+        if clsobj.__name__ != 'Executor':  # Exclude Executor base class
             clsobj.registry[clsobj.__name__] = clsobj
 
         return clsobj
 
 
 class Executor(metaclass=ExecutorMeta):
+
+    _recently_seen = CappedSet(max_size=Constants.Protocol.DupeTableSize)
+
     def __init__(self, loop, context, inproc_socket):
         self.loop = loop
         asyncio.set_event_loop(self.loop)
         self.context = context
         self.inproc_socket = inproc_socket
-        self.duplication = {}
 
-    async def recv_multipart(self, socket, callback, ignore_first_frame=False):
-        # self.log.warning("Starting recv on socket {} with callback {}".format(socket, callback))
+    def add_listener(self, listener_fn, *args, **kwargs):
+        # listener_fn must be a coro
+        self.log.info("\n\nadd_listener scheduling future {} with args {} and kwargs {}\n\n".format(listener_fn, args, kwargs))
+        return asyncio.ensure_future(self._listen(listener_fn, *args, **kwargs))
+
+    async def _listen(self, listener_fn, *args, **kwargs):
+        self.log.info("_listen called with fn {}, and args={}, kwargs={}".format(listener_fn, args, kwargs))
+
+        try:
+            await listener_fn(*args, **kwargs)
+        except Exception as e:
+            delim_line = '!' * 64
+            err_msg = '\n\n' + delim_line + '\n' + delim_line
+            err_msg += '\n ERROR CAUGHT IN LISTENER FUNCTION {}\ncalled \w args={}\nand kwargs={}\n'\
+                        .format(listener_fn, args, kwargs)
+            err_msg += '\nError Message: '
+            err_msg += '\n\n{}'.format(traceback.format_exc())
+            err_msg += '\n' + delim_line + '\n' + delim_line
+            self.log.error(err_msg)
+
+    async def recv_multipart(self, socket, callback_fn: types.MethodType, ignore_first_frame=False):
+        self.log.warning("--- Starting recv on socket {} with callback_fn {} ---".format(socket, callback_fn))
         while True:
             self.log.debug("waiting for multipart msg...")
             msg = await socket.recv_multipart()
+
             self.log.debug("Got multipart msg: {}".format(msg))
 
             if ignore_first_frame:
                 header = None
             else:
-                assert len(msg) == 2, "ignore_first_frame is false; Expected a multi_msg of len 2 with " \
-                                      "(header, envelope) but got {}".format(msg)
+                assert len(msg) == 2, "Expected 2 frames (header, envelope) but got {}".format(msg)
                 header = msg[0].decode()
 
             env_binary = msg[-1]
+            env = self._validate_envelope(envelope_binary=env_binary, header=header)
 
-            if env_binary == b'beat':
-                self.echo(id=msg[0])
-            else:
-                env = Envelope.from_bytes(env_binary)
-                env_meta = env.meta
-                if self.duplication.get(env_meta.uuid):
-                    # Time difference less than 5 seconds is considered a collision or the same message
-                    if float(env_meta.timestamp) - float(self.duplication[env_meta.uuid]) < 5:
-                        self.log.debug("skiipping duplicate env {}".format(env))
-                        continue
-                self.duplication[env_meta.uuid] = env_meta.timestamp
-                self.log.debug('received envelope:\n{}'.format(env))
-                self.call_on_mt(callback, header=header, envelope_binary=env_binary)
+            if not env:
+                self.log.error("Could not validate envelope binary {}!".format(env_binary))
+                continue
 
-    def call_on_mt(self, callback, header: bytes=None, envelope_binary: bytes=None, **kwargs):
+            Executor._recently_seen.add(env.meta.uuid)
+
+            callback_fn(header=header, envelope=env)
+
+    def call_on_mp(self, callback: str, header: str=None, envelope_binary: bytes=None, **kwargs):
         if header:
-            # TODO -- make header a convenience property or constant on reactor callback
             kwargs['header'] = header
 
         cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary, **kwargs)
-        # self.log.debug("Executor sending callback cmd: {}".format(cmd))
         self.inproc_socket.send(cmd.serialize())
 
-
-    def _process_envelope(self, callback, header, envelope_binary):
-        # Validate envelope if this is not a TIMEOUT callback
-        if callback != ROUTE_TIMEOUT_CALLBACK:
-            self._validate_envelope(envelope_binary, header)
-
-        # Check if this a reply envelope that we have been waiting for, and cancel its callback if so
-        if callback == ROUTE_CALLBACK:
-            # TODO -- implement
-            pass
-
-        # Send callback to main process
-        if header:
-            cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary, header=header)
-        else:
-            cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary)
-        self.log.debug("Executor sending callback cmd: {}".format(cmd))
-        self.inproc_socket.send(cmd.serialize())
-
-    def _validate_envelope(self, envelope_binary, header) -> bool:
-        # TODO -- more robust and less ad-hoc zmq multipart msg validation
+    def _validate_envelope(self, envelope_binary: bytes, header: str) -> Union[None, Envelope]:
+        # TODO return/raise custom exceptions in this instead of just logging stuff and returning none
 
         # Deserialize envelope
         env = None
@@ -97,42 +108,62 @@ class Executor(metaclass=ExecutorMeta):
             env = Envelope.from_bytes(envelope_binary)
         except Exception as e:
             self.log.error("\n\n\nError deserializing envelope: {}\n\n\n".format(e))
-            return False
+            return None
 
         # Check seal
         if not env.verify_seal():
             self.log.error("\n\n\nSeal could not be verified for envelope {}\n\n\n".format(env))
-            return False
+            return None
 
         # If header is not none (meaning this is a ROUTE msg with an ID frame), then verify that the ID frame is
         # the same as the vk on the seal
         if header and (header != env.seal.verifying_key):
-            self.log.error("Header frame {} does not match seal's vk {}\nfor envelope {}"
+            self.log.error("\n\n\nHeader frame {} does not match seal's vk {}\nfor envelope {}\n\n\n"
                            .format(header, env.seal.verifying_key, env))
-            return False
+            return None
 
-        # If none of the above checks returned false, this envelope should be g00d
-        return True
+        # Make sure we haven't seen this message before
+        if env.meta.uuid in Executor._recently_seen:
+            self.log.warning("Duplicate envelope detect with UUID {}. Ignoring.".format(env.meta.uuid))
+            return None
+
+        # TODO -- checks timestamp to ensure this envelope is recv'd in a somewhat reasonable time (within N seconds)
+
+        # If none of the above checks above return None, this envelope should be good
+        return env
+
+    def teardown(self):
+        raise NotImplementedError
 
 
 class SubPubExecutor(Executor):
     def __init__(self, loop, context, inproc_socket):
         super().__init__(loop, context, inproc_socket)
-        self.sub = None
-        self.pubs = {}
+        self.sub = None  # Subscriber socket
+        self.sub_handler = None  # asyncio future from subscriber's recv_multipart
 
+        self.pubs = {}  # Key is url, value is Publisher socket
+
+        self.sub_urls = set()  # Set of URLS (as strings) we are subscribed to
+        self.sub_filters = set()  # Set of filters (as strings) that the sub socket is accepting
+
+    def _recv_pub_env(self, header: str, envelope: Envelope):
+        self.log.debug("Recv'd pub envelope with header {} and env {}".format(header, envelope))
+        self.call_on_mp(callback=ROUTE_CALLBACK, envelope_binary=envelope.serialize())
+
+    # TODO -- is looping over all pubs ok?
     def send_pub(self, filter: str, envelope: bytes):
-        assert len(self.pubs) != 0, "Attempted to publish data but publisher socket is not configured"
+        assert isinstance(filter, str), "'id' arg must be a string"
+        assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
+        assert len(self.pubs) > 0, "Attempted to publish data but publisher socket(s) is not configured"
+
         for url in self.pubs:
-            self.log.debug("Publishing to... {} the envelope: {}".format(url, Envelope.from_bytes(envelope)))
+            self.log.debug("Publishing to URL {} with envelope: {}".format(url, Envelope.from_bytes(envelope)))
             # self.log.info("Publishing to... {}".format(url))
             self.pubs[url].send_multipart([filter.encode(), envelope])
 
     def add_pub(self, url: str):
-        # TODO -- implement functionality so add_pub will close the existing socket and create a new one if we are switching urls
-        if self.pubs.get(url):
-            self.log.error("Attempted to add publisher on url {} but publisher socket already configured.".format(url))
-            return
+        assert url not in self.pubs, "Attempted to add pub on url that is already in self.pubs"
 
         self.log.info("Creating publisher socket on url {}".format(url))
         self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
@@ -140,97 +171,195 @@ class SubPubExecutor(Executor):
         time.sleep(0.2)
 
     def add_sub(self, url: str, filter: str):
+        assert isinstance(filter, str), "'id' arg must be a string"
+
         if not self.sub:
             self.log.info("Creating subscriber socket")
             self.sub = self.context.socket(socket_type=zmq.SUB)
-            asyncio.ensure_future(self.recv_multipart(self.sub, ROUTE_CALLBACK, ignore_first_frame=True))
 
-        self.log.info("Subscribing to url {} with filter '{}'".format(url, filter))
-        self.sub.connect(url)
-        self.sub.setsockopt(zmq.SUBSCRIBE, filter.encode())
+        if url not in self.sub_urls:
+            self.add_sub_url(url)
+        if filter not in self.sub_filters:
+            self.add_sub_filter(filter)
 
-    def remove_sub(self, url: str, msg_filter: str):
+        # NEW APPROACH (with error handling)
+        if not self.sub_handler:
+            self.log.info("Starting listener event for subscriber socket")
+            self.sub_handler = self.add_listener(self.recv_multipart, socket=self.sub, callback_fn=self._recv_pub_env,
+                                                 ignore_first_frame=True)
+
+        # OLD APPROACH
+        # asyncio.ensure_future(self.recv_multipart(socket=self.sub, callback_fn=self._recv_pub_env, ignore_first_frame=True))
+
+    def remove_sub(self, url: str, filter: str):
+        assert isinstance(filter, str), "'filter' arg must be a string"
         assert self.sub, "Remove sub command invoked but sub socket is not set"
-        self.sub.setsockopt(zmq.UNSUBSCRIBE, msg_filter.encode())
+        assert url in self.sub_urls, "Attempted to remove a sub that was not registered in self.sub_urls"
+        assert filter in self.sub_filters, "Attempted ro remove a sub /w filter that is not registered self.sub_filters"
+
+        self.sub.setsockopt(zmq.UNSUBSCRIBE, filter.encode())
         self.sub.disconnect(url)
 
+        self.sub_urls.remove(url)
+        self.sub_filters.remove(filter)
+
+    def add_sub_url(self, url: str):
+        assert url not in self.sub_urls, "Attempted to add_sub with URL that is already in self.sub_urls"
+
+        self.log.info("Subscribing to url {}".format(url))
+        self.sub_urls.add(url)
+        self.sub.connect(url)
+
+    def add_sub_filter(self, filter: str):
+        assert isinstance(filter, str), "'id' arg must be a string"
+        assert filter not in self.sub_filters, "Attempted to add filter that is already added"
+
+        self.log.info("Adding filter {} to subscriber socket".format(filter))
+        self.sub_filters.add(filter)
+        self.sub.setsockopt(zmq.SUBSCRIBE, filter.encode())
+
     def remove_pub(self, url: str):
-        assert self.pubs.get(url), "Remove pub command invoked but pub socket is not set"
+        assert url in self.pubs, "Remove pub command invoked but pub socket is not set"
+
         self.pubs[url].disconnect(url)
         self.pubs[url].close()
         del self.pubs[url]
+
+    def teardown(self):
+        # TODO -- implement
+        # cancel all futures, close all sockets
+        pass
 
 
 class DealerRouterExecutor(Executor):
     def __init__(self, loop, context, inproc_socket):
         super().__init__(loop, context, inproc_socket)
 
-        # TODO -- make a simple data structure for storing these sockets and their associated futures by key URL
-        self.dealers = {}
+        # 'dealers' is a simple nested dict for holding sockets by URL as well as their associated recv handlers
+        # key for 'dealers' is socket URL, and value is another dict with keys 'socket' (value is Socket instance)
+        # and 'socket' (value is asyncio handler instance)
+        self.dealers = defaultdict(dict)
+
+        self.expected_replies = {}  # Dict where key is reply UUID and value is the asyncio timeout handler
+
+        # Router socket and recv handler
         self.router = None
+        self.router_handler = None
+
+    def _recv_request_env(self, header: str, envelope: Envelope):
+        self.log.debug("Recv REQUEST envelope with header {} and envelope {}".format(header, envelope))
+        self.call_on_mp(callback=ROUTE_REQ_CALLBACK, header=header, envelope_binary=envelope.serialize())
+
+    def _recv_reply_env(self, header: str, envelope: Envelope):
+        self.log.debug("Recv REPLY envelope with header {} and envelope {}".format(header, envelope))
+
+        reply_uuid = envelope.meta.uuid
+        if reply_uuid in self.expected_replies:
+            self.log.debug("Removing reply with uuid {} from expected replies".format(reply_uuid))
+            self.expected_replies[reply_uuid].cancel()
+            del(self.expected_replies[reply_uuid])
+
+        self.call_on_mp(callback=ROUTE_CALLBACK, header=header, envelope_binary=envelope.serialize())
+
+    def _timeout(self, url: str, request_envelope: bytes, reply_uuid: int):
+        assert reply_uuid in self.expected_replies, "Timeout triggered but reply_uuid was not in expected_replies"
+        self.log.critical("Request to url {} timed out! (reply uuid {} not found). Request envelope: {}"
+                          .format(url, reply_uuid, request_envelope))
+
+        del(self.expected_replies[reply_uuid])
+        self.call_on_mp(callback=ROUTE_TIMEOUT_CALLBACK, envelope_binary=request_envelope)
 
     def add_router(self, url: str):
-        assert self.router is None, "Attempted to add router socket on url {} but router socket already configured".format(url)
+        assert self.router is None, "Attempted to add router on url {} but socket already configured".format(url)
 
         self.log.info("Creating router socket on url {}".format(url))
         self.router = self.context.socket(socket_type=zmq.ROUTER)
         self.router.bind(url)
-        asyncio.ensure_future(self.recv_multipart(self.router, ROUTE_REQ_CALLBACK))
+
+        # OLD WAY
+        # asyncio.ensure_future(self.recv_multipart(socket=self.router, callback_fn=self._recv_request_env))
+
+        # NEW WAY
+        self.router_handler = self.add_listener(self.recv_multipart, socket=self.router,
+                                                callback_fn=self._recv_request_env)
 
     def add_dealer(self, url: str, id: str):
         assert url not in self.dealers, "Url {} already in self.dealers {}".format(url, self.dealers)
         self.log.info("Creating dealer socket for url {} with id {}".format(url, id))
-        self.dealers[url] = self.context.socket(socket_type=zmq.DEALER)
-        self.dealers[url].identity = id.encode('ascii')
+        assert isinstance(id, str), "'id' arg must be a string"
 
-        # TODO -- store this future so we can cancel it later
-        future = asyncio.ensure_future(self.recv_multipart(self.dealers[url], ROUTE_CALLBACK,
-                                                           ignore_first_frame=True))
+        socket = self.context.socket(socket_type=zmq.DEALER)
+        socket.identity = id.encode('ascii')
 
         self.log.info("Dealer socket connecting to url {}".format(url))
-        self.dealers[url].connect(url)
+        socket.connect(url)
 
-    def beat(self, url: str, timeout=0):
+        # OLD WAY
+        # future = asyncio.ensure_future(self.recv_multipart(socket=socket,
+        #                                                    callback_fn=self._recv_reply_env, ignore_first_frame=True))
+
+        # NEW WAY
+        future = self.add_listener(self.recv_multipart, socket=socket, callback_fn=self._recv_reply_env,
+                                   ignore_first_frame=True)
+
+        self.dealers[url][_SOCKET] = socket
+        self.dealers[url][_HANDLER] = future
+
+    # TODO pass in the intended replier's vk so we can be sure the reply we get is actually from him
+    def request(self, url: str, reply_uuid: str, envelope: bytes, timeout=0):
+        self.log.critical("ay we requesting /w reply uuid {} and env {}".format(reply_uuid, envelope))
         assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
             .format(url, self.dealers)
-        timeout = int(timeout)
-        self.log.debug("Composing request to url {} with timeout: {}".format(url, timeout))
-        if timeout > 0:
-            # TODO -- timeout functionality
-            pass
+        assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
 
-        self.dealers[url].send_multipart([b'beat'])
+        reply_uuid = int(reply_uuid)
+        timeout = float(timeout)
 
-    def echo(self, id):
-        assert self.router, "Attempted to reply but router socket is not set"
-        self.router.send_multipart([id, b'echo'])
-
-    def request(self, url, envelope, timeout=0):
-        assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
-            .format(url, self.dealers)
-        timeout = int(timeout)
         self.log.debug("Composing request to url {}\ntimeout: {}\nenvelope: {}".format(url, timeout, envelope))
 
         if timeout > 0:
-            # TODO -- timeout functionality
-            pass
+            assert reply_uuid not in self.expected_replies, "Reply UUID is already in expected replies"
+            self.log.debug("Adding timeout of {} for reply uuid {}".format(timeout, reply_uuid))
+            self.expected_replies[reply_uuid] = self.loop.call_later(timeout, self._timeout, url, envelope, reply_uuid)
 
-        self.dealers[url].send_multipart([envelope])
+        self.dealers[url][_SOCKET].send_multipart([envelope])
 
-    def reply(self, id, envelope):
-        # TODO error propgation
-        # i  = 10 / 0
-        # TODO are we not propagating exceptions properly? This error above does not get outputed in a test..?
-        # self.log.critical("\n\n\n\n sending reply to id {} with env {} \n\n\n\n".format(id, envelope))
+    def reply(self, id: str, envelope: bytes):
         assert self.router, "Attempted to reply but router socket is not set"
+        assert isinstance(id, str), "'id' arg must be a string"
+        assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
+
         self.router.send_multipart([id.encode(), envelope])
 
     def remove_router(self, url):
-        # TODO -- implement
+        assert self.router, "Tried to remove router but self.router is not set"
         self.log.critical("remove router not implemented")
         raise NotImplementedError
+        # self.log.info("Removing router at url {}".format(url))
 
-    def remove_dealer(self, url, id):
+    def remove_dealer(self, url, id=''):
+        assert url in self.dealers, "Attempted to remove dealer url {} that is not in list of dealers {}"\
+            .format(url, self.dealers)
+
+        self.log.info("Removing dealer at url {} with id {}".format(url, id))
+
+        socket = self.dealers[url][_SOCKET]
+        future = self.dealers[url][_HANDLER]
+
+        # Clean up socket and cancel future
+        socket.disconnect(url)
+        socket.close()
+        future.cancel()
+
+        # 'destroy' references to socket/future (not sure if this is necessary tbh)
+        self.dealers[url][_SOCKET] = None
+        self.dealers[url][_HANDLER] = None
+        del(self.dealers[url])
+
+    def teardown(self):
         # TODO -- implement
-        self.log.critical("remove dealer not implemented")
-        raise NotImplementedError
+        # cancel all futures, close all sockets
+        pass
+
+
+

@@ -1,17 +1,18 @@
 """
 Integration testing tools for processes with blocking event loops
 """
-import asyncio
+import asyncio, uvloop
 import zmq.asyncio
 import random
+import inspect
 from multiprocessing import Queue
 from aioprocessing import AioQueue
 from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger
 
 
-TEST_TIMEOUT = 4
-TEST_POLL_FREQ = 0.25
+ASSERTS_POLL_FREQ = 0.1
+CHILD_PROC_TIMEOUT = 1
 
 
 SIG_RDY = b'IM RDY'
@@ -20,10 +21,7 @@ SIG_FAIL = b'BADSUCC'
 SIG_ABORT = b'NOSUCC'
 
 
-CHILD_PROC_TIMEOUT = 1
-
-
-# TODO -- move this thang to a better home
+# TODO -- move these thangs to a better home
 import os
 import dill
 
@@ -89,8 +87,6 @@ def build_reactor_obj(cls) -> tuple:
 
     return reactor, loop
 
-
-
 def _gen_url(name=''):
     """
     Helper method to generate a random URL for use in a PAIR socket
@@ -99,7 +95,6 @@ def _gen_url(name=''):
     HOST_NAME = '127.0.0.1'  # or node name (i.e delegate_1)
     rand_num = random.randint(0, pow(2, 16))
     return "ipc://mptest-{}-{}-{}".format(name, HOST_NAME, rand_num)
-
 
 def start_vm_test(name, url, build_fn, config_fn, assert_fn):
     """
@@ -145,7 +140,7 @@ def start_vm_test(name, url, build_fn, config_fn, assert_fn):
                 break
 
             # Sleep until next assertion check
-            await asyncio.sleep(TEST_POLL_FREQ)
+            await asyncio.sleep(ASSERTS_POLL_FREQ)
 
         # Once out of the assertion checking loop, send success to main thread
         log.debug("\npassed assertions! putting ready sig in queue\n")
@@ -196,7 +191,7 @@ def start_vm_test(name, url, build_fn, config_fn, assert_fn):
     log = get_logger("TesterProc[{}]".format(name))
 
     tester_obj, loop = build_fn()
-    assert isinstance(loop, asyncio.BaseEventLoop), "Got back loop that is not an instance of asyncio.BaseEventLoop"
+    assert isinstance(loop, asyncio.BaseEventLoop), "Got {} that is not an instance of asyncio.BaseEventLoop".format(loop)
     asyncio.set_event_loop(loop)
 
     # Connect to parent process over ipc PAIR socket
@@ -232,7 +227,13 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
                 return
 
             func, args, kwargs = cmd
-            getattr(tester_obj, func)(*args, **kwargs)
+            output = getattr(tester_obj, func)(*args, **kwargs)
+
+            # If result is coroutine, run it in the event loop
+            if output and inspect.iscoroutine(output):
+                log.debug("Coroutine detect for func name {}, running it in event loop".format(func))
+                result = await asyncio.ensure_future(output)
+                log.debug("Got result from coroutine {}\nresult: {}".format(func, result))
             # log.critical("got cmd: {}".format(cmd))
             # log.critical("cmd name: {}\nkwargs: {}".format(func, kwargs))
 
@@ -254,7 +255,7 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
                 break
 
             # Sleep until next assertion check
-            await asyncio.sleep(TEST_POLL_FREQ)
+            await asyncio.sleep(ASSERTS_POLL_FREQ)
 
         # Once out of the assertion checking loop, send success to main thread
         log.debug("\n\nputting ready sig in queue\n\n")
@@ -279,9 +280,9 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
         socket.send_pyobj(SIG_RDY)
 
         # TODO
-        # This is questionable pattern. I feel like i should be awaiting these futures not just
+        # This is v questionable pattern. I feel like i should be awaiting these futures not just
         # "fire and forgetting" them especially since __recv_cmd is infinite. It should be awaited until an abort sig
-        # is received, or canceled if assertions pass.
+        # is received, or canceled if assertions pass. (i think i can just gather these guys and run_until_complete them)
         asyncio.ensure_future(__recv_cmd())
         if assert_fn:
             asyncio.ensure_future(__check_assertions())
@@ -309,7 +310,9 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
     log = get_logger("TesterProc[{}]".format(name))
 
     tester_obj, loop = build_fn()
-    assert isinstance(loop, asyncio.BaseEventLoop), "Got back loop that is not an instance of asyncio.BaseEventLoop"
+    assert isinstance(loop, asyncio.AbstractEventLoop), "Got {} that isn't an instance of asyncio.AbstractEventLoop".format(loop)
+
+    u = uvloop.Loop
     asyncio.set_event_loop(loop)
 
     # Connect to parent process over ipc PAIR socket
@@ -321,18 +324,11 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
         tester_obj = config_fn(tester_obj)
 
     __start_test()
-    # try:
-    #     __start_test()
-    #     log.critical("\n\n\n done with __start_test()\n\n")
-    # except Exception as e:
-    #     log.critical("\n\n\n error within __start_test().. {}\n\n".format(e))
-    # finally:
-    #     log.critical("\n\n finally block \n\n")
 
 
 class MPTesterBase:
     """
-    docstring
+    TODO docstring
     """
     testers = []
     tester_cls = 'UNSET'

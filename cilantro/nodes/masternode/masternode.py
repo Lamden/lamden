@@ -39,8 +39,10 @@ class MNBaseState(State):
 class MNBootState(MNBaseState):
     def enter(self, prev_state):
         self.log.critical("MN URL: {}".format(self.parent.url))
-        self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
+        # self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
         self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
+
+        # Configure witness groups
 
     def run(self):
         self.parent.transition(MNRunState)

@@ -1,12 +1,13 @@
 from cilantro import Constants
 from unittest import TestCase
+from unittest.mock import MagicMock
 from cilantro.messages import Envelope, MessageMeta, Seal, MessageBase, StandardTransactionBuilder
 from cilantro.protocol.structures import EnvelopeAuth
 
 W = Constants.Protocol.Wallets
 
 
-class TestenvelopefromObjects(TestCase):
+class TestEnvelopefromObjects(TestCase):
     """Envelope unit tests using Envelope.create_from_objects() directly to create envelopes"""
     def _default_meta(self):
         """
@@ -35,6 +36,28 @@ class TestenvelopefromObjects(TestCase):
         # instead of using other live objects for these kinds of tests
         message = StandardTransactionBuilder.random_tx()
         return message
+
+    def test_lazy_serialize(self):
+        """
+        Tests that creating an envelope from_bytes does not try to repack the underlying struct when serialize is called.
+        This is b/c the serialize() func should be 'cached' with the binary data passed into from_bytes
+        """
+        sk, vk = W.new()
+        message = self._default_msg()
+
+        env = Envelope.create_from_message(message=message, signing_key=sk, verifying_key=vk)
+        env_binary = env.serialize()
+
+        clone = Envelope.from_bytes(env_binary)
+
+        clone._data = MagicMock()
+
+        clone_binary = clone.serialize()  # this should not pack the capnp struct (_data) again
+
+        # The Envelope Kitchen Sink lol -- make sure no serialization related API is called
+        clone._data.as_builder.assert_not_called()
+        clone._data.to_bytes_packed.assert_not_called()
+        clone._data.to_bytes.assert_not_called()
 
     def test_create_from_objects(self):
         """
@@ -144,7 +167,7 @@ class TestenvelopefromObjects(TestCase):
 
         self.assertRaises(Exception, EnvelopeAuth.seal, sk, meta, message)  # auth fails b/c message is not string
 
-class TestenvelopefromMessage(TestCase):
+class TestEnvelopefromMessage(TestCase):
     """Envelope tests using Envelope.create_from_message() to create envelopes (the intended way)"""
     def _default_meta(self):
         """
