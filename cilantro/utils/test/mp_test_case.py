@@ -9,7 +9,7 @@ import dill
 
 from unittest import TestCase
 from cilantro.logger import get_logger
-from cilantro.utils.test.mp_test import MPTesterBase, SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC
+from cilantro.utils.test.mp_test import MPTesterBase, SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC, SIG_START
 
 # URL of orchestration node. TODO -- set this to env vars
 URL = "tcp://127.0.0.1:5020"
@@ -89,17 +89,21 @@ class MPTestCase(TestCase):
         # print("%%%% TEARDOWN CALLED %%%%%")
         # self.log.critical("ACTIVE TESTERS: {}".format(MPTesterBase.testers))
 
-    def start(self):
+    def start(self, timeout=TEST_TIMEOUT):
+        """
+        Start the test orchestrator, which polls tester objects living on seperate process/machines for assertions.
+
+        We organize all registered testers into 'active' testers, which are passed in an assertions function,
+        and 'passive' testers which do not make assertions but still interact with other testers.
+        Testers' output queues are polled  every TEST_POLL_FREQ seconds for maximum of TEST_TIMEOUT seconds,
+        waiting for them to finish (if ever). When an 'active' testers passes its assertions, we move it to
+        'passives'. When all active testers are finished, we send SIG_ABORTs to all testers to clean them up
+        """
         # self.log.critical("\nSTARTING TEST WITH TESTERS {}\n".format(MPTesterBase.testers))
         assert len(MPTesterBase.testers) > 0, "start() called, but list of testers empty (MPTesterBase._testers={})"\
                                          .format(MPTesterBase.testers)
 
-        # We organize all registered testers into 'active' testers, which are passed in an assertions function,
-        # and 'passive' testers which do not make assertions but still interact with other testers.
-        # Testers' output queues are polled  every TEST_POLL_FREQ seconds for maximum of TEST_TIMEOUT seconds,
-        # waiting for them to finish (if ever). When an 'active' testers passes its assertions, we move it to
-        # 'passives'. When all active testers are finished, we send SIG_ABORTs to all testers to clean them up
-        actives, passives, fails, timeout = self._poll_testers()
+        actives, passives, fails, timeout = self._poll_testers(timeout)
 
         self.log.debug("Cleaning up tester processes")
         for t in actives + passives + fails:
@@ -118,23 +122,34 @@ class MPTestCase(TestCase):
             self.log.critical(fail_msg)
             raise Exception()
 
-    def _poll_testers(self) -> tuple:
-        start_msg = '\n' + '~' * 80 + '\n' + '~' * 80
-        start_msg += '\n\t\t\t ASSERTION POLLING STARTING WITH FREQ {}\n'.format(TESTER_POLL_FREQ)
-        start_msg += '~' * 80 + '\n' + '~' * 80
+    def _poll_testers(self, timeout) -> tuple:
+        start_msg = '\n' + '~' * 80
+        start_msg += '\n Polling testers procs every {} seconds, with test timeout of {} seconds\n'\
+            .format(TESTER_POLL_FREQ, timeout)
+        start_msg += '~' * 80
         self.log.critical(start_msg)
 
         actives = [t for t in MPTesterBase.testers if t.assert_fn]
         passives = [t for t in MPTesterBase.testers if not t.assert_fn]
         fails = []
 
-        timeout = TEST_TIMEOUT
+        # Start the assertion on the active tester procs
+        for t in actives:
+            t.socket.send_pyobj(SIG_START)
+
+        # Poll testers for a max of 'timeout' seconds
         while timeout > 0:
             for t in actives:
                 try:
                     msg = t.socket.recv(flags=zmq.NOBLOCK)
                     self.log.critical("\nGOT MSG {} FROM TESTER <{}>\n".format(msg, t))
+
+                    # 'ignore' SIG_RDY
+                    if msg == SIG_RDY:
+                        continue
+
                     actives.remove(t)
+
                     if msg == SIG_SUCC:
                         passives.append(t)
                     else:

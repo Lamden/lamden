@@ -49,7 +49,7 @@ class Executor(metaclass=ExecutorMeta):
 
     def add_listener(self, listener_fn, *args, **kwargs):
         # listener_fn must be a coro
-        self.log.info("\n\nadd_listener scheduling future {} with args {} and kwargs {}\n\n".format(listener_fn, args, kwargs))
+        self.log.info("add_listener scheduling future {} with args {} and kwargs {}".format(listener_fn, args, kwargs))
         return asyncio.ensure_future(self._listen(listener_fn, *args, **kwargs))
 
     async def _listen(self, listener_fn, *args, **kwargs):

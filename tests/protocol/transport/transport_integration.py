@@ -137,16 +137,14 @@ class TransportIntegrationTest(MPTestCase):
         pub2.send_pub_env(filter=FILTER, envelope=env2)
 
         time.sleep(0.1)  # allow messages to go through
-        # sub.remove_sub_url(url=URLS[1])  # unsub to pub2
+        sub.remove_sub_url(url=URLS[1])  # unsub to pub2
         time.sleep(0.1)  # allow remove_sub_url command to go through
 
         pub2.send_pub_env(filter=FILTER, envelope=env3)  # this should not be recv by sub, as he removed this guy's url
 
-        time.sleep(0.5)  # allow messages to go through before we start checking assertions
+        time.sleep(0.2)  # allow messages to go through before we start checking assertions
 
         self.start()
-
-
 
     def test_pubsub_1_1_2_mult_filters(self):
         """
