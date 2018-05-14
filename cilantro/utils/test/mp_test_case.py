@@ -15,7 +15,7 @@ from cilantro.utils.test.mp_test import MPTesterBase, SIG_ABORT, SIG_FAIL, SIG_R
 URL = "tcp://127.0.0.1:5020"
 
 TEST_TIMEOUT = 5
-TEST_POLL_FREQ = 0.1
+TESTER_POLL_FREQ = 0.1
 
 
 class MPTestCase(TestCase):
@@ -62,6 +62,10 @@ class MPTestCase(TestCase):
         super().setUp()
         assert len(MPTesterBase.testers) == 0, "setUp called but MPTesterBase._testers is not empty ({})"\
                                                 .format(MPTesterBase.testers)
+
+        start_msg = '\n' + '#' * 80 + '\n' + '#' * 80
+        start_msg += '\n\t\t\t TEST STARTING\n' + '#' * 80 + '\n' + '#' * 80
+        self.log.critical(start_msg)
 
         # if not self._is_setup:
         #     self.__class__._is_setup = True
@@ -139,7 +143,7 @@ class MPTestCase(TestCase):
                 break
 
             # Sleep for TEST_POLL_FREQ seconds
-            timeout -= TEST_POLL_FREQ
-            time.sleep(TEST_POLL_FREQ)
+            timeout -= TESTER_POLL_FREQ
+            time.sleep(TESTER_POLL_FREQ)
 
         return actives, passives, fails, timeout

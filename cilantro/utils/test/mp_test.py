@@ -1,7 +1,7 @@
 """
 Integration testing tools for processes with blocking event loops
 """
-import asyncio
+import asyncio, uvloop
 import zmq.asyncio
 import random
 import inspect
@@ -11,7 +11,7 @@ from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger
 
 
-TEST_POLL_FREQ = 0.25
+ASSERTS_POLL_FREQ = 0.1
 CHILD_PROC_TIMEOUT = 1
 
 
@@ -140,7 +140,7 @@ def start_vm_test(name, url, build_fn, config_fn, assert_fn):
                 break
 
             # Sleep until next assertion check
-            await asyncio.sleep(TEST_POLL_FREQ)
+            await asyncio.sleep(ASSERTS_POLL_FREQ)
 
         # Once out of the assertion checking loop, send success to main thread
         log.debug("\npassed assertions! putting ready sig in queue\n")
@@ -191,7 +191,7 @@ def start_vm_test(name, url, build_fn, config_fn, assert_fn):
     log = get_logger("TesterProc[{}]".format(name))
 
     tester_obj, loop = build_fn()
-    assert isinstance(loop, asyncio.BaseEventLoop), "Got back loop that is not an instance of asyncio.BaseEventLoop"
+    assert isinstance(loop, asyncio.BaseEventLoop), "Got {} that is not an instance of asyncio.BaseEventLoop".format(loop)
     asyncio.set_event_loop(loop)
 
     # Connect to parent process over ipc PAIR socket
@@ -255,7 +255,7 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
                 break
 
             # Sleep until next assertion check
-            await asyncio.sleep(TEST_POLL_FREQ)
+            await asyncio.sleep(ASSERTS_POLL_FREQ)
 
         # Once out of the assertion checking loop, send success to main thread
         log.debug("\n\nputting ready sig in queue\n\n")
@@ -282,7 +282,7 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
         # TODO
         # This is v questionable pattern. I feel like i should be awaiting these futures not just
         # "fire and forgetting" them especially since __recv_cmd is infinite. It should be awaited until an abort sig
-        # is received, or canceled if assertions pass.
+        # is received, or canceled if assertions pass. (i think i can just gather these guys and run_until_complete them)
         asyncio.ensure_future(__recv_cmd())
         if assert_fn:
             asyncio.ensure_future(__check_assertions())
@@ -310,7 +310,9 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
     log = get_logger("TesterProc[{}]".format(name))
 
     tester_obj, loop = build_fn()
-    assert isinstance(loop, asyncio.BaseEventLoop), "Got back loop that is not an instance of asyncio.BaseEventLoop"
+    assert isinstance(loop, asyncio.AbstractEventLoop), "Got {} that isn't an instance of asyncio.AbstractEventLoop".format(loop)
+
+    u = uvloop.Loop
     asyncio.set_event_loop(loop)
 
     # Connect to parent process over ipc PAIR socket

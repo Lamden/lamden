@@ -3,6 +3,7 @@ from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand, Envelope
 from collections import defaultdict
 from cilantro.protocol.structures import CappedSet, EnvelopeAuth
+import traceback
 
 import asyncio, time
 import zmq.asyncio
@@ -20,16 +21,6 @@ ROUTE_TIMEOUT_CALLBACK = 'route_timeout'
 # Internal constants (used as keys)
 _SOCKET = 'socket'
 _HANDLER = 'handler'
-
-from kademlia.network import Server
-"""
-Can i store the futures for recv and such, and await the recv in the add_sub/add_dealer/ect func?
-This way any error downstream from recv will propagate back to the add_sub/add_-- func calls
-Then, when we remove the pub, we cancel the handler. yea.
-
-and we would like to know a way when we get a bad message on a particular URL/socket anyway. There should be some
-logic s.t. if we get several 'bad' messages in a row, we blacklist him or something 
-"""
 
 
 class ExecutorMeta(type):
@@ -56,8 +47,28 @@ class Executor(metaclass=ExecutorMeta):
         self.context = context
         self.inproc_socket = inproc_socket
 
+    def add_listener(self, listener_fn, *args, **kwargs):
+        # listener_fn must be a coro
+        self.log.info("\n\nadd_listener scheduling future {} with args {} and kwargs {}\n\n".format(listener_fn, args, kwargs))
+        return asyncio.ensure_future(self._listen(listener_fn, *args, **kwargs))
+
+    async def _listen(self, listener_fn, *args, **kwargs):
+        self.log.info("_listen called with fn {}, and args={}, kwargs={}".format(listener_fn, args, kwargs))
+
+        try:
+            await listener_fn(*args, **kwargs)
+        except Exception as e:
+            delim_line = '!' * 64
+            err_msg = '\n\n' + delim_line + '\n' + delim_line
+            err_msg += '\n ERROR CAUGHT IN LISTENER FUNCTION {}\ncalled \w args={}\nand kwargs={}\n'\
+                        .format(listener_fn, args, kwargs)
+            err_msg += '\nError Message: '
+            err_msg += '\n\n{}'.format(traceback.format_exc())
+            err_msg += '\n' + delim_line + '\n' + delim_line
+            self.log.error(err_msg)
+
     async def recv_multipart(self, socket, callback_fn: types.MethodType, ignore_first_frame=False):
-        self.log.warning("--- Starting recv on socket {} with callbackfn {} ---".format(socket, callback_fn))
+        self.log.warning("--- Starting recv on socket {} with callback_fn {} ---".format(socket, callback_fn))
         while True:
             self.log.debug("waiting for multipart msg...")
             msg = await socket.recv_multipart()
@@ -128,9 +139,13 @@ class Executor(metaclass=ExecutorMeta):
 class SubPubExecutor(Executor):
     def __init__(self, loop, context, inproc_socket):
         super().__init__(loop, context, inproc_socket)
-        self.sub = None
-        self.sub_handlers = {}  # key is sub_url, value is asyncio Handler
-        self.pubs = {}
+        self.sub = None  # Subscriber socket
+        self.sub_handler = None  # asyncio future from subscriber's recv_multipart
+
+        self.pubs = {}  # Key is url, value is Publisher socket
+
+        self.sub_urls = set()  # Set of URLS (as strings) we are subscribed to
+        self.sub_filters = set()  # Set of filters (as strings) that the sub socket is accepting
 
     def _recv_pub_env(self, header: str, envelope: Envelope):
         self.log.debug("Recv'd pub envelope with header {} and env {}".format(header, envelope))
@@ -143,14 +158,12 @@ class SubPubExecutor(Executor):
         assert len(self.pubs) > 0, "Attempted to publish data but publisher socket(s) is not configured"
 
         for url in self.pubs:
-            self.log.debug("Publishing to... {} the envelope: {}".format(url, Envelope.from_bytes(envelope)))
+            self.log.debug("Publishing to URL {} with envelope: {}".format(url, Envelope.from_bytes(envelope)))
             # self.log.info("Publishing to... {}".format(url))
             self.pubs[url].send_multipart([filter.encode(), envelope])
 
     def add_pub(self, url: str):
-        if self.pubs.get(url):
-            self.log.error("Attempted to add publisher on url {} but publisher socket already configured.".format(url))
-            return
+        assert url not in self.pubs, "Attempted to add pub on url that is already in self.pubs"
 
         self.log.info("Creating publisher socket on url {}".format(url))
         self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
@@ -163,28 +176,51 @@ class SubPubExecutor(Executor):
         if not self.sub:
             self.log.info("Creating subscriber socket")
             self.sub = self.context.socket(socket_type=zmq.SUB)
-            self.sub_handlers[url] = asyncio.ensure_future(self.recv_multipart(socket=self.sub,
-                                                                               callback_fn=self._recv_pub_env,
-                                                                               ignore_first_frame=True))
 
-        self.log.info("Subscribing to url {} with filter '{}'".format(url, filter))
-        self.sub.connect(url)
-        self.sub.setsockopt(zmq.SUBSCRIBE, filter.encode())
+        if url not in self.sub_urls:
+            self.add_sub_url(url)
+        if filter not in self.sub_filters:
+            self.add_sub_filter(filter)
+
+        # NEW APPROACH (with error handling)
+        if not self.sub_handler:
+            self.log.info("Starting listener event for subscriber socket")
+            self.sub_handler = self.add_listener(self.recv_multipart, socket=self.sub, callback_fn=self._recv_pub_env,
+                                                 ignore_first_frame=True)
+
+        # OLD APPROACH
+        # asyncio.ensure_future(self.recv_multipart(socket=self.sub, callback_fn=self._recv_pub_env, ignore_first_frame=True))
 
     def remove_sub(self, url: str, filter: str):
-        assert self.sub, "Remove sub command invoked but sub socket is not set"
         assert isinstance(filter, str), "'filter' arg must be a string"
-        assert url in self.sub_handlers, "Attempted to remove a sub at url {} but no corresponding recv handler " \
-                                         "was found in {}".format(url, self.sub_handlers)
+        assert self.sub, "Remove sub command invoked but sub socket is not set"
+        assert url in self.sub_urls, "Attempted to remove a sub that was not registered in self.sub_urls"
+        assert filter in self.sub_filters, "Attempted ro remove a sub /w filter that is not registered self.sub_filters"
 
         self.sub.setsockopt(zmq.UNSUBSCRIBE, filter.encode())
         self.sub.disconnect(url)
 
-        self.sub_handlers[url].cancel()
-        del(self.sub_handlers[url])
+        self.sub_urls.remove(url)
+        self.sub_filters.remove(filter)
+
+    def add_sub_url(self, url: str):
+        assert url not in self.sub_urls, "Attempted to add_sub with URL that is already in self.sub_urls"
+
+        self.log.info("Subscribing to url {}".format(url))
+        self.sub_urls.add(url)
+        self.sub.connect(url)
+
+    def add_sub_filter(self, filter: str):
+        assert isinstance(filter, str), "'id' arg must be a string"
+        assert filter not in self.sub_filters, "Attempted to add filter that is already added"
+
+        self.log.info("Adding filter {} to subscriber socket".format(filter))
+        self.sub_filters.add(filter)
+        self.sub.setsockopt(zmq.SUBSCRIBE, filter.encode())
 
     def remove_pub(self, url: str):
         assert url in self.pubs, "Remove pub command invoked but pub socket is not set"
+
         self.pubs[url].disconnect(url)
         self.pubs[url].close()
         del self.pubs[url]
@@ -204,10 +240,11 @@ class DealerRouterExecutor(Executor):
         # and 'socket' (value is asyncio handler instance)
         self.dealers = defaultdict(dict)
 
-        # Dict where key is reply UUID and value is the asyncio timeout handler
-        self.expected_replies = {}
+        self.expected_replies = {}  # Dict where key is reply UUID and value is the asyncio timeout handler
 
+        # Router socket and recv handler
         self.router = None
+        self.router_handler = None
 
     def _recv_request_env(self, header: str, envelope: Envelope):
         self.log.debug("Recv REQUEST envelope with header {} and envelope {}".format(header, envelope))
@@ -232,14 +269,19 @@ class DealerRouterExecutor(Executor):
         del(self.expected_replies[reply_uuid])
         self.call_on_mp(callback=ROUTE_TIMEOUT_CALLBACK, envelope_binary=request_envelope)
 
-
     def add_router(self, url: str):
         assert self.router is None, "Attempted to add router on url {} but socket already configured".format(url)
 
         self.log.info("Creating router socket on url {}".format(url))
         self.router = self.context.socket(socket_type=zmq.ROUTER)
         self.router.bind(url)
-        asyncio.ensure_future(self.recv_multipart(socket=self.router, callback_fn=self._recv_request_env))
+
+        # OLD WAY
+        # asyncio.ensure_future(self.recv_multipart(socket=self.router, callback_fn=self._recv_request_env))
+
+        # NEW WAY
+        self.router_handler = self.add_listener(self.recv_multipart, socket=self.router,
+                                                callback_fn=self._recv_request_env)
 
     def add_dealer(self, url: str, id: str):
         assert url not in self.dealers, "Url {} already in self.dealers {}".format(url, self.dealers)
@@ -252,8 +294,13 @@ class DealerRouterExecutor(Executor):
         self.log.info("Dealer socket connecting to url {}".format(url))
         socket.connect(url)
 
-        future = asyncio.ensure_future(self.recv_multipart(socket=socket,
-                                                           callback_fn=self._recv_reply_env, ignore_first_frame=True))
+        # OLD WAY
+        # future = asyncio.ensure_future(self.recv_multipart(socket=socket,
+        #                                                    callback_fn=self._recv_reply_env, ignore_first_frame=True))
+
+        # NEW WAY
+        future = self.add_listener(self.recv_multipart, socket=socket, callback_fn=self._recv_reply_env,
+                                   ignore_first_frame=True)
 
         self.dealers[url][_SOCKET] = socket
         self.dealers[url][_HANDLER] = future
@@ -266,7 +313,7 @@ class DealerRouterExecutor(Executor):
         assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
 
         reply_uuid = int(reply_uuid)
-        timeout = int(timeout)
+        timeout = float(timeout)
 
         self.log.debug("Composing request to url {}\ntimeout: {}\nenvelope: {}".format(url, timeout, envelope))
 

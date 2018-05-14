@@ -8,6 +8,9 @@ import inspect
 
 from kademlia.network import Server
 
+import uvloop
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
 
 CHILD_RDY_SIG = b'ReactorDaemon Process Ready'
 
@@ -31,17 +34,6 @@ class ReactorDaemon:
         self.executors = {name: executor(self.loop, self.context, self.socket)
                           for name, executor in Executor.registry.items()}
 
-        # Start discovery service
-        # self.discoverer = Discovery(self.context)
-
-        # self.log.info("Starting discovery sweep")
-        # cilantro_ips = self.discoverer.discover('test' if os.getenv('TEST_NAME') else 'neighborhood')
-        # self.log.info("Discovery sweep finished with ips: {}".format(cilantro_ips))
-
-        # TODO bootstrap overlay network with cilantro IPss
-
-        # Start listening to main thread as well as outside discovery pings
-        # self.loop.run_until_complete(asyncio.gather(self._recv_messages(), self.discoverer.listen_for_crawlers()))
         self.loop.run_until_complete(self._recv_messages())
 
     async def _recv_messages(self):
@@ -58,6 +50,7 @@ class ReactorDaemon:
             # Should from_bytes be in a try/catch? I suppose if we get a bad command from the main proc we might as well
             # blow up because this is very likely because of a development error, so no try/catch for now
             cmd = ReactorCommand.from_bytes(cmd_bin)
+
             self._execute_cmd(cmd)
 
     def _execute_cmd(self, cmd: ReactorCommand):
@@ -78,15 +71,7 @@ class ReactorDaemon:
             .format(executor_func, self.executors[executor_name])
 
         # Execute command
-        output = getattr(self.executors[executor_name], executor_func)(**kwargs)
-
-        # AAAAH WHAT TO DO HERE HOW TO NOT FIRE AND FORGET AND ALSO NOT BLOCK
-        # if output and inspect.iscoroutine(output):
-        #     self.log.debug("Coroutine detect for func name {}, running it in event loop".format(func))
-        #     result = await asyncio.ensure_future(output)
-        #     asyncio.ensure_future(output)
-        #     self.log.debug("Got result from coroutine {}\nresult: {}".format(func, result))
-
+        getattr(self.executors[executor_name], executor_func)(**kwargs)
 
     def _parse_cmd(self, cmd: ReactorCommand):
         """
