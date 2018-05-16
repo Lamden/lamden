@@ -11,7 +11,7 @@ Classes include:
 """
 
 from multiprocessing import Lock
-import os
+import os, json
 
 from cilantro.logger import get_logger
 from sqlalchemy import *
@@ -25,6 +25,27 @@ from functools import wraps
 
 DB_NAME = 'cilantro'
 SCRATCH_PREFIX = 'scratch_'
+
+
+j = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
+
+
+def get_policy_for_node_list(l, name):
+    payload = ''.join(sorted(l))
+    p = {
+        "policy": name,
+        "type": "multi_discrete",
+        "last_election_start" : 0,
+        "last_election_end" : 0,
+        "election_length": 168,
+        "election_frequency": 336,
+        "max_votes": 0,
+        "value": payload,
+        "in_vote": False,
+        "round": 0,
+        "permissions": 7
+    }
+    return p
 
 
 def contract(tx_type):
@@ -73,7 +94,7 @@ def execute(query, check_scratch=True):
         return result
 
 
-def create_db(name):
+def create_db(name, should_reset=False):
     log = get_logger("DBCreator")
     log.info("Creating MySQLAlchemy DB connection for DB with name {}".format(name))
 
@@ -127,20 +148,6 @@ def create_db(name):
 
     mapping = {}
 
-    # create copies of the tables to hold temporary scratch by iterating through the metadata
-    for table in metadata.sorted_tables:
-        columns = [c.copy() for c in table.columns]
-        scratch_table = Table('{}{}'.format(SCRATCH_PREFIX, table.name), metadata, *columns)
-        mapping[table] = scratch_table
-
-    log.critical("Dropping database...")
-    db.execute('drop database if exists {}'.format(name))
-    log.debug("Database dropped.")
-
-    db.execute('create database if not exists {}'.format(name))
-    db.execute('use {};'.format(name))
-    metadata.create_all(db)
-
     tables = type('Tables', (object,),
                   {'balances': balances,
                    'swaps': swaps,
@@ -151,6 +158,56 @@ def create_db(name):
                    'transactions': transactions,
                    'mapping': mapping})
 
+    # create copies of the tables to hold temporary scratch by iterating through the metadata
+    for table in metadata.sorted_tables:
+        columns = [c.copy() for c in table.columns]
+        scratch_table = Table('{}{}'.format(SCRATCH_PREFIX, table.name), metadata, *columns)
+        mapping[table] = scratch_table
+
+    # reset database if specified
+    if should_reset:
+        log.critical("Dropping database...")
+        db.execute('drop database if exists {}'.format(name))
+        log.debug("Database dropped.")
+
+    # Check if database exists before we create it. If it doesn't we seed it later
+    dbs = db.execute('show databases')
+    db_names = [d[0] for d in dbs.fetchall()]
+
+    # Create database if it doesnt exist
+    db.execute('create database if not exists {}'.format(name))
+    db.execute('use {};'.format(name))
+    metadata.create_all(db)
+
+    # Seed database if it is newly created
+    if name not in db_names:
+        log.critical("\n\n database {} not found, seeding that shit \n\n".format(name))
+
+        masternodes = []
+        delegates = []
+        witnesses = []
+
+        # add state for tables that are not masternodes and delegates as those get treated differently
+        for k in j.keys():
+            for item in j[k]:
+                if k != 'masternodes' and k != 'delegates' and k != 'witnesses':
+                    t = getattr(tables, k)
+                    db.execute(t.insert(item))
+                elif k == 'masternodes':
+                    masternodes.append(item)
+                elif k == 'delegates':
+                    delegates.append(item)
+                elif k == 'witnesses':
+                    witnesses.append(item)
+
+        # add the masternodes and delegates to the policy table. this is so that users can easily add wallets to the
+        # constitution and
+        t = getattr(tables, 'constants')
+        db.execute(t.insert(get_policy_for_node_list(masternodes, 'masternodes')))
+        db.execute(t.insert(get_policy_for_node_list(delegates, 'delegates')))
+        db.execute(t.insert(get_policy_for_node_list(witnesses, 'witnesses')))
+
+    # log.debug("\n\n got dbs: \n{}\n\n".format(dbs.fetchall()))
     return db, tables
 
 
@@ -193,7 +250,7 @@ class DBSingletonMeta(type):
     _instances = {}
     log = get_logger("DBSingleton")
 
-    def __call__(cls, db_name=DB_NAME):
+    def __call__(cls, db_name=DB_NAME, should_reset=False):
         """
         Intercepts the init of the DB class to make it behave like a singleton.
         - Each process should have its own 'context', which has a unique DB instance for each db name as well as a
@@ -223,7 +280,7 @@ class DBSingletonMeta(type):
 
             # Instantiate an instance of DB for instance_id if it does not exist
             if instance_id not in cls._instances:
-                cls._instances[instance_id] = super(DBSingletonMeta, cls).__call__(db_name)
+                cls._instances[instance_id] = super(DBSingletonMeta, cls).__call__(db_name, should_reset=should_reset)
 
             cls.log.debug("(__call__) Releasing DBSingleton lock {}".format(DBSingletonMeta._lock))
             return cls._instances[instance_id]
@@ -243,13 +300,13 @@ class DBSingletonMeta(type):
 
 
 class DB(metaclass=DBSingletonMeta):
-    def __init__(self, db_name):
+    def __init__(self, db_name, should_reset):
         self.db_name = db_name
         self.log = get_logger("DB-{}".format(db_name))
         self.log.info("Creating DB instance for {}".format(db_name))
         self.lock = Lock()
 
-        self.db, self.tables = create_db(db_name)
+        self.db, self.tables = create_db(db_name, should_reset)
 
     def __enter__(self):
         self.log.debug("Acquiring lock {}".format(self.lock))

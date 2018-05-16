@@ -212,13 +212,28 @@ class MNRunState(MNBaseState):
                 q = insert(tables.blocks).values(hash=hash_of_nodes, tree=tree, signatures=signatures)
                 db.execute(q)
 
+                for key, value in self.retrieved_txs.items():
+                    tx = {
+                        'key': key,
+                        'value': value
+                    }
+                    qq = insert(tables.transactions).values(tx)
+                    db.execute(qq)
+
             import time
             time.sleep(1)
 
-            rows = db.execute('select * from blocks')
+            rows = db.execute('select * from transactions')
             b = rows.fetchall()
 
+            # Store transactions
+
+
             print('hi')
+
+
+
+
 
             # Need to store..
             # 1) Root (or hash of nodes)
