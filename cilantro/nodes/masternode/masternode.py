@@ -139,6 +139,12 @@ class MNRunState(MNBaseState):
             # TODO -- remove this block from the queue and try the next (if any available)
             return
 
+        # Validate merkle tree
+        if not MerkleTree.verify_tree(block.nodes, hash_of_nodes):
+            self.log.error("\n\n\n\nCOULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}\n\n\n".format(block))
+            return
+
+        # Add dealer sockets for Delegates to fetch block tx data
         for sig in block.signatures:
             sender_url = self._lookup_url(sig.sender)
             self.node_states[sig.sender] = self.NODE_AVAILABLE
