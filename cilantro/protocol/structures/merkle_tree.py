@@ -18,7 +18,7 @@ class MerkleTree:
         self.nodes = [None for _ in range(len(self.leaves) - 1)]
         self.nodes.extend(self.leaves)
 
-        # hash the nodes
+        # hash the nodes -- TODO make this DRY
         for i in range(self.size - len(self.leaves), 0, -1):
             true_i = i - 1
             self.nodes[true_i] = \
@@ -48,6 +48,28 @@ class MerkleTree:
         # is this any better or worse than passing around the merkle root?
         [h.update(o) for o in self.nodes]
         return h.digest()
+
+    @staticmethod
+    def verify_tree(tree_nodes, tree_hash):
+        # create empty nodes until we hash it
+        nodes = [None for _ in range(len(tree_nodes) - 1)]
+        nodes.extend(tree_nodes)
+
+        # hash the nodes -- TODO make this DRY
+        size = (len(tree_nodes) * 2) - 1
+        for i in range(size - len(tree_nodes), 0, -1):
+            true_i = i - 1
+            nodes[true_i] = \
+                MerkleTree.hash(nodes[2 * i - 1] +
+                                nodes[2 * i])
+
+        h = hashlib.sha3_256()
+        [h.update(o) for o in nodes]
+
+        if h.hexdigest() == tree_hash:
+            return True
+        return False
+
 
     @staticmethod
     def hash(o):
