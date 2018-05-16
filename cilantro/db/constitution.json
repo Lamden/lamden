@@ -1,20 +1,20 @@
 {
   "balances" : [
     {
-      "wallet": "",
-      "amount": 123
+      "wallet": "324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502",
+      "amount": 420000000
     },
     {
-      "wallet": "",
-      "amount": 123
+      "wallet": "a103715914a7aae8dd8fddba945ab63a169dfe6e37f79b4a58bcf85bfd681694",
+      "amount": 420000000
     },
     {
-      "wallet": "",
-      "amount": 123
+      "wallet": "20da05fdba92449732b3871cc542a058075446fedb41430ee882e99f9091cc4d",
+      "amount": 420000000
     },
     {
-      "wallet": "",
-      "amount": 123
+      "wallet": "ed19061921c593a9d16875ca660b57aa5e45c811c8cf7af0cfcbd23faa52cbcd",
+      "amount": 420000000
     }
   ],
   "constants" : [

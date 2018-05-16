@@ -87,7 +87,7 @@ class ReactorDaemon:
         self.socket.close()
 
         self.log.warning("Tearing down executors")
-        for e in self.executors:
+        for e in self.executors.values():
             e.teardown()
 
         self.log.warning("Closing event loop")

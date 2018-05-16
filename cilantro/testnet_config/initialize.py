@@ -1,7 +1,7 @@
 # takes a constitution file and seeds the state of the blockchain
 
 import json
-from cilantro.db.delegate import DB, DB_NAME
+from cilantro.db import DB, DB_NAME
 import os
 
 
