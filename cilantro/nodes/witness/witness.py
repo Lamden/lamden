@@ -8,7 +8,7 @@
 '''
 from cilantro import Constants
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, recv
+from cilantro.protocol.statemachine import State, input
 from cilantro.messages import TransactionBase, Envelope
 from cilantro.utils import TestNetURLHelper
 
@@ -20,9 +20,9 @@ class WitnessBaseState(State):
 
     def run(self): pass
 
-    @recv(TransactionBase)
-    def recv_tx(self, tx: TransactionBase):
-        self.log.critical("Witness not configured to recv tx: {}".format(tx))
+    @input(TransactionBase)
+    def recv_tx(self, tx: TransactionBase, envelope: Envelope):
+        self.log.critical("Witness not configured to recv tx: {} with env {}".format(tx, envelope))
 
 
 class WitnessBootState(WitnessBaseState):
@@ -53,10 +53,11 @@ class WitnessRunState(WitnessBaseState):
     # we may as well pass that mfker along in the ReactorDaemon. Right? ... if we arent doing any checks/processing
     # on it in the SM, why bother piping the data all the way to main
     # thread and then back to daemon, right?
-    @recv(TransactionBase)
-    def recv_tx(self, tx: TransactionBase):
-        self.log.critical("ayyyy witness got tx: {}".format(tx))  # debug line, remove later
-        self.parent.composer.send_pub_msg(message=tx, filter=Constants.ZmqFilters.WitnessDelegate)
+    @input(TransactionBase)
+    def recv_tx(self, tx: TransactionBase, envelope: Envelope):
+        self.log.critical("ayyyy witness got tx: {}, with env {}".format(tx, envelope))  # debug line, remove later
+        # self.parent.composer.send_pub_msg(message=tx, filter=Constants.ZmqFilters.WitnessDelegate)
+        self.parent.composer.send_pub_env(envelope=envelope, filter=Constants.ZmqFilters.WitnessDelegate)
         self.log.critical("witness published dat tx to the homies")  # debug line, remove later
 
 
@@ -64,11 +65,11 @@ class Witness(NodeBase):
     _INIT_STATE = WitnessBootState
     _STATES = [WitnessBootState, WitnessRunState]
 
-    def __init__(self, loop, url=None, signing_key=None, slot=0):
-        # TODO -- move away from this shitty ass slot logic, and integrate a more proper node list from VMNet
-        if url is None and signing_key is None:
-            node_info = Constants.Testnet.Witnesses[slot]
-            url = node_info['url']
-            signing_key = node_info['sk']
-
-        super().__init__(url=url, signing_key=signing_key, loop=loop)
+    # def __init__(self, loop, url=None, signing_key=None, slot=0):
+    #     # TODO -- move away from this shitty ass slot logic, and integrate a more proper node list from VMNet
+    #     if url is None and signing_key is None:
+    #         node_info = Constants.Testnet.Witnesses[slot]
+    #         url = node_info['url']
+    #         signing_key = node_info['sk']
+    #
+    #     super().__init__(url=url, signing_key=signing_key, loop=loop)

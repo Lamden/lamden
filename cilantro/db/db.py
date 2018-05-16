@@ -19,6 +19,7 @@ from sqlalchemy.sql.visitors import *
 from sqlalchemy.sql.sqltypes import *
 from sqlalchemy.sql.functions import coalesce
 from sqlalchemy.sql.selectable import Select
+from sqlalchemy import select, insert, update, delete, and_
 
 from functools import wraps
 
@@ -115,8 +116,8 @@ def create_db(name):
                       Column('round', Integer, nullable=False))
 
     blocks = Table('blocks', metadata,
-                   Column('number', Integer, primary_key=True),
-                   Column('root', String(64), nullable=False),
+                   Column('number', Integer, primary_key=True, autoincrement=True),
+                   Column('hash', String(64), nullable=False),
                    Column('tree', TEXT, nullable=False),
                    Column('signatures', TEXT, nullable=False))
 

@@ -1,4 +1,4 @@
-from cilantro.protocol.statemachine import State, recv, recv_req, timeout
+from cilantro.protocol.statemachine import State, input, input_request, timeout
 from cilantro.nodes import NodeBase
 from cilantro.messages import Envelope, MessageBase
 import time
@@ -56,11 +56,11 @@ class DavisRunState(State):
         #     self.parent.reactor.request(url=URL, data=Envelope.create(poke), timeout=TIMEOUT)
         #     count += 1
 
-    @recv(PokeReply)
+    @input(PokeReply)
     def recv_poke(self, poke: PokeReply):
         self.log.critical("*** Davis got poke reply {}".format(poke))
 
-    @recv(Stab)
+    @input(Stab)
     def recv_stab(self, stab: Stab):
         self.log.critical("!!! got stab: {}".format(stab))
 
@@ -94,7 +94,7 @@ class StuRunState(State):
             self.parent.reactor.pub(url=URL2, data=Envelope.create(stab))
             count += 1
 
-    @recv_req(PokeRequest)
+    @input_request(PokeRequest)
     def recv_poke_req(self, poke: PokeRequest, id):
         self.log.critical("Stu got poke {}, but waiting {} seconds...".format(REPLY_WAIT))
         time.sleep(REPLY_WAIT)

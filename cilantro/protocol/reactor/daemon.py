@@ -8,18 +8,17 @@ from cilantro import Constants
 import inspect
 
 import uvloop
+import traceback
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 CHILD_RDY_SIG = b'ReactorDaemon Process Ready'
 
 
 class ReactorDaemon:
-    def __init__(self, url, p_name='', sk=None):
-        self.log = get_logger("{}.ReactorDaemon".format(p_name))
+    def __init__(self, url, verifying_key=None, name='Node'):
+        self.log = get_logger("{}.ReactorDaemon".format(name))
         self.log.info("ReactorDaemon started with url {}".format(url))
         self.url = url
-
-        self.log.critical("THIS SHOULD PRINT IF IT DOESNT VMNET IS NOT UPGRADING")
 
         # Comment out below for more granularity in debugging
         # self.log.setLevel(logging.INFO)
@@ -31,15 +30,30 @@ class ReactorDaemon:
         self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
         self.socket.connect(self.url)
 
-        self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
-        self.dht = DHT(node_id=sk, mode=self.discovery_mode, loop=self.loop,
-                       ctx=self.context, alpha=Constants.Overlay.Alpha,
-                       ksize=Constants.Overlay.Ksize, max_peers=Constants.Overlay.MaxPeers)
+        # TODO get a workflow that runs on VM so we can test /w discovery
+        # self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
+        # self.dht = DHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
+        #                ctx=self.context, alpha=Constants.Overlay.Alpha,
+        #                ksize=Constants.Overlay.Ksize, max_peers=Constants.Overlay.MaxPeers)
+
+        # Set Executor _parent_name to differentiate between nodes in log files
+        Executor._parent_name = name
 
         self.executors = {name: executor(self.loop, self.context, self.socket)
                           for name, executor in Executor.registry.items()}
 
-        self.loop.run_until_complete(self._recv_messages())
+        try:
+            self.loop.run_until_complete(self._recv_messages())
+        except Exception as e:
+            err_msg = '\n' + '!' * 64 + '\nLoop terminating with exception:\n' + str(traceback.format_exc())
+            err_msg += '\n' + '!' * 64 + '\n'
+            self.log.error(err_msg)
+        finally:
+            # TODO -- do we need to clean up all the tasks in the loop first before we close it?
+            self.loop.stop()
+            self.socket.close()
+
+    # TODO -- make a public 'send_cmd' API here that takes a ReactorCommand from the composer
 
     async def _recv_messages(self):
         # Notify parent proc that this proc is ready
@@ -50,7 +64,7 @@ class ReactorDaemon:
         while True:
             self.log.debug("ReactorDaemon awaiting for command from main thread...")
             cmd_bin = await self.socket.recv()
-            # self.log.debug("Got cmd from queue: {}".format(cmd_bin))
+            self.log.debug("Got cmd from queue: {}".format(cmd_bin))
 
             # Should from_bytes be in a try/catch? I suppose if we get a bad command from the main proc we might as well
             # blow up because this is very likely because of a development error, so no try/catch for now

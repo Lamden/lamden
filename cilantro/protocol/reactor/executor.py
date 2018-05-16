@@ -26,7 +26,7 @@ _HANDLER = 'handler'
 class ExecutorMeta(type):
     def __new__(cls, clsname, bases, clsdict):
         clsobj = super().__new__(cls, clsname, bases, clsdict)
-        clsobj.log = get_logger(clsobj.__name__)
+        # clsobj.log = get_logger(clsobj.__name__)
 
         if not hasattr(clsobj, 'registry'):
             clsobj.registry = {}
@@ -40,12 +40,14 @@ class ExecutorMeta(type):
 class Executor(metaclass=ExecutorMeta):
 
     _recently_seen = CappedSet(max_size=Constants.Protocol.DupeTableSize)
+    _parent_name = 'ReactorDaemon'  # used for log names
 
     def __init__(self, loop, context, inproc_socket):
         self.loop = loop
         asyncio.set_event_loop(self.loop)
         self.context = context
         self.inproc_socket = inproc_socket
+        self.log = get_logger("{}.{}".format(Executor._parent_name, type(self).__name__))
 
     def add_listener(self, listener_fn, *args, **kwargs):
         # listener_fn must be a coro
@@ -85,7 +87,7 @@ class Executor(metaclass=ExecutorMeta):
             env = self._validate_envelope(envelope_binary=env_binary, header=header)
 
             if not env:
-                self.log.error("Could not validate envelope binary {}!".format(env_binary))
+                self.log.warning("Could not validate envelope binary {}!".format(env_binary))
                 continue
 
             Executor._recently_seen.add(env.meta.uuid)
@@ -97,7 +99,12 @@ class Executor(metaclass=ExecutorMeta):
             kwargs['header'] = header
 
         cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary, **kwargs)
+
+        self.log.critical("\ncalling callback cmd to reactor interface: {}".format(cmd))  # deubg line remove this
+
         self.inproc_socket.send(cmd.serialize())
+
+        self.log.critical("command sent: {}".format(cmd))  # debug line, remove this later
 
     def _validate_envelope(self, envelope_binary: bytes, header: str) -> Union[None, Envelope]:
         # TODO return/raise custom exceptions in this instead of just logging stuff and returning none
@@ -286,10 +293,6 @@ class DealerRouterExecutor(Executor):
         self.router = self.context.socket(socket_type=zmq.ROUTER)
         self.router.bind(url)
 
-        # OLD WAY
-        # asyncio.ensure_future(self.recv_multipart(socket=self.router, callback_fn=self._recv_request_env))
-
-        # NEW WAY
         self.router_handler = self.add_listener(self.recv_multipart, socket=self.router,
                                                 callback_fn=self._recv_request_env)
 
@@ -304,11 +307,6 @@ class DealerRouterExecutor(Executor):
         self.log.info("Dealer socket connecting to url {}".format(url))
         socket.connect(url)
 
-        # OLD WAY
-        # future = asyncio.ensure_future(self.recv_multipart(socket=socket,
-        #                                                    callback_fn=self._recv_reply_env, ignore_first_frame=True))
-
-        # NEW WAY
         future = self.add_listener(self.recv_multipart, socket=socket, callback_fn=self._recv_reply_env,
                                    ignore_first_frame=True)
 

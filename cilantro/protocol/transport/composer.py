@@ -12,13 +12,12 @@ the ReactorDaemon process. It creates
 
 
 class Composer:
-    def __init__(self, interface: ReactorInterface, signing_key: str):
+    def __init__(self, interface: ReactorInterface, signing_key: str, name='Node'):
         super().__init__()
-        self.log = get_logger("Composer")
+        self.log = get_logger("{}.Composer".format(name))
         self.interface = interface
         self.signing_key = signing_key
         self.verifying_key = Constants.Protocol.Wallets.get_vk(self.signing_key)
-        self.log = get_logger("Composer")
 
     def _package_msg(self, msg: MessageBase) -> Envelope:
         """

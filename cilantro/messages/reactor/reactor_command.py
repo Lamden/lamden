@@ -102,8 +102,29 @@ class ReactorCommand(MessageBase):
     def header(self):
         return self.kwargs.get(HEADER)
 
+    def __repr__(self):
+        if self.callback:
+            repr = "\n[CALLBACK] ReactorCommand with"
+            repr += "\n\tcallback = {}".format(self.callback)
+            repr += "\n\tkwargs = {}".format(self.kwargs)
+        elif self.class_name and self.func_name:
+            repr =  "\n[COMMAND] ReactorCommand with"
+            repr += "\n\ttarget func = {}.{}".format(self.class_name, self.func_name)
+            repr += "\n\tkwargs = {}".format(self.kwargs)
+
+        if self.envelope:
+            repr += "\n\t envelope = {}".format(self.envelope)
+
+        return repr
+
     def __eq__(self, other):
+        """
+        This is just used for asserting equality in unit/integration tests, so the blaring suboptimal envelope
+        binary copying is excusable
+        """
         my_kwargs, other_kwargs = self.kwargs, other.kwargs
+
         # manually copy envelope binary to kwaargs for comparison
         my_kwargs['env_bin'], other_kwargs['env_bin'] = self.envelope_binary, other.envelope_binary
+
         return self.kwargs == other.kwargs
