@@ -8,7 +8,7 @@
 """
 from cilantro import Constants
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, recv, recv_req, timeout
+from cilantro.protocol.statemachine import State, input, input_request, timeout
 from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, TransactionContainer
 from cilantro.utils import TestNetURLHelper
 from aiohttp import web
@@ -22,14 +22,14 @@ class MNBaseState(State):
     def exit(self, next_state): pass
     def run(self): pass
 
-    @recv(TransactionBase)
+    @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
         self.log.critical("mn about to pub for tx {}".format(tx))  # debug line
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=tx)
         self.log.critical("published on our url: {}".format(TestNetURLHelper.pubsub_url(self.parent.url)))  # debug line
 
-    @recv_req(BlockContender)
-    def recv_block(self, block: BlockContender, id):
+    @input_request(BlockContender)
+    def recv_block(self, block: BlockContender):
         self.log.warning("Current state not configured to handle block contender: {}".format(block))
 
     async def process_request(self, request):
@@ -39,10 +39,10 @@ class MNBaseState(State):
 class MNBootState(MNBaseState):
     def enter(self, prev_state):
         self.log.critical("MN URL: {}".format(self.parent.url))
-        # self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
+        self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
         self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
 
-        # Configure witness groups
+        # TODO -- Configure witness groups
 
     def run(self):
         self.parent.transition(MNRunState)
@@ -50,7 +50,7 @@ class MNBootState(MNBaseState):
     def exit(self, next_state):
         pass
 
-    @recv(TransactionBase)
+    @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
         self.log.warning("MN BootState not configured to recv transactions")
 
@@ -60,8 +60,14 @@ class MNRunState(MNBaseState):
 
     def __init__(self, state_machine):
         super().__init__(state_machine=state_machine)
-        self.app = web.Application()
-        self.app.router.add_post('/', self.parent.route_http)
+
+        asyncio.set_event_loop(self.parent.loop)
+
+        # self.loop = asyncio.new_event_loop()
+        # asyncio.set_event_loop(self.loop)
+
+        # self.app = web.Application()
+        # self.app.router.add_post('/', self.parent.route_http)
 
         self.block_contenders = []
         self.node_states = {}
@@ -71,16 +77,50 @@ class MNRunState(MNBaseState):
 
     def enter(self, prev_state):
         asyncio.set_event_loop(self.parent.loop)  # pretty sure this is unnecessary  - davis
+        # asyncio.set_event_loop(self.loop)
+        pass
 
     def run(self):
         self.log.info("Starting web server")
-        web.run_app(self.app, host='0.0.0.0', port=int(Constants.Testnet.Masternode.ExternalPort))
+        # web.run_app(self.app, host='0.0.0.0', port=int(Constants.Testnet.Masternode.ExternalPort))
+
+        # EXPERIMENTAL AF
+        server = web.Server(self.parent.route_http)
+        server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
+        self.parent.server_task = server_future
+        # self.parent.loop.create_server(server, "0.0.0.0", 8080)
+
+        self.log.critical("\n\n\n\n\n DOES THIS GET PRINTED \n\n\n\n\n")
 
     def exit(self, next_state):
         pass
 
-    @recv_req(BlockContender)
-    def recv_block(self, block: BlockContender, id):
+    def _start_http_server(self):
+        self.log.critical("\n\n STARTING HTTP SERVER IN DIFF THREAD \n\n")
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        app = web.Application()
+        app.router.add_post('/', self.parent.route_http)
+
+        web.run_app(app, host='0.0.0.0', port=int(Constants.Testnet.Masternode.ExternalPort))
+
+        self.log.critical("\n\n (code from end of _start_http_server) DOES THIS PRINT LOL \n\n")
+
+    def _lookup_url(self, vk):
+        # HACK TO GET SENDER URL -- TODO swap this /w overlay network or replace /w utility func
+        sender_url = None
+        for dele_info in Constants.Testnet.Delegates:
+            if dele_info['vk'] == vk:
+                sender_url = dele_info['url']
+                break
+        assert sender_url is not None, "Could not find URL for delegate vk {} in delegates list {}"\
+            .format(vk, Constants.Testnet.Delegates)
+        return sender_url
+
+
+    @input_request(BlockContender)
+    def recv_block(self, block: BlockContender):
         self.log.info("Masternode received block contender: {}".format(block))
         self.log.critical("block nodes: {}".format(block.nodes))
         self.block_contenders.append(block)
@@ -100,8 +140,9 @@ class MNRunState(MNBaseState):
             return
 
         for sig in block.signatures:
+            sender_url = self._lookup_url(sig.sender)
             self.node_states[sig.sender] = self.NODE_AVAILABLE
-            self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(sig.sender), id=self.parent.url)
+            self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(sender_url))
             import time
             time.sleep(0.2)
 
@@ -112,12 +153,13 @@ class MNRunState(MNBaseState):
 
         for i in range(len(self.tx_hashes)):
             tx = self.tx_hashes[i]
-            replier = repliers[i % len(repliers)]
+            replier_url = self._lookup_url(repliers[i % len(repliers)])
             req = BlockDataRequest.create(tx)
-            self.log.critical("Requesting tx hash {} from URL {}".format(tx, replier))
+            self.log.critical("Requesting tx hash {} from URL {}".format(tx, replier_url))
 
             # TODO -- fix this to use new envelope creation process
-            self.parent.composer.request(url=TestNetURLHelper.dealroute_url(replier), data=Envelope.create(req), timeout=1)
+            # self.parent.composer.request(url=TestNetURLHelper.dealroute_url(replier), data=Envelope.create(req), timeout=1)
+            self.parent.composer.send_request_msg(message=req, timeout=1, url=TestNetURLHelper.dealroute_url(replier_url))
 
     def compute_hash_of_nodes(self, nodes) -> str:
         # TODO -- i think the merkle tree can do this for us..?
@@ -131,15 +173,15 @@ class MNRunState(MNBaseState):
     def validate_sigs(self, signatures, msg) -> bool:
         for sig in signatures:
             self.log.info("mn verifying signature: {}".format(sig))
-            sender_vk = Constants.Testnet.AllNodes[sig.sender]
-            if sig.verify(msg, Constants.Testnet.AllNodes[sig.sender]):
+            sender_vk = sig.sender
+            if sig.verify(msg, sig.sender):
                 self.log.critical("Good we verified that sig")
             else:
                 self.log.error("!!!! Oh no why couldnt we verify sig {}???".format(sig))
                 return False
         return True
 
-    @recv(BlockDataReply)
+    @input(BlockDataReply)
     def recv_blockdata_reply(self, reply: BlockDataReply):
         if not self.is_updating:
             self.log.error("Received block data reply but not in updating state (reply={})".format(reply))
@@ -156,13 +198,18 @@ class MNRunState(MNBaseState):
 
         if len(self.retrieved_txs) == len(self.tx_hashes):
             self.log.critical("\n***\nDONE COLLECTING BLOCK DATA FROM NODES\n***\n")
+
+
+            # TODO STORE IT
+
+
         else:
             self.log.critical("Still {} transactions yet to request until we can build the block"
                               .format(len(self.tx_hashes) - len(self.retrieved_txs)))
 
     @timeout(BlockDataRequest)
     def timeout_block_req(self, request: BlockDataRequest, url):
-        self.log.critical("BlockDataRequest timed out for url {} with request data {}".format(url, request))
+        self.log.critical("\n\nBlockDataRequest timed out for url {} with request data {}\n\n".format(url, request))
         pass
 
 

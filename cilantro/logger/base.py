@@ -90,7 +90,7 @@ else:
             logging.FileHandler(filename)
         ]
         logging.basicConfig(
-            format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
+            format="%(asctime)s.%(msecs)03d %(name)s[%(process)d][%(processName)s] %(levelname)-2s %(message)s",
             handlers=filehandlers,
             level=logging.DEBUG
         )

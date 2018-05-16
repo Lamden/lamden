@@ -12,40 +12,42 @@ W = Constants.Protocol.Wallets
 class NodeFactory:
 
     @staticmethod
-    def _build_node(loop, signing_key, url, node_cls) -> NodeBase:
-        node = node_cls(signing_key=signing_key, url=url, loop=loop)
-        router = Router(statemachine=node)
-        interface = ReactorInterface(router=router, loop=loop, signing_key=signing_key)
-        composer = Composer(interface=interface, signing_key=signing_key)
+    def _build_node(loop, signing_key, url, node_cls, name) -> NodeBase:
+        vk = W.get_vk(signing_key)
+
+        node = node_cls(signing_key=signing_key, url=url, loop=loop, name=name)
+        router = Router(statemachine=node, name=name)
+        interface = ReactorInterface(router=router, loop=loop, verifying_key=vk, name=name)
+        composer = Composer(interface=interface, signing_key=signing_key, name=name)
 
         node.composer = composer
 
         return node
 
     @staticmethod
-    def run_masternode(signing_key=Constants.Testnet.Masternode.Sk, url=Constants.Testnet.Masternode.InternalUrl):
+    def run_masternode(signing_key=Constants.Testnet.Masternode.Sk, url=Constants.Testnet.Masternode.InternalUrl,
+                       name='Masternode'):
         loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # asyncio.set_event_loop(loop)
 
-        mn = NodeFactory._build_node(loop=loop, signing_key=signing_key, url=url, node_cls=Masternode)
+        mn = NodeFactory._build_node(loop=loop, signing_key=signing_key, url=url, node_cls=Masternode, name=name)
 
         mn.start()
 
     @staticmethod
-    def run_witness(signing_key='51066195e63be3c8d5c14d3c1561b90a1f0f0789b5c2b44254a4a211edac1ec6',
-                    url='tcp://127.0.0.1:6000'):
+    def run_witness(signing_key, url, name='Witness'):
         loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # asyncio.set_event_loop(loop)
 
-        w = NodeFactory._build_node(loop=loop, signing_key=signing_key, url=url, node_cls=Witness)
+        w = NodeFactory._build_node(loop=loop, signing_key=signing_key, url=url, node_cls=Witness, name=name)
 
         w.start()
 
     @staticmethod
-    def run_delegate(signing_key, url):
+    def run_delegate(signing_key, url, name='Delegate'):
         loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # asyncio.set_event_loop(loop)
 
-        d = NodeFactory._build_node(loop=loop, signing_key=signing_key, url=url, node_cls=Delegate)
+        d = NodeFactory._build_node(loop=loop, signing_key=signing_key, url=url, node_cls=Delegate, name=name)
 
         d.start()

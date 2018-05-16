@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 import zmq.asyncio
 from cilantro.utils import LProcess
 import random
@@ -9,9 +10,9 @@ from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG
 
 
 class ReactorInterface:
-    def __init__(self, router, loop, signing_key):
-        self.log = get_logger("{}.ReactorInterface".format(type(router).__name__))
-        self.url = "ipc://ReactorIPC-" + str(random.randint(0, pow(2, 16)))
+    def __init__(self, router, loop, verifying_key, name='Node'):
+        self.log = get_logger("{}.ReactorInterface".format(name))
+        self.url = "ipc://{}-ReactorIPC-".format(name) + str(random.randint(0, pow(2, 16)))
 
         # Set instance vars
         self.router = router
@@ -25,14 +26,14 @@ class ReactorInterface:
         self.socket.bind(self.url)
 
         # Start reactor sub process
-        self.proc = LProcess(target=self._start_daemon, args=(self.url, signing_key,))
+        self.proc = LProcess(target=self._start_daemon, args=(self.url, verifying_key, name))
         self.proc.daemon = True
         self.proc.start()
 
         # Block execution of this proc until reactor proc is ready
         self.loop.run_until_complete(self._wait_child_rdy())
 
-    def start_reactor(self):
+    def start_reactor(self, tasks=None):
         """
         Method to kick off the event loop and start listening to the ReactorDaemon. No callbacks from the ReactorDaemon
         are read until this method gets invoked. This blocks on whatever process its called on, and thus should be
@@ -40,17 +41,25 @@ class ReactorInterface:
         Generally speaking, this should be the last command run during application bootstrap as it blocks
         the process and opens up the system to receiving messages from ReactorDaemon (although we can still SEND msgs
         to ReactorDaemon before this method is called).
+
+        Optionally, a list of additional tasks (asyncio Future/Task objects) can be passed in which will be included in
+        the loop's run_until_complete.
         """
         try:
-            self.loop.run_until_complete(self._recv_messages())
+            if tasks:
+                self.log.critical("\n\n start_reactor TASKS DETECTED: {}\n\n".format(tasks))
+                self.loop.run_until_complete(asyncio.gather(self._recv_messages(), *tasks))
+                self.loop.run_until_complete(self._recv_messages())
+            else:
+                self.loop.run_until_complete(self._recv_messages())
         except Exception as e:
-            self.log.error("\n\nException in main event loop: {}\n\n".format(e))
+            self.log.error("\n\nException in main event loop: {}\n\n".format(traceback.format_exc()))
             # TODO cancel tasks
         finally:
             self.log.critical("\nCLOSING EVENT LOOP\n")
             self.loop.close()
 
-    def _start_daemon(self, url, signing_key):
+    def _start_daemon(self, url, vk, name):
         """
         Should be for internal use only.
         The target method for the ReactorDaemon subprocess (this code gets run in a child process). This simply creates
@@ -59,7 +68,7 @@ class ReactorInterface:
 
         :param url: The url for the IPC pair socket between the ReactorInterface and ReactorDaemon
         """
-        reactor = ReactorDaemon(url=url, sk=signing_key)
+        reactor = ReactorDaemon(url=url, verifying_key=vk, name=name)
 
     async def _wait_child_rdy(self):
         """

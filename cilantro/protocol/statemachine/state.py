@@ -6,7 +6,7 @@ ENTER, EXIT, RUN = 'enter', 'exit', 'run'
 DEBUG_FUNCS = (ENTER, EXIT, RUN)
 
 
-def recv(msg_type):
+def input(msg_type):
     """
     Decorator for dynamically routing incoming ZMQ messages to handles in Node's state
     """
@@ -18,7 +18,7 @@ def recv(msg_type):
 
 
 # TODO -- possibly add another arg for replying to different senders in different ways
-def recv_req(msg_type):
+def input_request(msg_type):
     def decorate(func):
         func._reply = msg_type
         return func

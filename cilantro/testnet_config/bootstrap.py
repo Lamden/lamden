@@ -1,5 +1,6 @@
 from cilantro import Constants
 from cilantro.nodes import Delegate, Masternode, Witness
+from cilantro.nodes import NodeFactory
 from cilantro.testnet_config.tx_builder import *
 from cilantro.db.delegate import DB, DB_NAME
 from multiprocessing import Process
@@ -48,25 +49,27 @@ def start_delelegate(i):
 
     log = get_logger("DelegateFactory")
     db_name = DB_NAME + '_' + str(i)
-    log.critical("\n***Instantiating a new delegate on slot {} with db name: {}\n".format(i, db_name))
+    d_info = Constants.Testnet.Delegates[i]
+    log.critical("\n***Instantiating a new delegate on slot {} with db name: {}, and info {}\n".format(i, db_name, d_info))
 
     log.critical("Seeding wallets...")
     DB.set_context(db_name)
     seed_wallets()
 
-    d = Delegate(slot=i)
+    NodeFactory.run_delegate(url=d_info['url'], signing_key=d_info['sk'], name="Delegate_{}".format(i+1))
 
 
 def start_mn():
     log = get_logger("MasternodeFactor")
     log.critical("\n***Starting Masternode\n")
-    mn = Masternode()
+    NodeFactory.run_masternode()
 
 
 def start_witness(i):
-    log = get_logger("MasternodeFactor")
-    log.critical("Starting witness on slot {}".format(i))
-    witness = Witness(slot=i)
+    log = get_logger("WitnessFactory")
+    w_info = Constants.Testnet.Witnesses[i]
+    log.critical("\n\nStarting witness on slot {} with info {}\n\n".format(i, w_info))
+    NodeFactory.run_witness(signing_key=w_info['sk'], url=w_info['url'], name="Witness_{}".format(i+1))
 
 
 if __name__ == "__main__":

@@ -46,7 +46,7 @@ class MPComposer(MPTesterBase):
         # router = Router(mock_sm)
         router = MagicMock()
 
-        reactor = ReactorInterface(router=router, loop=loop)
+        reactor = ReactorInterface(router=router, loop=loop, verifying_key=Constants.Protocol.Wallets.get_vk(sk))
         composer = Composer(interface=reactor, signing_key=sk)
 
         asyncio.ensure_future(reactor._recv_messages())

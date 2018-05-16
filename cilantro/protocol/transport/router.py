@@ -1,16 +1,17 @@
+import inspect
 from cilantro.protocol.statemachine import StateMachine
-from cilantro.messages import ReactorCommand, Envelope, MessageMeta, Seal
+from cilantro.messages import ReactorCommand, Envelope, MessageMeta, Seal, MessageBase
 from cilantro.protocol.reactor.executor import ROUTE_CALLBACK, ROUTE_REQ_CALLBACK, ROUTE_TIMEOUT_CALLBACK
 from cilantro.logger import get_logger
 
-"""
-The Router class transports incoming data from the ReactorDaemon to the appropriate State Machine logic.
-"""
 
 class Router:
-    def __init__(self, statemachine: StateMachine):
+    """
+    The Router class transports incoming data from the ReactorDaemon to the appropriate State Machine logic.
+    """
+    def __init__(self, statemachine: StateMachine, name='Node'):
         super().__init__()
-        self.log = get_logger("Router")
+        self.log = get_logger("{}.Router".format(name))
         self.sm = statemachine
 
         # Define mapping between callback names and router functions
@@ -46,6 +47,8 @@ class Router:
         except Exception as e:
             self.log.error("\n\n!!!!!\nError unpacking cmd envelope {}\nCmd:\n{}\n!!!!\n".format(e, cmd))
 
+        # Assert state machine has an implemented handler for the message type and callback, then actually route it
+        self._assert_handler_exists(type(envelope.message), cmd.callback)
         self.routes[cmd.callback](envelope)
 
     def _route(self, env: Envelope):
@@ -54,9 +57,16 @@ class Router:
         Routes an envelope to the appropriate @input receiver
         """
         self.log.debug("Routing envelope: {}".format(env))
-        self._assert_handler_exists(type(env.message))
 
-        self.sm.state._receivers[type(env.message)](self.sm.state, env.message)
+        handler_fn = self.sm.state._receivers[type(env.message)]
+        sig = inspect.signature(handler_fn)
+        self.log.critical("handler_fn {} has signature {}".format(handler_fn, sig))
+
+        if 'envelope' in sig.parameters:
+            self.log.critical("\n\nENVELOPE DETECTED IN HANDLER!!!\n\n")
+            self.sm.state._receivers[type(env.message)](self.sm.state, env.message, envelope=env)
+        else:
+            self.sm.state._receivers[type(env.message)](self.sm.state, env.message)
 
     def _route_request(self, env: Envelope):
         """
@@ -66,17 +76,19 @@ class Router:
         by the composer
         """
         self.log.debug("Routing REQUEST envelope: {}".format(env))
-        self._assert_handler_exists(type(env.message))
 
         self.log.critical("sending request to handler")
-        reply = self.sm.state._receivers[type(env.message)](self.sm.state, env.message)
+        reply = self.sm.state._repliers[type(env.message)](self.sm.state, env.message)
         self.log.critical("got reply envelope from handler")
 
         if not reply:
             self.log.warning("No reply returned for request msg of type {}".format(type(env.message)))
             return
 
-        self.sm.composer.send_reply()
+        assert isinstance(reply, MessageBase), "whatever is returned from @input_request function must be a " \
+                                               "MessageBase subclass instance"
+
+        self.sm.composer.send_reply(message=reply, request_envelope=env)
 
     def _route_timeout(self, env: Envelope):
         """
@@ -84,6 +96,7 @@ class Router:
         Routes a timed out request (that did not receive an associated reply in time)
         :param env:
         """
+        # TODO -- implement this correctly
         self.log.debug("Routing timeout envelope: {}".format(env))
         assert type(env.message) in self.sm.state._timeouts, "No implemented handler for timeout message type {} in " \
                                                              "state {} with timeouts {}".format(type(env.message),
@@ -91,14 +104,18 @@ class Router:
 
         self.sm.state._receivers[type(env.messages)](self.sm.state, env.message)
 
-
-    # TODO -- remove this if i dont end up using it
-    def _assert_handler_exists(self, msg_type):
+    def _assert_handler_exists(self, msg_type, callback):
         """
         Helper method to check if current state has a handler (a @input(msg_type) func) for msg_type. Raises an
         assertion if it doesnt.
         :param msg_type: A MessageBase class (not an instance but the actual Class of that instance)
         """
-        assert msg_type in self.sm.state._receivers, "State {} has no implemented receiver for {} in " \
-                                                              "_receivers {}".format(self.sm.state, msg_type,
-                                                                                     self.sm.state._receivers)
+        # Define a mapping between routes and handlers
+        handlers = {ROUTE_CALLBACK: self.sm.state._receivers, ROUTE_REQ_CALLBACK: self.sm.state._repliers,
+                         ROUTE_TIMEOUT_CALLBACK: self.sm.state._repliers}
+        assert callback in handlers, "Callback {} was not in self.routes {}".format(callback, handlers)
+
+        search_scope = handlers[callback]
+        assert msg_type in search_scope, "State {} has no implemented receiver for {} with callback {} in " \
+                                                              "_receivers {}".format(self.sm.state, msg_type, callback,
+                                                                                     search_scope)

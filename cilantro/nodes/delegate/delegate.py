@@ -20,7 +20,7 @@
 from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, recv, timeout, recv_req
+from cilantro.protocol.statemachine import State, input, timeout, input_request
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.protocol.wallets import ED25519Wallet
@@ -36,14 +36,14 @@ class DelegateBaseState(State):
 
     def run(self): pass
 
-    @recv(TransactionBase)
-    def recv_tx(self, tx: TransactionBase):
+    @input(TransactionBase)
+    def handle_tx(self, tx: TransactionBase):
         self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
         self.parent.pending_txs.append(tx)
         self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
 
-    @recv(MerkleSignature)
-    def recv_sig(self, sig: MerkleSignature):
+    @input(MerkleSignature)
+    def handle_sig(self, sig: MerkleSignature):
         self.log.debug("Received signature with data {} but not in consensus, adding it to queue"
                        .format(sig._data))
         self.parent.pending_sigs.append(sig)
@@ -77,8 +77,7 @@ class DelegateBootState(DelegateBaseState):
         self.parent.transition(DelegateInterpretState)
 
     def exit(self, next_state):
-        self.parent.reactor.notify_ready()
-
+        pass
 
 class DelegateInterpretState(DelegateBaseState):
     """Delegate interpret state has the delegate receive and interpret that transactions are valid according to the
@@ -99,8 +98,8 @@ class DelegateInterpretState(DelegateBaseState):
             self.log.critical("Delegate exiting interpreting for state {}, flushing queue".format(next_state))
             self.parent.interpreter.flush(update_state=False)
 
-    @recv(TransactionBase)
-    def recv_tx(self, tx: TransactionBase):
+    @input(TransactionBase)
+    def handle_tx(self, tx: TransactionBase):
         self.interpret_tx(tx=tx)
 
     def interpret_tx(self, tx: TransactionBase):
@@ -137,11 +136,12 @@ class DelegateConsensusState(DelegateBaseState):
         self.signature = ED25519Wallet.sign(self.parent.signing_key, self.merkle_hash)
 
         # Create merkle signature message and publish it
-        merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now', sender=self.parent.url)
+        merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now',
+                                            sender=self.parent.verifying_key)
         self.log.info("Broadcasting signature {}".format(self.signature))
-        self.parent.reactor.pub(url=self.parent.url, data=Envelope.create(merkle_sig))
+        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.DelegateDelegate, message=merkle_sig)
 
-        # Now that we've computed the merkle tree hash, validate all our pending signatures
+        # Now that we've computed/composed the merkle tree hash, validate all our pending signatures
         for sig in [s for s in self.parent.pending_sigs if self.validate_sig(s)]:
             self.signatures.append(sig)
 
@@ -156,17 +156,19 @@ class DelegateConsensusState(DelegateBaseState):
         self.log.debug("Validating signature: {}".format(sig))
 
         # Sanity checks
-        if sig.sender not in self.parent.nodes_registry:
-            self.log.critical("Received merkle sig from sender {} who was not registered nodes {}"
-                              .format(sig.sender, self.parent.nodes_registry))
-            return False
+        # if sig.sender not in self.parent.nodes_registry.values():  # TODO -- fix this check
+        #     self.log.critical("Received merkle sig from sender {} who was not registered nodes {}"
+        #                       .format(sig.sender, self.parent.nodes_registry.values()))
+        #     return False
         if sig in self.signatures:
             self.log.critical("Already received a signature from sender {}".format(sig.sender))
             return False
-        if not sig.verify(self.merkle_hash, self.parent.nodes_registry[sig.sender]):  # this check is just for debugging
+
+        # Below is just for debugging, so we can see if a signature cannot be verified
+        if not sig.verify(self.merkle_hash, sig.sender):
             self.log.critical("Delegate could not verify signature: {}".format(sig))
 
-        return sig.verify(self.merkle_hash, self.parent.nodes_registry[sig.sender])
+        return sig.verify(self.merkle_hash, sig.sender)
 
     def check_majority(self):
         self.log.debug("delegate has {} signatures out of {} total delegates"
@@ -175,18 +177,17 @@ class DelegateConsensusState(DelegateBaseState):
         if len(self.signatures) > self.NUM_DELEGATES // 2:
             self.log.critical("\n\n\nDelegate in consensus!\n\n\n")
             bc = BlockContender.create(signatures=self.signatures, nodes=self.merkle.nodes)
-            self.parent.reactor.request(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl),
-                                        data=Envelope.create(bc))
+            self.parent.composer.send_request_msg(message=bc, url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
             # once update confirmed from mn, transition to update state
 
-    @recv(MerkleSignature)
-    def recv_sig(self, sig: MerkleSignature):
+    @input(MerkleSignature)
+    def handle_sig(self, sig: MerkleSignature):
         if self.validate_sig(sig):
             self.signatures.append(sig)
             self.check_majority()
 
-    @recv_req(BlockDataRequest)
-    def recv_blockdata_req(self, block_data: BlockDataRequest, id):
+    @input_request(BlockDataRequest)
+    def handle_blockdata_req(self, block_data: BlockDataRequest):
         assert block_data.tx_hash in self.merkle.leaves, "Block hash {} not found in leaves {}"\
             .format(block_data.tx_hash, self.merkle.leaves)
 
@@ -254,15 +255,11 @@ class Delegate(NodeBase):
     _INIT_STATE = DelegateBootState
     _STATES = [DelegateBootState, DelegateInterpretState, DelegateConsensusState, DelegateUpdateState]
 
-    def __init__(self, loop, url=None, signing_key=None, slot=0):
-        if url is None and signing_key is None:
-            node_info = Constants.Testnet.Delegates[slot]
-            url = node_info['url']
-            signing_key = node_info['sk']
-        super().__init__(loop=loop, url=url, signing_key=signing_key)
+    def __init__(self, loop, url=None, signing_key=None, name='Delegate'):
+        super().__init__(loop=loop, url=url, signing_key=signing_key, name=name)
 
-        self.log = get_logger("Delegate-#{}".format(slot), auto_bg_val=slot)
-        self.log.info("Delegate being created on slot {} with url {} and signing_key {}".format(slot, url, signing_key))
+        # self.log = get_logger("Delegate-#{}".format(slot), auto_bg_val=slot)
+        # self.log.info("Delegate being created on slot {} with url {} and signing_key {}".format(slot, url, signing_key))
 
         # Shared between states
         self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here

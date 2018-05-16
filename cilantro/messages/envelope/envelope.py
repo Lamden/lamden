@@ -2,6 +2,7 @@ from cilantro import Constants
 from cilantro.utils import lazy_property, set_lazy_property
 from cilantro.messages import MessageMeta, MessageBase, Seal
 from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.utils import Hasher  # Just for debugging (used in __repr__)
 import time
 
 import capnp
@@ -102,3 +103,22 @@ class Envelope(MessageBase):
             .format(self.meta.type, MessageBase.registry)
 
         return MessageBase.registry[self.meta.type].from_bytes(self.message_binary)
+
+    def __repr__(self):
+        """
+        Printing the full capnp struct (which is the default MessageBase __repr__ behvaior) is way to verbose for
+        the logs. Here we just slim this bish down a lil to make the logs easier to read
+        TODO -- the hashing bit should not be done in production as this wastes computational cycles
+        """
+        msg_type = str(MessageBase.registry[self.meta.type])
+        msg_hash = Hasher.hash(data=self.message_binary, digest_len=3)  # compressed representation of the message
+        seal_vk = self.seal.verifying_key
+        uuid = self.meta.uuid
+
+        repr = "\nEnvelope from sender {}".format(seal_vk)
+        repr += "\n\tuuid: {}".format(uuid)
+        repr += "\n\tmessage type: {}".format(msg_type)
+        repr += "\n\tmessage hash: {}".format(msg_hash)
+
+        return repr
+
