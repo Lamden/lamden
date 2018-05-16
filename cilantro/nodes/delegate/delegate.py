@@ -26,7 +26,7 @@ from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.utils import TestNetURLHelper
 from cilantro.messages import TransactionBase, BlockContender, Envelope, MerkleSignature, \
-    BlockDataRequest, BlockDataReply
+    BlockDataRequest, BlockDataReply, NewBlockNotification
 
 
 class DelegateBaseState(State):
@@ -47,6 +47,12 @@ class DelegateBaseState(State):
         self.log.debug("Received signature with data {} but not in consensus, adding it to queue"
                        .format(sig._data))
         self.parent.pending_sigs.append(sig)
+
+    @input(NewBlockNotification)
+    def handle_new_block_notif(self, notif: NewBlockNotification):
+        self.log.critical("got new block notification, but logic to handle it is not implement in subclass")
+        raise NotImplementedError
+        # TODO -- if we are in anything but consensus state, we need to go to update state
 
 
 class DelegateBootState(DelegateBaseState):
@@ -72,6 +78,10 @@ class DelegateBootState(DelegateBaseState):
 
         # Add dealer socket for Masternode
         self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
+
+        # Sub to Masternode for block updates
+        self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
+                                     filter=Constants.ZmqFilters.MasternodeDelegate)
 
     def run(self):
         self.parent.transition(DelegateInterpretState)
@@ -202,8 +212,22 @@ class DelegateConsensusState(DelegateBaseState):
         reply = BlockDataReply.create(tx_binary)
         return reply
 
+    @input(NewBlockNotification)
+    def handle_new_block_notif(self, notif: NewBlockNotification):
+        self.log.info("Delegate got new block notification: {}".format(notif))
 
-class DelegateUpdateState(DelegateBaseState): pass
+        if notif.block_hash == self.merkle_hash:
+            self.log.critical("\n\n New block hash is the same as ours!!! \n\n")
+            # TODO -- copy scratch to state
+        else:
+            self.log.critical("\n\n New block hash {} does not match out own merkle_hash {} \n\n"
+                              .format(notif.block_hash, self.merkle_hash))
+            # TODO -- request new block from masternode
+
+
+class DelegateInConsensusUpdateState(DelegateBaseState): pass
+
+class DelegateOutConsensusUpdateState(DelegateBaseState): pass
 
 
 ## TESTING

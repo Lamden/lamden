@@ -1,4 +1,5 @@
 from cilantro.messages.base.base import MessageBase
+from cilantro.messages.base.base_json import MessageBaseJson
 
 from cilantro.messages.envelope.seal import Seal
 from cilantro.messages.envelope.message_meta import MessageMeta

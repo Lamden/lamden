@@ -1,19 +1,12 @@
-from cilantro.messages import MessageBase
+from cilantro.messages import MessageBaseJson
 import json
 
 
-class NewBlockNotification(MessageBase):
+class NewBlockNotification(MessageBaseJson):
     """
     _data is just a string containing the new block hash
     """
     B_HASH = 'block_hash'
-
-    @classmethod
-    def _deserialize_data(cls, data: bytes):
-        return json.loads(data)
-
-    def serialize(self):
-        return json.dumps(self._data)
 
     def validate(self):
         pass
@@ -27,3 +20,6 @@ class NewBlockNotification(MessageBase):
     @property
     def block_hash(self):
         return self._data[self.B_HASH]
+
+    def __eq__(self, other):
+        return self.block_hash == other.block_hash

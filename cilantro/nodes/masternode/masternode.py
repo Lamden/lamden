@@ -10,7 +10,8 @@ from cilantro import Constants
 from cilantro.db import *
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, input, input_request, timeout
-from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, TransactionContainer
+from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, \
+                              TransactionContainer, NewBlockNotification
 from cilantro.utils import TestNetURLHelper
 from aiohttp import web
 import asyncio
@@ -199,31 +200,40 @@ class MNRunState(MNBaseState):
 
         # If we are done retreiving tranasctions, store the block
         if len(self.retrieved_txs) == len(self.tx_hashes):
-            self.log.critical("\n***\nDONE COLLECTING BLOCK DATA FROM NODES\n***\n")
-
-            block = self.current_contender
-
-            hash_of_nodes = self.compute_hash_of_nodes(block.nodes).hex()
-            tree = b"".join(block.nodes).hex()
-            signatures = "".join([merk_sig.signature for merk_sig in block.signatures])
-
-            # Store the block + transaction data
-            with DB() as db:
-                tables = db.tables
-                q = insert(tables.blocks).values(hash=hash_of_nodes, tree=tree, signatures=signatures)
-                db.execute(q)
-
-                for key, value in self.retrieved_txs.items():
-                    tx = {
-                        'key': key,
-                        'value': value
-                    }
-                    qq = insert(tables.transactions).values(tx)
-                    db.execute(qq)
-
+            self.new_block_procedure()
         else:
             self.log.critical("Still {} transactions yet to request until we can build the block"
                               .format(len(self.tx_hashes) - len(self.retrieved_txs)))
+
+    def new_block_procedure(self):
+        self.log.critical("\n***\nDONE COLLECTING BLOCK DATA FROM NODES\n***\n")
+
+        block = self.current_contender
+
+        hash_of_nodes = self.compute_hash_of_nodes(block.nodes).hex()
+        tree = b"".join(block.nodes).hex()
+        signatures = "".join([merk_sig.signature for merk_sig in block.signatures])
+
+        # Store the block + transaction data
+        with DB() as db:
+            tables = db.tables
+            q = insert(tables.blocks).values(hash=hash_of_nodes, tree=tree, signatures=signatures)
+            db.execute(q)
+
+            for key, value in self.retrieved_txs.items():
+                tx = {
+                    'key': key,
+                    'value': value
+                }
+                qq = insert(tables.transactions).values(tx)
+                db.execute(qq)
+
+        self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {}".format(hash_of_nodes))
+        notif = NewBlockNotification.create(new_block_hash=hash_of_nodes)
+        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
+
+    # def notify_delegates(self):
+
 
     @timeout(BlockDataRequest)
     def timeout_block_req(self, request: BlockDataRequest, url):
