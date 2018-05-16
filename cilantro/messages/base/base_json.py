@@ -15,3 +15,6 @@ class MessageBaseJson(MessageBase):
 
     def serialize(self):
         return json.dumps(self._data).encode()
+
+    def __eq__(self, other):
+        return self._data == other._data

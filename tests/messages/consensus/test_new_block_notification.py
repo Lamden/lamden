@@ -4,7 +4,7 @@ from unittest import TestCase
 
 class NewBlockNotificationTests(TestCase):
 
-    def test_serialize(self):
+    def test_serialization(self):
         """
         Tests serialize and from_bytes are inverse operations
         """

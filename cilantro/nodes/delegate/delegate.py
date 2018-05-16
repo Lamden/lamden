@@ -216,7 +216,7 @@ class DelegateConsensusState(DelegateBaseState):
     def handle_new_block_notif(self, notif: NewBlockNotification):
         self.log.info("Delegate got new block notification: {}".format(notif))
 
-        if notif.block_hash == self.merkle_hash:
+        if bytes.fromhex(notif.block_hash) == self.merkle_hash:
             self.log.critical("\n\n New block hash is the same as ours!!! \n\n")
             # TODO -- copy scratch to state
         else:
@@ -278,7 +278,7 @@ class DelegateOutConsensusUpdateState(DelegateBaseState): pass
 
 class Delegate(NodeBase):
     _INIT_STATE = DelegateBootState
-    _STATES = [DelegateBootState, DelegateInterpretState, DelegateConsensusState, DelegateUpdateState]
+    _STATES = [DelegateBootState, DelegateInterpretState, DelegateConsensusState]
 
     def __init__(self, loop, url=None, signing_key=None, name='Delegate'):
         super().__init__(loop=loop, url=url, signing_key=signing_key, name=name)

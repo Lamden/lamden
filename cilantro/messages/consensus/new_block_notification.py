@@ -20,6 +20,3 @@ class NewBlockNotification(MessageBaseJson):
     @property
     def block_hash(self):
         return self._data[self.B_HASH]
-
-    def __eq__(self, other):
-        return self.block_hash == other.block_hash
