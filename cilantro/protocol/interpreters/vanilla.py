@@ -4,6 +4,7 @@ from collections import deque
 from cilantro.db import ScratchCloningVisitor, DB
 from sqlalchemy.sql import Update
 from cilantro.protocol.interpreters.queries import *
+import itertools
 
 
 class VanillaInterpreter:
@@ -31,6 +32,13 @@ class VanillaInterpreter:
 
         if update_state:
             self.log.debug("Updating state...")
+            queries = itertools.chain(*[row[1:] for row in self.queue])
+            self.log.info("got queries to execute: {}".format(queries))
+
+            with DB() as db:
+                for q in queries:
+                    self.log.debug("executing query {}".format(q))
+                    db.execute(q)
             # TODO -- implement
             # for query in self.queue:
             #     tables.db.execute(query)
@@ -65,6 +73,7 @@ class VanillaInterpreter:
             self.log.debug("About to get scratch query for query {}".format(q))
             scratch_q = ScratchCloningVisitor().traverse(q)
 
+            # TODO move context manager outside of loop
             with DB() as db:
                 if scratch_q.__class__ == Update:
                     scratch_q.table = db.tables.mapping[scratch_q.table]

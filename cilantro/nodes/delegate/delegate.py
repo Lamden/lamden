@@ -89,6 +89,7 @@ class DelegateBootState(DelegateBaseState):
     def exit(self, next_state):
         pass
 
+
 class DelegateInterpretState(DelegateBaseState):
     """Delegate interpret state has the delegate receive and interpret that transactions are valid according to the
     interpreter chosen. Once the number of transactions in the queue exceeds the size or a time interval is reached the
@@ -136,6 +137,7 @@ class DelegateConsensusState(DelegateBaseState):
         self.signature = None
         self.merkle = None
         self.merkle_hash = None
+        self.in_consensus = False
 
     def enter(self, prev_state):
         # Merkle-ize transaction queue and create signed merkle hash
@@ -187,6 +189,9 @@ class DelegateConsensusState(DelegateBaseState):
 
         if len(self.signatures) > self.NUM_DELEGATES // 2:
             self.log.critical("\n\n\nDelegate in consensus!\n\n\n")
+            self.in_consensus = True
+
+            # Create BlockContender and send it to Masternode
             bc = BlockContender.create(signatures=self.signatures, nodes=self.merkle.nodes)
             self.parent.composer.send_request_msg(message=bc, url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
             # once update confirmed from mn, transition to update state
@@ -216,18 +221,36 @@ class DelegateConsensusState(DelegateBaseState):
     def handle_new_block_notif(self, notif: NewBlockNotification):
         self.log.info("Delegate got new block notification: {}".format(notif))
 
+        # If the new block hash is the same as our 'scratch block', then just copy scratch to state
         if bytes.fromhex(notif.block_hash) == self.merkle_hash:
             self.log.critical("\n\n New block hash is the same as ours!!! \n\n")
-            # TODO -- copy scratch to state
+            self.copy_scratch()
+            self.parent.transition(DelegateInterpretState)
+        # Otherwise, our block is out of consensus and we must request the latest from a Masternode
         else:
             self.log.critical("\n\n New block hash {} does not match out own merkle_hash {} \n\n"
                               .format(notif.block_hash, self.merkle_hash))
-            # TODO -- request new block from masternode
+            self.parent.transition(DelegateOutConsensusUpdateState)
+
+    def copy_scratch(self):
+        self.log.info("Copying Scratch to State")
+        self.parent.interpreter.flush(update_state=True)
+
 
 
 class DelegateInConsensusUpdateState(DelegateBaseState): pass
 
-class DelegateOutConsensusUpdateState(DelegateBaseState): pass
+
+class DelegateOutConsensusUpdateState(DelegateBaseState):
+
+    def enter(self, prev_state):
+        pass
+
+    def run(self):
+        pass
+
+    def exit(self, next_state):
+        pass
 
 
 ## TESTING
