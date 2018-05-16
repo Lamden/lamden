@@ -3,9 +3,10 @@ import traceback
 import zmq.asyncio
 from cilantro.utils import LProcess
 import random
+import time
 from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand
-from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG
+from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG, KILL_SIG
 # from cilantro.protocol.transport.router import Router
 
 
@@ -51,10 +52,28 @@ class ReactorInterface:
             self.log.error("\n\nException in main event loop: {}\n\n".format(traceback.format_exc()))
             # TODO cancel tasks
         finally:
-            self.log.critical("\nCLOSING EVENT LOOP\n")
-            self.loop.close()
-            self.proc.join()
-            self.socket.close()
+            # self.log.critical("\nCLOSING EVENT LOOP\n")
+            # self.loop.close()
+            # self.proc.join()
+            # self.socket.close()
+
+            self._teardown()
+
+    def _teardown(self):
+        """
+        Close sockets. Teardown executors. Close Event Loop.
+        """
+        self.log.critical("Tearing down Reactor Daemon process")
+
+        self.log.warning("Signaling KILL to Deamon process")
+        self.socket.send(KILL_SIG)
+        time.sleep(1)  # make sure message gets sent before we close the socket
+
+        self.log.warning("Closing pair socket")
+        self.socket.close()
+
+        self.log.warning("Closing event loop")
+        self.loop.close()
 
     def _start_daemon(self, url, vk, name):
         """

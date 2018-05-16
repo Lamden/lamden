@@ -12,6 +12,7 @@ import traceback
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 CHILD_RDY_SIG = b'ReactorDaemon Process Ready'
+KILL_SIG = b'DIE'
 
 
 class ReactorDaemon:
@@ -66,11 +67,32 @@ class ReactorDaemon:
             cmd_bin = await self.socket.recv()
             self.log.debug("Got cmd from queue: {}".format(cmd_bin))
 
+            if cmd_bin == KILL_SIG:
+                self._teardown()
+                return
+
             # Should from_bytes be in a try/catch? I suppose if we get a bad command from the main proc we might as well
             # blow up because this is very likely because of a development error, so no try/catch for now
             cmd = ReactorCommand.from_bytes(cmd_bin)
 
             self._execute_cmd(cmd)
+
+    def _teardown(self):
+        """
+        Close sockets. Teardown executors. Close Event Loop.
+        """
+        self.log.critical("Tearing down Reactor Daemon process")
+
+        self.log.warning("Closing pair socket")
+        self.socket.close()
+
+        self.log.warning("Tearing down executors")
+        for e in self.executors:
+            e.teardown()
+
+        self.log.warning("Closing event loop")
+        self.loop.close()
+
 
     def _execute_cmd(self, cmd: ReactorCommand):
         """
