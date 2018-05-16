@@ -33,11 +33,12 @@ class VanillaInterpreter:
         if update_state:
             self.log.debug("Updating state...")
             queries = itertools.chain(*[row[1:] for row in self.queue])
-            self.log.info("got queries to execute: {}".format(queries))
+            self.log.info("got queries to execute: {}".format(str(queries)))
 
             with DB() as db:
                 for q in queries:
-                    self.log.debug("executing query {}".format(q))
+                    qt = q.compile(compile_kwargs={'literal_binds': True})
+                    self.log.debug("executing query {}".format(qt))
                     db.execute(q)
             # TODO -- implement
             # for query in self.queue:

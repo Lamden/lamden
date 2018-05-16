@@ -232,9 +232,6 @@ class MNRunState(MNBaseState):
         notif = NewBlockNotification.create(new_block_hash=hash_of_nodes)
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
 
-    # def notify_delegates(self):
-
-
     @timeout(BlockDataRequest)
     def timeout_block_req(self, request: BlockDataRequest, url):
         self.log.critical("\n\nBlockDataRequest timed out for url {} with request data {}\n\n".format(url, request))
