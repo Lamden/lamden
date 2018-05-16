@@ -215,10 +215,12 @@ class MNRunState(MNBaseState):
         signatures = "".join([merk_sig.signature for merk_sig in block.signatures])
 
         # Store the block + transaction data
+        block_num = -1
         with DB() as db:
             tables = db.tables
             q = insert(tables.blocks).values(hash=hash_of_nodes, tree=tree, signatures=signatures)
-            db.execute(q)
+            q_result = db.execute(q)
+            block_num = q_result.lastrowid
 
             for key, value in self.retrieved_txs.items():
                 tx = {
@@ -228,10 +230,11 @@ class MNRunState(MNBaseState):
                 qq = insert(tables.transactions).values(tx)
                 db.execute(qq)
 
-        # TODO get latest block num
+        assert block_num > 0, "Block num must be greater than 0! Was it not set in the DB() context session?"
 
-        self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {}".format(hash_of_nodes))
-        notif = NewBlockNotification.create(new_block_hash=hash_of_nodes, new_block_num=90)
+        self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {} and block num {}"
+                      .format(hash_of_nodes, block_num))
+        notif = NewBlockNotification.create(new_block_hash=hash_of_nodes, new_block_num=block_num)
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
 
     @timeout(BlockDataRequest)
@@ -240,7 +243,8 @@ class MNRunState(MNBaseState):
         pass
 
 
-class MNNewBlockState(MNBaseState): pass
+class MNNewBlockState(MNBaseState):
+    pass
 
 
 class Masternode(NodeBase):
