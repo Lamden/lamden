@@ -25,6 +25,7 @@ from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.utils import TestNetURLHelper
+from cilantro.db import *
 from cilantro.messages import TransactionBase, BlockContender, Envelope, MerkleSignature, \
     BlockDataRequest, BlockDataReply, NewBlockNotification
 
@@ -103,6 +104,12 @@ class DelegateInterpretState(DelegateBaseState):
             self.interpret_tx(tx)
         self.parent.pending_txs = []
 
+        # (for debugging) TODO remove
+        with DB() as db:
+            r = db.execute('select * from state_meta')
+            results = r.fetchall()
+            self.log.critical("\n\n LATEST STATE INFO: {} \n\n".format(results))
+
     def exit(self, next_state):
         # Flush queue if we are not leaving interpreting for consensus
         if type(next_state) is not DelegateConsensusState:
@@ -131,8 +138,16 @@ class DelegateConsensusState(DelegateBaseState):
     one another, confirm the signature is valid, and then vote/tally the results"""
     NUM_DELEGATES = len(Constants.Testnet.Delegates)
 
+    """
+    TODO -- move this 'variable setting' logic outside of init. States should have their own constructor, which init
+    will call in the superclass. Optionally, states should be able to set a variable if they want all their properties
+    flushed each time. 
+    """
     def __init__(self, state_machine=None):
         super().__init__(state_machine=state_machine)
+        self._reset_instance()
+
+    def _reset_instance(self):
         self.signatures = []
         self.signature = None
         self.merkle = None
@@ -162,7 +177,7 @@ class DelegateConsensusState(DelegateBaseState):
         self.check_majority()
 
     def exit(self, next_state):
-        self.signatures, self.signature, self.merkle, self.merkle_hash = [], None, None, None
+        self._reset_instance()
 
     def validate_sig(self, sig: MerkleSignature) -> bool:
         assert self.merkle_hash is not None, "Cannot validate signature without our merkle hash set"
@@ -224,7 +239,7 @@ class DelegateConsensusState(DelegateBaseState):
         # If the new block hash is the same as our 'scratch block', then just copy scratch to state
         if bytes.fromhex(notif.block_hash) == self.merkle_hash:
             self.log.critical("\n\n New block hash is the same as ours!!! \n\n")
-            self.copy_scratch()
+            self.update_from_scratch(new_block_hash=notif.block_hash, new_block_num=notif.block_num)
             self.parent.transition(DelegateInterpretState)
         # Otherwise, our block is out of consensus and we must request the latest from a Masternode
         else:
@@ -232,9 +247,15 @@ class DelegateConsensusState(DelegateBaseState):
                               .format(notif.block_hash, self.merkle_hash))
             self.parent.transition(DelegateOutConsensusUpdateState)
 
-    def copy_scratch(self):
+    def update_from_scratch(self, new_block_hash, new_block_num):
         self.log.info("Copying Scratch to State")
         self.parent.interpreter.flush(update_state=True)
+
+        self.log.info("Updating state_meta with new hash {} and block num {}".format(new_block_hash, new_block_num))
+        with DB() as db:
+            db.execute('delete from state_meta')
+            q = insert(db.tables.state_meta).values(number=new_block_num, hash=new_block_hash)
+            db.execute(q)
 
 
 

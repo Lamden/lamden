@@ -228,8 +228,10 @@ class MNRunState(MNBaseState):
                 qq = insert(tables.transactions).values(tx)
                 db.execute(qq)
 
+        # TODO get latest block num
+
         self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {}".format(hash_of_nodes))
-        notif = NewBlockNotification.create(new_block_hash=hash_of_nodes)
+        notif = NewBlockNotification.create(new_block_hash=hash_of_nodes, new_block_num=90)
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
 
     @timeout(BlockDataRequest)
