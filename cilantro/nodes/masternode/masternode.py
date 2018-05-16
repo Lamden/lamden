@@ -197,6 +197,7 @@ class MNRunState(MNBaseState):
         else:
             self.log.error("Received block data reply with tx hash {} that is not in tx_hashes")
 
+        # If we are done retreiving tranasctions, store the block
         if len(self.retrieved_txs) == len(self.tx_hashes):
             self.log.critical("\n***\nDONE COLLECTING BLOCK DATA FROM NODES\n***\n")
 
@@ -205,8 +206,8 @@ class MNRunState(MNBaseState):
             hash_of_nodes = self.compute_hash_of_nodes(block.nodes).hex()
             tree = b"".join(block.nodes).hex()
             signatures = "".join([merk_sig.signature for merk_sig in block.signatures])
-            # TODO STORE IT
 
+            # Store the block + transaction data
             with DB() as db:
                 tables = db.tables
                 q = insert(tables.blocks).values(hash=hash_of_nodes, tree=tree, signatures=signatures)
@@ -219,26 +220,6 @@ class MNRunState(MNBaseState):
                     }
                     qq = insert(tables.transactions).values(tx)
                     db.execute(qq)
-
-            import time
-            time.sleep(1)
-
-            rows = db.execute('select * from transactions')
-            b = rows.fetchall()
-
-            # Store transactions
-
-
-            print('hi')
-
-
-
-
-
-            # Need to store..
-            # 1) Root (or hash of nodes)
-            # 2) Merkle Tree
-            # 3) List of Signatures
 
         else:
             self.log.critical("Still {} transactions yet to request until we can build the block"
