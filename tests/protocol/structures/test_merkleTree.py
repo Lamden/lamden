@@ -1,5 +1,6 @@
 from unittest import TestCase
 from cilantro.protocol.structures import MerkleTree
+import secrets
 
 
 class TestMerkleTree(TestCase):
@@ -76,3 +77,13 @@ class TestMerkleTree(TestCase):
         self.assertEqual(m.children(0), [test_merkle[1], test_merkle[2]])
         self.assertEqual(m.children(1), [test_merkle[3], test_merkle[4]])
         self.assertEqual(m.children(2), [test_merkle[5], test_merkle[6]])
+
+    def test_verify_tree(self):
+        raw_leaves = [secrets.token_bytes(16) for _ in range(16)]
+
+        m = MerkleTree(raw_leaves)
+
+        tree_nodes = m.nodes[len(m.nodes) // 2:]
+        tree_hash = m.hash_of_nodes()
+
+        self.assertTrue(MerkleTree.verify_tree(tree_nodes, tree_hash))

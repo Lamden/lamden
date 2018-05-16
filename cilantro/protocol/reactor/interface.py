@@ -33,7 +33,7 @@ class ReactorInterface:
         # Block execution of this proc until reactor proc is ready
         self.loop.run_until_complete(self._wait_child_rdy())
 
-    def start_reactor(self, tasks=None):
+    def start_reactor(self, tasks):
         """
         Method to kick off the event loop and start listening to the ReactorDaemon. No callbacks from the ReactorDaemon
         are read until this method gets invoked. This blocks on whatever process its called on, and thus should be
@@ -46,18 +46,15 @@ class ReactorInterface:
         the loop's run_until_complete.
         """
         try:
-            if tasks:
-                self.log.critical("\n\n start_reactor TASKS DETECTED: {}\n\n".format(tasks))
-                self.loop.run_until_complete(asyncio.gather(self._recv_messages(), *tasks))
-                self.loop.run_until_complete(self._recv_messages())
-            else:
-                self.loop.run_until_complete(self._recv_messages())
+            self.loop.run_until_complete(asyncio.gather(self._recv_messages(), *tasks))
         except Exception as e:
             self.log.error("\n\nException in main event loop: {}\n\n".format(traceback.format_exc()))
             # TODO cancel tasks
         finally:
             self.log.critical("\nCLOSING EVENT LOOP\n")
             self.loop.close()
+            self.proc.join()
+            self.socket.close()
 
     def _start_daemon(self, url, vk, name):
         """

@@ -12,17 +12,21 @@ class NodeBase(StateMachine):
         super().__init__()
 
         self.log = get_logger(name)
-
         self.url = url
         self.name = name
+
         self.signing_key = signing_key
         self.verifying_key = Constants.Protocol.Wallets.get_vk(self.signing_key)
 
         self.loop = loop
         asyncio.set_event_loop(loop)
+
         self._composer = None
 
-        self.nodes_registry = Constants.Testnet.AllNodes  # TODO move away from this once we get dat good overlay net
+        self.tasks = []
+
+        # TODO move away from this once we integrate overlay
+        self.nodes_registry = Constants.Testnet.AllNodes
 
     def start(self):
         """
@@ -39,11 +43,11 @@ class NodeBase(StateMachine):
         self.log.critical("Starting ReactorInterface event loop")
 
         # HACK FOR MASTERNODE
-        if hasattr(self, 'server_task'):
-            self.log.critical("\n\n SERVER FUTURE DETECTED, ADDING IT TO TASKS \n\n")
-            self.composer.interface.start_reactor(tasks=[self.server_task])
+        # if hasattr(self, 'server_task'):
+        #     self.log.critical("\n\n SERVER FUTURE DETECTED, ADDING IT TO TASKS \n\n")
+        #     self.composer.interface.start_reactor(tasks=[self.server_task])
 
-        self.composer.interface.start_reactor()  # ReactorInterface starts listening to messages from ReactorDaemon
+        self.composer.interface.start_reactor(tasks=self.tasks)  # ReactorInterface starts listening to messages from ReactorDaemon
 
     @property
     def composer(self):

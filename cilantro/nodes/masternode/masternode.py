@@ -7,6 +7,7 @@
     the behavior of nodes and tell the network who is misbehaving.
 """
 from cilantro import Constants
+from cilantro.db import *
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, input, input_request, timeout
 from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, TransactionContainer
@@ -63,31 +64,24 @@ class MNRunState(MNBaseState):
 
         asyncio.set_event_loop(self.parent.loop)
 
-        # self.loop = asyncio.new_event_loop()
-        # asyncio.set_event_loop(self.loop)
-
-        # self.app = web.Application()
-        # self.app.router.add_post('/', self.parent.route_http)
-
         self.block_contenders = []
         self.node_states = {}
         self.tx_hashes = []
         self.retrieved_txs = {}
         self.is_updating = False
+        self.current_contender = None
 
     def enter(self, prev_state):
         asyncio.set_event_loop(self.parent.loop)  # pretty sure this is unnecessary  - davis
-        # asyncio.set_event_loop(self.loop)
-        pass
 
     def run(self):
         self.log.info("Starting web server")
-        # web.run_app(self.app, host='0.0.0.0', port=int(Constants.Testnet.Masternode.ExternalPort))
 
         # EXPERIMENTAL AF
         server = web.Server(self.parent.route_http)
         server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
-        self.parent.server_task = server_future
+        # self.parent.server_task = server_future
+        self.parent.tasks.append(server_future)
         # self.parent.loop.create_server(server, "0.0.0.0", 8080)
 
         self.log.critical("\n\n\n\n\n DOES THIS GET PRINTED \n\n\n\n\n")
@@ -118,17 +112,17 @@ class MNRunState(MNBaseState):
             .format(vk, Constants.Testnet.Delegates)
         return sender_url
 
-
     @input_request(BlockContender)
     def recv_block(self, block: BlockContender):
         self.log.info("Masternode received block contender: {}".format(block))
         self.log.critical("block nodes: {}".format(block.nodes))
         self.block_contenders.append(block)
 
-        if self.is_updating:
+        if self.current_contender:
             self.log.info("Masternode already executing new block update procedure")
             return
 
+        self.current_contender = block
         self.is_updating = True
         self.log.critical("Masternode performing new block update procedure")
 
@@ -139,9 +133,13 @@ class MNRunState(MNBaseState):
             # TODO -- remove this block from the queue and try the next (if any available)
             return
 
+        self.tx_hashes = block.nodes[len(block.nodes) // 2:]
+        # self.tx_hashes = block.nodes[:len(block.nodes) // 2]
+
         # Validate merkle tree
-        if not MerkleTree.verify_tree(block.nodes, hash_of_nodes):
+        if not MerkleTree.verify_tree(self.tx_hashes, hash_of_nodes):
             self.log.error("\n\n\n\nCOULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}\n\n\n".format(block))
+            # TODO -- remove this block from the queue and try the next (if any available)
             return
 
         # Add dealer sockets for Delegates to fetch block tx data
@@ -150,24 +148,22 @@ class MNRunState(MNBaseState):
             self.node_states[sig.sender] = self.NODE_AVAILABLE
             self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(sender_url))
             import time
-            time.sleep(0.2)
+            time.sleep(0.1)
 
-        self.tx_hashes = block.nodes[len(block.nodes) // 2:]
         repliers = list(self.node_states.keys())
 
         self.log.critical("block nodes: {}".format(block.nodes))
 
+        # Request individual block data from delegates
         for i in range(len(self.tx_hashes)):
             tx = self.tx_hashes[i]
             replier_url = self._lookup_url(repliers[i % len(repliers)])
             req = BlockDataRequest.create(tx)
-            self.log.critical("Requesting tx hash {} from URL {}".format(tx, replier_url))
 
-            # TODO -- fix this to use new envelope creation process
-            # self.parent.composer.request(url=TestNetURLHelper.dealroute_url(replier), data=Envelope.create(req), timeout=1)
+            self.log.critical("Requesting tx hash {} from URL {}".format(tx, replier_url))
             self.parent.composer.send_request_msg(message=req, timeout=1, url=TestNetURLHelper.dealroute_url(replier_url))
 
-    def compute_hash_of_nodes(self, nodes) -> str:
+    def compute_hash_of_nodes(self, nodes) -> bytes:
         # TODO -- i think the merkle tree can do this for us..?
         self.log.critical("Masternode computing hash of nodes...")
         h = hashlib.sha3_256()
@@ -179,7 +175,6 @@ class MNRunState(MNBaseState):
     def validate_sigs(self, signatures, msg) -> bool:
         for sig in signatures:
             self.log.info("mn verifying signature: {}".format(sig))
-            sender_vk = sig.sender
             if sig.verify(msg, sig.sender):
                 self.log.critical("Good we verified that sig")
             else:
@@ -205,9 +200,30 @@ class MNRunState(MNBaseState):
         if len(self.retrieved_txs) == len(self.tx_hashes):
             self.log.critical("\n***\nDONE COLLECTING BLOCK DATA FROM NODES\n***\n")
 
+            block = self.current_contender
 
+            hash_of_nodes = self.compute_hash_of_nodes(block.nodes).hex()
+            tree = b"".join(block.nodes).hex()
+            signatures = "".join([merk_sig.signature for merk_sig in block.signatures])
             # TODO STORE IT
 
+            with DB() as db:
+                tables = db.tables
+                q = insert(tables.blocks).values(hash=hash_of_nodes, tree=tree, signatures=signatures)
+                db.execute(q)
+
+            import time
+            time.sleep(1)
+
+            rows = db.execute('select * from blocks')
+            b = rows.fetchall()
+
+            print('hi')
+
+            # Need to store..
+            # 1) Root (or hash of nodes)
+            # 2) Merkle Tree
+            # 3) List of Signatures
 
         else:
             self.log.critical("Still {} transactions yet to request until we can build the block"

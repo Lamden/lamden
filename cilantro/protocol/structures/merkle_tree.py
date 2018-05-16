@@ -50,7 +50,7 @@ class MerkleTree:
         return h.digest()
 
     @staticmethod
-    def verify_tree(tree_nodes, tree_hash):
+    def verify_tree(tree_nodes: list, tree_hash: bytes):
         # create empty nodes until we hash it
         nodes = [None for _ in range(len(tree_nodes) - 1)]
         nodes.extend(tree_nodes)
@@ -66,10 +66,7 @@ class MerkleTree:
         h = hashlib.sha3_256()
         [h.update(o) for o in nodes]
 
-        if h.hexdigest() == tree_hash:
-            return True
-        return False
-
+        return h.digest() == tree_hash
 
     @staticmethod
     def hash(o):

@@ -2,7 +2,7 @@ from cilantro import Constants
 from cilantro.nodes import Delegate, Masternode, Witness
 from cilantro.nodes import NodeFactory
 from cilantro.testnet_config.tx_builder import *
-from cilantro.db.delegate import DB, DB_NAME
+from cilantro.db import DB, DB_NAME
 from multiprocessing import Process
 from cilantro.logger import get_logger
 import signal

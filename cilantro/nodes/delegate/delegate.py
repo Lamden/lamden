@@ -133,6 +133,7 @@ class DelegateConsensusState(DelegateBaseState):
         self.log.info("Delegate got tx from interpreter queue: {}".format(all_tx))
         self.merkle = MerkleTree(all_tx)
         self.merkle_hash = self.merkle.hash_of_nodes()
+        self.log.info("Delegate got merkle hash {}".format(self.merkle_hash))
         self.signature = ED25519Wallet.sign(self.parent.signing_key, self.merkle_hash)
 
         # Create merkle signature message and publish it
