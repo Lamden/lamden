@@ -11,7 +11,7 @@ from cilantro.db import *
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, input, input_request, timeout
 from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, \
-                              TransactionContainer, NewBlockNotification
+                              TransactionContainer, NewBlockNotification, StateRequest
 from cilantro.utils import TestNetURLHelper
 from aiohttp import web
 import asyncio
@@ -35,8 +35,9 @@ class MNBaseState(State):
     def recv_block(self, block: BlockContender):
         self.log.warning("Current state not configured to handle block contender: {}".format(block))
 
-    async def process_request(self, request):
-        self.log.warning("Current state not configured to process POST request {}".format(request))
+    @input_request(StateRequest)
+    def handle_state_req(self, request: StateRequest):
+        self.log.warning("Current state not configured to handle state requests {}".format(request))
 
 
 class MNBootState(MNBaseState):
@@ -44,8 +45,6 @@ class MNBootState(MNBaseState):
         self.log.critical("MN URL: {}".format(self.parent.url))
         self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
         self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
-
-        # TODO -- Configure witness groups
 
     def run(self):
         self.parent.transition(MNRunState)
@@ -61,11 +60,7 @@ class MNBootState(MNBaseState):
 class MNRunState(MNBaseState):
     NODE_AVAILABLE, NODE_AWAITING, NODE_TIMEOUT = range(3)
 
-    def __init__(self, state_machine):
-        super().__init__(state_machine=state_machine)
-
-        asyncio.set_event_loop(self.parent.loop)
-
+    def reset_attrs(self):
         self.block_contenders = []
         self.node_states = {}
         self.tx_hashes = []
@@ -75,6 +70,7 @@ class MNRunState(MNBaseState):
 
     def enter(self, prev_state):
         asyncio.set_event_loop(self.parent.loop)  # pretty sure this is unnecessary  - davis
+        self.reset_attrs()
 
     def run(self):
         self.log.info("Starting web server")
@@ -222,17 +218,15 @@ class MNRunState(MNBaseState):
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
 
         # Reset block update ivars
-        self.block_contenders = []
-        self.node_states = {}
-        self.tx_hashes = []
-        self.retrieved_txs = {}
-        self.is_updating = False
-        self.current_contender = None
+        self.reset_attrs()
 
     @timeout(BlockDataRequest)
     def timeout_block_req(self, request: BlockDataRequest, url):
         self.log.critical("\n\nBlockDataRequest timed out for url {} with request data {}\n\n".format(url, request))
-        pass
+
+    @input_request(StateRequest)
+    def handle_state_req(self, request: StateRequest):
+        self.log.critical("Masternode got state request {}".format(request))
 
 
 # class MasterNodeNewBlockState()
