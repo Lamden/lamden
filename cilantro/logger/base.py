@@ -83,18 +83,19 @@ else:
         import logging
         import os
         import sys
-        filedir = "logs/{}".format(os.getenv('TEST_NAME'))
-        filename = "{}/{}.log".format(filedir, os.getenv('HOSTNAME'))
+        filedir = "logs/{}".format(os.getenv('TEST_NAME', 'test'))
+        filename = "{}/{}.log".format(filedir, os.getenv('HOSTNAME', name))
         os.makedirs(filedir, exist_ok=True)
         filehandlers = [
             logging.FileHandler(filename)
         ]
         logging.basicConfig(
-            format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
+            format="%(asctime)s [%(levelname)-5.5s]  %(message)s",
             handlers=filehandlers,
             level=logging.DEBUG
         )
         return logging.getLogger(name)
+
     if REDIRECT_STDOUT:
         out_log = logging.getLogger('STDOUT')
         err_log = logging.getLogger("STDERR")
