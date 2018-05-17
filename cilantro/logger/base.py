@@ -83,8 +83,8 @@ else:
         import logging
         import os
         import sys
-        filedir = "logs/{}".format(os.getenv('TEST_NAME'))
-        filename = "{}/{}.log".format(filedir, os.getenv('HOSTNAME'))
+        filedir = "logs/{}".format(os.getenv('TEST_NAME', 'test'))
+        filename = "{}/{}.log".format(filedir, os.getenv('HOSTNAME', name))
         os.makedirs(filedir, exist_ok=True)
         filehandlers = [
             logging.FileHandler(filename)
@@ -95,6 +95,7 @@ else:
             level=logging.DEBUG
         )
         return logging.getLogger(name)
+
     if REDIRECT_STDOUT:
         out_log = logging.getLogger('STDOUT')
         err_log = logging.getLogger("STDERR")
