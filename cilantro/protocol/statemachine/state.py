@@ -43,6 +43,11 @@ def debug_transition(transition_type):
                 msg = "Entering state {} from previous state {}" if transition_type == ENTER \
                     else "Exiting state {} to next state {}"
                 msg = msg.format(current_state, trans_state)
+
+                other_args = args[2:]
+                if len(other_args) > 0 or len(kwargs) > 0:
+                    msg += "... with additional args = {}, kwargs = {}".format(other_args, kwargs)
+
             current_state.log.info(msg)
             return func(*args, **kwargs)
         return wrapper
@@ -95,15 +100,19 @@ class StateMeta(type):
 class State(metaclass=StateMeta):
     def __init__(self, state_machine):
         self.parent = state_machine
+        self.reset_attrs()
 
-    def enter(self, prev_state):
-        raise NotImplementedError
+    def reset_attrs(self):
+        pass
 
-    def exit(self, next_state):
-        raise NotImplementedError
+    def enter(self, prev_state, *args, **kwargs):
+        pass
+
+    def exit(self, next_state, *args, **kwargs):
+        pass
 
     def run(self):
-        raise NotImplementedError
+        pass
 
     def __eq__(self, other):
         return type(self) == type(other)

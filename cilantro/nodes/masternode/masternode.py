@@ -77,15 +77,9 @@ class MNRunState(MNBaseState):
 
     def run(self):
         self.log.info("Starting web server")
-
-        # EXPERIMENTAL AF
         server = web.Server(self.parent.route_http)
         server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
-        # self.parent.server_task = server_future
         self.parent.tasks.append(server_future)
-        # self.parent.loop.create_server(server, "0.0.0.0", 8080)
-
-        self.log.critical("\n\n\n\n\n DOES THIS GET PRINTED \n\n\n\n\n")
 
     def exit(self, next_state):
         pass
