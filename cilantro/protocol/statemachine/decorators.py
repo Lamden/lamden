@@ -10,10 +10,6 @@ class StateInput:
 
     ALL = [INPUT, REQUEST, TIMEOUT]
 
-    @classmethod
-    def has_type(cls, input_type: str):
-        return type in cls._ALL
-
 
 """
 ----------------------------------------

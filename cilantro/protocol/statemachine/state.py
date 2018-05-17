@@ -49,21 +49,38 @@ class StateMeta(type):
                 setattr(clsobj, name, debug_transition(name)(val))
 
         # Configure receivers, repliers, and timeouts
-        clsobj._receivers = {}
+        for input_type in StateInput.ALL:
+            setattr(clsobj, input_type, {})
 
-        for r in dir(clsobj):
-            func = getattr(clsobj, r)
-            if hasattr(func, '_recv'):
-                clsobj._receivers[func._recv] = func
-                subclasses = StateMeta._get_subclasses(func._recv)
-                for sub in filter(lambda k: k not in clsobj._receivers, subclasses):
-                    clsobj._receivers[sub] = func
+            # Populate receivers s.t. all subclass receivers are inherited unless this class implements its own version
+            for r in dir(clsobj):
+                func = getattr(clsobj, r)
 
-        # print("{} has _receivers: {}".format(clsobj.__name__, clsobj._receivers))
+                if hasattr(func, input_type):
+                    func_input_type = getattr(func, input_type)
+                    registry = getattr(clsobj, input_type)
 
-        # TODO -- config repliers and timeouts to support polymorphism as well
-        clsobj._repliers = {r._reply: r for r in clsdict.values() if hasattr(r, '_reply')}
-        clsobj._timeouts = {r._timeout: r for r in clsdict.values() if hasattr(r, '_timeout')}
+                    registry[func_input_type] = func
+
+                    for sub in filter(lambda k: k not in registry, StateMeta._get_subclasses(func_input_type)):
+                        registry[sub] = func
+
+        # Configure receivers, repliers, and timeouts
+        # clsobj._receivers = {}
+        #
+        # for r in dir(clsobj):
+        #     func = getattr(clsobj, r)
+        #     if hasattr(func, '_recv'):
+        #         clsobj._receivers[func._recv] = func
+        #         subclasses = StateMeta._get_subclasses(func._recv)
+        #         for sub in filter(lambda k: k not in clsobj._receivers, subclasses):
+        #             clsobj._receivers[sub] = func
+        #
+        # # print("{} has _receivers: {}".format(clsobj.__name__, clsobj._receivers))
+        #
+        # # TODO -- config repliers and timeouts to support polymorphism as well
+        # clsobj._repliers = {r._reply: r for r in clsdict.values() if hasattr(r, '_reply')}
+        # clsobj._timeouts = {r._timeout: r for r in clsdict.values() if hasattr(r, '_timeout')}
 
         return clsobj
 
@@ -97,12 +114,13 @@ class State(metaclass=StateMeta):
     def run(self):
         pass
 
-    def call_input_handler(self, message: MessageBase, input_type: str, envelope: Envelope=None):
+    def call_input_handler(self, message, input_type: str, envelope=None):
+        # TODO assert type message is MessageBase, and envelope is Envelope ???
         self._assert_has_input_handler(message, input_type)
 
         func = self._get_input_handler(message, input_type)
 
-        if self._has_envelope_arg(func) and envelope:
+        if self._has_envelope_arg(func):
             self.log.debug("ENVELOPE DETECTED IN HANDLER ARGS")  # todo remove this
             output = func(self, message, envelope=envelope)
         else:
@@ -110,8 +128,10 @@ class State(metaclass=StateMeta):
 
         return output
 
-    def _get_input_handler(self, message: MessageBase, input_type: str):
+    def _get_input_handler(self, message, input_type: str):
         registry = getattr(self, input_type)
+        assert isinstance(registry, dict), "Expected registry to be a dictionary!"
+
         func = registry[type(message)]
         return func
 
@@ -122,10 +142,10 @@ class State(metaclass=StateMeta):
 
     def _assert_has_input_handler(self, message: MessageBase, input_type: str):
         # Assert that input_type is actually a recognized input_type
-        assert StateInput.has_type(input_type), "Input type {} not found in StateInputs {}"\
-                                                .format(input_type, StateInput.ALL)
+        assert input_type in StateInput.ALL, "Input type {} not found in StateInputs {}"\
+                                             .format(input_type, StateInput.ALL)
 
-        # Assert that this state (or is parent(s)) has an appropriate receiver implemented
+        # Assert that this state, or one of its superclasses, has an appropriate receiver implemented
         assert type(message) in getattr(self, input_type), \
             "No handler for message type {} found in handlers for input type {} which has handlers: {}"\
             .format(type(message), input_type, getattr(self, input_type))
