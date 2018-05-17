@@ -6,32 +6,10 @@ ENTER, EXIT, RUN = 'enter', 'exit', 'run'
 DEBUG_FUNCS = (ENTER, EXIT, RUN)
 
 
-def input(msg_type):
-    """
-    Decorator for dynamically routing incoming ZMQ messages to handles in Node's state
-    """
-    # TODO -- add validation to make sure @receive calls are receiving the correct message type?
-    def decorate(func):
-        func._recv = msg_type
-        return func
-    return decorate
-
-
-# TODO -- possibly add another arg for replying to different senders in different ways
-def input_request(msg_type):
-    def decorate(func):
-        func._reply = msg_type
-        return func
-    return decorate
-
-
-def timeout(msg_type):
-    def decorate(func):
-        func._timeout = msg_type
-        return func
-    return decorate
-
 def debug_transition(transition_type):
+    """
+    Decorator to magically log any transitions on StateMachines
+    """
     def decorate(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -55,6 +33,9 @@ def debug_transition(transition_type):
 
 
 class StateMeta(type):
+    """
+    Metaclass to register state receivers.
+    """
     def __new__(cls, clsname, bases, clsdict):
         clsobj = super().__new__(cls, clsname, bases, clsdict)
         clsobj.log = get_logger(clsname)
@@ -72,7 +53,7 @@ class StateMeta(type):
             func = getattr(clsobj, r)
             if hasattr(func, '_recv'):
                 clsobj._receivers[func._recv] = func
-                subclasses = StateMeta.get_subclasses(func._recv)
+                subclasses = StateMeta._get_subclasses(func._recv)
                 for sub in filter(lambda k: k not in clsobj._receivers, subclasses):
                     clsobj._receivers[sub] = func
 
@@ -85,14 +66,14 @@ class StateMeta(type):
         return clsobj
 
     @staticmethod
-    def get_subclasses(obj_cls, subs=None) -> list:
+    def _get_subclasses(obj_cls, subs=None) -> list:
         if subs is None:
             subs = []
 
         new_subs = obj_cls.__subclasses__()
         subs.extend(new_subs)
         for sub in new_subs:
-            subs.extend(StateMeta.get_subclasses(sub, subs=subs))
+            subs.extend(StateMeta._get_subclasses(sub, subs=subs))
 
         return subs
 
