@@ -1,3 +1,20 @@
+
+
+class StateInput:
+    """
+    A grouping of constants
+    """
+    INPUT = '_route_input'
+    REQUEST = '_route_request'
+    TIMEOUT = '_route_timeout'
+
+    ALL = [INPUT, REQUEST, TIMEOUT]
+
+    @classmethod
+    def has_type(cls, input_type: str):
+        return type in cls._ALL
+
+
 """
 ----------------------------------------
 Input Decorators
@@ -12,21 +29,24 @@ envelopes from other actors, or timeout callbacks from unreceived replies.
 
 def input(msg_type):
     def decorate(func):
-        func._recv = msg_type
+        # func._recv = msg_type
+        setattr(func, StateInput.INPUT, msg_type)
         return func
     return decorate
 
 
 def input_request(msg_type):
     def decorate(func):
-        func._reply = msg_type
+        # func._reply = msg_type
+        setattr(func, StateInput.REQUEST, msg_type)
         return func
     return decorate
 
 
 def timeout(msg_type):
     def decorate(func):
-        func._timeout = msg_type
+        # func._timeout = msg_type
+        setattr(func, StateInput.TIMEOUT, msg_type)
         return func
     return decorate
 

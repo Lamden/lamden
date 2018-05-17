@@ -102,7 +102,7 @@ class Router:
                                                              "state {} with timeouts {}".format(type(env.message),
                                                               self.sm.state, self.sm.state._timeouts)
 
-        self.sm.state._receivers[type(env.messages)](self.sm.state, env.message)
+        self.sm.state._receivers[type(env.message)](self.sm.state, env.message)
 
     def _assert_handler_exists(self, msg_type, callback):
         """

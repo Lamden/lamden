@@ -1,9 +1,11 @@
 from cilantro.logger import get_logger
 from functools import wraps
+from cilantro.messages import MessageBase, Envelope
+from cilantro.protocol.statemachine.decorators import StateInput
+import inspect
 
-
-ENTER, EXIT, RUN = 'enter', 'exit', 'run'
-DEBUG_FUNCS = (ENTER, EXIT, RUN)
+_ENTER, _EXIT, _RUN = 'enter', 'exit', 'run'
+_DEBUG_FUNCS = (_ENTER, _EXIT, _RUN)
 
 
 def debug_transition(transition_type):
@@ -14,11 +16,11 @@ def debug_transition(transition_type):
         @wraps(func)
         def wrapper(*args, **kwargs):
             current_state = args[0]
-            if transition_type == RUN:
+            if transition_type == _RUN:
                 msg = "Running state {}".format(current_state)
             else:
                 trans_state = args[1]
-                msg = "Entering state {} from previous state {}" if transition_type == ENTER \
+                msg = "Entering state {} from previous state {}" if transition_type == _ENTER \
                     else "Exiting state {} to next state {}"
                 msg = msg.format(current_state, trans_state)
 
@@ -42,7 +44,7 @@ class StateMeta(type):
 
         # Add debug decorator to run/exit/enter methods
         for name, val in vars(clsobj).items():
-            if callable(val) and name in DEBUG_FUNCS:
+            if callable(val) and name in _DEBUG_FUNCS:
                 # print("Setting up debug logging for name {} with val {}".format(name, val))
                 setattr(clsobj, name, debug_transition(name)(val))
 
@@ -94,6 +96,39 @@ class State(metaclass=StateMeta):
 
     def run(self):
         pass
+
+    def call_input_handler(self, message: MessageBase, input_type: str, envelope: Envelope=None):
+        self._assert_has_input_handler(message, input_type)
+
+        func = self._get_input_handler(message, input_type)
+
+        if self._has_envelope_arg(func) and envelope:
+            self.log.debug("ENVELOPE DETECTED IN HANDLER ARGS")  # todo remove this
+            output = func(self, message, envelope=envelope)
+        else:
+            output = func(self, message)
+
+        return output
+
+    def _get_input_handler(self, message: MessageBase, input_type: str):
+        registry = getattr(self, input_type)
+        func = registry[type(message)]
+        return func
+
+    def _has_envelope_arg(self, func):
+        # TODO more robust logic that searches through parameter type annotations one that is typed with Envelope class
+        sig = inspect.signature(func)
+        return 'envelope' in sig.parameters
+
+    def _assert_has_input_handler(self, message: MessageBase, input_type: str):
+        # Assert that input_type is actually a recognized input_type
+        assert StateInput.has_type(input_type), "Input type {} not found in StateInputs {}"\
+                                                .format(input_type, StateInput.ALL)
+
+        # Assert that this state (or is parent(s)) has an appropriate receiver implemented
+        assert type(message) in getattr(self, input_type), \
+            "No handler for message type {} found in handlers for input type {} which has handlers: {}"\
+            .format(type(message), input_type, getattr(self, input_type))
 
     def __eq__(self, other):
         return type(self) == type(other)
