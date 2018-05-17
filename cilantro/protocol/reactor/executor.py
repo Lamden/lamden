@@ -4,18 +4,13 @@ from cilantro.messages import ReactorCommand, Envelope
 from collections import defaultdict
 from cilantro.protocol.structures import CappedSet, EnvelopeAuth
 import traceback
+from cilantro.protocol.statemachine import StateInput
 
 import asyncio, time
 import zmq.asyncio
 
 from typing import Union
 import types
-
-
-# Callbacks for routing incoming envelopes back to the application layer
-ROUTE_CALLBACK = 'route'
-ROUTE_REQ_CALLBACK = 'route_req'
-ROUTE_TIMEOUT_CALLBACK = 'route_timeout'
 
 
 # Internal constants (used as keys)
@@ -156,7 +151,7 @@ class SubPubExecutor(Executor):
 
     def _recv_pub_env(self, header: str, envelope: Envelope):
         self.log.debug("Recv'd pub envelope with header {} and env {}".format(header, envelope))
-        self.call_on_mp(callback=ROUTE_CALLBACK, envelope_binary=envelope.serialize())
+        self.call_on_mp(callback=StateInput.INPUT, envelope_binary=envelope.serialize())
 
     # TODO -- is looping over all pubs ok?
     def send_pub(self, filter: str, envelope: bytes):
@@ -265,7 +260,7 @@ class DealerRouterExecutor(Executor):
 
     def _recv_request_env(self, header: str, envelope: Envelope):
         self.log.debug("Recv REQUEST envelope with header {} and envelope {}".format(header, envelope))
-        self.call_on_mp(callback=ROUTE_REQ_CALLBACK, header=header, envelope_binary=envelope.serialize())
+        self.call_on_mp(callback=StateInput.REQUEST, header=header, envelope_binary=envelope.serialize())
 
     def _recv_reply_env(self, header: str, envelope: Envelope):
         self.log.debug("Recv REPLY envelope with header {} and envelope {}".format(header, envelope))
@@ -276,7 +271,7 @@ class DealerRouterExecutor(Executor):
             self.expected_replies[reply_uuid].cancel()
             del(self.expected_replies[reply_uuid])
 
-        self.call_on_mp(callback=ROUTE_CALLBACK, header=header, envelope_binary=envelope.serialize())
+        self.call_on_mp(callback=StateInput.INPUT, header=header, envelope_binary=envelope.serialize())
 
     def _timeout(self, url: str, request_envelope: bytes, reply_uuid: int):
         assert reply_uuid in self.expected_replies, "Timeout triggered but reply_uuid was not in expected_replies"
@@ -284,7 +279,7 @@ class DealerRouterExecutor(Executor):
                           .format(url, reply_uuid, request_envelope))
 
         del(self.expected_replies[reply_uuid])
-        self.call_on_mp(callback=ROUTE_TIMEOUT_CALLBACK, envelope_binary=request_envelope)
+        self.call_on_mp(callback=StateInput.TIMEOUT, envelope_binary=request_envelope)
 
     def add_router(self, url: str):
         assert self.router is None, "Attempted to add router on url {} but socket already configured".format(url)

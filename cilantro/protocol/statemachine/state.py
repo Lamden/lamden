@@ -65,23 +65,6 @@ class StateMeta(type):
                     for sub in filter(lambda k: k not in registry, StateMeta._get_subclasses(func_input_type)):
                         registry[sub] = func
 
-        # Configure receivers, repliers, and timeouts
-        # clsobj._receivers = {}
-        #
-        # for r in dir(clsobj):
-        #     func = getattr(clsobj, r)
-        #     if hasattr(func, '_recv'):
-        #         clsobj._receivers[func._recv] = func
-        #         subclasses = StateMeta._get_subclasses(func._recv)
-        #         for sub in filter(lambda k: k not in clsobj._receivers, subclasses):
-        #             clsobj._receivers[sub] = func
-        #
-        # # print("{} has _receivers: {}".format(clsobj.__name__, clsobj._receivers))
-        #
-        # # TODO -- config repliers and timeouts to support polymorphism as well
-        # clsobj._repliers = {r._reply: r for r in clsdict.values() if hasattr(r, '_reply')}
-        # clsobj._timeouts = {r._timeout: r for r in clsdict.values() if hasattr(r, '_timeout')}
-
         return clsobj
 
     @staticmethod
