@@ -53,8 +53,9 @@ class StateMachine:
 
         self.state.exit(ns, *args, **kwargs)
 
-        ns.reset_attrs()
-        ns.enter(self.state, *args, **kwargs)
+        prev_state = self.state
+        # ns.reset_attrs()
+        ns.enter(prev_state, *args, **kwargs)
 
         self.state = ns
         self.state.run()

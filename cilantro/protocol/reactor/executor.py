@@ -297,9 +297,13 @@ class DealerRouterExecutor(Executor):
                                                 callback_fn=self._recv_request_env)
 
     def add_dealer(self, url: str, id: str):
-        assert url not in self.dealers, "Url {} already in self.dealers {}".format(url, self.dealers)
-        self.log.info("Creating dealer socket for url {} with id {}".format(url, id))
+        if url in self.dealers:
+            self.log.warning("Attempted to add dealer {} that is already in self.dealers".format(url))
+            return
+        # assert url not in self.dealers, "Url {} already in self.dealers {}".format(url, self.dealers)
+
         assert isinstance(id, str), "'id' arg must be a string"
+        self.log.info("Creating dealer socket for url {} with id {}".format(url, id))
 
         socket = self.context.socket(socket_type=zmq.DEALER)
         socket.identity = id.encode('ascii')

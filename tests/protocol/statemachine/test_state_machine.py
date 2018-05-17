@@ -47,10 +47,15 @@ class LiftState(State):
         self.current_lift = DEFAULT_LIFT
         self.current_weight = DEFAULT_WEIGHT
 
-    def enter(self, prev_state, lift=DEFAULT_LIFT, weight=DEFAULT_WEIGHT):
+    def enter(self, prev_state, lift=False, weight=False):
+        if type(prev_state) is CodeState:
+            self.reset_attrs()
+
         self.log.debug("Entering state with lift {} and weight {}".format(lift, weight))
-        self.current_weight = weight
-        self.current_lift = lift
+        if weight:
+            self.current_weight = weight
+        if lift:
+            self.current_lift = lift
 
     def exit(self, next_state, *args, **kwargs):
         pass
