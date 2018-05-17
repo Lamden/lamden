@@ -1,5 +1,5 @@
 import inspect
-from cilantro.protocol.statemachine import StateMachine
+from cilantro.protocol.statemachine import StateMachine, StateInput, State
 from cilantro.messages import ReactorCommand, Envelope, MessageMeta, Seal, MessageBase
 from cilantro.protocol.reactor.executor import ROUTE_CALLBACK, ROUTE_REQ_CALLBACK, ROUTE_TIMEOUT_CALLBACK
 from cilantro.logger import get_logger
@@ -47,9 +47,21 @@ class Router:
         except Exception as e:
             self.log.error("\n\n!!!!!\nError unpacking cmd envelope {}\nCmd:\n{}\n!!!!\n".format(e, cmd))
 
+
+        # EXPERIMENT HACK TODO CLEANUP
+        hack_map = {ROUTE_REQ_CALLBACK: StateInput.REQUEST, ROUTE_CALLBACK: StateInput.INPUT,
+                    ROUTE_TIMEOUT_CALLBACK: StateInput.TIMEOUT}
+        state = self.sm.state
+        state._assert_has_input_handler(envelope.message, hack_map[cmd.callback])
+
+        reply = state.call_input_handler(envelope.message, hack_map[cmd.callback], envelope=envelope)
+        if reply:
+            self.sm.composer.send_reply(message=reply, request_envelope=envelope)
+
+
         # Assert state machine has an implemented handler for the message type and callback, then actually route it
-        self._assert_handler_exists(type(envelope.message), cmd.callback)
-        self.routes[cmd.callback](envelope)
+        # self._assert_handler_exists(type(envelope.message), cmd.callback)
+        # self.routes[cmd.callback](envelope)
 
     def _route(self, env: Envelope):
         """
@@ -58,15 +70,15 @@ class Router:
         """
         self.log.debug("Routing envelope: {}".format(env))
 
-        handler_fn = self.sm.state._receivers[type(env.message)]
-        sig = inspect.signature(handler_fn)
-        self.log.critical("handler_fn {} has signature {}".format(handler_fn, sig))
-
-        if 'envelope' in sig.parameters:
-            self.log.critical("\n\nENVELOPE DETECTED IN HANDLER!!!\n\n")
-            self.sm.state._receivers[type(env.message)](self.sm.state, env.message, envelope=env)
-        else:
-            self.sm.state._receivers[type(env.message)](self.sm.state, env.message)
+        # handler_fn = self.sm.state._receivers[type(env.message)]
+        # sig = inspect.signature(handler_fn)
+        # self.log.critical("handler_fn {} has signature {}".format(handler_fn, sig))
+        #
+        # if 'envelope' in sig.parameters:
+        #     self.log.critical("\n\nENVELOPE DETECTED IN HANDLER!!!\n\n")
+        #     self.sm.state._receivers[type(env.message)](self.sm.state, env.message, envelope=env)
+        # else:
+        #     self.sm.state._receivers[type(env.message)](self.sm.state, env.message)
 
     def _route_request(self, env: Envelope):
         """

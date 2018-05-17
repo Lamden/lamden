@@ -9,7 +9,7 @@
 from cilantro import Constants
 from cilantro.db import *
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, input, input_request, timeout
+from cilantro.protocol.statemachine import State, input, input_request, timeout, StateInput
 from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, \
                               TransactionContainer, NewBlockNotification, StateRequest
 from cilantro.utils import TestNetURLHelper
@@ -221,8 +221,8 @@ class MNRunState(MNBaseState):
         self.reset_attrs()
 
     @timeout(BlockDataRequest)
-    def timeout_block_req(self, request: BlockDataRequest, url):
-        self.log.critical("\n\nBlockDataRequest timed out for url {} with request data {}\n\n".format(url, request))
+    def timeout_block_req(self, request: BlockDataRequest, envelope: Envelope):
+        self.log.critical("\n\nBlockDataRequest timed out for envelope with request data {}\n\n".format(envelope, request))
 
     @input_request(StateRequest)
     def handle_state_req(self, request: StateRequest):
@@ -249,8 +249,10 @@ class Masternode(NodeBase):
         self.log.critical("Got tx: {}".format(tx))
 
         try:
-            self.state._receivers[type(tx)](self.state, tx)
+            # self.state._receivers[type(tx)](self.state, tx)
+            self.state.call_input_handler(tx, StateInput.INPUT)
             return web.Response(text="Successfully published transaction: {}".format(tx))
         except Exception as e:
+            self.log.error("\n Error publishing HTTP request...err = {}".format(e))
             return web.Response(text="fukt up processing request with err: {}".format(e))
 
