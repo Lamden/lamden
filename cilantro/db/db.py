@@ -142,6 +142,10 @@ def create_db(name, should_reset=False):
                    Column('tree', TEXT, nullable=False),
                    Column('signatures', TEXT, nullable=False))
 
+    state_meta = Table('state_meta', metadata,
+                        Column('number', Integer,),
+                        Column('hash', String(64), nullable=False))
+
     transactions = Table('transactions', metadata,
                          Column('key', String(64), nullable=False),
                          Column('value', TEXT, nullable=False))
@@ -156,6 +160,7 @@ def create_db(name, should_reset=False):
                    'constants': constants,
                    'blocks': blocks,
                    'transactions': transactions,
+                   'state_meta': state_meta,
                    'mapping': mapping})
 
     # create copies of the tables to hold temporary scratch by iterating through the metadata
