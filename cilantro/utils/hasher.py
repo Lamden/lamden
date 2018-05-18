@@ -37,9 +37,10 @@ class Hasher:
         if t is str:
             data = data.encode()
         elif t is int:
-            # data = bytes.fromhex(hex(data))  # how does one int --> bytes ...
-            # feast your eyes upon this forbidden hack
-            data = str(data).encode()  # TODO not this lmao
+            try:
+                data = bytes.fromhex(hex(data)[2:])
+            except:
+                data = bytes.fromhex('0' + hex(data)[2:])
         elif issubclass(t, MessageBase):
             data = data.serialize()
 

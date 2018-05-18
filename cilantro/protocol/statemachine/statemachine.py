@@ -42,20 +42,22 @@ class StateMachine:
     Is this what we want? or should each state be dealloc'd on exit(...) and alloc a new state before enter(...)? or
     should the 'reset instance var' behavior be left to the enter and exit of the states?
     """
-    def transition(self, next_state: type(State)):
+    def transition(self, next_state: type(State), *args, **kwargs):
         """
         TODO -- docstring
         :param next_state: The state to transition to. Must be a State class (not instance), and that class must be
         exist _STATES which is defined by the StateMachine subclass
         """
-        # print("\n---- STARTING TRANSITION -----")
-        # print("StateMachine transition to state: ", next_state)
+        assert issubclass(next_state, State), "next_state {} is not a subclass of State".format(next_state)
         assert next_state in self.states, "Transition next state {} not in states {}".format(next_state, self.states)
         ns = self.states[next_state]
 
-        self.state.exit(ns)
-        ns.enter(self.state)
+        self.state.exit(ns, *args, **kwargs)
+
+        prev_state = self.state
+        # ns.reset_attrs()
+        ns.enter(prev_state, *args, **kwargs)
+
         self.state = ns
         self.state.run()
 
-        # print("\n---- ENDING TRANSITION -----")

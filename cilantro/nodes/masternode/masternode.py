@@ -10,13 +10,15 @@ from cilantro import Constants
 from cilantro.db import *
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, input, input_request, timeout
-from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, TransactionContainer
+from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, \
+                              TransactionContainer, NewBlockNotification
 from cilantro.utils import TestNetURLHelper
 from aiohttp import web
 import asyncio
 
 from cilantro.protocol.structures import MerkleTree
 import hashlib
+
 
 class MNBaseState(State):
     def enter(self, prev_state): pass
@@ -76,30 +78,12 @@ class MNRunState(MNBaseState):
 
     def run(self):
         self.log.info("Starting web server")
-
-        # EXPERIMENTAL AF
         server = web.Server(self.parent.route_http)
         server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
-        # self.parent.server_task = server_future
         self.parent.tasks.append(server_future)
-        # self.parent.loop.create_server(server, "0.0.0.0", 8080)
-
-        self.log.critical("\n\n\n\n\n DOES THIS GET PRINTED \n\n\n\n\n")
 
     def exit(self, next_state):
         pass
-
-    def _start_http_server(self):
-        self.log.critical("\n\n STARTING HTTP SERVER IN DIFF THREAD \n\n")
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        app = web.Application()
-        app.router.add_post('/', self.parent.route_http)
-
-        web.run_app(app, host='0.0.0.0', port=int(Constants.Testnet.Masternode.ExternalPort))
-
-        self.log.critical("\n\n (code from end of _start_http_server) DOES THIS PRINT LOL \n\n")
 
     def _lookup_url(self, vk):
         # HACK TO GET SENDER URL -- TODO swap this /w overlay network or replace /w utility func
@@ -197,52 +181,53 @@ class MNRunState(MNBaseState):
         else:
             self.log.error("Received block data reply with tx hash {} that is not in tx_hashes")
 
+        # If we are done retreiving tranasctions, store the block
         if len(self.retrieved_txs) == len(self.tx_hashes):
-            self.log.critical("\n***\nDONE COLLECTING BLOCK DATA FROM NODES\n***\n")
-
-            block = self.current_contender
-
-            hash_of_nodes = self.compute_hash_of_nodes(block.nodes).hex()
-            tree = b"".join(block.nodes).hex()
-            signatures = "".join([merk_sig.signature for merk_sig in block.signatures])
-            # TODO STORE IT
-
-            with DB() as db:
-                tables = db.tables
-                q = insert(tables.blocks).values(hash=hash_of_nodes, tree=tree, signatures=signatures)
-                db.execute(q)
-
-                for key, value in self.retrieved_txs.items():
-                    tx = {
-                        'key': key,
-                        'value': value
-                    }
-                    qq = insert(tables.transactions).values(tx)
-                    db.execute(qq)
-
-            import time
-            time.sleep(1)
-
-            rows = db.execute('select * from transactions')
-            b = rows.fetchall()
-
-            # Store transactions
-
-
-            print('hi')
-
-
-
-
-
-            # Need to store..
-            # 1) Root (or hash of nodes)
-            # 2) Merkle Tree
-            # 3) List of Signatures
-
+            self.new_block_procedure()
         else:
             self.log.critical("Still {} transactions yet to request until we can build the block"
                               .format(len(self.tx_hashes) - len(self.retrieved_txs)))
+
+    def new_block_procedure(self):
+        self.log.critical("\n***\nDONE COLLECTING BLOCK DATA FROM NODES\n***\n")
+
+        block = self.current_contender
+
+        hash_of_nodes = self.compute_hash_of_nodes(block.nodes).hex()
+        tree = b"".join(block.nodes).hex()
+        signatures = "".join([merk_sig.signature for merk_sig in block.signatures])
+
+        # Store the block + transaction data
+        block_num = -1
+        with DB() as db:
+            tables = db.tables
+            q = insert(tables.blocks).values(hash=hash_of_nodes, tree=tree, signatures=signatures)
+            q_result = db.execute(q)
+            block_num = q_result.lastrowid
+
+            for key, value in self.retrieved_txs.items():
+                tx = {
+                    'key': key,
+                    'value': value
+                }
+                qq = insert(tables.transactions).values(tx)
+                db.execute(qq)
+
+        assert block_num > 0, "Block num must be greater than 0! Was it not set in the DB() context session?"
+
+        # Notify delegates of new block
+        self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {} and block num {}"
+                      .format(hash_of_nodes, block_num))
+        notif = NewBlockNotification.create(new_block_hash=hash_of_nodes, new_block_num=block_num)
+        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
+
+        # Reset block update ivars
+        self.block_contenders = []
+        self.node_states = {}
+        self.tx_hashes = []
+        self.retrieved_txs = {}
+        self.is_updating = False
+        self.current_contender = None
 
     @timeout(BlockDataRequest)
     def timeout_block_req(self, request: BlockDataRequest, url):
@@ -250,7 +235,7 @@ class MNRunState(MNBaseState):
         pass
 
 
-class MNNewBlockState(MNBaseState): pass
+# class MasterNodeNewBlockState()
 
 
 class Masternode(NodeBase):
@@ -274,5 +259,4 @@ class Masternode(NodeBase):
             return web.Response(text="Successfully published transaction: {}".format(tx))
         except Exception as e:
             return web.Response(text="fukt up processing request with err: {}".format(e))
-    # def __init__(self, loop, url, signing_key):
-    #     super().__init__(url=url, signing_key=signing_key, loop=loop)
+

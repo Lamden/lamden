@@ -25,8 +25,9 @@ from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.utils import TestNetURLHelper
+from cilantro.db import *
 from cilantro.messages import TransactionBase, BlockContender, Envelope, MerkleSignature, \
-    BlockDataRequest, BlockDataReply
+    BlockDataRequest, BlockDataReply, NewBlockNotification
 
 
 class DelegateBaseState(State):
@@ -47,6 +48,12 @@ class DelegateBaseState(State):
         self.log.debug("Received signature with data {} but not in consensus, adding it to queue"
                        .format(sig._data))
         self.parent.pending_sigs.append(sig)
+
+    @input(NewBlockNotification)
+    def handle_new_block_notif(self, notif: NewBlockNotification):
+        self.log.critical("got new block notification, but logic to handle it is not implement in subclass")
+        raise NotImplementedError
+        # TODO -- if we are in anything but consensus state, we need to go to update state
 
 
 class DelegateBootState(DelegateBaseState):
@@ -73,11 +80,16 @@ class DelegateBootState(DelegateBaseState):
         # Add dealer socket for Masternode
         self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
 
+        # Sub to Masternode for block updates
+        self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
+                                     filter=Constants.ZmqFilters.MasternodeDelegate)
+
     def run(self):
         self.parent.transition(DelegateInterpretState)
 
     def exit(self, next_state):
         pass
+
 
 class DelegateInterpretState(DelegateBaseState):
     """Delegate interpret state has the delegate receive and interpret that transactions are valid according to the
@@ -91,6 +103,12 @@ class DelegateInterpretState(DelegateBaseState):
         for tx in self.parent.pending_txs:
             self.interpret_tx(tx)
         self.parent.pending_txs = []
+
+        # (for debugging) TODO remove
+        with DB() as db:
+            r = db.execute('select * from state_meta')
+            results = r.fetchall()
+            self.log.critical("\n\n LATEST STATE INFO: {} \n\n".format(results))
 
     def exit(self, next_state):
         # Flush queue if we are not leaving interpreting for consensus
@@ -120,12 +138,21 @@ class DelegateConsensusState(DelegateBaseState):
     one another, confirm the signature is valid, and then vote/tally the results"""
     NUM_DELEGATES = len(Constants.Testnet.Delegates)
 
+    """
+    TODO -- move this 'variable setting' logic outside of init. States should have their own constructor, which init
+    will call in the superclass. Optionally, states should be able to set a variable if they want all their properties
+    flushed each time. 
+    """
     def __init__(self, state_machine=None):
         super().__init__(state_machine=state_machine)
+        self._reset_instance()
+
+    def _reset_instance(self):
         self.signatures = []
         self.signature = None
         self.merkle = None
         self.merkle_hash = None
+        self.in_consensus = False
 
     def enter(self, prev_state):
         # Merkle-ize transaction queue and create signed merkle hash
@@ -150,7 +177,7 @@ class DelegateConsensusState(DelegateBaseState):
         self.check_majority()
 
     def exit(self, next_state):
-        self.signatures, self.signature, self.merkle, self.merkle_hash = [], None, None, None
+        self._reset_instance()
 
     def validate_sig(self, sig: MerkleSignature) -> bool:
         assert self.merkle_hash is not None, "Cannot validate signature without our merkle hash set"
@@ -177,6 +204,9 @@ class DelegateConsensusState(DelegateBaseState):
 
         if len(self.signatures) > self.NUM_DELEGATES // 2:
             self.log.critical("\n\n\nDelegate in consensus!\n\n\n")
+            self.in_consensus = True
+
+            # Create BlockContender and send it to Masternode
             bc = BlockContender.create(signatures=self.signatures, nodes=self.merkle.nodes)
             self.parent.composer.send_request_msg(message=bc, url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
             # once update confirmed from mn, transition to update state
@@ -202,8 +232,46 @@ class DelegateConsensusState(DelegateBaseState):
         reply = BlockDataReply.create(tx_binary)
         return reply
 
+    @input(NewBlockNotification)
+    def handle_new_block_notif(self, notif: NewBlockNotification):
+        self.log.info("Delegate got new block notification: {}".format(notif))
 
-class DelegateUpdateState(DelegateBaseState): pass
+        # If the new block hash is the same as our 'scratch block', then just copy scratch to state
+        if bytes.fromhex(notif.block_hash) == self.merkle_hash:
+            self.log.critical("\n\n New block hash is the same as ours!!! \n\n")
+            self.update_from_scratch(new_block_hash=notif.block_hash, new_block_num=notif.block_num)
+            self.parent.transition(DelegateInterpretState)
+        # Otherwise, our block is out of consensus and we must request the latest from a Masternode
+        else:
+            self.log.critical("\n\n New block hash {} does not match out own merkle_hash {} \n\n"
+                              .format(notif.block_hash, self.merkle_hash))
+            self.parent.transition(DelegateOutConsensusUpdateState)
+
+    def update_from_scratch(self, new_block_hash, new_block_num):
+        self.log.info("Copying Scratch to State")
+        self.parent.interpreter.flush(update_state=True)
+
+        self.log.info("Updating state_meta with new hash {} and block num {}".format(new_block_hash, new_block_num))
+        with DB() as db:
+            db.execute('delete from state_meta')
+            q = insert(db.tables.state_meta).values(number=new_block_num, hash=new_block_hash)
+            db.execute(q)
+
+
+
+class DelegateInConsensusUpdateState(DelegateBaseState): pass
+
+
+class DelegateOutConsensusUpdateState(DelegateBaseState):
+
+    def enter(self, prev_state):
+        pass
+
+    def run(self):
+        pass
+
+    def exit(self, next_state):
+        pass
 
 
 ## TESTING
@@ -254,7 +322,7 @@ class DelegateUpdateState(DelegateBaseState): pass
 
 class Delegate(NodeBase):
     _INIT_STATE = DelegateBootState
-    _STATES = [DelegateBootState, DelegateInterpretState, DelegateConsensusState, DelegateUpdateState]
+    _STATES = [DelegateBootState, DelegateInterpretState, DelegateConsensusState]
 
     def __init__(self, loop, url=None, signing_key=None, name='Delegate'):
         super().__init__(loop=loop, url=url, signing_key=signing_key, name=name)

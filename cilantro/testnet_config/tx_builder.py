@@ -31,6 +31,7 @@ def seed_wallets(amount=10000, i=0):
             q = insert(db.tables.balances).values(wallet=wallet[1].encode(), amount=amount)
             db.execute(q)
 
+
 def send_tx(sender, receiver, amount):
     # if sender not in KNOWN_ADRS:
     #     raise ValueError("Unknown address {} not in preloaded wallets".format(sender))
@@ -41,7 +42,6 @@ def send_tx(sender, receiver, amount):
     # r = requests.post(MN_URL, data=Envelope.create(tx).serialize())
     r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
     print("Request status code: {}".format(r.status_code))
-
 
 
 def send_vote():
