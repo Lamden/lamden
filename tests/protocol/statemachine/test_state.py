@@ -75,6 +75,11 @@ class TrafficLightYellowState(TrafficLightBaseState):
     def enter_from_broken_or_fixing(self, prev_state):
         pass
 
+    # UNCOMMENT THIS AND VERIFY AN ASSERTION IS THROWN WHEN ANY TEST IS RUN
+    # @enter_from(TrafficLightBrokenState)
+    # def this_should_blow_up_cause_another_handler_for_that_state_already_exists(self):
+    #     pass
+
 
 class TrafficLightGreenState(TrafficLightBaseState):
     @input_request(StatusRequest)
@@ -111,6 +116,17 @@ class StateTest(TestCase):
         self.assertTrue(hasattr(state.exit_general, TransitionDecor.EXIT))
         self.assertEqual(getattr(state.exit_general, TransitionDecor.EXIT), TransitionDecor.ACCEPT_ALL)
 
+    def test_config_trans_enter_any_doesnt_exit(self):
+        mock_sm = MagicMock()
+
+        state = TrafficLightYellowState(mock_sm)
+
+        self.assertTrue(hasattr(state, TransitionDecor.ENTER))
+        self.assertTrue(hasattr(state, TransitionDecor.EXIT))
+
+        self.assertTrue(getattr(state, TransitionDecor.EXIT) is None)
+        self.assertTrue(getattr(state, TransitionDecor.ENTER) is None)
+
     def test_enter_from_one_decorator(self):
         mock_sm = MagicMock()
 
@@ -142,12 +158,21 @@ class StateTest(TestCase):
         """
         """
         mock_sm = MagicMock()
-        stop_msg = ForceStopMessage("stop it dude srsly")
 
         state = TrafficLightBaseState(mock_sm)
 
         expected_handler = TrafficLightBaseState.enter_general
         actual_handler = state._get_transition_handler(TransitionDecor.ENTER, EmptyState)
+
+        self.assert_funcs_equal(expected_handler, actual_handler)
+
+    def get_transition_handler_specific(self):
+        mock_sm = MagicMock()
+
+        state = TrafficLightYellowState(mock_sm)
+
+        expected_handler = state.enter_from_red
+        actual_handler = state._get_transition_handler(TransitionDecor.ENTER, TrafficLightRedState)
 
         self.assert_funcs_equal(expected_handler, actual_handler)
 
