@@ -8,7 +8,7 @@ dill==0.2.7.1
 ecdsa==0.13
 ed25519==1.4
 idna==2.6
--e git+https://github.com/Lamden/kademlia.git@master#egg=kademlia
+git+https://github.com/Lamden/kademlia.git@master#egg=kademlia
 mysql-connector-python-rf==2.2.2
 ntplib==0.3.3
 plyvel==1.0.4

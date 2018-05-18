@@ -64,7 +64,7 @@ def start_mysqld():
    --default-storage-engine ROCKSDB \
    --default-tmp-storage-engine MyISAM \
    --binlog_format ROW \
-   --user=$(cat /etc/hostname) &')
+   --user=mysql &')
 
 
 class TestBootstrap(BaseNetworkTestCase):
