@@ -8,7 +8,7 @@ dill==0.2.7.1
 ecdsa==0.13
 ed25519==1.4
 idna==2.6
--e git+https://github.com/Lamden/kademlia.git@master#egg=kademlia
+git+https://github.com/Lamden/kademlia.git@master#egg=kademlia
 mysql-connector-python-rf==2.2.2
 ntplib==0.3.3
 plyvel==1.0.4
@@ -29,4 +29,4 @@ twofish==0.3.0
 urllib3==1.22
 uvloop==0.9.1
 yarl==1.1.0
--e git+https://github.com/Lamden/vmnet.git@master#egg=vmnet
+git+https://github.com/Lamden/vmnet.git@master#egg=vmnet

@@ -1,0 +1,34 @@
+version: "2.3"
+networks:
+  cilantro:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16
+          ip-range: 172.29.5.0/24
+          gateway: 172.29.5.253
+services:
+  base:
+    build:
+      context: ${LOCAL_PATH}/cilantro
+      dockerfile: ${DOCKER_DIR}/cilantro_base
+    image: cilantro_base
+    volumes:
+      - type: bind
+        source: /storage/docker/mysql-datadir
+        target: /var/lib/mysql
+  node:
+    ip: 172.29.5.x
+    stdin_open: true
+    tty: true
+    range:
+      - 1
+      - 16
+    build:
+      context: ${LOCAL_PATH}/cilantro
+      dockerfile: ${DOCKER_DIR}/cilantro_base
+    image: cilantro_base
+    volumes:
+      - type: bind
+        source: ${LOCAL_PATH}/cilantro
+        target: /app/

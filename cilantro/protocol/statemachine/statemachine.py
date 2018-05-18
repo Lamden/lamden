@@ -1,4 +1,5 @@
 from cilantro.protocol.statemachine.state import State, EmptyState
+from kademlia.dht import DHT
 
 
 class StateMachine:

@@ -5,6 +5,7 @@ from collections import defaultdict
 from cilantro.protocol.structures import CappedSet, EnvelopeAuth
 import traceback
 
+from kademlia.dht import DHT
 import asyncio, time
 import zmq.asyncio
 
@@ -16,6 +17,7 @@ import types
 ROUTE_CALLBACK = 'route'
 ROUTE_REQ_CALLBACK = 'route_req'
 ROUTE_TIMEOUT_CALLBACK = 'route_timeout'
+ROUTE_STATUS_CALLBACK = 'route_status'
 
 
 # Internal constants (used as keys)
@@ -369,5 +371,24 @@ class DealerRouterExecutor(Executor):
         # cancel all futures, close all sockets
         pass
 
-
-
+# class DHTExecutor(Executor):
+#     def __init__(self, loop, context, inproc_socket):
+#         super().__init__(loop, context, inproc_socket)
+#         self.connected = {}
+#         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
+#
+#     def _recv_status_update(self, header: str, msg: str):
+#         self.log.debug("Recv STATUS_UPDATE header {} and msg {}".format(header, msg))
+#         self.call_on_mp(callback=ROUTE_STATUS_CALLBACK, header=header, envelope_binary=str.encode(msg))
+#
+#     def add_dht(self, verifying_key: str, update_func):
+#         # TODO get a workflow that runs on VM so we can test /w discovery
+#         self.dht = DHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
+#                        ctx=self.context, alpha=Constants.Overlay.Alpha,
+#                        ksize=Constants.Overlay.Ksize, max_peers=Constants.Overlay.MaxPeers)
+#         self.dht.status_update = classmethod(update_func)
+#
+#     def teardown(self):
+#         # TODO -- implement
+#         # cancel all futures, close all sockets
+#         pass
