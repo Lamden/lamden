@@ -5,9 +5,8 @@ from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.protocol.networks import *
 import asyncio, os, warnings
 
-log = get_logger("Main")
+log = get_logger(__name__)
 log.debug("-- MAIN THREAD ({}) --".format(os.getenv('HOST_IP', '127.0.0.1')))
-ip_list = os.getenv('NODE','127.0.0.1').split(',')[1:8]
 
 def random_envelope():
     sk, vk = ED25519Wallet.new()
@@ -16,13 +15,15 @@ def random_envelope():
 
 class PubNode(BaseNode, Grouping):
     def __init__(self):
-        super(PubNode, self).__init__()
+        super().__init__()
+        super(BaseNode, self).__init__()
+        super(Grouping, self).__init__()
 
     async def debug_forever_pub(self):
         while True:
-            self.designate_next_group()
-            log.debug('sending {}'.format(env))
             env = random_envelope()
+            log.debug('sending {}'.format(env))
+            self.designate_next_group()
             self.composer.send_pub_env(envelope=env, filter='')
             await asyncio.sleep(1)
 

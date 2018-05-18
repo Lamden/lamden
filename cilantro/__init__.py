@@ -116,12 +116,25 @@ class Constants:
             else:
                 setattr(last_class, snake_to_pascal(k), d[k])
 
+    # @classmethod
+    # def load_to_env(cls, d, basename=None):
+    #     for k in d:
+    #         keyname = '_'.join([snake_to_pascal(basename).upper(), snake_to_pascal(k).upper()]) if basename else snake_to_pascal(k).upper()
+    #         if type(d[k]) == dict:
+    #             cls.load_to_env(d[k], keyname)
+    #         elif type(d[k]) == list:
+    #             pass
+    #         else:
+    #             print(type(d[k]), d[k])
+    #             os.environ[keyname] = str(d[k])
+
     @classmethod
     def __str__(cls):
         return str(cls.json)
 
-
+# Constants.load_to_env(config)
 Constants.build_from_json(config)
+# print(os.environ)
 Constants.json = config
 
 c = __import__('cilantro.protocol.proofs', fromlist=[Constants.Protocol.Proofs])

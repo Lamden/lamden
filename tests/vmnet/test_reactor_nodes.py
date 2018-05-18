@@ -4,15 +4,18 @@ import unittest, time, random
 
 def run_pub():
     from cilantro.nodes.utilitynodes import PubNode
-    import time, asyncio
+    import time, asyncio, os
     p = PubNode()
+    p.regroup(os.getenv('NODE').split(','))
     time.sleep(5)
     future = asyncio.ensure_future(p.debug_forever_pub())
     p.loop.run_forever()
 
 def run_sub():
     from cilantro.nodes.utilitynodes import SubNode
+    import os
     s = SubNode('172.29.5.1')
+    s.regroup(os.getenv('NODE').split(','))
     s.loop.run_forever()
 
 class TestReactorNodes(BaseNetworkTestCase):
