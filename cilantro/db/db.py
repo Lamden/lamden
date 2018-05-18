@@ -12,7 +12,6 @@ Classes include:
 
 from multiprocessing import Lock
 import os, json
-
 from cilantro.logger import get_logger
 from sqlalchemy import *
 from sqlalchemy.sql.visitors import *
