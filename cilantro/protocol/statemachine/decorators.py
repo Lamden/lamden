@@ -1,5 +1,4 @@
-
-
+import cilantro.protocol.statemachine.state
 """
 ----------------------------------------
 Input Decorators
@@ -105,10 +104,54 @@ def _transition_state(handlers_attr: str, args):
         return decorate
 
 
-def enter_state(*args):
-    return _transition_state(handlers_attr='_enter_handlers', args=args)
+class TransitionDecor:
+    ENTER = '_enter'
+    EXIT = '_exit'
+
+    ENTER_ANY = '_enter_any_state'
+    EXIT_ANY = '_exit_any_state'
+
+    ACCEPT_ALL = '_ACCEPT_ALL_STATES'
+
+    _ANY_MAPPING = {ENTER: ENTER_ANY, EXIT: EXIT_ANY}
+
+    @classmethod
+    def get_any_attr(cls, trans_attr):
+        assert trans_attr in cls._ANY_MAPPING, "can only fetch the 'any transition' attribute from enter or exit"
+        return cls._ANY_MAPPING[trans_attr]
 
 
-def exit_state(*args):
-    return _transition_state(handlers_attr='_exit_handlers', args=args)
+def _set_state_registry(func, attr_name, states):
+    registry = []
+
+    for s in states:
+        assert issubclass(s, cilantro.protocol.statemachine.state.State), \
+            "Transition func decorator arg {} must be a State subclass".format(s)
+        registry.append(s)
+
+    setattr(func, attr_name, registry)
+    return func
+
+
+def enter_from(*args):
+    def decorate(func):
+        return _set_state_registry(func, TransitionDecor.ENTER, args)
+        # func._enter_states = []
+        # for s in args:
+        #     assert issubclass(s, cilantro.protocol.statemachine.state.State)
+        #     func._enter_states.append(s)
+        #
+        #     return func
+    return decorate
+
+def enter_from_any(func):
+    setattr(func, TransitionDecor.ENTER, TransitionDecor.ACCEPT_ALL)
+    return func
+
+def exit_from(*args):
+    pass
+
+def exit_from_any(func):
+    setattr(func, TransitionDecor.EXIT, TransitionDecor.ACCEPT_ALL)
+    return func
 

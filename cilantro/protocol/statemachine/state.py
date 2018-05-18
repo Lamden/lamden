@@ -1,8 +1,9 @@
 from cilantro.logger import get_logger
 from functools import wraps
 from cilantro.messages import MessageBase, Envelope
-from cilantro.protocol.statemachine.decorators import StateInput
+from cilantro.protocol.statemachine.decorators import StateInput, TransitionDecor
 import inspect
+from collections import defaultdict
 
 _ENTER, _EXIT, _RUN = 'enter', 'exit', 'run'
 _DEBUG_FUNCS = (_ENTER, _EXIT, _RUN)
@@ -43,12 +44,92 @@ class StateMeta(type):
         clsobj.log = get_logger(clsname)
 
         # Add debug decorator to run/exit/enter methods
+        StateMeta._config_debugging(clsobj)
+        # for name, val in vars(clsobj).items():
+        #     if callable(val) and name in _DEBUG_FUNCS:
+        #         # print("Setting up debug logging for name {} with val {}".format(name, val))
+        #         setattr(clsobj, name, debug_transition(name)(val))
+
+        # Configure receivers, repliers, and timeouts
+        StateMeta._config_input_handlers(clsobj)
+
+        # Configure entry and exit handlers
+        StateMeta._config_transitions(clsobj)
+
+        return clsobj
+
+    @staticmethod
+    def _get_subclasses(obj_cls, subs=None) -> list:
+        if subs is None:
+            subs = []
+
+        new_subs = obj_cls.__subclasses__()
+        subs.extend(new_subs)
+        for sub in new_subs:
+            subs.extend(StateMeta._get_subclasses(sub, subs=subs))
+
+        return subs
+
+    @staticmethod
+    def _config_transitions(clsobj):
+        # TODO -- use dir(..) or vars(...) here... I think vars cause we don't want this to be touched by polymorph yea?
+        # or do we...?
+        for trans_attr in (TransitionDecor.ENTER, TransitionDecor.EXIT):
+            setattr(clsobj, trans_attr, {})
+            setattr(clsobj, TransitionDecor.get_any_attr(trans_attr), None)
+
+            for r in dir(clsobj):
+                func = getattr(clsobj, r)
+
+                if hasattr(func, trans_attr):
+                    states = getattr(func, trans_attr)
+
+                    if states == TransitionDecor.ACCEPT_ALL:
+                        # Sanity check to make sure this class doesnt have a any transition decorator already applied
+                        any_attr_val = getattr(clsobj, TransitionDecor.get_any_attr(trans_attr))
+                        assert any_attr_val is None, "ANY transition decorator already set to {} for class {}!"\
+                                                     .format(any_attr_val, clsobj)
+
+                        setattr(clsobj, TransitionDecor.get_any_attr(trans_attr), func)
+                    else:
+                        trans_registry = getattr(clsobj, trans_attr)
+                        for state in states:
+                            # Sanity check to make sure another handler is not already defined for this state
+                            assert state not in trans_registry, "{} transition decorator already defined for State {}" \
+                                                                " with transition registry {} .. (dupe = {})"\
+                                                                .format(trans_attr, state, trans_registry, state)
+                            trans_registry[state] = func
+
+
+        # entry_general_handler = None
+        #
+        # entry_handlers = defaultdict(list)
+        #
+        # for r in dir(clsobj):
+        #     func = getattr(clsobj, r)
+        #
+        #     if hasattr(func, '_enter_handlers'):
+        #         handlers = getattr(func, '_enter_handlers')
+        #         print("func {} handles entry for states {}".format(func, handlers))
+        #
+        #         if handlers == 'ALL STATES':
+        #             print("all states handler detected for func {}".format(func))
+        #             entry_general_handler = func
+        #         for handle in handlers:
+        #             entry_handlers[handle].append(func)
+        #
+        # entry_handlers['ALL_STATES'] = entry_general_handler
+        # clsobj._entry_handlers = entry_handlers
+
+    @staticmethod
+    def _config_debugging(clsobj):
         for name, val in vars(clsobj).items():
             if callable(val) and name in _DEBUG_FUNCS:
                 # print("Setting up debug logging for name {} with val {}".format(name, val))
                 setattr(clsobj, name, debug_transition(name)(val))
 
-        # Configure receivers, repliers, and timeouts
+    @staticmethod
+    def _config_input_handlers(clsobj):
         for input_type in StateInput.ALL:
             setattr(clsobj, input_type, {})
 
@@ -64,42 +145,6 @@ class StateMeta(type):
 
                     for sub in filter(lambda k: k not in registry, StateMeta._get_subclasses(func_input_type)):
                         registry[sub] = func
-
-        # Configure entry and exit handlers
-        entry_general_handler = None
-
-        from collections import defaultdict
-        entry_handlers = defaultdict(list)
-
-        for r in dir(clsobj):
-            func = getattr(clsobj, r)
-
-            if hasattr(func, '_enter_handlers'):
-                handlers = getattr(func, '_enter_handlers')
-                print("func {} handles entry for states {}".format(func, handlers))
-
-                if handlers == 'ALL STATES':
-                    print("all states handler detected for func {}".format(func))
-                    entry_general_handler = func
-                for handle in handlers:
-                    entry_handlers[handle].append(func)
-
-        entry_handlers['ALL_STATES'] = entry_general_handler
-        clsobj._entry_handlers = entry_handlers
-
-        return clsobj
-
-    @staticmethod
-    def _get_subclasses(obj_cls, subs=None) -> list:
-        if subs is None:
-            subs = []
-
-        new_subs = obj_cls.__subclasses__()
-        subs.extend(new_subs)
-        for sub in new_subs:
-            subs.extend(StateMeta._get_subclasses(sub, subs=subs))
-
-        return subs
 
 
 class State(metaclass=StateMeta):
@@ -154,6 +199,29 @@ class State(metaclass=StateMeta):
         assert type(message) in getattr(self, input_type), \
             "No handler for message type {} found in handlers for input type {} which has handlers: {}"\
             .format(type(message), input_type, getattr(self, input_type))
+
+    def _get_transition_handler(self, trans_type, state):
+        assert trans_type in (TransitionDecor.ENTER, TransitionDecor.EXIT), "trans_type arg must be _ENTER or _EXIT"
+        assert issubclass(state, State), "state arg must be a State class"
+
+        trans_registry = getattr(self, trans_type)
+
+        self.log.debug("LOOKING UP STATE {} IN TRANS REGISTRY {}".format(state, trans_registry))  # TODO remove
+
+        # First see if a specific transition handler exists
+        if state in trans_registry:
+            self.log.debug("specific handler {} found for state {}!".format(trans_registry[state], state))
+            return trans_registry[state]
+
+        # Next, see if there is an ANY handler (a 'wildcard' handler configured to capture all states)
+        any_handler = getattr(self, TransitionDecor.get_any_attr(trans_type))
+        if any_handler:
+            return any_handler
+
+        # At this point, no handler could be found. Warn the user and return None
+        self.log.warning("\nCAREFUL -- no {} transition handler found for state {}. Any_handler = {} ... Transition "
+                         "Registry = {}".format(trans_type, state, any_handler, trans_registry))
+        return None
 
     def __eq__(self, other):
         return type(self) == type(other)
