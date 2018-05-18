@@ -1,4 +1,4 @@
-from cilantro.protocol.statemachine import StateMachine, State
+from cilantro.protocol.statemachine import *
 from unittest import TestCase
 
 
@@ -10,6 +10,7 @@ The proper way to do this would prolly be to mock all this stuff, but that would
 
 DEFAULT_LIFT = None
 DEFAULT_WEIGHT = 0
+
 
 class SleepState(State):
     def reset_attrs(self):
@@ -24,6 +25,9 @@ class SleepState(State):
     def run(self):
         pass
 
+    # @enter_state
+    def enter_general(self, prev_state):
+        self.log.debug("general entry from prev state {}".format(prev_state))
 
 class CodeState(State):
     def reset_attrs(self):
@@ -39,6 +43,13 @@ class CodeState(State):
     def run(self):
         pass
 
+    @enter_state
+    def enter_general(self, prev_state):
+        self.log.debug("general entry from prev state {}".format(prev_state))
+
+    @enter_state(SleepState)
+    def enter_from_sleep(self, prev_state):
+        self.log.debug("SLEEP STATE SPECIFIC entered from previous state {}".format(prev_state))
 
 class LiftState(State):
     BENCH, SQUAT, DEADLIFT = 'BENCH', 'SQUAT', 'DEAD LIFT'
@@ -73,6 +84,12 @@ class StuMachine(StateMachine):
 
 
 class StateMachineTest(TestCase):
+
+    # FOR DEBUGGING TODO remove this later
+    def test_experiment(self):
+        sm = StuMachine()
+
+        sm.start()
 
     def test_start(self):
         """

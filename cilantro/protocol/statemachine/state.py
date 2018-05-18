@@ -65,6 +65,28 @@ class StateMeta(type):
                     for sub in filter(lambda k: k not in registry, StateMeta._get_subclasses(func_input_type)):
                         registry[sub] = func
 
+        # Configure entry and exit handlers
+        entry_general_handler = None
+
+        from collections import defaultdict
+        entry_handlers = defaultdict(list)
+
+        for r in dir(clsobj):
+            func = getattr(clsobj, r)
+
+            if hasattr(func, '_enter_handlers'):
+                handlers = getattr(func, '_enter_handlers')
+                print("func {} handles entry for states {}".format(func, handlers))
+
+                if handlers == 'ALL STATES':
+                    print("all states handler detected for func {}".format(func))
+                    entry_general_handler = func
+                for handle in handlers:
+                    entry_handlers[handle].append(func)
+
+        entry_handlers['ALL_STATES'] = entry_general_handler
+        clsobj._entry_handlers = entry_handlers
+
         return clsobj
 
     @staticmethod
