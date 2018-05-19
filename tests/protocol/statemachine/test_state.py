@@ -180,6 +180,16 @@ class StateTest(TestCase):
 
         self._assert_funcs_equal(expected_handler, actual_handler)
 
+    def test_get_transition_handler_exit_any(self):
+        mock_sm = MagicMock()
+
+        state = TrafficLightRedState(mock_sm)
+
+        expected_handler = state.exit_general
+        actual_handler = state._get_transition_handler(TransitionDecor.EXIT, TrafficLightYellowState)
+
+        self._assert_funcs_equal(expected_handler, actual_handler)
+
     def get_transition_handler_specific(self):
         mock_sm = MagicMock()
 
