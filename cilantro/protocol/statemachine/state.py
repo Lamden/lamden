@@ -74,21 +74,40 @@ class StateMeta(type):
     def _config_transitions(clsobj):
         # TODO -- use dir(..) or vars(...) here... I think vars cause we don't want this to be touched by polymorph yea?
         # or do we...?
+
+        print("processing clsobj {}".format(clsobj))
+
         for trans_attr in (TransitionDecor.ENTER, TransitionDecor.EXIT):
             setattr(clsobj, trans_attr, {})
             setattr(clsobj, TransitionDecor.get_any_attr(trans_attr), None)
 
-            for r in dir(clsobj):
+            vars_copy = vars(clsobj)
+            # for r in dir(clsobj):
+            for r in vars_copy:
                 func = getattr(clsobj, r)
+
+                print("processing func name {} with value {} on class {}".format(r, func, clsobj))
 
                 if hasattr(func, trans_attr):
                     states = getattr(func, trans_attr)
 
                     if states == TransitionDecor.ACCEPT_ALL:
-                        # Sanity check to make sure this class doesnt have a any transition decorator already applied
+
+                        # DEBUG REMOVE THIS LATER
+                        print("FOUND AN ACCEPT_ALL entry decorator for func {}".format(func))
+                        # END DEBUG
+
                         any_attr_val = getattr(clsobj, TransitionDecor.get_any_attr(trans_attr))
-                        assert any_attr_val is None, "ANY transition decorator already set to {} for class {}!"\
-                                                     .format(any_attr_val, clsobj)
+                        # If we already set this value to the same func before, then ignore
+                        if any_attr_val == func:
+                            print("\n\n any recevier already set; skipping it\n\n")
+                            continue
+
+                        # Sanity check to make sure this class doesnt have a any transition decorator already applied
+                        assert any_attr_val is None, "ANY transition {} decorator already set to {} for class {}! " \
+                                                     "(attempted to set it again to func: {})"\
+                                                     # .format(trans_attr, any_attr_val, clsobj, func)
+
 
                         setattr(clsobj, TransitionDecor.get_any_attr(trans_attr), func)
                     else:
