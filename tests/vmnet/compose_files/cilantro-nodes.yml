@@ -5,7 +5,7 @@ networks:
     ipam:
       config:
         - subnet: 172.29.0.0/16
-          ip-range: 172.29.5.0/24
+          iprange: 172.29.5.0/24
           gateway: 172.29.5.253
 services:
   base:
