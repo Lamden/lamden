@@ -3,8 +3,8 @@ import zmq.asyncio
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages import ReactorCommand
-from kademlia.dht import DHT
 from cilantro import Constants
+from kade.dht import DHT
 import inspect
 
 import uvloop
@@ -14,6 +14,9 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 CHILD_RDY_SIG = b'ReactorDaemon Process Ready'
 KILL_SIG = b'DIE'
 
+class ReactorDHT(DHT):
+    def status_update(self, *args, **kwargs):
+        print('in the daemon:{}'.format(kwargs))
 
 class ReactorDaemon:
     def __init__(self, url, verifying_key=None, name='Node'):
@@ -32,10 +35,14 @@ class ReactorDaemon:
         self.socket.connect(self.url)
 
         # TODO get a workflow that runs on VM so we can test /w discovery
-        # self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
-        # self.dht = DHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
-        #                ctx=self.context, alpha=Constants.Overlay.Alpha,
-        #                ksize=Constants.Overlay.Ksize, max_peers=Constants.Overlay.MaxPeers)
+        self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
+
+        self.dht = ReactorDHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
+                       alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
+                       max_peers=Constants.Overlay.MaxPeers, block=False)
+        # log.debug('Ended up connecting to... {}'.format(self.dht.network.bootstrappableNeighbors()))
+
+        # self.dht.set_status_update_callback(_status_update)
 
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name

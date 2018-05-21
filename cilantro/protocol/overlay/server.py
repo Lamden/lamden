@@ -7,7 +7,7 @@ REMOVE THIS LATER ONCE OVERLAY NET IS CHILL
 """
 
 import asyncio
-from kademlia.network import Server
+from kade.network import Server
 from cilantro.logger import get_logger
 from cilantro.utils.test import MPTesterBase, mp_testable
 

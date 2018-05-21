@@ -1,0 +1,73 @@
+version: "2.3"
+networks:
+  cilantro:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16
+          iprange: 172.29.5.0/24
+          gateway: 172.29.5.253
+services:
+  base:
+    build:
+      context: ${LOCAL_PATH}/cilantro
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    image: cilantro_base.dev
+    volumes:
+      - type: bind
+        source: /storage/docker/mysql-datadir
+        target: /var/lib/mysql
+  masternode:
+    ip: 172.29.5.1
+    stdin_open: true
+    tty: true
+    build:
+      context: ${LOCAL_PATH}/cilantro
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    image: cilantro_base.dev
+    volumes:
+      - type: bind
+        source: ${LOCAL_PATH}/cilantro
+        target: /app/
+  witness:
+    ip: 172.29.6.x
+    range:
+      - 1
+      - 2
+    stdin_open: true
+    tty: true
+    build:
+      context: ${LOCAL_PATH}/cilantro
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    image: cilantro_base.dev
+    volumes:
+      - type: bind
+        source: ${LOCAL_PATH}/cilantro
+        target: /app/
+  delegate:
+    ip: 172.29.7.x
+    range:
+      - 1
+      - 4
+    stdin_open: true
+    tty: true
+    build:
+      context: ${LOCAL_PATH}/cilantro
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    image: cilantro_base.dev
+    volumes:
+      - type: bind
+        source: ${LOCAL_PATH}/cilantro
+        target: /app/
+  mgmt:
+    ip: 172.29.5.0
+    stdin_open: true
+    tty: true
+    build:
+      context: ${LOCAL_PATH}/cilantro
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    image: cilantro_base.dev
+    volumes:
+      - type: bind
+        source: ${LOCAL_PATH}/cilantro
+        target: /app/
