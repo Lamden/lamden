@@ -71,8 +71,6 @@ class StateMeta(type):
         # TODO -- use dir(..) or vars(...) here... I think vars cause we don't want this to be touched by polymorph yea?
         # or do we...?
 
-        print("processing clsobj {}".format(clsobj))
-
         for trans_attr in (TransitionDecor.ENTER, TransitionDecor.EXIT):
             setattr(clsobj, trans_attr, {})
             setattr(clsobj, TransitionDecor.get_any_attr(trans_attr), None)
@@ -82,16 +80,10 @@ class StateMeta(type):
             for r in vars_copy:
                 func = getattr(clsobj, r)
 
-                print("processing func name {} with value {} on class {}".format(r, func, clsobj))
-
                 if hasattr(func, trans_attr):
                     states = getattr(func, trans_attr)
 
                     if states == TransitionDecor.ACCEPT_ALL:
-
-                        # DEBUG REMOVE THIS LATER
-                        print("FOUND AN ACCEPT_ALL entry decorator for func {}".format(func))
-                        # END DEBUG
 
                         any_attr_val = getattr(clsobj, TransitionDecor.get_any_attr(trans_attr))
                         # If we already set this value to the same func before, then ignore
