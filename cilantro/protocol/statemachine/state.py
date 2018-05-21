@@ -71,8 +71,6 @@ class StateMeta(type):
         # TODO -- use dir(..) or vars(...) here... I think vars cause we don't want this to be touched by polymorph yea?
         # or do we...?
 
-        print("processing clsobj {}".format(clsobj))
-
         for trans_attr in (TransitionDecor.ENTER, TransitionDecor.EXIT):
             setattr(clsobj, trans_attr, {})
             setattr(clsobj, TransitionDecor.get_any_attr(trans_attr), None)
@@ -82,16 +80,10 @@ class StateMeta(type):
             for r in vars_copy:
                 func = getattr(clsobj, r)
 
-                print("processing func name {} with value {} on class {}".format(r, func, clsobj))
-
                 if hasattr(func, trans_attr):
                     states = getattr(func, trans_attr)
 
                     if states == TransitionDecor.ACCEPT_ALL:
-
-                        # DEBUG REMOVE THIS LATER
-                        print("FOUND AN ACCEPT_ALL entry decorator for func {}".format(func))
-                        # END DEBUG
 
                         any_attr_val = getattr(clsobj, TransitionDecor.get_any_attr(trans_attr))
                         # If we already set this value to the same func before, then ignore
@@ -146,16 +138,7 @@ class State(metaclass=StateMeta):
         self.reset_attrs()
 
     def reset_attrs(self):
-        pass
-
-    def enter(self, prev_state, *args, **kwargs):
-        pass
-
-    def exit(self, next_state, *args, **kwargs):
-        pass
-
-    def run(self):
-        pass
+        raise NotImplementedError("reset_attrs must be implemented for any State subclass")
 
     def call_input_handler(self, message, input_type: str, envelope=None):
         # TODO assert type message is MessageBase, and envelope is Envelope ???
@@ -198,9 +181,9 @@ class State(metaclass=StateMeta):
 
     def _assert_has_input_handler(self, message: MessageBase, input_type: str):
         # Assert that input_type is actually a recognized input_type
+
         assert input_type in StateInput.ALL, "Input type {} not found in StateInputs {}"\
                                              .format(input_type, StateInput.ALL)
-
         # Assert that this state, or one of its superclasses, has an appropriate receiver implemented
         assert type(message) in getattr(self, input_type), \
             "No handler for message type {} found in handlers for input type {} which has handlers: {}"\
@@ -216,7 +199,7 @@ class State(metaclass=StateMeta):
 
         # First see if a specific transition handler exists
         if state in trans_registry:
-            self.log.debug("specific handler {} found for state {}!".format(trans_registry[state], state))
+            self.log.debug("specific {} handler {} found for state {}!".format(trans_type, trans_registry[state], state))
             return trans_registry[state]
 
         # Next, see if there is an ANY handler (a 'wildcard' handler configured to capture all states)
@@ -225,18 +208,39 @@ class State(metaclass=StateMeta):
             return any_handler
 
         # At this point, no handler could be found. Warn the user and return None
-        self.log.warning("\nCAREFUL -- no {} transition handler found for state {}. Any_handler = {} ... Transition "
+        self.log.warning("\nNo {} transition handler found for state {}. Any_handler = {} ... Transition "
                          "Registry = {}".format(trans_type, state, any_handler, trans_registry))
         return None
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        """
+        An equality check with superpowers used heavily in State + StateMachine classes for type introspection. This
+        method should return true if both self and other are the same CLASS of state. Other may be either another
+        state instance, or a state class
+        """
+        # Case 1 -- 'other' is a State subclass
+        if type(other) is StateMeta:
+            return type(self) == other
+
+        # Case 2 -- 'other' is a State instance
+        elif isinstance(other, State):
+            return type(self) == type(other)
+
+        # Otherwise, this is an invalid comparison ('other' belongs to unknown equivalence class)
+        else:
+            raise ValueError("Invalid comparison -- RHS (right hand side of equation) must be either a State subclass "
+                             "instance or Class (not {})".format(other))
+
+        # return type(self) == type(other)
 
     def __repr__(self):
         return type(self).__name__
 
 
 class EmptyState(State):
+    def reset_attrs(self):
+        pass
+
     @exit_from_any
     def exit_any(self, prev_state):
         pass

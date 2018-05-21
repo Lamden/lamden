@@ -27,6 +27,9 @@ class RebootMessage(Message): pass
 class StatusRequest(Message): pass
 class MysteriousMessage(Message): pass
 
+class TrafficLightBrokenState(State): pass
+class TrafficLightFixingState(State): pass
+
 
 class TrafficLightBaseState(State):
     @input(ForceStopMessage)
@@ -41,9 +44,8 @@ class TrafficLightBaseState(State):
     def enter_general(self, prev_state):
         pass
 
-
-class TrafficLightBrokenState(State): pass
-class TrafficLightFixingState(State): pass
+    def reset_attrs(self):
+        pass
 
 
 class TrafficLightRedState(TrafficLightBaseState):
@@ -113,6 +115,47 @@ class StateTest(TestCase):
         (i.e. some_state_instance.handle_this)
         """
         self.assertEqual(func1.__qualname__, func2.__qualname__)
+
+    def test_eq_instance(self):
+        mock_sm = MagicMock()
+
+        state1 = TrafficLightYellowState(mock_sm)
+        state2 = TrafficLightYellowState(mock_sm)
+
+        self.assertTrue(state1 == state2)
+
+    def test_eq_class(self):
+        mock_sm = MagicMock()
+
+        state1 = TrafficLightYellowState(mock_sm)
+
+        self.assertTrue(state1 == TrafficLightYellowState)
+
+    def test_eq_instance_false(self):
+        mock_sm = MagicMock()
+
+        state1 = TrafficLightYellowState(mock_sm)
+        state2 = TrafficLightRedState(mock_sm)
+
+        self.assertFalse(state1 == state2)
+
+    def test_eq_class_false(self):
+        mock_sm = MagicMock()
+
+        state1 = TrafficLightYellowState(mock_sm)
+
+        self.assertFalse(state1 == TrafficLightRedState)
+
+    def test_eq_raises(self):
+        def comp_states(state1, state2):
+            return state1 == state2
+
+        mock_sm = MagicMock()
+
+        state = TrafficLightYellowState(mock_sm)
+        not_a_state = {'this is fersure': 'not a state instance or class lol'}
+
+        self.assertRaises(ValueError, comp_states, state, not_a_state)
 
     def test_enter_any_decorator(self):
         mock_sm = MagicMock()

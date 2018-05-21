@@ -136,12 +136,6 @@ def _set_state_registry(func, attr_name, states):
 def enter_from(*args):
     def decorate(func):
         return _set_state_registry(func, TransitionDecor.ENTER, args)
-        # func._enter_states = []
-        # for s in args:
-        #     assert issubclass(s, cilantro.protocol.statemachine.state.State)
-        #     func._enter_states.append(s)
-        #
-        #     return func
     return decorate
 
 def enter_from_any(func):
@@ -149,7 +143,9 @@ def enter_from_any(func):
     return func
 
 def exit_from(*args):
-    pass
+    def decorate(func):
+        return _set_state_registry(func, TransitionDecor.EXIT, args)
+    return decorate
 
 def exit_from_any(func):
     setattr(func, TransitionDecor.EXIT, TransitionDecor.ACCEPT_ALL)

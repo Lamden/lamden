@@ -58,6 +58,10 @@ class VanillaInterpreter:
     def get_queue_binary(self) -> list:
         return [row[0].serialize() for row in self.queue]
 
+    @property
+    def queue_len(self):
+        return len(self.queue)
+
     def interpret_transaction(self, tx):
         """
         Interprets the transaction, and updates scratch/balance state as necessary.
