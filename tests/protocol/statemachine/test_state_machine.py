@@ -16,16 +16,7 @@ class SleepState(State):
     def reset_attrs(self):
         pass
 
-    def enter(self, prev_state, *args, **kwargs):
-        pass
-
-    def exit(self, next_state, *args, **kwargs):
-        pass
-
-    def run(self):
-        pass
-
-    # @enter_state
+    @enter_from_any
     def enter_general(self, prev_state):
         self.log.debug("general entry from prev state {}".format(prev_state))
 
@@ -34,14 +25,19 @@ class CodeState(State):
         self.lang = None
         self.activity = None
 
-    def enter_any(self, prev_state, *args, **kwargs):
-        pass
+    # def enter_any(self, prev_state, *args, **kwargs):
+    #     pass
+    #
+    # def exit_any(self, next_state, *args, **kwargs):
+    #     pass
 
-    def exit_any(self, next_state, *args, **kwargs):
-        pass
+    # If the StuMachine tries to code first thing in the morn before lifting he goes back to sleep
+    @enter_from(SleepState)
+    def enter_from_sleep(self, prev_state):
+        assert prev_state is SleepState, "wtf prev_state is not sleep state .... ?"
 
-    def run(self):
-        pass
+        self.log.debug("Entering CodeState from sleep state. Nah. Going back to bed.")
+        self.parent.transition(SleepState)
 
     @enter_from_any
     def enter_general(self, prev_state):
@@ -157,3 +153,14 @@ class StateMachineTest(TestCase):
         self.assertTrue(type(sm.state) is LiftState)
         self.assertEqual(sm.state.current_lift, DEFAULT_LIFT)
         self.assertEqual(sm.state.current_weight, DEFAULT_WEIGHT)
+
+    def test_transition_inside_enter(self):
+        """
+        Tests transitioning inside the enter method of a state
+        """
+        sm = StuMachine()
+
+        sm.start()
+
+        self.assertTrue(sm.state == SleepState)
+

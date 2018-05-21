@@ -13,6 +13,7 @@ from cilantro.protocol.statemachine import State, input, input_request, timeout,
 from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, \
                               TransactionContainer, NewBlockNotification, StateRequest
 from cilantro.utils import TestNetURLHelper
+from cilantro.protocol.statemachine import *
 from aiohttp import web
 import asyncio
 
@@ -21,10 +22,6 @@ import hashlib
 
 
 class MNBaseState(State):
-    def enter(self, prev_state): pass
-    def exit(self, next_state): pass
-    def run(self): pass
-
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
         self.log.critical("mn about to pub for tx {}".format(tx))  # debug line
@@ -41,7 +38,8 @@ class MNBaseState(State):
 
 
 class MNBootState(MNBaseState):
-    def enter(self, prev_state):
+    @enter_from_any
+    def enter_any(self, prev_state):
         self.log.critical("MN URL: {}".format(self.parent.url))
         self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
         self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
@@ -49,8 +47,9 @@ class MNBootState(MNBaseState):
     def run(self):
         self.parent.transition(MNRunState)
 
-    def exit(self, next_state):
-        pass
+    @exit_from_any
+    def exit_any(self, next_state):
+        self.log.debug("Bootstate exiting for next state {}".format(next_state))
 
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):

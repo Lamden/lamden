@@ -148,15 +148,6 @@ class State(metaclass=StateMeta):
     def reset_attrs(self):
         pass
 
-    def enter(self, prev_state, *args, **kwargs):
-        pass
-
-    def exit(self, next_state, *args, **kwargs):
-        pass
-
-    def run(self):
-        pass
-
     def call_input_handler(self, message, input_type: str, envelope=None):
         # TODO assert type message is MessageBase, and envelope is Envelope ???
         self._assert_has_input_handler(message, input_type)
@@ -198,9 +189,9 @@ class State(metaclass=StateMeta):
 
     def _assert_has_input_handler(self, message: MessageBase, input_type: str):
         # Assert that input_type is actually a recognized input_type
+
         assert input_type in StateInput.ALL, "Input type {} not found in StateInputs {}"\
                                              .format(input_type, StateInput.ALL)
-
         # Assert that this state, or one of its superclasses, has an appropriate receiver implemented
         assert type(message) in getattr(self, input_type), \
             "No handler for message type {} found in handlers for input type {} which has handlers: {}"\
@@ -216,7 +207,7 @@ class State(metaclass=StateMeta):
 
         # First see if a specific transition handler exists
         if state in trans_registry:
-            self.log.debug("specific handler {} found for state {}!".format(trans_registry[state], state))
+            self.log.debug("specific {} handler {} found for state {}!".format(trans_type, trans_registry[state], state))
             return trans_registry[state]
 
         # Next, see if there is an ANY handler (a 'wildcard' handler configured to capture all states)
@@ -225,12 +216,30 @@ class State(metaclass=StateMeta):
             return any_handler
 
         # At this point, no handler could be found. Warn the user and return None
-        self.log.warning("\nCAREFUL -- no {} transition handler found for state {}. Any_handler = {} ... Transition "
+        self.log.warning("\nNo {} transition handler found for state {}. Any_handler = {} ... Transition "
                          "Registry = {}".format(trans_type, state, any_handler, trans_registry))
         return None
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        """
+        An equality check with superpowers used heavily in State + StateMachine classes for type introspection. This
+        method should return true if both self and other are the same CLASS of state. Other may be either another
+        state instance, or a state class
+        """
+        # Case 1 -- 'other' is a State subclass
+        if type(other) is StateMeta:
+            return type(self) == other
+
+        # Case 2 -- 'other' is a State instance
+        elif isinstance(other, State):
+            return type(self) == type(other)
+
+        # Otherwise, this is an invalid comparison ('other' belongs to unknown equivalence class)
+        else:
+            raise ValueError("Invalid comparison -- RHS (right hand side of equation) must be either a State subclass "
+                             "instance or Class (not {})".format(other))
+
+        # return type(self) == type(other)
 
     def __repr__(self):
         return type(self).__name__
