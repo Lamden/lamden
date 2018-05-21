@@ -9,10 +9,11 @@
 from cilantro import Constants
 from cilantro.db import *
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, input, input_request, timeout
+from cilantro.protocol.statemachine import State, input, input_request, timeout, StateInput
 from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, \
-                              TransactionContainer, NewBlockNotification
+                              TransactionContainer, NewBlockNotification, StateRequest
 from cilantro.utils import TestNetURLHelper
+from cilantro.protocol.statemachine import *
 from aiohttp import web
 import asyncio
 
@@ -21,10 +22,6 @@ import hashlib
 
 
 class MNBaseState(State):
-    def enter(self, prev_state): pass
-    def exit(self, next_state): pass
-    def run(self): pass
-
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
         self.log.critical("mn about to pub for tx {}".format(tx))  # debug line
@@ -35,23 +32,27 @@ class MNBaseState(State):
     def recv_block(self, block: BlockContender):
         self.log.warning("Current state not configured to handle block contender: {}".format(block))
 
-    async def process_request(self, request):
-        self.log.warning("Current state not configured to process POST request {}".format(request))
+    @input_request(StateRequest)
+    def handle_state_req(self, request: StateRequest):
+        self.log.warning("Current state not configured to handle state requests {}".format(request))
 
 
 class MNBootState(MNBaseState):
-    def enter(self, prev_state):
+    def reset_attrs(self):
+        pass
+
+    @enter_from_any
+    def enter_any(self, prev_state):
         self.log.critical("MN URL: {}".format(self.parent.url))
         self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
         self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
 
-        # TODO -- Configure witness groups
-
-    def run(self):
+        # Once done booting, transition to run
         self.parent.transition(MNRunState)
 
-    def exit(self, next_state):
-        pass
+    @exit_from_any
+    def exit_any(self, next_state):
+        self.log.debug("Bootstate exiting for next state {}".format(next_state))
 
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
@@ -61,11 +62,7 @@ class MNBootState(MNBaseState):
 class MNRunState(MNBaseState):
     NODE_AVAILABLE, NODE_AWAITING, NODE_TIMEOUT = range(3)
 
-    def __init__(self, state_machine):
-        super().__init__(state_machine=state_machine)
-
-        asyncio.set_event_loop(self.parent.loop)
-
+    def reset_attrs(self):
         self.block_contenders = []
         self.node_states = {}
         self.tx_hashes = []
@@ -73,17 +70,26 @@ class MNRunState(MNBaseState):
         self.is_updating = False
         self.current_contender = None
 
-    def enter(self, prev_state):
-        asyncio.set_event_loop(self.parent.loop)  # pretty sure this is unnecessary  - davis
+    # @enter_from_any
+    # def enter_any(self, prev_state):
+        # asyncio.set_event_loop(self.parent.loop)  # pretty sure this is unnecessary  - davis
+        # self.reset_attrs()
 
-    def run(self):
+    @enter_from(MNBootState)
+    def enter_from_boot(self, prev_state):
         self.log.info("Starting web server")
         server = web.Server(self.parent.route_http)
         server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
         self.parent.tasks.append(server_future)
 
-    def exit(self, next_state):
-        pass
+    # def run(self):
+    #     self.log.info("Starting web server")
+    #     server = web.Server(self.parent.route_http)
+    #     server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
+    #     self.parent.tasks.append(server_future)
+    #
+    # def exit(self, next_state):
+    #     pass
 
     def _lookup_url(self, vk):
         # HACK TO GET SENDER URL -- TODO swap this /w overlay network or replace /w utility func
@@ -119,6 +125,8 @@ class MNRunState(MNBaseState):
 
         self.tx_hashes = block.nodes[len(block.nodes) // 2:]
         # self.tx_hashes = block.nodes[:len(block.nodes) // 2]
+
+        # TODO sanity check to make sure len(block.nodes) >= 1
 
         # Validate merkle tree
         if not MerkleTree.verify_tree(self.tx_hashes, hash_of_nodes):
@@ -222,20 +230,15 @@ class MNRunState(MNBaseState):
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
 
         # Reset block update ivars
-        self.block_contenders = []
-        self.node_states = {}
-        self.tx_hashes = []
-        self.retrieved_txs = {}
-        self.is_updating = False
-        self.current_contender = None
+        self.reset_attrs()
 
     @timeout(BlockDataRequest)
-    def timeout_block_req(self, request: BlockDataRequest, url):
-        self.log.critical("\n\nBlockDataRequest timed out for url {} with request data {}\n\n".format(url, request))
-        pass
+    def timeout_block_req(self, request: BlockDataRequest, envelope: Envelope):
+        self.log.critical("\n\nBlockDataRequest timed out for envelope with request data {}\n\n".format(envelope, request))
 
-
-# class MasterNodeNewBlockState()
+    @input_request(StateRequest)
+    def handle_state_req(self, request: StateRequest):
+        self.log.critical("Masternode got state request {}".format(request))
 
 
 class Masternode(NodeBase):
@@ -254,9 +257,12 @@ class Masternode(NodeBase):
 
         self.log.critical("Got tx: {}".format(tx))
 
+        import traceback
         try:
-            self.state._receivers[type(tx)](self.state, tx)
+            # self.state._receivers[type(tx)](self.state, tx)
+            self.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
             return web.Response(text="Successfully published transaction: {}".format(tx))
         except Exception as e:
+            self.log.error("\n Error publishing HTTP request...err = {}".format(traceback.format_exc()))
             return web.Response(text="fukt up processing request with err: {}".format(e))
 

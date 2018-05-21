@@ -61,8 +61,6 @@ class ReactorDaemon:
             self.loop.stop()
             self.socket.close()
 
-    # TODO -- make a public 'send_cmd' API here that takes a ReactorCommand from the composer
-
     async def _recv_messages(self):
         # Notify parent proc that this proc is ready
         self.log.debug("reactorcore notifying main proc of ready")

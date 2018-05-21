@@ -21,6 +21,7 @@ from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, input, timeout, input_request
+from cilantro.protocol.statemachine.decorators import *
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.protocol.wallets import ED25519Wallet
@@ -31,12 +32,6 @@ from cilantro.messages import TransactionBase, BlockContender, Envelope, MerkleS
 
 
 class DelegateBaseState(State):
-    def enter(self, prev_state): pass
-
-    def exit(self, next_state): pass
-
-    def run(self): pass
-
     @input(TransactionBase)
     def handle_tx(self, tx: TransactionBase):
         self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
@@ -57,9 +52,16 @@ class DelegateBaseState(State):
 
 
 class DelegateBootState(DelegateBaseState):
-    """Delegate Boot State consists of subscribing to all delegates/all witnesses as well as publishing to own url
-    Also the delegate adds a router and dealer socket so masternode can identify which delegate is communicating"""
-    def enter(self, prev_state):
+    """
+    Delegate Boot State consists of subscribing to all delegates/all witnesses as well as publishing to own url
+    Also the delegate adds a router and dealer socket so masternode can identify which delegate is communicating
+    """
+
+    def reset_attrs(self):
+        pass
+
+    @enter_from_any
+    def enter_any(self, prev_state):
         # Sub to other delegates
         for delegate in [d for d in Constants.Testnet.Delegates if d['url'] != self.parent.url]:
             self.log.info("{} subscribing to delegate {}".format(self.parent.url, delegate['url']))
@@ -84,21 +86,23 @@ class DelegateBootState(DelegateBaseState):
         self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
                                      filter=Constants.ZmqFilters.MasternodeDelegate)
 
-    def run(self):
+        # Once done with boot state, transition to interpret
         self.parent.transition(DelegateInterpretState)
-
-    def exit(self, next_state):
-        pass
 
 
 class DelegateInterpretState(DelegateBaseState):
-    """Delegate interpret state has the delegate receive and interpret that transactions are valid according to the
+    """
+    Delegate interpret state has the delegate receive and interpret that transactions are valid according to the
     interpreter chosen. Once the number of transactions in the queue exceeds the size or a time interval is reached the
-    delegate moves into consensus state"""
-    def __init__(self, state_machine=None):
-        super().__init__(state_machine=state_machine)
+    delegate moves into consensus state
+    """
 
-    def enter(self, prev_state):
+    def reset_attrs(self):
+        pass
+
+    # TODO -- set this logic to only occur on enter from boot
+    @enter_from_any
+    def enter_from_any(self, prev_state):
         self.log.debug("Flushing pending tx queue of {} txs".format(len(self.parent.pending_txs)))
         for tx in self.parent.pending_txs:
             self.interpret_tx(tx)
@@ -110,9 +114,10 @@ class DelegateInterpretState(DelegateBaseState):
             results = r.fetchall()
             self.log.critical("\n\n LATEST STATE INFO: {} \n\n".format(results))
 
-    def exit(self, next_state):
+    @exit_from_any
+    def exit_any(self, next_state):
         # Flush queue if we are not leaving interpreting for consensus
-        if type(next_state) is not DelegateConsensusState:
+        if next_state != DelegateConsensusState:
             self.log.critical("Delegate exiting interpreting for state {}, flushing queue".format(next_state))
             self.parent.interpreter.flush(update_state=False)
 
@@ -125,12 +130,12 @@ class DelegateInterpretState(DelegateBaseState):
 
         self.log.debug("Size of queue: {}".format(len(self.parent.interpreter.queue)))
 
-        if len(self.parent.interpreter.queue) >= Constants.Nodes.MaxQueueSize:
+        if self.parent.interpreter.queue_len >= Constants.Nodes.MaxQueueSize:
             self.log.info("Consensus time!")
             self.parent.transition(DelegateConsensusState)
         else:
             self.log.debug("Not consensus time yet, queue is only size {}/{}"
-                           .format(len(self.parent.interpreter.queue), Constants.Nodes.MaxQueueSize))
+                           .format(self.parent.interpreter.queue_len, Constants.Nodes.MaxQueueSize))
 
 
 class DelegateConsensusState(DelegateBaseState):
@@ -143,18 +148,19 @@ class DelegateConsensusState(DelegateBaseState):
     will call in the superclass. Optionally, states should be able to set a variable if they want all their properties
     flushed each time. 
     """
-    def __init__(self, state_machine=None):
-        super().__init__(state_machine=state_machine)
-        self._reset_instance()
 
-    def _reset_instance(self):
+    def reset_attrs(self):
         self.signatures = []
         self.signature = None
         self.merkle = None
         self.merkle_hash = None
         self.in_consensus = False
 
-    def enter(self, prev_state):
+    # TODO -- i think this should only occur when entering from Interpretting state yea?
+    @enter_from_any
+    def enter_any(self, prev_state):
+        assert self.parent.interpreter.queue_len > 0, "Entered consensus state, but interpreter queue is empty!"
+
         # Merkle-ize transaction queue and create signed merkle hash
         all_tx = self.parent.interpreter.get_queue_binary()
         self.log.info("Delegate got tx from interpreter queue: {}".format(all_tx))
@@ -173,11 +179,11 @@ class DelegateConsensusState(DelegateBaseState):
         for sig in [s for s in self.parent.pending_sigs if self.validate_sig(s)]:
             self.signatures.append(sig)
 
-    def run(self):
         self.check_majority()
 
-    def exit(self, next_state):
-        self._reset_instance()
+    @exit_from_any
+    def exit_any(self, next_state):
+        self.reset_attrs()
 
     def validate_sig(self, sig: MerkleSignature) -> bool:
         assert self.merkle_hash is not None, "Cannot validate signature without our merkle hash set"
@@ -245,7 +251,7 @@ class DelegateConsensusState(DelegateBaseState):
         else:
             self.log.critical("\n\n New block hash {} does not match out own merkle_hash {} \n\n"
                               .format(notif.block_hash, self.merkle_hash))
-            self.parent.transition(DelegateOutConsensusUpdateState)
+            # self.parent.transition(DelegateOutConsensusUpdateState)
 
     def update_from_scratch(self, new_block_hash, new_block_num):
         self.log.info("Copying Scratch to State")
@@ -256,23 +262,6 @@ class DelegateConsensusState(DelegateBaseState):
             db.execute('delete from state_meta')
             q = insert(db.tables.state_meta).values(number=new_block_num, hash=new_block_hash)
             db.execute(q)
-
-
-
-class DelegateInConsensusUpdateState(DelegateBaseState): pass
-
-
-class DelegateOutConsensusUpdateState(DelegateBaseState):
-
-    def enter(self, prev_state):
-        pass
-
-    def run(self):
-        pass
-
-    def exit(self, next_state):
-        pass
-
 
 ## TESTING
 # from functools import wraps
@@ -324,16 +313,24 @@ class Delegate(NodeBase):
     _INIT_STATE = DelegateBootState
     _STATES = [DelegateBootState, DelegateInterpretState, DelegateConsensusState]
 
-    def __init__(self, loop, url=None, signing_key=None, name='Delegate'):
-        super().__init__(loop=loop, url=url, signing_key=signing_key, name=name)
+    # def __init__(self, loop, url=None, signing_key=None, name='Delegate'):
+    #     super().__init__(loop=loop, url=url, signing_key=signing_key, name=name)
+    #
+    #
+    #     # Shared between states
+    #     self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
+    #
+    #     # TODO -- add this as a property of the interpreter state, and implement functionality to pass data between
+    #     # states on transition, i.e sm.transition(NextState, arg1='hello', arg2='let_do+it')
+    #     # and the enter(...) of the next state should have these args
+    #     self.interpreter = VanillaInterpreter()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        # self.log = get_logger("Delegate-#{}".format(slot), auto_bg_val=slot)
-        # self.log.info("Delegate being created on slot {} with url {} and signing_key {}".format(slot, url, signing_key))
-
-        # Shared between states
+        # Properties shared among all states (ie via self.parent.some_prop)
         self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
 
-        # TODO -- add this as a property of the interpreter state, and implement functionality to pass data between
-        # states on transition, i.e sm.transition(NextState, arg1='hello', arg2='let_do+it')
-        # and the enter(...) of the next state should have these args
+        #     # TODO -- add this as a property of the interpreter state, and implement functionality to pass data between
+        #     # states on transition, i.e sm.transition(NextState, arg1='hello', arg2='let_do+it')
         self.interpreter = VanillaInterpreter()
+

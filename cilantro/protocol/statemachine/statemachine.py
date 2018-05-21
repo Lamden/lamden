@@ -1,5 +1,5 @@
 from cilantro.protocol.statemachine.state import State, EmptyState
-from kade.dht import DHT
+from cilantro.protocol.statemachine.decorators import TransitionDecor
 
 
 class StateMachine:
@@ -37,27 +37,35 @@ class StateMachine:
         self.is_started = True
         self.transition(init_state)
 
-    """
-    NOTE: with this approach all internal attributes of each state persist between transitions.
-    Is this what we want? or should each state be dealloc'd on exit(...) and alloc a new state before enter(...)? or
-    should the 'reset instance var' behavior be left to the enter and exit of the states?
-    """
     def transition(self, next_state: type(State), *args, **kwargs):
         """
-        TODO -- docstring
+        TODO thiccer docstrings
         :param next_state: The state to transition to. Must be a State class (not instance), and that class must be
         exist _STATES which is defined by the StateMachine subclass
         """
         assert issubclass(next_state, State), "next_state {} is not a subclass of State".format(next_state)
         assert next_state in self.states, "Transition next state {} not in states {}".format(next_state, self.states)
+
         ns = self.states[next_state]
+        self._log("Transition from current state {} to next state {} ... with transition args {} and kwargs {}"
+                  .format(self.state, next_state, args, kwargs))
 
-        self.state.exit(ns, *args, **kwargs)
+        # Exit next state
+        self.state.call_transition_handler(TransitionDecor.EXIT, type(ns), *args, **kwargs)
 
+        # Set new state
         prev_state = self.state
-        # ns.reset_attrs()
-        ns.enter(prev_state, *args, **kwargs)
-
         self.state = ns
-        self.state.run()
 
+        # Enter next state
+        self.state.call_transition_handler(TransitionDecor.ENTER, type(prev_state), *args, **kwargs)
+
+    def _log(self, msg: str):
+        """
+        Attempts to log a message if this object has a property 'log' (which all BaseNodes should). If the object
+        does not have this property, then this message is printed
+        """
+        if hasattr(self, 'log'):
+            self.log.debug(msg)
+        else:
+            print(msg)

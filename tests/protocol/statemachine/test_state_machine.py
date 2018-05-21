@@ -1,4 +1,4 @@
-from cilantro.protocol.statemachine import StateMachine, State
+from cilantro.protocol.statemachine import *
 from unittest import TestCase
 
 
@@ -11,34 +11,41 @@ The proper way to do this would prolly be to mock all this stuff, but that would
 DEFAULT_LIFT = None
 DEFAULT_WEIGHT = 0
 
+
 class SleepState(State):
     def reset_attrs(self):
         pass
 
-    def enter(self, prev_state, *args, **kwargs):
-        pass
-
-    def exit(self, next_state, *args, **kwargs):
-        pass
-
-    def run(self):
-        pass
-
+    @enter_from_any
+    def enter_general(self, prev_state):
+        self.log.debug("general entry from prev state {}".format(prev_state))
 
 class CodeState(State):
     def reset_attrs(self):
         self.lang = None
         self.activity = None
 
-    def enter(self, prev_state, *args, **kwargs):
-        pass
+    # def enter_any(self, prev_state, *args, **kwargs):
+    #     pass
+    #
+    # def exit_any(self, next_state, *args, **kwargs):
+    #     pass
 
-    def exit(self, next_state, *args, **kwargs):
-        pass
+    # If the StuMachine tries to code first thing in the morn before lifting he goes back to sleep
+    @enter_from(SleepState)
+    def enter_from_sleep(self, prev_state):
+        assert prev_state is SleepState, "wtf prev_state is not sleep state .... ?"
 
-    def run(self):
-        pass
+        self.log.debug("Entering CodeState from sleep state. Nah. Going back to bed.")
+        self.parent.transition(SleepState)
 
+    @enter_from_any
+    def enter_general(self, prev_state):
+        self.log.debug("general entry from prev state {}".format(prev_state))
+
+    # @enter_from(SleepState)
+    # def enter_from_sleep(self, prev_state):
+    #     self.log.debug("SLEEP STATE SPECIFIC entered from previous state {}".format(prev_state))
 
 class LiftState(State):
     BENCH, SQUAT, DEADLIFT = 'BENCH', 'SQUAT', 'DEAD LIFT'
@@ -47,18 +54,19 @@ class LiftState(State):
         self.current_lift = DEFAULT_LIFT
         self.current_weight = DEFAULT_WEIGHT
 
-    def enter(self, prev_state, lift=False, weight=False):
-        if type(prev_state) is CodeState:
-            self.reset_attrs()
+    @enter_from_any
+    def enter_any(self, prev_state, lift=False, weight=False):
+        self.log.debug("Entering state from prev {} with lift {} and weight {}".format(prev_state, lift, weight))
 
-        self.log.debug("Entering state with lift {} and weight {}".format(lift, weight))
         if weight:
             self.current_weight = weight
         if lift:
             self.current_lift = lift
 
-    def exit(self, next_state, *args, **kwargs):
-        pass
+    @enter_from(CodeState)
+    def enter_from_code(self, prev_state, lift=False, weight=False):
+        self.log.debug("CODESTATE SPECIFIC entering from prev state {}".format(prev_state))
+        self.reset_attrs()
 
     def run(self):
         pass
@@ -139,3 +147,20 @@ class StateMachineTest(TestCase):
         self.assertTrue(type(sm.state) is LiftState)
         self.assertEqual(sm.state.current_lift, DEFAULT_LIFT)
         self.assertEqual(sm.state.current_weight, DEFAULT_WEIGHT)
+
+    def test_transition_inside_enter(self):
+        """
+        Tests transitioning inside the enter method of a state
+        """
+        sm = StuMachine()
+
+        sm.start()
+
+        self.assertTrue(sm.state == SleepState)
+
+        sm.transition(CodeState)  # the transition handler logic for this should put stu back to sleep
+
+        self.assertTrue(sm.state == SleepState)
+
+
+

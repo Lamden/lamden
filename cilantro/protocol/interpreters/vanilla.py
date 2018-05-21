@@ -45,11 +45,22 @@ class VanillaInterpreter:
             #     tables.db.execute(query)
             self.log.debug("Done updating state")
 
-        # TODO -- flush scratch
+        # Drop scratch
+        with DB() as db:
+            # NOTE -- this just drops the scratch version of 'balances' for now. If interpretation of tx's were to
+            #  operate on other tables, (and consequently other scratch tables), these would need to be dropped as well.
+            q = delete(db.tables.mapping[db.tables.balances])
+            self.log.critical("\n attemtpign to executing query {}".format(q))
+            db.execute(q)
+
         self.queue.clear()
 
     def get_queue_binary(self) -> list:
         return [row[0].serialize() for row in self.queue]
+
+    @property
+    def queue_len(self):
+        return len(self.queue)
 
     def interpret_transaction(self, tx):
         """
