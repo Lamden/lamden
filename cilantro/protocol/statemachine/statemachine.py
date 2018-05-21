@@ -69,5 +69,3 @@ class StateMachine:
             self.log.debug(msg)
         else:
             print(msg)
-
-
