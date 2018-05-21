@@ -1,11 +1,14 @@
 from cilantro import Constants
+from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.utils import Hasher
 from cilantro.messages import MessageBase, Seal, MessageMeta
 import math
 
-W = Constants.Protocol.Wallets
+# W = Constants.Protocol.Wallets
+W = ED25519Wallet
 
 UUID_SIZE = int(math.log2(Constants.Protocol.MaxUuid))  # size of UUID field on messagemeta struct as number of bits
+
 
 class EnvelopeAuth:
 
@@ -29,6 +32,9 @@ class EnvelopeAuth:
         :param message: The MessageBase, as a MessageBase instance or bytes (a serialized MessageBase)
         :return: The signed MessageMeta and MessageBase, as a 128 hex char long string
         """
+        # DEUBG LINE TODO remove below
+        print("\n\nVAL OF W: {}\n\n".format(W))
+
         assert type(meta) in (MessageMeta, bytes), "meta arg must be a MessageMeta or bytes, not {}".format(type(meta))
         assert type(message) is bytes or issubclass(type(message), MessageBase), \
             "Message must be a MessageBase or bytes, not {}".format(type(message))

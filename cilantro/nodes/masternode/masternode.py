@@ -38,13 +38,16 @@ class MNBaseState(State):
 
 
 class MNBootState(MNBaseState):
+    def reset_attrs(self):
+        pass
+
     @enter_from_any
     def enter_any(self, prev_state):
         self.log.critical("MN URL: {}".format(self.parent.url))
         self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
         self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
 
-    def run(self):
+        # Once done booting, transition to run
         self.parent.transition(MNRunState)
 
     @exit_from_any
@@ -67,18 +70,26 @@ class MNRunState(MNBaseState):
         self.is_updating = False
         self.current_contender = None
 
-    def enter(self, prev_state):
-        asyncio.set_event_loop(self.parent.loop)  # pretty sure this is unnecessary  - davis
-        self.reset_attrs()
+    # @enter_from_any
+    # def enter_any(self, prev_state):
+        # asyncio.set_event_loop(self.parent.loop)  # pretty sure this is unnecessary  - davis
+        # self.reset_attrs()
 
-    def run(self):
+    @enter_from(MNBootState)
+    def enter_from_boot(self, prev_state):
         self.log.info("Starting web server")
         server = web.Server(self.parent.route_http)
         server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
         self.parent.tasks.append(server_future)
 
-    def exit(self, next_state):
-        pass
+    # def run(self):
+    #     self.log.info("Starting web server")
+    #     server = web.Server(self.parent.route_http)
+    #     server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
+    #     self.parent.tasks.append(server_future)
+    #
+    # def exit(self, next_state):
+    #     pass
 
     def _lookup_url(self, vk):
         # HACK TO GET SENDER URL -- TODO swap this /w overlay network or replace /w utility func
@@ -114,6 +125,8 @@ class MNRunState(MNBaseState):
 
         self.tx_hashes = block.nodes[len(block.nodes) // 2:]
         # self.tx_hashes = block.nodes[:len(block.nodes) // 2]
+
+        # TODO sanity check to make sure len(block.nodes) >= 1
 
         # Validate merkle tree
         if not MerkleTree.verify_tree(self.tx_hashes, hash_of_nodes):
@@ -228,9 +241,6 @@ class MNRunState(MNBaseState):
         self.log.critical("Masternode got state request {}".format(request))
 
 
-# class MasterNodeNewBlockState()
-
-
 class Masternode(NodeBase):
     _INIT_STATE = MNBootState
     _STATES = [MNBootState, MNRunState]
@@ -247,11 +257,12 @@ class Masternode(NodeBase):
 
         self.log.critical("Got tx: {}".format(tx))
 
+        import traceback
         try:
             # self.state._receivers[type(tx)](self.state, tx)
-            self.state.call_input_handler(tx, StateInput.INPUT)
+            self.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
             return web.Response(text="Successfully published transaction: {}".format(tx))
         except Exception as e:
-            self.log.error("\n Error publishing HTTP request...err = {}".format(e))
+            self.log.error("\n Error publishing HTTP request...err = {}".format(traceback.format_exc()))
             return web.Response(text="fukt up processing request with err: {}".format(e))
 
