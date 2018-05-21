@@ -27,6 +27,9 @@ class RebootMessage(Message): pass
 class StatusRequest(Message): pass
 class MysteriousMessage(Message): pass
 
+class TrafficLightBrokenState(State): pass
+class TrafficLightFixingState(State): pass
+
 
 class TrafficLightBaseState(State):
     @input(ForceStopMessage)
@@ -41,9 +44,8 @@ class TrafficLightBaseState(State):
     def enter_general(self, prev_state):
         pass
 
-
-class TrafficLightBrokenState(State): pass
-class TrafficLightFixingState(State): pass
+    def reset_attrs(self):
+        pass
 
 
 class TrafficLightRedState(TrafficLightBaseState):

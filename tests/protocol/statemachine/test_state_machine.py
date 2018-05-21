@@ -43,9 +43,9 @@ class CodeState(State):
     def enter_general(self, prev_state):
         self.log.debug("general entry from prev state {}".format(prev_state))
 
-    @enter_from(SleepState)
-    def enter_from_sleep(self, prev_state):
-        self.log.debug("SLEEP STATE SPECIFIC entered from previous state {}".format(prev_state))
+    # @enter_from(SleepState)
+    # def enter_from_sleep(self, prev_state):
+    #     self.log.debug("SLEEP STATE SPECIFIC entered from previous state {}".format(prev_state))
 
 class LiftState(State):
     BENCH, SQUAT, DEADLIFT = 'BENCH', 'SQUAT', 'DEAD LIFT'
@@ -81,12 +81,6 @@ class StuMachine(StateMachine):
 
 
 class StateMachineTest(TestCase):
-
-    # FOR DEBUGGING TODO remove this later
-    def test_experiment(self):
-        sm = StuMachine()
-
-        sm.start()
 
     def test_start(self):
         """
@@ -163,4 +157,10 @@ class StateMachineTest(TestCase):
         sm.start()
 
         self.assertTrue(sm.state == SleepState)
+
+        sm.transition(CodeState)  # the transition handler logic for this should put stu back to sleep
+
+        self.assertTrue(sm.state == SleepState)
+
+
 

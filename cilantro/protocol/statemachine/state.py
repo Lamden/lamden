@@ -146,7 +146,7 @@ class State(metaclass=StateMeta):
         self.reset_attrs()
 
     def reset_attrs(self):
-        pass
+        raise NotImplementedError("reset_attrs must be implemented for any State subclass")
 
     def call_input_handler(self, message, input_type: str, envelope=None):
         # TODO assert type message is MessageBase, and envelope is Envelope ???
@@ -246,6 +246,9 @@ class State(metaclass=StateMeta):
 
 
 class EmptyState(State):
+    def reset_attrs(self):
+        pass
+
     @exit_from_any
     def exit_any(self, prev_state):
         pass
