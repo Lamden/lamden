@@ -39,22 +39,15 @@ def signal_handler(signal, frame):
 
 
 def start_delelegate(i):
-    def seed_wallets(amount=10000):
-        log.critical("Seeding wallets with amount {}".format(amount))
-        with DB('{}_{}'.format(DB_NAME, i), should_reset=True) as db:
-            log.critical("GOT DB WITH NAME: {}".format(db.db_name))
-            # for wallet in KNOWN_ADRS:
-            #     q = insert(db.tables.balances).values(wallet=wallet[1].encode(), amount=amount)
-            #     db.execute(q)
-
     log = get_logger("DelegateFactory")
-    db_name = DB_NAME + '_' + str(i)
+    db_name = DB_NAME + '_delegate_' + str(i)
+
     d_info = Constants.Testnet.Delegates[i]
     log.critical("\n***Instantiating a new delegate on slot {} with db name: {}, and info {}\n".format(i, db_name, d_info))
 
-    log.critical("Seeding wallets...")
     DB.set_context(db_name)
-    seed_wallets()
+    with DB(should_reset=True) as db:
+        pass
 
     NodeFactory.run_delegate(url=d_info['url'], signing_key=d_info['sk'], name="Delegate_{}".format(i+1))
 
@@ -62,11 +55,22 @@ def start_delelegate(i):
 def start_mn():
     log = get_logger("MasternodeFactor")
     log.critical("\n***Starting Masternode\n")
+
+    DB.set_context('{}_masternode'.format(DB_NAME))
+
+    with DB(should_reset=True) as db:
+        pass
+
     NodeFactory.run_masternode()
 
 
 def start_witness(i):
     log = get_logger("WitnessFactory")
+
+    DB.set_context('{}_witness_{}'.format(DB_NAME, i))
+    with DB(should_reset=True) as db:
+        pass
+
     w_info = Constants.Testnet.Witnesses[i]
     log.critical("\n\nStarting witness on slot {} with info {}\n\n".format(i, w_info))
     NodeFactory.run_witness(signing_key=w_info['sk'], url=w_info['url'], name="Witness_{}".format(i+1))

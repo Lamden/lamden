@@ -27,7 +27,7 @@ DB_NAME = 'cilantro'
 SCRATCH_PREFIX = 'scratch_'
 
 
-j = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
+constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
 
 def get_policy_for_node_list(l, name):
@@ -193,8 +193,8 @@ def create_db(name, should_reset=False):
         witnesses = []
 
         # add state for tables that are not masternodes and delegates as those get treated differently
-        for k in j.keys():
-            for item in j[k]:
+        for k in constitution_json.keys():
+            for item in constitution_json[k]:
                 if k != 'masternodes' and k != 'delegates' and k != 'witnesses':
                     t = getattr(tables, k)
                     db.execute(t.insert(item))
@@ -308,7 +308,7 @@ class DB(metaclass=DBSingletonMeta):
     def __init__(self, db_name, should_reset):
         self.db_name = db_name
         self.log = get_logger("DB-{}".format(db_name))
-        self.log.info("Creating DB instance for {}".format(db_name))
+        self.log.info("Creating DB instance for {} with should_reset={}".format(db_name, should_reset))
         self.lock = Lock()
 
         self.db, self.tables = create_db(db_name, should_reset)

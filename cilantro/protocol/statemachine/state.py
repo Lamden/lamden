@@ -88,7 +88,7 @@ class StateMeta(type):
                         any_attr_val = getattr(clsobj, TransitionDecor.get_any_attr(trans_attr))
                         # If we already set this value to the same func before, then ignore
                         if any_attr_val == func:
-                            print("\n\n any recevier already set; skipping it\n\n")
+                            # print("\n\n any recevier already set; skipping it\n\n")
                             continue
 
                         # Sanity check to make sure this class doesnt have a any transition decorator already applied
