@@ -33,7 +33,6 @@ def random_envelope(sk=None, tx=None):
     return Envelope.create_from_message(message=tx, signing_key=sk)
 
 
-# TODO -- support multiple classes mp_testable? or is this sketch
 @mp_testable(Composer)
 class MPComposer(MPTesterBase):
     @classmethod
@@ -54,21 +53,6 @@ class MPComposer(MPTesterBase):
         return composer, loop
 
 
-# TODO -- move this to a test util module or something
-@mp_testable(ReactorInterface)
-# class MPReactorInterface(MPTesterBase):
-#     @classmethod
-#     def build_obj(cls) -> tuple:
-#         mock_parent = MagicMock(spec=Router)
-#         loop = asyncio.new_event_loop()
-#         asyncio.set_event_loop(loop)
-#
-#         reactor = ReactorInterface(mock_parent, loop=loop)
-#
-#         return reactor, loop
-
-
-
 class TransportIntegrationTest(MPTestCase):
     def test_pubsub_1_1_1(self):
         """
@@ -79,7 +63,7 @@ class TransportIntegrationTest(MPTestCase):
             return composer
 
         def run_assertions(composer: Composer):
-            callback = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env)
+            callback = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
             composer.interface.router.route_callback.assert_called_once_with(callback)
 
         env = random_envelope()
@@ -105,8 +89,8 @@ class TransportIntegrationTest(MPTestCase):
             return composer
 
         def assert_sub(composer: Composer):
-            callback1 = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env1)
-            callback2 = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env2)
+            callback1 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env1)
+            callback2 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env2)
             calls = [call(callback1), call(callback2)]
 
             # i = 10 / 0
@@ -155,8 +139,8 @@ class TransportIntegrationTest(MPTestCase):
             return composer
 
         def run_assertions(composer: Composer):
-            cb1 = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env1)
-            cb2 = ReactorCommand.create_callback(callback=ROUTE_CALLBACK, envelope=env2)
+            cb1 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env1)
+            cb2 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env2)
             composer.interface.router.route_callback.assert_has_calls([call(cb1), call(cb2)], any_order=True)
 
         env1 = random_envelope()
@@ -206,7 +190,7 @@ class TransportIntegrationTest(MPTestCase):
             assert callback_cmd.envelope.message == reply_msg, "Callback's envelope's message should be the reply_msg"
 
         def assert_router(composer: Composer):
-            cb = ReactorCommand.create_callback(callback=ROUTE_REQ_CALLBACK, envelope=request_env, header=dealer_id)
+            cb = ReactorCommand.create_callback(callback=StateInput.REQUEST, envelope=request_env, header=dealer_id)
             composer.interface.router.route_callback.assert_called_once_with(cb)
 
         dealer_id = vk1
@@ -247,11 +231,11 @@ class TransportIntegrationTest(MPTestCase):
             return composer
 
         def assert_dealer(composer: Composer):
-            cb = ReactorCommand.create_callback(callback=ROUTE_TIMEOUT_CALLBACK, envelope=request_env)
+            cb = ReactorCommand.create_callback(callback=StateInput.TIMEOUT, envelope=request_env)
             composer.interface.router.route_callback.assert_any_call(cb)
 
         def assert_router(composer: Composer):
-            cb = ReactorCommand.create_callback(callback=ROUTE_REQ_CALLBACK, envelope=request_env, header=dealer_id)
+            cb = ReactorCommand.create_callback(callback=StateInput.REQUEST, envelope=request_env, header=dealer_id)
             composer.interface.router.route_callback.assert_called_once_with(cb)
 
         timeout_duration = 0.5
