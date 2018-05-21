@@ -1,7 +1,7 @@
 from cilantro.logger import get_logger
 from functools import wraps
 from cilantro.messages import MessageBase, Envelope
-from cilantro.protocol.statemachine.decorators import StateInput, TransitionDecor
+from cilantro.protocol.statemachine.decorators import StateInput, TransitionDecor, exit_from_any
 import inspect
 from collections import defaultdict
 
@@ -44,11 +44,7 @@ class StateMeta(type):
         clsobj.log = get_logger(clsname)
 
         # Add debug decorator to run/exit/enter methods
-        StateMeta._config_debugging(clsobj)
-        # for name, val in vars(clsobj).items():
-        #     if callable(val) and name in _DEBUG_FUNCS:
-        #         # print("Setting up debug logging for name {} with val {}".format(name, val))
-        #         setattr(clsobj, name, debug_transition(name)(val))
+        # StateMeta._config_debugging(clsobj)
 
         # Configure receivers, repliers, and timeouts
         StateMeta._config_input_handlers(clsobj)
@@ -108,7 +104,6 @@ class StateMeta(type):
                                                      "(attempted to set it again to func: {})"\
                                                      # .format(trans_attr, any_attr_val, clsobj, func)
 
-
                         setattr(clsobj, TransitionDecor.get_any_attr(trans_attr), func)
                     else:
                         trans_registry = getattr(clsobj, trans_attr)
@@ -118,27 +113,6 @@ class StateMeta(type):
                                                                 " with transition registry {} .. (dupe = {})"\
                                                                 .format(trans_attr, state, trans_registry, state)
                             trans_registry[state] = func
-
-
-        # entry_general_handler = None
-        #
-        # entry_handlers = defaultdict(list)
-        #
-        # for r in dir(clsobj):
-        #     func = getattr(clsobj, r)
-        #
-        #     if hasattr(func, '_enter_handlers'):
-        #         handlers = getattr(func, '_enter_handlers')
-        #         print("func {} handles entry for states {}".format(func, handlers))
-        #
-        #         if handlers == 'ALL STATES':
-        #             print("all states handler detected for func {}".format(func))
-        #             entry_general_handler = func
-        #         for handle in handlers:
-        #             entry_handlers[handle].append(func)
-        #
-        # entry_handlers['ALL_STATES'] = entry_general_handler
-        # clsobj._entry_handlers = entry_handlers
 
     @staticmethod
     def _config_debugging(clsobj):
@@ -197,6 +171,19 @@ class State(metaclass=StateMeta):
 
         return output
 
+    def call_transition_handler(self, trans_type, next_state, *args, **kwargs):
+        trans_func = self._get_transition_handler(trans_type, next_state)
+
+        if not trans_func:
+            return
+
+        if inspect.ismethod(trans_func):
+            trans_func(next_state, *args, **kwargs)
+        elif inspect.isfunction(trans_func):
+            trans_func(self, next_state, *args, **kwargs)
+        else:
+            raise ValueError("Got unexpected handler {} that is neither a function nor a method!".format(trans_func))
+
     def _get_input_handler(self, message, input_type: str):
         registry = getattr(self, input_type)
         assert isinstance(registry, dict), "Expected registry to be a dictionary!"
@@ -250,6 +237,6 @@ class State(metaclass=StateMeta):
 
 
 class EmptyState(State):
-    def enter(self, prev_state): pass
-    def exit(self, next_state): pass
-    def run(self): pass
+    @exit_from_any
+    def exit_any(self, prev_state):
+        pass
