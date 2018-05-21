@@ -322,6 +322,40 @@ class DB(metaclass=DBSingletonMeta):
         self.log.debug("Releasing lock {}".format(self.lock))
         self.lock.release()
 
-    def execute(self, query) :
+    def execute(self, query):
         self.log.debug("Executing query {}".format(query))
         return self.db.execute(query)
+
+
+class VKBook:
+
+    @staticmethod
+    def _destu_ify(data: str):
+        assert len(data) % 64 == 0, "Length of data should be divisible by 64! Logic error!"
+        li = []
+        for i in range(0, len(data), 64):
+            li.append(data[i:i+64])
+        return li
+
+    @staticmethod
+    def _get_vks(policy: str):
+        with DB() as db:
+            q = db.execute("select value from constants where policy='{}'".format(policy))
+            rows = q.fetchall()
+
+            val = rows[0][0]
+
+            return VKBook._destu_ify(val)
+
+    @staticmethod
+    def get_masternodes():
+        return VKBook._get_vks('masternodes')
+
+    @staticmethod
+    def get_delegates():
+        return VKBook._get_vks('delegates')
+
+    @staticmethod
+    def get_witnesses():
+        return VKBook._get_vks('witnesses')
+
