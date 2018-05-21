@@ -1,0 +1,2 @@
+coloredlogs==9.0
+vmnet==0.1.2

@@ -10,7 +10,7 @@ services:
   delegate_1:
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: delegate_1
     environment:
     - HOSTNAME=delegate_1
@@ -21,7 +21,7 @@ services:
     - WITNESS=172.29.6.1,172.29.6.2
     - MGMT=172.29.5.0
     - TEST_NAME=bootstrap
-    image: cilantro_base
+    image: cilantro_base.dev
     networks:
       cilantro:
         ipv4_address: 172.29.7.1
@@ -34,7 +34,7 @@ services:
   delegate_2:
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: delegate_2
     environment:
     - HOSTNAME=delegate_2
@@ -45,7 +45,7 @@ services:
     - WITNESS=172.29.6.1,172.29.6.2
     - MGMT=172.29.5.0
     - TEST_NAME=bootstrap
-    image: cilantro_base
+    image: cilantro_base.dev
     networks:
       cilantro:
         ipv4_address: 172.29.7.2
@@ -58,7 +58,7 @@ services:
   delegate_3:
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: delegate_3
     environment:
     - HOSTNAME=delegate_3
@@ -69,7 +69,7 @@ services:
     - WITNESS=172.29.6.1,172.29.6.2
     - MGMT=172.29.5.0
     - TEST_NAME=bootstrap
-    image: cilantro_base
+    image: cilantro_base.dev
     networks:
       cilantro:
         ipv4_address: 172.29.7.3
@@ -82,7 +82,7 @@ services:
   delegate_4:
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: delegate_4
     environment:
     - HOSTNAME=delegate_4
@@ -93,7 +93,7 @@ services:
     - WITNESS=172.29.6.1,172.29.6.2
     - MGMT=172.29.5.0
     - TEST_NAME=bootstrap
-    image: cilantro_base
+    image: cilantro_base.dev
     networks:
       cilantro:
         ipv4_address: 172.29.7.4
@@ -106,7 +106,7 @@ services:
   masternode:
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: masternode
     environment:
     - HOSTNAME=masternode
@@ -116,7 +116,7 @@ services:
     - WITNESS=172.29.6.1,172.29.6.2
     - MGMT=172.29.5.0
     - TEST_NAME=bootstrap
-    image: cilantro_base
+    image: cilantro_base.dev
     networks:
       cilantro:
         ipv4_address: 172.29.5.1
@@ -129,7 +129,7 @@ services:
   mgmt:
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: mgmt
     environment:
     - HOSTNAME=mgmt
@@ -139,7 +139,7 @@ services:
     - WITNESS=172.29.6.1,172.29.6.2
     - MGMT=172.29.5.0
     - TEST_NAME=bootstrap
-    image: cilantro_base
+    image: cilantro_base.dev
     networks:
       cilantro:
         ipv4_address: 172.29.5.0
@@ -152,7 +152,7 @@ services:
   witness_1:
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: witness_1
     environment:
     - HOSTNAME=witness_1
@@ -163,7 +163,7 @@ services:
     - WITNESS=172.29.6.1,172.29.6.2
     - MGMT=172.29.5.0
     - TEST_NAME=bootstrap
-    image: cilantro_base
+    image: cilantro_base.dev
     networks:
       cilantro:
         ipv4_address: 172.29.6.1
@@ -176,7 +176,7 @@ services:
   witness_2:
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: witness_2
     environment:
     - HOSTNAME=witness_2
@@ -187,7 +187,7 @@ services:
     - WITNESS=172.29.6.1,172.29.6.2
     - MGMT=172.29.5.0
     - TEST_NAME=bootstrap
-    image: cilantro_base
+    image: cilantro_base.dev
     networks:
       cilantro:
         ipv4_address: 172.29.6.2

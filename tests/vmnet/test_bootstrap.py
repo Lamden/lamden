@@ -76,28 +76,21 @@ class TestBootstrap(BaseNetworkTestCase):
     NUM_DELEGATES = 4
 
     def test_bootstrap(self):
-    #     input("i wont die till u type something")
-    #     return
-        # Bootstrap MN
-        self.execute_python('masternode', start_mysqld, async=True)
-        time.sleep(1)
+        # start mysql in all nodes
+        for node_name in ['masternode'] + ['witness_{}'.format(i+1) for i in range(self.NUM_WITNESS)] + ['delegate_{}'.format(i+1) for i in range(self.NUM_DELEGATES)]:
+            self.execute_python(node_name, start_mysqld, async=True)
+        time.sleep(3)
 
+        # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
 
         # Bootstrap witnesses
         for i in range(self.NUM_WITNESS):
-            self.execute_python('witness_{}'.format(i+1), start_mysqld, async=True)
-            time.sleep(1)
-
             self.execute_python('witness_{}'.format(i+1), wrap_func(run_witness, i), async=True)
 
         # Bootstrap delegates
         for i in range(self.NUM_DELEGATES):
-            self.execute_python('delegate_{}'.format(i+1), start_mysqld, async=True)
-            time.sleep(1)
-
             self.execute_python('delegate_{}'.format(i+1), wrap_func(run_delegate, i), async=True)
-            # time.sleep(1)
 
         input("\n\nEnter any key to terminate")
 

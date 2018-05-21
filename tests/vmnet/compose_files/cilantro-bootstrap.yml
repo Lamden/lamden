@@ -11,8 +11,8 @@ services:
   base:
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
-    image: cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    image: cilantro_base.dev
     volumes:
       - type: bind
         source: /storage/docker/mysql-datadir
@@ -23,8 +23,8 @@ services:
     tty: true
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
-    image: cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    image: cilantro_base.dev
     volumes:
       - type: bind
         source: ${LOCAL_PATH}/cilantro
@@ -38,8 +38,8 @@ services:
     tty: true
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
-    image: cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    image: cilantro_base.dev
     volumes:
       - type: bind
         source: ${LOCAL_PATH}/cilantro
@@ -53,8 +53,8 @@ services:
     tty: true
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
-    image: cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    image: cilantro_base.dev
     volumes:
       - type: bind
         source: ${LOCAL_PATH}/cilantro
@@ -65,8 +65,8 @@ services:
     tty: true
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
-    image: cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    image: cilantro_base.dev
     volumes:
       - type: bind
         source: ${LOCAL_PATH}/cilantro

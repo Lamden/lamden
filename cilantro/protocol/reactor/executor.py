@@ -5,7 +5,7 @@ from collections import defaultdict
 from cilantro.protocol.structures import CappedSet, EnvelopeAuth
 import traceback
 
-from kademlia.dht import DHT
+from kade.dht import DHT
 import asyncio, time
 import zmq.asyncio
 

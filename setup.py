@@ -7,6 +7,9 @@ setup(
     version=__version__,
     packages=find_packages(exclude=['docs', 'tests']),
     install_requires=open('requirements.txt').readlines(),
+    extras_require={
+        'dev': open('dev-requirements.txt').readlines()
+    },
     entry_points={
         'console_scripts': [
             'db=cilantro.networking.db:serve',
