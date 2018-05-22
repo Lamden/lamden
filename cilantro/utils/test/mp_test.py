@@ -111,9 +111,9 @@ class MPTesterProcess:
         self.socket.connect(self.url)
 
         if self.config_fn:
-            tester_obj = self.config_fn(self.tester_obj)
+            self.tester_obj = self.config_fn(self.tester_obj)
 
-        self._start_test()
+        # self._start_test()
 
     async def _recv_cmd(self):
         """
@@ -200,7 +200,7 @@ class MPTesterProcess:
         # self.log.info("Stopping self.loop")
         self.loop.stop()
 
-    def _start_test(self):
+    def start_test(self):
         """
         Sends ready signal to parent process, and then starts the event self.loop in this process
         """
@@ -279,9 +279,16 @@ class MPTesterBase:
         self.log.critical("GOT RDY SIG: {}".format(msg))
 
     def _run_test_proc(self, name, url, build_fn, config_fn, assert_fn):
-        # TODO create socket outside of the object, and pass it in. That way we can run the object in a try/catch,
-        # and signal failure to parent if something blows tf up
         tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
+        tester_socket = tester.socket
+
+        try:
+            tester.start_test()
+        except Exception as e:
+            self.log.error("\n\n TesterProcess encountered exception outside of internal loop! Error:\n {}\n\n"
+                           .format(traceback.format_exc()))
+            tester_socket.send_pyobj(SIG_FAIL)
+            tester._teardown()
 
     @classmethod
     def build_obj(cls, *args, **kwargs) -> tuple:
