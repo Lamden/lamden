@@ -77,18 +77,6 @@ def mp_testable(test_cls):
     return _mp_testable
 
 
-def build_reactor_obj(cls) -> tuple:
-    from cilantro.protocol.reactor.interface import ReactorInterface
-    from unittest.mock import MagicMock
-
-    mock_parent = MagicMock()
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    reactor = ReactorInterface(mock_parent, loop=loop)
-
-    return reactor, loop
-
 def _gen_url(name=''):
     """
     Helper method to generate a random URL for use in a PAIR socket
