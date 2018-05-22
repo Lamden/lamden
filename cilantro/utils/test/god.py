@@ -1,8 +1,8 @@
+from cilantro.messages import *
 import asyncio
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.transport import Composer
 from unittest.mock import MagicMock
-from cilantro.messages import *
 from cilantro.logger import get_logger
 import os, requests
 
