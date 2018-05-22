@@ -1,5 +1,5 @@
 from cilantro import Constants
-from cilantro.utils.test import MPTesterBase, mp_testable
+from cilantro.utils.test import MPTesterBase, mp_testable, God
 from unittest.mock import patch, call, MagicMock
 from cilantro.protocol.transport import Router, Composer
 from cilantro.protocol.reactor import ReactorInterface
@@ -26,12 +26,12 @@ class MPComposer(MPTesterBase):
         return composer, loop
 
 
-# @mp_testable(God)
-# class MPGod(MPTesterBase):
-#     @classmethod
-#     def build_obj(cls):
-#         loop = asyncio.new_event_loop()
-#         god = God(loop=loop)
-#         god.start()
-#
-#         return god, loop
+@mp_testable(God)
+class MPGod(MPTesterBase):
+    @classmethod
+    def build_obj(cls):
+        loop = asyncio.new_event_loop()
+        god = God(loop=loop)
+        god.start()
+
+        return god, loop
