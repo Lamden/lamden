@@ -145,29 +145,3 @@ class IPUtils:
         if _check_hex(vk, length=64):
             return vk
         return False
-
-    # def extract_vk(self, vk_url: str):
-    #     """
-    #     Returns the VK contained inside the vk_url
-    #     :param vk_url: A URL of form tcp://bbef0c...:7070
-    #     :return: A verifying key as a string (64 chars hex)
-    #     """
-    #     pass
-    #
-    # def validate_ip_url(self, ip_url: str) -> bool:
-    #     """
-    #     Validates an IP url
-    #     :param ip_url: A URL of the form tcp://127.1.2.3:2342
-    #     :return: True if the url is valid. False otherwise.
-    #     """
-    #     # TODO -- implement
-    #     return True
-    #
-    # def validate_vk_url(self, ip_url: str) -> bool:
-    #     """
-    #     Validates an VK url
-    #     :param ip_url: A URL of the form tcp://127.1.2.3:2342
-    #     :return: True if the url is valid. False otherwise.
-    #     """
-    #     # TODO -- implement
-    #     return True
