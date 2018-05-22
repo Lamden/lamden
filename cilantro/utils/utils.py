@@ -1,4 +1,5 @@
 import hashlib
+import re
 from decimal import Decimal, getcontext
 
 class Encoder:
@@ -100,3 +101,73 @@ class TestNetURLHelper:
     def increment_url(url, increment):
         port = int(url[-4:])
         return url[:-4] + str(port + increment)
+
+
+def _check_hex(hex_str: str, length=0) -> bool:
+    """
+    Returns true if hex_str is valid hex. False otherwise
+    :param hex_str: The string to check
+    :param length: If set, also verify that hex_str is the valid length
+    :return: A bool, true if hex_str is valid hex 
+    """
+    try:
+        int(hex_str, 16)
+        if length:
+            assert len(hex_str) == length
+        return True
+    except:
+        return False
+
+
+class IPUtils:
+
+    @staticmethod
+    def interpolate_url(vk_url: str, ip_addr: str) -> str:
+        """
+        Replaces the VK inside vk_url and
+        :param vk_url: A URL of form tcp://bbef0c...:7070
+        :param ip_addr: The IP address to replace the url with
+        :return: The URL with the VK replaced with 'ip_addr'
+        """
+        p = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})')
+        res = re.match(p, vk_url)
+        protocol, vk, port = res.groups()
+        # if re.match(is_hex_64, addr):
+
+        return "{}://{}:{}".format(protocol, ip_addr, port)
+
+    @staticmethod
+    def get_vk(vk_url) -> str or False:
+        p = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})')
+        res = re.match(p, vk_url)
+        protocol, vk, port = res.groups()
+
+        if _check_hex(vk, length=64):
+            return vk
+        return False
+
+    # def extract_vk(self, vk_url: str):
+    #     """
+    #     Returns the VK contained inside the vk_url
+    #     :param vk_url: A URL of form tcp://bbef0c...:7070
+    #     :return: A verifying key as a string (64 chars hex)
+    #     """
+    #     pass
+    #
+    # def validate_ip_url(self, ip_url: str) -> bool:
+    #     """
+    #     Validates an IP url
+    #     :param ip_url: A URL of the form tcp://127.1.2.3:2342
+    #     :return: True if the url is valid. False otherwise.
+    #     """
+    #     # TODO -- implement
+    #     return True
+    #
+    # def validate_vk_url(self, ip_url: str) -> bool:
+    #     """
+    #     Validates an VK url
+    #     :param ip_url: A URL of the form tcp://127.1.2.3:2342
+    #     :return: True if the url is valid. False otherwise.
+    #     """
+    #     # TODO -- implement
+    #     return True
