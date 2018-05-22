@@ -138,14 +138,17 @@ def enter_from(*args):
         return _set_state_registry(func, TransitionDecor.ENTER, args)
     return decorate
 
+
 def enter_from_any(func):
     setattr(func, TransitionDecor.ENTER, TransitionDecor.ACCEPT_ALL)
     return func
+
 
 def exit_from(*args):
     def decorate(func):
         return _set_state_registry(func, TransitionDecor.EXIT, args)
     return decorate
+
 
 def exit_from_any(func):
     setattr(func, TransitionDecor.EXIT, TransitionDecor.ACCEPT_ALL)

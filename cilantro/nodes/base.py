@@ -42,12 +42,9 @@ class NodeBase(StateMachine):
         # Start the main event loop
         self.log.critical("Starting ReactorInterface event loop")
 
-        # HACK FOR MASTERNODE
-        # if hasattr(self, 'server_task'):
-        #     self.log.critical("\n\n SERVER FUTURE DETECTED, ADDING IT TO TASKS \n\n")
-        #     self.composer.interface.start_reactor(tasks=[self.server_task])
-
-        self.composer.interface.start_reactor(tasks=self.tasks)  # ReactorInterface starts listening to messages from ReactorDaemon
+        # ReactorInterface starts listening to messages from ReactorDaemon. Also starts any other tasks appended to
+        # self.tasks by gathering them (using asyncio.gather) and then 'run_until_complete'-ing them in the event loop
+        self.composer.interface.start_reactor(tasks=self.tasks)
 
     @property
     def composer(self):
