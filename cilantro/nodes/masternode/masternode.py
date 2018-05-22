@@ -265,4 +265,3 @@ class Masternode(NodeBase):
         except Exception as e:
             self.log.error("\n Error publishing HTTP request...err = {}".format(traceback.format_exc()))
             return web.Response(text="fukt up processing request with err: {}".format(e))
-

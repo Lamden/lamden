@@ -18,7 +18,7 @@ KILL_SIG = b'DIE'
 
 class ReactorDHT(DHT):
     def status_update(self, *args, **kwargs):
-        print('in the daemon:{}'.format(kwargs))
+        print('Received status update from DHT:{}'.format(kwargs))
 
 class ReactorDaemon:
     def __init__(self, url, verifying_key=None, name='Node'):
@@ -155,5 +155,6 @@ class ReactorDaemon:
                 ip = await self.dht.network.lookup_ip(vk)
                 new_url = IPUtils.interpolate_url(url, ip)
                 kwargs['url'] = new_url
+
 
         return executor_name, executor_func, kwargs
