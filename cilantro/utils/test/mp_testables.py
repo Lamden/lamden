@@ -21,9 +21,9 @@ class MPComposer(MPTesterBase):
         reactor = ReactorInterface(router=router, loop=loop, verifying_key=Constants.Protocol.Wallets.get_vk(sk))
         composer = Composer(interface=reactor, signing_key=sk)
 
-        asyncio.ensure_future(reactor._recv_messages())
+        # asyncio.ensure_future(reactor._recv_messages())
 
-        return composer, loop
+        return composer, loop, [reactor._recv_messages()]
 
 
 @mp_testable(God)
@@ -34,4 +34,7 @@ class MPGod(MPTesterBase):
         god = God(loop=loop)
         god.start()
 
-        return god, loop
+        # TODO all internal tasks that are ensured' to this tasks list
+        tasks = []
+
+        return god, loop, tasks

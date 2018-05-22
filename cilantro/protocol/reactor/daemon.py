@@ -57,13 +57,10 @@ class ReactorDaemon:
         try:
             self.loop.run_until_complete(self._recv_messages())
         except Exception as e:
-            err_msg = '\n' + '!' * 64 + '\nLoop terminating with exception:\n' + str(traceback.format_exc())
+            err_msg = '\n' + '!' * 64 + '\nDeamon Loop terminating with exception:\n' + str(traceback.format_exc())
             err_msg += '\n' + '!' * 64 + '\n'
             self.log.error(err_msg)
-        finally:
-            # TODO -- do we need to clean up all the tasks in the loop first before we close it?
-            self.loop.stop()
-            self.socket.close()
+            self._teardown()
 
     async def _recv_messages(self):
         # Notify parent proc that this proc is ready
