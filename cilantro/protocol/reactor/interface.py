@@ -52,11 +52,6 @@ class ReactorInterface:
             self.log.error("\n\nException in main event loop: {}\n\n".format(traceback.format_exc()))
             # TODO cancel tasks
         finally:
-            # self.log.critical("\nCLOSING EVENT LOOP\n")
-            # self.loop.close()
-            # self.proc.join()
-            # self.socket.close()
-
             self._teardown()
 
     def _teardown(self):

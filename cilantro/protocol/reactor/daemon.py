@@ -16,9 +16,11 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 CHILD_RDY_SIG = b'ReactorDaemon Process Ready'
 KILL_SIG = b'DIE'
 
+
 class ReactorDHT(DHT):
     def status_update(self, *args, **kwargs):
         print('in the daemon:{}'.format(kwargs))
+
 
 class ReactorDaemon:
     def __init__(self, url, verifying_key=None, name='Node'):
@@ -42,9 +44,9 @@ class ReactorDaemon:
         # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
 
-        self.dht = ReactorDHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
-                       alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
-                       max_peers=Constants.Overlay.MaxPeers, block=False)
+        # self.dht = ReactorDHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
+        #                alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
+        #                max_peers=Constants.Overlay.MaxPeers, block=False)
 
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name
@@ -68,7 +70,7 @@ class ReactorDaemon:
         self.log.debug("reactorcore notifying main proc of ready")
         self.socket.send(CHILD_RDY_SIG)
 
-        self.log.warning("-- Starting Recv on PAIR Socket at {} --".format(self.url))
+        self.log.info("-- Daemon proc listening to main proc on PAIR Socket at {} --".format(self.url))
         while True:
             self.log.debug("ReactorDaemon awaiting for command from main thread...")
             cmd_bin = await self.socket.recv()
@@ -99,7 +101,6 @@ class ReactorDaemon:
 
         self.log.warning("Closing event loop")
         self.loop.close()
-
 
     async def _execute_cmd(self, cmd: ReactorCommand):
         """
@@ -139,13 +140,7 @@ class ReactorDaemon:
         if cmd.envelope_binary:
             kwargs['envelope'] = cmd.envelope_binary
 
-        # Lookup 'node_id' (which is a verifying key), and set lookup the corresponding IP and set that to URL
-        # if necessary
-        # assert either (url XOR node_vk) or both don't exist in kwargs
-        # if noke_vk is in there, lookup to appropriate url
-        # how to handle ports now? should we just have set ports for all the grouping????
-        # TODO -- implement this functionality
-
+        # Replace VK with IP address if necessary
         if 'url' in kwargs:
             url = kwargs['url']
 

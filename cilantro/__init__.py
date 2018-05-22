@@ -15,10 +15,11 @@ def gen_keypair(url):
     """
     Computes a wallet key pair as a deterministic function of url
     """
-    from cilantro.protocol.wallets import ED25519Wallet
+    # from cilantro.protocol.wallets import ED25519Wallet
+    import cilantro.protocol.wallets.ed25519
     h = hashlib.sha256()
     h.update(url.encode())
-    return ED25519Wallet.new(seed=h.digest())
+    return cilantro.protocol.wallets.ed25519.ED25519Wallet.new(seed=h.digest())
 
 def config_testnet(testnet: dict) -> dict:
     """

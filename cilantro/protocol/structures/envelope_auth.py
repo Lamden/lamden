@@ -1,11 +1,17 @@
 from cilantro import Constants
-from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.utils import Hasher
 from cilantro.messages import MessageBase, Seal, MessageMeta
 import math
 
+"""
+TODO investigate why below is setting var 'W' to the string 'ED25519Wallet' instead of the actual object (as of 5/21)
+appears that this is the only place that happens. Must have something to do with order of imports, and Constants
+not being 'built' properly by the time this is accessed
+"""
 # W = Constants.Protocol.Wallets
-W = ED25519Wallet
+
+from cilantro.protocol.wallets import ED25519Wallet
+W = ED25519Wallet  # hack until we fix above
 
 UUID_SIZE = int(math.log2(Constants.Protocol.MaxUuid))  # size of UUID field on messagemeta struct as number of bits
 
@@ -32,9 +38,6 @@ class EnvelopeAuth:
         :param message: The MessageBase, as a MessageBase instance or bytes (a serialized MessageBase)
         :return: The signed MessageMeta and MessageBase, as a 128 hex char long string
         """
-        # DEUBG LINE TODO remove below
-        print("\n\nVAL OF W: {}\n\n".format(W))
-
         assert type(meta) in (MessageMeta, bytes), "meta arg must be a MessageMeta or bytes, not {}".format(type(meta))
         assert type(message) is bytes or issubclass(type(message), MessageBase), \
             "Message must be a MessageBase or bytes, not {}".format(type(message))

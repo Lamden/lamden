@@ -70,26 +70,12 @@ class MNRunState(MNBaseState):
         self.is_updating = False
         self.current_contender = None
 
-    # @enter_from_any
-    # def enter_any(self, prev_state):
-        # asyncio.set_event_loop(self.parent.loop)  # pretty sure this is unnecessary  - davis
-        # self.reset_attrs()
-
     @enter_from(MNBootState)
     def enter_from_boot(self, prev_state):
         self.log.info("Starting web server")
         server = web.Server(self.parent.route_http)
         server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
         self.parent.tasks.append(server_future)
-
-    # def run(self):
-    #     self.log.info("Starting web server")
-    #     server = web.Server(self.parent.route_http)
-    #     server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
-    #     self.parent.tasks.append(server_future)
-    #
-    # def exit(self, next_state):
-    #     pass
 
     def _lookup_url(self, vk):
         # HACK TO GET SENDER URL -- TODO swap this /w overlay network or replace /w utility func

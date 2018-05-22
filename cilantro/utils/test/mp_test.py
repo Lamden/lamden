@@ -6,10 +6,9 @@ import zmq.asyncio
 import random
 import inspect
 import traceback
-from multiprocessing import Queue
-from aioprocessing import AioQueue
 from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 ASSERTS_POLL_FREQ = 0.1
@@ -77,18 +76,6 @@ def mp_testable(test_cls):
     return _mp_testable
 
 
-def build_reactor_obj(cls) -> tuple:
-    from cilantro.protocol.reactor.interface import ReactorInterface
-    from unittest.mock import MagicMock
-
-    mock_parent = MagicMock()
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    reactor = ReactorInterface(mock_parent, loop=loop)
-
-    return reactor, loop
-
 def _gen_url(name=''):
     """
     Helper method to generate a random URL for use in a PAIR socket
@@ -99,60 +86,86 @@ def _gen_url(name=''):
     return "ipc://mptest-{}-{}-{}".format(name, HOST_NAME, rand_num)
 
 
-def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
+class MPTesterProcess:
     """
-    Starts the test object in a subprocess.
+    We create the blocking tester object, and configure it with mock objects using a function passed in
+    Then, we ensure futures __recv_cmd() to read from cmd_self.socket for proxy'd commands, and __check_assertions() to
+    check assertions on a scheduled basis until they complete or until we get a SIG_ABORT from main thread
     """
-    async def __recv_cmd():
+
+    def __init__(self, name, url, build_fn, config_fn, assert_fn):
+        self.config_fn = config_fn
+        self.assert_fn = assert_fn
+        self.url = url
+        self.log = get_logger("TesterProc[{}]".format(name))
+
+        self.tester_obj, self.loop = build_fn()
+        assert isinstance(self.loop, asyncio.AbstractEventLoop), \
+            "Got {} that isn't an instance of asyncio.AbstractEventLoop".format(self.loop)
+
+        asyncio.set_event_loop(self.loop)
+
+        # Connect to parent process over ipc PAIR self.socket
+        self.ctx = zmq.asyncio.Context()
+        self.socket = self.ctx.socket(socket_type=zmq.PAIR)
+        self.socket.connect(self.url)
+
+        if self.config_fn:
+            self.tester_obj = self.config_fn(self.tester_obj)
+
+        # self._start_test()
+
+    async def _recv_cmd(self):
         """
         Receive commands from the main process and execute them on the tester object. If cmd is equal to ABORT_SIG,
-        then we execute __teardown() to stop this loop. If its an SIG_START, we start polling for assertions.
+        then we execute __teardown() to stop this self.loop. If its an SIG_START, we start polling for assertions.
         Otherwise, cmd is assumed to be a a tuple of command info of the format
         (func_name: str, args: list, kwargs: dict).
         """
         while True:
-            cmd = await socket.recv_pyobj()  # recv commands/events from test orchestrator
+            cmd = await self.socket.recv_pyobj()  # recv commands/events from test orchestrator
 
             # If we got a SIG_ABORT, tear this bish down
             if cmd == SIG_ABORT:
-                # log.critical("\n!!!!!\nGOT ABORT SIG\n!!!!!\n")
-                errs = __assertions()
+                # self.log.critical("\n!!!!!\nGOT ABORT SIG\n!!!!!\n")
+                errs = self._assertions()
                 if errs:
-                    log.critical("\n\n{0}\nASSERTIONS FAILED FOR {2}:\n{1}\n{0}\n".format('!' * 120, errs, name))
-                __teardown()
+                    self.log.critical("\n\n{0}\nASSERTIONS FAILED FOR {2}:\n{1}\n{0}\n".format('!' * 120, errs, name))
+                self._teardown()
                 return
 
-            # If we got a SIG_START, start polling for assertions (if assert_fn passed in)
+            # If we got a SIG_START, start polling for assertions (if self.assert_fn passed in)
             elif cmd == SIG_START:
-                log.critical("Got SIG_START from test orchestrator")
-                if assert_fn:
-                    log.critical("\nStarting to check assertions every {} seconds\n".format(ASSERTS_POLL_FREQ))
-                    asyncio.ensure_future(__check_assertions())
+                self.log.critical("Got SIG_START from test orchestrator")
+                if self.assert_fn:
+                    self.log.critical("\nStarting to check assertions every {} seconds\n".format(ASSERTS_POLL_FREQ))
+                    asyncio.ensure_future(self._check_assertions())
                 continue
 
             # If msg is not a signal, we assume its a command tuple of form (func, args, kwargs)
-            assert len(cmd) == 3, "Expected command tuple of len 3 with form (func: str, args: list, kwargs: dict) but " \
-                                  "got {}".format(cmd)
+            assert len(
+                cmd) == 3, "Expected command tuple of len 3 with form (func: str, args: list, kwargs: dict) but " \
+                           "got {}".format(cmd)
             func, args, kwargs = cmd
 
             # Execute cmd in a try/catch, and send a SIG_FAIL to test orchestrator proc if something blow up
             try:
-                output = getattr(tester_obj, func)(*args, **kwargs)
+                output = getattr(self.tester_obj, func)(*args, **kwargs)
 
-                # If result is coroutine, run it in the event loop
+                # If result is coroutine, run it in the event self.loop
                 if output and inspect.iscoroutine(output):
-                    log.debug("Coroutine detect for func name {}, running it in event loop".format(func))
+                    self.log.debug("Coroutine detect for func name {}, running it in event self.loop".format(func))
                     result = await asyncio.ensure_future(output)
-                    log.debug("Got result from coroutine {}\nresult: {}".format(func, result))
-                # log.critical("got cmd: {}".format(cmd))
-                # log.critical("cmd name: {}\nkwargs: {}".format(func, kwargs))
+                    self.log.debug("Got result from coroutine {}\nresult: {}".format(func, result))
+                # self.log.critical("got cmd: {}".format(cmd))
+                # self.log.critical("cmd name: {}\nkwargs: {}".format(func, kwargs))
             except Exception as e:
-                log.error("\n\n TESTER GOT EXCEPTION: {}\n\n".format(traceback.format_exc()))
-                socket.send_pyobj(SIG_FAIL)
-                __teardown()
+                self.log.error("\n\n TESTER GOT EXCEPTION: {}\n\n".format(traceback.format_exc()))
+                self.socket.send_pyobj(SIG_FAIL)
+                self._teardown()
                 return
 
-    async def __check_assertions():
+    async def _check_assertions(self):
         """
         Schedule assertion check every TEST_CHECK_FREQ seconds, until either:
             1) The assertions exceed, in which case we send a success signal SUCC_SIG to main thread
@@ -160,81 +173,60 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
             3) We get can abort cmd (read in __recv_cmd), in which case we send an ABORT_SIG to main thread
 
         Once one one of these conditions is met, the corresponding signal is sent to the main thread as this
-        process calls __teardown() cleans up the event loop.
+        process calls __teardown() cleans up the event self.loop.
         """
-        log.debug("Starting assertion checks")
+        self.log.debug("Starting assertion checks")
 
         # Run assertions for until either case (1) or (2) described above occurs
         while True:
-            if __assertions() is None:
+            if self._assertions() is None:
                 break
 
             # Sleep until next assertion check
             await asyncio.sleep(ASSERTS_POLL_FREQ)
 
-        # Once out of the assertion checking loop, send success to main thread
-        log.debug("\n\nassertions passed! putting ready sig in queue\n\n")
-        socket.send(SIG_SUCC)
+        # Once out of the assertion checking self.loop, send success to main thread
+        self.log.debug("\n\nassertions passed! putting ready sig in queue\n\n")
+        self.socket.send(SIG_SUCC)
 
-    def __teardown():
+    def _teardown(self):
         """
-        Stop all tasks and close this processes event loop. Invoked after we successfully pass all assertions, or
+        Stop all tasks and close this processes event self.loop. Invoked after we successfully pass all assertions, or
         timeout.
         """
-        log.info("Tearing down")
-        # log.info("Closing pair socket")
-        socket.close()
-        # log.info("Stopping loop")
-        loop.stop()
+        self.log.info("Tearing down")
+        # self.log.info("Closing pair self.socket")
+        self.socket.close()
+        # self.log.info("Stopping self.loop")
+        self.loop.stop()
 
-    def __start_test():
+    def start_test(self):
         """
-        Sends ready signal to parent process, and then starts the event loop in this process
+        Sends ready signal to parent process, and then starts the event self.loop in this process
         """
-        log.debug("sending ready sig to parent")
-        socket.send_pyobj(SIG_RDY)
+        self.log.debug("sending ready sig to parent")
+        self.socket.send_pyobj(SIG_RDY)
 
         # asyncio.ensure_future(__recv_cmd())
-        # if assert_fn:
+        # if self.assert_fn:
         #     asyncio.ensure_future(__check_assertions())
 
-        log.debug("starting tester proc event loop")
-        loop.run_until_complete(__recv_cmd())
+        self.log.debug("starting tester proc event self.loop")
+        self.loop.run_until_complete(self._recv_cmd())
 
-    def __assertions():
+    def _assertions(self):
         """
         Helper method to run tester object's assertions, and return the error raised as a string, or None if no
         assertions are raised
         """
-        if not assert_fn:
+        if not self.assert_fn:
             return None
 
         try:
-            assert_fn(tester_obj)
+            self.assert_fn(self.tester_obj)
             return None
         except Exception as e:
             return str(e)
-
-    # We create the blocking tester object, and configure it with mock objects using a function passed in
-    # Then, we ensure futures __recv_cmd() to read from cmd_socket for proxy'd commands, and __check_assertions() to
-    # check assertions on a scheduled basis until they complete or until we get a SIG_ABORT from main thread
-    log = get_logger("TesterProc[{}]".format(name))
-
-    tester_obj, loop = build_fn()
-    assert isinstance(loop, asyncio.AbstractEventLoop), "Got {} that isn't an instance of asyncio.AbstractEventLoop".format(loop)
-
-    u = uvloop.Loop
-    asyncio.set_event_loop(loop)
-
-    # Connect to parent process over ipc PAIR socket
-    ctx = zmq.asyncio.Context()
-    socket = ctx.socket(socket_type=zmq.PAIR)
-    socket.connect(url)
-
-    if config_fn:
-        tester_obj = config_fn(tester_obj)
-
-    __start_test()
 
 
 class MPTesterBase:
@@ -267,7 +259,7 @@ class MPTesterBase:
         build_fn = wrap_func(type(self).build_obj, *args, **kwargs)
 
         # Create and start the subprocess that will run the blocking object
-        self.test_proc = LProcess(target=_run_test_proc, args=(self.name, self.url, build_fn,
+        self.test_proc = LProcess(target=self._run_test_proc, args=(self.name, self.url, build_fn,
                                                                self.config_fn, self.assert_fn,))
         self.start_test()
 
@@ -285,6 +277,18 @@ class MPTesterBase:
         msg = self.socket.recv_pyobj()
         assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
         self.log.critical("GOT RDY SIG: {}".format(msg))
+
+    def _run_test_proc(self, name, url, build_fn, config_fn, assert_fn):
+        tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
+        tester_socket = tester.socket
+
+        try:
+            tester.start_test()
+        except Exception as e:
+            self.log.error("\n\n TesterProcess encountered exception outside of internal loop! Error:\n {}\n\n"
+                           .format(traceback.format_exc()))
+            tester_socket.send_pyobj(SIG_FAIL)
+            tester._teardown()
 
     @classmethod
     def build_obj(cls, *args, **kwargs) -> tuple:
