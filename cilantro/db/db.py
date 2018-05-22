@@ -26,7 +26,7 @@ DB_NAME = 'cilantro'
 SCRATCH_PREFIX = 'scratch_'
 
 
-j = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
+constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
 
 def get_policy_for_node_list(l, name):
@@ -192,8 +192,8 @@ def create_db(name, should_reset=False):
         witnesses = []
 
         # add state for tables that are not masternodes and delegates as those get treated differently
-        for k in j.keys():
-            for item in j[k]:
+        for k in constitution_json.keys():
+            for item in constitution_json[k]:
                 if k != 'masternodes' and k != 'delegates' and k != 'witnesses':
                     t = getattr(tables, k)
                     db.execute(t.insert(item))
@@ -307,7 +307,7 @@ class DB(metaclass=DBSingletonMeta):
     def __init__(self, db_name, should_reset):
         self.db_name = db_name
         self.log = get_logger("DB-{}".format(db_name))
-        self.log.info("Creating DB instance for {}".format(db_name))
+        self.log.info("Creating DB instance for {} with should_reset={}".format(db_name, should_reset))
         self.lock = Lock()
 
         self.db, self.tables = create_db(db_name, should_reset)
@@ -321,6 +321,40 @@ class DB(metaclass=DBSingletonMeta):
         self.log.debug("Releasing lock {}".format(self.lock))
         self.lock.release()
 
-    def execute(self, query) :
+    def execute(self, query):
         self.log.debug("Executing query {}".format(query))
         return self.db.execute(query)
+
+
+class VKBook:
+
+    @staticmethod
+    def _destu_ify(data: str):
+        assert len(data) % 64 == 0, "Length of data should be divisible by 64! Logic error!"
+        li = []
+        for i in range(0, len(data), 64):
+            li.append(data[i:i+64])
+        return li
+
+    @staticmethod
+    def _get_vks(policy: str):
+        with DB() as db:
+            q = db.execute("select value from constants where policy='{}'".format(policy))
+            rows = q.fetchall()
+
+            val = rows[0][0]
+
+            return VKBook._destu_ify(val)
+
+    @staticmethod
+    def get_masternodes():
+        return VKBook._get_vks('masternodes')
+
+    @staticmethod
+    def get_delegates():
+        return VKBook._get_vks('delegates')
+
+    @staticmethod
+    def get_witnesses():
+        return VKBook._get_vks('witnesses')
+

@@ -5,6 +5,8 @@ from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages import ReactorCommand
 from cilantro import Constants
 from kade.dht import DHT
+from cilantro.protocol.structures import CappedDict
+from cilantro.utils import IPUtils
 import inspect
 
 import uvloop
@@ -27,6 +29,9 @@ class ReactorDaemon:
         # Comment out below for more granularity in debugging
         # self.log.setLevel(logging.INFO)
 
+        # TODO optimize cache
+        self.ip_cache = CappedDict(max_size=64)
+
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
@@ -40,9 +45,6 @@ class ReactorDaemon:
         self.dht = ReactorDHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
                        alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
                        max_peers=Constants.Overlay.MaxPeers, block=False)
-        # log.debug('Ended up connecting to... {}'.format(self.dht.network.bootstrappableNeighbors()))
-
-        # self.dht.set_status_update_callback(_status_update)
 
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name
@@ -80,7 +82,7 @@ class ReactorDaemon:
             # blow up because this is very likely because of a development error, so no try/catch for now
             cmd = ReactorCommand.from_bytes(cmd_bin)
 
-            self._execute_cmd(cmd)
+            await self._execute_cmd(cmd)
 
     def _teardown(self):
         """
@@ -99,7 +101,7 @@ class ReactorDaemon:
         self.loop.close()
 
 
-    def _execute_cmd(self, cmd: ReactorCommand):
+    async def _execute_cmd(self, cmd: ReactorCommand):
         """
         Propagates a command to the appropriate executor
         :param cmd: an instance of ReactorCommand
@@ -108,7 +110,7 @@ class ReactorDaemon:
 
         self.log.debug("Executing cmd {}".format(cmd))
 
-        executor_name, executor_func, kwargs = self._parse_cmd(cmd)
+        executor_name, executor_func, kwargs = await self._parse_cmd(cmd)
 
         # Sanity checks (for catching bugs mostly)
         assert executor_name in self.executors, "Executor name {} not found in executors {}"\
@@ -119,7 +121,7 @@ class ReactorDaemon:
         # Execute command
         getattr(self.executors[executor_name], executor_func)(**kwargs)
 
-    def _parse_cmd(self, cmd: ReactorCommand):
+    async def _parse_cmd(self, cmd: ReactorCommand):
         """
         Parses a cmd for execution, by extracting/preparing the necessary kwargs for execution.
         :param cmd: an instance of ReactorCommand
@@ -143,5 +145,15 @@ class ReactorDaemon:
         # if noke_vk is in there, lookup to appropriate url
         # how to handle ports now? should we just have set ports for all the grouping????
         # TODO -- implement this functionality
+
+        if 'url' in kwargs:
+            url = kwargs['url']
+
+            # Check if URL has a VK inside
+            vk = IPUtils.get_vk(url)
+            if vk:
+                ip = await self.dht.network.lookup_ip(vk)
+                new_url = IPUtils.interpolate_url(url, ip)
+                kwargs['url'] = new_url
 
         return executor_name, executor_func, kwargs
