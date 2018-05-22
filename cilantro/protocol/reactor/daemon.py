@@ -148,19 +148,12 @@ class ReactorDaemon:
 
         if 'url' in kwargs:
             url = kwargs['url']
+
             # Check if URL has a VK inside
             vk = IPUtils.get_vk(url)
             if vk:
                 ip = await self.dht.network.lookup_ip(vk)
-
                 new_url = IPUtils.interpolate_url(url, ip)
-
                 kwargs['url'] = new_url
-
-            # Parse out the VK and replace it with the matching IP address
-
-            self.log.debug("Lookup ip for vk {} ....".format(vk))
-            ip = await self.dht.network.lookup_ip(vk)
-            self.log.critical("\n Got ip {} from looking up {}!!!\n".format(ip, vk))
 
         return executor_name, executor_func, kwargs
