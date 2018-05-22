@@ -28,7 +28,7 @@ class NodeBase(StateMachine):
         # TODO move away from this once we integrate overlay
         self.nodes_registry = Constants.Testnet.AllNodes
 
-    def start(self):
+    def start(self, start_loop=True):
         """
         Kicks off the main event loop, and properly starts the Node. This call will block whatever thread its run on
         until the end of space and time (or until this Node/process is terminated)
@@ -44,7 +44,8 @@ class NodeBase(StateMachine):
 
         # ReactorInterface starts listening to messages from ReactorDaemon. Also starts any other tasks appended to
         # self.tasks by gathering them (using asyncio.gather) and then 'run_until_complete'-ing them in the event loop
-        self.composer.interface.start_reactor(tasks=self.tasks)
+        if start_loop:
+            self.composer.interface.start_reactor(tasks=self.tasks)
 
     @property
     def composer(self):

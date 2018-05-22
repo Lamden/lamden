@@ -41,10 +41,6 @@ class God:
         # a dict of composer_sk to composer object
         self.composers = {}
 
-    def start(self):
-        self.log.info("Starting asyncio fire-and-forget for ReactorInterface's _recv_messages...")
-        asyncio.ensure_future(self.interface._recv_messages())
-
     def _get_or_create_composer(self, signing_key):
         if signing_key in self.composers:
             self.log.debug("Existing Composer object found for signing key {}".format(signing_key))

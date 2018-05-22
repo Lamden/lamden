@@ -94,9 +94,10 @@ class MPTesterProcess:
     """
 
     def __init__(self, name, url, build_fn, config_fn, assert_fn):
+        self.url = url
+        self.name = name
         self.config_fn = config_fn
         self.assert_fn = assert_fn
-        self.url = url
         self.gathered_tasks = None
         self.log = get_logger("TesterProc[{}]".format(name))
 
@@ -152,8 +153,10 @@ class MPTesterProcess:
         assert type(tasks) is list or type(tasks) is tuple, \
             "3rd return val of build_obj must be a list/tuple of tasks... got {} instead".format(tasks)
         assert len(tasks) >= 1, "Expected at least one task"
-        for t in tasks:
-            assert inspect.iscoroutine(t), "Tasks must be a list of coroutines. Element {} is not a coro.".format(t)
+
+        # TODO investigate why this is not always working...soemtimes assert raises error for valid coro's
+        # for t in tasks:
+        #     assert inspect.iscoroutine(t), "Tasks must be a list of coroutines. Element {} is not a coro.".format(t)
 
         return tester_obj, loop, tasks
 
@@ -172,7 +175,7 @@ class MPTesterProcess:
                 # self.log.critical("\n!!!!!\nGOT ABORT SIG\n!!!!!\n")
                 errs = self._assertions()
                 if errs:
-                    self.log.critical("\n\n{0}\nASSERTIONS FAILED FOR {2}:\n{1}\n{0}\n".format('!' * 120, errs, name))
+                    self.log.critical("\n\n{0}\nASSERTIONS FAILED FOR {2}:\n{1}\n{0}\n".format('!' * 120, errs, self.name))
                 self._teardown()
                 return
 

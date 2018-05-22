@@ -4,6 +4,7 @@ from unittest.mock import patch, call, MagicMock
 from cilantro.protocol.transport import Router, Composer
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.statemachine import StateMachine
+from cilantro.nodes import Masternode, Delegate, Witness, NodeFactory
 import asyncio
 
 
@@ -21,20 +22,44 @@ class MPComposer(MPTesterBase):
         reactor = ReactorInterface(router=router, loop=loop, verifying_key=Constants.Protocol.Wallets.get_vk(sk))
         composer = Composer(interface=reactor, signing_key=sk)
 
-        # asyncio.ensure_future(reactor._recv_messages())
-
         return composer, loop, [reactor._recv_messages()]
 
 
 @mp_testable(God)
 class MPGod(MPTesterBase):
     @classmethod
-    def build_obj(cls):
+    def build_obj(cls) -> tuple:
         loop = asyncio.new_event_loop()
         god = God(loop=loop)
-        god.start()
 
-        # TODO all internal tasks that are ensured' to this tasks list
-        tasks = []
+        return god, loop, [god.interface._recv_messages()]
 
-        return god, loop, tasks
+
+@mp_testable(Masternode)
+class MPMasternode(MPTesterBase):
+    @classmethod
+    def build_obj(cls, sk, url, name='Masternode') -> tuple:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        mn = NodeFactory._build_node(loop=loop, signing_key=sk, url=url, node_cls=Masternode, name=name)
+        mn.start(start_loop=False)
+
+        tasks = mn.tasks + [mn.composer.interface._recv_messages()]
+
+        return mn, loop, tasks
+
+
+@mp_testable(Witness)
+class MPWitness(MPTesterBase):
+    @classmethod
+    def build_obj(cls, sk, url, name='Masternode') -> tuple:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        witness = NodeFactory._build_node(loop=loop, signing_key=sk, url=url, node_cls=Witness, name=name)
+        witness.start(start_loop=False)
+
+        tasks = witness.tasks + [witness.composer.interface._recv_messages()]
+
+        return witness, loop, tasks
