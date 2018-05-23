@@ -46,7 +46,7 @@ class ReactorDaemon:
             self.dht = ReactorDHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
                            alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
                            max_peers=Constants.Overlay.MaxPeers, block=False, cmd_cli=False)
-            self.log.debug(self.dht.network.bootstrappableNeighbors())
+            self.log.debug('bootstrappable neighbors: {}'.format(self.dht.network.bootstrappableNeighbors()))
 
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name

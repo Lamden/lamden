@@ -121,6 +121,7 @@ def _check_hex(hex_str: str, length=0) -> bool:
 
 class IPUtils:
     url_pattern = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})', flags=re.IGNORECASE)
+
     @staticmethod
     def interpolate_url(vk_url: str, ip_addr: str) -> str:
         """
@@ -132,7 +133,7 @@ class IPUtils:
         res = re.match(IPUtils.url_pattern, vk_url)
         protocol, vk, port = res.groups()
 
-        return "{}://{}:{}".format(protocol, ip_addr, os.getenv('NETWORK_PORT', 5678))
+        return "{}://{}:{}".format(protocol, ip_addr, os.getenv('NETWORK_PORT', port))
 
     @staticmethod
     def get_vk(vk_url) -> str or False:
@@ -142,4 +143,3 @@ class IPUtils:
         if _check_hex(vk, length=64):
             return vk
         return False
-        

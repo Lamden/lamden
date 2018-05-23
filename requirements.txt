@@ -4,7 +4,7 @@ aiohttp==2.3.9
 aioprocessing==1.0.0
 Cython==0.28.1
 idna==2.6
-kade==1.0.4
+kade==1.0.5
 mysql-connector-python-rf==2.2.2
 ntplib==0.3.3
 plyvel==1.0.4

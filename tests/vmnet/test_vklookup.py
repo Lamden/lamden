@@ -18,7 +18,7 @@ def run_mn():
     log = get_logger("MASTERNODE FACTORY")
 
     sk = Constants.Testnet.Masternode.Sk
-    url = 'tcp://{}:9999'.format(os.getenv('HOST_IP'))#Constants.Testnet.Masternode.InternalUrl
+    url = 'tcp://{}:{}'.format(os.getenv('HOST_IP'), Constants.Testnet.Masternode.InternalUrl[-4:])
 
     with DB('{}'.format(DB_NAME), should_reset=True) as db: pass
 
@@ -35,9 +35,10 @@ def run_witness(slot_num):
     log = get_logger("WITNESS FACTORY")
 
     w_info = Constants.Testnet.Witnesses[slot_num]
-    w_info['url'] = 'tcp://{}:9999'.format(os.getenv('HOST_IP'))
+    port = w_info['url'][-4:]
+    w_info['url'] = 'tcp://{}:{}'.format(os.getenv('HOST_IP'), port)
 
-    # with DB('{}_{}'.format(DB_NAME, slot_num), should_reset=True) as db: pass
+    with DB('{}_witness_{}'.format(DB_NAME, slot_num), should_reset=True) as db: pass
 
     log.critical("Building witness on slot {} with info {}".format(slot_num, w_info))
     NodeFactory.run_witness(url=w_info['url'], signing_key=w_info['sk'])
@@ -53,12 +54,10 @@ def run_delegate(slot_num):
     log = get_logger("DELEGATE FACTORY")
 
     d_info = Constants.Testnet.Delegates[slot_num]
-    d_info['url'] = 'tcp://{}:9999'.format(os.getenv('HOST_IP'))
+    port = d_info['url'][-4:]
+    d_info['url'] = 'tcp://{}:{}'.format(os.getenv('HOST_IP'), port)
 
-    # Set default database name for this instance
-    DB.set_context("{}_delegate_{}".format(DB_NAME, slot_num))
-    with DB() as db: pass
-    # with DB('{}_{}'.format(DB_NAME, slot_num), should_reset=True) as db: pass
+    with DB('{}_delegate_{}'.format(DB_NAME, slot_num), should_reset=True) as db: pass
 
     log.critical("Building witness on slot {} with info {}".format(slot_num, d_info))
     NodeFactory.run_delegate(url=d_info['url'], signing_key=d_info['sk'])
@@ -77,7 +76,7 @@ def run_mgmt():
     s,v = ED25519Wallet.new()
     mpc = MPComposer(name='mgmt', sk=s)
     log.critical("trying to look at vk: {}".format(vk))
-    mpc.add_pub(url='tcp://{}:9999'.format(vk))
+    mpc.add_sub(filter='a', url='tcp://{}:33333'.format(vk))
 
 def start_mysqld():
     import os
@@ -102,7 +101,7 @@ class TestBootstrap(BaseNetworkTestCase):
 
     def test_bootstrap(self):
         # start mysql in all nodes
-        for node_name in ['masternode'] + ['witness_{}'.format(i+1) for i in range(self.NUM_WITNESS)] + ['delegate_{}'.format(i+1) for i in range(self.NUM_DELEGATES)]:
+        for node_name in ['masternode'] + ['witness_{}'.format(i+1+1) for i in range(self.NUM_WITNESS)] + ['delegate_{}'.format(i+1+3) for i in range(self.NUM_DELEGATES)]:
             self.execute_python(node_name, start_mysqld, async=True)
         time.sleep(3)
 
