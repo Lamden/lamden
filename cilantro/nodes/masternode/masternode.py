@@ -62,6 +62,17 @@ class MNBootState(MNBaseState):
 class MNRunState(MNBaseState):
     NODE_AVAILABLE, NODE_AWAITING, NODE_TIMEOUT = range(3)
 
+    # FOR DEBBUGING TODO REMOVE THIS (as its defined in base)
+    @input(TransactionBase)
+    def recv_tx(self, tx: TransactionBase):
+        self.log.critical("(RUNSTATE RECV) mn about to pub for tx {}".format(tx))  # debug line
+        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=tx)
+        self.log.critical("(RUNSTATE RECV) published on our url: {}".format(TestNetURLHelper.pubsub_url(self.parent.url)))  # debug line
+        self.stupid_effect(tx)
+
+    def stupid_effect(self, tx):
+        self.log.critical("stupid effect called with tx {}".format(tx))
+
     def reset_attrs(self):
         self.block_contenders = []
         self.node_states = {}

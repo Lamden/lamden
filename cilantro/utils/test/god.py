@@ -41,10 +41,6 @@ class God:
         # a dict of composer_sk to composer object
         self.composers = {}
 
-    def start(self):
-        self.log.info("Starting asyncio fire-and-forget for ReactorInterface's _recv_messages...")
-        asyncio.ensure_future(self.interface._recv_messages())
-
     def _get_or_create_composer(self, signing_key):
         if signing_key in self.composers:
             self.log.debug("Existing Composer object found for signing key {}".format(signing_key))
@@ -56,14 +52,22 @@ class God:
             return c
 
     @classmethod
-    def send_tx(cls, sender: tuple, receiver: tuple, amount: int):
+    def create_std_tx(cls, sender: tuple, receiver: tuple, amount: int) -> StandardTransaction:
         if type(receiver) is tuple:
             receiver = receiver[1]
 
-        tx = StandardTransactionBuilder.create_tx(sender[0], sender[1], receiver, amount)
-        r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
+        return StandardTransactionBuilder.create_tx(sender[0], sender[1], receiver, amount)
 
+    @classmethod
+    def send_std_tx(cls, sender: tuple, receiver: tuple, amount: int):
+        tx = cls.create_std_tx(sender, receiver, amount)
+        cls.send_tx(tx)
+
+    @classmethod
+    def send_tx(cls, tx: TransactionBase):
+        r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
         cls.log.info("POST request to MN at URL {} has status code: {}".format(MN_URL, r.status_code))
+
 
     def send_block_contender(self, url, bc):
         pass

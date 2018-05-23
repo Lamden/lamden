@@ -72,6 +72,10 @@ class TrafficLightRedState(TrafficLightBaseState):
     def exit_general(self, next_state):
         pass
 
+    @exit_from(TrafficLightBrokenState, TrafficLightFixingState)
+    def exit_from_maintenance(self, next_state):
+        pass
+
     # Uncomment this and confirm it raises an assertion when any tests are run
     # @exit_from_any
     # def exit_general_dupe(self, prev_state):
@@ -91,6 +95,10 @@ class TrafficLightYellowState(TrafficLightBaseState):
     def enter_from_broken_or_fixing(self, prev_state):
         pass
 
+    @enter_from_any
+    def enter_any(self, prev_state):
+        self.log.debug("entering from any from prev state {}".format(prev_state))
+
     # UNCOMMENT THIS AND VERIFY AN ASSERTION IS THROWN WHEN ANY TEST IS RUN
     # @enter_from(TrafficLightBrokenState)
     # def this_should_blow_up_cause_another_handler_for_that_state_already_exists(self):
@@ -107,14 +115,6 @@ STATES = [TrafficLightGreenState, TrafficLightRedState, TrafficLightYellowState]
 
 
 class StateTest(TestCase):
-
-    def _assert_funcs_equal(self, func1, func2):
-        """
-        Hackish helper method to assert two functions have the same name
-        Necessary b/c _get_input_handler returns a function (ie. SomeStateClass.handle_this), versus a bounded method
-        (i.e. some_state_instance.handle_this)
-        """
-        self.assertEqual(func1.__qualname__, func2.__qualname__)
 
     def test_eq_instance(self):
         mock_sm = MagicMock()
@@ -218,10 +218,10 @@ class StateTest(TestCase):
 
         state = TrafficLightBaseState(mock_sm)
 
-        expected_handler = TrafficLightBaseState.enter_general
+        expected_handler = state.enter_general
         actual_handler = state._get_transition_handler(TransitionDecor.ENTER, EmptyState)
 
-        self._assert_funcs_equal(expected_handler, actual_handler)
+        self.assertEqual(expected_handler, actual_handler)
 
     def test_get_transition_handler_exit_any(self):
         mock_sm = MagicMock()
@@ -231,7 +231,7 @@ class StateTest(TestCase):
         expected_handler = state.exit_general
         actual_handler = state._get_transition_handler(TransitionDecor.EXIT, TrafficLightYellowState)
 
-        self._assert_funcs_equal(expected_handler, actual_handler)
+        self.assertEqual(expected_handler, actual_handler)
 
     def get_transition_handler_specific(self):
         mock_sm = MagicMock()
@@ -241,12 +241,12 @@ class StateTest(TestCase):
         expected_handler = state.enter_from_red
         actual_handler = state._get_transition_handler(TransitionDecor.ENTER, TrafficLightRedState)
 
-        self._assert_funcs_equal(expected_handler, actual_handler)
+        self.assertEqual(expected_handler, actual_handler)
 
     def test_get_trans_enter_any_doesnt_exist(self):
         mock_sm = MagicMock()
 
-        state = TrafficLightYellowState(mock_sm)
+        state = TrafficLightGreenState(mock_sm)
 
         expected_handler = None
         actual_handler = state._get_transition_handler(TransitionDecor.ENTER, EmptyState)
@@ -262,10 +262,10 @@ class StateTest(TestCase):
 
         state = TrafficLightBaseState(mock_sm)
 
-        expected_handler = TrafficLightBaseState.handle_stop_msg_on_base
+        expected_handler = state.handle_stop_msg_on_base
         actual_handler = state._get_input_handler(stop_msg, StateInput.INPUT)
 
-        self._assert_funcs_equal(expected_handler, actual_handler)
+        self.assertEqual(expected_handler, actual_handler)
 
     def test_get_input_handler_with_request(self):
         mock_sm = MagicMock()
@@ -273,10 +273,10 @@ class StateTest(TestCase):
 
         state = TrafficLightGreenState(mock_sm)
 
-        expected_handler = TrafficLightGreenState.handle_status_req_on_green
+        expected_handler = state.handle_status_req_on_green
         actual_handler = state._get_input_handler(msg, StateInput.REQUEST)
 
-        self._assert_funcs_equal(expected_handler, actual_handler)
+        self.assertEqual(expected_handler, actual_handler)
 
     def test_get_input_handler_inheritance(self):
         mock_sm = MagicMock()
@@ -284,10 +284,10 @@ class StateTest(TestCase):
 
         state = TrafficLightYellowState(mock_sm)
 
-        expected_handler = TrafficLightYellowState.handle_stop_msg_on_yellow
+        expected_handler = state.handle_stop_msg_on_yellow
         actual_handler = state._get_input_handler(stop_msg, StateInput.INPUT)
 
-        self._assert_funcs_equal(expected_handler, actual_handler)
+        self.assertEqual(expected_handler, actual_handler)
 
     def test_get_input_handler_inheritance_override(self):
         """
@@ -297,10 +297,10 @@ class StateTest(TestCase):
 
         state = TrafficLightYellowState(mock_sm)
 
-        expected_handler = TrafficLightBaseState.handle_reboot_on_base
+        expected_handler = state.handle_reboot_on_base
         actual_handler = state._get_input_handler(reboot_msg, StateInput.INPUT)
 
-        self._assert_funcs_equal(expected_handler, actual_handler)
+        self.assertEqual(expected_handler, actual_handler)
 
     def test_assert_has_input_handler(self):
         mock_sm = MagicMock()
@@ -316,24 +316,25 @@ class StateTest(TestCase):
 
         state = TrafficLightGreenState(mock_sm)
 
-        expected_handler = TrafficLightGreenState.handle_status_req_on_green
+        expected_handler = state.handle_status_req_on_green
         func = state._get_input_handler(msg, StateInput.REQUEST)
 
-        self._assert_funcs_equal(expected_handler, func)
+        self.assertEqual(expected_handler, func)
         self.assertTrue(state._has_envelope_arg(func))
 
     def test_call_input_handler(self):
         mock_sm = MagicMock()
+        mock_env = MagicMock()
         msg = StatusRequest("how u doin guy")
 
         state = TrafficLightGreenState(mock_sm)
 
-        expected_handler = TrafficLightGreenState.handle_status_req_on_green
+        expected_handler = state.handle_status_req_on_green
         func = state._get_input_handler(msg, StateInput.REQUEST)
 
-        self._assert_funcs_equal(expected_handler, func)
+        self.assertEqual(expected_handler, func)
 
-        state.call_input_handler(msg, StateInput.REQUEST)
+        state.call_input_handler(msg, StateInput.REQUEST, envelope=mock_env)
 
         self.assertEqual(state.request, msg)
 
@@ -348,3 +349,118 @@ class StateTest(TestCase):
 
         self.assertEqual(state.message, msg)
         self.assertEqual(state.envelope, mock_env)
+
+    def test_call_input_handler_enter_doesnt_exist(self):
+        """
+        TODO -- test that call_input_handler raises an exception if the handler does not exist
+        """
+        self.assertTrue(2 + 2 == 4)
+
+    def test_get_transition_handler_enter_general(self):
+        mock_sm = MagicMock()
+
+        state = TrafficLightRedState(mock_sm)
+
+        expected_handler = state.enter_general
+        actual_handler = state._get_transition_handler(TransitionDecor.ENTER, EmptyState)
+
+        self.assertEqual(expected_handler, actual_handler)
+
+    def test_get_transition_handler_exit_general(self):
+        mock_sm = MagicMock()
+
+        state = TrafficLightRedState(mock_sm)
+
+        expected_handler = state.exit_general
+        actual_handler = state._get_transition_handler(TransitionDecor.EXIT, EmptyState)
+
+        self.assertEqual(expected_handler, actual_handler)
+
+    def test_get_transition_handler_exit_specific(self):
+        mock_sm = MagicMock()
+
+        state = TrafficLightRedState(mock_sm)
+
+        expected_handler = state.exit_from_maintenance
+        actual_handler1 = state._get_transition_handler(TransitionDecor.EXIT, TrafficLightBrokenState)
+        actual_handler2 = state._get_transition_handler(TransitionDecor.EXIT, TrafficLightFixingState)
+
+        self.assertEqual(expected_handler, actual_handler1)
+        self.assertEqual(expected_handler, actual_handler2)
+
+    def test_get_transition_handler_none(self):
+        mock_sm = MagicMock()
+
+        state = TrafficLightGreenState(mock_sm)
+
+        expected_handler = None
+        actual_handler1 = state._get_transition_handler(TransitionDecor.EXIT, TrafficLightBrokenState)
+        actual_handler2 = state._get_transition_handler(TransitionDecor.ENTER, TrafficLightFixingState)
+
+        self.assertEqual(expected_handler, actual_handler1)
+        self.assertEqual(expected_handler, actual_handler2)
+
+    def test_get_transition_handler_enter_specific(self):
+        mock_sm = MagicMock()
+
+        state = TrafficLightYellowState(mock_sm)
+
+        expected_handler = state.enter_from_broken_or_fixing
+        actual_handler1 = state._get_transition_handler(TransitionDecor.ENTER, TrafficLightBrokenState)
+        actual_handler2 = state._get_transition_handler(TransitionDecor.ENTER, TrafficLightFixingState)
+
+        self.assertEqual(expected_handler, actual_handler1)
+        self.assertEqual(expected_handler, actual_handler2)
+
+    def test_call_transition_handler_general(self):
+        mock_sm = MagicMock()
+
+        state = TrafficLightYellowState(mock_sm)
+        mock_enter_func = MagicMock()
+        state.enter_any = mock_enter_func
+
+        state.call_transition_handler(TransitionDecor.ENTER, EmptyState)
+
+        mock_enter_func.assert_called_once()
+
+    def test_input_handler(self):
+        mock_sm = MagicMock()
+        stop_msg = RebootMessage("time to reboot")
+
+        state = TrafficLightRedState(mock_sm)
+
+        mock_func = MagicMock()
+        state.handle_reboot_on_red = mock_func
+
+        state.call_input_handler(message=stop_msg, input_type=StateInput.INPUT)
+
+        mock_func.assert_called_once()
+
+    def test_input_handler_with_args(self):
+        mock_sm = MagicMock()
+        mock_env = MagicMock()
+        msg = ForceStopMessage("stop it guy!")
+
+        state = TrafficLightRedState(mock_sm)
+
+        mock_func = MagicMock(spec=state.handle_stop_msg_on_red)
+        state.handle_stop_msg_on_red = mock_func
+
+        state.call_input_handler(msg, StateInput.INPUT, envelope=mock_env)
+
+        mock_func.assert_called_with(msg, mock_env)
+
+        # ddddd
+
+        # mock_sm = MagicMock()
+        # stop_msg = RebootMessage("time to reboot")
+        #
+        # state = TrafficLightRedState(mock_sm)
+        #
+        # mock_func = MagicMock()
+        # state.handle_reboot_on_red = mock_func
+        #
+        # state.call_input_handler(message=stop_msg, input_type=StateInput.INPUT)
+        #
+        # mock_func.assert_called_once()
+
