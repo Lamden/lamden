@@ -148,9 +148,9 @@ class State(metaclass=StateMeta):
 
         if self._has_envelope_arg(func):
             self.log.debug("ENVELOPE DETECTED IN HANDLER ARGS")  # todo remove this
-            output = func(self, message, envelope=envelope)
+            output = func(message, envelope=envelope)
         else:
-            output = func(self, message)
+            output = func(message)
 
         return output
 
@@ -172,7 +172,10 @@ class State(metaclass=StateMeta):
         assert isinstance(registry, dict), "Expected registry to be a dictionary!"
 
         func = registry[type(message)]
-        return func
+
+        method = getattr(self, func.__name__)
+        # return func
+        return method
 
     def _has_envelope_arg(self, func):
         # TODO more robust logic that searches through parameter type annotations one that is typed with Envelope class
@@ -200,7 +203,12 @@ class State(metaclass=StateMeta):
         # First see if a specific transition handler exists
         if state in trans_registry:
             self.log.debug("specific {} handler {} found for state {}!".format(trans_type, trans_registry[state], state))
-            return trans_registry[state]
+            # return trans_registry[state]
+            func = trans_registry[state]
+            assert hasattr(self, func.__name__), "STATE META LOGIC ERROR! Specific transition {} handler found for " \
+                                                 "state {}, but no method of that named found on self {}"\
+                                                 .format(trans_type, state, dir(self))
+            return getattr(self, func.__name__)
 
         # Next, see if there is an ANY handler (a 'wildcard' handler configured to capture all states)
         any_handler = getattr(self, TransitionDecor.get_any_attr(trans_type))

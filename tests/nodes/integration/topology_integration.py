@@ -4,6 +4,8 @@ from cilantro.utils.test import MPTestCase
 from unittest.mock import patch, call, MagicMock
 from cilantro.utils.test.god import *
 from cilantro.nodes import Masternode, Witness, Delegate
+from cilantro.nodes.masternode.masternode import *
+from cilantro.protocol.statemachine.decorators import StateInput
 import time
 
 
@@ -23,24 +25,46 @@ URLS = ['tcp://127.0.0.1:' + str(i) for i in range(9000, 9999, 10)]
 
 class TopologyIntegrationTest(MPTestCase):
 
-    def test_masternode_http_request(self):
+    def test_masternode_receives_std_tx(self):
         """
-        Tests that a Masternode properly receives an HTTP request on its web server
+        Tests that a Masternode properly receives a standard TXs from users
         """
         def config_mn(mn: Masternode):
-            # TODO implement
+            assert mn.state == MNRunState, "what the fuck current state is {}".format(mn.state)
+            # Mock the recv_tx method on run state
+            run_state = mn.states[MNRunState]
+
+            MNRunState.recv_tx = MagicMock()
+
+            # assert mn.state is run_state, "these things shoudl be teh same obj, wtf if they arent"
+
+            # input_handler = run_state._get_input_handler(tx1, StateInput.INPUT)
+
+            # self.log.critical("\n\n got input handler: {} and 'intuitive handler' {} and maybe the same handler {}\n\n".format(input_handler, run_state.recv_tx, MNRunState.recv_tx))
+
+            # self.log.critical("\n\n\n DIR:\n{} \n\n\n".format(dir(run_state)))
+
+            # run_state.stupid_effect = MagicMock()
+
             return mn
 
         def assert_mn(mn: Masternode):
-            # TODO implement
-            raise Exception("lol get rekt u noob")
+            # run_state = mn.states[MNRunState]
+            MNRunState.recv_tx.assert_has_calls([call(tx1), call(tx2)], any_order=True)
+            # raise Exception("lol get rekt u noob")
 
-        masternode = MPMasternode(name='Masternode', config_fn=config_mn, assert_fn=assert_mn, sk=sk1, url=URLS[0])
+        mn_url = Constants.Testnet.Masternode.InternalUrl
+        mn_sk = Constants.Testnet.Masternode.Sk
 
-        time.sleep(0.5)
+        tx1 = God.create_std_tx(FALCON, DAVIS, 210)
+        tx2 = God.create_std_tx(STU, FALCON, 150)
 
-        God.send_tx(STU, FALCON, 120)
+        masternode = MPMasternode(name='Masternode', config_fn=config_mn, assert_fn=assert_mn, sk=mn_sk, url=mn_url)
 
+        time.sleep(0.25)  # give masternode time to get his web server ready
+
+        God.send_tx(tx1)
+        God.send_tx(tx2)
 
         self.start()
 

@@ -52,14 +52,22 @@ class God:
             return c
 
     @classmethod
-    def send_tx(cls, sender: tuple, receiver: tuple, amount: int):
+    def create_std_tx(cls, sender: tuple, receiver: tuple, amount: int) -> StandardTransaction:
         if type(receiver) is tuple:
             receiver = receiver[1]
 
-        tx = StandardTransactionBuilder.create_tx(sender[0], sender[1], receiver, amount)
-        r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
+        return StandardTransactionBuilder.create_tx(sender[0], sender[1], receiver, amount)
 
+    @classmethod
+    def send_std_tx(cls, sender: tuple, receiver: tuple, amount: int):
+        tx = cls.create_std_tx(sender, receiver, amount)
+        cls.send_tx(tx)
+
+    @classmethod
+    def send_tx(cls, tx: TransactionBase):
+        r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
         cls.log.info("POST request to MN at URL {} has status code: {}".format(MN_URL, r.status_code))
+
 
     def send_block_contender(self, url, bc):
         pass
