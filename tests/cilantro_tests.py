@@ -19,7 +19,8 @@ x
 """
 
 TEST_GROUP_A = [
-    'tests.protocol.structures'
+    'tests.protocol.structures',
+    'tests.protocol.statemachine'
     ]
 
 TEST_GROUP_B = [
@@ -29,7 +30,9 @@ TEST_GROUP_B = [
     'tests.messages.transactions'
 ]
 
-TEST_GROUP_C = []
+TEST_GROUP_C = [
+    'tests.protocol.transport'  # only transport_integration.py has all passing test atm
+]
 
 TEST_GROUP_D = []
 
@@ -40,21 +43,32 @@ TESTGROUPS = [
 
 if __name__ == '__main__':
     TEST_FLAG = 'S'  # test flag represents failure (F) or success (S) of testing
+    loader = unittest.TestLoader()
+
     for g in TESTGROUPS:
         for t in g:
-            loader = unittest.TestLoader()
-
             suite = loader.discover(t)  # finds all unit tests in the testgroup directory
 
             runner = unittest.TextTestRunner(verbosity=3)
             TestResult = runner.run(suite)
 
             if TestResult.errors:
-                print("error in {} - exiting test framework".format(t))
-                print('\n\n', TestResult.errors)
-                print('\n\n', TestResult.failures)
-                TEST_FLAG = 'F'
-                break
+                for i in range(len(TestResult.errors) + 1):
+                    print("error in {} - exiting test framework".format(t))
+                    print('\n\n', 'Number of errors:', len(TestResult.errors))
+                    print('\n\n', 'Error in:', TestResult.errors[i][0])
+                    print('\n\n', 'Error traceback:', TestResult.errors[i][1])
+                    TEST_FLAG = 'F'
+                    break
+
+            elif TestResult.failures:
+                for i in range(len(TestResult.failures) + 1):
+                    print("failure in {} - exiting test framework".format(t))
+                    print('\n\n', 'Number of failures:', len(TestResult.failures))
+                    print('\n\n', TestResult.failures[i][0])
+                    print('\n\n', TestResult.failures[i][1])
+                    TEST_FLAG = 'F'
+                    break
             else:
                 print("No errors in {} \n\n".format(t))
 
