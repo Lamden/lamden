@@ -411,3 +411,13 @@ class StateTest(TestCase):
         self.assertEqual(expected_handler, actual_handler1)
         self.assertEqual(expected_handler, actual_handler2)
 
+    def test_call_transition_handler_general(self):
+        mock_sm = MagicMock()
+
+        state = TrafficLightYellowState(mock_sm)
+        mock_enter_func = MagicMock()
+        state.enter_general = mock_enter_func
+
+        state.call_transition_handler(TransitionDecor.ENTER, EmptyState)
+
+        mock_enter_func.assert_called_once()
