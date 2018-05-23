@@ -17,6 +17,18 @@ services:
       - type: bind
         source: /storage/docker/mysql-datadir
         target: /var/lib/mysql
+  mgmt:
+    ip: 172.29.5.0
+    stdin_open: true
+    tty: true
+    build:
+      context: ${LOCAL_PATH}/cilantro
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    image: cilantro_base.dev
+    volumes:
+      - type: bind
+        source: ${LOCAL_PATH}/cilantro
+        target: /app/
   masternode:
     ip: 172.29.5.1
     stdin_open: true
@@ -30,10 +42,10 @@ services:
         source: ${LOCAL_PATH}/cilantro
         target: /app/
   witness:
-    ip: 172.29.6.x
+    ip: 172.29.5.x
     range:
-      - 1
       - 2
+      - 3
     stdin_open: true
     tty: true
     build:
@@ -45,22 +57,10 @@ services:
         source: ${LOCAL_PATH}/cilantro
         target: /app/
   delegate:
-    ip: 172.29.7.x
+    ip: 172.29.5.x
     range:
-      - 1
       - 4
-    stdin_open: true
-    tty: true
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    image: cilantro_base.dev
-    volumes:
-      - type: bind
-        source: ${LOCAL_PATH}/cilantro
-        target: /app/
-  mgmt:
-    ip: 172.29.5.0
+      - 7
     stdin_open: true
     tty: true
     build:

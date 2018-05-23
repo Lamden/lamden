@@ -37,7 +37,7 @@ def run_witness(slot_num):
     w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['url'] = 'tcp://{}:9999'.format(os.getenv('HOST_IP'))
 
-    with DB('{}_{}'.format(DB_NAME, slot_num), should_reset=True) as db: pass
+    # with DB('{}_{}'.format(DB_NAME, slot_num), should_reset=True) as db: pass
 
     log.critical("Building witness on slot {} with info {}".format(slot_num, w_info))
     NodeFactory.run_witness(url=w_info['url'], signing_key=w_info['sk'])
@@ -56,7 +56,9 @@ def run_delegate(slot_num):
     d_info['url'] = 'tcp://{}:9999'.format(os.getenv('HOST_IP'))
 
     # Set default database name for this instance
-    with DB('{}_{}'.format(DB_NAME, slot_num), should_reset=True) as db: pass
+    DB.set_context("{}_delegate_{}".format(DB_NAME, slot_num))
+    with DB() as db: pass
+    # with DB('{}_{}'.format(DB_NAME, slot_num), should_reset=True) as db: pass
 
     log.critical("Building witness on slot {} with info {}".format(slot_num, d_info))
     NodeFactory.run_delegate(url=d_info['url'], signing_key=d_info['sk'])
@@ -64,16 +66,18 @@ def run_delegate(slot_num):
 def run_mgmt():
     from cilantro.logger import get_logger
     from cilantro import Constants
-    from cilantro.nodes import NodeFactory
     from cilantro.db import DB, DB_NAME
-    import os, time
+    from cilantro.utils.test import MPComposer
+    from cilantro.protocol.wallets import ED25519Wallet
+    import os, time, asyncio
 
     log = get_logger("MANAGEMENT NODE")
-
     sk = Constants.Testnet.Masternode.Sk
     vk = Constants.Protocol.Wallets.get_vk(sk)
+    s,v = ED25519Wallet.new()
+    mpc = MPComposer(name='mgmt', sk=s)
     log.critical("trying to look at vk: {}".format(vk))
-    mn.compose.add_pub(url='tcp://{}:9999'.format(w_info['vk']))
+    mpc.add_pub(url='tcp://{}:9999'.format(vk))
 
 def start_mysqld():
     import os
@@ -85,6 +89,7 @@ def start_mysqld():
    --default-tmp-storage-engine MyISAM \
    --binlog_format ROW \
    --user=mysql &')
+    os.system('pip3 uninstall kade -y')
 
 
 class TestBootstrap(BaseNetworkTestCase):
@@ -106,11 +111,11 @@ class TestBootstrap(BaseNetworkTestCase):
 
         # Bootstrap witnesses
         for i in range(self.NUM_WITNESS):
-            self.execute_python('witness_{}'.format(i+1), wrap_func(run_witness, i), async=True)
+            self.execute_python('witness_{}'.format(i+1+1), wrap_func(run_witness, i), async=True)
 
         # Bootstrap delegates
         for i in range(self.NUM_DELEGATES):
-            self.execute_python('delegate_{}'.format(i+1), wrap_func(run_delegate, i), async=True)
+            self.execute_python('delegate_{}'.format(i+1+3), wrap_func(run_delegate, i), async=True)
 
         time.sleep(5)
         self.execute_python('mgmt', run_mgmt, async=True)
