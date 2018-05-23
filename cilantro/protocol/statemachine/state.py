@@ -160,12 +160,7 @@ class State(metaclass=StateMeta):
         if not trans_func:
             return
 
-        if inspect.ismethod(trans_func):
-            trans_func(next_state, *args, **kwargs)
-        elif inspect.isfunction(trans_func):
-            trans_func(self, next_state, *args, **kwargs)
-        else:
-            raise ValueError("Got unexpected handler {} that is neither a function nor a method!".format(trans_func))
+        trans_func(next_state, *args, **kwargs)
 
     def _get_input_handler(self, message, input_type: str):
         registry = getattr(self, input_type)
@@ -197,13 +192,11 @@ class State(metaclass=StateMeta):
         assert issubclass(state, State), "state arg must be a State class"
 
         trans_registry = getattr(self, trans_type)
-
-        self.log.debug("LOOKING UP STATE {} IN TRANS REGISTRY {}".format(state, trans_registry))  # TODO remove
+        # self.log.debug("LOOKING UP STATE {} IN TRANS REGISTRY {}".format(state, trans_registry))  # TODO remove
 
         # First see if a specific transition handler exists
         if state in trans_registry:
-            self.log.debug("specific {} handler {} found for state {}!".format(trans_type, trans_registry[state], state))
-            # return trans_registry[state]
+            # self.log.debug("specific {} handler {} found for state {}!".format(trans_type, trans_registry[state], state))
             func = trans_registry[state]
             assert hasattr(self, func.__name__), "STATE META LOGIC ERROR! Specific transition {} handler found for " \
                                                  "state {}, but no method of that named found on self {}"\
