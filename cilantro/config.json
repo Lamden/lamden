@@ -9,18 +9,6 @@
     "dupe-table-size": 10000,
     "request-table-size": 10000
   },
-  "mongo-constants": {
-    "db-name": "cilantro",
-    "blocks-col-name": "blockchain",
-    "latest-hash-key": "latest_hash",
-    "latest-block-num-key": "latest_block_num",
-    "balances-col-name": "balances",
-    "genesis-key": "is_genesis",
-    "blocks-state-col-name": "blockchain_state",
-    "wallet-key": "wallet",
-    "balance-key": "balance",
-    "faucet-col-name": "faucet"
-  },
   "nodes": {
     "max-request-length": 100000,
     "max-queue-size": 2,
