@@ -45,6 +45,8 @@ if __name__ == '__main__':
     TEST_FLAG = 'S'  # test flag represents failure (F) or success (S) of testing
     loader = unittest.TestLoader()
 
+    all_errors = []
+
     for g in TESTGROUPS:
         for t in g:
             suite = loader.discover(t)  # finds all unit tests in the testgroup directory
@@ -54,6 +56,7 @@ if __name__ == '__main__':
 
             if TestResult.errors:
                 for i in range(len(TestResult.errors) + 1):
+                    all_errors.append(TestResult.errors[i])
                     print("error in {} - exiting test framework".format(t))
                     print('\n\n', 'Number of errors:', len(TestResult.errors))
                     print('\n\n', 'Error in:', TestResult.errors[i][0])
@@ -63,6 +66,7 @@ if __name__ == '__main__':
 
             elif TestResult.failures:
                 for i in range(len(TestResult.failures) + 1):
+                    all_errors.append(TestResult.failures[i])
                     print("failure in {} - exiting test framework".format(t))
                     print('\n\n', 'Number of failures:', len(TestResult.failures))
                     print('\n\n', TestResult.failures[i][0])
@@ -71,6 +75,10 @@ if __name__ == '__main__':
                     break
             else:
                 print("No errors in {} \n\n".format(t))
+
+    for err in all_errors:
+        # print("failure in {} - exiting test framework".format(err))
+        print("failure: {}".format(err))
 
     if TEST_FLAG == 'S':
         print('\n\n All tests have finished running and passed - testing complete!')
