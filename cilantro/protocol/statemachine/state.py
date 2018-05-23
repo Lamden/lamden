@@ -146,8 +146,13 @@ class State(metaclass=StateMeta):
 
         func = self._get_input_handler(message, input_type)
 
-        if self._has_envelope_arg(func):
-            self.log.debug("ENVELOPE DETECTED IN HANDLER ARGS")  # todo remove this
+        # if self._has_envelope_arg(func):
+        #     self.log.debug("ENVELOPE DETECTED IN HANDLER ARGS")  # todo remove this
+        #     output = func(message, envelope=envelope)
+        # else:
+        #     output = func(message)
+
+        if envelope:
             output = func(message, envelope=envelope)
         else:
             output = func(message)
@@ -168,9 +173,11 @@ class State(metaclass=StateMeta):
 
         func = registry[type(message)]
 
-        method = getattr(self, func.__name__)
-        # return func
-        return method
+        assert hasattr(self, func.__name__), "STATE META LOGIC ERROR! Input handler for message type {} found to be" \
+                                             " func {}, but no such attr name found on self {}"\
+                                             .format(type(message), func, dir(self))
+
+        return getattr(self, func.__name__)
 
     def _has_envelope_arg(self, func):
         # TODO more robust logic that searches through parameter type annotations one that is typed with Envelope class
@@ -198,15 +205,18 @@ class State(metaclass=StateMeta):
         if state in trans_registry:
             # self.log.debug("specific {} handler {} found for state {}!".format(trans_type, trans_registry[state], state))
             func = trans_registry[state]
-            assert hasattr(self, func.__name__), "STATE META LOGIC ERROR! Specific transition {} handler found for " \
+            assert hasattr(self, func.__name__), "STATE META LOGIC ERROR! Specific transition {} handler {} found for " \
                                                  "state {}, but no method of that named found on self {}"\
-                                                 .format(trans_type, state, dir(self))
+                                                 .format(trans_type, func, state, dir(self))
             return getattr(self, func.__name__)
 
         # Next, see if there is an ANY handler (a 'wildcard' handler configured to capture all states)
         any_handler = getattr(self, TransitionDecor.get_any_attr(trans_type))
         if any_handler:
-            return any_handler
+            assert hasattr(self, any_handler.__name__), "STATE META LOGIC ERROR! General transition {} handler {} found" \
+                                                        " for state {}, but no method of that named found on self {}" \
+                                                        .format(trans_type, any_handler, state, dir(self))
+            return getattr(self, any_handler.__name__)
 
         # At this point, no handler could be found. Warn the user and return None
         self.log.warning("\nNo {} transition handler found for state {}. Any_handler = {} ... Transition "
@@ -231,8 +241,6 @@ class State(metaclass=StateMeta):
         else:
             raise ValueError("Invalid comparison -- RHS (right hand side of equation) must be either a State subclass "
                              "instance or Class (not {})".format(other))
-
-        # return type(self) == type(other)
 
     def __repr__(self):
         return type(self).__name__

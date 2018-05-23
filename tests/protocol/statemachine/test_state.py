@@ -97,7 +97,7 @@ class TrafficLightYellowState(TrafficLightBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
-        pass
+        self.log.debug("entering from any from prev state {}".format(prev_state))
 
     # UNCOMMENT THIS AND VERIFY AN ASSERTION IS THROWN WHEN ANY TEST IS RUN
     # @enter_from(TrafficLightBrokenState)
@@ -324,6 +324,7 @@ class StateTest(TestCase):
 
     def test_call_input_handler(self):
         mock_sm = MagicMock()
+        mock_env = MagicMock()
         msg = StatusRequest("how u doin guy")
 
         state = TrafficLightGreenState(mock_sm)
@@ -333,7 +334,7 @@ class StateTest(TestCase):
 
         self.assertEqual(expected_handler, func)
 
-        state.call_input_handler(msg, StateInput.REQUEST)
+        state.call_input_handler(msg, StateInput.REQUEST, envelope=mock_env)
 
         self.assertEqual(state.request, msg)
 
@@ -411,13 +412,55 @@ class StateTest(TestCase):
         self.assertEqual(expected_handler, actual_handler1)
         self.assertEqual(expected_handler, actual_handler2)
 
-    # def test_call_transition_handler_general(self):
-    #     mock_sm = MagicMock()
-    #
-    #     state = TrafficLightYellowState(mock_sm)
-    #     mock_enter_func = MagicMock()
-    #     state.enter_general = mock_enter_func
-    #
-    #     state.call_transition_handler(TransitionDecor.ENTER, EmptyState)
-    #
-    #     mock_enter_func.assert_called_once()
+    def test_call_transition_handler_general(self):
+        mock_sm = MagicMock()
+
+        state = TrafficLightYellowState(mock_sm)
+        mock_enter_func = MagicMock()
+        state.enter_any = mock_enter_func
+
+        state.call_transition_handler(TransitionDecor.ENTER, EmptyState)
+
+        mock_enter_func.assert_called_once()
+
+    def test_input_handler(self):
+        mock_sm = MagicMock()
+        stop_msg = RebootMessage("time to reboot")
+
+        state = TrafficLightRedState(mock_sm)
+
+        mock_func = MagicMock()
+        state.handle_reboot_on_red = mock_func
+
+        state.call_input_handler(message=stop_msg, input_type=StateInput.INPUT)
+
+        mock_func.assert_called_once()
+
+    def test_input_handler_with_args(self):
+        mock_sm = MagicMock()
+        mock_env = MagicMock()
+        msg = ForceStopMessage("stop it guy!")
+
+        state = TrafficLightRedState(mock_sm)
+
+        mock_func = MagicMock(spec=state.handle_stop_msg_on_red)
+        state.handle_stop_msg_on_red = mock_func
+
+        state.call_input_handler(msg, StateInput.INPUT, envelope=mock_env)
+
+        mock_func.assert_called_with(msg, mock_env)
+
+        # ddddd
+
+        # mock_sm = MagicMock()
+        # stop_msg = RebootMessage("time to reboot")
+        #
+        # state = TrafficLightRedState(mock_sm)
+        #
+        # mock_func = MagicMock()
+        # state.handle_reboot_on_red = mock_func
+        #
+        # state.call_input_handler(message=stop_msg, input_type=StateInput.INPUT)
+        #
+        # mock_func.assert_called_once()
+

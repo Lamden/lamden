@@ -34,7 +34,7 @@ class TopologyIntegrationTest(MPTestCase):
             # Mock the recv_tx method on run state
             run_state = mn.states[MNRunState]
 
-            MNRunState.recv_tx = MagicMock()
+            run_state.recv_tx = MagicMock()
 
             # assert mn.state is run_state, "these things shoudl be teh same obj, wtf if they arent"
 
@@ -49,8 +49,8 @@ class TopologyIntegrationTest(MPTestCase):
             return mn
 
         def assert_mn(mn: Masternode):
-            # run_state = mn.states[MNRunState]
-            MNRunState.recv_tx.assert_has_calls([call(tx1), call(tx2)], any_order=True)
+            run_state = mn.states[MNRunState]
+            run_state.recv_tx.assert_has_calls([call(tx1), call(tx2)], any_order=True)
             # raise Exception("lol get rekt u noob")
 
         mn_url = Constants.Testnet.Masternode.InternalUrl
