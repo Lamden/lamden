@@ -18,7 +18,7 @@ def run_mn():
     log = get_logger("MASTERNODE FACTORY")
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
-÷
+
     log.critical("\n\n\nMASTERNODE BOOTING WITH IP {} AND SK {}".format(ip, sk))
     NodeFactory.run_masternode(ip=ip, signing_key=sk)
 

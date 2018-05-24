@@ -4,6 +4,7 @@ from cilantro.messages import MessageBase, Envelope
 from cilantro.protocol.statemachine.decorators import StateInput, TransitionDecor, exit_from_any
 import inspect
 from collections import defaultdict
+from unittest.mock import MagicMock
 
 _ENTER, _EXIT, _RUN = 'enter', 'exit', 'run'
 _DEBUG_FUNCS = (_ENTER, _EXIT, _RUN)
@@ -146,16 +147,18 @@ class State(metaclass=StateMeta):
 
         func = self._get_input_handler(message, input_type)
 
-        # if self._has_envelope_arg(func):
-        #     self.log.debug("ENVELOPE DETECTED IN HANDLER ARGS")  # todo remove this
-        #     output = func(message, envelope=envelope)
-        # else:
-        #     output = func(message)
-
-        if envelope:
+        if (isinstance(func, MagicMock) and envelope) or self._has_envelope_arg(func):
+            assert envelope, "Envelope arg was found for input func {}, " \
+                             "but no envelope passed into call_input_handler".format(func)
+            self.log.debug("ENVELOPE DETECTED IN HANDLER ARGS")  # todo remove this
             output = func(message, envelope=envelope)
         else:
             output = func(message)
+
+        # if envelope:
+        #     output = func(message, envelope=envelope)
+        # else:
+        #     output = func(message)
 
         return output
 

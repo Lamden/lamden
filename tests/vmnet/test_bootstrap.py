@@ -52,6 +52,7 @@ def run_delegate(slot_num):
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
     from cilantro.db import DB, DB_NAME
+    import os
 
     log = get_logger("DELEGATE FACTORY")
 
