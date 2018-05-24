@@ -27,31 +27,19 @@ class TopologyIntegrationTest(MPTestCase):
 
     def test_masternode_receives_std_tx(self):
         """
-        Tests that a Masternode properly receives a standard TXs from users
+        Tests that a Masternode properly receives a standard TXs from clients via its POST endpoint
         """
         def config_mn(mn: Masternode):
-            assert mn.state == MNRunState, "what the fuck current state is {}".format(mn.state)
-            # Mock the recv_tx method on run state
+            assert mn.state == MNRunState, "wtf current state is {}".format(mn.state)
+
             run_state = mn.states[MNRunState]
-
             run_state.recv_tx = MagicMock()
-
-            # assert mn.state is run_state, "these things shoudl be teh same obj, wtf if they arent"
-
-            # input_handler = run_state._get_input_handler(tx1, StateInput.INPUT)
-
-            # self.log.critical("\n\n got input handler: {} and 'intuitive handler' {} and maybe the same handler {}\n\n".format(input_handler, run_state.recv_tx, MNRunState.recv_tx))
-
-            # self.log.critical("\n\n\n DIR:\n{} \n\n\n".format(dir(run_state)))
-
-            # run_state.stupid_effect = MagicMock()
 
             return mn
 
         def assert_mn(mn: Masternode):
             run_state = mn.states[MNRunState]
             run_state.recv_tx.assert_has_calls([call(tx1), call(tx2)], any_order=True)
-            # raise Exception("lol get rekt u noob")
 
         mn_url = Constants.Testnet.Masternode.InternalUrl
         mn_sk = Constants.Testnet.Masternode.Sk
@@ -67,5 +55,11 @@ class TopologyIntegrationTest(MPTestCase):
         God.send_tx(tx2)
 
         self.start()
+
+    def test_masternode_witness_pubsub(self):
+        """
+        Tests that a Masternode publishes transactions to the witnesses
+        """
+        pass
 
 
