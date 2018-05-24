@@ -107,9 +107,7 @@ class Constants:
     @classmethod
     def build_from_json(cls, d, last_class=None):
         for k in d.keys():
-            if k == 'testnet':
-                d[k] = config_testnet(d[k])
-            if type(d[k]) == dict and (k != 'all-nodes'):
+            if type(d[k]) == dict:
                 new_class = cls.new_class(name=snake_to_pascal(k))
                 cls.add_attr(name=snake_to_pascal(k), value=new_class)
                 cls.classes.append(new_class)
