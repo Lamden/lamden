@@ -42,7 +42,7 @@ class MPMasternode(MPTesterBase):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        mn = NodeFactory._build_node(loop=loop, signing_key=sk, url=url, node_cls=Masternode, name=name)
+        mn = NodeFactory._build_node(loop=loop, signing_key=sk, ip=url, node_cls=Masternode, name=name)
         mn.start(start_loop=False)
 
         tasks = mn.tasks + [mn.composer.interface._recv_messages()]
@@ -57,7 +57,7 @@ class MPWitness(MPTesterBase):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        witness = NodeFactory._build_node(loop=loop, signing_key=sk, url=url, node_cls=Witness, name=name)
+        witness = NodeFactory._build_node(loop=loop, signing_key=sk, ip=url, node_cls=Witness, name=name)
         witness.start(start_loop=False)
 
         tasks = witness.tasks + [witness.composer.interface._recv_messages()]

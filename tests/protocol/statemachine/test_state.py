@@ -450,17 +450,3 @@ class StateTest(TestCase):
 
         mock_func.assert_called_with(msg, mock_env)
 
-        # ddddd
-
-        # mock_sm = MagicMock()
-        # stop_msg = RebootMessage("time to reboot")
-        #
-        # state = TrafficLightRedState(mock_sm)
-        #
-        # mock_func = MagicMock()
-        # state.handle_reboot_on_red = mock_func
-        #
-        # state.call_input_handler(message=stop_msg, input_type=StateInput.INPUT)
-        #
-        # mock_func.assert_called_once()
-

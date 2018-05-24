@@ -25,7 +25,6 @@ from cilantro.protocol.statemachine.decorators import *
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.protocol.wallets import ED25519Wallet
-from cilantro.utils import TestNetURLHelper
 from cilantro.db import *
 from cilantro.messages import TransactionBase, BlockContender, Envelope, MerkleSignature, \
     BlockDataRequest, BlockDataReply, NewBlockNotification
@@ -63,28 +62,38 @@ class DelegateBootState(DelegateBaseState):
     @enter_from_any
     def enter_any(self, prev_state):
         # Sub to other delegates
-        for delegate in [d for d in Constants.Testnet.Delegates if d['url'] != self.parent.url]:
-            self.log.info("{} subscribing to delegate {}".format(self.parent.url, delegate['url']))
-            self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(delegate['url']),
-                                        filter=Constants.ZmqFilters.DelegateDelegate)
+        for delegate_vk in VKBook.get_delegates():
+            self.parent.composer.add_sub(vk=delegate_vk, filter=Constants.ZmqFilters.DelegateDelegate)
+
         # Sub to witnesses
-        for witness in Constants.Testnet.Witnesses:
-            self.log.info("{} subscribing to witness {}".format(self.parent.url, witness['url']))
-            self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(witness['url']),
-                                        filter=Constants.ZmqFilters.WitnessDelegate)
+        for witness_vk in VKBook.get_witnesses():
+            self.parent.composer.add_sub(vk=witness_vk, filter=Constants.ZmqFilters.WitnessDelegate)
+
+        # for witness in Constants.Testnet.Witnesses:
+        #     self.log.info("{} subscribing to witness {}".format(self.parent.url, witness['url']))
+        #     self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(witness['url']),
+        #                                 filter=Constants.ZmqFilters.WitnessDelegate)
 
         # Pub on our own url
-        self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
+        self.parent.composer.add_pub(ip=self.parent.ip)
+        # self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
 
         # Add router socket
-        self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
+        # self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
+        self.parent.composer.add_router(ip=self.parent.ip)
 
-        # Add dealer socket for Masternode
-        self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
+        # Add dealer and sub socket for Masternodes
+        for mn_vk in VKBook.get_masternodes():
+            self.parent.composer.add_dealer(vk=mn_vk)
+            self.parent.composer.add_sub(vk=mn_vk, filter=Constants.ZmqFilters.MasternodeDelegate)
+
+
+        # self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
+
 
         # Sub to Masternode for block updates
-        self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
-                                     filter=Constants.ZmqFilters.MasternodeDelegate)
+        # self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
+                                     # filter=Constants.ZmqFilters.MasternodeDelegate)
 
         # Once done with boot state, transition to interpret
         self.parent.transition(DelegateInterpretState)
@@ -146,7 +155,7 @@ class DelegateConsensusState(DelegateBaseState):
     """
     TODO -- move this 'variable setting' logic outside of init. States should have their own constructor, which init
     will call in the superclass. Optionally, states should be able to set a variable if they want all their properties
-    flushed each time. 
+    flushed each time.
     """
 
     def reset_attrs(self):
@@ -189,11 +198,12 @@ class DelegateConsensusState(DelegateBaseState):
         assert self.merkle_hash is not None, "Cannot validate signature without our merkle hash set"
         self.log.debug("Validating signature: {}".format(sig))
 
-        # Sanity checks
-        # if sig.sender not in self.parent.nodes_registry.values():  # TODO -- fix this check
-        #     self.log.critical("Received merkle sig from sender {} who was not registered nodes {}"
-        #                       .format(sig.sender, self.parent.nodes_registry.values()))
-        #     return False
+        # Verify sender's vk exists in the state
+        if sig.sender not in VKBook.get_delegates():
+            self.log.critical("Received merkle sig from sender {} who was not registered nodes {}"
+                              .format(sig.sender, VKBook.get_delegates()))
+            return False
+        # Verify we havne't received this signature already
         if sig in self.signatures:
             self.log.critical("Already received a signature from sender {}".format(sig.sender))
             return False
@@ -212,10 +222,10 @@ class DelegateConsensusState(DelegateBaseState):
             self.log.critical("\n\n\nDelegate in consensus!\n\n\n")
             self.in_consensus = True
 
-            # Create BlockContender and send it to Masternode
+            # Create BlockContender and send it to all Masternode(s)
             bc = BlockContender.create(signatures=self.signatures, nodes=self.merkle.nodes)
-            self.parent.composer.send_request_msg(message=bc, url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
-            # once update confirmed from mn, transition to update state
+            for mn_vk in VKBook.get_masternodes():
+                self.parent.composer.send_request_msg(message=bc, vk=mn_vk)
 
     @input(MerkleSignature)
     def handle_sig(self, sig: MerkleSignature):
@@ -333,4 +343,3 @@ class Delegate(NodeBase):
         #     # TODO -- add this as a property of the interpreter state, and implement functionality to pass data between
         #     # states on transition, i.e sm.transition(NextState, arg1='hello', arg2='let_do+it')
         self.interpreter = VanillaInterpreter()
-

@@ -23,7 +23,7 @@ def run_mn():
     with DB('{}'.format(DB_NAME), should_reset=True) as db: pass
 
     log.critical("\n\n\nMASTERNODE BOOTING WITH URL {} AND SK {}".format(url, sk))
-    mn = NodeFactory.run_masternode(url=url, signing_key=sk)
+    mn = NodeFactory.run_masternode(ip=url, signing_key=sk)
 
 def run_witness(slot_num):
     from cilantro.logger import get_logger
@@ -41,7 +41,7 @@ def run_witness(slot_num):
     with DB('{}_witness_{}'.format(DB_NAME, slot_num), should_reset=True) as db: pass
 
     log.critical("Building witness on slot {} with info {}".format(slot_num, w_info))
-    NodeFactory.run_witness(url=w_info['url'], signing_key=w_info['sk'])
+    NodeFactory.run_witness(ip=w_info['url'], signing_key=w_info['sk'])
 
 
 def run_delegate(slot_num):
@@ -60,7 +60,7 @@ def run_delegate(slot_num):
     with DB('{}_delegate_{}'.format(DB_NAME, slot_num), should_reset=True) as db: pass
 
     log.critical("Building witness on slot {} with info {}".format(slot_num, d_info))
-    NodeFactory.run_delegate(url=d_info['url'], signing_key=d_info['sk'])
+    NodeFactory.run_delegate(ip=d_info['url'], signing_key=d_info['sk'])
 
 def run_mgmt():
     from cilantro.logger import get_logger
@@ -88,7 +88,6 @@ def start_mysqld():
    --default-tmp-storage-engine MyISAM \
    --binlog_format ROW \
    --user=mysql &')
-    os.system('pip3 uninstall kade -y')
 
 
 class TestBootstrap(BaseNetworkTestCase):

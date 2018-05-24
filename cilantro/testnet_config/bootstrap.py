@@ -49,7 +49,7 @@ def start_delelegate(i):
     with DB(should_reset=True) as db:
         pass
 
-    NodeFactory.run_delegate(url=d_info['url'], signing_key=d_info['sk'], name="Delegate_{}".format(i+1))
+    NodeFactory.run_delegate(ip=d_info['url'], signing_key=d_info['sk'], name="Delegate_{}".format(i + 1))
 
 
 def start_mn():
@@ -73,7 +73,7 @@ def start_witness(i):
 
     w_info = Constants.Testnet.Witnesses[i]
     log.critical("\n\nStarting witness on slot {} with info {}\n\n".format(i, w_info))
-    NodeFactory.run_witness(signing_key=w_info['sk'], url=w_info['url'], name="Witness_{}".format(i+1))
+    NodeFactory.run_witness(signing_key=w_info['sk'], ip=w_info['url'], name="Witness_{}".format(i + 1))
 
 
 if __name__ == "__main__":

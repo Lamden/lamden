@@ -84,25 +84,6 @@ class Encoder:
         return tuple([attempt_convert_float(x) for x in s.split(',')])
 
 
-class TestNetURLHelper:
-    @staticmethod
-    def pubsub_url(url: str):
-        return url
-
-    @staticmethod
-    def pubsub_url2(url: str):
-        return TestNetURLHelper.increment_url(url, 1)
-
-    @staticmethod
-    def dealroute_url(url: str):
-        return TestNetURLHelper.increment_url(url, 2)
-
-    @staticmethod
-    def increment_url(url, increment):
-        port = int(url[-4:])
-        return url[:-4] + str(port + increment)
-
-
 def _check_hex(hex_str: str, length=0) -> bool:
     """
     Returns true if hex_str is valid hex. False otherwise

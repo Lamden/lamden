@@ -8,11 +8,11 @@ import asyncio
 
 class NodeBase(StateMachine):
 
-    def __init__(self, url, signing_key, loop, name='Node'):
+    def __init__(self, ip, signing_key, loop, name='Node'):
         super().__init__()
 
         self.log = get_logger(name)
-        self.url = url
+        self.ip = ip
         self.name = name
 
         self.signing_key = signing_key
@@ -24,9 +24,6 @@ class NodeBase(StateMachine):
         self._composer = None
 
         self.tasks = []
-
-        # TODO move away from this once we integrate overlay
-        self.nodes_registry = Constants.Testnet.AllNodes
 
     def start(self, start_loop=True):
         """
