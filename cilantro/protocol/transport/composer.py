@@ -78,7 +78,7 @@ class Composer:
         :param filter: The filter to subscribe to. Only multipart messages with this filter as the first frame will be
         received
         :param url: The URL of the router that the created dealer socket should CONNECT to.
-        :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
+        :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
         url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, filter=filter, url=url)
@@ -90,7 +90,7 @@ class Composer:
         socket. It only disconnects from the url.
         received
         :param url: The URL of the router that the created dealer socket should CONNECT to.
-        :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
+        :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
         url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub_url.__name__, url=url)
@@ -128,7 +128,7 @@ class Composer:
         """
         Create a publisher socket that BINDS to 'url'
         :param url: The URL to publish under.
-        :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
+        :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
         url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=url)
@@ -138,7 +138,7 @@ class Composer:
         """
         Removes a publisher (duh)
         :param url: The URL of the router that the created dealer socket should CONNECT to.
-        :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
+        :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
         url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_pub.__name__, url=url)
@@ -150,7 +150,7 @@ class Composer:
         (side note: A router socket, however, can connect to N dealers)
         'id' socketopt for the dealer socket will be this node's verifying key
         :param url: The URL of the router that the created dealer socket should CONNECT to.
-        :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
+        :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
         url = "tcp://{}:{}".format(ip or vk, Constants.Ports.RouterDealer)
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__,
@@ -161,7 +161,7 @@ class Composer:
         """
         Add a router socket at url. Routers are like 'async repliers', and can connect to many Dealer sockets (N-1)
         :param url: The URL the router socket should BIND to
-        :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
+        :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
         url = "tcp://{}:{}".format(ip or vk, Constants.Ports.RouterDealer)
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, url=url)
@@ -171,7 +171,7 @@ class Composer:
         """
         TODO docstring
         """
-        self.send_request_env(url=url, node_vk=node_vk, envelope=self._package_msg(message), timeout=timeout)
+        self.send_request_env(ip=ip, vk=vk, envelope=self._package_msg(message), timeout=timeout)
 
     def send_request_env(self, envelope: Envelope, timeout=0, ip: str='', vk: str=''):
         url = "tcp://{}:{}".format(ip or vk, Constants.Ports.RouterDealer)

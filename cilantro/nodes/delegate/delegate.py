@@ -61,11 +61,6 @@ class DelegateBootState(DelegateBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
-        # for delegate in [d for d in Constants.Testnet.Delegates if d['url'] != self.parent.url]:
-        #     self.log.info("{} subscribing to delegate {}".format(self.parent.url, delegate['url']))
-        #     self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(delegate['url']),
-        #                                 filter=Constants.ZmqFilters.DelegateDelegate)
-
         # Sub to other delegates
         for delegate_vk in VKBook.get_delegates():
             self.parent.composer.add_sub(vk=delegate_vk, filter=Constants.ZmqFilters.DelegateDelegate)
@@ -85,9 +80,16 @@ class DelegateBootState(DelegateBaseState):
 
         # Add router socket
         # self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
+        self.parent.composer.add_router(ip=self.parent.ip)
 
-        # Add dealer socket for Masternode
+        # Add dealer and sub socket for Masternodes
+        for mn_vk in VKBook.get_masternodes():
+            self.parent.composer.add_dealer(vk=mn_vk)
+            self.parent.composer.add_sub(vk=mn_vk, filter=Constants.ZmqFilters.MasternodeDelegate)
+
+
         # self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
+
 
         # Sub to Masternode for block updates
         # self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
@@ -196,11 +198,12 @@ class DelegateConsensusState(DelegateBaseState):
         assert self.merkle_hash is not None, "Cannot validate signature without our merkle hash set"
         self.log.debug("Validating signature: {}".format(sig))
 
-        # Sanity checks
-        # if sig.sender not in self.parent.nodes_registry.values():  # TODO -- fix this check
-        #     self.log.critical("Received merkle sig from sender {} who was not registered nodes {}"
-        #                       .format(sig.sender, self.parent.nodes_registry.values()))
-        #     return False
+        # Verify sender's vk exists in the state
+        if sig.sender not in VKBook.get_delegates():
+            self.log.critical("Received merkle sig from sender {} who was not registered nodes {}"
+                              .format(sig.sender, VKBook.get_delegates()))
+            return False
+        # Verify we havne't received this signature already
         if sig in self.signatures:
             self.log.critical("Already received a signature from sender {}".format(sig.sender))
             return False
@@ -219,10 +222,10 @@ class DelegateConsensusState(DelegateBaseState):
             self.log.critical("\n\n\nDelegate in consensus!\n\n\n")
             self.in_consensus = True
 
-            # Create BlockContender and send it to Masternode
+            # Create BlockContender and send it to all Masternode(s)
             bc = BlockContender.create(signatures=self.signatures, nodes=self.merkle.nodes)
-            self.parent.composer.send_request_msg(message=bc, url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
-            # once update confirmed from mn, transition to update state
+            for mn_vk in VKBook.get_masternodes():
+                self.parent.composer.send_request_msg(message=bc, vk=mn_vk)
 
     @input(MerkleSignature)
     def handle_sig(self, sig: MerkleSignature):

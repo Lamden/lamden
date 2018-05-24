@@ -25,7 +25,6 @@ class MNBaseState(State):
     def recv_tx(self, tx: TransactionBase):
         self.log.critical("mn about to pub for tx {}".format(tx))  # debug line
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=tx)
-        self.log.critical("published on our url: {}".format(TestNetURLHelper.pubsub_url(self.parent.url)))  # debug line
 
     @input_request(BlockContender)
     def recv_block(self, block: BlockContender):
@@ -44,8 +43,11 @@ class MNBootState(MNBaseState):
     def enter_any(self, prev_state):
         self.log.critical("MN IP: {}".format(self.parent.ip))
 
+        # Add publisher socket
         self.parent.composer.add_pub(ip=self.parent.ip)
-        # self.parent.composer.add_router(ip=self.parent.ip)
+
+        # Add router socket
+        self.parent.composer.add_router(ip=self.parent.ip)
 
         # Once done booting, transition to run
         self.parent.transition(MNRunState)
@@ -77,17 +79,6 @@ class MNRunState(MNBaseState):
         server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
         self.parent.tasks.append(server_future)
 
-    def _lookup_url(self, vk):
-        # HACK TO GET SENDER URL -- TODO swap this /w overlay network or replace /w utility func
-        sender_url = None
-        for dele_info in Constants.Testnet.Delegates:
-            if dele_info['vk'] == vk:
-                sender_url = dele_info['url']
-                break
-        assert sender_url is not None, "Could not find URL for delegate vk {} in delegates list {}"\
-            .format(vk, Constants.Testnet.Delegates)
-        return sender_url
-
     @input_request(BlockContender)
     def recv_block(self, block: BlockContender):
         self.log.info("Masternode received block contender: {}".format(block))
@@ -110,9 +101,8 @@ class MNRunState(MNBaseState):
             return
 
         self.tx_hashes = block.nodes[len(block.nodes) // 2:]
-        # self.tx_hashes = block.nodes[:len(block.nodes) // 2]
 
-        # TODO sanity check to make sure len(block.nodes) >= 1
+        assert len(block.nodes) >= 1, "Masternode got block contender with no nodes! {}".format(block)
 
         # Validate merkle tree
         if not MerkleTree.verify_tree(self.tx_hashes, hash_of_nodes):
@@ -122,9 +112,9 @@ class MNRunState(MNBaseState):
 
         # Add dealer sockets for Delegates to fetch block tx data
         for sig in block.signatures:
-            sender_url = self._lookup_url(sig.sender)
+            vk = sig.sender
             self.node_states[sig.sender] = self.NODE_AVAILABLE
-            self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(sender_url))
+            self.parent.composer.add_dealer(vk=vk)
             import time
             time.sleep(0.1)
 
@@ -135,27 +125,25 @@ class MNRunState(MNBaseState):
         # Request individual block data from delegates
         for i in range(len(self.tx_hashes)):
             tx = self.tx_hashes[i]
-            replier_url = self._lookup_url(repliers[i % len(repliers)])
+            replier_vk = repliers[i % len(repliers)]
             req = BlockDataRequest.create(tx)
 
-            self.log.critical("Requesting tx hash {} from URL {}".format(tx, replier_url))
-            self.parent.composer.send_request_msg(message=req, timeout=1, url=TestNetURLHelper.dealroute_url(replier_url))
+            self.log.info("Requesting tx hash {} from VK {}".format(tx, replier_vk))
+            self.parent.composer.send_request_msg(message=req, timeout=1, vk=replier_vk)
 
     def compute_hash_of_nodes(self, nodes) -> bytes:
         # TODO -- i think the merkle tree can do this for us..?
-        self.log.critical("Masternode computing hash of nodes...")
+        self.log.info("Masternode computing hash of nodes...")
         h = hashlib.sha3_256()
         [h.update(o) for o in nodes]
         hash_of_nodes = h.digest()
-        self.log.critical("Masternode got hash of nodes: {}".format(hash_of_nodes))
+        self.log.info("Masternode got hash of nodes: {}".format(hash_of_nodes))
         return hash_of_nodes
 
     def validate_sigs(self, signatures, msg) -> bool:
         for sig in signatures:
             self.log.info("mn verifying signature: {}".format(sig))
-            if sig.verify(msg, sig.sender):
-                self.log.critical("Good we verified that sig")
-            else:
+            if not sig.verify(msg, sig.sender):
                 self.log.error("!!!! Oh no why couldnt we verify sig {}???".format(sig))
                 return False
         return True
@@ -220,11 +208,11 @@ class MNRunState(MNBaseState):
 
     @timeout(BlockDataRequest)
     def timeout_block_req(self, request: BlockDataRequest, envelope: Envelope):
-        self.log.critical("\n\nBlockDataRequest timed out for envelope with request data {}\n\n".format(envelope, request))
+        self.log.info("\n\nBlockDataRequest timed out for envelope with request data {}\n\n".format(envelope, request))
 
     @input_request(StateRequest)
     def handle_state_req(self, request: StateRequest):
-        self.log.critical("Masternode got state request {}".format(request))
+        self.log.info("Masternode got state request {}".format(request))
 
 
 class Masternode(NodeBase):
@@ -232,16 +220,16 @@ class Masternode(NodeBase):
     _STATES = [MNBootState, MNRunState]
 
     async def route_http(self, request):
-        self.log.critical("Got request {}".format(request))
+        self.log.debug("Got request {}".format(request))
         raw_data = await request.content.read()
 
-        self.log.critical("Got raw_data: {}".format(raw_data))
+        self.log.debug("Got raw_data: {}".format(raw_data))
         container = TransactionContainer.from_bytes(raw_data)
 
-        self.log.critical("Got container: {}".format(container))
+        self.log.debug("Got container: {}".format(container))
         tx = container.open()
 
-        self.log.critical("Got tx: {}".format(tx))
+        self.log.debug("Got tx: {}".format(tx))
 
         import traceback
         try:
