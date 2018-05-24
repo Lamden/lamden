@@ -53,15 +53,16 @@ class Composer:
         self.log.info("Pausing ReactorInterface")
         self.interface.notify_pause()
 
-    def add_sub(self, filter: str, url: str='', node_vk: str=''):
+    def add_sub(self, filter: str, ip: str='', vk: str=''):
         """
         Connects the subscriber socket to listen to 'URL' with filter 'filter'.
         :param url: The URL to CONNECT the sub socket to (ex 'tcp://17.1.3.4:4200')
         :param filter: The filter to subscribe to. Only data published with this filter will be received. Currently,
         only one filter per CONNECT is supported.
         """
-        kwargs = self._url_or_vk(url=url, vk=node_vk)
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, filter=filter, **kwargs)
+        # kwargs = self._url_or_vk(url=url, vk=node_vk)
+        url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, filter=filter, url=url)
         self.interface.send_cmd(cmd)
 
     def remove_sub(self, filter: str, url: str='', node_vk: str=''):
@@ -123,14 +124,15 @@ class Composer:
                                         envelope=envelope)
         self.interface.send_cmd(cmd)
 
-    def add_pub(self, url: str='', node_vk: str=''):
+    def add_pub(self, ip: str='', vk: str=''):
         """
         Create a publisher socket that BINDS to 'url'
         :param url: The URL to publish under.
         :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        kwargs = self._url_or_vk(url=url, vk=node_vk)
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, **kwargs)
+        # kwargs = self._url_or_vk(url=url, vk=node_vk)
+        url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=url)
         self.interface.send_cmd(cmd)
 
     def remove_pub(self, url: str='', node_vk: str=''):

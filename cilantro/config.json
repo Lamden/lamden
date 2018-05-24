@@ -52,7 +52,7 @@
             ]
   },
   "ports": {
-      "pub": 9999,
-      "router": 9998
+      "pub-sub": 9999,
+      "router-dealer": 9998
   }
 }

@@ -25,7 +25,6 @@ from cilantro.protocol.statemachine.decorators import *
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.protocol.wallets import ED25519Wallet
-from cilantro.utils import TestNetURLHelper
 from cilantro.db import *
 from cilantro.messages import TransactionBase, BlockContender, Envelope, MerkleSignature, \
     BlockDataRequest, BlockDataReply, NewBlockNotification
@@ -146,7 +145,7 @@ class DelegateConsensusState(DelegateBaseState):
     """
     TODO -- move this 'variable setting' logic outside of init. States should have their own constructor, which init
     will call in the superclass. Optionally, states should be able to set a variable if they want all their properties
-    flushed each time. 
+    flushed each time.
     """
 
     def reset_attrs(self):
@@ -333,4 +332,3 @@ class Delegate(NodeBase):
         #     # TODO -- add this as a property of the interpreter state, and implement functionality to pass data between
         #     # states on transition, i.e sm.transition(NextState, arg1='hello', arg2='let_do+it')
         self.interpreter = VanillaInterpreter()
-

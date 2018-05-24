@@ -12,7 +12,6 @@ from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State, input, input_request, timeout, StateInput
 from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, \
                               TransactionContainer, NewBlockNotification, StateRequest
-from cilantro.utils import TestNetURLHelper
 from cilantro.protocol.statemachine import *
 from aiohttp import web
 import asyncio
@@ -43,9 +42,10 @@ class MNBootState(MNBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
-        self.log.critical("MN URL: {}".format(self.parent.url))
-        self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
-        self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
+        self.log.critical("MN IP: {}".format(self.parent.ip))
+
+        self.parent.composer.add_pub(ip=self.parent.ip)
+        # self.parent.composer.add_router(ip=self.parent.ip)
 
         # Once done booting, transition to run
         self.parent.transition(MNRunState)

@@ -7,6 +7,7 @@
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
+.pytest_cache/*
 *.py[cod]
 *.pyc
 *$py.class
@@ -25,3 +26,5 @@ cilantro/faucet.json
 
 # Data
 cilantro/protocol/networks/data
+
+tests/vmnet/docker-compose.yml

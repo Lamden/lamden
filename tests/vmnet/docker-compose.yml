@@ -16,11 +16,11 @@ services:
     - HOSTNAME=delegate_4
     - HOST_IP=172.29.5.4
     - SLOT_NUM=0
-    - MASTERNODE=172.29.5.1
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - WITNESS=172.29.5.2,172.29.5.3
     - MGMT=172.29.5.0
-    - TEST_NAME=vklookup
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
+    - TEST_NAME=mn_witness
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -40,11 +40,11 @@ services:
     - HOSTNAME=delegate_5
     - HOST_IP=172.29.5.5
     - SLOT_NUM=1
-    - MASTERNODE=172.29.5.1
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - WITNESS=172.29.5.2,172.29.5.3
     - MGMT=172.29.5.0
-    - TEST_NAME=vklookup
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
+    - TEST_NAME=mn_witness
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -64,11 +64,11 @@ services:
     - HOSTNAME=delegate_6
     - HOST_IP=172.29.5.6
     - SLOT_NUM=2
-    - MASTERNODE=172.29.5.1
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - WITNESS=172.29.5.2,172.29.5.3
     - MGMT=172.29.5.0
-    - TEST_NAME=vklookup
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
+    - TEST_NAME=mn_witness
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -88,11 +88,11 @@ services:
     - HOSTNAME=delegate_7
     - HOST_IP=172.29.5.7
     - SLOT_NUM=3
-    - MASTERNODE=172.29.5.1
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - WITNESS=172.29.5.2,172.29.5.3
     - MGMT=172.29.5.0
-    - TEST_NAME=vklookup
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
+    - TEST_NAME=mn_witness
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -111,11 +111,11 @@ services:
     environment:
     - HOSTNAME=masternode
     - HOST_IP=172.29.5.1
-    - MASTERNODE=172.29.5.1
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - WITNESS=172.29.5.2,172.29.5.3
     - MGMT=172.29.5.0
-    - TEST_NAME=vklookup
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
+    - TEST_NAME=mn_witness
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -134,11 +134,11 @@ services:
     environment:
     - HOSTNAME=mgmt
     - HOST_IP=172.29.5.0
-    - MASTERNODE=172.29.5.1
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - WITNESS=172.29.5.2,172.29.5.3
     - MGMT=172.29.5.0
-    - TEST_NAME=vklookup
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
+    - TEST_NAME=mn_witness
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -158,11 +158,11 @@ services:
     - HOSTNAME=witness_2
     - HOST_IP=172.29.5.2
     - SLOT_NUM=0
-    - MASTERNODE=172.29.5.1
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - WITNESS=172.29.5.2,172.29.5.3
     - MGMT=172.29.5.0
-    - TEST_NAME=vklookup
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
+    - TEST_NAME=mn_witness
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -182,11 +182,11 @@ services:
     - HOSTNAME=witness_3
     - HOST_IP=172.29.5.3
     - SLOT_NUM=1
-    - MASTERNODE=172.29.5.1
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - WITNESS=172.29.5.2,172.29.5.3
     - MGMT=172.29.5.0
-    - TEST_NAME=vklookup
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
+    - TEST_NAME=mn_witness
     image: cilantro_base.dev
     networks:
       cilantro:

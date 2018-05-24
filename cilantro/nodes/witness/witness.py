@@ -2,8 +2,8 @@ from cilantro import Constants
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State
 from cilantro.messages import TransactionBase, Envelope
-from cilantro.utils import TestNetURLHelper
 from cilantro.protocol.statemachine.decorators import *
+from cilantro.db.db import VKBook
 
 
 """
@@ -14,7 +14,6 @@ from cilantro.protocol.statemachine.decorators import *
     then go ahead and pass the transaction along to delegates to include in a block. They will also facilitate
     transactions that include stake reserves being spent by users staking on the network.
 """
-
 
 
 class WitnessBaseState(State):
@@ -33,13 +32,19 @@ class WitnessBootState(WitnessBaseState):
 
     @enter_from_any
     def enter(self, prev_state):
-        self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
-        self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
 
-        self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
-                                     filter=Constants.Testnet.ZmqFilters.WitnessMasternode)
-        self.log.critical("Witness subscribing to URL: {}"
-                          .format(TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl)))
+        # Add masternodes
+        for mn_vk in VKBook.get_masternodes():
+            self.log.debug("Subscribes to MN with vk: {}".format(mn_vk))
+            self.parent.composer.add_sub(filter='', vk=mn_vk)
+
+        # self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))  TODO add this
+        # self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))  TODO add this
+        #
+        # self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
+        #                              filter=Constants.Testnet.ZmqFilters.WitnessMasternode)
+        # self.log.critical("Witness subscribing to URL: {}"
+        #                   .format(TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl)))
 
         # Once done booting, transition into RunState
         self.parent.transition(WitnessRunState)
@@ -66,4 +71,3 @@ class WitnessRunState(WitnessBaseState):
 class Witness(NodeBase):
     _INIT_STATE = WitnessBootState
     _STATES = [WitnessBootState, WitnessRunState]
-
