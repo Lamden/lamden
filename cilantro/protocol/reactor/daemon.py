@@ -43,10 +43,9 @@ class ReactorDaemon:
 
         # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
-
-        # self.dht = ReactorDHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
-        #                alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
-        #                max_peers=Constants.Overlay.MaxPeers, block=False)
+        self.dht = ReactorDHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
+                       alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
+                       max_peers=Constants.Overlay.MaxPeers, block=False)
 
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name

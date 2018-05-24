@@ -108,7 +108,7 @@ def _check_hex(hex_str: str, length=0) -> bool:
     Returns true if hex_str is valid hex. False otherwise
     :param hex_str: The string to check
     :param length: If set, also verify that hex_str is the valid length
-    :return: A bool, true if hex_str is valid hex 
+    :return: A bool, true if hex_str is valid hex
     """
     try:
         int(hex_str, 16)
@@ -121,6 +121,8 @@ def _check_hex(hex_str: str, length=0) -> bool:
 
 class IPUtils:
 
+    url_pattern = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})', flags=re.IGNORECASE)
+
     @staticmethod
     def interpolate_url(vk_url: str, ip_addr: str) -> str:
         """
@@ -129,8 +131,7 @@ class IPUtils:
         :param ip_addr: The IP address to replace the url with
         :return: The URL with the VK replaced with 'ip_addr'
         """
-        p = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})')
-        res = re.match(p, vk_url)
+        res = re.match(IPUtils.url_pattern, vk_url)
         protocol, vk, port = res.groups()
         # if re.match(is_hex_64, addr):
 
@@ -138,8 +139,7 @@ class IPUtils:
 
     @staticmethod
     def get_vk(vk_url) -> str or False:
-        p = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})')
-        res = re.match(p, vk_url)
+        res = re.match(IPUtils.url_pattern, vk_url)
         protocol, vk, port = res.groups()
 
         if _check_hex(vk, length=64):
