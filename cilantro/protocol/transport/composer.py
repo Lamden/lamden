@@ -126,7 +126,7 @@ class Composer:
     def add_pub(self, url: str='', node_vk: str=''):
         """
         Create a publisher socket that BINDS to 'url'
-        :param url: The URL to publish under. 
+        :param url: The URL to publish under.
         :param node_vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
         kwargs = self._url_or_vk(url=url, vk=node_vk)
@@ -216,6 +216,3 @@ class Composer:
             return {'url': url}
         if vk:
             return {'node_vk': vk}
-
-
-

@@ -1,5 +1,6 @@
 from cilantro.utils import IPUtils
 from unittest import TestCase
+import unittest
 
 
 class TestIPUtils(TestCase):
@@ -25,3 +26,6 @@ class TestIPUtils(TestCase):
         correct_url = 'tcp://{}:8080'.format(ip)
 
         self.assertEqual(actual_url, correct_url)
+
+if __name__ == '__main__':
+    unittest.main()

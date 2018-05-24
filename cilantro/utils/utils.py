@@ -1,5 +1,5 @@
 import hashlib
-import re
+import re, os
 from decimal import Decimal, getcontext
 
 class Encoder:
@@ -120,6 +120,7 @@ def _check_hex(hex_str: str, length=0) -> bool:
 
 
 class IPUtils:
+    url_pattern = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})', flags=re.IGNORECASE)
 
     url_pattern = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})', flags=re.IGNORECASE)
 
@@ -133,9 +134,8 @@ class IPUtils:
         """
         res = re.match(IPUtils.url_pattern, vk_url)
         protocol, vk, port = res.groups()
-        # if re.match(is_hex_64, addr):
 
-        return "{}://{}:{}".format(protocol, ip_addr, port)
+        return "{}://{}:{}".format(protocol, ip_addr, os.getenv('NETWORK_PORT', port))
 
     @staticmethod
     def get_vk(vk_url) -> str or False:

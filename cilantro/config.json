@@ -25,9 +25,9 @@
   },
   "testnet": {
     "masternode": {
-    "host":"127.0.0.1",
-    "internal-url":"tcp://127.0.0.1:5555",
-    "external-port":"9080"
+      "host":"127.0.0.1",
+      "internal-url":"tcp://127.0.0.1:5555",
+      "external-port":"9080"
     },
     "witnesses": {
       "host":"tcp://127.0.0.1",

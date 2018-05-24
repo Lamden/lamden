@@ -88,7 +88,6 @@ def start_mysqld():
    --default-tmp-storage-engine MyISAM \
    --binlog_format ROW \
    --user=mysql &')
-    # os.system('pip3 uninstall kade -y')
 
 
 class TestBootstrap(BaseNetworkTestCase):

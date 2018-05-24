@@ -19,7 +19,7 @@ KILL_SIG = b'DIE'
 
 class ReactorDHT(DHT):
     def status_update(self, *args, **kwargs):
-        print('in the daemon:{}'.format(kwargs))
+        print('Received status update from DHT:{}'.format(kwargs))
 
 
 class ReactorDaemon:
@@ -45,7 +45,8 @@ class ReactorDaemon:
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         self.dht = ReactorDHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
                        alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
-                       max_peers=Constants.Overlay.MaxPeers, block=False)
+                       max_peers=Constants.Overlay.MaxPeers, block=False, cmd_cli=False)
+        self.log.debug('bootstrappable neighbors: {}'.format(self.dht.network.bootstrappableNeighbors()))
 
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name
@@ -146,5 +147,6 @@ class ReactorDaemon:
                 ip = await self.dht.network.lookup_ip(vk)
                 new_url = IPUtils.interpolate_url(url, ip)
                 kwargs['url'] = new_url
+
 
         return executor_name, executor_func, kwargs
