@@ -33,11 +33,16 @@ class WitnessBootState(WitnessBaseState):
     @enter_from_any
     def enter(self, prev_state):
 
-        # Add masternodes
+        # Sub to Masternodes
         for mn_vk in VKBook.get_masternodes():
             self.log.debug("Subscribes to MN with vk: {}".format(mn_vk))
-            self.parent.composer.add_sub(filter='', vk=mn_vk)
+            self.parent.composer.add_sub(filter=Constants.ZmqFilters.WitnessMasternode, vk=mn_vk)
 
+        # Create publisher socket
+        self.parent.composer.add_pub(ip=self.parent.ip)
+
+        # OLD CODE TODO remove below
+        # self.parent.composer.add_router(ip=self.parent.ip)
         # self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))  TODO add this
         # self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))  TODO add this
         #

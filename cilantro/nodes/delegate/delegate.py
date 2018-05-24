@@ -61,29 +61,37 @@ class DelegateBootState(DelegateBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
+        # for delegate in [d for d in Constants.Testnet.Delegates if d['url'] != self.parent.url]:
+        #     self.log.info("{} subscribing to delegate {}".format(self.parent.url, delegate['url']))
+        #     self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(delegate['url']),
+        #                                 filter=Constants.ZmqFilters.DelegateDelegate)
+
         # Sub to other delegates
-        for delegate in [d for d in Constants.Testnet.Delegates if d['url'] != self.parent.url]:
-            self.log.info("{} subscribing to delegate {}".format(self.parent.url, delegate['url']))
-            self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(delegate['url']),
-                                        filter=Constants.ZmqFilters.DelegateDelegate)
+        for delegate_vk in VKBook.get_delegates():
+            self.parent.composer.add_sub(vk=delegate_vk, filter=Constants.ZmqFilters.DelegateDelegate)
+
         # Sub to witnesses
-        for witness in Constants.Testnet.Witnesses:
-            self.log.info("{} subscribing to witness {}".format(self.parent.url, witness['url']))
-            self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(witness['url']),
-                                        filter=Constants.ZmqFilters.WitnessDelegate)
+        for witness_vk in VKBook.get_witnesses():
+            self.parent.composer.add_sub(vk=witness_vk, filter=Constants.ZmqFilters.WitnessDelegate)
+
+        # for witness in Constants.Testnet.Witnesses:
+        #     self.log.info("{} subscribing to witness {}".format(self.parent.url, witness['url']))
+        #     self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(witness['url']),
+        #                                 filter=Constants.ZmqFilters.WitnessDelegate)
 
         # Pub on our own url
-        self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
+        self.parent.composer.add_pub(ip=self.parent.ip)
+        # self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
 
         # Add router socket
-        self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
+        # self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
 
         # Add dealer socket for Masternode
-        self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
+        # self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
 
         # Sub to Masternode for block updates
-        self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
-                                     filter=Constants.ZmqFilters.MasternodeDelegate)
+        # self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
+                                     # filter=Constants.ZmqFilters.MasternodeDelegate)
 
         # Once done with boot state, transition to interpret
         self.parent.transition(DelegateInterpretState)
