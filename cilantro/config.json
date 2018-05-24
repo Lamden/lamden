@@ -9,18 +9,6 @@
     "dupe-table-size": 10000,
     "request-table-size": 10000
   },
-  "mongo-constants": {
-    "db-name": "cilantro",
-    "blocks-col-name": "blockchain",
-    "latest-hash-key": "latest_hash",
-    "latest-block-num-key": "latest_block_num",
-    "balances-col-name": "balances",
-    "genesis-key": "is_genesis",
-    "blocks-state-col-name": "blockchain_state",
-    "wallet-key": "wallet",
-    "balance-key": "balance",
-    "faucet-col-name": "faucet"
-  },
   "nodes": {
     "max-request-length": 100000,
     "max-queue-size": 2,
@@ -62,5 +50,22 @@
     "alpha": 3,
     "ksize": 20,
     "max-peers": 64
+  },
+  "test": {
+    "masternodes":
+            [
+              {"sk": "abcde554433", "vk": "a real vk", "ip":"172.12.1.0", "testnet-url": "127.0.0.1:1100"}
+            ],
+    "witnesses":
+            [
+              {"sk": "abcde554433", "vk": "a real vk", "ip":"172.12.1.0", "testnet-url": "127.0.0.1:1100"},
+              {"sk": "abcde554433", "vk": "a real vk", "ip":"172.12.1.0", "testnet-url": "127.0.0.1:1100"}
+            ],
+    "delegates":
+            [
+              {"sk": "abcde554433", "vk": "a real vk", "ip":"172.12.1.0", "testnet-url": "127.0.0.1:1100"},
+              {"sk": "abcde554433", "vk": "a real vk", "ip":"172.12.1.0", "testnet-url": "127.0.0.1:1100"},
+              {"sk": "abcde554433", "vk": "a real vk", "ip":"172.12.1.0", "testnet-url": "127.0.0.1:1100"}
+            ]
   }
 }

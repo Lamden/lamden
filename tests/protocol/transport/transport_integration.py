@@ -1,5 +1,5 @@
 from cilantro import Constants
-from cilantro.utils.test import MPTesterBase, MPTestCase, mp_testable
+from cilantro.utils.test import MPTesterBase, MPTestCase, mp_testable, MPComposer
 from unittest.mock import patch, call, MagicMock
 from cilantro.protocol.transport import Router, Composer
 from cilantro.protocol.reactor import ReactorInterface
@@ -31,25 +31,6 @@ def random_envelope(sk=None, tx=None):
     sk = sk or ED25519Wallet.new()[0]
     tx = tx or random_msg()
     return Envelope.create_from_message(message=tx, signing_key=sk)
-
-
-@mp_testable(Composer)
-class MPComposer(MPTesterBase):
-    @classmethod
-    def build_obj(cls, sk, name='') -> tuple:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        mock_sm = MagicMock(spec=StateMachine)
-        mock_sm.__name__ = name
-        router = MagicMock()
-
-        reactor = ReactorInterface(router=router, loop=loop, verifying_key=Constants.Protocol.Wallets.get_vk(sk))
-        composer = Composer(interface=reactor, signing_key=sk)
-
-        asyncio.ensure_future(reactor._recv_messages())
-
-        return composer, loop
 
 
 class TransportIntegrationTest(MPTestCase):
