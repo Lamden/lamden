@@ -19,7 +19,7 @@ KILL_SIG = b'DIE'
 
 class ReactorDHT(DHT):
     def status_update(self, *args, **kwargs):
-        print('in the daemon:{}'.format(kwargs))
+        print('Received status update from DHT:{}'.format(kwargs))
 
 
 class ReactorDaemon:
@@ -43,10 +43,10 @@ class ReactorDaemon:
 
         # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
-
-        # self.dht = ReactorDHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
-        #                alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
-        #                max_peers=Constants.Overlay.MaxPeers, block=False)
+        self.dht = ReactorDHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
+                       alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
+                       max_peers=Constants.Overlay.MaxPeers, block=False, cmd_cli=False)
+        self.log.debug('bootstrappable neighbors: {}'.format(self.dht.network.bootstrappableNeighbors()))
 
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name
@@ -57,13 +57,10 @@ class ReactorDaemon:
         try:
             self.loop.run_until_complete(self._recv_messages())
         except Exception as e:
-            err_msg = '\n' + '!' * 64 + '\nLoop terminating with exception:\n' + str(traceback.format_exc())
+            err_msg = '\n' + '!' * 64 + '\nDeamon Loop terminating with exception:\n' + str(traceback.format_exc())
             err_msg += '\n' + '!' * 64 + '\n'
             self.log.error(err_msg)
-        finally:
-            # TODO -- do we need to clean up all the tasks in the loop first before we close it?
-            self.loop.stop()
-            self.socket.close()
+            self._teardown()
 
     async def _recv_messages(self):
         # Notify parent proc that this proc is ready
@@ -150,5 +147,6 @@ class ReactorDaemon:
                 ip = await self.dht.network.lookup_ip(vk)
                 new_url = IPUtils.interpolate_url(url, ip)
                 kwargs['url'] = new_url
+
 
         return executor_name, executor_func, kwargs

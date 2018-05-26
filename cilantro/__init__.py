@@ -107,27 +107,13 @@ class Constants:
     @classmethod
     def build_from_json(cls, d, last_class=None):
         for k in d.keys():
-            if k == 'testnet':
-                d[k] = config_testnet(d[k])
-            if type(d[k]) == dict and (k != 'all-nodes'):
+            if type(d[k]) == dict:
                 new_class = cls.new_class(name=snake_to_pascal(k))
                 cls.add_attr(name=snake_to_pascal(k), value=new_class)
                 cls.classes.append(new_class)
                 cls.build_from_json(d[k], last_class=new_class)
             else:
                 setattr(last_class, snake_to_pascal(k), d[k])
-
-    # @classmethod
-    # def load_to_env(cls, d, basename=None):
-    #     for k in d:
-    #         keyname = '_'.join([snake_to_pascal(basename).upper(), snake_to_pascal(k).upper()]) if basename else snake_to_pascal(k).upper()
-    #         if type(d[k]) == dict:
-    #             cls.load_to_env(d[k], keyname)
-    #         elif type(d[k]) == list:
-    #             pass
-    #         else:
-    #             print(type(d[k]), d[k])
-    #             os.environ[keyname] = str(d[k])
 
     @classmethod
     def __str__(cls):

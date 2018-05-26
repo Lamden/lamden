@@ -3,4 +3,4 @@ from cilantro.utils.test.mp_test import MPTesterBase, mp_testable
 from cilantro.utils.test.mp_test_case import MPTestCase
 from cilantro.utils.test.god import *
 
-from cilantro.utils.test.mp_testables import MPComposer, MPGod
+from cilantro.utils.test.mp_testables import MPComposer, MPGod, MPMasternode, MPWitness

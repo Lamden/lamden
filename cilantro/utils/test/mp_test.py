@@ -94,16 +94,14 @@ class MPTesterProcess:
     """
 
     def __init__(self, name, url, build_fn, config_fn, assert_fn):
+        self.url = url
+        self.name = name
         self.config_fn = config_fn
         self.assert_fn = assert_fn
-        self.url = url
+        self.gathered_tasks = None
         self.log = get_logger("TesterProc[{}]".format(name))
 
-        self.tester_obj, self.loop = build_fn()
-        assert isinstance(self.loop, asyncio.AbstractEventLoop), \
-            "Got {} that isn't an instance of asyncio.AbstractEventLoop".format(self.loop)
-
-        asyncio.set_event_loop(self.loop)
+        self.tester_obj, self.loop, self.tasks = self._build_components(build_fn)
 
         # Connect to parent process over ipc PAIR self.socket
         self.ctx = zmq.asyncio.Context()
@@ -113,7 +111,54 @@ class MPTesterProcess:
         if self.config_fn:
             self.tester_obj = self.config_fn(self.tester_obj)
 
-        # self._start_test()
+    def start_test(self):
+        """
+        Sends ready signal to parent process, and then starts the event self.loop in this process
+        """
+        assert self.gathered_tasks is None, "start_test can only be called once"
+        self.gathered_tasks = asyncio.gather(self._recv_cmd(), *self.tasks)
+
+        self.log.debug("sending ready sig to parent")
+        self.socket.send_pyobj(SIG_RDY)
+
+        try:
+            self.log.debug("starting tester proc event loop")
+            self.loop.run_until_complete(self.gathered_tasks)
+        except Exception as e:
+            # If the tasks were canceled internally, then do not run _teardown() again
+            if type(e) is asyncio.CancelledError:
+                self.log.debug("Task(s) cancel detected. Closing event loop.")
+                self.loop.close()
+                return
+
+            self.log.error("\n\nException in main TesterProc loop: {}\n\n".format(traceback.format_exc()))
+            self.socket.send_pyobj(SIG_FAIL)
+            self._teardown()
+
+    def _build_components(self, build_fn) -> tuple:
+        objs = build_fn()
+
+        # Validate tuple
+        assert type(objs) is tuple, "Expected a tuple of length 3 with (tester_obj, loop, tasks)"
+        assert len(objs) == 3, "Expected a tuple of length 3 with (tester_obj, loop, tasks)"
+
+        tester_obj, loop, tasks = objs
+
+        # Validate loop
+        assert isinstance(loop, asyncio.AbstractEventLoop), \
+            "Got {} that isn't an instance of asyncio.AbstractEventLoop".format(loop)
+        asyncio.set_event_loop(loop)
+
+        # Validate tasks
+        assert type(tasks) is list or type(tasks) is tuple, \
+            "3rd return val of build_obj must be a list/tuple of tasks... got {} instead".format(tasks)
+        assert len(tasks) >= 1, "Expected at least one task"
+
+        # TODO investigate why this is not always working...soemtimes assert raises error for valid coro's
+        # for t in tasks:
+        #     assert inspect.iscoroutine(t), "Tasks must be a list of coroutines. Element {} is not a coro.".format(t)
+
+        return tester_obj, loop, tasks
 
     async def _recv_cmd(self):
         """
@@ -130,7 +175,7 @@ class MPTesterProcess:
                 # self.log.critical("\n!!!!!\nGOT ABORT SIG\n!!!!!\n")
                 errs = self._assertions()
                 if errs:
-                    self.log.critical("\n\n{0}\nASSERTIONS FAILED FOR {2}:\n{1}\n{0}\n".format('!' * 120, errs, name))
+                    self.log.critical("\n\n{0}\nASSERTIONS FAILED FOR {2}:\n{1}\n{0}\n".format('!' * 120, errs, self.name))
                 self._teardown()
                 return
 
@@ -160,7 +205,7 @@ class MPTesterProcess:
                 # self.log.critical("got cmd: {}".format(cmd))
                 # self.log.critical("cmd name: {}\nkwargs: {}".format(func, kwargs))
             except Exception as e:
-                self.log.error("\n\n TESTER GOT EXCEPTION: {}\n\n".format(traceback.format_exc()))
+                self.log.error("\n\n TESTER GOT EXCEPTION FROM EXECUTING CMD {}: {}\n\n".format(cmd, traceback.format_exc()))
                 self.socket.send_pyobj(SIG_FAIL)
                 self._teardown()
                 return
@@ -195,24 +240,12 @@ class MPTesterProcess:
         timeout.
         """
         self.log.info("Tearing down")
-        # self.log.info("Closing pair self.socket")
+
+        self.log.debug("Closing pair socket")
         self.socket.close()
-        # self.log.info("Stopping self.loop")
-        self.loop.stop()
 
-    def start_test(self):
-        """
-        Sends ready signal to parent process, and then starts the event self.loop in this process
-        """
-        self.log.debug("sending ready sig to parent")
-        self.socket.send_pyobj(SIG_RDY)
-
-        # asyncio.ensure_future(__recv_cmd())
-        # if self.assert_fn:
-        #     asyncio.ensure_future(__check_assertions())
-
-        self.log.debug("starting tester proc event self.loop")
-        self.loop.run_until_complete(self._recv_cmd())
+        self.log.debug("Stopping tasks")
+        self.gathered_tasks.cancel()
 
     def _assertions(self):
         """
@@ -279,6 +312,7 @@ class MPTesterBase:
         self.log.critical("GOT RDY SIG: {}".format(msg))
 
     def _run_test_proc(self, name, url, build_fn, config_fn, assert_fn):
+        # TODO create socket outside of loop and pass it in for
         tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
         tester_socket = tester.socket
 

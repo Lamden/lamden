@@ -357,4 +357,3 @@ class VKBook:
     @staticmethod
     def get_witnesses():
         return VKBook._get_vks('witnesses')
-
