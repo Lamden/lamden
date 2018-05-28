@@ -34,6 +34,17 @@ class MNBaseState(State):
     def handle_state_req(self, request: StateRequest):
         self.log.warning("Current state not configured to handle state requests {}".format(request))
 
+    def _validate_block_contender(self, block_contender: BlockContender) -> bool:
+        """
+        Helper method to validate a block contender. For a block contender to be valid it must:
+        1) Have a provable merkle tree, ie. all nodes must be hash of (left child + right child)
+        2) Be signed by at least 2/3 of the top 32 delegates
+        :param block_contender: The BlockContender to validate
+        :return: True if the BlockContender is valid, false otherwise
+        """
+        # TODO -- implement
+        return True
+
 
 class MNBootState(MNBaseState):
     def reset_attrs(self):
@@ -213,6 +224,25 @@ class MNRunState(MNBaseState):
     @input_request(StateRequest)
     def handle_state_req(self, request: StateRequest):
         self.log.info("Masternode got state request {}".format(request))
+
+
+
+class MasternodeNewBlockState(MNBaseState):
+
+    def reset_attrs(self):
+        self.blocks = []
+
+    @enter_from_any
+    def enter_any(self, prev_state):
+        raise Exception("NewBlockState should only be entered from RunState, but previous state is {}".format(prev_state))
+
+    @enter_from(MNRunState)
+    def enter_from_run(self, prev_state, block_contender: BlockContender):
+        self.log.debug("Entering NewBlockState with block contender {}".format(block_contender))
+
+    @input(BlockContender)
+    def handle_block_contender(self, block: BlockContender):
+        pass
 
 
 class Masternode(NodeBase):
