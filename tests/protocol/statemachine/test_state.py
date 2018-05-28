@@ -1,17 +1,6 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
 from cilantro.protocol.statemachine import *
-"""
-So we basically want to test...
-
-1) input/input_request/timeout decorator 
-2) input/input_request/timeout decorator inheritance + polymorphism
-
-3) enter/exit called appropriately on transition
-4) state_enter/state_exit decorators 
-"""
-
-print("\n\n\n\n\n\n\n\n\n")
 
 
 class Message:
