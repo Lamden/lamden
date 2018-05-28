@@ -1,4 +1,5 @@
-import hashlib
+from cilantro.utils import Hasher
+
 
 class MerkleTree:
     """
@@ -7,23 +8,7 @@ class MerkleTree:
 
     def __init__(self, leaves=None):
         self.raw_leaves = leaves
-
-        # compute size of tree
-        self.size = (len(leaves) * 2) - 1
-
-        # prehash leaves
-        self.leaves = [MerkleTree.hash(bytes(l)) for l in leaves]
-
-        # create empty nodes until we hash it
-        self.nodes = [None for _ in range(len(self.leaves) - 1)]
-        self.nodes.extend(self.leaves)
-
-        # hash the nodes -- TODO make this DRY
-        for i in range(self.size - len(self.leaves), 0, -1):
-            true_i = i - 1
-            self.nodes[true_i] = \
-                MerkleTree.hash(self.nodes[2 * i - 1] +
-                                self.nodes[2 * i])
+        self.nodes = MerkleTree.merklize(leaves)
 
     def root(self, i=0):
         if i == 0:
@@ -44,32 +29,30 @@ class MerkleTree:
         return None
 
     def hash_of_nodes(self):
-        h = hashlib.sha3_256()
-        # is this any better or worse than passing around the merkle root?
-        [h.update(o) for o in self.nodes]
-        return h.digest()
+        return Hasher.hash_iterable(self.nodes, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)
 
     @staticmethod
     def verify_tree(tree_nodes: list, tree_hash: bytes):
-        # create empty nodes until we hash it
-        nodes = [None for _ in range(len(tree_nodes) - 1)]
-        nodes.extend(tree_nodes)
+        nodes = MerkleTree.merklize(tree_nodes, hash_leaves=False)
+        h = Hasher.hash_iterable(nodes, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)
+        return h == tree_hash
 
-        # hash the nodes -- TODO make this DRY
-        size = (len(tree_nodes) * 2) - 1
-        for i in range(size - len(tree_nodes), 0, -1):
+    @staticmethod
+    def merklize(leaves: list, hash_leaves=True) -> list:
+        if hash_leaves:
+            leaves = [MerkleTree.hash(bytes(l)) for l in leaves]
+
+        nodes = [None for _ in range(len(leaves) - 1)]
+        nodes.extend(leaves)
+
+        for i in range((len(leaves) * 2) - 1 - len(leaves), 0, -1):
             true_i = i - 1
             nodes[true_i] = \
                 MerkleTree.hash(nodes[2 * i - 1] +
                                 nodes[2 * i])
 
-        h = hashlib.sha3_256()
-        [h.update(o) for o in nodes]
-
-        return h.digest() == tree_hash
+        return nodes
 
     @staticmethod
     def hash(o):
-        h = hashlib.sha3_256()
-        h.update(o)
-        return h.digest()
+        return Hasher.hash(o, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)
