@@ -144,6 +144,7 @@ class State(metaclass=StateMeta):
 
         func = self._get_input_handler(message, input_type)
 
+        # TODO -- find cleaner way to copy method signatures in unit tests
         if (isinstance(func, MagicMock) and envelope) or self._has_envelope_arg(func):
             assert envelope, "Envelope arg was found for input func {}, " \
                              "but no envelope passed into call_input_handler".format(func)
@@ -151,11 +152,6 @@ class State(metaclass=StateMeta):
             output = func(message, envelope=envelope)
         else:
             output = func(message)
-
-        # if envelope:
-        #     output = func(message, envelope=envelope)
-        # else:
-        #     output = func(message)
 
         return output
 
