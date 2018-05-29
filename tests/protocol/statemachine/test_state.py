@@ -82,8 +82,8 @@ class TrafficLightYellowState(TrafficLightBaseState):
     def enter_from_red(self, prev_state):
         pass
 
-    # @enter_from(TrafficLightBrokenState, TrafficLightFixingState)
-    @enter_from("TrafficLightBrokenState", "TrafficLightFixingState")
+    @enter_from(TrafficLightBrokenState, TrafficLightFixingState)
+    # @enter_from("TrafficLightBrokenState", "TrafficLightFixingState")
     def enter_from_broken_or_fixing(self, prev_state):
         pass
 
@@ -200,12 +200,10 @@ class StateTest(TestCase):
 
         self.assertTrue(type(entries_arr) is list)
         self.assertTrue(len(entries_arr) == 2)
-        self.assertTrue(TrafficLightFixingState.__name__ in entries_arr)
-        self.assertTrue(TrafficLightBrokenState.__name__ in entries_arr)
+        self.assertTrue(TrafficLightFixingState.__name__ in entries_arr or TrafficLightFixingState in entries_arr)
+        self.assertTrue(TrafficLightBrokenState.__name__ in entries_arr or TrafficLightBrokenState in entries_arr)
 
     def test_get_transition_handler_any(self):
-        """
-        """
         mock_sm = MagicMock()
 
         state = TrafficLightBaseState(mock_sm)

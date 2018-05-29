@@ -33,8 +33,7 @@ class SleepState(State):
     @input(LiftingTimeMessage)
     def handle_lifting_message(self, msg: LiftingTimeMessage):
         self.log.debug("Got lifting msg ... transitioning to lift state")
-        # TODO implment once we can represent states as strings...
-        # self.parent.transition()
+        self.parent.transition("LiftState", lift=msg.lift, weight=msg.weight)
 
     @enter_from_any
     def enter_general(self, prev_state, sleep_time = DEFAULT_SLEEP_TIME):
@@ -180,7 +179,7 @@ class StateMachineTest(TestCase):
         self.assertEqual(sm.state.current_lift, DEFAULT_LIFT)
         self.assertEqual(sm.state.current_weight, DEFAULT_WEIGHT)
 
-    def test_transition_inside_input(self):
+    def test_transition_inside_input1(self):
         """
         Tests transition states inside a @input handler
         """
@@ -197,6 +196,24 @@ class StateMachineTest(TestCase):
 
         self.assertTrue(sm.state == SleepState)
         self.assertEqual(sm.state.sleep_time, sleep_time)
+
+    def test_transition_inside_input2(self):
+        """
+        Tests transition states inside a @input handler
+        """
+        sm = StuMachine()
+
+        sm.start()
+
+        lift = LiftState.SQUAT
+        weight = 7000
+        msg = LiftingTimeMessage(weight=weight, lift=lift)
+
+        sm.state.call_input_handler(msg, StateInput.INPUT)
+
+        self.assertTrue(sm.state == LiftState)
+        self.assertEqual(sm.state.current_lift, lift)
+        self.assertEqual(sm.state.current_weight, weight)
 
     def test_transition_inside_enter(self):
         """

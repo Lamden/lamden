@@ -1,5 +1,6 @@
 import cilantro.protocol.statemachine.state
 from cilantro.logger import get_logger
+import inspect
 """
 ----------------------------------------
 Input Decorators
@@ -71,44 +72,44 @@ log = get_logger("StateMeta (Compile Time)")
 ALL_STATES = 'ALL_STATES'
 
 
-def _transition_state(handlers_attr: str, args):
-    from cilantro.protocol.statemachine.state import State, StateMeta
-
-    def decorate(func):
-            if not states:
-                log.debug("configuring func {} to capture all states".format(func))
-                # func._enter_handlers = states
-            else:
-                log.debug("func {} configured to capture state {}".format(func, states))
-                # func._enter_handlers = states
-
-            # func._enter_handlers = states
-            log.debug("setting attr named {} on object {} to value {}".format(handlers_attr, func, states))
-            setattr(func, handlers_attr, states)
-
-            def _func(*args, **kwargs):
-                log.debug("entering func with args {} and kwargs {}".format(args, kwargs))
-                func(*args, **kwargs)
-                log.debug("exiting func")
-
-            return _func
-
-    # Check if this decorator was used with args
-    # if len(args) == 1 and callable(args[0]) and not issubclass(args[0], State):
-    if len(args) == 1 and callable(args[0]) and not ((type(args[0]) is StateMeta) and issubclass(args[0], State)):
-        log.debug("this method was not decorated")
-        states = ALL_STATES
-        return decorate(args[0])
-    else:
-        log.debug("entry method was decorated with args {}".format(args))
-
-        # Convert classes to names
-        for i, cls in enumerate(args):
-            if type(cls) is not str:
-                args[i] = cls.__name__
-
-        states = args
-        return decorate
+# def _transition_state(handlers_attr: str, args):
+#     from cilantro.protocol.statemachine.state import State, StateMeta
+#
+#     def decorate(func):
+#             if not states:
+#                 log.debug("configuring func {} to capture all states".format(func))
+#                 # func._enter_handlers = states
+#             else:
+#                 log.debug("func {} configured to capture state {}".format(func, states))
+#                 # func._enter_handlers = states
+#
+#             # func._enter_handlers = states
+#             log.debug("setting attr named {} on object {} to value {}".format(handlers_attr, func, states))
+#             setattr(func, handlers_attr, states)
+#
+#             def _func(*args, **kwargs):
+#                 log.debug("entering func with args {} and kwargs {}".format(args, kwargs))
+#                 func(*args, **kwargs)
+#                 log.debug("exiting func")
+#
+#             return _func
+#
+#     # Check if this decorator was used with args
+#     # if len(args) == 1 and callable(args[0]) and not issubclass(args[0], State):
+#     if len(args) == 1 and callable(args[0]) and not ((type(args[0]) is StateMeta) and issubclass(args[0], State)):
+#         log.debug("this method was not decorated")
+#         states = ALL_STATES
+#         return decorate(args[0])
+#     else:
+#         log.debug("entry method was decorated with args {}".format(args))
+#
+#         # Convert classes to names
+#         for i, cls in enumerate(args):
+#             if type(cls) is not str:
+#                 args[i] = cls.__name__
+#
+#         states = args
+#         return decorate
 
 
 class StateTransition:
@@ -134,6 +135,11 @@ def _set_state_registry(func, attr_name, states):
     for s in states:
         # assert issubclass(s, cilantro.protocol.statemachine.state.State), \
         #     "Transition func decorator arg {} must be a State subclass".format(s)
+
+        # Cast classes to names where necessary
+        if inspect.isclass(s):
+            s = s.__name__
+
         registry.append(s)
 
     setattr(func, attr_name, registry)
