@@ -8,7 +8,7 @@ class StateMachine:
     """
     TODO -- docstring
     """
-    _STATES = None
+    _STATES = []
     _INIT_STATE = None
 
     def __init__(self):
@@ -17,8 +17,10 @@ class StateMachine:
         """
         self.is_started = False
 
-        assert self._STATES is not None, "_STATES is None (did you set it in the StateMachine subclass?)"
-        assert self._INIT_STATE is not None, "_INIT_STATE is None (did you set it in the StateMachine subclass?)"
+        assert len(self._STATES) > 0, \
+            "_STATES is empty. Register states using class decorator @StateMachineSubclass.register_state"
+        assert self._INIT_STATE is not None, \
+            "_INIT_STATE is None. Add an init state using class decorator @StateMachineSubclass.register_init_state"
 
         self.state = EmptyState(self)
         self.states = None
@@ -73,6 +75,34 @@ class StateMachine:
 
         # Enter next (now current) state
         self.state.call_transition_handler(StateTransition.ENTER, type(prev_state), *args, **kwargs)
+
+    @classmethod
+    def register_state(cls, state_cls):
+        """
+        Decorator to register states in a StateMachine
+        """
+        assert inspect.isclass(state_cls), "@register_state decorator must applied on a class"
+        assert issubclass(state_cls, State), "@register_state decorator must be applied to a State subclass"
+        assert state_cls not in cls._STATES, "State class {} already in _STATES {}".format(state_cls, cls._STATES)
+
+        cls._STATES.append(state_cls)
+
+        return state_cls
+
+    @classmethod
+    def register_init_state(cls, state_cls):
+        assert inspect.isclass(state_cls), "@register_state decorator must applied on a class"
+        assert issubclass(state_cls, State), "@register_state decorator must be applied to a State subclass"
+        assert cls._INIT_STATE is None, "_INIT_STATE is already set to {}. Only decorate one class with " \
+                                        "@register_init_state".format(cls._INIT_STATE)
+        assert state_cls not in cls._STATES, "Initial state class {} found in _STATES {}. Do not use @register_state" \
+                                             " AND @register_init_state; using only the latter will suffice"\
+                                             .format(state_cls, cls._STATES)
+
+        cls._STATES.append(state_cls)
+        cls._INIT_STATE = state_cls
+
+        return state_cls
 
     @lazy_property
     def _state_cls_map(self):

@@ -14,6 +14,8 @@ DEFAULT_LIFT = None
 DEFAULT_WEIGHT = 0
 DEFAULT_SLEEP_TIME = 8
 
+class StuMachine(StateMachine): pass
+
 
 class LiftingTimeMessage:
     def __init__(self, weight, lift):
@@ -25,6 +27,7 @@ class GoToSleepMessage:
         self.sleep_time = sleep_time
 
 
+@StuMachine.register_init_state
 class SleepState(State):
     def reset_attrs(self):
         self.did_enter = False
@@ -41,21 +44,20 @@ class SleepState(State):
         self.sleep_time = sleep_time
         self.did_enter = True
 
+    @exit_to_any
+    def exit_any(self, prev_state, *args, **kwargs):  # TODO do dank runtime signature inspection
+        self.parent.sleep_did_exit_any = True
 
+
+@StuMachine.register_state
 class CodeState(State):
     def reset_attrs(self):
         self.lang = None
         self.activity = None
 
-    # def enter_any(self, prev_state, *args, **kwargs):
-    #     pass
-    #
-    # def exit_any(self, next_state, *args, **kwargs):
-    #     pass
-
     # If the StuMachine tries to code first thing in the morn before lifting he goes back to sleep
-    # @enter_from(SleepState)
-    @enter_from("SleepState")
+    @enter_from(SleepState)
+    # @enter_from("SleepState")
     def enter_from_sleep(self, prev_state):
         assert prev_state is SleepState, "wtf prev_state is not sleep state .... ?"
 
@@ -66,18 +68,14 @@ class CodeState(State):
     def enter_general(self, prev_state):
         self.log.debug("general entry from prev state {}".format(prev_state))
 
-    # @enter_from(SleepState)
-    # def enter_from_sleep(self, prev_state):
-    #     self.log.debug("SLEEP STATE SPECIFIC entered from previous state {}".format(prev_state))
 
+@StuMachine.register_state
 class LiftState(State):
     BENCH, SQUAT, DEADLIFT = 'BENCH', 'SQUAT', 'DEAD LIFT'
 
     def reset_attrs(self):
         self.current_lift = DEFAULT_LIFT
         self.current_weight = DEFAULT_WEIGHT
-
-    # TODO exit_any test
 
     @input(GoToSleepMessage)
     def handle_sleep_msg(self, msg: GoToSleepMessage):
@@ -98,19 +96,26 @@ class LiftState(State):
         self.log.debug("CODESTATE SPECIFIC entering from prev state {}".format(prev_state))
         self.reset_attrs()
 
-    def run(self):
-        pass
+    @exit_to(SleepState)
+    def exit_to_sleep(self, prev_state, *args, **kwargs):   # TODO do dank runtime signature inspection
+        self.log.debug("exiting lift state to sleep state")
+        self.parent.exit_lift_to_sleep_called = True
 
     def lift(self):
         self.log.debug("Doing lift: {} ... with weight: {}".format(self.current_lift, self.current_weight))
 
 
-class StuMachine(StateMachine):
-    _INIT_STATE = SleepState
-    _STATES = [SleepState, CodeState, LiftState]
-
-
 class StateMachineTest(TestCase):
+
+    def test_register_decorators(self):
+        """
+        Tests the @StateMachine.register_state and .register_init_state decorators
+        """
+        self.assertTrue(StuMachine._INIT_STATE is SleepState)
+
+        self.assertTrue(SleepState in StuMachine._STATES)
+        self.assertTrue(LiftState in StuMachine._STATES)
+        self.assertTrue(CodeState in StuMachine._STATES)
 
     def test_start(self):
         """
@@ -178,6 +183,32 @@ class StateMachineTest(TestCase):
         self.assertTrue(type(sm.state) is LiftState)
         self.assertEqual(sm.state.current_lift, DEFAULT_LIFT)
         self.assertEqual(sm.state.current_weight, DEFAULT_WEIGHT)
+
+    def test_transition_calls_exit_any(self):
+        """
+        Tests that a transition calls an exit_any method
+        """
+        sm = StuMachine()
+
+        sm.start()
+
+        sm.transition(LiftState)
+
+        self.assertTrue(type(sm.state) is LiftState)
+        self.assertTrue(sm.sleep_did_exit_any)
+
+    def test_transition_calls_exit_specific(self):
+        """
+        Tests that a specific exit transition is called when appropriate
+        """
+        sm = StuMachine()
+
+        sm.start()
+
+        sm.transition(LiftState)
+        sm.transition(SleepState)
+
+        self.assertTrue(sm.exit_lift_to_sleep_called)
 
     def test_transition_inside_input1(self):
         """
