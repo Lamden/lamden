@@ -31,11 +31,9 @@ class BlockContender(MessageBase):
         assert type(self._data) == dict, "BlockContender's _data must be a dict"
         assert BlockContender.SIGS in self._data, "signature field missing from data {}".format(self._data)
         assert BlockContender.NODES in self._data, "nodes field missing from data {}".format(self._data)
-        self.signatures  # Attempt to deserialize signatures by reading property
+        self.signatures  # Attempt to deserialize signatures by reading property (will raise expection if can't)
 
     def serialize(self):
-        # for i in range(len(self._data[self.SIGS])):
-        #     self._data[self.SIGS][i] = self._data[self.SIGS][i].serialize()
         return pickle.dumps(self._data)
 
     @classmethod
