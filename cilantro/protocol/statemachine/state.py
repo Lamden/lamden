@@ -175,10 +175,19 @@ class State(metaclass=StateMeta):
 
         return getattr(self, func.__name__)
 
-    def _has_envelope_arg(self, func):
+    @classmethod
+    def _has_envelope_arg(cls, func):
         # TODO more robust logic that searches through parameter type annotations one that is typed with Envelope class
         sig = inspect.signature(func)
         return 'envelope' in sig.parameters
+
+    @classmethod
+    def _prune_kwargs(cls, func, **kwargs):
+        """
+        Prunes kwargs s.t. only keys which are present as named args in func's signature are present.
+        """
+        params = inspect.signature(func).parameters
+        return {k: kwargs[k] for k in kwargs if k in params}
 
     def _assert_has_input_handler(self, message: MessageBase, input_type: str):
         # Assert that input_type is actually a recognized input_type
@@ -224,9 +233,9 @@ class State(metaclass=StateMeta):
 
     def __eq__(self, other):
         """
-        An equality check with superpowers used heavily in State + StateMachine classes for type introspection. This
+        An equality check on steroids. Used heavily in State + StateMachine classes for type introspection. This
         method should return true if both self and other are the same CLASS of state. Other may be either another
-        state instance, or a state class
+        state instance, or a state class, or a string representing the name of a state class
         """
         # Case 1 -- 'other' is a State subclass
         if type(other) is StateMeta:

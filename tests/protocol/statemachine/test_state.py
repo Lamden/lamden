@@ -149,6 +149,17 @@ class StateTest(TestCase):
 
         self.assertRaises(ValueError, comp_states, state, not_a_state)
 
+    def test_prune_kwargs(self):
+        def some_func(arg1='hello', arg2='goodbye'):
+            pass
+
+        kwargs = {'arg2': 9000, 'key that isnt an arg in some_func': b'hi'}
+
+        expected_kwargs = {'arg2': 9000}
+        pruned_kwargs = State._prune_kwargs(some_func, **kwargs)
+
+        self.assertEqual(expected_kwargs, pruned_kwargs)
+
     def test_enter_any_decorator(self):
         mock_sm = MagicMock()
 
