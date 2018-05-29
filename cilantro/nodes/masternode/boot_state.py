@@ -30,7 +30,7 @@ class MNBootState(MNBaseState):
         # Once done booting, transition to run
         self.parent.transition(MNRunState)
 
-    @exit_from_any
+    @exit_to_any
     def exit_any(self, next_state):
         self.log.debug("Bootstate exiting for next state {}".format(next_state))
 

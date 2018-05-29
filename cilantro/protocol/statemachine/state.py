@@ -1,7 +1,7 @@
 from cilantro.logger import get_logger
 from functools import wraps
 from cilantro.messages import MessageBase, Envelope
-from cilantro.protocol.statemachine.decorators import StateInput, StateTransition, exit_from_any
+from cilantro.protocol.statemachine.decorators import StateInput, StateTransition, exit_to_any
 import inspect
 from collections import defaultdict
 from unittest.mock import MagicMock
@@ -246,6 +246,6 @@ class EmptyState(State):
     def reset_attrs(self):
         pass
 
-    @exit_from_any
+    @exit_to_any
     def exit_any(self, prev_state):
         pass

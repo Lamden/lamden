@@ -123,7 +123,7 @@ class DelegateInterpretState(DelegateBaseState):
             results = r.fetchall()
             self.log.critical("\n\n LATEST STATE INFO: {} \n\n".format(results))
 
-    @exit_from_any
+    @exit_to_any
     def exit_any(self, next_state):
         # Flush queue if we are not leaving interpreting for consensus
         if next_state != DelegateConsensusState:
@@ -190,7 +190,7 @@ class DelegateConsensusState(DelegateBaseState):
 
         self.check_majority()
 
-    @exit_from_any
+    @exit_to_any
     def exit_any(self, next_state):
         self.reset_attrs()
 

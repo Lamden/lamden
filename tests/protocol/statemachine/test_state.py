@@ -57,11 +57,11 @@ class TrafficLightRedState(TrafficLightBaseState):
     # def enter_general_dupe(self, prev_state):
     #     pass
 
-    @exit_from_any
+    @exit_to_any
     def exit_general(self, next_state):
         pass
 
-    @exit_from(TrafficLightBrokenState, TrafficLightFixingState)
+    @exit_to(TrafficLightBrokenState, TrafficLightFixingState)
     def exit_from_maintenance(self, next_state):
         pass
 
