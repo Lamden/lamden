@@ -161,7 +161,7 @@ class State(metaclass=StateMeta):
         if not trans_func:
             return
 
-        trans_func(next_state, *args, **kwargs)
+        trans_func(next_state, *args, **self._prune_kwargs(trans_func, **kwargs))
 
     def _get_input_handler(self, message, input_type: str):
         registry = getattr(self, input_type)

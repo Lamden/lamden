@@ -45,7 +45,7 @@ class SleepState(State):
         self.did_enter = True
 
     @exit_to_any
-    def exit_any(self, prev_state, *args, **kwargs):  # TODO do dank runtime signature inspection
+    def exit_any(self, prev_state):
         self.parent.sleep_did_exit_any = True
 
 
@@ -57,7 +57,6 @@ class CodeState(State):
 
     # If the StuMachine tries to code first thing in the morn before lifting he goes back to sleep
     @enter_from(SleepState)
-    # @enter_from("SleepState")
     def enter_from_sleep(self, prev_state):
         assert prev_state is SleepState, "wtf prev_state is not sleep state .... ?"
 
@@ -97,7 +96,7 @@ class LiftState(State):
         self.reset_attrs()
 
     @exit_to(SleepState)
-    def exit_to_sleep(self, prev_state, *args, **kwargs):   # TODO do dank runtime signature inspection
+    def exit_to_sleep(self, prev_state):
         self.log.debug("exiting lift state to sleep state")
         self.parent.exit_lift_to_sleep_called = True
 
