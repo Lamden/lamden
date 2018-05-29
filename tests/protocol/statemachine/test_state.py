@@ -151,36 +151,36 @@ class StateTest(TestCase):
 
         state = TrafficLightRedState(mock_sm)
 
-        self.assertTrue(hasattr(state.enter_general, TransitionDecor.ENTER))
-        self.assertEqual(getattr(state.enter_general, TransitionDecor.ENTER), TransitionDecor.ACCEPT_ALL)
+        self.assertTrue(hasattr(state.enter_general, StateTransition.ENTER))
+        self.assertEqual(getattr(state.enter_general, StateTransition.ENTER), StateTransition.ACCEPT_ALL)
 
     def test_exit_any_decorator(self):
         mock_sm = MagicMock()
 
         state = TrafficLightRedState(mock_sm)
 
-        self.assertTrue(hasattr(state.exit_general, TransitionDecor.EXIT))
-        self.assertEqual(getattr(state.exit_general, TransitionDecor.EXIT), TransitionDecor.ACCEPT_ALL)
+        self.assertTrue(hasattr(state.exit_general, StateTransition.EXIT))
+        self.assertEqual(getattr(state.exit_general, StateTransition.EXIT), StateTransition.ACCEPT_ALL)
 
     def test_config_trans_exit_doesnt_exit(self):
         mock_sm = MagicMock()
 
         state = TrafficLightYellowState(mock_sm)
 
-        self.assertTrue(hasattr(state, TransitionDecor.ENTER))
-        self.assertTrue(hasattr(state, TransitionDecor.EXIT))
+        self.assertTrue(hasattr(state, StateTransition.ENTER))
+        self.assertTrue(hasattr(state, StateTransition.EXIT))
 
-        self.assertTrue(type(getattr(state, TransitionDecor.EXIT)) is dict)
-        self.assertTrue(getattr(state, TransitionDecor.EXIT) == {})
+        self.assertTrue(type(getattr(state, StateTransition.EXIT)) is dict)
+        self.assertTrue(getattr(state, StateTransition.EXIT) == {})
 
     def test_enter_from_one_decorator(self):
         mock_sm = MagicMock()
 
         state = TrafficLightYellowState(mock_sm)
 
-        self.assertTrue(hasattr(state.enter_from_red, TransitionDecor.ENTER))
+        self.assertTrue(hasattr(state.enter_from_red, StateTransition.ENTER))
 
-        entries_arr = getattr(state.enter_from_red, TransitionDecor.ENTER)
+        entries_arr = getattr(state.enter_from_red, StateTransition.ENTER)
 
         self.assertTrue(type(entries_arr) is list)
         self.assertTrue(len(entries_arr) == 1)
@@ -191,9 +191,9 @@ class StateTest(TestCase):
 
         state = TrafficLightYellowState(mock_sm)
 
-        self.assertTrue(hasattr(state.enter_from_broken_or_fixing, TransitionDecor.ENTER))
+        self.assertTrue(hasattr(state.enter_from_broken_or_fixing, StateTransition.ENTER))
 
-        entries_arr = getattr(state.enter_from_broken_or_fixing, TransitionDecor.ENTER)
+        entries_arr = getattr(state.enter_from_broken_or_fixing, StateTransition.ENTER)
 
         self.assertTrue(type(entries_arr) is list)
         self.assertTrue(len(entries_arr) == 2)
@@ -208,7 +208,7 @@ class StateTest(TestCase):
         state = TrafficLightBaseState(mock_sm)
 
         expected_handler = state.enter_general
-        actual_handler = state._get_transition_handler(TransitionDecor.ENTER, EmptyState)
+        actual_handler = state._get_transition_handler(StateTransition.ENTER, EmptyState)
 
         self.assertEqual(expected_handler, actual_handler)
 
@@ -218,7 +218,7 @@ class StateTest(TestCase):
         state = TrafficLightRedState(mock_sm)
 
         expected_handler = state.exit_general
-        actual_handler = state._get_transition_handler(TransitionDecor.EXIT, TrafficLightYellowState)
+        actual_handler = state._get_transition_handler(StateTransition.EXIT, TrafficLightYellowState)
 
         self.assertEqual(expected_handler, actual_handler)
 
@@ -228,7 +228,7 @@ class StateTest(TestCase):
         state = TrafficLightYellowState(mock_sm)
 
         expected_handler = state.enter_from_red
-        actual_handler = state._get_transition_handler(TransitionDecor.ENTER, TrafficLightRedState)
+        actual_handler = state._get_transition_handler(StateTransition.ENTER, TrafficLightRedState)
 
         self.assertEqual(expected_handler, actual_handler)
 
@@ -238,7 +238,7 @@ class StateTest(TestCase):
         state = TrafficLightGreenState(mock_sm)
 
         expected_handler = None
-        actual_handler = state._get_transition_handler(TransitionDecor.ENTER, EmptyState)
+        actual_handler = state._get_transition_handler(StateTransition.ENTER, EmptyState)
 
         self.assertEqual(expected_handler, actual_handler)
 
@@ -351,7 +351,7 @@ class StateTest(TestCase):
         state = TrafficLightRedState(mock_sm)
 
         expected_handler = state.enter_general
-        actual_handler = state._get_transition_handler(TransitionDecor.ENTER, EmptyState)
+        actual_handler = state._get_transition_handler(StateTransition.ENTER, EmptyState)
 
         self.assertEqual(expected_handler, actual_handler)
 
@@ -361,7 +361,7 @@ class StateTest(TestCase):
         state = TrafficLightRedState(mock_sm)
 
         expected_handler = state.exit_general
-        actual_handler = state._get_transition_handler(TransitionDecor.EXIT, EmptyState)
+        actual_handler = state._get_transition_handler(StateTransition.EXIT, EmptyState)
 
         self.assertEqual(expected_handler, actual_handler)
 
@@ -371,8 +371,8 @@ class StateTest(TestCase):
         state = TrafficLightRedState(mock_sm)
 
         expected_handler = state.exit_from_maintenance
-        actual_handler1 = state._get_transition_handler(TransitionDecor.EXIT, TrafficLightBrokenState)
-        actual_handler2 = state._get_transition_handler(TransitionDecor.EXIT, TrafficLightFixingState)
+        actual_handler1 = state._get_transition_handler(StateTransition.EXIT, TrafficLightBrokenState)
+        actual_handler2 = state._get_transition_handler(StateTransition.EXIT, TrafficLightFixingState)
 
         self.assertEqual(expected_handler, actual_handler1)
         self.assertEqual(expected_handler, actual_handler2)
@@ -383,8 +383,8 @@ class StateTest(TestCase):
         state = TrafficLightGreenState(mock_sm)
 
         expected_handler = None
-        actual_handler1 = state._get_transition_handler(TransitionDecor.EXIT, TrafficLightBrokenState)
-        actual_handler2 = state._get_transition_handler(TransitionDecor.ENTER, TrafficLightFixingState)
+        actual_handler1 = state._get_transition_handler(StateTransition.EXIT, TrafficLightBrokenState)
+        actual_handler2 = state._get_transition_handler(StateTransition.ENTER, TrafficLightFixingState)
 
         self.assertEqual(expected_handler, actual_handler1)
         self.assertEqual(expected_handler, actual_handler2)
@@ -395,8 +395,8 @@ class StateTest(TestCase):
         state = TrafficLightYellowState(mock_sm)
 
         expected_handler = state.enter_from_broken_or_fixing
-        actual_handler1 = state._get_transition_handler(TransitionDecor.ENTER, TrafficLightBrokenState)
-        actual_handler2 = state._get_transition_handler(TransitionDecor.ENTER, TrafficLightFixingState)
+        actual_handler1 = state._get_transition_handler(StateTransition.ENTER, TrafficLightBrokenState)
+        actual_handler2 = state._get_transition_handler(StateTransition.ENTER, TrafficLightFixingState)
 
         self.assertEqual(expected_handler, actual_handler1)
         self.assertEqual(expected_handler, actual_handler2)
@@ -408,7 +408,7 @@ class StateTest(TestCase):
         mock_enter_func = MagicMock()
         state.enter_any = mock_enter_func
 
-        state.call_transition_handler(TransitionDecor.ENTER, EmptyState)
+        state.call_transition_handler(StateTransition.ENTER, EmptyState)
 
         mock_enter_func.assert_called_once()
 

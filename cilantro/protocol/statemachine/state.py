@@ -1,7 +1,7 @@
 from cilantro.logger import get_logger
 from functools import wraps
 from cilantro.messages import MessageBase, Envelope
-from cilantro.protocol.statemachine.decorators import StateInput, TransitionDecor, exit_from_any
+from cilantro.protocol.statemachine.decorators import StateInput, StateTransition, exit_from_any
 import inspect
 from collections import defaultdict
 from unittest.mock import MagicMock
@@ -69,12 +69,9 @@ class StateMeta(type):
 
     @staticmethod
     def _config_transitions(clsobj):
-        # TODO -- use dir(..) or vars(...) here... I think vars cause we don't want this to be touched by polymorph yea?
-        # or do we...?
-
-        for trans_attr in (TransitionDecor.ENTER, TransitionDecor.EXIT):
+        for trans_attr in (StateTransition.ENTER, StateTransition.EXIT):
             setattr(clsobj, trans_attr, {})
-            setattr(clsobj, TransitionDecor.get_any_attr(trans_attr), None)
+            setattr(clsobj, StateTransition.get_any_attr(trans_attr), None)
 
             vars_copy = vars(clsobj)
             # for r in dir(clsobj):
@@ -84,9 +81,9 @@ class StateMeta(type):
                 if hasattr(func, trans_attr):
                     states = getattr(func, trans_attr)
 
-                    if states == TransitionDecor.ACCEPT_ALL:
+                    if states == StateTransition.ACCEPT_ALL:
 
-                        any_attr_val = getattr(clsobj, TransitionDecor.get_any_attr(trans_attr))
+                        any_attr_val = getattr(clsobj, StateTransition.get_any_attr(trans_attr))
                         # If we already set this value to the same func before, then ignore
                         if any_attr_val == func:
                             # print("\n\n any recevier already set; skipping it\n\n")
@@ -97,7 +94,7 @@ class StateMeta(type):
                                                      "(attempted to set it again to func: {})"\
                                                      # .format(trans_attr, any_attr_val, clsobj, func)
 
-                        setattr(clsobj, TransitionDecor.get_any_attr(trans_attr), func)
+                        setattr(clsobj, StateTransition.get_any_attr(trans_attr), func)
                     else:
                         trans_registry = getattr(clsobj, trans_attr)
                         for state in states:
@@ -198,7 +195,7 @@ class State(metaclass=StateMeta):
             .format(type(message), input_type, getattr(self, input_type))
 
     def _get_transition_handler(self, trans_type, state):
-        assert trans_type in (TransitionDecor.ENTER, TransitionDecor.EXIT), "trans_type arg must be _ENTER or _EXIT"
+        assert trans_type in (StateTransition.ENTER, StateTransition.EXIT), "trans_type arg must be _ENTER or _EXIT"
         assert issubclass(state, State), "state arg must be a State class"
 
         trans_registry = getattr(self, trans_type)
@@ -214,7 +211,7 @@ class State(metaclass=StateMeta):
             return getattr(self, func.__name__)
 
         # Next, see if there is an ANY handler (a 'wildcard' handler configured to capture all states)
-        any_handler = getattr(self, TransitionDecor.get_any_attr(trans_type))
+        any_handler = getattr(self, StateTransition.get_any_attr(trans_type))
         if any_handler:
             assert hasattr(self, any_handler.__name__), "STATE META LOGIC ERROR! General transition {} handler {} found" \
                                                         " for state {}, but no method of that named found on self {}" \

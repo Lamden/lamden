@@ -1,5 +1,5 @@
 from cilantro.protocol.statemachine.state import State, EmptyState
-from cilantro.protocol.statemachine.decorators import TransitionDecor
+from cilantro.protocol.statemachine.decorators import StateTransition
 
 
 class StateMachine:
@@ -51,14 +51,14 @@ class StateMachine:
                   .format(self.state, next_state, args, kwargs))
 
         # Exit next state
-        self.state.call_transition_handler(TransitionDecor.EXIT, type(ns), *args, **kwargs)
+        self.state.call_transition_handler(StateTransition.EXIT, type(ns), *args, **kwargs)
 
         # Set new state
         prev_state = self.state
         self.state = ns
 
         # Enter next state
-        self.state.call_transition_handler(TransitionDecor.ENTER, type(prev_state), *args, **kwargs)
+        self.state.call_transition_handler(StateTransition.ENTER, type(prev_state), *args, **kwargs)
 
     def _log(self, msg: str):
         """

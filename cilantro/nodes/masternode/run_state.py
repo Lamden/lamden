@@ -1,7 +1,7 @@
 from aiohttp import web
 # from cilantro.nodes.masternode.masternode import MNBaseState, MNBootState
 from cilantro.nodes.masternode.base_state import MNBaseState
-from cilantro.nodes.masternode.base_state import MNBaseState
+from cilantro.nodes.masternode.boot_state import MNBootState
 from cilantro.nodes.masternode.new_block_state import MNNewBlockState
 from cilantro.messages import *
 from cilantro.protocol.statemachine import *

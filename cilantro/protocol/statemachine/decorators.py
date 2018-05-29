@@ -104,7 +104,7 @@ def _transition_state(handlers_attr: str, args):
         return decorate
 
 
-class TransitionDecor:
+class StateTransition:
     ENTER = '_enter'
     EXIT = '_exit'
 
@@ -135,22 +135,22 @@ def _set_state_registry(func, attr_name, states):
 
 def enter_from(*args):
     def decorate(func):
-        return _set_state_registry(func, TransitionDecor.ENTER, args)
+        return _set_state_registry(func, StateTransition.ENTER, args)
     return decorate
 
 
 def enter_from_any(func):
-    setattr(func, TransitionDecor.ENTER, TransitionDecor.ACCEPT_ALL)
+    setattr(func, StateTransition.ENTER, StateTransition.ACCEPT_ALL)
     return func
 
 
 def exit_from(*args):
     def decorate(func):
-        return _set_state_registry(func, TransitionDecor.EXIT, args)
+        return _set_state_registry(func, StateTransition.EXIT, args)
     return decorate
 
 
 def exit_from_any(func):
-    setattr(func, TransitionDecor.EXIT, TransitionDecor.ACCEPT_ALL)
+    setattr(func, StateTransition.EXIT, StateTransition.ACCEPT_ALL)
     return func
 
