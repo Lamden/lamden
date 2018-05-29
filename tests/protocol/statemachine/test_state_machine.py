@@ -55,7 +55,8 @@ class CodeState(State):
     #     pass
 
     # If the StuMachine tries to code first thing in the morn before lifting he goes back to sleep
-    @enter_from(SleepState)
+    # @enter_from(SleepState)
+    @enter_from("SleepState")
     def enter_from_sleep(self, prev_state):
         assert prev_state is SleepState, "wtf prev_state is not sleep state .... ?"
 
@@ -93,7 +94,7 @@ class LiftState(State):
         if lift:
             self.current_lift = lift
 
-    @enter_from(CodeState)
+    @enter_from("CodeState")
     def enter_from_code(self, prev_state, lift=False, weight=False):
         self.log.debug("CODESTATE SPECIFIC entering from prev state {}".format(prev_state))
         self.reset_attrs()

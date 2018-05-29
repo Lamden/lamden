@@ -100,8 +100,13 @@ def _transition_state(handlers_attr: str, args):
         states = ALL_STATES
         return decorate(args[0])
     else:
-        log.debug("entry method was decorated with args {}!!!".format(args))
-        # TODO validate states are actually state subclasses
+        log.debug("entry method was decorated with args {}".format(args))
+
+        # Convert classes to names
+        for i, cls in enumerate(args):
+            if type(cls) is not str:
+                args[i] = cls.__name__
+
         states = args
         return decorate
 
@@ -127,8 +132,8 @@ def _set_state_registry(func, attr_name, states):
     registry = []
 
     for s in states:
-        assert issubclass(s, cilantro.protocol.statemachine.state.State), \
-            "Transition func decorator arg {} must be a State subclass".format(s)
+        # assert issubclass(s, cilantro.protocol.statemachine.state.State), \
+        #     "Transition func decorator arg {} must be a State subclass".format(s)
         registry.append(s)
 
     setattr(func, attr_name, registry)

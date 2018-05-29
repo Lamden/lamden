@@ -192,14 +192,17 @@ class State(metaclass=StateMeta):
 
     def _get_transition_handler(self, trans_type, state):
         assert trans_type in (StateTransition.ENTER, StateTransition.EXIT), "trans_type arg must be _ENTER or _EXIT"
-        assert issubclass(state, State), "state arg must be a State class"
+        assert type(state) is str or issubclass(state, State),\
+            "state arg must be a State class or the string of a State class name"
+
+        # Cast state class to string if necessary
+        if issubclass(state, State):
+            state = state.__name__
 
         trans_registry = getattr(self, trans_type)
-        # self.log.debug("LOOKING UP STATE {} IN TRANS REGISTRY {}".format(state, trans_registry))  # TODO remove
 
         # First see if a specific transition handler exists
         if state in trans_registry:
-            # self.log.debug("specific {} handler {} found for state {}!".format(trans_type, trans_registry[state], state))
             func = trans_registry[state]
             assert hasattr(self, func.__name__), "STATE META LOGIC ERROR! Specific transition {} handler {} found for " \
                                                  "state {}, but no method of that named found on self {}"\
@@ -232,6 +235,10 @@ class State(metaclass=StateMeta):
         # Case 2 -- 'other' is a State instance
         elif isinstance(other, State):
             return type(self) == type(other)
+
+        # Case 3 -- 'other' is a string
+        elif type(other) is str:
+            return self.__name__ == other
 
         # Otherwise, this is an invalid comparison ('other' belongs to unknown equivalence class)
         else:

@@ -61,7 +61,8 @@ class TrafficLightRedState(TrafficLightBaseState):
     def exit_general(self, next_state):
         pass
 
-    @exit_to(TrafficLightBrokenState, TrafficLightFixingState)
+    # @exit_to(TrafficLightBrokenState, TrafficLightFixingState)
+    @exit_to("TrafficLightBrokenState", "TrafficLightFixingState")
     def exit_from_maintenance(self, next_state):
         pass
 
@@ -76,11 +77,13 @@ class TrafficLightYellowState(TrafficLightBaseState):
     def handle_stop_msg_on_yellow(self, msg: ForceStopMessage):
         pass
 
-    @enter_from(TrafficLightRedState)
+    # @enter_from(TrafficLightRedState)
+    @enter_from("TrafficLightRedState")
     def enter_from_red(self, prev_state):
         pass
 
-    @enter_from(TrafficLightBrokenState, TrafficLightFixingState)
+    # @enter_from(TrafficLightBrokenState, TrafficLightFixingState)
+    @enter_from("TrafficLightBrokenState", "TrafficLightFixingState")
     def enter_from_broken_or_fixing(self, prev_state):
         pass
 
@@ -184,7 +187,7 @@ class StateTest(TestCase):
 
         self.assertTrue(type(entries_arr) is list)
         self.assertTrue(len(entries_arr) == 1)
-        self.assertTrue(entries_arr[0] is TrafficLightRedState)
+        self.assertTrue(TrafficLightRedState.__name__ == entries_arr[0])
 
     def test_enter_from_two_decorator(self):
         mock_sm = MagicMock()
@@ -197,8 +200,8 @@ class StateTest(TestCase):
 
         self.assertTrue(type(entries_arr) is list)
         self.assertTrue(len(entries_arr) == 2)
-        self.assertTrue(TrafficLightFixingState in entries_arr)
-        self.assertTrue(TrafficLightBrokenState in entries_arr)
+        self.assertTrue(TrafficLightFixingState.__name__ in entries_arr)
+        self.assertTrue(TrafficLightBrokenState.__name__ in entries_arr)
 
     def test_get_transition_handler_any(self):
         """

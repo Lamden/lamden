@@ -43,7 +43,8 @@ class StateMachine:
         :param next_state: The state to transition to. Must be a State class (not instance), and that class must be
         exist _STATES which is defined by the StateMachine subclass
         """
-        assert issubclass(next_state, State), "next_state {} is not a subclass of State".format(next_state)
+        assert type(next_state) is str or \
+               issubclass(next_state, State), "next_state {} is not a string subclass of State".format(next_state)
         assert next_state in self.states, "Transition next state {} not in states {}".format(next_state, self.states)
 
         ns = self.states[next_state]
