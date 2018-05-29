@@ -9,10 +9,10 @@
 from cilantro import Constants
 from cilantro.db import *
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, input, input_request, timeout, StateInput
 from cilantro.messages import BlockContender, Envelope, TransactionBase, BlockDataRequest, BlockDataReply, \
                               TransactionContainer, NewBlockNotification, StateRequest
 from cilantro.protocol.statemachine import *
+from cilantro.utils import Hasher
 from aiohttp import web
 import asyncio
 
@@ -33,17 +33,6 @@ class MNBaseState(State):
     @input_request(StateRequest)
     def handle_state_req(self, request: StateRequest):
         self.log.warning("Current state not configured to handle state requests {}".format(request))
-
-    def _validate_block_contender(self, block_contender: BlockContender) -> bool:
-        """
-        Helper method to validate a block contender. For a block contender to be valid it must:
-        1) Have a provable merkle tree, ie. all nodes must be hash of (left child + right child)
-        2) Be signed by at least 2/3 of the top 32 delegates
-        :param block_contender: The BlockContender to validate
-        :return: True if the BlockContender is valid, false otherwise
-        """
-        # TODO -- implement
-        return True
 
 
 class MNBootState(MNBaseState):
@@ -89,6 +78,8 @@ class MNRunState(MNBaseState):
         server = web.Server(self.parent.route_http)
         server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
         self.parent.tasks.append(server_future)
+
+    @enter_from(MasternodeNewBlockState)  # TODO -- how do i do forward declations in python...?
 
     @input_request(BlockContender)
     def recv_block(self, block: BlockContender):
@@ -226,12 +217,12 @@ class MNRunState(MNBaseState):
         self.log.info("Masternode got state request {}".format(request))
 
 
-
 class MasternodeNewBlockState(MNBaseState):
 
     def reset_attrs(self):
-        self.blocks = []
+        self.pending_blocks = []
 
+    # Development sanity check (remove this in production)
     @enter_from_any
     def enter_any(self, prev_state):
         raise Exception("NewBlockState should only be entered from RunState, but previous state is {}".format(prev_state))
@@ -240,9 +231,45 @@ class MasternodeNewBlockState(MNBaseState):
     def enter_from_run(self, prev_state, block_contender: BlockContender):
         self.log.debug("Entering NewBlockState with block contender {}".format(block_contender))
 
+
     @input(BlockContender)
     def handle_block_contender(self, block: BlockContender):
         pass
+
+    def validate_sigs(self, signatures, msg) -> bool:
+        for sig in signatures:
+            self.log.info("mn verifying signature: {}".format(sig))
+            if not sig.verify(msg, sig.sender):
+                self.log.error("!!!! Oh no why couldnt we verify sig {}???".format(sig))
+                return False
+        return True
+
+    def validate_block_contender(self, block: BlockContender) -> bool:
+        """
+        Helper method to validate a block contender. For a block contender to be valid it must:
+        1) Have a provable merkle tree, ie. all nodes must be hash of (left child + right child)
+        2) Be signed by at least 2/3 of the top 32 delegates
+        :param block_contender: The BlockContender to validate
+        :return: True if the BlockContender is valid, false otherwise
+        """
+        # Development sanity checks (these should be removed in production)
+        assert len(block.nodes) >= 1, "Masternode got block contender with no nodes! {}".format(block)
+        assert len(block.signatures) >= Constants.Testnet.Majority, \
+            "Received a block contender with only {} signatures (which is less than a majority of {}"\
+            .format(len(block.signatures), Constants.Testnet.Majority)
+
+        # Prove Merkle Tree
+        hash_of_nodes = Hasher.hash_iterable(block.nodes, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)
+        if not MerkleTree.verify_tree(self.tx_hashes, hash_of_nodes):
+            self.log.error("\n\n\n\nCOULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}\n\n\n".format(block))
+            return False
+
+        # Validate signatures
+        if not self.validate_sigs(block.signatures, hash_of_nodes):
+            self.log.error("MN COULD NOT VALIDATE SIGNATURES FOR CONTENDER {}".format(block))
+            return False
+
+        return True
 
 
 class Masternode(NodeBase):
