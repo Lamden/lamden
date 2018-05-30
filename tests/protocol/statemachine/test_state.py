@@ -5,6 +5,7 @@ from cilantro.protocol.statemachine import *
 
 YELLOW_TIMEOUT_DUR = 1.0
 
+
 class Message:
     def __init__(self, msg):
         self.msg = msg

@@ -152,7 +152,6 @@ class StateMeta(type):
                 return
 
 
-
 class State(metaclass=StateMeta):
     def __init__(self, state_machine):
         self.parent = state_machine
@@ -184,13 +183,25 @@ class State(metaclass=StateMeta):
         if not trans_func:
             return
 
+        timeout_func = getattr(self, StateTimeout.TIMEOUT_FLAG)
+
         if trans_type == StateTransition.ENTER:
             # Check for timeout trigger
-            if hasattr(self, StateTimeout.TIMEOUT_FLAG):
-                self.timeout_handler = self.parent.loop.call_later(self._timeout_duration)
+            if timeout_func:
+                timeout_dur = getattr(self, StateTimeout.TIMEOUT_DUR)
+
+                self.log.debug("Scheduling timeout trigger {} after {} seconds".format(timeout_func, timeout_dur))
+                self.timeout_handler = self.parent.loop.call_later(timeout_dur, timeout_func)
 
             trans_func(**self._prune_kwargs(trans_func, prev_state=state, **kwargs))
+
         elif trans_type == StateTransition.EXIT:
+            # Cancel timeout trigger (if any)
+            if timeout_func and self.timeout_handler:
+                self.log.debug("Canceling timeout trigger")
+                self.timeout_handler.cancel()
+                self.timeout_handler = None
+
             trans_func(**self._prune_kwargs(trans_func, next_state=state, **kwargs))
 
     def _get_input_handler(self, message, input_type: str):
@@ -282,7 +293,7 @@ class State(metaclass=StateMeta):
         # Otherwise, this is an invalid comparison ('other' belongs to unknown equivalence class)
         else:
             raise ValueError("Invalid comparison -- RHS (right hand side of equation) must be either a State subclass "
-                             "instance or Class (not {})".format(other))
+                             "instance or String or Class (not {})".format(other))
 
     def __repr__(self):
         return type(self).__name__
