@@ -10,6 +10,7 @@ from cilantro import Constants
 from cilantro.db import *
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import *
+import hashlib
 from cilantro.utils import Hasher
 from cilantro.messages import *
 from aiohttp import web

@@ -52,7 +52,7 @@ class MNNewBlockState(MNBaseState):
             # Try next block (if any)
             if len(self.pending_blocks) > 0:
                 self.current_block = self.pending_blocks.popleft()
-                self.praent.transition(MNFetchNewBlockState, block_contender=self.current_block)
+                self.parent.transition(MNFetchNewBlockState, block_contender=self.current_block)
 
     @exit_to(MNRunState)
     def exit_to_runstate(self, prev_state):
