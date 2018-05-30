@@ -20,7 +20,7 @@
 from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, input, timeout, input_request
+from cilantro.protocol.statemachine import State, input, input_timeout, input_request
 from cilantro.protocol.statemachine.decorators import *
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.interpreters import VanillaInterpreter
@@ -123,7 +123,7 @@ class DelegateInterpretState(DelegateBaseState):
             results = r.fetchall()
             self.log.critical("\n\n LATEST STATE INFO: {} \n\n".format(results))
 
-    @exit_from_any
+    @exit_to_any
     def exit_any(self, next_state):
         # Flush queue if we are not leaving interpreting for consensus
         if next_state != DelegateConsensusState:
@@ -190,7 +190,7 @@ class DelegateConsensusState(DelegateBaseState):
 
         self.check_majority()
 
-    @exit_from_any
+    @exit_to_any
     def exit_any(self, next_state):
         self.reset_attrs()
 
@@ -218,7 +218,7 @@ class DelegateConsensusState(DelegateBaseState):
         self.log.debug("delegate has {} signatures out of {} total delegates"
                        .format(len(self.signatures), self.NUM_DELEGATES))
 
-        if len(self.signatures) > self.NUM_DELEGATES // 2:
+        if len(self.signatures) >= Constants.Testnet.Majority:
             self.log.critical("\n\n\nDelegate in consensus!\n\n\n")
             self.in_consensus = True
 

@@ -1,4 +1,4 @@
-from cilantro.protocol.statemachine import State, input, input_request, timeout
+from cilantro.protocol.statemachine import State, input, input_request, input_timeout
 from cilantro.nodes import NodeBase
 from cilantro.messages import Envelope, MessageBase
 import time
@@ -64,7 +64,7 @@ class DavisRunState(State):
     def recv_stab(self, stab: Stab):
         self.log.critical("!!! got stab: {}".format(stab))
 
-    @timeout(PokeRequest)
+    @input_timeout(PokeRequest)
     def poke_timeout(self, poke_req: PokeRequest):
         self.log.warning("poke request {} timed out!".format(poke_req))
 
