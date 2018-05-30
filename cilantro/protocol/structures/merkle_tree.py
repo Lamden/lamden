@@ -9,6 +9,7 @@ class MerkleTree:
     def __init__(self, leaves=None):
         self.raw_leaves = leaves
         self.nodes = MerkleTree.merklize(leaves)
+        self.leaves = self.nodes[-len(leaves):]
 
     def root(self, i=0):
         if i == 0:
@@ -29,7 +30,7 @@ class MerkleTree:
         return None
 
     def hash_of_nodes(self):
-        return Hasher.hash_iterable(self.nodes, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)
+        return MerkleTree.hash_nodes(self.nodes)
 
     @staticmethod
     def verify_tree(nodes: list, tree_hash: bytes):
@@ -71,3 +72,7 @@ class MerkleTree:
     @staticmethod
     def hash(o):
         return Hasher.hash(o, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)
+
+    @staticmethod
+    def hash_nodes(nodes: list):
+        return Hasher.hash_iterable(nodes, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)

@@ -1,4 +1,4 @@
-import asyncio, os
+import asyncio, os, logging
 import zmq.asyncio
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor.executor import Executor
@@ -29,7 +29,7 @@ class ReactorDaemon:
         self.url = url
 
         # Comment out below for more granularity in debugging
-        # self.log.setLevel(logging.INFO)
+        self.log.setLevel(logging.INFO)
 
         # TODO optimize cache
         self.ip_cache = CappedDict(max_size=64)
@@ -97,7 +97,7 @@ class ReactorDaemon:
             e.teardown()
 
         self.log.warning("Closing event loop")
-        self.loop.close()
+        self.loop.stop()
 
     async def _execute_cmd(self, cmd: ReactorCommand):
         """
