@@ -218,7 +218,7 @@ class DelegateConsensusState(DelegateBaseState):
         self.log.debug("delegate has {} signatures out of {} total delegates"
                        .format(len(self.signatures), self.NUM_DELEGATES))
 
-        if len(self.signatures) >= Constants.Testnet.Majoriy:
+        if len(self.signatures) >= Constants.Testnet.Majority:
             self.log.critical("\n\n\nDelegate in consensus!\n\n\n")
             self.in_consensus = True
 
