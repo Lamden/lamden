@@ -158,7 +158,7 @@ class MNRunState(MNBaseState):
         # Reset block update ivars
         self.reset_attrs()
 
-    @timeout(BlockDataRequest)
+    @input_timeout(BlockDataRequest)
     def timeout_block_req(self, request: BlockDataRequest, envelope: Envelope):
         self.log.info("\n\nBlockDataRequest timed out for envelope with request data {}\n\n".format(envelope, request))
 

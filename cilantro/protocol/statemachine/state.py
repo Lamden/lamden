@@ -1,7 +1,7 @@
 from cilantro.logger import get_logger
 from functools import wraps
 from cilantro.messages import MessageBase, Envelope
-from cilantro.protocol.statemachine.decorators import StateInput, StateTransition, exit_to_any
+from cilantro.protocol.statemachine.decorators import StateInput, StateTimeout, StateTransition, exit_to_any
 import inspect
 from collections import defaultdict
 from unittest.mock import MagicMock
@@ -53,6 +53,9 @@ class StateMeta(type):
         # Configure entry and exit handlers
         StateMeta._config_transitions(clsobj)
 
+        # Configure State timeout timer
+        StateMeta._config_state_timeout(clsobj)
+
         return clsobj
 
     @staticmethod
@@ -74,7 +77,6 @@ class StateMeta(type):
             setattr(clsobj, StateTransition.get_any_attr(trans_attr), None)
 
             vars_copy = vars(clsobj)
-            # for r in dir(clsobj):
             for r in vars_copy:
                 func = getattr(clsobj, r)
 
@@ -129,6 +131,18 @@ class StateMeta(type):
                     for sub in filter(lambda k: k not in registry, StateMeta._get_subclasses(func_input_type)):
                         registry[sub] = func
 
+    @staticmethod
+    def _config_state_timeout(clsobj):
+        setattr(clsobj, StateTimeout.STATE_TIMEOUT, None)
+
+        vars_copy = vars(clsobj)
+        for r in vars_copy:
+            func = getattr(clsobj, r)
+
+            if hasattr(func, StateTimeout.STATE_TIMEOUT):
+                assert getattr(clsobj, StateTimeout.STATE_TIMEOUT) is None, "State timeout already set"
+                setattr(clsobj, StateTimeout.STATE_TIMEOUT, func)
+
 
 class State(metaclass=StateMeta):
     def __init__(self, state_machine):
@@ -155,13 +169,16 @@ class State(metaclass=StateMeta):
 
         return output
 
-    def call_transition_handler(self, trans_type, next_state, *args, **kwargs):
-        trans_func = self._get_transition_handler(trans_type, next_state)
+    def call_transition_handler(self, trans_type, state, *args, **kwargs):
+        trans_func = self._get_transition_handler(trans_type, state)
 
         if not trans_func:
             return
 
-        trans_func(next_state, *args, **self._prune_kwargs(trans_func, **kwargs))
+        if trans_type == StateTransition.ENTER:
+            trans_func(**self._prune_kwargs(trans_func, prev_state=state, **kwargs))
+        elif trans_type == StateTransition.EXIT:
+            trans_func(**self._prune_kwargs(trans_func, next_state=state, **kwargs))
 
     def _get_input_handler(self, message, input_type: str):
         registry = getattr(self, input_type)
@@ -263,5 +280,5 @@ class EmptyState(State):
         pass
 
     @exit_to_any
-    def exit_any(self, prev_state):
+    def exit_any(self, next_state):
         pass

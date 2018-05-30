@@ -45,7 +45,7 @@ class SleepState(State):
         self.did_enter = True
 
     @exit_to_any
-    def exit_any(self, prev_state):
+    def exit_any(self, next_state):
         self.parent.sleep_did_exit_any = True
 
 
@@ -96,7 +96,7 @@ class LiftState(State):
         self.reset_attrs()
 
     @exit_to(SleepState)
-    def exit_to_sleep(self, prev_state):
+    def exit_to_sleep(self, next_state):
         self.log.debug("exiting lift state to sleep state")
         self.parent.exit_lift_to_sleep_called = True
 

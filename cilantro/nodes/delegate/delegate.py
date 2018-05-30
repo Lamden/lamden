@@ -20,7 +20,7 @@
 from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State, input, timeout, input_request
+from cilantro.protocol.statemachine import State, input, input_timeout, input_request
 from cilantro.protocol.statemachine.decorators import *
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.interpreters import VanillaInterpreter

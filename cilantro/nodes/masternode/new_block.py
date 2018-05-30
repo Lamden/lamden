@@ -163,7 +163,7 @@ class MNFetchNewBlockState(MNNewBlockState):
             self.log.debug("Still {} transactions yet to request until we can build the block"
                            .format(len(self.tx_hashes) - len(self.retrieved_txs)))
 
-    @timeout(BlockDataRequest)
+    @input_timeout(BlockDataRequest)
     def timeout_block_req(self, request: BlockDataRequest, envelope: Envelope):
         self.log.info("\n\nBlockDataRequest timed out for envelope with request data {}\n\n".format(envelope, request))
         # TODO -- implement
