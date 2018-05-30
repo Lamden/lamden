@@ -86,8 +86,6 @@ class MNBootState(MNBaseState):
 
 @Masternode.register_state
 class MNRunState(MNBaseState):
-    NODE_AVAILABLE, NODE_AWAITING, NODE_TIMEOUT = range(3)
-
     def reset_attrs(self):
         pass
 
