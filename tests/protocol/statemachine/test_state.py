@@ -3,6 +3,8 @@ from unittest.mock import MagicMock
 from cilantro.protocol.statemachine import *
 
 
+YELLOW_TIMEOUT_DUR = 1.0
+
 class Message:
     def __init__(self, msg):
         self.msg = msg
@@ -73,6 +75,11 @@ class TrafficLightRedState(TrafficLightBaseState):
 
 
 class TrafficLightYellowState(TrafficLightBaseState):
+
+    @timeout_after(YELLOW_TIMEOUT_DUR)
+    def timeout(self):
+        self.log.critical("yellow light timed out!!!")
+
     @input(ForceStopMessage)
     def handle_stop_msg_on_yellow(self, msg: ForceStopMessage):
         pass
@@ -159,6 +166,13 @@ class StateTest(TestCase):
         pruned_kwargs = State._prune_kwargs(some_func, **kwargs)
 
         self.assertEqual(expected_kwargs, pruned_kwargs)
+
+    def test_config_timeout_func(self):
+        timeout_func = getattr(TrafficLightYellowState, StateTimeout.TIMEOUT_FLAG)
+        timeout_dur = getattr(TrafficLightYellowState, StateTimeout.TIMEOUT_DUR)
+
+        self.assertEqual(timeout_func, TrafficLightYellowState.timeout)
+        self.assertEqual(YELLOW_TIMEOUT_DUR, timeout_dur)
 
     def test_enter_any_decorator(self):
         mock_sm = MagicMock()

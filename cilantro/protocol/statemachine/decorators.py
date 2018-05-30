@@ -54,13 +54,19 @@ def input_timeout(msg_type):
 State Timeout Decorator
 ----------------------------------------
 """
+
 class StateTimeout:
-    STATE_TIMEOUT = '_state_timeout_flag'
+    TIMEOUT_FLAG = '_state_timeout_flag'
+    TIMEOUT_DUR = '_state_timeout_duration'
+
 
 def timeout_after(timeout: int):
 
     def decorate(func):
-        setattr(func, StateTimeout.STATE_TIMEOUT, True)
+        setattr(func, StateTimeout.TIMEOUT_FLAG, True)
+        setattr(func, StateTimeout.TIMEOUT_DUR, timeout)
+
+        return func
 
     return decorate
 

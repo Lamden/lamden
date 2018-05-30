@@ -133,15 +133,24 @@ class StateMeta(type):
 
     @staticmethod
     def _config_state_timeout(clsobj):
-        setattr(clsobj, StateTimeout.STATE_TIMEOUT, None)
+        setattr(clsobj, StateTimeout.TIMEOUT_FLAG, None)
+        setattr(clsobj, StateTimeout.TIMEOUT_DUR, None)
 
         vars_copy = vars(clsobj)
         for r in vars_copy:
             func = getattr(clsobj, r)
 
-            if hasattr(func, StateTimeout.STATE_TIMEOUT):
-                assert getattr(clsobj, StateTimeout.STATE_TIMEOUT) is None, "State timeout already set"
-                setattr(clsobj, StateTimeout.STATE_TIMEOUT, func)
+            if hasattr(func, StateTimeout.TIMEOUT_FLAG):
+                assert getattr(clsobj, StateTimeout.TIMEOUT_FLAG) is None, \
+                    "State timeout already set to {}. Attempted to reset it to {}"\
+                    .format(getattr(clsobj, StateTimeout.TIMEOUT_FLAG), func)
+                assert hasattr(func, StateTimeout.TIMEOUT_DUR), "StateMeta Error! Function has no timeout duration attr"
+
+                setattr(clsobj, StateTimeout.TIMEOUT_FLAG, func)
+                setattr(clsobj, StateTimeout.TIMEOUT_DUR, getattr(func, StateTimeout.TIMEOUT_DUR))
+
+                return
+
 
 
 class State(metaclass=StateMeta):
@@ -176,6 +185,10 @@ class State(metaclass=StateMeta):
             return
 
         if trans_type == StateTransition.ENTER:
+            # Check for timeout trigger
+            if hasattr(self, StateTimeout.TIMEOUT_FLAG):
+                self.timeout_handler = self.parent.loop.call_later(self._timeout_duration)
+
             trans_func(**self._prune_kwargs(trans_func, prev_state=state, **kwargs))
         elif trans_type == StateTransition.EXIT:
             trans_func(**self._prune_kwargs(trans_func, next_state=state, **kwargs))
