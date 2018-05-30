@@ -1,7 +1,7 @@
 from cilantro import Constants
 from cilantro.protocol.statemachine import *
-from cilantro.nodes.masternode.masternode import MNBaseState, Masternode
-from cilantro.utils import Hasher
+from cilantro.nodes.masternode import MNBaseState, Masternode
+from cilantro.db import *
 from cilantro.messages import *
 from cilantro.protocol.structures import MerkleTree
 from collections import deque
@@ -25,38 +25,73 @@ class MNNewBlockState(MNBaseState):
         raise Exception("NewBlockState should only be entered from RunState or FetchNewBlockState, but previous state is {}".format(prev_state))
 
     @enter_from(MNRunState)
-    def enter_from_run(self, prev_state, block: BlockContender):
+    def enter_from_run(self, block: BlockContender):
         self.reset_attrs()
         self.log.debug("Entering NewBlockState with block contender {}".format(block))
 
         if self.validate_block_contender(block):
             self.current_block = block
+            self.log.debug("Entering fetch state for block contender {}".format(self.current_block))
             self.parent.transition(MNFetchNewBlockState, block_contender=self.current_block)
         else:
-            self.log.warning("Got invalid block contender straight from Masternode. Transitioning back to run.")
+            self.log.warning("Got invalid block contender straight from Masternode. Transitioning back to RunState /w success=False")
             self.parent.transition(MNRunState, success=False)
 
     @enter_from(MNFetchNewBlockState)
-    def enter_from_fetch_block(self, success=False, retrieved_txs=None, pending_block=None):
-        self.pending_blocks.extend(pending_block)
+    def enter_from_fetch_block(self, success=False, retrieved_txs=None, pending_blocks=None):
+        self.pending_blocks.extend(pending_blocks)
 
         if success:
             assert retrieved_txs and len(retrieved_txs) > 0, "Success is true but retrieved_txs {} is None/empty"
             self.log.info("FetchNewBlockState finished successfully. Storing new block.")
 
             # TODO store new block
-            self.log.info("Done storing new block.")
-        else:
-            self.log.warning("FetchNewBlockState failed for block {}. Try next block (if any)".format(self.current_block))
+            self.new_block_procedure(block=self.current_block, txs=retrieved_txs)
 
-            # Try next block (if any)
+            self.log.info("Done storing new block. Transitioning back to run state with success=True")
+            self.parent.transition(MNRunState, success=True)
+        # If failure, then try the next block contender in the queue (if any).
+        else:
+            self.log.warning("FetchNewBlockState failed for block {}. Trying next block (if any)".format(self.current_block))
+
             if len(self.pending_blocks) > 0:
                 self.current_block = self.pending_blocks.popleft()
+                self.log.debug("Entering fetch state for block contender {}".format(self.current_block))
                 self.parent.transition(MNFetchNewBlockState, block_contender=self.current_block)
+            else:
+                self.log.warning("No more pending blocks. Transitioning back to RunState /w success=False")
+                self.parent.transition(MNRunState, success=False)
 
-    @exit_to(MNRunState)
-    def exit_to_runstate(self, prev_state):
-        self.reset_attrs()
+    def new_block_procedure(self, block, txs):
+        self.log.critical("\n***\nDONE COLLECTING BLOCK DATA FROM NODES. Storing new block.\n***\n")
+
+        hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
+        tree = b"".join(block.nodes).hex()
+        signatures = "".join([merk_sig.signature for merk_sig in block.signatures])
+
+        # Store the block + transaction data
+        block_num = -1
+        with DB() as db:
+            tables = db.tables
+            q = insert(tables.blocks).values(hash=hash_of_nodes, tree=tree, signatures=signatures)
+            q_result = db.execute(q)
+            block_num = q_result.lastrowid
+
+            for key, value in txs.items():
+                tx = {
+                    'key': key,
+                    'value': value
+                }
+                qq = insert(tables.transactions).values(tx)
+                db.execute(qq)
+
+        assert block_num > 0, "Block num must be greater than 0! Was it not set in the DB() context session?"
+
+        # Notify delegates of new block
+        self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {} and block num {}"
+                      .format(hash_of_nodes, block_num))
+        notif = NewBlockNotification.create(new_block_hash=hash_of_nodes.hex(), new_block_num=block_num)
+        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
 
     @input(BlockContender)
     def handle_block_contender(self, block: BlockContender):
@@ -71,7 +106,7 @@ class MNNewBlockState(MNBaseState):
         :param block_contender: The BlockContender to validate
         :return: True if the BlockContender is valid, false otherwise
         """
-        def validate_sigs(signatures, msg) -> bool:
+        def _validate_sigs(signatures, msg) -> bool:
             for sig in signatures:
                 self.log.info("mn verifying signature: {}".format(sig))
                 if not sig.verify(msg, sig.sender):
@@ -88,13 +123,14 @@ class MNNewBlockState(MNBaseState):
         # TODO -- ensure that this block contender's previous block is this Masternode's current block...
 
         # Prove Merkle Tree
-        hash_of_nodes = Hasher.hash_iterable(block.nodes, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)
-        if not MerkleTree.verify_tree(self.tx_hashes, hash_of_nodes):
+        hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
+        tx_hashes = block.nodes[len(block.nodes) // 2:]
+        if not MerkleTree.verify_tree(tx_hashes, hash_of_nodes):
             self.log.error("\n\n\n\nCOULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}\n\n\n".format(block))
             return False
 
         # Validate signatures
-        if not validate_sigs(block.signatures, hash_of_nodes):
+        if not _validate_sigs(block.signatures, hash_of_nodes):
             self.log.error("MN COULD NOT VALIDATE SIGNATURES FOR CONTENDER {}".format(block))
             return False
 
@@ -157,6 +193,7 @@ class MNFetchNewBlockState(MNNewBlockState):
             return
 
         if len(self.retrieved_txs) == len(self.tx_hashes):
+            self.log.debug("Done collecting block data. Transitioning back to NewBlockState.")
             self.parent.transition(MNNewBlockState, success=True, retrieved_txs=self.retrieved_txs,
                                    pending_blocks=self.pending_blocks)
         else:

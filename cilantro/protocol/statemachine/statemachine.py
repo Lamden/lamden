@@ -51,9 +51,10 @@ class StateMachine:
         """
         # Validate next_state arg
         if type(next_state) is str:
-            next_state = self._state_cls_map.get(next_state)
-            assert next_state, "No state named {} found in self.states {} with _state_cls_map {}"\
+            retrieved_state = self._state_cls_map.get(next_state)
+            assert retrieved_state, "No state named {} found in self.states {} with _state_cls_map {}"\
                                .format(next_state, self.states, self._state_cls_map)
+            next_state = retrieved_state
         elif inspect.isclass(next_state) and issubclass(next_state, State):
             pass
         else:
