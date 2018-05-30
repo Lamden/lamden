@@ -163,16 +163,7 @@ class MNRunState(MNBaseState):
             self.parent.composer.send_request_msg(message=req, timeout=1, vk=replier_vk)
 
     def compute_hash_of_nodes(self, nodes) -> bytes:
-        # # TODO -- i think the merkle tree can do this for us..?
-        # self.log.info("Masternode computing hash of nodes...")
-        # h = hashlib.sha3_256()
-        # [h.update(o) for o in nodes]
-        # hash_of_nodes = h.digest()
-        # return hash_of_nodes
         return MerkleTree.hash_nodes(nodes)
-        # hash_of_nodes = Hasher.hash_iterable(nodes, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)
-        # self.log.info("Masternode got hash of nodes: {}".format(hash_of_nodes))
-        # return hash_of_nodes
 
     def validate_sigs(self, signatures, msg) -> bool:
         for sig in signatures:
