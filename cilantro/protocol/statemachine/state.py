@@ -250,7 +250,7 @@ class State(metaclass=StateMeta):
 
     def __eq__(self, other):
         """
-        An equality check on steroids. Used heavily in State + StateMachine classes for type introspection. This
+        An equality check on steroids. Used in State + StateMachine classes for type introspection. This
         method should return true if both self and other are the same CLASS of state. Other may be either another
         state instance, or a state class, or a string representing the name of a state class
         """
