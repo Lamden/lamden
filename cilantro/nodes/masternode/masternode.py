@@ -53,6 +53,10 @@ class MNBaseState(State):
     def handle_state_req(self, request: StateRequest):
         self.log.warning("Current state not configured to handle state requests {}".format(request))
 
+    @input(BlockDataReply)
+    def recv_blockdata_reply(self, reply: BlockDataReply):
+        self.log.warning("Current state not configured to handle block data reply {}".format(reply))
+
 
 @Masternode.register_init_state
 class MNBootState(MNBaseState):
