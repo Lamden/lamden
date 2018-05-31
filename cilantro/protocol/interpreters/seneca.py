@@ -4,7 +4,6 @@ from cilantro.messages import *
 
 import datetime
 
-import seneca
 import seneca.seneca_internal.storage.easy_db as t
 from seneca.seneca_internal.storage.mysql_executer import Executer
 
