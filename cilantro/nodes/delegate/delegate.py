@@ -30,7 +30,28 @@ from cilantro.messages import TransactionBase, BlockContender, Envelope, MerkleS
     BlockDataRequest, BlockDataReply, NewBlockNotification
 
 
+DelegateBootState = "DelegateBootState"
+DelegateInterpretState = "DelegateInterpretState"
+DelegateConsensusState = "DelegateConsensusState"
+
+
+class Delegate(NodeBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Properties shared among all states (ie via self.parent.some_prop)
+        self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
+
+        # TODO -- add this as a property of the interpreter state, and implement functionality to pass data between
+        # states on transition, i.e sm.transition(NextState, arg1='hello', arg2='let_do+it')
+        self.interpreter = VanillaInterpreter()
+
+
 class DelegateBaseState(State):
+
+    def reset_attrs(self):
+        pass
+
     @input(TransactionBase)
     def handle_tx(self, tx: TransactionBase):
         self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
@@ -50,14 +71,12 @@ class DelegateBaseState(State):
         # TODO -- if we are in anything but consensus state, we need to go to update state
 
 
+@Delegate.register_init_state
 class DelegateBootState(DelegateBaseState):
     """
     Delegate Boot State consists of subscribing to all delegates/all witnesses as well as publishing to own url
     Also the delegate adds a router and dealer socket so masternode can identify which delegate is communicating
     """
-
-    def reset_attrs(self):
-        pass
 
     @enter_from_any
     def enter_any(self, prev_state):
@@ -69,17 +88,10 @@ class DelegateBootState(DelegateBaseState):
         for witness_vk in VKBook.get_witnesses():
             self.parent.composer.add_sub(vk=witness_vk, filter=Constants.ZmqFilters.WitnessDelegate)
 
-        # for witness in Constants.Testnet.Witnesses:
-        #     self.log.info("{} subscribing to witness {}".format(self.parent.url, witness['url']))
-        #     self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(witness['url']),
-        #                                 filter=Constants.ZmqFilters.WitnessDelegate)
-
         # Pub on our own url
         self.parent.composer.add_pub(ip=self.parent.ip)
-        # self.parent.composer.add_pub(url=TestNetURLHelper.pubsub_url(self.parent.url))
 
         # Add router socket
-        # self.parent.composer.add_router(url=TestNetURLHelper.dealroute_url(self.parent.url))
         self.parent.composer.add_router(ip=self.parent.ip)
 
         # Add dealer and sub socket for Masternodes
@@ -87,27 +99,17 @@ class DelegateBootState(DelegateBaseState):
             self.parent.composer.add_dealer(vk=mn_vk)
             self.parent.composer.add_sub(vk=mn_vk, filter=Constants.ZmqFilters.MasternodeDelegate)
 
-
-        # self.parent.composer.add_dealer(url=TestNetURLHelper.dealroute_url(Constants.Testnet.Masternode.InternalUrl))
-
-
-        # Sub to Masternode for block updates
-        # self.parent.composer.add_sub(url=TestNetURLHelper.pubsub_url(Constants.Testnet.Masternode.InternalUrl),
-                                     # filter=Constants.ZmqFilters.MasternodeDelegate)
-
         # Once done with boot state, transition to interpret
         self.parent.transition(DelegateInterpretState)
 
 
+@Delegate.register_state
 class DelegateInterpretState(DelegateBaseState):
     """
     Delegate interpret state has the delegate receive and interpret that transactions are valid according to the
     interpreter chosen. Once the number of transactions in the queue exceeds the size or a time interval is reached the
     delegate moves into consensus state
     """
-
-    def reset_attrs(self):
-        pass
 
     # TODO -- set this logic to only occur on enter from boot
     @enter_from_any
@@ -147,6 +149,7 @@ class DelegateInterpretState(DelegateBaseState):
                            .format(self.parent.interpreter.queue_len, Constants.Nodes.MaxQueueSize))
 
 
+@Delegate.register_state
 class DelegateConsensusState(DelegateBaseState):
     """Consensus state is where delegates pass around a merkelized version of their transaction queues, publish them to
     one another, confirm the signature is valid, and then vote/tally the results"""
@@ -235,6 +238,7 @@ class DelegateConsensusState(DelegateBaseState):
 
     @input_request(BlockDataRequest)
     def handle_blockdata_req(self, block_data: BlockDataRequest):
+        # Development check -- should be removed in production
         assert block_data.tx_hash in self.merkle.leaves, "Block hash {} not found in leaves {}"\
             .format(block_data.tx_hash, self.merkle.leaves)
 
@@ -319,27 +323,4 @@ class DelegateConsensusState(DelegateBaseState):
 ## END TESTING
 
 
-class Delegate(NodeBase):
-    _INIT_STATE = DelegateBootState
-    _STATES = [DelegateBootState, DelegateInterpretState, DelegateConsensusState]
 
-    # def __init__(self, loop, url=None, signing_key=None, name='Delegate'):
-    #     super().__init__(loop=loop, url=url, signing_key=signing_key, name=name)
-    #
-    #
-    #     # Shared between states
-    #     self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
-    #
-    #     # TODO -- add this as a property of the interpreter state, and implement functionality to pass data between
-    #     # states on transition, i.e sm.transition(NextState, arg1='hello', arg2='let_do+it')
-    #     # and the enter(...) of the next state should have these args
-    #     self.interpreter = VanillaInterpreter()
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Properties shared among all states (ie via self.parent.some_prop)
-        self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
-
-        #     # TODO -- add this as a property of the interpreter state, and implement functionality to pass data between
-        #     # states on transition, i.e sm.transition(NextState, arg1='hello', arg2='let_do+it')
-        self.interpreter = VanillaInterpreter()
