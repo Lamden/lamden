@@ -67,9 +67,9 @@ def run_delegate(slot_num):
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
 
 
-def pump_it(lamd):
+def pump_it(lamd, use_poisson):
     from cilantro.utils.test import God
-    God.pump_it(rate=lamd, gen_func=God.random_std_tx)
+    God.pump_it(rate=lamd, gen_func=God.random_std_tx, use_poisson=use_poisson)
 
 
 def start_mysqld():
@@ -86,7 +86,8 @@ def start_mysqld():
 
 class TestPump(BaseNetworkTestCase):
 
-    EXPECTED_TRANSACTION_RATE = 0.25  # Avg transaction/second. lambda parameter in Poission distribution
+    EXPECTED_TRANSACTION_RATE = 0.2  # Avg transaction/second. lambda parameter in Poission distribution
+    MODEL_AS_POISSON = False
 
     testname = 'pump_it'
     setuptime = 10
@@ -114,7 +115,7 @@ class TestPump(BaseNetworkTestCase):
             self.execute_python('delegate_{}'.format(i+1+3), wrap_func(run_delegate, i), async=True)
 
         # PUMP IT
-        self.execute_python('mgmt', wrap_func(pump_it, self.EXPECTED_TRANSACTION_RATE), async=True)
+        self.execute_python('mgmt', wrap_func(pump_it, self.EXPECTED_TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
 
         input("\n\nEnter any key to terminate")
 

@@ -75,7 +75,7 @@ class God:
         cls.log.info("POST request to MN at URL {} has status code: {}".format(MN_URL, r.status_code))
 
     @classmethod
-    def pump_it(cls, rate: int, gen_func=None):
+    def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
         """
         This func blocks.
         :param rate:
@@ -85,13 +85,18 @@ class God:
         if not gen_func:
             gen_func = cls.random_std_tx
 
+        if use_poisson:
+            rvs_func = lambda: expon.rvs(rate) - rate
+        else:
+            rvs_func = lambda: 1/rate
+
         assert callable(gen_func), "Expected a callable for 'gen_func' but got {}".format(gen_func)
 
         cls.log.info("Starting to pump transactions at an average of {} transactions per second".format(rate))
-        cls.log.info("Using generator func {}".format(gen_func))
+        cls.log.info("Using generator func {}, with use_possion={}".format(gen_func, use_poisson))
 
         while True:
-            wait = expon.rvs(rate) - rate
+            wait = rvs_func()
 
             cls.log.debug("Sending next transaction in {} seconds".format(wait))
             time.sleep(wait)
