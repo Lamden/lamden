@@ -1,3 +1,5 @@
 coloredlogs==9.0
 vmnet==0.1.2
 ipython==6.4.0
+numpy
+scipy
