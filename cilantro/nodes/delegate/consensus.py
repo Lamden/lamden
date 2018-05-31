@@ -34,10 +34,10 @@ class DelegateConsensusState(DelegateBaseState):
     # TODO -- i think this should only occur when entering from Interpretting state yea?
     @enter_from_any
     def enter_any(self, prev_state):
-        assert self.parent.interpreter.queue_len > 0, "Entered consensus state, but interpreter queue is empty!"
+        assert self.parent.interpreter.queue_size > 0, "Entered consensus state, but interpreter queue is empty!"
 
         # Merkle-ize transaction queue and create signed merkle hash
-        all_tx = self.parent.interpreter.get_queue_binary()
+        all_tx = self.parent.interpreter.queue_binary
         self.log.info("Delegate got tx from interpreter queue: {}".format(all_tx))
         self.merkle = MerkleTree(all_tx)
         self.merkle_hash = self.merkle.hash_of_nodes()
