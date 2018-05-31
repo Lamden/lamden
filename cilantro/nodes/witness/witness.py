@@ -1,7 +1,7 @@
 from cilantro import Constants
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State
-from cilantro.messages import TransactionBase, Envelope
+from cilantro.messages import TransactionBase, Envelope, ContractSubmission
 from cilantro.protocol.statemachine.decorators import *
 from cilantro.db.db import VKBook
 
@@ -71,6 +71,12 @@ class WitnessRunState(WitnessBaseState):
         self.log.critical("ayyyy witness got tx: {}, with env {}".format(tx, envelope))  # debug line, remove later
         self.parent.composer.send_pub_env(envelope=envelope, filter=Constants.ZmqFilters.WitnessDelegate)
         self.log.critical("witness published dat tx to the homies")  # debug line, remove later
+
+    @input(ContractSubmission)
+    def handle_contract_submission(self, contract: ContractSubmission, envelope: Envelope):
+        self.log.critical("WITNESS GOT CONTRACT SUBMISSION {}".format(contract))
+
+        self.parent.composer.send_pub_env(envelope=envelope, filter=Constants.ZmqFilters.WitnessDelegate)
 
 
 class Witness(NodeBase):
