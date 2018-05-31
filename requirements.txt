@@ -21,3 +21,4 @@ SQLAlchemy==1.2.6
 urllib3==1.22
 uvloop==0.9.1
 yarl==1.1.0
+git+git://github.com/Lamden/seneca.git#egg=seneca
