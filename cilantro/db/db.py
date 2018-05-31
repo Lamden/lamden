@@ -331,10 +331,11 @@ class VKBook:
     @staticmethod
     def _destu_ify(data: str):
         assert len(data) % 64 == 0, "Length of data should be divisible by 64! Logic error!"
-        li = []
-        for i in range(0, len(data), 64):
-            li.append(data[i:i+64])
-        return li
+        return [data[i:i+64] for i in range(0, len(data), 64)]
+        # li = []
+        # for i in range(0, len(data), 64):
+        #     li.append(data[i:i+64])
+        # return li
 
     @staticmethod
     def _get_vks(policy: str):
