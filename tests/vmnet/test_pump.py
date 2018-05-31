@@ -115,6 +115,7 @@ class TestPump(BaseNetworkTestCase):
             self.execute_python('delegate_{}'.format(i+1+3), wrap_func(run_delegate, i), async=True)
 
         # PUMP IT
+        time.sleep(3)
         self.execute_python('mgmt', wrap_func(pump_it, self.EXPECTED_TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
 
         input("\n\nEnter any key to terminate")
