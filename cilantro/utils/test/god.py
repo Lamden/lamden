@@ -4,7 +4,8 @@ from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.transport import Composer
 from unittest.mock import MagicMock
 from cilantro.logger import get_logger
-import os, requests
+import os, requests, time, random
+from scipy.stats import poisson, expon
 
 
 if os.getenv('HOST_IP'):
@@ -20,6 +21,11 @@ DENTON = ('9decc7f7f0b5a4fc87ab5ce700e2d6c5d51b7565923d50ea13cbf78031bb3acf',
  '20da05fdba92449732b3871cc542a058075446fedb41430ee882e99f9091cc4d')
 FALCON = ('bac886e7c6e4a9fae572e170adb333b27b590157409e62d88cc0c7bc9a7b3631',
  'ed19061921c593a9d16875ca660b57aa5e45c811c8cf7af0cfcbd23faa52cbcd')
+CARL = ('cf67a180f9578afa5fd704cea39b450c1542755d73614f6a4f41b627190b83bb',
+ 'cb9bfd4b57b243248796e9eb90bc4f0053d78f06ce68573e0fdca422f54bb0d2')
+
+
+ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL]
 
 
 class God:
@@ -74,6 +80,45 @@ class God:
         r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
         cls.log.info("POST request to MN at URL {} has status code: {}".format(MN_URL, r.status_code))
 
+    @classmethod
+    def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
+        """
+        This func blocks.
+        :param rate:
+        :param gen_func:
+        :return:
+        """
+        if not gen_func:
+            gen_func = cls.random_std_tx
+
+        if use_poisson:
+            rvs_func = lambda: expon.rvs(rate) - rate
+        else:
+            rvs_func = lambda: 1/rate
+
+        assert callable(gen_func), "Expected a callable for 'gen_func' but got {}".format(gen_func)
+
+        cls.log.info("Starting to pump transactions at an average of {} transactions per second".format(rate))
+        cls.log.info("Using generator func {}, with use_possion={}".format(gen_func, use_poisson))
+
+        while True:
+            wait = rvs_func()
+
+            cls.log.debug("Sending next transaction in {} seconds".format(wait))
+            time.sleep(wait)
+
+            tx = gen_func()
+
+            cls.log.debug("sending transaction {}".format(tx))
+            r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
+            cls.log.debug("POST request got status code {}".format(r.status_code))
+
+    @classmethod
+    def random_std_tx(cls):
+        sender, receiver = random.sample(ALL_WALLETS, 2)
+        amount = random.randint(1, 1260)
+
+        return cls.create_std_tx(sender=sender, receiver=receiver, amount=amount)
 
     def send_block_contender(self, url, bc):
         pass

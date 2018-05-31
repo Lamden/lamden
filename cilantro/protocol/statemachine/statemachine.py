@@ -95,7 +95,7 @@ class StateMachine:
         assert inspect.isclass(state_cls), "@register_state decorator must applied on a class"
         assert issubclass(state_cls, State), "@register_state decorator must be applied to a State subclass"
         assert cls._INIT_STATE is None, "_INIT_STATE is already set to {}. Only decorate one class with " \
-                                        "@register_init_state".format(cls._INIT_STATE)
+                                        "@register_init_state (attempted to reset to {})".format(cls._INIT_STATE, state_cls)
         assert state_cls not in cls._STATES, "Initial state class {} found in _STATES {}. Do not use @register_state" \
                                              " AND @register_init_state; using only the latter will suffice"\
                                              .format(state_cls, cls._STATES)
