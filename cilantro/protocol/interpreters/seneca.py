@@ -1,4 +1,7 @@
 from cilantro.protocol.interpreters.base import BaseInterpreter
+from cilantro.db import *
+from cilantro.messages import *
+
 
 class SenecaInterpreter(BaseInterpreter):
 
@@ -10,6 +13,16 @@ class SenecaInterpreter(BaseInterpreter):
         raise NotImplementedError
 
     def interpret(self, obj):
+        if isinstance(obj, ContractSubmission):
+            self._interpret_submission(obj)
+        else:
+            self._interpret_contract(obj)
+
+    def _interpret_submission(self, submission: ContractSubmission):
+        self.log.debug("Interpreting contract submission: {}".format(submission))
+        pass
+
+    def _interpret_contract(self, contract):
         raise NotImplementedError
 
     @property
