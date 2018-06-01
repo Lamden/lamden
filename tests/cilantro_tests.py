@@ -60,9 +60,12 @@ if __name__ == '__main__':
 
     all_errors = []
     list_tests = root.post_order_traversal(root)
+    print(list_tests)
 
     for k in list_tests:
+        print(k)
         for t in k:
+            print(t)
 
             suite = loader.discover(t)  # finds all unit tests in the testgroup directory
 
