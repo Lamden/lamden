@@ -10,11 +10,11 @@ from seneca.seneca_internal.storage.mysql_executer import Executer
 
 def build_contract_table(ex):
     contract_table = t.Table('smart_contracts',
-                    t.Column('contract_address', t.str_len(30), True),
+                    t.Column('contract_id', t.str_len(64), True),
                     [
                         t.Column('code_str', str),
                         t.Column('author', t.str_len(60)),
-                        t.Column('execution_datetime', datetime),
+                        t.Column('execution_datetime', datetime.datetime),
                         t.Column('execution_status', t.str_len(30)),
                     ])
 
@@ -56,7 +56,7 @@ class SenecaInterpreter(BaseInterpreter):
         self.log.debug("Interpreting contract submission: {}".format(submission))
 
         res = self.contract_table.insert([{
-            'contract_address': submission.user_id,
+            'contract_id': submission.contract_id,
             'code_str': submission.contract_code,
             'author': submission.user_id,
             'execution_datetime': None,
@@ -65,7 +65,11 @@ class SenecaInterpreter(BaseInterpreter):
 
         self.log.debug("res: {}".format(res))
 
-    def _interpret_contract(self, contract):
+    def get_contract_code(self, contract_id):
+        q = self.contract_table.select(self.contract_table.code_str).where(self.contract_table.contract_id == contract_id).run(self.ex)
+        print("got q:\n {}".format(q))
+
+    def _interpret_contract(self, contract_id: str):
         raise NotImplementedError
 
     @property

@@ -1,1 +1,2 @@
 from cilantro.messages.smart_contracts.contract_submission import ContractSubmission
+from cilantro.messages.smart_contracts.contract import Contract
