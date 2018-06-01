@@ -12,7 +12,11 @@ Classes include:
 
 from multiprocessing import Lock
 import os, json
+from datetime import datetime
 from cilantro.logger import get_logger
+from functools import wraps
+
+# TODO remove this stuff once we can 100% deprecate it
 from sqlalchemy import *
 from sqlalchemy.sql.visitors import *
 from sqlalchemy.sql.sqltypes import *
@@ -20,7 +24,8 @@ from sqlalchemy.sql.functions import coalesce
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy import select, insert, update, delete, and_
 
-from functools import wraps
+
+from cilantro.db.tables import build_tables
 
 DB_NAME = 'cilantro'
 SCRATCH_PREFIX = 'scratch_'
@@ -95,10 +100,11 @@ def execute(query, check_scratch=True):
 
 def create_db(name, should_reset=False):
     log = get_logger("DBCreator")
-    log.info("Creating MySQLAlchemy DB connection for DB with name {}".format(name))
+    log.info("Creating DB connection for DB with name {}".format(name))
 
-    db = create_engine('mysql+pymysql://root@localhost')
-    metadata = MetaData()
+    ex = Executer.init_local_noauth_dev(db_name=name)
+    # db = create_engine('mysql+pymysql://root@localhost')
+    # metadata = MetaData()
 
     # create the tables that we want / need for our smart contracts
     balances = Table('balances', metadata,
@@ -310,7 +316,7 @@ class DB(metaclass=DBSingletonMeta):
         self.log.info("Creating DB instance for {} with should_reset={}".format(db_name, should_reset))
         self.lock = Lock()
 
-        self.db, self.tables = create_db(db_name, should_reset)
+        self.tables = build_tables(db_name, should_reset)
 
     def __enter__(self):
         self.log.debug("Acquiring lock {}".format(self.lock))
@@ -321,21 +327,13 @@ class DB(metaclass=DBSingletonMeta):
         self.log.debug("Releasing lock {}".format(self.lock))
         self.lock.release()
 
-    def execute(self, query):
-        self.log.debug("Executing query {}".format(query))
-        return self.db.execute(query)
-
 
 class VKBook:
 
     @staticmethod
     def _destu_ify(data: str):
-        assert len(data) % 64 == 0, "Length of data should be divisible by 64! Logic error!"
+        assert len(data) % 64 == 0, "Length of data should be divisible by 64, but len={}! Logic error!".format(len(data))
         return [data[i:i+64] for i in range(0, len(data), 64)]
-        # li = []
-        # for i in range(0, len(data), 64):
-        #     li.append(data[i:i+64])
-        # return li
 
     @staticmethod
     def _get_vks(policy: str):
