@@ -49,7 +49,8 @@
               {"sk": "8ddaf072b9108444e189773e2ddcb4cbd2a76bbf3db448e55d0bfc131409a197", "vk": "3dd5291906dca320ab4032683d97f5aa285b6491e59bba25c958fc4b0de2efc8", "ip":"72.29.3.1", "testnet-url": "tcp://127.0.0.1:31100"},
               {"sk": "5664ec7306cc22e56820ae988b983bdc8ebec8246cdd771cfee9671299e98e3c", "vk": "ab59a17868980051cc846804e49c154829511380c119926549595bf4b48e2f85", "ip":"72.29.3.2", "testnet-url": "tcp://127.0.0.1:31200"},
               {"sk": "20b577e71e0c3bddd3ae78c0df8f7bb42b29b0c0ce9ca42a44e6afea2912d17b", "vk": "0c998fa1b2675d76372897a7d9b18d4c1fbe285dc0cc795a50e4aad613709baf", "ip":"72.29.3.3", "testnet-url": "tcp://127.0.0.1:31300"}
-            ]
+            ],
+    "majority": 2
   },
   "ports": {
       "pub-sub": 9999,

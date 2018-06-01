@@ -1,7 +1,7 @@
 from cilantro.logger import get_logger
 from functools import wraps
 from cilantro.messages import MessageBase, Envelope
-from cilantro.protocol.statemachine.decorators import StateInput, TransitionDecor, exit_from_any
+from cilantro.protocol.statemachine.decorators import StateInput, StateTimeout, StateTransition, exit_to_any
 import inspect
 from collections import defaultdict
 from unittest.mock import MagicMock
@@ -53,6 +53,9 @@ class StateMeta(type):
         # Configure entry and exit handlers
         StateMeta._config_transitions(clsobj)
 
+        # Configure State timeout timer
+        StateMeta._config_state_timeout(clsobj)
+
         return clsobj
 
     @staticmethod
@@ -69,24 +72,20 @@ class StateMeta(type):
 
     @staticmethod
     def _config_transitions(clsobj):
-        # TODO -- use dir(..) or vars(...) here... I think vars cause we don't want this to be touched by polymorph yea?
-        # or do we...?
-
-        for trans_attr in (TransitionDecor.ENTER, TransitionDecor.EXIT):
+        for trans_attr in (StateTransition.ENTER, StateTransition.EXIT):
             setattr(clsobj, trans_attr, {})
-            setattr(clsobj, TransitionDecor.get_any_attr(trans_attr), None)
+            setattr(clsobj, StateTransition.get_any_attr(trans_attr), None)
 
             vars_copy = vars(clsobj)
-            # for r in dir(clsobj):
             for r in vars_copy:
                 func = getattr(clsobj, r)
 
                 if hasattr(func, trans_attr):
                     states = getattr(func, trans_attr)
 
-                    if states == TransitionDecor.ACCEPT_ALL:
+                    if states == StateTransition.ACCEPT_ALL:
 
-                        any_attr_val = getattr(clsobj, TransitionDecor.get_any_attr(trans_attr))
+                        any_attr_val = getattr(clsobj, StateTransition.get_any_attr(trans_attr))
                         # If we already set this value to the same func before, then ignore
                         if any_attr_val == func:
                             # print("\n\n any recevier already set; skipping it\n\n")
@@ -97,7 +96,7 @@ class StateMeta(type):
                                                      "(attempted to set it again to func: {})"\
                                                      # .format(trans_attr, any_attr_val, clsobj, func)
 
-                        setattr(clsobj, TransitionDecor.get_any_attr(trans_attr), func)
+                        setattr(clsobj, StateTransition.get_any_attr(trans_attr), func)
                     else:
                         trans_registry = getattr(clsobj, trans_attr)
                         for state in states:
@@ -132,6 +131,26 @@ class StateMeta(type):
                     for sub in filter(lambda k: k not in registry, StateMeta._get_subclasses(func_input_type)):
                         registry[sub] = func
 
+    @staticmethod
+    def _config_state_timeout(clsobj):
+        setattr(clsobj, StateTimeout.TIMEOUT_FLAG, None)
+        setattr(clsobj, StateTimeout.TIMEOUT_DUR, None)
+
+        vars_copy = vars(clsobj)
+        for r in vars_copy:
+            func = getattr(clsobj, r)
+
+            if hasattr(func, StateTimeout.TIMEOUT_FLAG):
+                assert getattr(clsobj, StateTimeout.TIMEOUT_FLAG) is None, \
+                    "State timeout already set to {}. Attempted to reset it to {}"\
+                    .format(getattr(clsobj, StateTimeout.TIMEOUT_FLAG), func)
+                assert hasattr(func, StateTimeout.TIMEOUT_DUR), "StateMeta Error! Function has no timeout duration attr"
+
+                setattr(clsobj, StateTimeout.TIMEOUT_FLAG, func)
+                setattr(clsobj, StateTimeout.TIMEOUT_DUR, getattr(func, StateTimeout.TIMEOUT_DUR))
+
+                return
+
 
 class State(metaclass=StateMeta):
     def __init__(self, state_machine):
@@ -147,6 +166,7 @@ class State(metaclass=StateMeta):
 
         func = self._get_input_handler(message, input_type)
 
+        # TODO -- find cleaner way to copy method signatures in unit tests
         if (isinstance(func, MagicMock) and envelope) or self._has_envelope_arg(func):
             assert envelope, "Envelope arg was found for input func {}, " \
                              "but no envelope passed into call_input_handler".format(func)
@@ -155,20 +175,34 @@ class State(metaclass=StateMeta):
         else:
             output = func(message)
 
-        # if envelope:
-        #     output = func(message, envelope=envelope)
-        # else:
-        #     output = func(message)
-
         return output
 
-    def call_transition_handler(self, trans_type, next_state, *args, **kwargs):
-        trans_func = self._get_transition_handler(trans_type, next_state)
+    def call_transition_handler(self, trans_type, state, *args, **kwargs):
+        trans_func = self._get_transition_handler(trans_type, state)
 
         if not trans_func:
             return
 
-        trans_func(next_state, *args, **kwargs)
+        timeout_func = getattr(self, StateTimeout.TIMEOUT_FLAG)
+
+        if trans_type == StateTransition.ENTER:
+            # Check for timeout trigger
+            if timeout_func:
+                timeout_dur = getattr(self, StateTimeout.TIMEOUT_DUR)
+
+                self.log.debug("Scheduling timeout trigger {} after {} seconds".format(timeout_func, timeout_dur))
+                self.timeout_handler = self.parent.loop.call_later(timeout_dur, timeout_func)
+
+            trans_func(**self._prune_kwargs(trans_func, prev_state=state, **kwargs))
+
+        elif trans_type == StateTransition.EXIT:
+            # Cancel timeout trigger (if any)
+            if timeout_func and self.timeout_handler:
+                self.log.debug("Canceling timeout trigger")
+                self.timeout_handler.cancel()
+                self.timeout_handler = None
+
+            trans_func(**self._prune_kwargs(trans_func, next_state=state, **kwargs))
 
     def _get_input_handler(self, message, input_type: str):
         registry = getattr(self, input_type)
@@ -182,10 +216,19 @@ class State(metaclass=StateMeta):
 
         return getattr(self, func.__name__)
 
-    def _has_envelope_arg(self, func):
+    @classmethod
+    def _has_envelope_arg(cls, func):
         # TODO more robust logic that searches through parameter type annotations one that is typed with Envelope class
         sig = inspect.signature(func)
         return 'envelope' in sig.parameters
+
+    @classmethod
+    def _prune_kwargs(cls, func, **kwargs):
+        """
+        Prunes kwargs s.t. only keys which are present as named args in func's signature are present.
+        """
+        params = inspect.signature(func).parameters
+        return {k: kwargs[k] for k in kwargs if k in params}
 
     def _assert_has_input_handler(self, message: MessageBase, input_type: str):
         # Assert that input_type is actually a recognized input_type
@@ -198,15 +241,18 @@ class State(metaclass=StateMeta):
             .format(type(message), input_type, getattr(self, input_type))
 
     def _get_transition_handler(self, trans_type, state):
-        assert trans_type in (TransitionDecor.ENTER, TransitionDecor.EXIT), "trans_type arg must be _ENTER or _EXIT"
-        assert issubclass(state, State), "state arg must be a State class"
+        assert trans_type in (StateTransition.ENTER, StateTransition.EXIT), "trans_type arg must be _ENTER or _EXIT"
+        assert type(state) is str or issubclass(state, State),\
+            "state arg must be a State class or the string of a State class name"
+
+        # Cast state class to string if necessary
+        if issubclass(state, State):
+            state = state.__name__
 
         trans_registry = getattr(self, trans_type)
-        # self.log.debug("LOOKING UP STATE {} IN TRANS REGISTRY {}".format(state, trans_registry))  # TODO remove
 
         # First see if a specific transition handler exists
         if state in trans_registry:
-            # self.log.debug("specific {} handler {} found for state {}!".format(trans_type, trans_registry[state], state))
             func = trans_registry[state]
             assert hasattr(self, func.__name__), "STATE META LOGIC ERROR! Specific transition {} handler {} found for " \
                                                  "state {}, but no method of that named found on self {}"\
@@ -214,7 +260,7 @@ class State(metaclass=StateMeta):
             return getattr(self, func.__name__)
 
         # Next, see if there is an ANY handler (a 'wildcard' handler configured to capture all states)
-        any_handler = getattr(self, TransitionDecor.get_any_attr(trans_type))
+        any_handler = getattr(self, StateTransition.get_any_attr(trans_type))
         if any_handler:
             assert hasattr(self, any_handler.__name__), "STATE META LOGIC ERROR! General transition {} handler {} found" \
                                                         " for state {}, but no method of that named found on self {}" \
@@ -228,9 +274,9 @@ class State(metaclass=StateMeta):
 
     def __eq__(self, other):
         """
-        An equality check with superpowers used heavily in State + StateMachine classes for type introspection. This
+        An equality check on steroids. Used in State + StateMachine classes for type introspection. This
         method should return true if both self and other are the same CLASS of state. Other may be either another
-        state instance, or a state class
+        state instance, or a state class, or a string representing the name of a state class
         """
         # Case 1 -- 'other' is a State subclass
         if type(other) is StateMeta:
@@ -240,10 +286,14 @@ class State(metaclass=StateMeta):
         elif isinstance(other, State):
             return type(self) == type(other)
 
+        # Case 3 -- 'other' is a string
+        elif type(other) is str:
+            return self.__name__ == other
+
         # Otherwise, this is an invalid comparison ('other' belongs to unknown equivalence class)
         else:
             raise ValueError("Invalid comparison -- RHS (right hand side of equation) must be either a State subclass "
-                             "instance or Class (not {})".format(other))
+                             "instance or String or Class (not {})".format(other))
 
     def __repr__(self):
         return type(self).__name__
@@ -253,6 +303,6 @@ class EmptyState(State):
     def reset_attrs(self):
         pass
 
-    @exit_from_any
-    def exit_any(self, prev_state):
+    @exit_to_any
+    def exit_any(self, next_state):
         pass
