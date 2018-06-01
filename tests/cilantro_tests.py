@@ -58,9 +58,12 @@ if __name__ == '__main__':
     TEST_FLAG = 'S'  # test flag represents failure (F) or success (S) of testing
     loader = unittest.TestLoader()
 
+    post_order_tests = []
+
     all_errors = []
-    list_tests = root.post_order_traversal(root)
+    list_tests = root.post_order_traversal(root, data=post_order_tests)
     print(list_tests)
+    print("ayy finished data: {}".format(post_order_tests))
 
     for k in list_tests:
         print(k)
