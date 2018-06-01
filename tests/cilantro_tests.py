@@ -61,41 +61,40 @@ if __name__ == '__main__':
     post_order_tests = []
 
     all_errors = []
-    list_tests = root.post_order_traversal(root, data=post_order_tests)
-    print(list_tests)
-    print("ayy finished data: {}".format(post_order_tests))
+    root.post_order_traversal(root, data=post_order_tests)
 
-    for k in list_tests:
-        print(k)
-        for t in k:
-            print(t)
+    for k in post_order_tests:
+        if TEST_FLAG != 'S':
+            break
+        else:
+            for t in k:
 
-            suite = loader.discover(t)  # finds all unit tests in the testgroup directory
+                suite = loader.discover(t)  # finds all unit tests in the testgroup directory
 
-            runner = unittest.TextTestRunner(verbosity=3)
-            TestResult = runner.run(suite)
+                runner = unittest.TextTestRunner(verbosity=3)
+                TestResult = runner.run(suite)
 
-            if TestResult.errors:
-                for i in range(len(TestResult.errors) + 1):
-                    all_errors.append(TestResult.errors[i])
-                    print("error in {} - exiting test framework".format(t))
-                    print('\n\n', 'Number of errors:', len(TestResult.errors))
-                    print('\n\n', 'Error in:', TestResult.errors[i][0])
-                    print('\n\n', 'Error traceback:', TestResult.errors[i][1])
-                    TEST_FLAG = 'F'
-                    break
+                if TestResult.errors:
+                    for i in range(len(TestResult.errors) + 1):
+                        all_errors.append(TestResult.errors[i])
+                        print("error in {} - exiting test framework".format(t))
+                        print('\n\n', 'Number of errors:', len(TestResult.errors))
+                        print('\n\n', 'Error in:', TestResult.errors[i][0])
+                        print('\n\n', 'Error traceback:', TestResult.errors[i][1])
+                        TEST_FLAG = 'F'
+                        break
 
-            elif TestResult.failures:
-                for i in range(len(TestResult.failures) + 1):
-                    all_errors.append(TestResult.failures[i])
-                    print("failure in {} - exiting test framework".format(t))
-                    print('\n\n', 'Number of failures:', len(TestResult.failures))
-                    print('\n\n', TestResult.failures[i][0])
-                    print('\n\n', TestResult.failures[i][1])
-                    TEST_FLAG = 'F'
-                    break
-            else:
-                print("No errors in {} \n\n".format(t))
+                elif TestResult.failures:
+                    for i in range(len(TestResult.failures) + 1):
+                        all_errors.append(TestResult.failures[i])
+                        print("failure in {} - exiting test framework".format(t))
+                        print('\n\n', 'Number of failures:', len(TestResult.failures))
+                        print('\n\n', TestResult.failures[i][0])
+                        print('\n\n', TestResult.failures[i][1])
+                        TEST_FLAG = 'F'
+                        break
+                else:
+                    print("No errors in {} \n\n".format(t))
 
     for err in all_errors:
         # print("failure in {} - exiting test framework".format(err))

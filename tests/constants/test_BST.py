@@ -15,9 +15,6 @@ class Node:
         if root:
             self.post_order_traversal(root.left, data=data)
             self.post_order_traversal(root.right, data=data)
-            print(root.data)
+            # print(root.data)
             data.append(root.data)
-            # yield root.data
-        # else:
-        #     return data
-        print("data: {}".format(data))
+
