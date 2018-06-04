@@ -15,3 +15,20 @@ class TestBuildTables(TestCase):
 
         assert tables.blocks
         assert tables.contracts
+
+    def test_seed_blocks(self):
+        ex = self.default_ex()
+
+        tables = build_tables(ex, should_drop=True)
+
+        blocks = tables.blocks.select()
+        print("got blocks: {}".format(blocks))
+
+    def test_seed_contracts(self):
+        ex = self.default_ex()
+
+        tables = build_tables(ex, should_drop=True)
+
+        contracts = tables.contrats.select()
+        print("got contracts: {}".format(contracts))
+

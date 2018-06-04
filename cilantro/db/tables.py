@@ -1,33 +1,29 @@
+from cilantro.logger import get_logger
 import seneca.seneca_internal.storage.easy_db as t
 from seneca.seneca_internal.storage.mysql_executer import Executer
 from datetime import datetime
 
 
-def build_tables(ex, should_drop=True):
-    contracts = _build_contracts_table(ex, should_drop)
-    blocks = _build_blocks_table(ex, should_drop)
+log = get_logger("DB Creator")
 
-    # TODO seed /w default values
+GENESIS_HASH = '0' * 64
+
+
+def build_tables(ex, should_drop=True):
+    from cilantro.db.contracts_table import build_contracts_table, seed_contracts
+
+    contracts = build_contracts_table(ex, should_drop)
+    blocks = build_blocks_table(ex, should_drop)
+
+    seed_contracts(ex, contracts)
+    seed_blocks(ex, blocks)
 
     tables = type('Tables', (object,), {'contracts': contracts, 'blocks': blocks})
 
     return tables
 
 
-def _build_contracts_table(ex, should_drop=True):
-    contracts = t.Table('smart_contracts',
-                        t.Column('contract_id', t.str_len(64), True),
-                        [
-                            t.Column('code_str', str),
-                            t.Column('author', t.str_len(64)),
-                            t.Column('execution_datetime', datetime),
-                            t.Column('execution_status', t.str_len(30)),
-                        ])
-
-    return _create_table(ex, contracts, should_drop)
-
-
-def _build_blocks_table(ex, should_drop=True):
+def build_blocks_table(ex, should_drop=True):
     blocks = t.Table('blocks',
                      t.AutoIncrementColumn('number'),
                      [
@@ -36,10 +32,18 @@ def _build_blocks_table(ex, should_drop=True):
                          t.Column('signatures', str),
                      ])
 
-    return _create_table(ex, blocks, should_drop)
+    return create_table(ex, blocks, should_drop)
 
 
-def _create_table(ex, table, should_drop):
+def seed_blocks(ex, blocks_table):
+    blocks_table.insert([{
+            'hash': GENESIS_HASH,
+            'tree': '',
+            'signatures': '',
+        }]).run(ex)
+
+
+def create_table(ex, table, should_drop):
     if should_drop:
         try:
             table.drop_table().run(ex)
@@ -50,3 +54,4 @@ def _create_table(ex, table, should_drop):
                 raise
 
     table.create_table().run(ex)
+    return table
