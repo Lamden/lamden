@@ -15,7 +15,7 @@ from zmq.auth.thread import ThreadAuthenticator
 from zmq.auth.asyncio import AsyncioAuthenticator
 from zmq.utils.z85 import decode, encode
 from nacl.public import PrivateKey
-from nacl.signing import SigningKey
+from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 
 from cilantro.logger import get_logger
@@ -23,7 +23,7 @@ from cilantro.logger import get_logger
 log = get_logger(__name__)
 
 class Ironhouse:
-    def __init__(self, sk=None, auth_payload=b'ack', auth_callback=None, private_key=None, wipe_certs=False, *args, **kwargs):
+    def __init__(self, sk, auth_payload=b'ack', auth_callback=None, wipe_certs=False, *args, **kwargs):
         self.auth_port = os.getenv('AUTH_PORT', 4523)
         self.keyname = os.getenv('HOSTNAME', os.path.splitext(__file__)[0])
         self.base_dir = 'certs/{}'.format(self.keyname)
@@ -34,16 +34,18 @@ class Ironhouse:
         self.auth_payload = auth_payload
         self.auth_callback = auth_callback
         self.wipe_certs = wipe_certs
-        self.generate_certificates(private_key=private_key, sk=sk)
+        self.generate_certificates(sk)
 
     def load_keys(self):
         return zmq.auth.load_certificate(self.secret_file)
 
-    def generate_certificates(self, private_key=None, sk=None):
-        if sk:
-            sk = SigningKey(seed=bytes.fromhex(sk))
-            self.vk = sk.verify_key.encode().hex()
-            private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key).hex()
+    def vk2pk(self, vk):
+        return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
+
+    def generate_certificates(self, sk):
+        sk = SigningKey(seed=bytes.fromhex(sk))
+        self.vk = sk.verify_key.encode().hex()
+        private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key).hex()
 
         for d in [self.keys_dir, self.public_keys_dir, self.secret_keys_dir]:
             if self.wipe_certs and os.path.exists(d):
@@ -51,10 +53,7 @@ class Ironhouse:
             os.makedirs(d, exist_ok=True)
 
         if self.wipe_certs:
-            if private_key:
-                self.create_from_private_key(private_key)
-            else:
-                client_public_file, client_secret_file = zmq.auth.create_certificates(self.keys_dir, self.keyname)
+            self.create_from_private_key(private_key)
 
             # move public keys to appropriate directory
             for key_file in os.listdir(self.keys_dir):
@@ -90,7 +89,7 @@ class Ironhouse:
                         public_key,
                         secret_key=secret_key)
 
-    def secure_context(self, loop=None, async=False):
+    def secure_context(self, async=False):
         if async:
             ctx = zmq.asyncio.Context()
             auth = AsyncioAuthenticator(ctx)
@@ -100,7 +99,7 @@ class Ironhouse:
         auth.start()
         auth.configure_curve(domain='*', location=self.public_keys_dir)
 
-        return ctx, auth
+        return ctx
 
     def secure_socket(self, sock, curve_serverkey=None, ip=None):
         public, secret = self.load_keys()
@@ -112,23 +111,23 @@ class Ironhouse:
 
     def authenticate(self, target_public_key, ip):
         # log.debug('{} --> {}'.format(target_public_key, ip))
-        # return True
-        if ip == os.getenv('HOST_IP'): return True
-        client = self.ctx.socket(zmq.REQ)
-        client = self.secure_socket(client, target_public_key, ip)
-        client.connect('tcp://{}:{}'.format(ip, self.auth_port))
-        client.send(os.getenv('PEPPER', 'cilantro').encode('utf-8'))
-        authorized = False
-
-        if client.poll(1000):
-            msg = client.recv()
-            log.debug('got secure reply {}'.format(msg))
-            authorized = self.auth_callback(msg) if self.auth_callback else msg
-        client.close()
-        return authorized
+        return True
+        # if ip == os.getenv('HOST_IP'): return True
+        # client = self.ctx.socket(zmq.REQ)
+        # client = self.secure_socket(client, target_public_key, ip)
+        # client.connect('tcp://{}:{}'.format(ip, self.auth_port))
+        # client.send(os.getenv('PEPPER', 'cilantro').encode('utf-8'))
+        # authorized = False
+        #
+        # if client.poll(1000):
+        #     msg = client.recv()
+        #     log.debug('got secure reply {}'.format(msg))
+        #     authorized = self.auth_callback(msg) if self.auth_callback else msg
+        # client.close()
+        # return authorized
 
     def setup_secure_server(self):
-        self.ctx, auth = self.secure_context()
+        self.ctx = self.secure_context()
         self.auth_port = os.getenv('AUTH_PORT', 4523)
         self.sec_sock = self.secure_socket(self.ctx.socket(zmq.REP))
         self.sec_sock.bind('tcp://*:{}'.format(self.auth_port))

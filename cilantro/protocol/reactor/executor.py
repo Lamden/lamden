@@ -3,7 +3,7 @@ from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand, Envelope
 from collections import defaultdict
 from cilantro.protocol.structures import CappedSet, EnvelopeAuth
-import traceback
+import traceback, os
 from cilantro.protocol.statemachine import StateInput
 
 from cilantro.protocol.overlay.dht import DHT
@@ -37,11 +37,12 @@ class Executor(metaclass=ExecutorMeta):
     _recently_seen = CappedSet(max_size=Constants.Protocol.DupeTableSize)
     _parent_name = 'ReactorDaemon'  # used for log names
 
-    def __init__(self, loop, context, inproc_socket):
+    def __init__(self, loop, context, inproc_socket, ironhouse):
         self.loop = loop
         asyncio.set_event_loop(self.loop)
         self.context = context
         self.inproc_socket = inproc_socket
+        self.ironhouse = ironhouse
         self.log = get_logger("{}.{}".format(Executor._parent_name, type(self).__name__))
 
     def add_listener(self, listener_fn, *args, **kwargs):
@@ -139,8 +140,8 @@ class Executor(metaclass=ExecutorMeta):
 
 
 class SubPubExecutor(Executor):
-    def __init__(self, loop, context, inproc_socket):
-        super().__init__(loop, context, inproc_socket)
+    def __init__(self, loop, context, inproc_socket, *args, **kwargs):
+        super().__init__(loop, context, inproc_socket, *args, **kwargs)
         self.sub = None  # Subscriber socket
         self.sub_handler = None  # asyncio future from subscriber's recv_multipart
 
@@ -168,16 +169,23 @@ class SubPubExecutor(Executor):
         assert url not in self.pubs, "Attempted to add pub on url that is already in self.pubs"
 
         self.log.info("Creating publisher socket on url {}".format(url))
+        # self.pubs[url] = self.ironhouse.secure_socket(
+        #     self.context.socket(socket_type=zmq.PUB))
         self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
         self.pubs[url].bind(url)
         time.sleep(0.2)
 
-    def add_sub(self, url: str, filter: str):
+    def add_sub(self, url: str, filter: str, vk: str):
         assert isinstance(filter, str), "'id' arg must be a string"
 
         if not self.sub:
             self.log.info("Creating subscriber socket")
+            curve_serverkey = self.ironhouse.vk2pk(vk)
+            self.log.critical('{}: add_sub for url: {} where {} --> {}'.format(os.getenv('HOST_IP'), url, vk, curve_serverkey))
             self.sub = self.context.socket(socket_type=zmq.SUB)
+            # self.sub = self.ironhouse.secure_socket(
+            #     self.context.socket(socket_type=zmq.SUB),
+            #     curve_serverkey=curve_serverkey)
 
         if url not in self.sub_urls:
             self.add_sub_url(url)
@@ -244,8 +252,8 @@ class SubPubExecutor(Executor):
 
 
 class DealerRouterExecutor(Executor):
-    def __init__(self, loop, context, inproc_socket):
-        super().__init__(loop, context, inproc_socket)
+    def __init__(self, loop, context, inproc_socket, *args, **kwargs):
+        super().__init__(loop, context, inproc_socket, *args, **kwargs)
 
         # 'dealers' is a simple nested dict for holding sockets by URL as well as their associated recv handlers
         # key for 'dealers' is socket URL, and value is another dict with keys 'socket' (value is Socket instance)
@@ -286,12 +294,14 @@ class DealerRouterExecutor(Executor):
 
         self.log.info("Creating router socket on url {}".format(url))
         self.router = self.context.socket(socket_type=zmq.ROUTER)
+        # self.router = self.ironhouse.secure_socket(
+        #     self.context.socket(socket_type=zmq.ROUTER))
         self.router.bind(url)
 
         self.router_handler = self.add_listener(self.recv_multipart, socket=self.router,
                                                 callback_fn=self._recv_request_env)
 
-    def add_dealer(self, url: str, id: str):
+    def add_dealer(self, url: str, id: str, vk: str):
         if url in self.dealers:
             self.log.warning("Attempted to add dealer {} that is already in self.dealers".format(url))
             return
@@ -300,7 +310,12 @@ class DealerRouterExecutor(Executor):
         assert isinstance(id, str), "'id' arg must be a string"
         self.log.info("Creating dealer socket for url {} with id {}".format(url, id))
 
+        curve_serverkey = self.ironhouse.vk2pk(vk)
+        self.log.critical('{}: add_dealer for url: {} where {} --> {}'.format(os.getenv('HOST_IP'), url, vk, curve_serverkey))
         socket = self.context.socket(socket_type=zmq.DEALER)
+        # socket = self.ironhouse.secure_socket(
+        #     self.context.socket(socket_type=zmq.DEALER),
+        #     curve_serverkey=curve_serverkey)
         socket.identity = id.encode('ascii')
 
         self.log.info("Dealer socket connecting to url {}".format(url))

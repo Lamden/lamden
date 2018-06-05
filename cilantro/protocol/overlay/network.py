@@ -47,6 +47,7 @@ class Network(object):
         """
         self.loop = loop if loop else asyncio.get_event_loop()
         asyncio.set_event_loop(self.loop)
+        self.vkcache = {}
         self.ksize = ksize
         self.alpha = alpha
         self.port = os.getenv('NETWORK_PORT', 5678)
@@ -97,6 +98,8 @@ class Network(object):
                                 conn.close()
                                 del self.connections[fileno]
                                 self.protocol.router.removeContact(node)
+                                assert node.ip in self.vkcache, 'The removed node({}) has no corresponding ip.'.format(node.id)
+                                del self.vkcache[node.ip]
                 await asyncio.sleep(0.1)
         finally:
             self.poll.unregister(self.stethoscope_sock.fileno())
@@ -116,6 +119,9 @@ class Network(object):
             del self.connections[conn.fileno()]
             pass
 
+    def lookup_ip_in_cache(self, vk):
+        return self.vkcache.get(vk)
+
     async def lookup_ip(self, node_key):
         node_id = digest(node_key)
         public_key = VerifyKey(bytes.fromhex(node_key)).to_curve25519_public_key()._public_key.hex()
@@ -130,7 +136,8 @@ class Network(object):
 
         if type(res_node) == list: res_node = None
         log.debug('{} resolves to {}'.format(node_key, res_node))
-
+        if res_node != None:
+            self.vkcache[node_key] = res_node
         return res_node
 
     def stop(self):

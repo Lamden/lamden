@@ -31,10 +31,6 @@ class ReactorDaemon:
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-        self.context = zmq.asyncio.Context()
-        self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
-        self.socket.connect(self.url)
-
         # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
@@ -42,10 +38,15 @@ class ReactorDaemon:
                        max_peers=Constants.Overlay.MaxPeers, block=False, cmd_cli=False, wipe_certs=True)
         self.log.debug('bootstrappable neighbors: {}'.format(self.dht.network.bootstrappableNeighbors()))
 
+        self.context = zmq.asyncio.Context()
+        # self.context = self.dht.network.ironhouse.secure_context(async=True)
+        self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
+        self.socket.connect(self.url)
+
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name
 
-        self.executors = {name: executor(self.loop, self.context, self.socket)
+        self.executors = {name: executor(self.loop, self.context, self.socket, self.dht.network.ironhouse)
                           for name, executor in Executor.registry.items()}
 
         try:
@@ -75,6 +76,11 @@ class ReactorDaemon:
             # blow up because this is very likely because of a development error, so no try/catch for now
             cmd = ReactorCommand.from_bytes(cmd_bin)
 
+            # DEBUG LINE, REMOVE LATER
+            self.log.critical("got cmd from ReactorInterfac pair socket {}".format(cmd))
+
+            assert cmd.class_name and cmd.func_name, "Received invalid command with no class/func name!"
+
             await self._execute_cmd(cmd)
 
     def _teardown(self):
@@ -100,9 +106,12 @@ class ReactorDaemon:
         """
         assert isinstance(cmd, ReactorCommand), "Cannot execute cmd {} that is not a ReactorCommand object".format(cmd)
 
-        self.log.debug("Executing cmd {}".format(cmd))
-
-        executor_name, executor_func, kwargs = await self._parse_cmd(cmd)
+        cmd_args = await self._parse_cmd(cmd)
+        if cmd_args:
+            executor_name, executor_func, kwargs = cmd_args
+        else:
+            self.log.debug('Command requires VK lookup. Short circuiting from _execute_cmd.')
+            return
 
         # Sanity checks (for catching bugs mostly)
         assert executor_name in self.executors, "Executor name {} not found in executors {}"\
@@ -124,8 +133,8 @@ class ReactorDaemon:
         kwargs = cmd.kwargs
 
         # Remove class_name and func_name from kwargs. We just need these to lookup the function to call
-        del(kwargs['class_name'])
-        del(kwargs['func_name'])
+        del kwargs['class_name']
+        del kwargs['func_name']
 
         # Add envelope to kwargs if its in the reactor command
         if cmd.envelope_binary:
@@ -133,16 +142,47 @@ class ReactorDaemon:
 
         # Replace VK with IP address if necessary
         if 'url' in kwargs:
+            self.log.debug("Processing command with url {}".format(kwargs['url']))
             url = kwargs['url']
 
             # Check if URL has a VK inside
             vk = IPUtils.get_vk(url)
             if vk:
-                self.log.info('lookup start')
-                ip = await self.dht.network.lookup_ip(vk)
-                self.log.info('lookup end')
-                # assert ip, 'Cannot find ip associated with the VK {}'.format(vk)
+                ip = self.dht.network.lookup_ip_in_cache(vk)
+                if not ip:
+                    self.log.info("Could not find ip for vk {} in cache. Performing lookup in DHT.".format(vk))
+                    asyncio.ensure_future(self._lookup_ip(cmd, url, vk))
+                    return
+
                 new_url = IPUtils.interpolate_url(url, ip)
                 kwargs['url'] = new_url
 
         return executor_name, executor_func, kwargs
+
+    async def _lookup_ip(self, cmd, url, vk):
+        self.log.critical("\n\n\n THIS HSHOULD NOT GET RUNANYRUNANYRUNANYMORE RIGHT \n\n\n")
+        ip = None
+        try:
+            ip = await self.dht.network.lookup_ip(vk)
+        except Exception as e:
+            delim_line = '!' * 64
+            err_msg = '\n\n' + delim_line + '\n' + delim_line
+            err_msg += '\n ERROR CAUGHT IN LOOKUP FUNCTION {}\ncalled \w args={}\nand kwargs={}\n'\
+                        .format(listener_fn, args, kwargs)
+            err_msg += '\nError Message: '
+            err_msg += '\n\n{}'.format(traceback.format_exc())
+            err_msg += '\n' + delim_line + '\n' + delim_line
+            self.log.error(err_msg)
+
+        if ip is None:
+            self.log.critical("\n COULD NOT FIND IP FOR VK {} \n".format(vk))
+            # TODO -- send callback to SM saying hey i couldnt lookup this vk
+            return
+
+        # Send interpolated command back through pipeline
+        new_url = IPUtils.interpolate_url(url, ip)
+        kwargs = cmd.kwargs
+        kwargs['url'] = new_url
+        new_cmd = ReactorCommand.create_cmd(envelope=cmd.envelope, **kwargs)
+
+        await self._execute_cmd(new_cmd)
