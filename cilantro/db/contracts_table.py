@@ -15,13 +15,21 @@ CONTRACTS_DIR = "{}/../contracts".format(dir_path)
 
 
 def build_contracts_table(ex, should_drop=True):
+    # contracts = t.Table('smart_contracts',
+    #                     t.Column('contract_address', t.str_len(64)),  # why is str_len(64) not working? is printing an insert statement with a value of only length 50 even when inserting a 64 char string
+    #                     [
+    #                         t.Column('code_str', str),
+    #                         t.Column('author', t.str_len(64)),
+    #                         t.Column('execution_datetime', datetime),
+    #                         t.Column('execution_status', t.str_len(30)),
+    #                     ])
     contracts = t.Table('smart_contracts',
-                        t.Column('contract_address', t.str_len(64), True),  # why is str_len(64) not working? is printing an insert statement with a value of only length 50 even when inserting a 64 char string
+                        t.Column('contract_address', t.str_len(64)),  # why is str_len(64) not working? is printing an insert statement with a value of only length 50 even when inserting a 64 char string
                         [
                             t.Column('code_str', str),
                             t.Column('author', t.str_len(64)),
                             t.Column('execution_datetime', datetime),
-                            t.Column('execution_status', t.str_len(30)),
+                            t.Column('execution_status', t.str_len(30))
                         ])
 
     return create_table(ex, contracts, should_drop)
