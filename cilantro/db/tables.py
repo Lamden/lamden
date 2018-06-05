@@ -11,36 +11,17 @@ GENESIS_HASH = '0' * 64
 
 def build_tables(ex, should_drop=True):
     from cilantro.db.contracts_table import build_contracts_table, seed_contracts
+    from cilantro.db.blocks_table import build_blocks_table, seed_blocks
 
     contracts = build_contracts_table(ex, should_drop)
     blocks = build_blocks_table(ex, should_drop)
 
-    seed_contracts(ex, contracts)
+    # seed_contracts(ex, contracts)
     seed_blocks(ex, blocks)
 
     tables = type('Tables', (object,), {'contracts': contracts, 'blocks': blocks})
 
     return tables
-
-
-def build_blocks_table(ex, should_drop=True):
-    blocks = t.Table('blocks',
-                     t.AutoIncrementColumn('number'),
-                     [
-                         t.Column('hash', t.str_len(64), True),
-                         t.Column('tree', str),
-                         t.Column('signatures', str),
-                     ])
-
-    return create_table(ex, blocks, should_drop)
-
-
-def seed_blocks(ex, blocks_table):
-    blocks_table.insert([{
-            'hash': GENESIS_HASH,
-            'tree': '',
-            'signatures': '',
-        }]).run(ex)
 
 
 def create_table(ex, table, should_drop):

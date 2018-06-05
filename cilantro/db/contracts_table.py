@@ -39,50 +39,42 @@ def seed_contracts(ex, contracts_table):
     """
     Seeds the contracts table with all contracts found in cilantro/contracts
     """
-    # contract_id = 'A' * 64
-    contract_id = 'test_id'
-    author = 'me'
-
-    res = contracts_table.insert([{
-        'contract_address': contract_id,
-        'code_str': 'dank code',
-        'author': author,
-        'execution_datetime:': None,
-        'execution_status': 'pending'
-    }]).run(ex)
-    log.debug("got result from inserting contract id {}: {}".format(contract_id, res))
-
+    # contract_id = 'test_id'
+    # author = 'me'
+    # code_str = 'code'
+    #
+    # res = contracts_table.insert([{
+    #     'contract_address': contract_id,
+    #     'code_str': code_str,
+    #     'author': author,
+    #     'execution_datetime:': None,
+    #     'execution_status': 'pending'
+    # }]).run(ex)
+    # log.debug("got result from inserting contract id {}: {}".format(contract_id, res))
 
     # Add all contracts in CONTRACTS_DIR directory
-    # log.info("Loading smart contracts at directory {}".format(CONTRACTS_DIR))
-    # for filename in os.listdir(CONTRACTS_DIR):
-    #     _validate_filename(filename)
-    #     log.info("Loading contract code for file {}".format(filename))
-    #
-    #     with open('{}/{}'.format(CONTRACTS_DIR, filename), 'r') as f:
-    #         code_str = f.read()
-    #         contract_id = Hasher.hash(filename)
-    #         author = 'default_cilantro_contract'
-    #
-    #         # TODO remove this (debug line)
-    #         log.debug("filename {} has contract_id {} has author {} and code has code {}"
-    #                   .format(filename, contract_id, author, code_str))
-    #
-    #         # res = contracts_table.insert([{
-    #         #         'contract_id': contract_id,
-    #         #         'code_str': code_str.encode().hex(),
-    #         #         'author': author,
-    #         #         'execution_datetime:': None,
-    #         #         'execution_status': 'pending',
-    #         #     }]).run(ex)
-    #         res = contracts_table.insert([{
-    #                 'contract_id': contract_id,
-    #                 'code_str': 'while True: pass',
-    #                 'author': author,
-    #                 'execution_datetime:': None,
-    #                 'execution_status': 'pending',
-    #             }]).run(ex)
-    #         log.debug("got result from inserting contract id {}: {}".format(contract_id, res))
+    log.info("Loading smart contracts at directory {}".format(CONTRACTS_DIR))
+    for filename in os.listdir(CONTRACTS_DIR):
+        _validate_filename(filename)
+        log.info("Loading contract code for file {}".format(filename))
+
+        with open('{}/{}'.format(CONTRACTS_DIR, filename), 'r') as f:
+            code_str = f.read()
+            contract_id = Hasher.hash(filename)
+            author = 'default_cilantro_contract'
+
+            # TODO remove this (debug line)
+            log.debug("filename {} has contract_id {} has author {} and code has code {}"
+                      .format(filename, contract_id, author, code_str))
+
+            res = contracts_table.insert([{
+                    'contract_id': contract_id,
+                    'code_str': 'while True: pass',
+                    'author': author,
+                    'execution_datetime:': None,
+                    'execution_status': 'pending',
+                }]).run(ex)
+            log.debug("got result from inserting contract id {}: {}".format(contract_id, res))
 
 
 def _validate_filename(filename):
