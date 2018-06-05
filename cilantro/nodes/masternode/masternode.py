@@ -65,7 +65,6 @@ class Masternode(NodeBase):
         self.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=new_submission)
 
 
-
 class MNBaseState(State):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
@@ -84,10 +83,10 @@ class MNBaseState(State):
     def recv_blockdata_reply(self, reply: BlockDataReply):
         self.log.warning("Current state not configured to handle block data reply {}".format(reply))
 
-    # @input(ContractSubmission)
-    # def handle_contract_submission(self):
-    #     pass
-
+    @input(ContractContainer)
+    def handle_contract(self, contract: ContractContainer):
+        self.log.debug("Masternode got contract: {}\nPublishing that to witnesses".format(contract))
+        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=contract)
 
 
 @Masternode.register_init_state
