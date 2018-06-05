@@ -11,7 +11,7 @@ from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG, KILL_
 
 
 class ReactorInterface:
-    def __init__(self, router, loop, verifying_key, name='Node'):
+    def __init__(self, router, loop, signing_key, name='Node'):
         self.log = get_logger("{}.ReactorInterface".format(name))
         self.url = "ipc://{}-ReactorIPC-".format(name) + str(random.randint(0, pow(2, 16)))
 
@@ -27,7 +27,7 @@ class ReactorInterface:
         self.socket.bind(self.url)
 
         # Start reactor sub process
-        self.proc = LProcess(target=self._start_daemon, args=(self.url, verifying_key, name))
+        self.proc = LProcess(target=self._start_daemon, args=(self.url, signing_key, name))
         self.proc.daemon = True
         self.proc.start()
 
@@ -70,7 +70,7 @@ class ReactorInterface:
         self.log.warning("Closing event loop")
         self.loop.close()
 
-    def _start_daemon(self, url, vk, name):
+    def _start_daemon(self, url, sk, name):
         """
         Should be for internal use only.
         The target method for the ReactorDaemon subprocess (this code gets run in a child process). This simply creates
@@ -79,7 +79,7 @@ class ReactorInterface:
 
         :param url: The url for the IPC pair socket between the ReactorInterface and ReactorDaemon
         """
-        reactor = ReactorDaemon(url=url, verifying_key=vk, name=name)
+        reactor = ReactorDaemon(url=url, sk=sk, name=name)
 
     async def _wait_child_rdy(self):
         """

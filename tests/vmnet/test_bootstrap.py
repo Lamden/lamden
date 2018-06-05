@@ -18,8 +18,8 @@ def run_mn():
     import os
     log = get_logger("MASTERNODE FACTORY")
 
-    with DB('{}_masternode'.format(DB_NAME), should_reset=True) as db:
-        pass
+    # with DB('{}_masternode'.format(DB_NAME), should_reset=True) as db:
+    #     pass
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
     sk = Constants.Testnet.Masternodes[0]['sk']
@@ -37,8 +37,8 @@ def run_witness(slot_num):
 
     log = get_logger("WITNESS FACTORY")
 
-    with DB('{}_witness_{}'.format(DB_NAME, slot_num), should_reset=True) as db:
-        pass
+    # with DB('{}_witness_{}'.format(DB_NAME, slot_num), should_reset=True) as db:
+    #     pass
 
     w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -60,8 +60,8 @@ def run_delegate(slot_num):
     d_info['ip'] = os.getenv('HOST_IP')
 
     # Set default database name for this instance
-    with DB('{}_delegate_{}'.format(DB_NAME, slot_num), should_reset=True) as db:
-        pass
+    # with DB('{}_delegate_{}'.format(DB_NAME, slot_num), should_reset=True) as db:
+    #     pass
 
     log.critical("Building delegate on slot {} with info {}".format(slot_num, d_info))
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
@@ -99,10 +99,12 @@ class TestBootstrap(BaseNetworkTestCase):
         time.sleep(3)
         # Bootstrap witnesses
         for i in range(self.NUM_WITNESS):
+            time.sleep(1)
             self.execute_python('witness_{}'.format(i+1+1), wrap_func(run_witness, i), async=True)
 
         # Bootstrap delegates
         for i in range(self.NUM_DELEGATES):
+            time.sleep(1)
             self.execute_python('delegate_{}'.format(i+1+3), wrap_func(run_delegate, i), async=True)
 
         input("\n\nEnter any key to terminate")

@@ -19,7 +19,7 @@ class MPComposer(MPTesterBase):
         mock_sm.__name__ = name
         router = MagicMock()
 
-        reactor = ReactorInterface(router=router, loop=loop, verifying_key=Constants.Protocol.Wallets.get_vk(sk))
+        reactor = ReactorInterface(router=router, loop=loop, signing_key=sk)
         composer = Composer(interface=reactor, signing_key=sk)
 
         return composer, loop, [reactor._recv_messages()]

@@ -4,7 +4,7 @@ from cilantro.logger import get_logger
 from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages import ReactorCommand
 from cilantro import Constants
-from kade.dht import DHT
+from cilantro.protocol.overlay.dht import DHT
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
 import inspect
@@ -16,14 +16,8 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 CHILD_RDY_SIG = b'ReactorDaemon Process Ready'
 KILL_SIG = b'DIE'
 
-
-class ReactorDHT(DHT):
-    def status_update(self, *args, **kwargs):
-        print('Received status update from DHT:{}'.format(kwargs))
-
-
 class ReactorDaemon:
-    def __init__(self, url, verifying_key=None, name='Node'):
+    def __init__(self, url, sk=None, name='Node'):
         self.log = get_logger("{}.ReactorDaemon".format(name))
         self.log.info("ReactorDaemon started with url {}".format(url))
         self.url = url
@@ -43,9 +37,9 @@ class ReactorDaemon:
 
         # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
-        self.dht = ReactorDHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
+        self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
                        alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
-                       max_peers=Constants.Overlay.MaxPeers, block=False, cmd_cli=False)
+                       max_peers=Constants.Overlay.MaxPeers, block=False, cmd_cli=False, wipe_certs=True)
         self.log.debug('bootstrappable neighbors: {}'.format(self.dht.network.bootstrappableNeighbors()))
 
         # Set Executor _parent_name to differentiate between nodes in log files
@@ -144,9 +138,11 @@ class ReactorDaemon:
             # Check if URL has a VK inside
             vk = IPUtils.get_vk(url)
             if vk:
+                self.log.info('lookup start')
                 ip = await self.dht.network.lookup_ip(vk)
+                self.log.info('lookup end')
+                # assert ip, 'Cannot find ip associated with the VK {}'.format(vk)
                 new_url = IPUtils.interpolate_url(url, ip)
                 kwargs['url'] = new_url
-
 
         return executor_name, executor_func, kwargs

@@ -337,14 +337,19 @@ class VKBook:
         return li
 
     @staticmethod
-    def _get_vks(policy: str):
+    def _get_vks(policy=None):
+        condition = "where policy='{}'".format(policy) if policy else ''
         with DB() as db:
-            q = db.execute("select value from constants where policy='{}'".format(policy))
+            q = db.execute("select value from constants {}".format(condition))
             rows = q.fetchall()
 
             val = rows[0][0]
 
             return VKBook._destu_ify(val)
+
+    @staticmethod
+    def get_all():
+        return VKBook._get_vks()
 
     @staticmethod
     def get_masternodes():

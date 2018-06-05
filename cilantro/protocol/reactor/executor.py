@@ -6,7 +6,7 @@ from cilantro.protocol.structures import CappedSet, EnvelopeAuth
 import traceback
 from cilantro.protocol.statemachine import StateInput
 
-from kade.dht import DHT
+from cilantro.protocol.overlay.dht import DHT
 import asyncio, time
 import zmq.asyncio
 
