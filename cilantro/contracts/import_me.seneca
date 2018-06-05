@@ -1,0 +1,11 @@
+from seneca.modulelib import make_exports
+
+def foo():
+    return 'bar'
+
+if __name__ == '__main__':
+    pass
+else:
+    exports = make_exports(
+        foo,
+    )

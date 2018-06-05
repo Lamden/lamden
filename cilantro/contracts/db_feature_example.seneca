@@ -1,0 +1,101 @@
+#from seneca.storage import orm
+# TODO: figure out why this didn't work
+#from seneca.storage import tabular as t
+from seneca.storage.tabular import create_table, str_len, add_column, drop_column, drop_table
+
+if __name__ == '__main__':
+    drop_table('users')
+    u = create_table('users', [
+        ('first_name', str_len(30), True),
+        ('last_name', str_len(30), True),
+        ('nick_name', str_len(30)),
+        ('balance', int)
+    ])
+
+    b = create_table('bid', [
+        ('user_id', int),
+        ('amount', int)
+    ])
+
+
+    u1 = u.insert([{
+        'first_name': 'Test',
+        'last_name': 'User',
+        'nick_name': 't',
+        'balance': 0
+    }]).run()
+
+    q = u.select().where_equals('id', u1['last_row_inserted_id'])
+    print(q.run())
+
+
+    b1 = b.insert([{
+        'user_id': u1['last_row_inserted_id'],
+        'amount': 100
+    }]).run()
+
+
+    q1 = u.select().easy_join(b, on_src='id', on_dest='user_id')
+    print(q1.run())
+
+
+    u.delete().all_rows().run()
+    b.delete().all_rows().run()
+
+    drop_column(u, 'first_name')
+    add_column(u, ('given_name', str_len(30)))
+    add_column(u, ('unique_given_name', str_len(30), True))
+    print(u.column_names)
+
+
+#    drop_table(b)
+#    drop_table(u)
+
+#   b = create_table('bid', [
+#       ('user_id', int),
+#       ('amount', int)
+#   ])
+#   drop_table(u)
+#   add_column(u, ('balance', int) )
+#   drop_column(u, 'column_name')
+
+# Add some users
+#    def add_user(x):
+#        print("****** adding user...")
+#        u.insert([{
+#            'first_name': 'john',
+#            'last_name': 'doe',
+#            'nick_name': 'doughboy',
+#            'balance': 0
+#        }]).run()
+#    list(map(add_user, range(10)))
+#
+
+
+#    q = (u.select()
+#        .easy_join(b, on_src='id', on_dest='user_id')
+#        )
+#
+#    print(q.build_query())
+#    print(q.run())
+#
+#    print(u.update({'balance': 1000, 'nick_name': 'baller'}).all_rows().run())
+#    print(u.select().where_equals('nick_name', 'baller').run())
+#
+#    print(u.delete().all_rows().run())
+#    print(u.select().run())
+#
+    '''
+    [{ id:118,
+        first_name:'john',
+        'last_name':'doe',
+        'nickname':'doughboy',
+        'balance':0,
+        '_joined':{
+            'orders': {
+                'date': '3/27/2018',
+                'quantity': 5
+            }
+        }
+    }]
+    '''

@@ -1,0 +1,3 @@
+import rbac
+
+rbac.create_user('tester', 'admin')
