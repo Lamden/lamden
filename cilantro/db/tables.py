@@ -16,7 +16,7 @@ def build_tables(ex, should_drop=True):
     contracts = build_contracts_table(ex, should_drop)
     blocks = build_blocks_table(ex, should_drop)
 
-    # seed_contracts(ex, contracts)
+    seed_contracts(ex, contracts)
     seed_blocks(ex, blocks)
 
     tables = type('Tables', (object,), {'contracts': contracts, 'blocks': blocks})

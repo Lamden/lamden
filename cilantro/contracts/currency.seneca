@@ -1,4 +1,5 @@
 #!/usr/bin/env seneca_0.1
+# UNITTEST_FLAG_CURRENCY_SENECA
 
 ## Example currency smart contract ##
 

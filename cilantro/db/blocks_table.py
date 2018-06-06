@@ -3,7 +3,7 @@ import seneca.seneca_internal.storage.easy_db as t
 from cilantro.db.tables import create_table
 
 
-log = get_logger("DB Creator")
+log = get_logger("BlocksTable")
 
 GENESIS_HASH = '0' * 64
 GENESIS_TREE = ''
@@ -28,3 +28,13 @@ def seed_blocks(ex, blocks_table):
             'tree': GENESIS_TREE,
             'signatures': GENESIS_SIGS,
         }]).run(ex)
+
+def validate_blockchain(ex, blocks_table):
+    """
+    Validates the cryptographic integrity of the block chain. This involves:
+
+    :param ex:
+    :param blocks_table:
+    :return: None
+    :raises: An exception/assertion if
+    """
