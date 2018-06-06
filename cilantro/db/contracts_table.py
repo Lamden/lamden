@@ -77,8 +77,7 @@ def _read_contract_files() -> list:
             code_str = f.read()
             assert len(code_str) > 0, "Empty code string for filename {}".format(filename)
 
-            # contract_id = Hasher.hash(filename)
-            contract_id = filename
+            contract_id = _contract_id_for_filename(filename)
 
             contracts.append((contract_id, code_str))
 
@@ -89,6 +88,18 @@ def _read_contract_files() -> list:
             # end debug
 
     return contracts
+
+
+def _contract_id_for_filename(filename):
+    """
+    Returns the contract_id associated with a filename
+
+    For now this is just the filename itself
+    """
+    # contract_id = Hasher.hash(filename)
+    contract_id = filename
+
+    return contract_id
 
 
 def _validate_filename(filename):

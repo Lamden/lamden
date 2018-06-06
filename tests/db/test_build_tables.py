@@ -86,7 +86,7 @@ class TestBuildTables(TestCase):
 
         self.assertTrue(expected_snipped in actual_code)
 
-    def test_contract_lookup_none(self):
+    def test_contract_lookup_doesnt_exist(self):
         ex = self.default_ex()
 
         tables = build_tables(ex, should_drop=True)
