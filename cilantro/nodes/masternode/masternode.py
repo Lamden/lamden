@@ -20,49 +20,56 @@ MNNewBlockState = 'MNNewBlockState'
 class Masternode(NodeBase):
 
     async def route_http(self, request):
-        return await self.route_contract_submission(request)
+        self.log.debug("got request {}".format(request))
 
-        # self.log.debug("Got request {}".format(request))
-        raw_data = await request.content.read()
+        self.log.debug("val of request.path: {}".format(request.path))
+        self.log.debug("val of request.path_qs: {}".format(request.path_qs))
+        self.log.debug("val of request.method: {}".format(request.method))
 
-        # self.log.debug("Got raw_data: {}".format(raw_data))
-        container = TransactionContainer.from_bytes(raw_data)
-
-        # self.log.debug("Got container: {}".format(container))
-        tx = container.open()
-        self.log.debug("Masternode got tx: {}".format(tx))
-
-        import traceback
-        try:
-            self.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
-            return web.Response(text="Successfully published transaction: {}".format(tx))
-        except Exception as e:
-            self.log.error("\n Error publishing HTTP request...err = {}".format(traceback.format_exc()))
-            return web.Response(text="fukt up processing request with err: {}".format(e))
-
-    async def route_contract_submission(self, request):
-        raw_data = await request.content.read()
-
-        self.log.critical("got raw submission data {}".format(raw_data))
-
-        container = TransactionContainer.from_bytes(raw_data)
-
-        contract_submission = container.open()
-
-        self.log.critical("Got contract submission {}".format(contract_submission))
-
-        block_hash = None
-        with DB() as db:
-            q = db.execute('select number, hash from blocks order by number desc limit 1')
-            row = q.fetchall()[0]
-            log.critical("Got block number {} and block hash {}".format(row[0], row[1]))
-            block_hash = row[1]
-
-        new_submission = ContractSubmission.node_create(user_id=contract_submission.user_id, contract_code=contract_submission.contract_code, block_hash=block_hash)
-
-        log.critical("\n\n mn got new contract submission {}\n\n".format(new_submission))
-
-        self.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=new_submission)
+    # async def route_http(self, request):
+    #     # return await self.route_contract_submission(request)
+    #
+    #     # self.log.debug("Got request {}".format(request))
+    #     raw_data = await request.content.read()
+    #
+    #     # self.log.debug("Got raw_data: {}".format(raw_data))
+    #     container = TransactionContainer.from_bytes(raw_data)
+    #
+    #     # self.log.debug("Got container: {}".format(container))
+    #     tx = container.open()
+    #     self.log.debug("Masternode got tx: {}".format(tx))
+    #
+    #     import traceback
+    #     try:
+    #         self.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
+    #         return web.Response(text="Successfully published transaction: {}".format(tx))
+    #     except Exception as e:
+    #         self.log.error("\n Error publishing HTTP request...err = {}".format(traceback.format_exc()))
+    #         return web.Response(text="fukt up processing request with err: {}".format(e))
+    #
+    # async def route_contract_submission(self, request):
+    #     raw_data = await request.content.read()
+    #
+    #     self.log.critical("got raw submission data {}".format(raw_data))
+    #
+    #     container = TransactionContainer.from_bytes(raw_data)
+    #
+    #     contract_submission = container.open()
+    #
+    #     self.log.critical("Got contract submission {}".format(contract_submission))
+    #
+    #     block_hash = None
+    #     with DB() as db:
+    #         q = db.execute('select number, hash from blocks order by number desc limit 1')
+    #         row = q.fetchall()[0]
+    #         log.critical("Got block number {} and block hash {}".format(row[0], row[1]))
+    #         block_hash = row[1]
+    #
+    #     new_submission = ContractSubmission.node_create(user_id=contract_submission.user_id, contract_code=contract_submission.contract_code, block_hash=block_hash)
+    #
+    #     log.critical("\n\n mn got new contract submission {}\n\n".format(new_submission))
+    #
+    #     self.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=new_submission)
 
 
 class MNBaseState(State):
