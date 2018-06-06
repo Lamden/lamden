@@ -22,12 +22,16 @@ class TestRunContracts(TestCase):
         user_id = 'god'
 
         contract_code = lookup_contract_code(ex, contract_id, tables.contracts)
-        assert contract_code is not None, 'comon you amateur why is ur contract code None'
+        assert contract_code is not None
 
         global_run_data = {'caller_user_id': user_id, 'execution_datetime': None, 'caller_contract_id': contract_id}
         this_contract_run_data = {'author': user_id, 'execution_datetime': None, 'contract_id': contract_id}
 
         execute_contract(global_run_data, this_contract_run_data, contract_code, is_main=True,
                          module_loader=ft_module_loader, db_executer=ex)
+
+
+    def test_run_contract_with_args(self):
+        pass
 
 
