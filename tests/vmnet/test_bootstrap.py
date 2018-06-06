@@ -14,12 +14,8 @@ def run_mn():
     from cilantro.logger import get_logger
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
     log = get_logger("MASTERNODE FACTORY")
-
-    with DB('{}_masternode'.format(DB_NAME), should_reset=True) as db:
-        pass
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
     sk = Constants.Testnet.Masternodes[0]['sk']
@@ -32,13 +28,9 @@ def run_witness(slot_num):
     from cilantro.logger import get_logger
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
 
     log = get_logger("WITNESS FACTORY")
-
-    with DB('{}_witness_{}'.format(DB_NAME, slot_num), should_reset=True) as db:
-        pass
 
     w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -51,17 +43,12 @@ def run_delegate(slot_num):
     from cilantro.logger import get_logger
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
 
     log = get_logger("DELEGATE FACTORY")
 
     d_info = Constants.Testnet.Delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
-
-    # Set default database name for this instance
-    with DB('{}_delegate_{}'.format(DB_NAME, slot_num), should_reset=True) as db:
-        pass
 
     log.critical("Building delegate on slot {} with info {}".format(slot_num, d_info))
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
