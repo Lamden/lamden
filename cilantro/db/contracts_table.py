@@ -43,6 +43,7 @@ def seed_contracts(ex, contracts_table):
             'execution_status': 'pending',
         }]).run(ex)
 
+
 def lookup_contract_code(executor, contract_id: str, contract_table) -> str:
     """
     Looks up the code for a contract by id. Returns an empty string if it could not be found.
@@ -58,7 +59,6 @@ def lookup_contract_code(executor, contract_id: str, contract_table) -> str:
         return ''
 
     return query.rows[0][0]
-
 
 
 def _read_contract_files() -> list:
@@ -83,9 +83,9 @@ def _read_contract_files() -> list:
             contracts.append((contract_id, code_str))
 
             # TODO remove this (debug lines)
-            max_len = min(len(code_str), 12)
-            log.debug("filename {} has contract_id {} has author {} and code has code: \n {} ...."
-                      .format(filename, contract_id, GENESIS_AUTHOR, code_str[:max_len]))
+            max_len = min(len(code_str), 60)
+            log.debug("filename {} has contract_id {} has author {} and code has code: \n {} ....[SNIPPED TRUNCATED]"
+                      .format(filename, contract_id, GENESIS_AUTHOR, code_str[0:max_len]))
             # end debug
 
     return contracts
@@ -98,7 +98,7 @@ def _validate_filename(filename):
     :raises: An assertion if the filename is invalid
     """
     err_str = "file named {} is not a valid smart contract (must be a .seneca file)".format(filename)
-    assert filename, err_str
+    assert filename, "Got filename that is empty string"
 
     dot_idx = filename.find('.')
     assert dot_idx, err_str
