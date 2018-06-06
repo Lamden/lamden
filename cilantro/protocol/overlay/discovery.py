@@ -24,12 +24,14 @@ class Discovery:
     async def discover(self, mode, return_asap=True):
         ips = {}
         if mode in ['test', 'local']:
-            host = os.getenv('HOST_IP', '127.0.0.1')
+            self.ip = os.getenv('HOST_IP', '127.0.0.1')
+            host = self.ip
             hostname = 'virtual_network' if os.getenv('HOST_IP') else 'localhost'
             ips[hostname] = [decimal_to_ip(d) for d in range(*get_local_range(host))]
             self.subnets[get_subnet(host)] = {'area': hostname, 'count': 0}
         else:
             public_ip = get_public_ip()
+            self.ip = public_ip
             if mode == 'neighborhood':
                 for area in get_region_range(public_ip):
                     ip, city = area.split(',')

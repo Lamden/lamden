@@ -21,9 +21,9 @@ class DHT(Discovery):
         if len(self.ips) == 0: self.ips[os.getenv('HOST_IP', '127.0.0.1')] = int(time.time())
 
         self.network_port = os.getenv('NETWORK_PORT', 5678)
-        if not kwargs.get("auth_payload"): auth_payload = DHT.auth_payload
-        if not kwargs.get("auth_callback"): auth_callback = DHT.auth_callback
-        self.network = Network(sk=sk, loop=self.loop, auth_payload=auth_payload, auth_callback=auth_callback, *args, **kwargs)
+        if not kwargs.get("auth_payload"): kwargs['auth_payload'] = DHT.auth_payload
+        if not kwargs.get("auth_callback"): kwargs['auth_callback'] = DHT.auth_callback
+        self.network = Network(sk=sk, loop=self.loop, *args, **kwargs)
         self.network.listen(self.network_port)
         self.join_network()
 
@@ -91,6 +91,7 @@ class DHT(Discovery):
         correct_payload = b'4aeba121f535ac9cc2b2c6a6629988308de5fca9aadc57b2023e19e3d83f4f88'
         log.debug('masternode_vk = {}'.format(payload))
         return correct_payload == payload
+
 
 if __name__ == '__main__':
     server = DHT(node_id='vk_{}'.format(os.getenv('HOST_IP', '127.0.0.1')), block=True, cmd_cli=True)

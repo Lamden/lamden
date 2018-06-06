@@ -111,20 +111,20 @@ class Ironhouse:
 
     def authenticate(self, target_public_key, ip):
         # log.debug('{} --> {}'.format(target_public_key, ip))
-        return True
-        # if ip == os.getenv('HOST_IP'): return True
-        # client = self.ctx.socket(zmq.REQ)
-        # client = self.secure_socket(client, target_public_key, ip)
-        # client.connect('tcp://{}:{}'.format(ip, self.auth_port))
-        # client.send(os.getenv('PEPPER', 'cilantro').encode('utf-8'))
-        # authorized = False
-        #
-        # if client.poll(1000):
-        #     msg = client.recv()
-        #     log.debug('got secure reply {}'.format(msg))
-        #     authorized = self.auth_callback(msg) if self.auth_callback else msg
-        # client.close()
-        # return authorized
+        # return True
+        if ip == os.getenv('HOST_IP'): return True
+        client = self.ctx.socket(zmq.REQ)
+        client = self.secure_socket(client, target_public_key, ip)
+        client.connect('tcp://{}:{}'.format(ip, self.auth_port))
+        client.send(os.getenv('PEPPER', 'cilantro').encode('utf-8'))
+        authorized = False
+
+        if client.poll(1000):
+            msg = client.recv()
+            log.debug('got secure reply {}'.format(msg))
+            authorized = self.auth_callback(msg) if self.auth_callback else msg
+        client.close()
+        return authorized
 
     def setup_secure_server(self):
         self.ctx = self.secure_context()

@@ -16,7 +16,8 @@ class Router:
         # Define mapping between callback names and router functions
         self.routes = {StateInput.INPUT: self._route,
                        StateInput.REQUEST: self._route_request,
-                       StateInput.TIMEOUT: self._route}
+                       StateInput.TIMEOUT: self._route,
+                       StateInput.LOOKUP_FAILED: self._lookup_failed}
 
     def route_callback(self, cmd: ReactorCommand):
         """
@@ -34,17 +35,18 @@ class Router:
             assert cmd.envelope.verify_seal(), "Envelope couldnt be verified! This should of been checked " \
                                                "by the ReactorDaemon!!!!"
 
-        envelope = None
-        try:
-            envelope = cmd.envelope
-            if not envelope.verify_seal():
-                self.log.error("\n\n\n Could not verify seal for envelope {} \n\n\n".format(envelope))
-                return
-            # Ensure its possible to deserialize the data (this will raise exception if not)
-            # Deserializing the data (via from_bytes(..) also runs .validate() on the message)
-            msg = envelope.message
-        except Exception as e:
-            self.log.error("\n\n!!!!!\nError unpacking cmd envelope {}\nCmd:\n{}\n!!!!\n".format(e, cmd))
+        if cmd.envelope:
+            envelope = None
+            try:
+                envelope = cmd.envelope
+                if not envelope.verify_seal():
+                    self.log.error("\n\n\n Could not verify seal for envelope {} \n\n\n".format(envelope))
+                    return
+                # Ensure its possible to deserialize the data (this will raise exception if not)
+                # Deserializing the data (via from_bytes(..) also runs .validate() on the message)
+                msg = envelope.message
+            except Exception as e:
+                self.log.error("\n\n!!!!!\nError unpacking cmd envelope {}\nCmd:\n{}\n!!!!\n".format(e, cmd))
 
         # Route command to subroutine based on callback
         self.routes[cmd.callback](cmd)
@@ -75,3 +77,15 @@ class Router:
         self.log.debug("Sending reply message {}".format(reply))
         self.sm.composer.send_reply(message=reply, request_envelope=cmd.envelope)
 
+    def _lookup_failed(self, cmd: ReactorCommand):
+        self.log.critical("X12345 Router got lookup timeout: {}".format(cmd))
+
+        kwargs = cmd.kwargs
+        del(kwargs['callback'])
+        new_cmd = ReactorCommand.create_cmd(envelope=cmd.envelope, **kwargs)
+
+        self.log.critical("Z543 Retrying command after failed lookup...cmd = {}".format(new_cmd))
+        import time
+        time.sleep(0.5)
+
+        self.sm.composer.interface.send_cmd(new_cmd)

@@ -124,12 +124,9 @@ class Network(object):
 
     async def lookup_ip(self, node_key):
         node_id = digest(node_key)
-        public_key = VerifyKey(bytes.fromhex(node_key)).to_curve25519_public_key()._public_key.hex()
-        node = Node(node_id=node_id, public_key=public_key)
 
-        Node(node_id=digest(self.ironhouse.vk), public_key=self.ironhouse.public_key)
         nearest = self.protocol.router.findNeighbors(self.node)
-        spider = NodeSpiderCrawl(self.protocol, node, nearest, self.ksize, self.alpha)
+        spider = NodeSpiderCrawl(self.protocol, self.node, nearest, self.ksize, self.alpha)
 
         log.debug("Starting lookup for node_key {}".format(node_key))
         res_node = await spider.find(node_id=node_id)

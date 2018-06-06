@@ -7,6 +7,7 @@ from cilantro import Constants
 from cilantro.protocol.overlay.dht import DHT
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
+from cilantro.protocol.statemachine import *
 import inspect
 
 import uvloop
@@ -81,7 +82,7 @@ class ReactorDaemon:
 
             assert cmd.class_name and cmd.func_name, "Received invalid command with no class/func name!"
 
-            await self._execute_cmd(cmd)
+            self._execute_cmd(cmd)
 
     def _teardown(self):
         """
@@ -99,14 +100,14 @@ class ReactorDaemon:
         self.log.warning("Closing event loop")
         self.loop.stop()
 
-    async def _execute_cmd(self, cmd: ReactorCommand):
+    def _execute_cmd(self, cmd: ReactorCommand):
         """
         Propagates a command to the appropriate executor
         :param cmd: an instance of ReactorCommand
         """
         assert isinstance(cmd, ReactorCommand), "Cannot execute cmd {} that is not a ReactorCommand object".format(cmd)
 
-        cmd_args = await self._parse_cmd(cmd)
+        cmd_args = self._parse_cmd(cmd)
         if cmd_args:
             executor_name, executor_func, kwargs = cmd_args
         else:
@@ -122,7 +123,7 @@ class ReactorDaemon:
         # Execute command
         getattr(self.executors[executor_name], executor_func)(**kwargs)
 
-    async def _parse_cmd(self, cmd: ReactorCommand):
+    def _parse_cmd(self, cmd: ReactorCommand):
         """
         Parses a cmd for execution, by extracting/preparing the necessary kwargs for execution.
         :param cmd: an instance of ReactorCommand
@@ -148,9 +149,13 @@ class ReactorDaemon:
             # Check if URL has a VK inside
             vk = IPUtils.get_vk(url)
             if vk:
-                ip = self.dht.network.lookup_ip_in_cache(vk)
+                if vk == self.dht.network.ironhouse.vk:
+                    ip = self.dht.ip
+                else:
+                    ip = self.dht.network.lookup_ip_in_cache(vk)
                 if not ip:
                     self.log.info("Could not find ip for vk {} in cache. Performing lookup in DHT.".format(vk))
+
                     asyncio.ensure_future(self._lookup_ip(cmd, url, vk))
                     return
 
@@ -160,7 +165,6 @@ class ReactorDaemon:
         return executor_name, executor_func, kwargs
 
     async def _lookup_ip(self, cmd, url, vk):
-        self.log.critical("\n\n\n THIS HSHOULD NOT GET RUNANYRUNANYRUNANYMORE RIGHT \n\n\n")
         ip = None
         try:
             ip = await self.dht.network.lookup_ip(vk)
@@ -176,7 +180,13 @@ class ReactorDaemon:
 
         if ip is None:
             self.log.critical("\n COULD NOT FIND IP FOR VK {} \n".format(vk))
+
+            kwargs = cmd.kwargs
+            callback = ReactorCommand.create_callback(callback=StateInput.LOOKUP_FAILED, **kwargs)
+            self.log.debug("Sending callback failure to mainthread {}".format(callback))
+            self.socket.send(callback.serialize())
             # TODO -- send callback to SM saying hey i couldnt lookup this vk
+
             return
 
         # Send interpolated command back through pipeline
@@ -185,4 +195,4 @@ class ReactorDaemon:
         kwargs['url'] = new_url
         new_cmd = ReactorCommand.create_cmd(envelope=cmd.envelope, **kwargs)
 
-        await self._execute_cmd(new_cmd)
+        self._execute_cmd(new_cmd)
