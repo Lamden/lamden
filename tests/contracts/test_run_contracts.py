@@ -13,7 +13,7 @@ class TestRunContracts(TestCase):
 
     def test_run_contract(self):
         def ft_module_loader(contract_id):
-            return global_run_data, contract_code
+            return this_contract_run_data, contract_code
 
         ex = self.default_ex()
         tables = build_tables(ex, should_drop=True)
