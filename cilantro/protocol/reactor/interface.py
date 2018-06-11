@@ -56,13 +56,13 @@ class ReactorInterface:
 
     def _teardown(self):
         """
-        Close sockets. Teardown executors. Close Event Loop.
+        Close sockets. Close Event Loop.
         """
         self.log.critical("Tearing down Reactor Daemon process")
 
         self.log.warning("Signaling KILL to Deamon process")
         self.socket.send(KILL_SIG)
-        time.sleep(1)  # make sure message gets sent before we close the socket
+        time.sleep(0.2)  # make sure message gets sent before we close the socket
 
         self.log.warning("Closing pair socket")
         self.socket.close()

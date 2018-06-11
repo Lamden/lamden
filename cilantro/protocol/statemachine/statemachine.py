@@ -43,7 +43,6 @@ class StateMachine:
         :param next_state: The state to transition to. Must be a State class (not instance) or string.
         If it's a class, that class must exist in _STATES which is defined by the StateMachine subclass. If it's a
         string, a class of that name must exist in _STATES
-
         """
         # Validate next_state arg
         if type(next_state) is str:
