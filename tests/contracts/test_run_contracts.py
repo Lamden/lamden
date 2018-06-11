@@ -1,5 +1,6 @@
 from cilantro.db import *
 from unittest import TestCase
+import unittest
 from datetime import datetime
 
 from seneca.execute_sc import execute_contract
@@ -34,3 +35,5 @@ class TestRunContracts(TestCase):
         pass
 
 
+if __name__ == '__main__':
+    unittest.main()
