@@ -3,7 +3,7 @@ from unittest import TestCase
 from seneca.seneca_internal.storage.mysql_executer import Executer
 from cilantro.db.blocks_table import *
 from cilantro.db.contracts_table import *
-from cilantro.db.contracts_table import _read_contract_files
+from cilantro.db.contracts_table import _read_contract_files, _contract_id_for_filename
 
 
 class TestBuildTables(TestCase):
@@ -81,7 +81,7 @@ class TestBuildTables(TestCase):
         tables = build_tables(ex, should_drop=True)
         contracts_table = tables.contracts
 
-        actual_code = lookup_contract_code(ex, 'currency.seneca', contracts_table)
+        actual_code = lookup_contract_code(ex, _contract_id_for_filename('currency.seneca'), contracts_table)
         expected_snipped = "# UNITTEST_FLAG_CURRENCY_SENECA"
 
         self.assertTrue(expected_snipped in actual_code)
@@ -92,7 +92,7 @@ class TestBuildTables(TestCase):
         tables = build_tables(ex, should_drop=True)
         contracts_table = tables.contracts
 
-        contract_code = lookup_contract_code(ex, 'i_dont_exist_1729.seneca', contracts_table)
+        contract_code = lookup_contract_code(ex, 'i_dont_exist_1729', contracts_table)
 
         self.assertEqual(contract_code, '')
 

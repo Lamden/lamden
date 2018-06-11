@@ -1,4 +1,0 @@
-import seneca.runtime as rt
-
-print('this contract author: ', rt.this_contract.author)
-print('root contract author: ', rt.root_contract.author)

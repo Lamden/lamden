@@ -2,7 +2,7 @@ from cilantro.logger import get_logger
 from cilantro.utils import Hasher
 from cilantro.db.tables import create_table
 import seneca.seneca_internal.storage.easy_db as t
-from seneca.seneca_internal.storage.mysql_executer import Executer
+from seneca.execute_sc import execute_contract
 import datetime
 import os
 
@@ -34,6 +34,7 @@ def seed_contracts(ex, contracts_table):
     """
     Seeds the contracts table with all contracts found in cilantro/contracts
     """
+    # Insert contract code into table
     for contract_id, code_str in _read_contract_files():
         contracts_table.insert([{
             'contract_id': contract_id,
@@ -42,6 +43,10 @@ def seed_contracts(ex, contracts_table):
             'execution_datetime': GENESIS_DATE,
             'execution_status': 'pending',
         }]).run(ex)
+
+    # Run contracts
+    for contract_id, code_str in _read_contract_files():
+        _execute_contract(ex, contracts_table, contract_id, code_str)
 
 
 def lookup_contract_code(executor, contract_id: str, contract_table) -> str:
@@ -55,10 +60,26 @@ def lookup_contract_code(executor, contract_id: str, contract_table) -> str:
     assert len(query.rows) <= 1, "Multiple rows found for contract_id {}".format(contract_id)
 
     if len(query.rows) == 0:
-        log.warning("No contract row found for contract_id {}".format(contract_id))
+        log.warning("[inside lookup_contract_code] No contract row found for contract_id {}".format(contract_id))
         return ''
 
     return query.rows[0][0]
+
+
+def _execute_contract(executor, contract_table, contract_id: str, code_str: str, user_id=GENESIS_AUTHOR):
+    def ft_module_loader(contract_name):
+        log.debug("[inside _execute_contract] Attempting to load contract with id {}".format(contract_name))
+        code = lookup_contract_code(executor, contract_name, contract_table)
+        assert code, "No code for contract id '{}' could be found".format(contract_name)
+        return this_contract_run_data, code
+
+    log.debug("[inside _execute_contract] Executing contract with id {} and user_id {}".format(contract_id, user_id))
+
+    global_run_data = {'caller_user_id': user_id, 'execution_datetime': None, 'caller_contract_id': contract_id}
+    this_contract_run_data = {'author': user_id, 'execution_datetime': None, 'contract_id': contract_id}
+
+    execute_contract(global_run_data, this_contract_run_data, code_str, is_main=True,
+                     module_loader=ft_module_loader, db_executer=executor)
 
 
 def _read_contract_files() -> list:
@@ -71,7 +92,7 @@ def _read_contract_files() -> list:
 
     for filename in os.listdir(CONTRACTS_DIR):
         _validate_filename(filename)
-        log.info("Loading contract code for file {}".format(filename))
+        log.info("[inside _read_contract_files] Loading contract code for file {}".format(filename))
 
         with open('{}/{}'.format(CONTRACTS_DIR, filename), 'r') as f:
             code_str = f.read()
@@ -83,7 +104,7 @@ def _read_contract_files() -> list:
 
             # TODO remove this (debug lines)
             max_len = min(len(code_str), 60)
-            log.debug("filename {} has contract_id {} has author {} and code has code: \n {} ....[SNIPPED TRUNCATED]"
+            log.debug("[inside _read_contract_files] filename {} has contract_id {} has author {} and code has code: \n {} ....[SNIPPED TRUNCATED]"
                       .format(filename, contract_id, GENESIS_AUTHOR, code_str[0:max_len]))
             # end debug
 
@@ -94,10 +115,10 @@ def _contract_id_for_filename(filename):
     """
     Returns the contract_id associated with a filename
 
-    For now this is just the filename itself
+    For now this is just the filename without the extensions (ie 'hello.seneca' -> 'hello')
     """
     # contract_id = Hasher.hash(filename)
-    contract_id = filename
+    contract_id = filename.split('.')[0]
 
     return contract_id
 
