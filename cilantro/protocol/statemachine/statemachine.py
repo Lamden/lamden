@@ -2,6 +2,7 @@ from cilantro.protocol.statemachine.state import State, EmptyState
 from cilantro.protocol.statemachine.decorators import StateTransition
 from cilantro.utils import lazy_property
 import inspect
+import asyncio
 
 
 class StateMachine:
@@ -28,14 +29,34 @@ class StateMachine:
         self.state = EmptyState(self)
         self.states = {s: s(self) for s in self._STATES}
 
-    def start(self):
+    def start(self, run_in_loop=False):
         """
-        Starts the StateMachine by transitioning into its initial state
+        Starts the StateMachine by transitioning into its initial state. If run_in_loop is True, then this transitioning
+        into initial state will be run inside an event loop. This is necessary for loop-using functionality like
+        state timeouts.
+
+        However, run_in_loop should always be false for Cilantro in production! This is because NodeBase, which is a
+        StateMachine subclass, manages its own event loop, that is gaurenteed to run_forever once StateMachine.start()
+        relinquishes control.
+        the case if StateMachine is used as a library outside of Cilantro, or in Unit Tests).
         """
+        def _start():
+            self.is_started = True
+            self.transition(self._INIT_STATE)
+
         assert not self.is_started, "StateMachine already started -- .start() must only be invoked once."
 
-        self.is_started = True
-        self.transition(self._INIT_STATE)
+        if run_in_loop:
+            loop = asyncio.get_event_loop()
+
+            # Sanity check to make sure if run_in_loop is True, then the default event loop is not already running
+            assert not loop.is_running(), "Loop cannot already be running if run_in_loop is passed!"
+
+            self._log("Starting StateMachine and running event loop")
+            loop.run_until_complete(asyncio.coroutine(_start)())
+        else:
+            self._log("Starting StateMachine")
+            _start()
 
     def transition(self, next_state, *args, **kwargs):
         """

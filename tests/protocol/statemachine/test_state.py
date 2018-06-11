@@ -175,6 +175,10 @@ class StateTest(TestCase):
         self.assertEqual(timeout_func, TrafficLightYellowState.timeout)
         self.assertEqual(YELLOW_TIMEOUT_DUR, timeout_dur)
 
+    def test_config_timeout_func_none(self):
+        timeout_func = getattr(TrafficLightRedState, StateTimeout.TIMEOUT_FLAG)
+        self.assertEqual(timeout_func, None)
+
     def test_enter_any_decorator(self):
         mock_sm = MagicMock()
 

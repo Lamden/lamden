@@ -142,7 +142,7 @@ class StateMeta(type):
 
             if hasattr(func, StateTimeout.TIMEOUT_FLAG):
                 assert getattr(clsobj, StateTimeout.TIMEOUT_FLAG) is None, \
-                    "State timeout already set to {}. Attempted to reset it to {}"\
+                    "State timeout function already set to {}. Attempted to reset it to {}"\
                     .format(getattr(clsobj, StateTimeout.TIMEOUT_FLAG), func)
                 assert hasattr(func, StateTimeout.TIMEOUT_DUR), "StateMeta Error! Function has no timeout duration attr"
 
@@ -185,8 +185,8 @@ class State(metaclass=StateMeta):
 
         timeout_func = getattr(self, StateTimeout.TIMEOUT_FLAG)
 
+        # On entry, schedule the timeout function (if any), and run the appropriate ENTRY transition handler
         if trans_type == StateTransition.ENTER:
-            # Check for timeout trigger
             if timeout_func:
                 timeout_dur = getattr(self, StateTimeout.TIMEOUT_DUR)
 
@@ -195,9 +195,12 @@ class State(metaclass=StateMeta):
 
             trans_func(**self._prune_kwargs(trans_func, prev_state=state, **kwargs))
 
+        # On exit, cancel the timeout function (if any), and run the appopriate EXIT transition handler
         elif trans_type == StateTransition.EXIT:
-            # Cancel timeout trigger (if any)
-            if timeout_func and self.timeout_handler:
+            if timeout_func:
+                assert hasattr(self, 'timeout_handler') and self.timeout_handler, \
+                    "State has timeout function present, but self.timeout_handler is not set"
+
                 self.log.debug("Canceling timeout trigger")
                 self.timeout_handler.cancel()
                 self.timeout_handler = None
@@ -273,6 +276,7 @@ class State(metaclass=StateMeta):
         return None
 
     def __eq__(self, other):
+        # TODO is this too sketch and mad scientist-like? -- davis
         """
         An equality check on steroids. Used in State + StateMachine classes for type introspection. This
         method should return true if both self and other are the same CLASS of state. Other may be either another

@@ -139,6 +139,15 @@ class StateMachineTest(TestCase):
 
         self.assertTrue(type(sm.state) is LiftState)
 
+    def test_start_run_in_loop(self):
+        sm = StuMachine()
+
+        sm.start(run_in_loop=True)
+
+        sm.transition(LiftState)
+
+        self.assertTrue(type(sm.state) is LiftState)
+
     def test_transition_args(self):
         """
         Tests transitioning into a state with args produced to intended effect
