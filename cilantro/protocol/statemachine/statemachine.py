@@ -15,15 +15,18 @@ class StateMachine:
         """
         TODO -- docstring
         """
-        self.is_started = False
-
+        # Sanity checks (mostly for catching dev bugs)
         assert len(self._STATES) > 0, \
             "_STATES is empty. Register states using class decorator @StateMachineSubclass.register_state"
         assert self._INIT_STATE is not None, \
             "_INIT_STATE is None. Add an init state using class decorator @StateMachineSubclass.register_init_state"
+        assert self._INIT_STATE in self._STATES, "Init state {} not found in self._STATES {}".format(self._INIT_STATE,
+                                                                                                     self._STATES)
+        self.is_started = False
 
+        # Instantiate state objects
         self.state = EmptyState(self)
-        self.states = None
+        self.states = {s: s(self) for s in self._STATES}
 
     def start(self):
         """
@@ -32,14 +35,8 @@ class StateMachine:
         """
         assert not self.is_started, "StateMachine already started -- .start() must only be invoked once."
 
-        states = self._STATES
-        init_state = self._INIT_STATE
-
-        self.states = {s: s(self) for s in states}
-        assert init_state in self.states, "Init state {} not in states {}".format(init_state, self.states)
-
         self.is_started = True
-        self.transition(init_state)
+        self.transition(self._INIT_STATE)
 
     def transition(self, next_state, *args, **kwargs):
         """
@@ -53,7 +50,7 @@ class StateMachine:
         if type(next_state) is str:
             retrieved_state = self._state_cls_map.get(next_state)
             assert retrieved_state, "No state named {} found in self.states {} with _state_cls_map {}"\
-                               .format(next_state, self.states, self._state_cls_map)
+                                    .format(next_state, self.states, self._state_cls_map)
             next_state = retrieved_state
         elif inspect.isclass(next_state) and issubclass(next_state, State):
             pass
