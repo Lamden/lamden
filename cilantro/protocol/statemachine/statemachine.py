@@ -30,8 +30,7 @@ class StateMachine:
 
     def start(self):
         """
-        Starts the StateMachine by instantiating all state classes, and then transitioning the machine into its
-        initial state
+        Starts the StateMachine by transitioning into its initial state
         """
         assert not self.is_started, "StateMachine already started -- .start() must only be invoked once."
 
