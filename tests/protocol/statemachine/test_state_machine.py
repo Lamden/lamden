@@ -104,6 +104,30 @@ class LiftState(State):
         self.log.debug("Doing lift: {} ... with weight: {}".format(self.current_lift, self.current_weight))
 
 
+@StuMachine.register_state
+class DanceState(State):
+
+    def reset_attrs(self):
+        pass
+
+    # Stu is not keen on dancing so he limits his moves to a 1 second window
+    @timeout_after(1.0)
+    def stop_dancing(self):
+        self.log.debug("ay im done dancing...let go to chill state")
+        self.parent.transition('ChillState')
+
+
+@StuMachine.register_state
+class ChillState(State):
+
+    def reset_attrs(self):
+        pass
+
+    @enter_from_any
+    def enter_any(self, prev_state):
+        self.log.debug("Im chilling. Before I was chilling, I was in doing state: <{}>".format(prev_state))
+
+
 class StateMachineTest(TestCase):
 
     def test_register_decorators(self):
@@ -134,15 +158,6 @@ class StateMachineTest(TestCase):
         sm = StuMachine()
 
         sm.start()
-
-        sm.transition(LiftState)
-
-        self.assertTrue(type(sm.state) is LiftState)
-
-    def test_start_run_in_loop(self):
-        sm = StuMachine()
-
-        sm.start(run_in_loop=True)
 
         sm.transition(LiftState)
 
@@ -267,6 +282,5 @@ class StateMachineTest(TestCase):
         sm.transition(CodeState)  # the transition handler logic for this should put stu back to sleep
 
         self.assertTrue(sm.state == SleepState)
-
 
 

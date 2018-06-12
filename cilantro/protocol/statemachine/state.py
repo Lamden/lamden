@@ -3,6 +3,7 @@ from functools import wraps
 from cilantro.messages import MessageBase, Envelope
 from cilantro.protocol.statemachine.decorators import StateInput, StateTimeout, StateTransition, exit_to_any
 import inspect
+import asyncio
 from collections import defaultdict
 from unittest.mock import MagicMock
 
@@ -180,8 +181,8 @@ class State(metaclass=StateMeta):
     def call_transition_handler(self, trans_type, state, *args, **kwargs):
         trans_func = self._get_transition_handler(trans_type, state)
 
-        if not trans_func:
-            return
+        # if not trans_func:
+            # return
 
         timeout_func = getattr(self, StateTimeout.TIMEOUT_FLAG)
 
@@ -189,13 +190,19 @@ class State(metaclass=StateMeta):
         if trans_type == StateTransition.ENTER:
             if timeout_func:
                 timeout_dur = getattr(self, StateTimeout.TIMEOUT_DUR)
+                assert timeout_dur > 0, "Timeout function is present, but timeout duration is not greater than 0"
+
+                loop = asyncio.get_event_loop()
+                assert loop.is_running(), "Event loop must be running for timeout functionality!"
 
                 self.log.debug("Scheduling timeout trigger {} after {} seconds".format(timeout_func, timeout_dur))
-                self.timeout_handler = self.parent.loop.call_later(timeout_dur, timeout_func)
 
-            trans_func(**self._prune_kwargs(trans_func, prev_state=state, **kwargs))
+                self.timeout_handler = loop.call_later(timeout_dur, timeout_func)
 
-        # On exit, cancel the timeout function (if any), and run the appopriate EXIT transition handler
+            if trans_func:
+                trans_func(**self._prune_kwargs(trans_func, prev_state=state, **kwargs))
+
+        # On exit, cancel the timeout function (if any), and run the appropriate EXIT transition handler
         elif trans_type == StateTransition.EXIT:
             if timeout_func:
                 assert hasattr(self, 'timeout_handler') and self.timeout_handler, \
@@ -205,7 +212,8 @@ class State(metaclass=StateMeta):
                 self.timeout_handler.cancel()
                 self.timeout_handler = None
 
-            trans_func(**self._prune_kwargs(trans_func, next_state=state, **kwargs))
+            if trans_func:
+                trans_func(**self._prune_kwargs(trans_func, next_state=state, **kwargs))
 
     def _get_input_handler(self, message, input_type: str):
         registry = getattr(self, input_type)
