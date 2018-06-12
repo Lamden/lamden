@@ -5,7 +5,6 @@ before_install:
   - sudo apt-get install software-properties-common
 install:
   - pip install coverage
-  - python setup.py develop
 script: python -m unittest discover -s ./tests
 notifications:
   webhooks:
