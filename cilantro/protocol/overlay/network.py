@@ -48,6 +48,7 @@ class Network(object):
         self.loop = loop if loop else asyncio.get_event_loop()
         asyncio.set_event_loop(self.loop)
         self.vkcache = {}
+        self.authorized_node = {}
         self.ksize = ksize
         self.alpha = alpha
         self.port = os.getenv('NETWORK_PORT', 5678)
@@ -63,6 +64,11 @@ class Network(object):
         self.ironhouse.setup_secure_server()
 
     def authenticate(self, node):
+        authorized = self.ironhouse.authenticate(node.public_key, node.ip)
+        if authorized:
+            log.debug('{} is authorized'.format(node.ip))
+        else:
+            log.debug('UNAUTHORIZED: {}'.format(node.ip))
         return self.ironhouse.authenticate(node.public_key, node.ip)
 
     def setup_stethoscope(self):
@@ -135,6 +141,13 @@ class Network(object):
         log.debug('{} resolves to {}'.format(node_key, res_node))
         if res_node != None:
             self.vkcache[node_key] = res_node
+            pk = self.ironhouse.vk2pk(node_key)
+            # authorized = self.ironhouse.authenticate(pk, res_node)
+            # if self.network.authenticate(node):
+            #     log.debug('{} is authorized'.format(res_node))
+            # else:
+            #     log.debug('UNAUTHORIZED: {}'.format(res_node))
+            #     return
         return res_node
 
     def stop(self):

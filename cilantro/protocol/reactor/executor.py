@@ -5,7 +5,7 @@ from collections import defaultdict
 from cilantro.protocol.structures import CappedSet, EnvelopeAuth
 import traceback, os
 from cilantro.protocol.statemachine import StateInput
-
+from cilantro.utils import IPUtils
 from cilantro.protocol.overlay.dht import DHT
 import asyncio, time
 import zmq.asyncio
@@ -96,11 +96,11 @@ class Executor(metaclass=ExecutorMeta):
 
         cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary, **kwargs)
 
-        self.log.critical("\ncalling callback cmd to reactor interface: {}".format(cmd))  # deubg line remove this
+        # self.log.critical("\ncalling callback cmd to reactor interface: {}".format(cmd))  # DEBUG line remove this
 
         self.inproc_socket.send(cmd.serialize())
 
-        self.log.critical("command sent: {}".format(cmd))  # debug line, remove this later
+        # self.log.critical("command sent: {}".format(cmd))  # DEBUG line, remove this later
 
     def _validate_envelope(self, envelope_binary: bytes, header: str) -> Union[None, Envelope]:
         # TODO return/raise custom exceptions in this instead of just logging stuff and returning none
@@ -177,11 +177,12 @@ class SubPubExecutor(Executor):
 
     def add_sub(self, url: str, filter: str, vk: str):
         assert isinstance(filter, str), "'id' arg must be a string"
+        assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
 
         if not self.sub:
-            self.log.info("Creating subscriber socket")
+            self.log.info("Creating subscriber socket to {}".format(url))
             curve_serverkey = self.ironhouse.vk2pk(vk)
-            self.log.critical('{}: add_sub for url: {} where {} --> {}'.format(os.getenv('HOST_IP'), url, vk, curve_serverkey))
+
             self.sub = self.context.socket(socket_type=zmq.SUB)
             # self.sub = self.ironhouse.secure_socket(
             #     self.context.socket(socket_type=zmq.SUB),
@@ -302,6 +303,7 @@ class DealerRouterExecutor(Executor):
                                                 callback_fn=self._recv_request_env)
 
     def add_dealer(self, url: str, id: str, vk: str):
+        assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
         if url in self.dealers:
             self.log.warning("Attempted to add dealer {} that is already in self.dealers".format(url))
             return
@@ -316,6 +318,7 @@ class DealerRouterExecutor(Executor):
         # socket = self.ironhouse.secure_socket(
         #     self.context.socket(socket_type=zmq.DEALER),
         #     curve_serverkey=curve_serverkey)
+
         socket.identity = id.encode('ascii')
 
         self.log.info("Dealer socket connecting to url {}".format(url))

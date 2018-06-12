@@ -1,4 +1,5 @@
 coloredlogs==9.0
+coverage
 vmnet
 ipython==6.4.0
 numpy

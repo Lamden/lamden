@@ -18,8 +18,8 @@ class Discovery:
     max_wait = 3
     min_bootstrap_nodes = 3
     max_tasks = 100000
-    def getavailable_ips(self):
-        return self.available_ips
+    crawler_port = os.getenv('CRAWLER_PORT', 31337)
+    public_ip = get_public_ip()
 
     async def discover(self, mode, return_asap=True):
         ips = {}
@@ -30,10 +30,9 @@ class Discovery:
             ips[hostname] = [decimal_to_ip(d) for d in range(*get_local_range(host))]
             self.subnets[get_subnet(host)] = {'area': hostname, 'count': 0}
         else:
-            public_ip = get_public_ip()
-            self.ip = public_ip
+            self.ip = self.public_ip
             if mode == 'neighborhood':
-                for area in get_region_range(public_ip):
+                for area in get_region_range(self.public_ip):
                     ip, city = area.split(',')
                     ips[city] = [decimal_to_ip(d) for d in range(*get_local_range(ip))]
                     self.subnets[get_subnet(ip)] = {'area': city, 'count': 0}
@@ -72,7 +71,7 @@ class Discovery:
         self.udp_sock_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udp_sock_server.bind(('0.0.0.0', self.crawler_port))
         self.udp_sock_server.setblocking(False)
-        asyncio.ensure_future(self.listen())
+        self.server = asyncio.ensure_future(self.listen())
 
     async def listen(self):
         log.debug('Listening to the world on port {}...'.format(self.crawler_port))

@@ -96,12 +96,12 @@ class TestPump(BaseNetworkTestCase):
         # start mysql in all nodes
         for node_name in ['masternode'] + self.groups['witness'] + self.groups['delegate']:
             self.execute_python(node_name, start_mysqld, async=True)
-        time.sleep(8)
+        time.sleep(5)
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
 
-        time.sleep(8)
+        time.sleep(3)
         # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):
             time.sleep(8)
@@ -113,7 +113,7 @@ class TestPump(BaseNetworkTestCase):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
         # PUMP IT
-        time.sleep(8)
+        time.sleep(16)
         self.execute_python('mgmt', wrap_func(pump_it, self.EXPECTED_TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
 
         input("\n\nEnter any key to terminate")

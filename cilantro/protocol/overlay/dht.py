@@ -6,6 +6,7 @@ from queue import Queue
 import os, sys, uuid, time, threading, uuid, asyncio, random, warnings, logging
 import zmq.auth
 from multiprocessing import Process
+from cilantro.db import VKBook
 
 log = get_logger(__name__)
 
@@ -17,8 +18,9 @@ class DHT(Discovery):
         self.crawler_port = os.getenv('CRAWLER_PORT', 31337)
         self.listen_for_crawlers()
 
+        self.host_ip = os.getenv('HOST_IP', '127.0.0.1')
         self.ips = self.loop.run_until_complete(self.discover(mode))
-        if len(self.ips) == 0: self.ips[os.getenv('HOST_IP', '127.0.0.1')] = int(time.time())
+        if len(self.ips) == 0: self.ips[self.host_ip] = int(time.time())
 
         self.network_port = os.getenv('NETWORK_PORT', 5678)
         if not kwargs.get("auth_payload"): kwargs['auth_payload'] = DHT.auth_payload
@@ -76,20 +78,23 @@ class DHT(Discovery):
         return res
 
     def join_network(self):
+        # assert self.ips.keys() == [self.host_ip] and self.host_ip not in VKBook.get_masternodes(), 'Cannot bootstrap yourself because you are not a masternode'
+        # assert len(self.ips.keys()) != 1, 'No nodes are found!'
         log.debug('Joining network: {}'.format(self.ips))
         self.loop.run_until_complete(self.network.bootstrap([(ip, self.network_port) for ip in self.ips.keys()]))
 
     @staticmethod
     def auth_payload():
         payload = b'4aeba121f535ac9cc2b2c6a6629988308de5fca9aadc57b2023e19e3d83f4f88'
-        log.debug('Generating auth_payload of "{}"'.format(payload))
+        log.debug('Generating auth_payload of {}'.format(payload))
         # TODO in cilantro integrated tests, call VKBook.get_masternodes()
         return payload
 
     @staticmethod
     def auth_callback(payload):
         correct_payload = b'4aeba121f535ac9cc2b2c6a6629988308de5fca9aadc57b2023e19e3d83f4f88'
-        log.debug('masternode_vk = {}'.format(payload))
+        # TODO verify that the payload is in your book
+        log.debug('random_key = {}'.format(payload))
         return correct_payload == payload
 
 

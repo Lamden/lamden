@@ -102,11 +102,8 @@ class KademliaProtocol(RPCProtocol):
             log.debug("Skipping node {} that already exists in routing table".format(node))
             return
 
-        if self.network.authenticate(node):
-            log.debug('{} is authorized'.format(node.ip))
-        else:
-            log.debug('UNAUTHORIZED: {}'.format(node.ip))
-            return
+        # if not self.network.authenticate(node):
+        #     return
 
         log.info("never seen %s before, adding to router", node)
         for key, value in self.storage.items():

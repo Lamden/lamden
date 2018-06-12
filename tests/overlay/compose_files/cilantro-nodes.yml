@@ -21,11 +21,9 @@ services:
     ip: 172.29.5.x
     stdin_open: true
     tty: true
-    expose:
-      - '10000-20000'
     range:
       - 1
-      - 16
+      - 8
     build:
       context: ${LOCAL_PATH}/cilantro
       dockerfile: ${DOCKER_DIR}/cilantro_base.dev

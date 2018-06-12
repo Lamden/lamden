@@ -60,7 +60,7 @@ services:
     ip: 172.29.5.x
     range:
       - 4
-      - 7
+      - 6
     stdin_open: true
     tty: true
     build:

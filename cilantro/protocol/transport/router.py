@@ -78,13 +78,11 @@ class Router:
         self.sm.composer.send_reply(message=reply, request_envelope=cmd.envelope)
 
     def _lookup_failed(self, cmd: ReactorCommand):
-        self.log.critical("X12345 Router got lookup timeout: {}".format(cmd))
 
         kwargs = cmd.kwargs
         del(kwargs['callback'])
         new_cmd = ReactorCommand.create_cmd(envelope=cmd.envelope, **kwargs)
 
-        self.log.critical("Z543 Retrying command after failed lookup...cmd = {}".format(new_cmd))
         import time
         time.sleep(0.5)
 

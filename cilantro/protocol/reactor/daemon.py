@@ -37,10 +37,12 @@ class ReactorDaemon:
         self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
                        alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
                        max_peers=Constants.Overlay.MaxPeers, block=False, cmd_cli=False, wipe_certs=True)
+
         self.log.debug('bootstrappable neighbors: {}'.format(self.dht.network.bootstrappableNeighbors()))
 
-        self.context = zmq.asyncio.Context()
-        # self.context = self.dht.network.ironhouse.secure_context(async=True)
+        # self.context = zmq.asyncio.Context()
+        self.context, auth = self.dht.network.ironhouse.secure_context(async=True)
+        self.dht.network.ironhouse.daemon_auth = auth
         self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
         self.socket.connect(self.url)
 
@@ -78,7 +80,7 @@ class ReactorDaemon:
             cmd = ReactorCommand.from_bytes(cmd_bin)
 
             # DEBUG LINE, REMOVE LATER
-            self.log.critical("got cmd from ReactorInterfac pair socket {}".format(cmd))
+            # self.log.critical("got cmd from ReactorInterfac pair socket {}".format(cmd))
 
             assert cmd.class_name and cmd.func_name, "Received invalid command with no class/func name!"
 
@@ -164,7 +166,7 @@ class ReactorDaemon:
 
         return executor_name, executor_func, kwargs
 
-    async def _lookup_ip(self, cmd, url, vk):
+    async def _lookup_ip(self, cmd, url, vk, *args, **kwargs):
         ip = None
         try:
             ip = await self.dht.network.lookup_ip(vk)
@@ -172,14 +174,13 @@ class ReactorDaemon:
             delim_line = '!' * 64
             err_msg = '\n\n' + delim_line + '\n' + delim_line
             err_msg += '\n ERROR CAUGHT IN LOOKUP FUNCTION {}\ncalled \w args={}\nand kwargs={}\n'\
-                        .format(listener_fn, args, kwargs)
+                        .format(args, kwargs)
             err_msg += '\nError Message: '
             err_msg += '\n\n{}'.format(traceback.format_exc())
             err_msg += '\n' + delim_line + '\n' + delim_line
             self.log.error(err_msg)
 
         if ip is None:
-            self.log.critical("\n COULD NOT FIND IP FOR VK {} \n".format(vk))
 
             kwargs = cmd.kwargs
             callback = ReactorCommand.create_callback(callback=StateInput.LOOKUP_FAILED, **kwargs)

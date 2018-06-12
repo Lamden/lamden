@@ -11,8 +11,7 @@ POPULAR_IP_FILE = '{}/data/popular.txt'.format(path)
 def get_public_ip():
     try:
         r = requests.get('http://ip.42.pl/raw')
-        public_ip = r.text
-        return public_ip
+        return r.text
     except:
         raise Exception('Cannot get your public ip!')
 
@@ -56,8 +55,7 @@ def get_region_range(ip, max_away=5, recalculate=False):
 
         with open(NEIGHBOR_IP_FILE, 'w+') as f:
             data = data[ip_idx-max_away:ip_idx+max_away]
-            if os.getenv('TEST_NAME'):
-                f.write('{},{}\n'.format(os.getenv('HOST_IP'), 'virtual_network'))
+            data.append('{},{}'.format(os.getenv('HOST_IP', '127.0.0.1'), 'virtual_network'))
             for d in data:
                 f.write("{}\n".format(d))
         print('Saved to {}!'.format(NEIGHBOR_IP_FILE))
@@ -67,14 +65,3 @@ def get_region_range(ip, max_away=5, recalculate=False):
                 data.append(line.strip())
     print('Loaded neighboring {} ip ranges!'.format(len(data)))
     return data
-
-def get_popular_range():
-    pass
-
-if __name__ == '__main__':
-    path = '.'
-    WORLD_IP_FILE = '{}/data/world.csv'.format(path)
-    NEIGHBOR_IP_FILE = '{}/data/neighborhood.txt'.format(path)
-    POPULAR_IP_FILE = '{}/data/popular.txt'.format(path)
-    public_ip = get_public_ip()
-    get_region_range(public_ip, max_away=10, recalculate=True)
