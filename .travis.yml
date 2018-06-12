@@ -5,6 +5,8 @@ before_install:
   - sudo apt-get install software-properties-common
 install:
   - pip install coverage
+  - pip install -r requirements.txt
+  - pip install -r dev-requirements.txt
 script: python -m unittest discover -s ./tests
 notifications:
   webhooks:
