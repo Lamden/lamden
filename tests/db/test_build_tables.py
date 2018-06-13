@@ -1,11 +1,15 @@
 from cilantro.db import *
 from unittest import TestCase
 from seneca.seneca_internal.storage.mysql_executer import Executer
-from cilantro.db.blocks_table import *
-from cilantro.db.contracts_table import *
-from cilantro.db.contracts_table import _read_contract_files, _contract_id_for_filename
+from cilantro.db.blocks import *
+from cilantro.db.contracts import *
+from cilantro.db.contracts import _read_contract_files, _contract_id_for_filename, _lookup_contract_info
 import unittest
 import time
+
+
+CONTRACT_FILENAME = 'currency.seneca'
+EXPECTED_SNIPPET = '# UNITTEST_FLAG_CURRENCY_SENECA 1729'
 
 
 class TestBuildTables(TestCase):
@@ -74,23 +78,40 @@ class TestBuildTables(TestCase):
             if not contract_found:
                 raise Exception("Contract with id {} and not found.\ncode str ... \n{}".format(contract_id, code_str))
 
+    def test_lookup_contract_info(self):
+        ex = self._default_ex()
+        tables = build_tables(ex, should_drop=True)
+
+        contract_id = _contract_id_for_filename(CONTRACT_FILENAME)
+
+        expected_author = GENESIS_AUTHOR
+        expected_exec_dt = GENESIS_DATE
+        expected_snippet = EXPECTED_SNIPPET
+
+        actual_author, actual_exec_dt, actual_code = _lookup_contract_info(ex, tables.contracts, contract_id)
+
+        self.assertEqual(expected_author, actual_author)
+        self.assertEqual(expected_exec_dt , actual_exec_dt)
+        self.assertTrue(expected_snippet in actual_code)
+
     def test_module_loader_fn(self):
         ex = self._default_ex()
         tables = build_tables(ex, should_drop=True)
 
         loader_fn = module_loader_fn(ex, tables.contracts)
 
-        contract_id = _contract_id_for_filename('currency.seneca')
+        contract_id = _contract_id_for_filename(CONTRACT_FILENAME)
+
         author = GENESIS_AUTHOR
         execution_dt = GENESIS_DATE
 
-        contract_run_data = {'author': author, 'execution_datetime': execution_dt, 'contract_id': contract_id}
-        expected_snipped = "# UNITTEST_FLAG_CURRENCY_SENECA"
+        expected_run_data = {'author': author, 'execution_datetime': execution_dt, 'contract_id': contract_id}
+        expected_snipped = EXPECTED_SNIPPET
 
         actual_run_data, actual_code = loader_fn(contract_id)
 
         self.assertTrue(expected_snipped in actual_code)
-        self.assertEquals(contract_run_data, actual_run_data)
+        self.assertEquals(expected_run_data, actual_run_data)
 
 
 if __name__ == '__main__':

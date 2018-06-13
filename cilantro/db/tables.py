@@ -10,8 +10,8 @@ GENESIS_HASH = '0' * 64
 
 
 def build_tables(ex, should_drop=True):
-    from cilantro.db.contracts_table import build_contracts_table, seed_contracts
-    from cilantro.db.blocks_table import build_blocks_table, seed_blocks
+    from cilantro.db.contracts import build_contracts_table, seed_contracts
+    from cilantro.db.blocks import build_blocks_table, seed_blocks
 
     if should_drop:
         log.info("Dropping Seneca database")

@@ -1,6 +1,6 @@
 #!/usr/bin/env seneca_0.1
 ## Example currency smart contract ##
-# UNITTEST_FLAG_CURRENCY_SENECA
+# UNITTEST_FLAG_CURRENCY_SENECA 1729
 
 
 import seneca.storage.tabular as st

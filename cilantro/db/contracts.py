@@ -47,7 +47,7 @@ def seed_contracts(ex, contracts_table):
 
     # Run contracts
     for contract_id, code_str in _read_contract_files():
-        _execute_contract(ex, contracts_table, contract_id, code_str)
+        run_contract(ex, contracts_table, contract_id)
 
 
 def module_loader_fn(ex, contract_table):
@@ -56,17 +56,7 @@ def module_loader_fn(ex, contract_table):
     :return: A function which takes a single parameter, a contract_id, and returns a tuple of (contract_data, code_str)
     """
     def _module_loader_fn(contract_id: str) -> tuple:
-        query = contract_table.select().where(contract_table.contract_id == contract_id).run(ex)
-
-        assert len(query.rows) > 0, "No rows found for contract_id {}".format(contract_id)
-        assert len(query.rows) <= 1, "Multiple rows found for contract_id {}".format(contract_id)
-
-        author = query[0]['author']
-        exec_dt = query[0]['execution_datetime']
-        code_str = query[0]['code_str']
-
-        assert len(code_str) > 0, 'Contract id {} with author {} has empty code string'.format(contract_id, author)
-
+        author, exec_dt, code_str = _lookup_contract_info(ex, contract_table, contract_id)
         runtime_data = {'author': author, 'contract_id': contract_id, 'execution_datetime': exec_dt}
 
         return runtime_data, code_str
@@ -74,14 +64,38 @@ def module_loader_fn(ex, contract_table):
     return _module_loader_fn
 
 
-def _execute_contract(executor, contract_table, contract_id: str, code_str: str, user_id=GENESIS_AUTHOR):
+def run_contract(executor, contract_table, contract_id: str, user_id=GENESIS_AUTHOR):
     log.debug("[inside _execute_contract] Executing contract with id {} and user_id {}".format(contract_id, user_id))
 
-    global_run_data = {'caller_user_id': user_id, 'execution_datetime': None, 'caller_contract_id': contract_id}
-    this_contract_run_data = {'author': user_id, 'execution_datetime': None, 'contract_id': contract_id}
+    author, exec_dt, code_str = _lookup_contract_info(executor, contract_table, contract_id)
+
+    global_run_data = {'caller_user_id': user_id, 'execution_datetime': exec_dt, 'caller_contract_id': contract_id}
+    this_contract_run_data = {'author': author, 'execution_datetime': exec_dt, 'contract_id': contract_id}
 
     execute_contract(global_run_data, this_contract_run_data, code_str, is_main=True,
                      module_loader=module_loader_fn(executor, contract_table), db_executer=executor)
+
+
+def _lookup_contract_info(executor, contract_table, contract_id: str) -> tuple:
+    """
+    Looks up the contract info for the specified contract id. This includes the author, execution datetime, and code
+    string. These values a returned in a tuple of that order.
+    :param contract_id: The id of the contract to lookup
+    :return: A tuple, containing 3 elements (author: str, execution_datetime: datetime.datetime, code_str: str)
+    :raises: An exception if the contract_id cannot be found
+    """
+    query = contract_table.select().where(contract_table.contract_id == contract_id).run(executor)
+
+    assert len(query.rows) > 0, "No rows found for contract_id {}".format(contract_id)
+    assert len(query.rows) <= 1, "Multiple rows found for contract_id {}".format(contract_id)
+
+    author = query[0]['author']
+    exec_dt = query[0]['execution_datetime']
+    code_str = query[0]['code_str']
+
+    assert len(code_str) > 0, 'Contract id {} with author {} has empty code string'.format(contract_id, author)
+
+    return author, exec_dt, code_str
 
 
 def _read_contract_files() -> list:

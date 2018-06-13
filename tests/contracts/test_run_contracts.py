@@ -39,8 +39,6 @@ class TestRunContracts(TestCase):
         execute_contract(global_run_data, this_contract_run_data, contract_code, is_main=True,
                          module_loader=module_loader_fn(ex, tables.contracts), db_executer=ex)
 
-    def test_run_contract_with_args(self):
-        pass
 
 
 if __name__ == '__main__':
