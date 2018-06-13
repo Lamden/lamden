@@ -1,7 +1,7 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
 from cilantro.protocol.statemachine import *
-
+import unittest
 
 YELLOW_TIMEOUT_DUR = 1.0
 
@@ -466,3 +466,5 @@ class StateTest(TestCase):
 
         mock_func.assert_called_with(msg, mock_env)
 
+if __name__ == '__main__':
+    unittest.main()
