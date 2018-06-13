@@ -20,6 +20,7 @@ def build_tables(ex, should_drop=True):
         ex.raw('CREATE DATABASE seneca_test;')
         ex.raw('USE seneca_test;')
 
+    # Create tables
     contracts = build_contracts_table(ex, should_drop)
     blocks = build_blocks_table(ex, should_drop)
 
@@ -29,9 +30,8 @@ def build_tables(ex, should_drop=True):
         seed_contracts(ex, contracts)
         seed_blocks(ex, blocks)
 
-        # Seed smart contract tables
+        # Seed smart contract tables (ie tables created by Seneca)
         seed_balances(ex)
-
 
     tables = type('Tables', (object,), {'contracts': contracts, 'blocks': blocks})
 
