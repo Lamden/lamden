@@ -47,6 +47,5 @@ class TestRunContracts(TestCase):
                          module_loader=module_loader_fn(self.ex, tables.contracts), db_executer=self.ex)
 
 
-
 if __name__ == '__main__':
     unittest.main()
