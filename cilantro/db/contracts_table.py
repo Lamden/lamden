@@ -5,6 +5,7 @@ import seneca.seneca_internal.storage.easy_db as t
 from seneca.execute_sc import execute_contract
 import datetime
 import os
+import types
 
 
 log = get_logger("ContractsTable")
@@ -56,7 +57,6 @@ def lookup_contract_code(executor, contract_id: str, contract_table) -> str:
     :return: The code for the contract_id, as a string, or the empty string '', if no record could be found
     """
     query = contract_table.select('code_str').where(contract_table.contract_id == contract_id).run(executor)
-    # print("got result from query: \n{}".format(query))
     assert len(query.rows) <= 1, "Multiple rows found for contract_id {}".format(contract_id)
 
     if len(query.rows) == 0:
@@ -66,31 +66,47 @@ def lookup_contract_code(executor, contract_id: str, contract_table) -> str:
     return query.rows[0][0]
 
 
-def _execute_contract(executor, contract_table, contract_id: str, code_str: str, user_id=GENESIS_AUTHOR):
-    def ft_module_loader(contract_name):
-        log.debug("[inside _execute_contract] Attempting to load contract with id {}".format(contract_name))
-        code = lookup_contract_code(executor, contract_name, contract_table)
-        assert code, "No code for contract id '{}' could be found".format(contract_name)
-        return this_contract_run_data, code
+def module_loader_fn(ex, contract_table):
+    """
+    Returns a module loader function used for executing contracts
+    :return: A function which takes a single parameter, a contract_id, and returns a tuple of (contract_data, code_str)
+    """
+    def _module_loader_fn(contract_id: str) -> tuple:
+        query = contract_table.select().where(contract_table.contract_id == contract_id).run(ex)
 
+        assert len(query.rows) > 0, "No rows found for contract_id {}".format(contract_id)
+        assert len(query.rows) <= 1, "Multiple rows found for contract_id {}".format(contract_id)
+
+        author = query[0]['author']
+        exec_dt = query[0]['execution_datetime']
+        code_str = query[0]['code_str']
+
+        runtime_data = {'author': author, 'contract_id': contract_id, 'execution_datetime': exec_dt}
+
+        return runtime_data, code_str
+
+    return _module_loader_fn
+
+
+def _execute_contract(executor, contract_table, contract_id: str, code_str: str, user_id=GENESIS_AUTHOR):
     log.debug("[inside _execute_contract] Executing contract with id {} and user_id {}".format(contract_id, user_id))
 
     global_run_data = {'caller_user_id': user_id, 'execution_datetime': None, 'caller_contract_id': contract_id}
     this_contract_run_data = {'author': user_id, 'execution_datetime': None, 'contract_id': contract_id}
 
     execute_contract(global_run_data, this_contract_run_data, code_str, is_main=True,
-                     module_loader=ft_module_loader, db_executer=executor)
+                     module_loader=module_loader_fn(executor, contract_table), db_executer=executor)
 
 
 def _read_contract_files() -> list:
     """
     Reads all contracts in the cilantro/contracts directory.
-    :return: A list of tuples containing (contract_hash, contract_code). Both values are strings
+    :return: A list of tuples containing (contract_id, contract_code). Both values are strings
     """
     log.debug("Loading smart contracts at directory {}".format(CONTRACTS_DIR))
     contracts = []
 
-    for filename in os.listdir(CONTRACTS_DIR):
+    for filename in sorted(os.listdir(CONTRACTS_DIR)):
         _validate_filename(filename)
         log.info("[inside _read_contract_files] Loading contract code for file {}".format(filename))
 
@@ -104,7 +120,8 @@ def _read_contract_files() -> list:
 
             # TODO remove this (debug lines)
             max_len = min(len(code_str), 60)
-            log.debug("[inside _read_contract_files] filename {} has contract_id {} has author {} and code has code: \n {} ....[SNIPPED TRUNCATED]"
+            log.debug("[inside _read_contract_files] filename {} has contract_id {} has author {} and code has code: "
+                      "\n {} ....[SNIPPED TRUNCATED]"
                       .format(filename, contract_id, GENESIS_AUTHOR, code_str[0:max_len]))
             # end debug
 
@@ -137,3 +154,4 @@ def _validate_filename(filename):
 
     extension = filename[dot_idx+1:]
     assert extension == 'seneca', err_str
+

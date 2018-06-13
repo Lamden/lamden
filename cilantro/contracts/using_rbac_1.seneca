@@ -1,3 +1,6 @@
 import rbac
 
-rbac.create_user('tester', 'admin')
+#import seneca.runtime as rt
+#rbac.create_user(rt.global_run_data.caller_user_id, 'admin')
+
+rbac.create_user('davis', 'admin')

@@ -13,6 +13,12 @@ def build_tables(ex, should_drop=True):
     from cilantro.db.contracts_table import build_contracts_table, seed_contracts
     from cilantro.db.blocks_table import build_blocks_table, seed_blocks
 
+    if should_drop:
+        log.info("Dropping Seneca database")
+        ex.raw('DROP DATABASE IF EXISTS seneca_test;')
+        ex.raw('CREATE DATABASE seneca_test;')
+        ex.raw('USE seneca_test;')
+
     contracts = build_contracts_table(ex, should_drop)
     blocks = build_blocks_table(ex, should_drop)
 

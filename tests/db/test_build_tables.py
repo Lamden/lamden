@@ -4,24 +4,24 @@ from seneca.seneca_internal.storage.mysql_executer import Executer
 from cilantro.db.blocks_table import *
 from cilantro.db.contracts_table import *
 from cilantro.db.contracts_table import _read_contract_files, _contract_id_for_filename
+import unittest
+import time
 
 
 class TestBuildTables(TestCase):
 
-    def default_ex(self):
+    def _default_ex(self):
         return Executer.init_local_noauth_dev()
 
     def test_tables_not_none(self):
-        ex = self.default_ex()
-
+        ex = self._default_ex()
         tables = build_tables(ex, should_drop=True)
 
         assert tables.blocks
         assert tables.contracts
 
     def test_seed_blocks(self):
-        ex = self.default_ex()
-
+        ex = self._default_ex()
         tables = build_tables(ex, should_drop=True)
 
         blocks = tables.blocks.select().run(ex)
@@ -35,15 +35,14 @@ class TestBuildTables(TestCase):
             assert i >= 0, 'Key {} not found in block table keys {}'.format(key, blocks.keys)
 
             actual_val = row[i]
-            assert actual_val == expected_val, "Blocks table key {} seeded with value {} but expected {}".format(key, actual_val, expected_val)
+            assert actual_val == expected_val, "Blocks table key {} seeded with value {} but expected {}"\
+                                               .format(key, actual_val, expected_val)
 
     def test_seed_contracts(self):
-        ex = self.default_ex()
-
+        ex = self._default_ex()
         tables = build_tables(ex, should_drop=True)
 
         query = tables.contracts.select().run(ex)
-        # print("got contracts: {}".format(query))
 
         cols = query.keys
         col_indx = {col: cols.index(col) for col in cols}
@@ -75,25 +74,25 @@ class TestBuildTables(TestCase):
             if not contract_found:
                 raise Exception("Contract with id {} and not found.\ncode str ... \n{}".format(contract_id, code_str))
 
-    def test_contract_lookup(self):
-        ex = self.default_ex()
-
+    def test_module_loader_fn(self):
+        ex = self._default_ex()
         tables = build_tables(ex, should_drop=True)
-        contracts_table = tables.contracts
 
-        actual_code = lookup_contract_code(ex, _contract_id_for_filename('currency.seneca'), contracts_table)
+        loader_fn = module_loader_fn(ex, tables.contracts)
+
+        contract_id = _contract_id_for_filename('currency.seneca')
+        author = GENESIS_AUTHOR
+        execution_dt = GENESIS_DATE
+
+        contract_run_data = {'author': author, 'execution_datetime': execution_dt, 'contract_id': contract_id}
         expected_snipped = "# UNITTEST_FLAG_CURRENCY_SENECA"
 
+        actual_run_data, actual_code = loader_fn(contract_id)
+
         self.assertTrue(expected_snipped in actual_code)
+        self.assertEquals(contract_run_data, actual_run_data)
 
-    def test_contract_lookup_doesnt_exist(self):
-        ex = self.default_ex()
 
-        tables = build_tables(ex, should_drop=True)
-        contracts_table = tables.contracts
-
-        contract_code = lookup_contract_code(ex, 'i_dont_exist_1729', contracts_table)
-
-        self.assertEqual(contract_code, '')
-
+if __name__ == '__main__':
+    unittest.main()
 
