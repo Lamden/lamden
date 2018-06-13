@@ -24,6 +24,8 @@ else:
     POLLIN = select.POLLIN
 
 log = get_logger(__name__)
+HEARTBEAT_PORT_OFFSET = 1
+AUTH_PORT_OFFSET = 2
 
 class Network(object):
     """
@@ -33,7 +35,7 @@ class Network(object):
 
     protocol_class = KademliaProtocol
 
-    def __init__(self, ksize=20, alpha=3, node_id=None, discovery_mode='neighborhood', loop=None, max_peers=64, heartbeat_port=None, public_ip=None, *args, **kwargs):
+    def __init__(self, ksize=20, alpha=3, node_id=None, discovery_mode='neighborhood', loop=None, max_peers=64, port=None, public_ip=None, *args, **kwargs):
         """
         Create a server instance.  This will start listening on the given port.
 
@@ -53,23 +55,25 @@ class Network(object):
         self.refresh_loop = None
         self.save_state_loop = None
         self.max_peers = max_peers
-        self.heartbeat_port = heartbeat_port or os.getenv('HEAERTBEAT_PORT', 31233)
-        self.ironhouse = Ironhouse(*args, **kwargs)
+        self.port = port or os.getenv('NETWORK_PORT', 31232)
+        self.heartbeat_port = self.port+HEARTBEAT_PORT_OFFSET
+        self.ironhouse = Ironhouse(auth_port=self.port+AUTH_PORT_OFFSET, **kwargs)
         self.node = Node(
             node_id=digest(self.ironhouse.vk),
             public_key=self.ironhouse.public_key,
             ip=public_ip or os.getenv('HOST_IP', '127.0.0.1'),
-            port=self.ironhouse.auth_port
+            port=self.port
         )
         self.setup_stethoscope()
         self.ironhouse.setup_secure_server()
+        self.listen()
 
     def authenticate(self, node):
-        authorized = self.ironhouse.authenticate(node.public_key, node.ip, node.port)
+        authorized = self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
         if authorized:
-            log.debug('{} is authorized'.format(node.ip))
+            log.debug('{}:{} is authorized'.format(node.ip, node.port))
         else:
-            log.debug('UNAUTHORIZED: {}'.format(node.ip))
+            log.debug('!UNAUTHORIZED! {}:{}'.format(node.ip, node.port))
         return authorized
 
     def setup_stethoscope(self):
@@ -86,19 +90,21 @@ class Network(object):
         self.connections = {}
         self.poll = poll()
         self.poll.register(self.stethoscope_sock.fileno(), POLLIN)
+        log.debug('Listening to heartbeats on {}...'.format(self.heartbeat_port))
         try:
             while True:
                 events = self.poll.poll(1)
                 for fileno, event in events:
-                    # if fileno == self.stethoscope_sock.fileno():
-                    #     conn, addr = self.stethoscope_sock.accept()
-                    #     log.info("[SERVER SIDE] Client (%s, %s) connected to server" % addr)
+                    if fileno == self.stethoscope_sock.fileno():
+                        conn, addr = self.stethoscope_sock.accept()
+                        log.info("[SERVER SIDE] Client (%s, %s) connected to server" % addr)
                     # elif event & (POLLIN):
                     # print('\n\n\n{},{},{},{}\n\n\n'.format(event, POLLIN, fileno, self.stethoscope_sock.fileno()))
                     if event & (POLLIN):
                         conn, addr, node = self.connections[fileno]
                         try:
                             conn.connect(addr)
+                            print('connected without a problem')
                         except Exception as e:
                             if e.args[0] in [
                                 104, # "Reset by peer": socket leaves hanging
@@ -121,7 +127,7 @@ class Network(object):
         self.ironhouse.create_from_public_key(node.public_key)
         self.ironhouse.reconfigure_curve()
 
-        addr = (node.ip, node.port)
+        addr = (node.ip, node.port+HEARTBEAT_PORT_OFFSET)
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connections[conn.fileno()] = (conn, addr, node)
         try:
@@ -129,7 +135,7 @@ class Network(object):
             self.poll.register(conn.fileno(), POLLIN)
             log.info("[CLIENT SIDE] Client (%s, %s) connected" % addr)
             return conn
-        except:
+        except Exception as e:
             del self.connections[conn.fileno()]
             conn.close()
 
@@ -181,16 +187,17 @@ class Network(object):
     def _create_protocol(self):
         return self.protocol_class(self.node, self.ksize, self)
 
-    def listen(self, port, interface='0.0.0.0'):
+    def listen(self, port=None, interface='0.0.0.0'):
         """
         Start listening on the given port.
 
         Provide interface="::" to accept ipv6 address
         """
+        port = self.port
         listen = self.loop.create_datagram_endpoint(self._create_protocol,
                                                local_addr=(interface, port))
-        log.info("Node %i listening on %s:%i",
-                 self.node.long_id, interface, port)
+        log.info("Listening to kade network on %s:%i",
+                 interface, port)
         self.transport, self.protocol = self.loop.run_until_complete(listen)
         # finally, schedule refreshing table
         self.refresh_table()
@@ -242,6 +249,12 @@ class Network(object):
         cos = list(map(self.bootstrap_node, addrs))
         gathered = await asyncio.gather(*cos)
         nodes = [node for node in gathered if node is not None]
+        print(':::', nodes, self.node)
+
+        if len(nodes) == 0:
+            log.warning('Unable to find/authenticate with any nodes in the network')
+            return []
+
         spider = NodeSpiderCrawl(self.protocol, self.node, nodes,
                                  self.ksize, self.alpha)
         res = await spider.find()
@@ -251,7 +264,12 @@ class Network(object):
         result = await self.protocol.ping(addr, self.node.public_key, self.node.id)
         if result[0]:
             node_id, public_key = result[1]
-            return Node(node_id, addr[0], addr[1], public_key=public_key)
+            node = Node(node_id, ip=addr[0], port=addr[1], public_key=public_key)
+            # return node
+            authorized = await self.authenticate(node)
+            if authorized == True:
+                return node
+        return None
 
     def saveState(self, fname):
         """
@@ -268,7 +286,7 @@ class Network(object):
         if len(data['neighbors']) == 0:
             log.warning("No known neighbors, so not writing to cache.")
             return
-        with open(fname, 'wb') as f:
+        with open(fname, 'wb+') as f:
             pickle.dump(data, f)
 
     @classmethod

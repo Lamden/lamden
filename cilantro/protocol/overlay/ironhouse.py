@@ -37,7 +37,7 @@ class Ironhouse:
         self.wipe_certs = wipe_certs
         if sk:
             self.generate_certificates(sk)
-        self.public, self.secret = zmq.auth.load_certificate(self.secret_file)
+        self.public_key, self.secret = zmq.auth.load_certificate(self.secret_file)
 
     def vk2pk(self, vk):
         return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
@@ -91,6 +91,8 @@ class Ironhouse:
                         secret_key=secret_key)
 
     def create_from_public_key(self, public_key):
+        if self.public_key == public_key:
+            return
         keyname = decode(public_key).hex()
         base_filename = os.path.join(self.public_keys_dir, keyname)
         public_key_file = "{0}.key".format(base_filename)
@@ -128,17 +130,17 @@ class Ironhouse:
 
     def secure_socket(self, sock, curve_serverkey=None):
         sock.curve_secretkey = self.secret
-        sock.curve_publickey = self.public
+        sock.curve_publickey = self.public_key
         if curve_serverkey:
             self.create_from_public_key(curve_serverkey)
             sock.curve_serverkey = curve_serverkey
         else: sock.curve_server = True
         return sock
 
-    def authenticate(self, target_public_key, ip, port=None):
-        if ip == os.getenv('HOST_IP'): return True
-
+    async def authenticate(self, target_public_key, ip, port=None):
+        if target_public_key == self.public_key: return True
         server_url = 'tcp://{}:{}'.format(ip, port or self.auth_port)
+        log.debug('authenticating {}...'.format(server_url))
         client = self.ctx.socket(zmq.REQ)
         client.setsockopt(zmq.LINGER, 0)
         client = self.secure_socket(client, target_public_key)
@@ -146,21 +148,25 @@ class Ironhouse:
         client.send(self.public_key)
         authorized = False
 
-        if client.poll(1000):
-            msg = client.recv()
+        try:
+            msg = await asyncio.wait_for(client.recv(), 0.5)
             log.debug('got secure reply {}'.format(msg))
 
             if self.auth_validate(msg) == True:
                 self.create_from_public_key(msg)
                 authorized = True
 
+        except Exception as e:
+            log.debug('no reply from {} after waiting...'.format(server_url))
+
         client.disconnect(server_url)
         client.close()
         self.auth.stop()
+
         return authorized
 
     def setup_secure_server(self):
-        self.ctx, self.auth = self.secure_context()
+        self.ctx, self.auth = self.secure_context(async=True)
         self.reconfigure_curve()
         self.sec_sock = self.secure_socket(self.ctx.socket(zmq.REP))
         self.sec_sock.bind('tcp://*:{}'.format(self.auth_port))
@@ -174,15 +180,13 @@ class Ironhouse:
 
     async def secure_server(self):
         log.info('Listening to secure connections at {}'.format(self.auth_port))
-        while True:
-            try:
-                message = self.sec_sock.recv(flags=zmq.NOBLOCK)
-                log.debug('got secure request {}'.format(message))
+        try:
+            message = await self.sec_sock.recv()
+            log.debug('got secure request {}'.format(message))
 
-                if self.auth_validate(message) == True:
-                    self.create_from_public_key(message)
-                    log.debug('sending secure reply: {}'.format(self.public))
-                    self.sec_sock.send(self.public)
-            except Exception as e:
-                pass
-            await asyncio.sleep(0.1)
+            if self.auth_validate(message) == True:
+                self.create_from_public_key(message)
+                log.debug('sending secure reply: {}'.format(self.public_key))
+                self.sec_sock.send(self.public_key)
+        except Exception as e:
+            pass
