@@ -6,7 +6,7 @@ import pickle
 import asyncio
 import logging
 import os, zmq
-import socket, select
+import socket, select, struct
 
 from nacl.signing import VerifyKey
 from cilantro.logger import get_logger
@@ -34,7 +34,7 @@ class Network(object):
 
     protocol_class = KademliaProtocol
 
-    def __init__(self, ksize=20, alpha=3, node_id=None, storage=None, discovery_mode='neighborhood', loop=None, max_peers=64, *args, **kwargs):
+    def __init__(self, ksize=20, alpha=3, node_id=None, storage=None, discovery_mode='neighborhood', loop=None, max_peers=64, heartbeat_port=None, public_ip=None, *args, **kwargs):
         """
         Create a server instance.  This will start listening on the given port.
 
@@ -51,36 +51,40 @@ class Network(object):
         self.authorized_node = {}
         self.ksize = ksize
         self.alpha = alpha
-        self.port = os.getenv('NETWORK_PORT', 5678)
-        self.storage = storage or ForgetfulStorage()
-        self.ironhouse = Ironhouse(*args, **kwargs)
-        self.node = Node(node_id=digest(self.ironhouse.vk), public_key=self.ironhouse.public_key)
         self.transport = None
         self.protocol = None
         self.refresh_loop = None
         self.save_state_loop = None
         self.max_peers = max_peers
+        self.storage = storage or ForgetfulStorage()
+        self.heartbeat_port = heartbeat_port or os.getenv('HEAERTBEAT_PORT', 31233)
+        self.ironhouse = Ironhouse(*args, **kwargs)
+        self.node = Node(
+            node_id=digest(self.ironhouse.vk),
+            public_key=self.ironhouse.public_key,
+            ip=public_ip or os.getenv('HOST_IP', '127.0.0.1'),
+            port=self.ironhouse.auth_port
+        )
         self.setup_stethoscope()
         self.ironhouse.setup_secure_server()
 
     def authenticate(self, node):
-        authorized = self.ironhouse.authenticate(node.public_key, node.ip)
+        authorized = self.ironhouse.authenticate(node.public_key, node.ip, node.port)
         if authorized:
             log.debug('{} is authorized'.format(node.ip))
         else:
             log.debug('UNAUTHORIZED: {}'.format(node.ip))
-        return self.ironhouse.authenticate(node.public_key, node.ip)
+        return authorized
 
     def setup_stethoscope(self):
         socket.setdefaulttimeout(0.1)
-        self.heartbeat_port = os.getenv('HEARTBEAT_PORT', 31233)
         self.stethoscope_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.stethoscope_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.stethoscope_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.stethoscope_sock.setblocking(0)
         self.stethoscope_sock.bind(('0.0.0.0', self.heartbeat_port))
         self.stethoscope_sock.listen(self.max_peers)
-        asyncio.ensure_future(self.stethoscope())
+        self.stethoscope_future = asyncio.ensure_future(self.stethoscope())
 
     async def stethoscope(self):
         self.connections = {}
@@ -90,15 +94,20 @@ class Network(object):
             while True:
                 events = self.poll.poll(1)
                 for fileno, event in events:
-                    if fileno == self.stethoscope_sock.fileno():
-                        conn, addr = self.stethoscope_sock.accept()
-                        log.info("[SERVER SIDE] Client (%s, %s) connected to server" % addr)
-                    elif event & (POLLIN):
+                    # if fileno == self.stethoscope_sock.fileno():
+                    #     conn, addr = self.stethoscope_sock.accept()
+                    #     log.info("[SERVER SIDE] Client (%s, %s) connected to server" % addr)
+                    # elif event & (POLLIN):
+                    # print('\n\n\n{},{},{},{}\n\n\n'.format(event, POLLIN, fileno, self.stethoscope_sock.fileno()))
+                    if event & (POLLIN):
                         conn, addr, node = self.connections[fileno]
                         try:
                             conn.connect(addr)
                         except Exception as e:
-                            if e.args[0] == 104:
+                            if e.args[0] in [
+                                104, # "Reset by peer": socket leaves hanging
+                                48 # "Address alrady in use": socket shutsdown
+                            ]:
                                 log.info("Client (%s, %s) disconnected" % addr)
                                 self.poll.unregister(fileno)
                                 conn.close()
@@ -108,22 +117,39 @@ class Network(object):
                                 del self.vkcache[node.ip]
                 await asyncio.sleep(0.1)
         finally:
-            self.poll.unregister(self.stethoscope_sock.fileno())
-            self.poll.close()
-            self.stethoscope_sock.close()
+            if hasattr(self, 'poll') and hasattr(self, 'stethoscope_sock'):
+                for fileno in self.connections:
+                    try:
+                        conn, addr, node = self.connections[fileno]
+                        self.poll.unregister(fileno)
+                        conn.close()
+                    except:
+                        log.debug('Closed a previously opened connection')
+                try: self.poll.unregister(self.stethoscope_sock.fileno())
+                except: log.debug('Already unregistered previously.')
+                try: self.poll.close()
+                except: log.debug('Not epoll object, no need to close.')
+                self.stethoscope_sock.close()
+                self.ironhouse.cleanup()
+                log.info('Shutting down gracefully.')
 
     def connect_to_neighbor(self, node):
         if self.node.id == node.id: return
-        addr = (node.ip, self.heartbeat_port)
+
+        self.ironhouse.create_from_public_key(node.public_key)
+        self.ironhouse.reconfigure_curve()
+
+        addr = (node.ip, node.port)
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connections[conn.fileno()] = (conn, addr, node)
         try:
             conn.connect(addr)
             self.poll.register(conn.fileno(), POLLIN)
             log.info("[CLIENT SIDE] Client (%s, %s) connected" % addr)
+            return conn
         except:
             del self.connections[conn.fileno()]
-            pass
+            conn.close()
 
     def lookup_ip_in_cache(self, vk):
         return self.vkcache.get(vk)
@@ -142,12 +168,6 @@ class Network(object):
         if res_node != None:
             self.vkcache[node_key] = res_node
             pk = self.ironhouse.vk2pk(node_key)
-            # authorized = self.ironhouse.authenticate(pk, res_node)
-            # if self.network.authenticate(node):
-            #     log.debug('{} is authorized'.format(res_node))
-            # else:
-            #     log.debug('UNAUTHORIZED: {}'.format(res_node))
-            #     return
         return res_node
 
     def stop(self):
@@ -161,13 +181,12 @@ class Network(object):
             self.save_state_loop.cancel()
 
         try:
+            self.ironhouse.cleanup()
+            self.stethoscope_future.cancel()
             self.poll.unregister(self.stethoscope_sock.fileno())
             self.poll.close()
-            self.stethoscope_sock.close()
-            self.udp_sock_server.close()
-            self.ironhouse.sec_sock.close()
         except Exception as e:
-            log.debug(e)
+            log.debug('Safely Handled: {}'.format(e))
 
     def _create_protocol(self):
         return self.protocol_class(self.node, self.storage, self.ksize, self)
@@ -187,8 +206,8 @@ class Network(object):
         self.refresh_table()
 
     def refresh_table(self):
-        asyncio.ensure_future(self._refresh_table())
         self.refresh_loop = self.loop.call_later(3600, self.refresh_table)
+        return asyncio.ensure_future(self._refresh_table())
 
     async def _refresh_table(self):
         """
@@ -273,7 +292,7 @@ class Network(object):
         """
         Set the given string key to the given value in the network.
         """
-        if not check_dht_value_type(value):
+        if not self.check_dht_value_type(value):
             raise TypeError(
                 "Value must be of type int, float, bool, str, or bytes"
             )
@@ -356,23 +375,18 @@ class Network(object):
                                                frequency)
 
 
-def check_dht_value_type(value):
-    """
-    Checks to see if the type of the value is a valid type for
-    placing in the dht.
-    """
-    typeset = set(
-        [
-            int,
-            float,
-            bool,
-            str,
-            bytes,
-        ]
-    )
-    return type(value) in typeset
-
-if __name__ == '__main__':
-    s = Network(node_id='vk_'.format(os.getenv('HOST_IP', '127.0.0.1')), discovery_mode='test')
-    loop = asyncio.get_event_loop()
-    loop.run_forever()
+    def check_dht_value_type(self, value):
+        """
+        Checks to see if the type of the value is a valid type for
+        placing in the dht.
+        """
+        typeset = set(
+            [
+                int,
+                float,
+                bool,
+                str,
+                bytes,
+            ]
+        )
+        return type(value) in typeset
