@@ -14,21 +14,27 @@ EXPECTED_SNIPPET = '# UNITTEST_FLAG_CURRENCY_SENECA 1729'
 
 class TestBuildTables(TestCase):
 
-    def _default_ex(self):
-        return Executer.init_local_noauth_dev()
+    def setUp(self):
+        super().setUp()
+
+        self.ex = Executer.init_local_noauth_dev()
+
+    def tearDown(self):
+        super().tearDown()
+
+        self.ex.cur.close()
+        self.ex.conn.close()
 
     def test_tables_not_none(self):
-        ex = self._default_ex()
-        tables = build_tables(ex, should_drop=True)
+        tables = build_tables(self.ex, should_drop=True)
 
         assert tables.blocks
         assert tables.contracts
 
     def test_seed_blocks(self):
-        ex = self._default_ex()
-        tables = build_tables(ex, should_drop=True)
+        tables = build_tables(self.ex, should_drop=True)
 
-        blocks = tables.blocks.select().run(ex)
+        blocks = tables.blocks.select().run(self.ex)
         expected_row = {'number': 1, 'hash': GENESIS_HASH, 'tree': GENESIS_TREE, 'signatures': GENESIS_SIGS}
 
         assert len(blocks.rows) == 1, "Expected blocks table to be seed with 1 row"
@@ -43,10 +49,9 @@ class TestBuildTables(TestCase):
                                                .format(key, actual_val, expected_val)
 
     def test_seed_contracts(self):
-        ex = self._default_ex()
-        tables = build_tables(ex, should_drop=True)
+        tables = build_tables(self.ex, should_drop=True)
 
-        query = tables.contracts.select().run(ex)
+        query = tables.contracts.select().run(self.ex)
 
         cols = query.keys
         col_indx = {col: cols.index(col) for col in cols}
@@ -79,8 +84,7 @@ class TestBuildTables(TestCase):
                 raise Exception("Contract with id {} and not found.\ncode str ... \n{}".format(contract_id, code_str))
 
     def test_lookup_contract_info(self):
-        ex = self._default_ex()
-        tables = build_tables(ex, should_drop=True)
+        tables = build_tables(self.ex, should_drop=True)
 
         contract_id = _contract_id_for_filename(CONTRACT_FILENAME)
 
@@ -88,17 +92,16 @@ class TestBuildTables(TestCase):
         expected_exec_dt = GENESIS_DATE
         expected_snippet = EXPECTED_SNIPPET
 
-        actual_author, actual_exec_dt, actual_code = _lookup_contract_info(ex, tables.contracts, contract_id)
+        actual_author, actual_exec_dt, actual_code = _lookup_contract_info(self.ex, tables.contracts, contract_id)
 
         self.assertEqual(expected_author, actual_author)
         self.assertEqual(expected_exec_dt , actual_exec_dt)
         self.assertTrue(expected_snippet in actual_code)
 
     def test_module_loader_fn(self):
-        ex = self._default_ex()
-        tables = build_tables(ex, should_drop=True)
+        tables = build_tables(self.ex, should_drop=True)
 
-        loader_fn = module_loader_fn(ex, tables.contracts)
+        loader_fn = module_loader_fn(self.ex, tables.contracts)
 
         contract_id = _contract_id_for_filename(CONTRACT_FILENAME)
 
