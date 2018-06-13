@@ -12,7 +12,6 @@ from nacl.signing import VerifyKey
 from cilantro.logger import get_logger
 from cilantro.protocol.overlay.protocol import KademliaProtocol
 from cilantro.protocol.overlay.utils import digest
-from cilantro.protocol.overlay.storage import ForgetfulStorage
 from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.overlay.crawling import ValueSpiderCrawl, NodeSpiderCrawl
 from cilantro.protocol.overlay.ironhouse import Ironhouse
@@ -34,7 +33,7 @@ class Network(object):
 
     protocol_class = KademliaProtocol
 
-    def __init__(self, ksize=20, alpha=3, node_id=None, storage=None, discovery_mode='neighborhood', loop=None, max_peers=64, heartbeat_port=None, public_ip=None, *args, **kwargs):
+    def __init__(self, ksize=20, alpha=3, node_id=None, discovery_mode='neighborhood', loop=None, max_peers=64, heartbeat_port=None, public_ip=None, *args, **kwargs):
         """
         Create a server instance.  This will start listening on the given port.
 
@@ -42,8 +41,6 @@ class Network(object):
             ksize (int): The k parameter from the paper
             alpha (int): The alpha parameter from the paper
             node_id: The id for this node on the network.
-            storage: An instance that implements
-                     :interface:`~cilantro.protocol.overlay.storage.IStorage`
         """
         self.loop = loop if loop else asyncio.get_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -56,7 +53,6 @@ class Network(object):
         self.refresh_loop = None
         self.save_state_loop = None
         self.max_peers = max_peers
-        self.storage = storage or ForgetfulStorage()
         self.heartbeat_port = heartbeat_port or os.getenv('HEAERTBEAT_PORT', 31233)
         self.ironhouse = Ironhouse(*args, **kwargs)
         self.node = Node(
@@ -109,29 +105,15 @@ class Network(object):
                                 48 # "Address alrady in use": socket shutsdown
                             ]:
                                 log.info("Client (%s, %s) disconnected" % addr)
+                                del self.connections[fileno]
+                                if self.vkcache.get(node.ip):
+                                    del self.vkcache[node.ip]
+                                self.protocol.router.removeContact(node)
                                 self.poll.unregister(fileno)
                                 conn.close()
-                                del self.connections[fileno]
-                                self.protocol.router.removeContact(node)
-                                assert node.ip in self.vkcache, 'The removed node({}) has no corresponding ip.'.format(node.id)
-                                del self.vkcache[node.ip]
                 await asyncio.sleep(0.1)
         finally:
-            if hasattr(self, 'poll') and hasattr(self, 'stethoscope_sock'):
-                for fileno in self.connections:
-                    try:
-                        conn, addr, node = self.connections[fileno]
-                        self.poll.unregister(fileno)
-                        conn.close()
-                    except:
-                        log.debug('Closed a previously opened connection')
-                try: self.poll.unregister(self.stethoscope_sock.fileno())
-                except: log.debug('Already unregistered previously.')
-                try: self.poll.close()
-                except: log.debug('Not epoll object, no need to close.')
-                self.stethoscope_sock.close()
-                self.ironhouse.cleanup()
-                log.info('Shutting down gracefully.')
+            self.stop()
 
     def connect_to_neighbor(self, node):
         if self.node.id == node.id: return
@@ -180,16 +162,24 @@ class Network(object):
         if self.save_state_loop:
             self.save_state_loop.cancel()
 
-        try:
-            self.ironhouse.cleanup()
-            self.stethoscope_future.cancel()
-            self.poll.unregister(self.stethoscope_sock.fileno())
-            self.poll.close()
-        except Exception as e:
-            log.debug('Safely Handled: {}'.format(e))
+        for fileno in self.connections:
+            conn, addr, node = self.connections[fileno]
+            try: self.poll.unregister(fileno)
+            except: log.debug('Already unregistered')
+            conn.close()
+            log.debug('Closed a previously opened connection')
+        self.ironhouse.cleanup()
+        try: self.poll.unregister(self.stethoscope_sock.fileno())
+        except: log.debug('Stehoscope is already unregistered')
+        self.stethoscope_sock.close()
+        try: self.poll.close()
+        except: pass#log.debug('Not epoll object, no need to close.')
+        try: self.stethoscope_future.cancel()
+        except: log.debug('Task already completed')
+        log.info('Network shutting down gracefully.')
 
     def _create_protocol(self):
-        return self.protocol_class(self.node, self.storage, self.ksize, self)
+        return self.protocol_class(self.node, self.ksize, self)
 
     def listen(self, port, interface='0.0.0.0'):
         """
@@ -225,10 +215,6 @@ class Network(object):
 
         # do our crawling
         await asyncio.gather(*ds)
-
-        # now republish keys older than one hour
-        for dkey, value in self.storage.iteritemsOlderThan(3600):
-            await self.set_digest(dkey, value)
 
     def bootstrappableNeighbors(self):
         """
@@ -266,65 +252,6 @@ class Network(object):
         if result[0]:
             node_id, public_key = result[1]
             return Node(node_id, addr[0], addr[1], public_key=public_key)
-
-    async def get(self, key):
-        """
-        Get a key if the network has it.
-
-        Returns:
-            :class:`None` if not found, the value otherwise.
-        """
-        log.info("Looking up key %s", key)
-        dkey = digest(key)
-        # if this node has it, return it
-        if self.storage.get(dkey) is not None:
-            return self.storage.get(dkey)
-        node = Node(dkey)
-        nearest = self.protocol.router.findNeighbors(node)
-        if len(nearest) == 0:
-            log.warning("There are no known neighbors to get key %s", key)
-            return None
-        spider = ValueSpiderCrawl(self.protocol, node, nearest,
-                                  self.ksize, self.alpha)
-        return await spider.find()
-
-    async def set(self, key, value):
-        """
-        Set the given string key to the given value in the network.
-        """
-        if not self.check_dht_value_type(value):
-            raise TypeError(
-                "Value must be of type int, float, bool, str, or bytes"
-            )
-        log.info("setting '%s' = '%s' on network", key, value)
-        dkey = digest(key)
-        return await self.set_digest(dkey, value)
-
-    async def set_digest(self, dkey, value):
-        """
-        Set the given sha1 digest key (bytes) to the given value in the
-        network.
-        """
-        node = Node(dkey)
-
-        nearest = self.protocol.router.findNeighbors(node)
-        if len(nearest) == 0:
-            log.warning("There are no known neighbors to set key %s",
-                        dkey.hex())
-            return False
-
-        spider = NodeSpiderCrawl(self.protocol, node, nearest,
-                                 self.ksize, self.alpha)
-        nodes = await spider.find()
-        log.info("setting '%s' on %s", dkey.hex(), list(map(str, nodes)))
-
-        # if this node is close too, then store here as well
-        biggest = max([n.distanceTo(node) for n in nodes])
-        if self.node.distanceTo(node) < biggest:
-            self.storage[dkey] = value
-        ds = [self.protocol.callStore(n, dkey, value) for n in nodes]
-        # return true only if at least one store call succeeded
-        return any(await asyncio.gather(*ds))
 
     def saveState(self, fname):
         """
@@ -373,20 +300,3 @@ class Network(object):
                                                self.saveStateRegularly,
                                                fname,
                                                frequency)
-
-
-    def check_dht_value_type(self, value):
-        """
-        Checks to see if the type of the value is a valid type for
-        placing in the dht.
-        """
-        typeset = set(
-            [
-                int,
-                float,
-                bool,
-                str,
-                bytes,
-            ]
-        )
-        return type(value) in typeset

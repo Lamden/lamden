@@ -47,7 +47,6 @@ class TestNetwork(TestCase):
             stop(self)
         self.assertIsInstance(self.a_net.stethoscope_sock, socket.socket)
         self.assertIsInstance(self.a_net.ironhouse, Ironhouse)
-        self.assertIsInstance(self.a_net.storage, ForgetfulStorage)
         self.assertIsInstance(self.a_net.node, Node)
         self.assertEqual(self.a_net.node.public_key, self.a['curve_key'])
         self.assertEqual(self.b_net.node.public_key, self.b['curve_key'])
@@ -118,18 +117,31 @@ class TestNetwork(TestCase):
             self.assertEqual(self.a_net.connections, {})
             stop(self)
 
+        self.a_net.listen(4566)
+        self.b_net.listen(4567)
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()
 
     def test_listen(self):
+        def run(self):
+            stop(self)
         self.a_net.listen(4566)
         self.assertIsInstance(self.a_net.transport, _SelectorDatagramTransport)
         self.assertIsInstance(self.a_net.protocol, KademliaProtocol)
+        t = Timer(0.01, run, [self])
+        t.start()
+        self.loop.run_forever()
 
     def test_refresh_table(self):
+        def run(self):
+            stop(self)
         self.a_net.listen(4566)
         self.a_net.refresh_table()
+        self.assertIsInstance(self.a_net.refresh_loop, asyncio.TimerHandle)
+        t = Timer(0.01, run, [self])
+        t.start()
+        self.loop.run_forever()
 
     def tearDown(self):
         self.loop.close()

@@ -9,15 +9,16 @@ from cilantro.logger import get_logger
 from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.overlay.routing import RoutingTable
 from cilantro.protocol.overlay.utils import digest
+from cilantro.protocol.overlay.storage import ForgetfulStorage
 
 log = get_logger(__name__)
 
 
 class KademliaProtocol(RPCProtocol):
-    def __init__(self, sourceNode, storage, ksize, network):
+    def __init__(self, sourceNode, ksize, network, storage={}):
         RPCProtocol.__init__(self, waitTimeout=3)
         self.router = RoutingTable(self, ksize, sourceNode)
-        self.storage = storage
+        self.storage = ForgetfulStorage()
         self.sourceNode = sourceNode
         self.network = network
 
