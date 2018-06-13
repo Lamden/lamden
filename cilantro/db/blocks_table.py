@@ -38,3 +38,4 @@ def validate_blockchain(ex, blocks_table):
     :return: None
     :raises: An exception/assertion if
     """
+    pass

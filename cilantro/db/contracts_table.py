@@ -20,11 +20,11 @@ GENESIS_DATE = datetime.datetime(datetime.MINYEAR, 1, 1)
 
 def build_contracts_table(ex, should_drop=True):
     contracts = t.Table('smart_contracts',
-                        t.Column('contract_id', t.str_len(64), True),  # why is str_len(64) not working? is printing an insert statement with a value of only length 50 even when inserting a 64 char string
+                        t.Column('contract_id', t.str_len(64), True),
                         [
                             t.Column('code_str', str),
                             t.Column('author', t.str_len(64)),
-                            t.Column('execution_datetime', datetime.datetime),  # why won't datetime.datetime work???
+                            t.Column('execution_datetime', datetime.datetime),
                             t.Column('execution_status', t.str_len(30)),
                         ])
 
@@ -35,7 +35,7 @@ def seed_contracts(ex, contracts_table):
     """
     Seeds the contracts table with all contracts found in cilantro/contracts
     """
-    # Insert contract code into table
+    # Insert contract code from files in file system into database table
     for contract_id, code_str in _read_contract_files():
         contracts_table.insert([{
             'contract_id': contract_id,
@@ -48,22 +48,6 @@ def seed_contracts(ex, contracts_table):
     # Run contracts
     for contract_id, code_str in _read_contract_files():
         _execute_contract(ex, contracts_table, contract_id, code_str)
-
-
-def lookup_contract_code(executor, contract_id: str, contract_table) -> str:
-    """
-    Looks up the code for a contract by id. Returns an empty string if it could not be found.
-    :param contract_id: The id (just the filename currently) of the contract to lookup
-    :return: The code for the contract_id, as a string, or the empty string '', if no record could be found
-    """
-    query = contract_table.select('code_str').where(contract_table.contract_id == contract_id).run(executor)
-    assert len(query.rows) <= 1, "Multiple rows found for contract_id {}".format(contract_id)
-
-    if len(query.rows) == 0:
-        log.warning("[inside lookup_contract_code] No contract row found for contract_id {}".format(contract_id))
-        return ''
-
-    return query.rows[0][0]
 
 
 def module_loader_fn(ex, contract_table):
@@ -80,6 +64,8 @@ def module_loader_fn(ex, contract_table):
         author = query[0]['author']
         exec_dt = query[0]['execution_datetime']
         code_str = query[0]['code_str']
+
+        assert len(code_str) > 0, 'Contract id {} with author {} has empty code string'.format(contract_id, author)
 
         runtime_data = {'author': author, 'contract_id': contract_id, 'execution_datetime': exec_dt}
 
@@ -134,6 +120,8 @@ def _contract_id_for_filename(filename):
 
     For now this is just the filename without the extensions (ie 'hello.seneca' -> 'hello')
     """
+    _validate_filename(filename)
+
     # contract_id = Hasher.hash(filename)
     contract_id = filename.split('.')[0]
 
