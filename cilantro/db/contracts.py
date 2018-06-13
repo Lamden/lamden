@@ -12,7 +12,7 @@ log = get_logger("ContractsTable")
 
 path = os.path.abspath(__file__)
 dir_path = os.path.dirname(path)
-CONTRACTS_DIR = "{}/../contracts".format(dir_path)
+CONTRACTS_DIR = "{}/../contracts/lib".format(dir_path)
 
 GENESIS_AUTHOR = 'default_cilantro_contract'
 GENESIS_DATE = datetime.datetime(datetime.MINYEAR, 1, 1)
