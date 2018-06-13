@@ -5,7 +5,6 @@ import seneca.seneca_internal.storage.easy_db as t
 from seneca.execute_sc import execute_contract
 import datetime
 import os
-import types
 
 
 log = get_logger("ContractsTable")
