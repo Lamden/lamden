@@ -71,8 +71,10 @@ def run_contract(executor, contract_table, contract_id: str, user_id=GENESIS_AUT
     global_run_data = {'caller_user_id': user_id, 'execution_datetime': exec_dt, 'caller_contract_id': contract_id}
     this_contract_run_data = {'author': author, 'execution_datetime': exec_dt, 'contract_id': contract_id}
 
-    execute_contract(global_run_data, this_contract_run_data, code_str, is_main=True,
+    result = execute_contract(global_run_data, this_contract_run_data, code_str, is_main=True,
                      module_loader=module_loader_fn(executor, contract_table), db_executer=executor)
+
+    log.critical("\n\n\n result of executor contract with id {}: \n {} \n\n".format(contract_id, result))
 
 
 def _lookup_contract_info(executor, contract_table, contract_id: str) -> tuple:
@@ -118,10 +120,10 @@ def _read_contract_files() -> list:
             contracts.append((contract_id, code_str))
 
             # TODO remove this (debug lines)
-            max_len = min(len(code_str), 60)
-            log.debug("[inside _read_contract_files] filename {} has contract_id {} has author {} and code has code: "
-                      "\n {} ....[SNIPPED TRUNCATED]"
-                      .format(filename, contract_id, GENESIS_AUTHOR, code_str[0:max_len]))
+            # max_len = min(len(code_str), 60)
+            # log.debug("[inside _read_contract_files] filename {} has contract_id {} has author {} and code has code: "
+            #           "\n {} ....[SNIPPED TRUNCATED]"
+            #           .format(filename, contract_id, GENESIS_AUTHOR, code_str[0:max_len]))
             # end debug
 
     return contracts

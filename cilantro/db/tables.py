@@ -12,7 +12,6 @@ constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'cons
 def build_tables(ex, should_drop=True):
     from cilantro.db.contracts import build_contracts_table, seed_contracts
     from cilantro.db.blocks import build_blocks_table, seed_blocks
-    from cilantro.db.balances import seed_balances
 
     if should_drop:
         log.info("Dropping Seneca database")
@@ -26,12 +25,8 @@ def build_tables(ex, should_drop=True):
 
     # Only seed database if we just dropped it
     if should_drop:
-        # Seed tables created by Cilantro
         seed_contracts(ex, contracts)
         seed_blocks(ex, blocks)
-
-        # Seed smart contract tables (ie tables created by Seneca)
-        seed_balances(ex)
 
     tables = type('Tables', (object,), {'contracts': contracts, 'blocks': blocks})
 
