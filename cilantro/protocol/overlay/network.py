@@ -1,11 +1,13 @@
 """
 Package for interacting on the network at a high level.
 """
+
 import random
 import pickle
 import asyncio
 import logging
 import os, zmq
+
 import socket, select, struct
 
 from nacl.signing import VerifyKey
@@ -17,14 +19,13 @@ from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.overlay.crawling import ValueSpiderCrawl, NodeSpiderCrawl
 from cilantro.protocol.overlay.ironhouse import Ironhouse
 
-if hasattr(select, 'epoll'):
-    poll = select.epoll
-    POLLIN = select.EPOLLIN
-else:
-    poll = select.poll
-    POLLIN = select.POLLIN
+try: poll = select.epoll
+except: poll = select.poll
+try: POLLIN = select.EPOLLIN
+except: POLLIN = select.POLLIN
 
 log = get_logger(__name__)
+
 HEARTBEAT_PORT_OFFSET = 1
 AUTH_PORT_OFFSET = 2
 
@@ -91,27 +92,22 @@ class Network(object):
     async def stethoscope(self):
         self.connections = {}
         self.poll = poll()
-        self.poll.register(self.stethoscope_sock.fileno(), POLLIN)
         log.debug('Listening to heartbeats on {}...'.format(self.heartbeat_port))
         try:
             while True:
                 events = self.poll.poll(1)
                 for fileno, event in events:
-                    if fileno == self.stethoscope_sock.fileno():
-                        conn, addr = self.stethoscope_sock.accept()
-                        log.info("[SERVER SIDE] Client (%s, %s) connected to server" % addr)
-                    # elif event & (POLLIN):
-                    # print('\n\n\n{},{},{},{}\n\n\n'.format(event, POLLIN, fileno, self.stethoscope_sock.fileno()))
                     if event & (POLLIN):
-                        conn, addr, node = self.connections[fileno]
+                        conn, node = self.connections[fileno]
+                        addr = (node.ip, node.port+HEARTBEAT_PORT_OFFSET)
                         try:
+                            log.debug('reconnecting {} - {}'.format(self.port, addr))
                             conn.connect(addr)
                         except Exception as e:
                             if e.args[0] in [
-                                104, # "Reset by peer": socket leaves hanging
-                                48 # "Address alrady in use": socket shutsdown
+                                54, # reset by peer
                             ]:
-                                log.info("Client (%s, %s) disconnected" % addr)
+                                log.info("Client ({}, {}) disconnected from {}".format(*addr, self.node))
                                 del self.connections[fileno]
                                 if self.vkcache.get(node.ip):
                                     del self.vkcache[node.ip]
@@ -119,8 +115,10 @@ class Network(object):
                                 self.poll.unregister(fileno)
                                 conn.close()
                 await asyncio.sleep(0.1)
-        finally:
+        except Exception as e:
             self.stop()
+        finally:
+            log.info('Network shutting down gracefully.')
 
     def connect_to_neighbor(self, node):
         if self.node.id == node.id: return
@@ -130,11 +128,12 @@ class Network(object):
 
         addr = (node.ip, node.port+HEARTBEAT_PORT_OFFSET)
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connections[conn.fileno()] = (conn, addr, node)
+        self.connections[conn.fileno()] = (conn, node)
+        # self.connections[addr] = (conn, node)
         try:
             conn.connect(addr)
             self.poll.register(conn.fileno(), POLLIN)
-            log.info("[CLIENT SIDE] Client (%s, %s) connected" % addr)
+            log.info("[CLIENT SIDE] Client ({}, {}) connected".format(*addr))
             return conn
         except Exception as e:
             del self.connections[conn.fileno()]
@@ -144,7 +143,7 @@ class Network(object):
         ip = self.vkcache.get(vk)
         if ip:
             log.debug('Found ip {} in cache'.format(ip))
-        return
+        return ip
 
     async def lookup_ip(self, node_key):
         cache_node = self.lookup_ip_in_cache(node_key)
@@ -176,7 +175,7 @@ class Network(object):
             self.save_state_loop.cancel()
 
         for fileno in self.connections:
-            conn, addr, node = self.connections[fileno]
+            conn, addr = self.connections[fileno]
             try: self.poll.unregister(fileno)
             except: log.debug('Already unregistered')
             conn.close()
@@ -188,7 +187,6 @@ class Network(object):
         try: self.poll.close()
         except: pass#log.debug('Not epoll object, no need to close.')
         self.stethoscope_future.cancel()
-        log.info('Network shutting down gracefully.')
 
     def _create_protocol(self):
         return self.protocol_class(self.node, self.ksize, self)
@@ -220,7 +218,6 @@ class Network(object):
         log.debug("Refreshing routing table")
         ds = []
         for node_id in self.protocol.getRefreshIDs():
-            log.critical(node_id)
             node = Node(node_id=node_id)
             nearest = self.protocol.router.findNeighbors(node, self.alpha)
             spider = NodeSpiderCrawl(self.protocol, node, nearest,
