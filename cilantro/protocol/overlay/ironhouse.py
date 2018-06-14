@@ -150,9 +150,8 @@ class Ironhouse:
 
         try:
             msg = await asyncio.wait_for(client.recv(), 0.5)
-            log.debug('got secure reply {}'.format(msg))
-
-            if self.auth_validate(msg) == True:
+            log.debug('got secure reply {}, {}'.format(msg, target_public_key))
+            if self.auth_validate(msg) == True and target_public_key == msg:
                 self.create_from_public_key(msg)
                 authorized = True
 

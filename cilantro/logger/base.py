@@ -99,12 +99,19 @@ else:
                     coloredlogs.ColoredFormatter(format)
                 )
 
+        class ColoredStreamHandler(logging.StreamHandler):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.setFormatter(
+                    coloredlogs.ColoredFormatter(format)
+                )
+
         os.makedirs(filedir, exist_ok=True)
 
         filehandlers = [
             logging.FileHandler(filename),
             ColoredFileHandler('{}_color'.format(filename)),
-            logging.StreamHandler()
+            ColoredStreamHandler()
         ]
         logging.basicConfig(
             format=format,

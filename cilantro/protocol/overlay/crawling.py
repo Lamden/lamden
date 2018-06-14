@@ -136,7 +136,7 @@ class NodeSpiderCrawl(SpiderCrawl):
             for peer in list(self.nearest):
                 if peer.id == self.target_node_id:
                     del self.target_node_id
-                    return peer.ip
+                    return peer
         return await self._find(self.protocol.callFindNode)
 
     async def _nodesFound(self, responses):

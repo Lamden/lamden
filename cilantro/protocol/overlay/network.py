@@ -10,6 +10,7 @@ import socket, select, struct
 
 from nacl.signing import VerifyKey
 from cilantro.logger import get_logger
+from cilantro.protocol.structures import Bidict
 from cilantro.protocol.overlay.protocol import KademliaProtocol
 from cilantro.protocol.overlay.utils import digest
 from cilantro.protocol.overlay.node import Node
@@ -46,7 +47,7 @@ class Network(object):
         """
         self.loop = loop if loop else asyncio.get_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.vkcache = {}
+        self.vkcache = Bidict()
         self.authorized_node = {}
         self.ksize = ksize
         self.alpha = alpha
@@ -67,10 +68,11 @@ class Network(object):
         self.setup_stethoscope()
         self.ironhouse.setup_secure_server()
         self.listen()
+        self.saveStateRegularly('state.tmp')
 
-    def authenticate(self, node):
-        authorized = self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
-        if authorized:
+    async def authenticate(self, node):
+        authorized = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
+        if authorized == True:
             log.debug('{}:{} is authorized'.format(node.ip, node.port))
         else:
             log.debug('!UNAUTHORIZED! {}:{}'.format(node.ip, node.port))
@@ -104,7 +106,6 @@ class Network(object):
                         conn, addr, node = self.connections[fileno]
                         try:
                             conn.connect(addr)
-                            print('connected without a problem')
                         except Exception as e:
                             if e.args[0] in [
                                 104, # "Reset by peer": socket leaves hanging
@@ -140,10 +141,16 @@ class Network(object):
             conn.close()
 
     def lookup_ip_in_cache(self, vk):
-        return self.vkcache.get(vk)
+        ip = self.vkcache.get(vk)
+        if ip:
+            log.debug('Found ip {} in cache'.format(ip))
+        return
 
     async def lookup_ip(self, node_key):
+        cache_node = self.lookup_ip_in_cache(node_key)
+        if cache_node: return cache_node
         node_id = digest(node_key)
+        if node_id == self.node.id: return self.node
 
         nearest = self.protocol.router.findNeighbors(self.node)
         spider = NodeSpiderCrawl(self.protocol, self.node, nearest, self.ksize, self.alpha)
@@ -154,7 +161,7 @@ class Network(object):
         if type(res_node) == list: res_node = None
         log.debug('{} resolves to {}'.format(node_key, res_node))
         if res_node != None:
-            self.vkcache[node_key] = res_node
+            self.vkcache[node_key] = res_node.ip
             pk = self.ironhouse.vk2pk(node_key)
         return res_node
 
@@ -180,8 +187,7 @@ class Network(object):
         self.stethoscope_sock.close()
         try: self.poll.close()
         except: pass#log.debug('Not epoll object, no need to close.')
-        try: self.stethoscope_future.cancel()
-        except: log.debug('Task already completed')
+        self.stethoscope_future.cancel()
         log.info('Network shutting down gracefully.')
 
     def _create_protocol(self):
@@ -214,6 +220,7 @@ class Network(object):
         log.debug("Refreshing routing table")
         ds = []
         for node_id in self.protocol.getRefreshIDs():
+            log.critical(node_id)
             node = Node(node_id=node_id)
             nearest = self.protocol.router.findNeighbors(node, self.alpha)
             spider = NodeSpiderCrawl(self.protocol, node, nearest,
@@ -249,7 +256,6 @@ class Network(object):
         cos = list(map(self.bootstrap_node, addrs))
         gathered = await asyncio.gather(*cos)
         nodes = [node for node in gathered if node is not None]
-        print(':::', nodes, self.node)
 
         if len(nodes) == 0:
             log.warning('Unable to find/authenticate with any nodes in the network')
@@ -285,9 +291,10 @@ class Network(object):
         }
         if len(data['neighbors']) == 0:
             log.warning("No known neighbors, so not writing to cache.")
-            return
+            return False
         with open(fname, 'wb+') as f:
             pickle.dump(data, f)
+        return True
 
     @classmethod
     def loadState(self, fname):
@@ -298,10 +305,7 @@ class Network(object):
         log.info("Loading state from %s", fname)
         with open(fname, 'rb') as f:
             data = pickle.load(f)
-        s = Network(data['ksize'], data['alpha'], data['id'])
-        if len(data['neighbors']) > 0:
-            s.bootstrap(data['neighbors'])
-        return s
+        return data
 
     def saveStateRegularly(self, fname, frequency=600):
         """

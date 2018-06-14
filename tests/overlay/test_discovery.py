@@ -1,6 +1,5 @@
 import unittest, asyncio
 from unittest import TestCase
-from unittest.mock import patch
 from cilantro.protocol.overlay.discovery import Discovery
 from os.path import exists, dirname
 import socket
