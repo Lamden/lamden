@@ -194,7 +194,7 @@ class State(metaclass=StateMeta):
 
                 loop = asyncio.get_event_loop()
                 # TODO figure out how to still do this assertion, and have it work /w unit tests somehow
-                # assert loop.is_running(), "Event loop must be running for timeout functionality!"
+                assert loop.is_running(), "Event loop must be running for timeout functionality!"
 
                 self.log.debug("Scheduling timeout trigger {} after {} seconds".format(timeout_func, timeout_dur))
 

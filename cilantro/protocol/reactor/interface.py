@@ -7,7 +7,6 @@ import time
 from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand
 from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG, KILL_SIG
-# from cilantro.protocol.transport.router import Router
 
 
 class ReactorInterface:

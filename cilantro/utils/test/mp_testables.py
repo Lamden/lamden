@@ -25,6 +25,19 @@ class MPComposer(MPTesterBase):
         return composer, loop, [reactor._recv_messages()]
 
 
+@mp_testable(StateMachine)
+class MPStateMachine(MPTesterBase):
+    @classmethod
+    def build_obj(cls):
+        loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(loop)
+
+        sm = StateMachine()
+
+        # NOTE -- the testing framework should start the loop, so we shouldn't have to worry bout that here
+        return sm, loop, []
+
+
 @mp_testable(God)
 class MPGod(MPTesterBase):
     @classmethod

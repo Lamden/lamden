@@ -40,25 +40,6 @@ class StateMachine:
         relinquishes control. run_in_loop=True should only be used in unit tests, or if the StateMachine class is intended
         to be used as a standalone library (outside of Cilantro).
         """
-        # def _start():
-        #     self.is_started = True
-        #     self.transition(self._INIT_STATE)
-        #
-        # assert not self.is_started, "StateMachine already started -- .start() must only be invoked once."
-        #
-        # if run_in_loop:
-        #     loop = asyncio.get_event_loop()
-        #     asyncio.set_event_loop(loop)
-        #
-        #     # Sanity check to make sure if run_in_loop is True, then the default event loop is not already running
-        #     assert not loop.is_running(), "Loop cannot already be running if run_in_loop is passed!"
-        #
-        #     self._log("Starting StateMachine and running event loop")
-        #     loop.run_until_complete(asyncio.coroutine(_start)())
-        # else:
-        #     self._log("Starting StateMachine")
-        #     _start()
-
         assert not self.is_started, "StateMachine already started -- .start() must only be invoked once."
 
         self.is_started = True
@@ -73,8 +54,6 @@ class StateMachine:
 
             self._log("Running event loop forever")
             self.loop.run_forever()
-
-
 
     def transition(self, next_state, *args, **kwargs):
         """
