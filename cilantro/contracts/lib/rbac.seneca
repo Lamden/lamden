@@ -3,15 +3,15 @@ import seneca.runtime as rt
 from seneca.modulelib import export, make_exports
 
 # TODO: Implement per-table permissions
-if __name__ == '__main__':
-    # Clean-up for testing
-    try:
-        drop_table('users')
-        drop_table('roles')
-    except Exception as e:
-        print(e)
-        # TODO: Don't do this.
-        pass
+# if __name__ == '__main__':
+#     # Clean-up for testing
+#     try:
+#         drop_table('users')
+#         drop_table('roles')
+#     except Exception as e:
+#         print(e)
+#         # TODO: Don't do this.
+#         pass
 
 
 # Table definitions
@@ -166,7 +166,6 @@ if __name__ == '__main__':
     # Create first user, the author of this contract, and give that user admin perms
     _insert_role('admin', True, True, True, True, True)
     _insert_user(rt.this_contract.author, 'admin')
-    print(roles.select().run())
 
 else:
     exports = make_exports()

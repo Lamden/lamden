@@ -5,16 +5,29 @@ from datetime import datetime
 from cilantro.logger import get_logger
 from seneca.execute_sc import execute_contract
 from seneca.seneca_internal.storage.mysql_executer import Executer
+from cilantro.db.templating import ContractTemplate
 
 
 log = get_logger("TestRunner")
 
 
-CODE_STR = \
+USING_RBAC_CODE = \
 """
 import rbac
 
-rbac.create_user('new_user', 'admin')
+rbac.create_user('pepe', 'admin')
+rbac.create_user('jesus', 'admin')
+
+rbac.create_role('incompetent_buffoon', False, False, False, False, False)
+rbac.create_user('trumpster dumpster', 'incompetent_buffoon')
+"""
+
+
+USING_CURRENCY_CODE = \
+"""
+import currency
+
+currency.transfer_coins('CARL', 10 ** 6)
 """
 
 
@@ -34,17 +47,22 @@ class TestRunContracts(TestCase):
     def test_run_contract(self):
         tables = build_tables(self.ex, should_drop=True)
 
-        contract_id = 'using_rbac_1'
-        user_id = 'god'
+        run_contract(self.ex, tables.contracts, code_str=USING_RBAC_CODE, user_id='DAVIS')
 
-        contract_code = CODE_STR
-        assert contract_code
+        # TODO assert that the new user was created as expected
 
-        global_run_data = {'caller_user_id': user_id, 'execution_datetime': None, 'caller_contract_id': contract_id}
-        this_contract_run_data = {'author': user_id, 'execution_datetime': None, 'contract_id': contract_id}
+    def test_run_currency(self):
+        tables = build_tables(self.ex, should_drop=True)
 
-        execute_contract(global_run_data, this_contract_run_data, contract_code, is_main=True,
-                         module_loader=module_loader_fn(self.ex, tables.contracts), db_executer=self.ex)
+        run_contract(self.ex, tables.contracts, code_str=USING_CURRENCY_CODE, user_id='DAVIS')
+
+       # TODO assert that currency transfer actually happened (do raw db queries or something)
+
+    def test_run_currency_with_template(self):
+        tables = build_tables(self.ex, should_drop=True)
+        code_str = ContractTemplate.interpolate_template('currency', receiver='DAVIS', amount=2 * (10 ** 6))
+
+        run_contract(self.ex, tables.contracts, code_str=code_str, user_id='CARL')
 
 
 if __name__ == '__main__':

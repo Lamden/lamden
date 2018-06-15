@@ -57,7 +57,7 @@ class ContractTemplate:
             assert code_str.count(placeholder) > 0, "No placeholder(s) named {} found for template named {}"\
                                                     .format(placeholder, template_name)
 
-            code_str = code_str.replace(placeholder, kwargs[arg])
+            code_str = code_str.replace(placeholder, str(kwargs[arg]))
 
         # TODO sanity check to ensure ALL placeholders were interpolated (maybe just ask falc supply some lit regex)
 
