@@ -7,249 +7,20 @@ networks:
         iprange: 172.29.5.0/24
         subnet: 172.29.0.0/16
 services:
-  node_1:
+  delegate_4:
     build:
       context: ${LOCAL_PATH}/cilantro
       dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_1
+    container_name: delegate_4
     environment:
-    - HOSTNAME=node_1
-    - HOST_IP=172.29.5.1
-    - SLOT_NUM=0
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
-    image: cilantro_base.dev
-    networks:
-      cilantro:
-        ipv4_address: 172.29.5.1
-    stdin_open: true
-    tty: true
-    volumes:
-    - source: ${LOCAL_PATH}/cilantro
-      target: /app/
-      type: bind
-  node_10:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_10
-    environment:
-    - HOSTNAME=node_10
-    - HOST_IP=172.29.5.10
-    - SLOT_NUM=9
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
-    image: cilantro_base.dev
-    networks:
-      cilantro:
-        ipv4_address: 172.29.5.10
-    stdin_open: true
-    tty: true
-    volumes:
-    - source: ${LOCAL_PATH}/cilantro
-      target: /app/
-      type: bind
-  node_11:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_11
-    environment:
-    - HOSTNAME=node_11
-    - HOST_IP=172.29.5.11
-    - SLOT_NUM=10
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
-    image: cilantro_base.dev
-    networks:
-      cilantro:
-        ipv4_address: 172.29.5.11
-    stdin_open: true
-    tty: true
-    volumes:
-    - source: ${LOCAL_PATH}/cilantro
-      target: /app/
-      type: bind
-  node_12:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_12
-    environment:
-    - HOSTNAME=node_12
-    - HOST_IP=172.29.5.12
-    - SLOT_NUM=11
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
-    image: cilantro_base.dev
-    networks:
-      cilantro:
-        ipv4_address: 172.29.5.12
-    stdin_open: true
-    tty: true
-    volumes:
-    - source: ${LOCAL_PATH}/cilantro
-      target: /app/
-      type: bind
-  node_13:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_13
-    environment:
-    - HOSTNAME=node_13
-    - HOST_IP=172.29.5.13
-    - SLOT_NUM=12
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
-    image: cilantro_base.dev
-    networks:
-      cilantro:
-        ipv4_address: 172.29.5.13
-    stdin_open: true
-    tty: true
-    volumes:
-    - source: ${LOCAL_PATH}/cilantro
-      target: /app/
-      type: bind
-  node_14:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_14
-    environment:
-    - HOSTNAME=node_14
-    - HOST_IP=172.29.5.14
-    - SLOT_NUM=13
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
-    image: cilantro_base.dev
-    networks:
-      cilantro:
-        ipv4_address: 172.29.5.14
-    stdin_open: true
-    tty: true
-    volumes:
-    - source: ${LOCAL_PATH}/cilantro
-      target: /app/
-      type: bind
-  node_15:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_15
-    environment:
-    - HOSTNAME=node_15
-    - HOST_IP=172.29.5.15
-    - SLOT_NUM=14
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
-    image: cilantro_base.dev
-    networks:
-      cilantro:
-        ipv4_address: 172.29.5.15
-    stdin_open: true
-    tty: true
-    volumes:
-    - source: ${LOCAL_PATH}/cilantro
-      target: /app/
-      type: bind
-  node_16:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_16
-    environment:
-    - HOSTNAME=node_16
-    - HOST_IP=172.29.5.16
-    - SLOT_NUM=15
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
-    image: cilantro_base.dev
-    networks:
-      cilantro:
-        ipv4_address: 172.29.5.16
-    stdin_open: true
-    tty: true
-    volumes:
-    - source: ${LOCAL_PATH}/cilantro
-      target: /app/
-      type: bind
-  node_2:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_2
-    environment:
-    - HOSTNAME=node_2
-    - HOST_IP=172.29.5.2
-    - SLOT_NUM=1
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
-    image: cilantro_base.dev
-    networks:
-      cilantro:
-        ipv4_address: 172.29.5.2
-    stdin_open: true
-    tty: true
-    volumes:
-    - source: ${LOCAL_PATH}/cilantro
-      target: /app/
-      type: bind
-  node_3:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_3
-    environment:
-    - HOSTNAME=node_3
-    - HOST_IP=172.29.5.3
-    - SLOT_NUM=2
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
-    image: cilantro_base.dev
-    networks:
-      cilantro:
-        ipv4_address: 172.29.5.3
-    stdin_open: true
-    tty: true
-    volumes:
-    - source: ${LOCAL_PATH}/cilantro
-      target: /app/
-      type: bind
-  node_4:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_4
-    environment:
-    - HOSTNAME=node_4
+    - HOSTNAME=delegate_4
     - HOST_IP=172.29.5.4
-    - SLOT_NUM=3
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
+    - SLOT_NUM=0
+    - MGMT=172.29.5.0
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -260,19 +31,20 @@ services:
     - source: ${LOCAL_PATH}/cilantro
       target: /app/
       type: bind
-  node_5:
+  delegate_5:
     build:
       context: ${LOCAL_PATH}/cilantro
       dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_5
+    container_name: delegate_5
     environment:
-    - HOSTNAME=node_5
+    - HOSTNAME=delegate_5
     - HOST_IP=172.29.5.5
-    - SLOT_NUM=4
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
+    - SLOT_NUM=1
+    - MGMT=172.29.5.0
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -283,19 +55,20 @@ services:
     - source: ${LOCAL_PATH}/cilantro
       target: /app/
       type: bind
-  node_6:
+  delegate_6:
     build:
       context: ${LOCAL_PATH}/cilantro
       dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_6
+    container_name: delegate_6
     environment:
-    - HOSTNAME=node_6
+    - HOSTNAME=delegate_6
     - HOST_IP=172.29.5.6
-    - SLOT_NUM=5
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
+    - SLOT_NUM=2
+    - MGMT=172.29.5.0
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -306,69 +79,94 @@ services:
     - source: ${LOCAL_PATH}/cilantro
       target: /app/
       type: bind
-  node_7:
+  masternode:
     build:
       context: ${LOCAL_PATH}/cilantro
       dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_7
+    container_name: masternode
     environment:
-    - HOSTNAME=node_7
-    - HOST_IP=172.29.5.7
-    - SLOT_NUM=6
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
+    - HOSTNAME=masternode
+    - HOST_IP=172.29.5.1
+    - MGMT=172.29.5.0
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
-        ipv4_address: 172.29.5.7
+        ipv4_address: 172.29.5.1
     stdin_open: true
     tty: true
     volumes:
     - source: ${LOCAL_PATH}/cilantro
       target: /app/
       type: bind
-  node_8:
+  mgmt:
     build:
       context: ${LOCAL_PATH}/cilantro
       dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_8
+    container_name: mgmt
     environment:
-    - HOSTNAME=node_8
-    - HOST_IP=172.29.5.8
-    - SLOT_NUM=7
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
+    - HOSTNAME=mgmt
+    - HOST_IP=172.29.5.0
+    - MGMT=172.29.5.0
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
-        ipv4_address: 172.29.5.8
+        ipv4_address: 172.29.5.0
     stdin_open: true
     tty: true
     volumes:
     - source: ${LOCAL_PATH}/cilantro
       target: /app/
       type: bind
-  node_9:
+  witness_2:
     build:
       context: ${LOCAL_PATH}/cilantro
       dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: node_9
+    container_name: witness_2
     environment:
-    - HOSTNAME=node_9
-    - HOST_IP=172.29.5.9
-    - SLOT_NUM=8
-    - NODE=172.29.5.1,172.29.5.2,172.29.5.3,172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7,172.29.5.8,172.29.5.9,172.29.5.10,172.29.5.11,172.29.5.12,172.29.5.13,172.29.5.14,172.29.5.15,172.29.5.16
-    - TEST_NAME=secure_connection
-    expose:
-    - 10000-20000
+    - HOSTNAME=witness_2
+    - HOST_IP=172.29.5.2
+    - SLOT_NUM=0
+    - MGMT=172.29.5.0
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
-        ipv4_address: 172.29.5.9
+        ipv4_address: 172.29.5.2
+    stdin_open: true
+    tty: true
+    volumes:
+    - source: ${LOCAL_PATH}/cilantro
+      target: /app/
+      type: bind
+  witness_3:
+    build:
+      context: ${LOCAL_PATH}/cilantro
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    container_name: witness_3
+    environment:
+    - HOSTNAME=witness_3
+    - HOST_IP=172.29.5.3
+    - SLOT_NUM=1
+    - MGMT=172.29.5.0
+    - MASTERNODE=172.29.5.1
+    - WITNESS=172.29.5.2,172.29.5.3
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=bootstrap
+    image: cilantro_base.dev
+    networks:
+      cilantro:
+        ipv4_address: 172.29.5.3
     stdin_open: true
     tty: true
     volumes:
