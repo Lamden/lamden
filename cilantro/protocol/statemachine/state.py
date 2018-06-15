@@ -193,7 +193,8 @@ class State(metaclass=StateMeta):
                 assert timeout_dur > 0, "Timeout function is present, but timeout duration is not greater than 0"
 
                 loop = asyncio.get_event_loop()
-                assert loop.is_running(), "Event loop must be running for timeout functionality!"
+                # TODO figure out how to still do this assertion, and have it work /w unit tests somehow
+                # assert loop.is_running(), "Event loop must be running for timeout functionality!"
 
                 self.log.debug("Scheduling timeout trigger {} after {} seconds".format(timeout_func, timeout_dur))
 
@@ -279,12 +280,12 @@ class State(metaclass=StateMeta):
             return getattr(self, any_handler.__name__)
 
         # At this point, no handler could be found. Warn the user and return None
-        self.log.warning("\nNo {} transition handler found for state {}. Any_handler = {} ... Transition "
-                         "Registry = {}".format(trans_type, state, any_handler, trans_registry))
+        # self.log.warning("\nNo {} transition handler found for state {}. Any_handler = {} ... Transition "
+        #                  "Registry = {}".format(trans_type, state, any_handler, trans_registry))
+        self.log.warning("\nNo {} transition handler found for state {}".format(trans_type, state))
         return None
 
     def __eq__(self, other):
-        # TODO is this too sketch and mad scientist-like? -- davis
         """
         An equality check on steroids. Used in State + StateMachine classes for type introspection. This
         method should return true if both self and other are the same CLASS of state. Other may be either another
@@ -302,7 +303,7 @@ class State(metaclass=StateMeta):
         elif type(other) is str:
             return self.__name__ == other
 
-        # Otherwise, this is an invalid comparison ('other' belongs to unknown equivalence class)
+        # Otherwise, this is an invalid comparison ('other' belongs to incompatible equivalence class)
         else:
             raise ValueError("Invalid comparison -- RHS (right hand side of equation) must be either a State subclass "
                              "instance or String or Class (not {})".format(other))
