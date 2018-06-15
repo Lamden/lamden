@@ -21,9 +21,6 @@ services:
     ip: 172.29.5.0
     ports:
       - "8080:8080"
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     image: cilantro_base.dev
     stdin_open: true
     tty: true
@@ -36,9 +33,6 @@ services:
     range:
       - 1
       - 4
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     image: cilantro_base.dev
     stdin_open: true
     tty: true
@@ -51,9 +45,6 @@ services:
     range:
       - 5
       - 7
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     image: cilantro_base.dev
     stdin_open: true
     tty: true
