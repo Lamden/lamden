@@ -15,9 +15,10 @@ from os.path import basename, splitext
 from zmq.auth.thread import ThreadAuthenticator
 from zmq.auth.asyncio import AsyncioAuthenticator
 from zmq.utils.z85 import decode, encode
-from nacl.public import PrivateKey
+from nacl.public import PrivateKey, PublicKey
 from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
+from cilantro.db import VKBook
 
 from cilantro.logger import get_logger
 
@@ -32,8 +33,10 @@ class Ironhouse:
         self.public_keys_dir = os.path.join(self.base_dir, 'public_keys')
         self.secret_keys_dir = os.path.join(self.base_dir, 'private_keys')
         self.secret_file = os.path.join(self.secret_keys_dir, "{}.key_secret".format(self.keyname))
-        self.auth_validate = auth_validate
-        assert auth_validate, 'Must handle validation when using Ironhouse!'
+        if auth_validate:
+            self.auth_validate = auth_validate
+        else:
+            self.auth_validate = Ironhouse.auth_validate
         self.wipe_certs = wipe_certs
         if sk:
             self.generate_certificates(sk)
@@ -139,22 +142,27 @@ class Ironhouse:
 
     async def authenticate(self, target_public_key, ip, port=None):
         if target_public_key == self.public_key: return True
+        try:
+            PublicKey(decode(target_public_key))
+        except Exception as e:
+            return False
         server_url = 'tcp://{}:{}'.format(ip, port or self.auth_port)
         log.debug('authenticating {}...'.format(server_url))
         client = self.ctx.socket(zmq.REQ)
         client.setsockopt(zmq.LINGER, 0)
         client = self.secure_socket(client, target_public_key)
         client.connect(server_url)
-        client.send(self.public_key)
+        client.send(self.vk.encode())
         authorized = False
 
         try:
             msg = await asyncio.wait_for(client.recv(), 0.5)
+            msg = msg.decode()
             log.debug('got secure reply {}, {}'.format(msg, target_public_key))
-            if self.auth_validate(msg) == True and target_public_key == msg:
-                self.create_from_public_key(msg)
+            received_public_key = self.vk2pk(msg)
+            if self.auth_validate(msg) == True and target_public_key == received_public_key:
+                self.create_from_public_key(received_public_key)
                 authorized = True
-
         except Exception as e:
             log.debug('no reply from {} after waiting...'.format(server_url))
 
@@ -181,11 +189,17 @@ class Ironhouse:
         log.info('Listening to secure connections at {}'.format(self.auth_port))
         try:
             message = await self.sec_sock.recv()
+            message = message.decode()
             log.debug('got secure request {}'.format(message))
 
             if self.auth_validate(message) == True:
-                self.create_from_public_key(message)
-                log.debug('sending secure reply: {}'.format(self.public_key))
-                self.sec_sock.send(self.public_key)
-        except Exception as e:
-            pass
+                public_key = self.vk2pk(message)
+                self.create_from_public_key(public_key)
+                log.debug('sending secure reply: {}'.format(self.vk))
+                self.sec_sock.send(self.vk.encode())
+        finally:
+            self.cleanup()
+
+    @staticmethod
+    def auth_validate(vk):
+        return vk in VKBook.get_all()

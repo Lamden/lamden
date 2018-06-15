@@ -59,7 +59,7 @@ class Network(object):
         self.max_peers = max_peers
         self.port = port or os.getenv('NETWORK_PORT', 31232)
         self.heartbeat_port = self.port+HEARTBEAT_PORT_OFFSET
-        self.ironhouse = Ironhouse(auth_port=self.port+AUTH_PORT_OFFSET, **kwargs)
+        self.ironhouse = Ironhouse(auth_port=self.port+AUTH_PORT_OFFSET, *args, **kwargs)
         self.node = Node(
             node_id=digest(self.ironhouse.vk),
             public_key=self.ironhouse.public_key,
@@ -115,10 +115,11 @@ class Network(object):
                                 self.poll.unregister(fileno)
                                 conn.close()
                 await asyncio.sleep(0.1)
-        except Exception as e:
-            self.stop()
-        finally:
+        except asyncio.CancelledError:
             log.info('Network shutting down gracefully.')
+        # finally:
+        #     sel.stop()
+        #     log.info('Network shutting down gracefully.')
 
     def connect_to_neighbor(self, node):
         if self.node.id == node.id: return
@@ -129,7 +130,6 @@ class Network(object):
         addr = (node.ip, node.port+HEARTBEAT_PORT_OFFSET)
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connections[conn.fileno()] = (conn, node)
-        # self.connections[addr] = (conn, node)
         try:
             conn.connect(addr)
             self.poll.register(conn.fileno(), POLLIN)
@@ -175,7 +175,7 @@ class Network(object):
             self.save_state_loop.cancel()
 
         for fileno in self.connections:
-            conn, addr = self.connections[fileno]
+            conn, node = self.connections[fileno]
             try: self.poll.unregister(fileno)
             except: log.debug('Already unregistered')
             conn.close()

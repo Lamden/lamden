@@ -99,6 +99,10 @@ def _check_hex(hex_str: str, length=0) -> bool:
     except:
         return False
 
+class ErrorWithArgs(Exception):
+    def __init__(self, *args):
+        self.args = [a for a in args]
+
 class IPUtils:
     url_pattern = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})', flags=re.IGNORECASE)
 

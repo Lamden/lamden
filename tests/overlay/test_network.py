@@ -13,12 +13,6 @@ from os.path import exists, dirname
 from threading import Timer
 from asyncio.selector_events import _SelectorDatagramTransport
 
-def auth_validate(public_key):
-    return public_key in [
-        b'B77YmmOI=O0<)GJ@DJ2Q+&5jzp/absPNMCh?88@S',
-        b'9Y={g5Jwgr0pxKj><+!:z%!+UsOspwX=CsaV2}oe'
-    ]
-
 def stop(self):
     self.a_net.stop()
     self.b_net.stop()
@@ -29,23 +23,20 @@ class TestNetwork(TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.a = genkeys('06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a')
-        self.b = genkeys('7ae3fcfd3a9047adbec6ad11e5a58036df9934dc0746431d80b49d25584d7e78')
+        self.a = genkeys('8ddaf072b9108444e189773e2ddcb4cbd2a76bbf3db448e55d0bfc131409a197')
+        self.b = genkeys('20b577e71e0c3bddd3ae78c0df8f7bb42b29b0c0ce9ca42a44e6afea2912d17b')
         self.evil = genkeys('c5cb6d3ac7d644df8c72b613d57e4c47df6107989e584863b86bde47df704464')
         self.a_net = Network(sk=self.a['sk'],
                             port=3321,
                             keyname='a', wipe_certs=True,
-                            auth_validate=auth_validate,
                             loop=self.loop)
         self.b_net = Network(sk=self.b['sk'],
                             port=4321,
                             keyname='b', wipe_certs=True,
-                            auth_validate=auth_validate,
                             loop=self.loop)
         self.evil_net = Network(sk=self.evil['sk'],
                             port=5321,
                             keyname='evil', wipe_certs=True,
-                            auth_validate=auth_validate,
                             loop=self.loop)
 
     def test_attributes(self):
@@ -81,6 +72,7 @@ class TestNetwork(TestCase):
             self.b_net.authenticate(self.a_net.node))))
         self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
             self.a_net.authenticate(self.b_net.node))))
+
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()
@@ -184,7 +176,7 @@ class TestNetwork(TestCase):
             self.assertTrue(self.a_net.saveState('state.tmp'))
             state = self.a_net.loadState('state.tmp')
             os.remove('state.tmp')
-            self.assertEqual(state,{'ksize': 20, 'alpha': 3, 'id': b"\xaa\xd0\xed\x91O\xa4e'\x06\xdd7\xf8\xf9\xe46p\x9f\x9a\xa1Y", 'neighbors': [('127.0.0.1', 4321)]})
+            self.assertEqual(state,{'ksize': 20, 'alpha': 3, 'id': b'B\xf2\xea}\xa6\x97;\x9f\xa4|\x8ce\xe6\x01\x10%\xe9.\x81\x9b', 'neighbors': [('127.0.0.1', 4321)]})
             stop(self)
 
         result = self.loop.run_until_complete(
@@ -355,9 +347,9 @@ class TestNetwork(TestCase):
 
         # Bootstrap first
         boot = self.loop.run_until_complete(
-            asyncio.ensure_future(self.a_net.bootstrap_node([
+            asyncio.ensure_future(self.a_net.bootstrap_node(
                 ('127.0.0.1', 6321)
-            ]))
+            ))
         )
         self.assertIsNone(boot)
 

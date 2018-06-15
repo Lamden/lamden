@@ -42,8 +42,10 @@ class Discovery:
         self.return_asap = return_asap
         all_ips = []
         for city in ips: all_ips += ips[city]
-        try: await asyncio.wait_for(self.scan_all(list(reversed(all_ips))), timeout=self.max_wait)
-        except Exception as e: pass
+        try:
+            await asyncio.wait_for(self.scan_all(list(reversed(all_ips))), timeout=self.max_wait)
+        except Exception as e:
+            pass
         log.debug('{}/{} IP addresses in total a of {} subnets of {} regions are available'.format(len(self.available_ips.keys()), len(all_ips), len(self.subnets.keys()), len(ips.keys())))
         return self.available_ips
 
@@ -53,7 +55,6 @@ class Discovery:
             await asyncio.sleep(self.max_wait)
         except Exception as e:
             pass
-
 
     async def bound_fetch(self, ip):
         async with self.sem:
@@ -88,3 +89,8 @@ class Discovery:
                     self.subnets[subnet]['count'] += 1
                     if len(self.available_ips) >= self.min_bootstrap_nodes and self.return_asap:
                         self.futures.cancel()
+
+    def stop_discovery(self):
+        self.udp_sock.close()
+        self.udp_sock_server.close()
+        self.server.cancel()

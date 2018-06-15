@@ -328,6 +328,18 @@ class DB(metaclass=DBSingletonMeta):
 
 class VKBook:
 
+    MASTERNODES = ['82540bb5a9c84162214c5540d6e43be49bbfe19cf49685660cab608998a65144']
+    DELEGATES = [
+      "3dd5291906dca320ab4032683d97f5aa285b6491e59bba25c958fc4b0de2efc8",
+      "ab59a17868980051cc846804e49c154829511380c119926549595bf4b48e2f85",
+      "0c998fa1b2675d76372897a7d9b18d4c1fbe285dc0cc795a50e4aad613709baf"
+    ]
+    WITNESSES = [
+      "0e669c219a29f54c8ba4293a5a3df4371f5694b761a0a50a26bf5b50d5a76974",
+      "50869c7ee2536d65c0e4ef058b50682cac4ba8a5aff36718beac517805e9c2c0"
+    ]
+
+
     @staticmethod
     def _destu_ify(data: str):
         assert len(data) % 64 == 0, "Length of data should be divisible by 64! Logic error!"
@@ -339,6 +351,7 @@ class VKBook:
     @staticmethod
     def _get_vks(policy=None):
         condition = "where policy='{}'".format(policy) if policy else ''
+        print("select value from constants {}".format(condition))
         with DB() as db:
             q = db.execute("select value from constants {}".format(condition))
             rows = q.fetchall()
@@ -349,16 +362,20 @@ class VKBook:
 
     @staticmethod
     def get_all():
+        return VKBook.MASTERNODES + VKBook.DELEGATES + VKBook.WITNESSES
         return VKBook._get_vks()
 
     @staticmethod
     def get_masternodes():
+        return VKBook.MASTERNODES
         return VKBook._get_vks('masternodes')
 
     @staticmethod
     def get_delegates():
+        return VKBook.DELEGATES
         return VKBook._get_vks('delegates')
 
     @staticmethod
     def get_witnesses():
+        return VKBook.WITNESSES
         return VKBook._get_vks('witnesses')

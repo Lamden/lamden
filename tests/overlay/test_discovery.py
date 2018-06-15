@@ -28,11 +28,12 @@ class TestDiscovery(TestCase):
             self.discovery.udp_sock_server.close()
             self.discovery.udp_sock.close()
 
+        self.discovery.max_wait = 0.1
         self.discovery.listen_for_crawlers()
 
         future = asyncio.ensure_future(self.discovery.discover('test'))
 
-        t = Timer(3.1, get_discovered)
+        t = Timer(0.2, get_discovered)
         t.start()
         self.loop.run_forever()
 
@@ -45,13 +46,27 @@ class TestDiscovery(TestCase):
             self.discovery.udp_sock_server.close()
             self.discovery.udp_sock.close()
 
+        self.discovery.max_wait = 0.2
         self.discovery.return_asap = True
         self.discovery.min_bootstrap_nodes = 1
         self.discovery.listen_for_crawlers()
 
         future = asyncio.ensure_future(self.discovery.discover('neighborhood'))
 
-        t = Timer(3.1, get_discovered)
+        t = Timer(0.3, get_discovered)
+        t.start()
+        self.loop.run_forever()
+
+    def test_stop_discovery(self):
+        def run():
+            self.assertEqual(self.discovery.udp_sock_server.fileno(), -1)
+            self.assertTrue(self.discovery.server.cancelled())
+            self.loop.call_soon_threadsafe(self.loop.stop)
+
+        self.discovery.listen_for_crawlers()
+        self.discovery.stop_discovery()
+
+        t = Timer(0.01, run)
         t.start()
         self.loop.run_forever()
 
