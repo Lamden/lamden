@@ -79,13 +79,6 @@ class StateMeta(type):
                             trans_registry[state] = func
 
     @staticmethod
-    def _config_debugging(clsobj):
-        for name, val in vars(clsobj).items():
-            if callable(val) and name in _DEBUG_FUNCS:
-                # print("Setting up debug logging for name {} with val {}".format(name, val))
-                setattr(clsobj, name, debug_transition(name)(val))
-
-    @staticmethod
     def _config_input_handlers(clsobj):
         for input_type in StateInput.ALL:
             setattr(clsobj, input_type, {})
