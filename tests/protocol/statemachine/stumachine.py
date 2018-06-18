@@ -105,14 +105,13 @@ class LiftState(State):
 
 
 @StuMachine.register_state
-class DanceState(State):
+class FactorioState(State):
 
     def reset_attrs(self):
         pass
 
-    # Stu is not keen on dancing so he limits his moves to a 1 second window
     @timeout_after(1.0)
-    def stop_dancing(self):
+    def stop_playing(self):
         self.log.debug("ay im done dancing...let go to chill state")
         self.parent.transition('ChillState')
 
@@ -125,4 +124,4 @@ class ChillState(State):
 
     @enter_from_any
     def enter_any(self, prev_state):
-        self.log.debug("Im chilling. Before I was chilling, I was in doing state: <{}>".format(prev_state))
+        self.log.debug("boy im chilling. Before I was chilling, I was in doing state: <{}>".format(prev_state))
