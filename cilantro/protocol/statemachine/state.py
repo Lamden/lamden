@@ -152,9 +152,6 @@ class State(metaclass=StateMeta):
     def call_transition_handler(self, trans_type, state, *args, **kwargs):
         trans_func = self._get_transition_handler(trans_type, state)
 
-        # if not trans_func:
-            # return
-
         timeout_func = getattr(self, StateTimeout.TIMEOUT_FLAG)
 
         # On entry, schedule the timeout function (if any), and run the appropriate ENTRY transition handler
