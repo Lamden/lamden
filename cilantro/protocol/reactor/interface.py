@@ -7,7 +7,7 @@ import time
 from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand
 from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG, KILL_SIG
-import signal
+import signal, sys
 
 
 class ReactorInterface:
@@ -58,8 +58,9 @@ class ReactorInterface:
             self._teardown()
 
     def _signal_teardown(self, signal, frame):
-        self.log.critical("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
+        print("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
         self._teardown()
+        sys.exit(0)
 
     def _teardown(self):
         """

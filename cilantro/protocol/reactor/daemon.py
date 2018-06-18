@@ -7,7 +7,7 @@ from cilantro import Constants
 from kade.dht import DHT
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
-import signal
+import signal, sys
 import inspect
 
 import uvloop
@@ -92,8 +92,9 @@ class ReactorDaemon:
             self.log.warning("_recv_messages event loop canceled!")
 
     def _signal_teardown(self, signal, frame):
-        self.log.critical("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
+        print("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
         self._teardown()
+        sys.exit(0)
 
     def _teardown(self):
         """
@@ -109,7 +110,6 @@ class ReactorDaemon:
             e.teardown()
 
         self.log.warning("Closing event loop")
-        # self.loop.stop()
         self.loop.call_soon_threadsafe(self.loop.stop)
 
     async def _execute_cmd(self, cmd: ReactorCommand):

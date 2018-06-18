@@ -1,5 +1,5 @@
 from unittest import TestCase
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from .trafficlight import *
 
 
@@ -328,7 +328,12 @@ class StateTest(TestCase):
         mock_enter_func = MagicMock()
         state.enter_any = mock_enter_func
 
-        state.call_transition_handler(StateTransition.ENTER, EmptyState)
+        with patch('cilantro.protocol.statemachine.state.asyncio') as mock_asyncio:
+            mock_loop = MagicMock()
+            mock_loop.is_running = MagicMock(return_value=True)
+            mock_asyncio.get_event_loop = MagicMock(return_value=mock_loop)
+
+            state.call_transition_handler(StateTransition.ENTER, EmptyState)
 
         mock_enter_func.assert_called_once()
 
