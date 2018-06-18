@@ -7,9 +7,6 @@ import asyncio
 from collections import defaultdict
 from unittest.mock import MagicMock
 
-_ENTER, _EXIT, _RUN = 'enter', 'exit', 'run'
-_DEBUG_FUNCS = (_ENTER, _EXIT, _RUN)
-
 
 class StateMeta(type):
     """

@@ -6,4 +6,6 @@ from cilantro.utils.test import MPTestCase, mp_testable
 
 
 class IntegrationTestState(MPTestCase):
-    pass
+
+    def test_state_timeout(self):
+        pass
