@@ -205,7 +205,6 @@ class State(metaclass=StateMeta):
 
     def _assert_has_input_handler(self, message: MessageBase, input_type: str):
         # Assert that input_type is actually a recognized input_type
-
         assert input_type in StateInput.ALL, "Input type {} not found in StateInputs {}"\
                                              .format(input_type, StateInput.ALL)
         # Assert that this state, or one of its superclasses, has an appropriate receiver implemented
