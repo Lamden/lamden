@@ -58,7 +58,7 @@ class ReactorInterface:
             self._teardown()
 
     def _signal_teardown(self, signal, frame):
-        self.log.critical("Main process got kill signal!")
+        self.log.critical("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
         self._teardown()
 
     def _teardown(self):
@@ -123,7 +123,7 @@ class ReactorInterface:
 
                 self.router.route_callback(callback)
         except asyncio.CancelledError:
-            self.log.critical("some shit got cancelled...")
+            self.log.critical("_recv_messages future canceled!")
 
     def notify_resume(self):
         self.log.critical("NOTIFIY READY")
