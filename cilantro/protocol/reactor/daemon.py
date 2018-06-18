@@ -7,6 +7,7 @@ from cilantro import Constants
 from kade.dht import DHT
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
+import signal
 import inspect
 
 import uvloop
@@ -41,6 +42,9 @@ class ReactorDaemon:
         self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
         self.socket.connect(self.url)
 
+        # Register signal handler to teardown
+        signal.signal(signal.SIGTERM, self._signal_teardown)
+
         # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         self.dht = ReactorDHT(node_id=verifying_key, mode=self.discovery_mode, loop=self.loop,
@@ -63,31 +67,39 @@ class ReactorDaemon:
             self._teardown()
 
     async def _recv_messages(self):
-        # Notify parent proc that this proc is ready
-        self.log.debug("reactorcore notifying main proc of ready")
-        self.socket.send(CHILD_RDY_SIG)
+        try:
+            # Notify parent proc that this proc is ready
+            self.log.debug("reactorcore notifying main proc of ready")
+            self.socket.send(CHILD_RDY_SIG)
 
-        self.log.info("-- Daemon proc listening to main proc on PAIR Socket at {} --".format(self.url))
-        while True:
-            self.log.debug("ReactorDaemon awaiting for command from main thread...")
-            cmd_bin = await self.socket.recv()
-            self.log.debug("Got cmd from queue: {}".format(cmd_bin))
+            self.log.info("-- Daemon proc listening to main proc on PAIR Socket at {} --".format(self.url))
+            while True:
+                self.log.debug("ReactorDaemon awaiting for command from main thread...")
+                cmd_bin = await self.socket.recv()
+                self.log.debug("Got cmd from queue: {}".format(cmd_bin))
 
-            if cmd_bin == KILL_SIG:
-                self._teardown()
-                return
+                if cmd_bin == KILL_SIG:
+                    self.log.critical("Daemon Process got kill signal from main proc")
+                    self._teardown()
+                    return
 
-            # Should from_bytes be in a try/catch? I suppose if we get a bad command from the main proc we might as well
-            # blow up because this is very likely because of a development error, so no try/catch for now
-            cmd = ReactorCommand.from_bytes(cmd_bin)
+                # Should from_bytes be in a try/catch? I suppose if we get a bad command from the main proc we might as well
+                # blow up because this is very likely because of a development error, so no try/catch for now
+                cmd = ReactorCommand.from_bytes(cmd_bin)
 
-            await self._execute_cmd(cmd)
+                await self._execute_cmd(cmd)
+        except asyncio.CancelledError:
+            self.log.warning("some ish got cacnelerd")
+
+    def _signal_teardown(self, signal, frame):
+        self.log.critical("Daemon process got kill signal!")
+        self._teardown()
 
     def _teardown(self):
         """
         Close sockets. Teardown executors. Close Event Loop.
         """
-        self.log.critical("Tearing down Reactor Daemon process")
+        self.log.critical("[DEAMON PROC] Tearing down Reactor Daemon process")
 
         self.log.warning("Closing pair socket")
         self.socket.close()
@@ -97,7 +109,8 @@ class ReactorDaemon:
             e.teardown()
 
         self.log.warning("Closing event loop")
-        self.loop.stop()
+        # self.loop.stop()
+        self.loop.call_soon_threadsafe(self.loop.stop)
 
     async def _execute_cmd(self, cmd: ReactorCommand):
         """
@@ -147,6 +160,5 @@ class ReactorDaemon:
                 ip = await self.dht.network.lookup_ip(vk)
                 new_url = IPUtils.interpolate_url(url, ip)
                 kwargs['url'] = new_url
-
 
         return executor_name, executor_func, kwargs

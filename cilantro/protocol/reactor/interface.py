@@ -7,6 +7,7 @@ import time
 from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand
 from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG, KILL_SIG
+import signal
 
 
 class ReactorInterface:
@@ -30,6 +31,9 @@ class ReactorInterface:
         self.proc.daemon = True
         self.proc.start()
 
+        # Register signal handler to teardown
+        signal.signal(signal.SIGTERM, self._signal_teardown)
+
         # Block execution of this proc until reactor proc is ready
         self.loop.run_until_complete(self._wait_child_rdy())
 
@@ -46,28 +50,38 @@ class ReactorInterface:
         the loop's run_until_complete.
         """
         try:
-            self.loop.run_until_complete(asyncio.gather(self._recv_messages(), *tasks))
+            self.recv_fut = asyncio.gather(self._recv_messages(), *tasks)
+            self.loop.run_until_complete(self.recv_fut)
         except Exception as e:
             self.log.error("\n\nException in main event loop: {}\n\n".format(traceback.format_exc()))
-            # TODO cancel tasks
-        finally:
+            self.log.critical("Tearing down from runtime loop exception")
             self._teardown()
+
+    def _signal_teardown(self, signal, frame):
+        self.log.critical("Main process got kill signal!")
+        self._teardown()
 
     def _teardown(self):
         """
-        Close sockets. Close Event Loop.
+        Close sockets. Close Event Loop. Teardown. Bless up.
         """
-        self.log.critical("Tearing down Reactor Daemon process")
+        self.log.critical("[MAIN PROC] Tearing down ReactorInferace process (the main process)")
 
-        self.log.warning("Signaling KILL to Deamon process")
-        self.socket.send(KILL_SIG)
-        time.sleep(0.2)  # make sure message gets sent before we close the socket
+        # self.log.warning("Signaling KILL to Deamon process")
+        # self.socket.send(KILL_SIG)
+        # time.sleep(0.2)  # make sure message gets sent before we close the socket
+        # self.log.warning("kill sig sent")
+
+        self.log.warning("Canceling recv_messages future")
+        self.recv_fut.cancel()
+        self.loop.call_soon_threadsafe(self.recv_fut.cancel)
 
         self.log.warning("Closing pair socket")
         self.socket.close()
 
         self.log.warning("Closing event loop")
-        self.loop.close()
+        # self.loop.stop()
+        self.loop.call_soon_threadsafe(self.loop.stop)
 
     def _start_daemon(self, url, vk, name):
         """
@@ -99,14 +113,17 @@ class ReactorInterface:
         Starts listening to messages from the ReactorDaemon. This method gets run_until_complete by
         invoking .start_reactor on the ReactorInterface object.
         """
-        self.log.debug("~~ Reactor listening to messages from ReactorDaemon ~~")
-        while True:
-            self.log.debug("Waiting for callback...")
-            msg = await self.socket.recv()
-            callback = ReactorCommand.from_bytes(msg)
-            self.log.debug("Got callback cmd <{}>".format(callback))
+        try:
+            self.log.debug("~~ Reactor listening to messages from ReactorDaemon ~~")
+            while True:
+                self.log.debug("Waiting for callback...")
+                msg = await self.socket.recv()
+                callback = ReactorCommand.from_bytes(msg)
+                self.log.debug("Got callback cmd <{}>".format(callback))
 
-            self.router.route_callback(callback)
+                self.router.route_callback(callback)
+        except asyncio.CancelledError:
+            self.log.critical("some shit got cancelled...")
 
     def notify_resume(self):
         self.log.critical("NOTIFIY READY")
