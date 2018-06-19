@@ -108,12 +108,24 @@ class LiftState(State):
 class FactorioState(State):
 
     def reset_attrs(self):
-        pass
+        self.timeout_reached = False
+        self.parent.did_timeout = False
+
+    @enter_from_any
+    def enter_any(self):
+        self.reset_attrs()
 
     @timeout_after(1.0)
     def stop_playing(self):
-        self.log.debug("ay im done dancing...let go to chill state")
+        self.parent.did_timeout = True
+        self.timeout_reached = True
+
+        self.log.debug("done playing factorio...let go to chill state")
         self.parent.transition('ChillState')
+
+    @exit_to_any
+    def exit_any(self, next_state):
+        self.log.debug("exiting factorio state with self.timeout_reached={}".format(self.timeout_reached))
 
 
 @StuMachine.register_state
@@ -124,4 +136,4 @@ class ChillState(State):
 
     @enter_from_any
     def enter_any(self, prev_state):
-        self.log.debug("boy im chilling. Before I was chilling, I was in doing state: <{}>".format(prev_state))
+        self.log.debug("Before I was chilling, I was in doing state: <{}>".format(prev_state))

@@ -10,6 +10,18 @@ class IntegrationTestState(MPTestCase):
     def test_state_timeout(self):
         def assert_fn(sm):
             assert sm.state == ChillState
+            assert sm.did_timeout
+
+        stu = MPStateMachine(sm_class=StuMachine, assert_fn=assert_fn)
+
+        stu.start()
+        stu.transition('FactorioState')
+
+        self.start()
+
+    def test_state_timeout_interrupted(self):
+        def assert_fn(sm):
+            pass
 
         stu = MPStateMachine(sm_class=StuMachine, assert_fn=assert_fn)
 
