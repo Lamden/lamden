@@ -1,5 +1,6 @@
 from cilantro.utils import lazy_property
 from cilantro.messages import MessageBase, Envelope
+import copy
 
 import capnp
 import reactor_capnp
@@ -82,7 +83,7 @@ class ReactorCommand(MessageBase):
         else:
             return self._data.envelope.data
 
-    @lazy_property
+    @property
     def kwargs(self):
         return {arg.key: arg.value for arg in self._data.kwargs}
 
@@ -111,6 +112,8 @@ class ReactorCommand(MessageBase):
             repr =  "\n[COMMAND] ReactorCommand with"
             repr += "\n\ttarget func = {}.{}".format(self.class_name, self.func_name)
             repr += "\n\tkwargs = {}".format(self.kwargs)
+        else:
+            raise Exception("Invalid reactor command! No callback/ no classname and func_name!")
 
         if self.envelope:
             repr += "\n\t envelope = {}".format(self.envelope)

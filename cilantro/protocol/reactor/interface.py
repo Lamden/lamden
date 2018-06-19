@@ -7,11 +7,11 @@ import time
 from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand
 from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG, KILL_SIG
-# from cilantro.protocol.transport.router import Router
+import signal, sys
 
 
 class ReactorInterface:
-    def __init__(self, router, loop, verifying_key, name='Node'):
+    def __init__(self, router, loop, signing_key, name='Node'):
         self.log = get_logger("{}.ReactorInterface".format(name))
         self.url = "ipc://{}-ReactorIPC-".format(name) + str(random.randint(0, pow(2, 16)))
 
@@ -27,9 +27,12 @@ class ReactorInterface:
         self.socket.bind(self.url)
 
         # Start reactor sub process
-        self.proc = LProcess(target=self._start_daemon, args=(self.url, verifying_key, name))
+        self.proc = LProcess(target=self._start_daemon, args=(self.url, signing_key, name))
         self.proc.daemon = True
         self.proc.start()
+
+        # Register signal handler to teardown
+        signal.signal(signal.SIGTERM, self._signal_teardown)
 
         # Block execution of this proc until reactor proc is ready
         self.loop.run_until_complete(self._wait_child_rdy())
@@ -47,30 +50,35 @@ class ReactorInterface:
         the loop's run_until_complete.
         """
         try:
-            self.loop.run_until_complete(asyncio.gather(self._recv_messages(), *tasks))
+            self.recv_fut = asyncio.gather(self._recv_messages(), *tasks)
+            self.loop.run_until_complete(self.recv_fut)
         except Exception as e:
             self.log.error("\n\nException in main event loop: {}\n\n".format(traceback.format_exc()))
-            # TODO cancel tasks
-        finally:
+            self.log.critical("Tearing down from runtime loop exception")
             self._teardown()
+
+    def _signal_teardown(self, signal, frame):
+        print("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
+        self._teardown()
+        sys.exit(0)
 
     def _teardown(self):
         """
-        Close sockets. Teardown executors. Close Event Loop.
+        Close sockets. Close Event Loop. Teardown. Bless up.
         """
-        self.log.critical("Tearing down Reactor Daemon process")
+        self.log.critical("[MAIN PROC] Tearing down ReactorInferace process (the main process)")
 
-        self.log.warning("Signaling KILL to Deamon process")
-        self.socket.send(KILL_SIG)
-        time.sleep(1)  # make sure message gets sent before we close the socket
+        self.log.warning("Canceling recv_messages future")
+        self.recv_fut.cancel()
+        self.loop.call_soon_threadsafe(self.recv_fut.cancel)
 
         self.log.warning("Closing pair socket")
         self.socket.close()
 
         self.log.warning("Closing event loop")
-        self.loop.close()
+        self.loop.call_soon_threadsafe(self.loop.stop)
 
-    def _start_daemon(self, url, vk, name):
+    def _start_daemon(self, url, sk, name):
         """
         Should be for internal use only.
         The target method for the ReactorDaemon subprocess (this code gets run in a child process). This simply creates
@@ -79,7 +87,7 @@ class ReactorInterface:
 
         :param url: The url for the IPC pair socket between the ReactorInterface and ReactorDaemon
         """
-        reactor = ReactorDaemon(url=url, verifying_key=vk, name=name)
+        reactor = ReactorDaemon(url=url, sk=sk, name=name)
 
     async def _wait_child_rdy(self):
         """
@@ -100,14 +108,16 @@ class ReactorInterface:
         Starts listening to messages from the ReactorDaemon. This method gets run_until_complete by
         invoking .start_reactor on the ReactorInterface object.
         """
-        self.log.debug("~~ Reactor listening to messages from ReactorDaemon ~~")
-        while True:
-            self.log.debug("Waiting for callback...")
-            msg = await self.socket.recv()
-            callback = ReactorCommand.from_bytes(msg)
-            self.log.debug("Got callback cmd <{}>".format(callback))
-
-            self.router.route_callback(callback)
+        try:
+            self.log.debug("~~ Reactor listening to messages from ReactorDaemon ~~")
+            while True:
+                self.log.debug("Waiting for callback...")
+                msg = await self.socket.recv()
+                callback = ReactorCommand.from_bytes(msg)
+                self.log.debug("Got callback cmd <{}>".format(callback))
+                self.router.route_callback(callback)
+        except asyncio.CancelledError:
+            self.log.critical("_recv_messages future canceled!")
 
     def notify_resume(self):
         self.log.critical("NOTIFIY READY")

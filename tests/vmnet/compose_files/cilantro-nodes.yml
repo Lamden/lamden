@@ -11,8 +11,8 @@ services:
   base:
     build:
       context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
-    image: cilantro_base
+      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
+    image: cilantro_base.dev
     volumes:
       - type: bind
         source: /storage/docker/mysql-datadir
@@ -21,13 +21,12 @@ services:
     ip: 172.29.5.x
     stdin_open: true
     tty: true
+    expose:
+      - '10000-20000'
     range:
       - 1
-      - 16
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base
-    image: cilantro_base
+      - 6
+    image: cilantro_base.dev
     volumes:
       - type: bind
         source: ${LOCAL_PATH}/cilantro

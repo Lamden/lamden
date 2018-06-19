@@ -106,4 +106,3 @@ class MNRunState(MNBaseState):
     def recv_block(self, block: BlockContender):
         self.log.info("Masternode received block contender. Transitioning to NewBlockState".format(block))
         self.parent.transition(MNNewBlockState, block=block)
-

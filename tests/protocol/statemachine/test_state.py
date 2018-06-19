@@ -1,117 +1,6 @@
 from unittest import TestCase
-from unittest.mock import MagicMock
-from cilantro.protocol.statemachine import *
-
-
-YELLOW_TIMEOUT_DUR = 1.0
-
-
-class Message:
-    def __init__(self, msg):
-        self.msg = msg
-
-    def __repr__(self):
-        return self.msg
-
-
-class ForceStopMessage(Message): pass
-class RebootMessage(Message): pass
-class StatusRequest(Message): pass
-class MysteriousMessage(Message): pass
-
-class TrafficLightBrokenState(State): pass
-class TrafficLightFixingState(State): pass
-
-
-class TrafficLightBaseState(State):
-    @input(ForceStopMessage)
-    def handle_stop_msg_on_base(self, msg: ForceStopMessage):
-        pass
-
-    @input(RebootMessage)
-    def handle_reboot_on_base(self, msg: RebootMessage):
-        pass
-
-    @enter_from_any
-    def enter_general(self, prev_state):
-        pass
-
-    def reset_attrs(self):
-        pass
-
-
-class TrafficLightRedState(TrafficLightBaseState):
-
-    @input(RebootMessage)
-    def handle_reboot_on_red(self, msg: RebootMessage):
-        pass
-
-    @input(ForceStopMessage)
-    def handle_stop_msg_on_red(self, msg: ForceStopMessage, envelope):
-        self.message = msg
-        self.envelope = envelope
-
-    @enter_from_any
-    def enter_general(self, prev_state):
-        pass
-
-    # Uncomment this and confirm it raises an assertion when any tests are run
-    # @enter_from_any
-    # def enter_general_dupe(self, prev_state):
-    #     pass
-
-    @exit_to_any
-    def exit_general(self, next_state):
-        pass
-
-    # @exit_to(TrafficLightBrokenState, TrafficLightFixingState)
-    @exit_to("TrafficLightBrokenState", "TrafficLightFixingState")
-    def exit_from_maintenance(self, next_state):
-        pass
-
-    # Uncomment this and confirm it raises an assertion when any tests are run
-    # @exit_from_any
-    # def exit_general_dupe(self, prev_state):
-    #     pass
-
-
-class TrafficLightYellowState(TrafficLightBaseState):
-
-    @timeout_after(YELLOW_TIMEOUT_DUR)
-    def timeout(self):
-        self.log.critical("yellow light timed out!!!")
-
-    @input(ForceStopMessage)
-    def handle_stop_msg_on_yellow(self, msg: ForceStopMessage):
-        pass
-
-    # @enter_from(TrafficLightRedState)
-    @enter_from("TrafficLightRedState")
-    def enter_from_red(self, prev_state):
-        pass
-
-    @enter_from(TrafficLightBrokenState, TrafficLightFixingState)
-    # @enter_from("TrafficLightBrokenState", "TrafficLightFixingState")
-    def enter_from_broken_or_fixing(self, prev_state):
-        pass
-
-    @enter_from_any
-    def enter_any(self, prev_state):
-        self.log.debug("entering from any from prev state {}".format(prev_state))
-
-    # UNCOMMENT THIS AND VERIFY AN ASSERTION IS THROWN WHEN ANY TEST IS RUN
-    # @enter_from(TrafficLightBrokenState)
-    # def this_should_blow_up_cause_another_handler_for_that_state_already_exists(self):
-    #     pass
-
-
-class TrafficLightGreenState(TrafficLightBaseState):
-    @input_request(StatusRequest)
-    def handle_status_req_on_green(self, request: StatusRequest, envelope):
-        self.request = request
-
-
-STATES = [TrafficLightGreenState, TrafficLightRedState, TrafficLightYellowState]
+from unittest.mock import MagicMock, patch
+from .trafficlight import *
 
 
 class StateTest(TestCase):
@@ -174,6 +63,10 @@ class StateTest(TestCase):
 
         self.assertEqual(timeout_func, TrafficLightYellowState.timeout)
         self.assertEqual(YELLOW_TIMEOUT_DUR, timeout_dur)
+
+    def test_config_timeout_func_none(self):
+        timeout_func = getattr(TrafficLightRedState, StateTimeout.TIMEOUT_FLAG)
+        self.assertEqual(timeout_func, None)
 
     def test_enter_any_decorator(self):
         mock_sm = MagicMock()
@@ -435,7 +328,12 @@ class StateTest(TestCase):
         mock_enter_func = MagicMock()
         state.enter_any = mock_enter_func
 
-        state.call_transition_handler(StateTransition.ENTER, EmptyState)
+        with patch('cilantro.protocol.statemachine.state.asyncio') as mock_asyncio:
+            mock_loop = MagicMock()
+            mock_loop.is_running = MagicMock(return_value=True)
+            mock_asyncio.get_event_loop = MagicMock(return_value=mock_loop)
+
+            state.call_transition_handler(StateTransition.ENTER, EmptyState)
 
         mock_enter_func.assert_called_once()
 

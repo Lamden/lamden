@@ -14,17 +14,12 @@ def run_mn():
     from cilantro.logger import get_logger
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
     log = get_logger("MASTERNODE FACTORY")
-
-    with DB('{}_masternode'.format(DB_NAME), should_reset=True) as db:
-        pass
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
     sk = Constants.Testnet.Masternodes[0]['sk']
 
-    log.critical("\n\n\nMASTERNODE BOOTING WITH IP {} AND SK {}".format(ip, sk))
     NodeFactory.run_masternode(ip=ip, signing_key=sk)
 
 
@@ -32,18 +27,13 @@ def run_witness(slot_num):
     from cilantro.logger import get_logger
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
 
     log = get_logger("WITNESS FACTORY")
 
-    with DB('{}_witness_{}'.format(DB_NAME, slot_num), should_reset=True) as db:
-        pass
-
     w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
-    log.critical("Building witness on slot {} with info {}".format(slot_num, w_info))
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'])
 
 
@@ -51,7 +41,6 @@ def run_delegate(slot_num):
     from cilantro.logger import get_logger
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
 
     log = get_logger("DELEGATE FACTORY")
@@ -59,11 +48,8 @@ def run_delegate(slot_num):
     d_info = Constants.Testnet.Delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
-    # Set default database name for this instance
-    with DB('{}_delegate_{}'.format(DB_NAME, slot_num), should_reset=True) as db:
-        pass
-
     log.critical("Building delegate on slot {} with info {}".format(slot_num, d_info))
+    
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
 
 
@@ -91,12 +77,11 @@ class TestBootstrap(BaseNetworkTestCase):
         # start mysql in all nodes
         for node_name in ['masternode'] + ['witness_{}'.format(i+1+1) for i in range(self.NUM_WITNESS)] + ['delegate_{}'.format(i+1+3) for i in range(self.NUM_DELEGATES)]:
             self.execute_python(node_name, start_mysqld, async=True)
-        time.sleep(3)
+        time.sleep(1)
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
 
-        time.sleep(3)
         # Bootstrap witnesses
         for i in range(self.NUM_WITNESS):
             self.execute_python('witness_{}'.format(i+1+1), wrap_func(run_witness, i), async=True)

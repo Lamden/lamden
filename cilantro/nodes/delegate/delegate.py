@@ -77,6 +77,10 @@ class DelegateBootState(DelegateBaseState):
     def enter_any(self, prev_state):
         # Sub to other delegates
         for delegate_vk in VKBook.get_delegates():
+            # Do not sub to ourself
+            if delegate_vk == self.parent.verifying_key:
+                continue
+
             self.parent.composer.add_sub(vk=delegate_vk, filter=Constants.ZmqFilters.DelegateDelegate)
 
         # Sub to witnesses
@@ -142,6 +146,3 @@ class DelegateBootState(DelegateBaseState):
 #
 #         return clsobj
 ## END TESTING
-
-
-

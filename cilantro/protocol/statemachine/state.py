@@ -3,37 +3,9 @@ from functools import wraps
 from cilantro.messages import MessageBase, Envelope
 from cilantro.protocol.statemachine.decorators import StateInput, StateTimeout, StateTransition, exit_to_any
 import inspect
+import asyncio
 from collections import defaultdict
 from unittest.mock import MagicMock
-
-_ENTER, _EXIT, _RUN = 'enter', 'exit', 'run'
-_DEBUG_FUNCS = (_ENTER, _EXIT, _RUN)
-
-
-def debug_transition(transition_type):
-    """
-    Decorator to magically log any transitions on StateMachines
-    """
-    def decorate(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            current_state = args[0]
-            if transition_type == _RUN:
-                msg = "Running state {}".format(current_state)
-            else:
-                trans_state = args[1]
-                msg = "Entering state {} from previous state {}" if transition_type == _ENTER \
-                    else "Exiting state {} to next state {}"
-                msg = msg.format(current_state, trans_state)
-
-                other_args = args[2:]
-                if len(other_args) > 0 or len(kwargs) > 0:
-                    msg += "... with additional args = {}, kwargs = {}".format(other_args, kwargs)
-
-            current_state.log.info(msg)
-            return func(*args, **kwargs)
-        return wrapper
-    return decorate
 
 
 class StateMeta(type):
@@ -44,10 +16,7 @@ class StateMeta(type):
         clsobj = super().__new__(cls, clsname, bases, clsdict)
         clsobj.log = get_logger(clsname)
 
-        # Add debug decorator to run/exit/enter methods
-        # StateMeta._config_debugging(clsobj)
-
-        # Configure receivers, repliers, and timeouts
+        # Configure receivers, repliers, and request timeouts
         StateMeta._config_input_handlers(clsobj)
 
         # Configure entry and exit handlers
@@ -107,13 +76,6 @@ class StateMeta(type):
                             trans_registry[state] = func
 
     @staticmethod
-    def _config_debugging(clsobj):
-        for name, val in vars(clsobj).items():
-            if callable(val) and name in _DEBUG_FUNCS:
-                # print("Setting up debug logging for name {} with val {}".format(name, val))
-                setattr(clsobj, name, debug_transition(name)(val))
-
-    @staticmethod
     def _config_input_handlers(clsobj):
         for input_type in StateInput.ALL:
             setattr(clsobj, input_type, {})
@@ -142,7 +104,7 @@ class StateMeta(type):
 
             if hasattr(func, StateTimeout.TIMEOUT_FLAG):
                 assert getattr(clsobj, StateTimeout.TIMEOUT_FLAG) is None, \
-                    "State timeout already set to {}. Attempted to reset it to {}"\
+                    "State timeout function already set to {}. Attempted to reset it to {}"\
                     .format(getattr(clsobj, StateTimeout.TIMEOUT_FLAG), func)
                 assert hasattr(func, StateTimeout.TIMEOUT_DUR), "StateMeta Error! Function has no timeout duration attr"
 
@@ -170,7 +132,7 @@ class State(metaclass=StateMeta):
         if (isinstance(func, MagicMock) and envelope) or self._has_envelope_arg(func):
             assert envelope, "Envelope arg was found for input func {}, " \
                              "but no envelope passed into call_input_handler".format(func)
-            self.log.debug("ENVELOPE DETECTED IN HANDLER ARGS")  # todo remove this
+            # self.log.debug("ENVELOPE DETECTED IN HANDLER ARGS")  # todo remove this
             output = func(message, envelope=envelope)
         else:
             output = func(message)
@@ -180,29 +142,37 @@ class State(metaclass=StateMeta):
     def call_transition_handler(self, trans_type, state, *args, **kwargs):
         trans_func = self._get_transition_handler(trans_type, state)
 
-        if not trans_func:
-            return
-
         timeout_func = getattr(self, StateTimeout.TIMEOUT_FLAG)
 
+        # On entry, schedule the timeout function (if any), and run the appropriate ENTRY transition handler
         if trans_type == StateTransition.ENTER:
-            # Check for timeout trigger
             if timeout_func:
                 timeout_dur = getattr(self, StateTimeout.TIMEOUT_DUR)
+                assert timeout_dur > 0, "Timeout function is present, but timeout duration is not greater than 0"
+
+                loop = asyncio.get_event_loop()
+                # self.log.debug("got event loop {}".format(loop))
+                assert loop.is_running(), "Event loop must be running for timeout functionality!"
 
                 self.log.debug("Scheduling timeout trigger {} after {} seconds".format(timeout_func, timeout_dur))
-                self.timeout_handler = self.parent.loop.call_later(timeout_dur, timeout_func)
 
-            trans_func(**self._prune_kwargs(trans_func, prev_state=state, **kwargs))
+                self.timeout_handler = loop.call_later(timeout_dur, timeout_func)
 
+            if trans_func:
+                trans_func(**self._prune_kwargs(trans_func, prev_state=state, **kwargs))
+
+        # On exit, cancel the timeout function (if any), and run the appropriate EXIT transition handler
         elif trans_type == StateTransition.EXIT:
-            # Cancel timeout trigger (if any)
-            if timeout_func and self.timeout_handler:
+            if timeout_func:
+                assert hasattr(self, 'timeout_handler') and self.timeout_handler, \
+                    "State has timeout function present, but self.timeout_handler is not set"
+
                 self.log.debug("Canceling timeout trigger")
                 self.timeout_handler.cancel()
                 self.timeout_handler = None
 
-            trans_func(**self._prune_kwargs(trans_func, next_state=state, **kwargs))
+            if trans_func:
+                trans_func(**self._prune_kwargs(trans_func, next_state=state, **kwargs))
 
     def _get_input_handler(self, message, input_type: str):
         registry = getattr(self, input_type)
@@ -232,7 +202,6 @@ class State(metaclass=StateMeta):
 
     def _assert_has_input_handler(self, message: MessageBase, input_type: str):
         # Assert that input_type is actually a recognized input_type
-
         assert input_type in StateInput.ALL, "Input type {} not found in StateInputs {}"\
                                              .format(input_type, StateInput.ALL)
         # Assert that this state, or one of its superclasses, has an appropriate receiver implemented
@@ -268,8 +237,9 @@ class State(metaclass=StateMeta):
             return getattr(self, any_handler.__name__)
 
         # At this point, no handler could be found. Warn the user and return None
-        self.log.warning("\nNo {} transition handler found for state {}. Any_handler = {} ... Transition "
-                         "Registry = {}".format(trans_type, state, any_handler, trans_registry))
+        # self.log.warning("\nNo {} transition handler found for state {}. Any_handler = {} ... Transition "
+        #                  "Registry = {}".format(trans_type, state, any_handler, trans_registry))
+        self.log.warning("\nNo {} transition handler found for transitioning from state {} to {}".format(trans_type, self, state))
         return None
 
     def __eq__(self, other):
@@ -290,10 +260,10 @@ class State(metaclass=StateMeta):
         elif type(other) is str:
             return self.__name__ == other
 
-        # Otherwise, this is an invalid comparison ('other' belongs to unknown equivalence class)
+        # Otherwise, this is an invalid comparison ('other' belongs to incompatible equivalence class)
         else:
-            raise ValueError("Invalid comparison -- RHS (right hand side of equation) must be either a State subclass "
-                             "instance or String or Class (not {})".format(other))
+            raise ValueError("Invalid comparison -- RHS (right hand side of equation) must be either a State instance "
+                             "instance or String or State Class (not {})".format(other))
 
     def __repr__(self):
         return type(self).__name__

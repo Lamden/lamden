@@ -29,3 +29,5 @@ cilantro/protocol/networks/data
 certs
 
 tests/vmnet/docker-compose.yml
+.DS_Store
+certs

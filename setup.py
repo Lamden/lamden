@@ -13,7 +13,6 @@ setup(
     entry_points={
         'console_scripts': [
             'db=cilantro.networking.db:serve',
-            'db=cilantro.networking.db:serve',
             'witness=cilantro.networking.witness:serve'
         ],
     },

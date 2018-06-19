@@ -40,7 +40,6 @@ class MPReactorInterface(MPTesterBase):
 def something_silly():
     from cilantro.logger import get_logger
     log = get_logger("SILLLY THING FUNC")
-    log.critical("\n\n\nasl;fjl;jkl;fadsfkl;jkl;adsjfkl;j234u23l;e2kfj23423890490-f8\n\n\n")
 
 
 class TestReactorInterfacePubSub(MPTestCase):
@@ -261,18 +260,3 @@ import unittest
 if __name__ == '__main__':
     print("MANI RUNNING")
     unittest.main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
