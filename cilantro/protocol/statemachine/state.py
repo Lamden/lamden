@@ -126,16 +126,16 @@ class State(metaclass=StateMeta):
         # TODO assert type message is MessageBase, and envelope is Envelope ???
         self._assert_has_input_handler(message, input_type)
 
-        func = self._get_input_handler(message, input_type)
+        handler_func = self._get_input_handler(message, input_type)
 
         # TODO -- find cleaner way to copy method signatures in unit tests
-        if (isinstance(func, MagicMock) and envelope) or self._has_envelope_arg(func):
+        if (isinstance(handler_func, MagicMock) and envelope) or self._has_envelope_arg(handler_func):
             assert envelope, "Envelope arg was found for input func {}, " \
-                             "but no envelope passed into call_input_handler".format(func)
+                             "but no envelope passed into call_input_handler".format(handler_func)
             # self.log.debug("ENVELOPE DETECTED IN HANDLER ARGS")  # todo remove this
-            output = func(message, envelope=envelope)
+            output = handler_func(message, envelope=envelope)
         else:
-            output = func(message)
+            output = handler_func(message)
 
         return output
 
