@@ -4,7 +4,6 @@ aiohttp==2.3.9
 aioprocessing==1.0.0
 Cython==0.28.1
 idna==2.6
-kade==1.0.5
 mysql-connector-python-rf==2.2.2
 ntplib==0.3.3
 plyvel==1.0.4
@@ -14,6 +13,7 @@ PyNaCl==1.2.1
 pytest==3.5.0
 pytest-aiohttp==0.3.0
 pyzmq==17.0.0
+rpcudp==3.0.0
 redis==2.10.6
 requests==2.18.4
 six==1.11.0

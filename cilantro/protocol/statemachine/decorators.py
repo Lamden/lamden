@@ -27,8 +27,9 @@ class StateInput:
     INPUT = '_route_input'
     REQUEST = '_route_request'
     TIMEOUT = '_route_timeout'
+    LOOKUP_FAILED = '_lookup_failed'
 
-    ALL = [INPUT, REQUEST, TIMEOUT]
+    ALL = [INPUT, REQUEST, TIMEOUT, LOOKUP_FAILED]
 
 
 def input(msg_type):
@@ -83,15 +84,15 @@ Transition Decorators
 ----------------------------------------
 
 Transition decorators allow states to define logic surrounding state transitions. Methods can be decorated to execute
-some code whenever the defining state is transition into from another state, using enter_state(...), or transitioned 
-out of into another state, using exit_state(....).  
+some code whenever the defining state is transition into from another state, using enter_state(...), or transitioned
+out of into another state, using exit_state(....).
 
-For either decorator enter_state(...)/exit_state(...), if no arguement is specified then that method will act as a 
+For either decorator enter_state(...)/exit_state(...), if no arguement is specified then that method will act as a
 'wildcard' and be called for ALL transitions, unless the state has another method that is decorated to handle a
 a particular state.
 
 # TODO clearer explanation
-# TODO examples 
+# TODO examples
 """
 log = get_logger("StateMeta (Compile Time)")
 
@@ -154,4 +155,3 @@ def exit_to(*args):
 def exit_to_any(func):
     setattr(func, StateTransition.EXIT, StateTransition.ACCEPT_ALL)
     return func
-

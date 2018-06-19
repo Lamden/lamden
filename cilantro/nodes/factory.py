@@ -13,11 +13,10 @@ class NodeFactory:
 
     @staticmethod
     def _build_node(loop, signing_key, ip, node_cls, name) -> NodeBase:
-        vk = W.get_vk(signing_key)
 
         node = node_cls(signing_key=signing_key, ip=ip, loop=loop, name=name)
         router = Router(statemachine=node, name=name)
-        interface = ReactorInterface(router=router, loop=loop, verifying_key=vk, name=name)
+        interface = ReactorInterface(router=router, loop=loop, signing_key=signing_key, name=name)
         composer = Composer(interface=interface, signing_key=signing_key, name=name)
 
         node.composer = composer

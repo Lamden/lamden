@@ -62,7 +62,7 @@ class Composer:
         """
         # url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
         url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, filter=filter, url=url)
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, filter=filter, url=url, vk=vk)
         self.interface.send_cmd(cmd)
 
     def remove_sub(self, filter: str, ip: str='', vk: str=''):
@@ -81,7 +81,7 @@ class Composer:
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
         url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, filter=filter, url=url)
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, filter=filter, url=url, vk=vk)
         self.interface.send_cmd(cmd)
 
     def remove_sub_url(self, ip: str='', vk: str=''):
@@ -124,7 +124,7 @@ class Composer:
                                         envelope=envelope)
         self.interface.send_cmd(cmd)
 
-    def add_pub(self, ip: str='', vk: str=''):
+    def add_pub(self, ip: str=''):
         """
         Create a publisher socket that BINDS to 'url'
         :param url: The URL to publish under.
@@ -154,7 +154,7 @@ class Composer:
         """
         url = "tcp://{}:{}".format(ip or vk, Constants.Ports.RouterDealer)
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__,
-                                        id=self.verifying_key, url=url)
+                                        id=self.verifying_key, url=url, vk=vk)
         self.interface.send_cmd(cmd)
 
     def add_router(self, ip: str='', vk: str=''):

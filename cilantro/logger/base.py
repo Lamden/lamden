@@ -15,7 +15,6 @@ def get_main_log_path():
 
     return log_path
 
-
 format = '%(asctime)s.%(msecs)03d %(name)s[%(process)d][%(processName)s] %(levelname)-2s %(message)s'
 
 coloredlogs.DEFAULT_LEVEL_STYLES = {
