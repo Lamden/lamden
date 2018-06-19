@@ -78,20 +78,17 @@ class TestBootstrap(BaseNetworkTestCase):
         # start mysql in all nodes
         for node_name in ['masternode'] + ['witness_{}'.format(i+1+1) for i in range(self.NUM_WITNESS)] + ['delegate_{}'.format(i+1+3) for i in range(self.NUM_DELEGATES)]:
             self.execute_python(node_name, start_mysqld, async=True)
-        time.sleep(3)
+        time.sleep(1)
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
 
-        time.sleep(3)
         # Bootstrap witnesses
         for i in range(self.NUM_WITNESS):
-            time.sleep(1)
             self.execute_python('witness_{}'.format(i+1+1), wrap_func(run_witness, i), async=True)
 
         # Bootstrap delegates
         for i in range(self.NUM_DELEGATES):
-            time.sleep(1)
             self.execute_python('delegate_{}'.format(i+1+3), wrap_func(run_delegate, i), async=True)
 
         input("\n\nEnter any key to terminate")
