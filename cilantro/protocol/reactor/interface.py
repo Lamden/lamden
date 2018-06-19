@@ -7,7 +7,7 @@ import time
 from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand
 from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG, KILL_SIG
-import signal
+import signal, sys
 
 
 class ReactorInterface:
@@ -58,21 +58,18 @@ class ReactorInterface:
             self._teardown()
 
     def _signal_teardown(self, signal, frame):
-        self.log.critical("Main process got kill signal!")
+        print("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
         self._teardown()
+        sys.exit(0)
 
     def _teardown(self):
         """
-        Close sockets. Close Event Loop. Tear down. Bless up.
+        Close sockets. Close Event Loop. Teardown. Bless up.
         """
         self.log.critical("[MAIN PROC] Tearing down ReactorInferace process (the main process)")
 
-        # self.log.warning("Signaling KILL to Deamon process")
-        # self.socket.send(KILL_SIG)
-        # time.sleep(0.2)  # make sure message gets sent before we close the socket
-        # self.log.warning("kill sig sent")
-
         self.log.warning("Canceling recv_messages future")
+        self.recv_fut.cancel()
         self.loop.call_soon_threadsafe(self.recv_fut.cancel)
 
         self.log.warning("Closing pair socket")
@@ -118,10 +115,9 @@ class ReactorInterface:
                 msg = await self.socket.recv()
                 callback = ReactorCommand.from_bytes(msg)
                 self.log.debug("Got callback cmd <{}>".format(callback))
-
                 self.router.route_callback(callback)
         except asyncio.CancelledError:
-            self.log.critical("some shit got cancelled...")
+            self.log.critical("_recv_messages future canceled!")
 
     def notify_resume(self):
         self.log.critical("NOTIFIY READY")

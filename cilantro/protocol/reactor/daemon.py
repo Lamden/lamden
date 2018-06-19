@@ -7,7 +7,7 @@ from cilantro import Constants
 from kade.dht import DHT
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
-import signal
+import signal, sys
 import inspect
 
 import uvloop
@@ -109,7 +109,6 @@ class ReactorDaemon:
             e.teardown()
 
         self.log.warning("Closing event loop")
-        # self.loop.stop()
         self.loop.call_soon_threadsafe(self.loop.stop)
 
     async def _execute_cmd(self, cmd: ReactorCommand):
