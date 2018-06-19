@@ -16,7 +16,7 @@ class StateMeta(type):
         clsobj = super().__new__(cls, clsname, bases, clsdict)
         clsobj.log = get_logger(clsname)
 
-        # Configure receivers, repliers, and timeouts
+        # Configure receivers, repliers, and request timeouts
         StateMeta._config_input_handlers(clsobj)
 
         # Configure entry and exit handlers
@@ -113,10 +113,6 @@ class StateMeta(type):
 
                 return
 
-    @classmethod
-    def __repr__(cls):
-        return cls.__name__
-
 
 class State(metaclass=StateMeta):
     def __init__(self, state_machine):
@@ -155,7 +151,7 @@ class State(metaclass=StateMeta):
                 assert timeout_dur > 0, "Timeout function is present, but timeout duration is not greater than 0"
 
                 loop = asyncio.get_event_loop()
-                self.log.debug("got event loop {}".format(loop))
+                # self.log.debug("got event loop {}".format(loop))
                 assert loop.is_running(), "Event loop must be running for timeout functionality!"
 
                 self.log.debug("Scheduling timeout trigger {} after {} seconds".format(timeout_func, timeout_dur))

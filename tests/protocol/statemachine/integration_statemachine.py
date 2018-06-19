@@ -23,12 +23,17 @@ class IntegrationTestState(MPTestCase):
     def test_state_timeout_interrupted(self):
         def assert_fn(sm):
             assert not sm.did_timeout
+            assert sm.state != FactorioState
+
+            assert sm.state == LiftState
+            assert sm.state.current_lift == LiftState.DEADLIFT
 
         stu = MPStateMachine(sm_class=StuMachine, assert_fn=assert_fn)
 
         stu.start()
         stu.transition('FactorioState')
         time.sleep(0.5)  # transition out before the timeout
+        stu.transition(LiftState, lift=LiftState.DEADLIFT, weight=9000)
 
         self.start()
 
