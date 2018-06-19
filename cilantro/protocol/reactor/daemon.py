@@ -34,10 +34,6 @@ class ReactorDaemon:
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-        self.context = zmq.asyncio.Context()
-        self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
-        self.socket.connect(self.url)
-
         # Register signal handler to teardown
         signal.signal(signal.SIGTERM, self._signal_teardown)
 
@@ -47,11 +43,7 @@ class ReactorDaemon:
                        alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
                        max_peers=Constants.Overlay.MaxPeers, block=False, cmd_cli=False, wipe_certs=True)
 
-        self.log.debug('bootstrappable neighbors: {}'.format(self.dht.network.bootstrappableNeighbors()))
-
-        # self.context = zmq.asyncio.Context()
         self.context, auth = self.dht.network.ironhouse.secure_context(async=True)
-        self.dht.network.ironhouse.daemon_auth = auth
         self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
         self.socket.connect(self.url)
 
@@ -91,9 +83,9 @@ class ReactorDaemon:
                 # blow up because this is very likely because of a development error, so no try/catch for now
                 cmd = ReactorCommand.from_bytes(cmd_bin)
                 assert cmd.class_name and cmd.func_name, "Received invalid command with no class/func name!"
-                
+
                 self._execute_cmd(cmd)
-                
+
         except asyncio.CancelledError:
             self.log.warning("some ish got cacnelerd")
 

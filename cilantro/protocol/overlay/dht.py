@@ -3,7 +3,7 @@ from cilantro.protocol.overlay.network import Network
 from cilantro.protocol.overlay.utils import digest
 from cilantro.logger import get_logger
 from queue import Queue
-import os, sys, uuid, time, threading, uuid, asyncio, random, warnings, logging
+import os, sys, uuid, time, threading, uuid, asyncio, random, warnings, logging, time
 from multiprocessing import Process
 from cilantro.db import VKBook
 from cilantro.utils import ErrorWithArgs
@@ -30,8 +30,11 @@ class DHT(Discovery):
         self.start_network(sk=sk, loop=self.loop, *args, **kwargs)
 
     def join_network(self):
-        log.debug('Joining network: {}'.format(self.ips))
+        log.debug('Joining network begins: {}'.format(self.ips))
+        start = time.time()
         self.loop.run_until_complete(self.network.bootstrap([(ip, self.network_port) for ip in self.ips.keys()]))
+        end = time.time()
+        log.debug('Joining network ends. ({}s)'.format(end-start))
 
     def discover_network(self):
         self.ips = self.loop.run_until_complete(self.discover(self.mode))
@@ -43,15 +46,17 @@ class DHT(Discovery):
         return True
 
     def start_network(self, *args, **kwargs):
-        error_out = False
         self.network = Network(network_port=self.network_port, *args, **kwargs)
+        log.debug('Discovery begins...')
+        start = time.time()
         while not self.discover_network():
             if self.retry_discovery == 0:
                 self.cleanup()
                 raise ErrorWithArgs(1, 'NotMaster', 'No nodes found, cannot bootstrap yourself because you are not a masternode')
             log.warning('No nodes found, cannot bootstrap yourself because you are not a masternode. Retrying soon...')
-            time.sleep(1)
             self.retry_discovery -= 1
+        end = time.time()
+        log.debug('Discovery ends. ({}s)'.format(end-start))
         self.join_network()
 
     def cleanup(self):

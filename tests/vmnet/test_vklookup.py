@@ -78,7 +78,7 @@ def start_mysqld():
    --user=mysql &')
 
 
-class TestBootstrap(BaseNetworkTestCase):
+class TestVKLookup(BaseNetworkTestCase):
     testname = 'vklookup'
     setuptime = 10
     compose_file = 'cilantro-bootstrap.yml'
@@ -86,7 +86,7 @@ class TestBootstrap(BaseNetworkTestCase):
     NUM_WITNESS = 2
     NUM_DELEGATES = 4
 
-    def test_bootstrap(self):
+    def test_vklookup(self):
         # start mysql in all nodes
         for node_name in ['masternode'] + self.groups['witness'] + self.groups['delegate']:
             self.execute_python(node_name, start_mysqld, async=True)

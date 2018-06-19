@@ -94,7 +94,7 @@ class TestPump(BaseNetworkTestCase):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
         # PUMP IT
-        time.sleep(10)
+        time.sleep(15)
         self.execute_python('mgmt', wrap_func(pump_it, self.EXPECTED_TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
 
         input("Enter any key to terminate")
