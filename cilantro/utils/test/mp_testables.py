@@ -28,11 +28,13 @@ class MPComposer(MPTesterBase):
 @mp_testable(StateMachine)
 class MPStateMachine(MPTesterBase):
     @classmethod
-    def build_obj(cls):
+    def build_obj(cls, sm_class):
+        # These 2 lines are probs unnecessary
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
 
-        sm = StateMachine()
+        sm = sm_class()
+        assert isinstance(sm, StateMachine), "Class {} did not return a StateMachine instance once called".format(sm_class)
 
         # NOTE -- the testing framework should start the loop, so we shouldn't have to worry bout that here
         return sm, loop, []

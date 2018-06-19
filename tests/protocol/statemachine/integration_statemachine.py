@@ -1,11 +1,14 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
 from .trafficlight import *
-from cilantro.utils.test import MPTestCase, mp_testable
-
+from cilantro.utils.test import MPTestCase, MPStateMachine
+from .stumachine import StuMachine
 
 
 class IntegrationTestState(MPTestCase):
 
     def test_state_timeout(self):
-        pass
+        stu = MPStateMachine(sm_class=StuMachine)
+
+        stu.transition('FactorioState')
+
