@@ -10,5 +10,6 @@ class IntegrationTestState(MPTestCase):
     def test_state_timeout(self):
         stu = MPStateMachine(sm_class=StuMachine)
 
+        stu.start()
         stu.transition('FactorioState')
 

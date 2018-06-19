@@ -152,7 +152,7 @@ class MPTesterProcess:
         # Validate tasks
         assert type(tasks) is list or type(tasks) is tuple, \
             "3rd return val of build_obj must be a list/tuple of tasks... got {} instead".format(tasks)
-        assert len(tasks) >= 1, "Expected at least one task"
+        # assert len(tasks) >= 1, "Expected at least one task"
 
         # TODO investigate why this is not always working...soemtimes assert raises error for valid coro's
         # for t in tasks:
