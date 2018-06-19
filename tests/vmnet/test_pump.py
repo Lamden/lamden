@@ -17,14 +17,8 @@ def run_mn():
     from cilantro.db import DB, DB_NAME
     import os
     log = get_logger("MASTERNODE FACTORY")
-
-    # with DB('{}_masternode'.format(DB_NAME), should_reset=True) as db:
-    #     pass
-
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
     sk = Constants.Testnet.Masternodes[0]['sk']
-
-    log.critical("\n\n\nMASTERNODE BOOTING WITH IP {} AND SK {}".format(ip, sk))
     NodeFactory.run_masternode(ip=ip, signing_key=sk)
 
 
@@ -36,14 +30,9 @@ def run_witness(slot_num):
     import os
 
     log = get_logger("WITNESS FACTORY")
-
-    # with DB('{}_witness_{}'.format(DB_NAME, slot_num), should_reset=True) as db:
-    #     pass
-
     w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
-    log.critical("Building witness on slot {} with info {}".format(slot_num, w_info))
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'])
 
 
@@ -59,11 +48,6 @@ def run_delegate(slot_num):
     d_info = Constants.Testnet.Delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
-    # Set default database name for this instance
-    # with DB('{}_delegate_{}'.format(DB_NAME, slot_num), should_reset=True) as db:
-    #     pass
-
-    log.critical("Building delegate on slot {} with info {}".format(slot_num, d_info))
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
 
 
@@ -104,19 +88,17 @@ class TestPump(BaseNetworkTestCase):
         time.sleep(3)
         # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):
-            time.sleep(8)
             self.execute_python(nodename, wrap_func(run_witness, i), async=True)
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
-            time.sleep(8)
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
         # PUMP IT
         time.sleep(16)
         self.execute_python('mgmt', wrap_func(pump_it, self.EXPECTED_TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
 
-        input("\n\nEnter any key to terminate")
+        input("Enter any key to terminate")
 
 if __name__ == '__main__':
     unittest.main()

@@ -19,9 +19,10 @@ class TestDHT(TestCase):
 
     def test_join_network_as_sole_master(self):
         def run(self):
-            del self.master_dht
+            self.node.cleanup()
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
-        self.master_dht = DHT(sk=self.master['sk'],
+        self.node = DHT(sk=self.master['sk'],
                             mode='test',
                             port=3321,
                             keyname='master',
@@ -30,16 +31,16 @@ class TestDHT(TestCase):
                             max_wait=0.1,
                             block=False)
 
-        self.assertEqual(self.master_dht.network.ironhouse.vk, self.master['vk'])
+        self.assertEqual(self.node.network.ironhouse.vk, self.master['vk'])
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()
 
     def test_join_network_as_sole_non_master_node(self):
         def run(self):
-            pass
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
-        with self.assertRaises(ErrorWithArgs) as context:
+        with self.assertRaises(ErrorWithArgs):
             self.node = DHT(sk=self.witness['sk'],
                                 mode='test',
                                 port=3321,
@@ -47,28 +48,13 @@ class TestDHT(TestCase):
                                 wipe_certs=True,
                                 loop=self.loop,
                                 max_wait=0.1,
-                                block=False)
-            self.assertTrue('NotMaster', context.exception.args[1])
+                                block=False,
+                                retry_discovery=1)
+
 
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()
-
-    def test_blocking_mode(self):
-        def run(self):
-            self.assertTrue(self.loop.is_running())
-
-        t = Timer(0.1, run, [self])
-        t.start()
-
-        self.node = DHT(sk=self.master['sk'],
-                            mode='test',
-                            port=3321,
-                            keyname='node',
-                            wipe_certs=True,
-                            loop=self.loop,
-                            max_wait=0.1,
-                            block=True)
 
     def tearDown(self):
         self.loop.close()

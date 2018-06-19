@@ -145,6 +145,7 @@ class Ironhouse:
         try:
             PublicKey(decode(target_public_key))
         except Exception as e:
+            log.debug('Invalid public key')
             return False
         server_url = 'tcp://{}:{}'.format(ip, port or self.auth_port)
         log.debug('authenticating {}...'.format(server_url))
@@ -165,6 +166,7 @@ class Ironhouse:
                 authorized = True
         except Exception as e:
             log.debug('no reply from {} after waiting...'.format(server_url))
+            authorized = None
 
         client.disconnect(server_url)
         client.close()
@@ -188,15 +190,17 @@ class Ironhouse:
     async def secure_server(self):
         log.info('Listening to secure connections at {}'.format(self.auth_port))
         try:
-            message = await self.sec_sock.recv()
-            message = message.decode()
-            log.debug('got secure request {}'.format(message))
+            while True:
+                message = await self.sec_sock.recv()
+                message = message.decode()
 
-            if self.auth_validate(message) == True:
-                public_key = self.vk2pk(message)
-                self.create_from_public_key(public_key)
-                log.debug('sending secure reply: {}'.format(self.vk))
-                self.sec_sock.send(self.vk.encode())
+                log.debug('got secure request {}'.format(message))
+
+                if self.auth_validate(message) == True:
+                    public_key = self.vk2pk(message)
+                    self.create_from_public_key(public_key)
+                    log.debug('sending secure reply: {}'.format(self.vk))
+                    self.sec_sock.send(self.vk.encode())
         finally:
             self.cleanup()
 

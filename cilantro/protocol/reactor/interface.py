@@ -62,7 +62,7 @@ class ReactorInterface:
 
         self.log.warning("Signaling KILL to Deamon process")
         self.socket.send(KILL_SIG)
-        time.sleep(1)  # make sure message gets sent before we close the socket
+        time.sleep(0.2)  # make sure message gets sent before we close the socket
 
         self.log.warning("Closing pair socket")
         self.socket.close()

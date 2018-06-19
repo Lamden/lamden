@@ -25,7 +25,7 @@ services:
       - '10000-20000'
     range:
       - 1
-      - 16
+      - 6
     image: cilantro_base.dev
     volumes:
       - type: bind

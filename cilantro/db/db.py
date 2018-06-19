@@ -185,7 +185,6 @@ def create_db(name, should_reset=False):
 
     # Seed database if it is newly created
     if name not in db_names:
-        log.critical("\n\n database {} not found, seeding that shit \n\n".format(name))
 
         masternodes = []
         delegates = []

@@ -19,11 +19,7 @@ def run_mn():
 
     m_info = Constants.Testnet.Masternodes[0]
     m_info['ip'] = os.getenv('HOST_IP')
-    # url = 'tcp://{}:{}'.format(os.getenv('HOST_IP'), Constants.Testnet.Masternode.InternalUrl[-4:])
 
-    # with DB('{}'.format(DB_NAME), should_reset=True) as db: pass
-
-    log.critical("\n\n\nMASTERNODE BOOTING WITH {}".format(m_info))
     mn = NodeFactory.run_masternode(ip=m_info['ip'], signing_key=m_info['sk'])
 
 def run_witness(slot_num):
@@ -37,12 +33,7 @@ def run_witness(slot_num):
 
     w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
-    # port = w_info['url'][-4:]
-    # w_info['url'] = 'tcp://{}:{}'.format(os.getenv('HOST_IP'), port)
 
-    # with DB('{}_witness_{}'.format(DB_NAME, slot_num), should_reset=True) as db: pass
-
-    log.critical("Building witness on slot {} with info {}".format(slot_num, w_info))
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'])
 
 
@@ -57,12 +48,7 @@ def run_delegate(slot_num):
 
     d_info = Constants.Testnet.Delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
-    # port = d_info['url'][-4:]
-    # d_info['url'] = 'tcp://{}:{}'.format(os.getenv('HOST_IP'), port)
 
-    # with DB('{}_delegate_{}'.format(DB_NAME, slot_num), should_reset=True) as db: pass
-
-    log.critical("Building witness on slot {} with info {}".format(slot_num, d_info))
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
 
 def run_mgmt():
@@ -78,7 +64,6 @@ def run_mgmt():
     vk = Constants.Protocol.Wallets.get_vk(sk)
     s,v = ED25519Wallet.new()
     mpc = MPComposer(name='mgmt', sk=s)
-    log.critical("trying to look at vk: {}".format(vk))
     mpc.add_sub(filter='a', vk=vk)
 
 def start_mysqld():
@@ -121,7 +106,7 @@ class TestBootstrap(BaseNetworkTestCase):
         time.sleep(5)
         self.execute_python('mgmt', run_mgmt, async=True)
 
-        input("\n\nEnter any key to terminate")
+        input("Enter any key to terminate")
 
 if __name__ == '__main__':
     unittest.main()

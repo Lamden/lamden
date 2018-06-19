@@ -37,7 +37,7 @@ class Network(object):
 
     protocol_class = KademliaProtocol
 
-    def __init__(self, ksize=20, alpha=3, node_id=None, discovery_mode='neighborhood', loop=None, max_peers=64, port=None, public_ip=None, *args, **kwargs):
+    def __init__(self, ksize=20, alpha=3, node_id=None, discovery_mode='neighborhood', loop=None, max_peers=64, network_port=None, public_ip=None, *args, **kwargs):
         """
         Create a server instance.  This will start listening on the given port.
 
@@ -57,14 +57,14 @@ class Network(object):
         self.refresh_loop = None
         self.save_state_loop = None
         self.max_peers = max_peers
-        self.port = port or os.getenv('NETWORK_PORT', 31232)
-        self.heartbeat_port = self.port+HEARTBEAT_PORT_OFFSET
-        self.ironhouse = Ironhouse(auth_port=self.port+AUTH_PORT_OFFSET, *args, **kwargs)
+        self.network_port = network_port
+        self.heartbeat_port = self.network_port+HEARTBEAT_PORT_OFFSET
+        self.ironhouse = Ironhouse(auth_port=self.network_port+AUTH_PORT_OFFSET, *args, **kwargs)
         self.node = Node(
             node_id=digest(self.ironhouse.vk),
             public_key=self.ironhouse.public_key,
             ip=public_ip or os.getenv('HOST_IP', '127.0.0.1'),
-            port=self.port
+            port=self.network_port
         )
         self.setup_stethoscope()
         self.ironhouse.setup_secure_server()
@@ -72,11 +72,16 @@ class Network(object):
         self.saveStateRegularly('state.tmp')
 
     async def authenticate(self, node):
+        if len([n for n in self.bootstrappableNeighbors() if n == (node.ip, node.port, node.public_key)]) == 1:
+            log.debug('Node {}:{} is already a neighbor'.format(node.ip, node.port))
+            return True
         authorized = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
         if authorized == True:
             log.debug('{}:{} is authorized'.format(node.ip, node.port))
+        elif authorized == False:
+            log.critical('!UNAUTHORIZED! {}:{}'.format(node.ip, node.port))
         else:
-            log.debug('!UNAUTHORIZED! {}:{}'.format(node.ip, node.port))
+            log.debug('Ignoring {}:{}'.format(node.ip, node.port))
         return authorized
 
     def setup_stethoscope(self):
@@ -101,7 +106,7 @@ class Network(object):
                         conn, node = self.connections[fileno]
                         addr = (node.ip, node.port+HEARTBEAT_PORT_OFFSET)
                         try:
-                            log.debug('reconnecting {} - {}'.format(self.port, addr))
+                            log.debug('reconnecting {} - {}'.format(self.network_port, addr))
                             conn.connect(addr)
                         except Exception as e:
                             if e.args[0] in [
@@ -117,9 +122,6 @@ class Network(object):
                 await asyncio.sleep(0.1)
         except asyncio.CancelledError:
             log.info('Network shutting down gracefully.')
-        # finally:
-        #     sel.stop()
-        #     log.info('Network shutting down gracefully.')
 
     def connect_to_neighbor(self, node):
         if self.node.id == node.id: return
@@ -197,7 +199,7 @@ class Network(object):
 
         Provide interface="::" to accept ipv6 address
         """
-        port = self.port
+        port = self.network_port
         listen = self.loop.create_datagram_endpoint(self._create_protocol,
                                                local_addr=(interface, port))
         log.info("Listening to kade network on %s:%i",
@@ -238,7 +240,7 @@ class Network(object):
         back up, the list of nodes can be used to bootstrap.
         """
         neighbors = self.protocol.router.findNeighbors(self.node)
-        return [tuple(n)[-2:] for n in neighbors]
+        return [tuple(n)[-3:] for n in neighbors]
 
     async def bootstrap(self, addrs):
         """
@@ -268,7 +270,6 @@ class Network(object):
         if result[0]:
             node_id, public_key = result[1]
             node = Node(node_id, ip=addr[0], port=addr[1], public_key=public_key)
-            # return node
             authorized = await self.authenticate(node)
             if authorized == True:
                 return node

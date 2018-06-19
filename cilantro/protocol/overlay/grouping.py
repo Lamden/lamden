@@ -16,7 +16,6 @@ class Grouping:
         groups_list = self.distribute_groups(group_size, skip_size, starting_port, max_num_ports)
         ports = {}
         for idx, group in enumerate(groups_list):
-            # port = random_port(ports)
             port = starting_port + int(idx)
             ports[idx] = port
             for key in group:

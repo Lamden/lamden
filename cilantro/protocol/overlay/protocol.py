@@ -3,6 +3,7 @@ import asyncio
 import select
 import socket
 import warnings
+import os
 
 from rpcudp.protocol import RPCProtocol
 from cilantro.logger import get_logger
@@ -67,22 +68,30 @@ class KademliaProtocol(RPCProtocol):
         address = (nodeToAsk.ip, nodeToAsk.port)
         result = await self.find_node(address, self.sourceNode.public_key, self.sourceNode.id,
                                       nodeToFind.id)
+        if not await self.network.authenticate(nodeToAsk):
+            nodeToAsk = None
         return self.handleCallResponse(result, nodeToAsk)
 
     async def callFindValue(self, nodeToAsk, nodeToFind):
         address = (nodeToAsk.ip, nodeToAsk.port)
         result = await self.find_value(address, self.sourceNode.public_key, self.sourceNode.id,
                                        nodeToFind.id)
+        if not await self.network.authenticate(nodeToAsk):
+            nodeToAsk = None
         return self.handleCallResponse(result, nodeToAsk)
 
     async def callPing(self, nodeToAsk):
         address = (nodeToAsk.ip, nodeToAsk.port)
         result = await self.ping(address, self.sourceNode.public_key, self.sourceNode.id)
+        if not await self.network.authenticate(nodeToAsk):
+            nodeToAsk = None
         return self.handleCallResponse(result, nodeToAsk)
 
     async def callStore(self, nodeToAsk, key, value):
         address = (nodeToAsk.ip, nodeToAsk.port)
         result = await self.store(address, self.sourceNode.public_key, self.sourceNode.id, key, value)
+        if not await self.network.authenticate(nodeToAsk):
+            nodeToAsk = None
         return self.handleCallResponse(result, nodeToAsk)
 
     def welcomeIfNewNode(self, node):
@@ -99,12 +108,13 @@ class KademliaProtocol(RPCProtocol):
         is closer than the closest in that list, then store the key/value
         on the new node (per section 2.5 of the paper)
         """
+        if not node:
+            log.warning('This node is not welcomed.')
+            return
+
         if not self.router.isNewNode(node):
             log.debug("Skipping node {} that already exists in routing table".format(node))
             return
-
-        # if not self.network.authenticate(node):
-        #     return
 
         log.info("never seen %s before, adding to router", node)
         for key, value in self.storage.items():
@@ -127,8 +137,9 @@ class KademliaProtocol(RPCProtocol):
         we get no response, make sure it's removed from the routing table.
         """
         if not result[0]:
-            log.warning("no response from %s, removing from router", node)
-            self.router.removeContact(node)
+            if node:
+                log.warning("no response from %s, removing from router", node)
+                self.router.removeContact(node)
             return result
 
         log.info("got successful response from %s", node)

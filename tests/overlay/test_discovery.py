@@ -13,11 +13,18 @@ class TestDiscovery(TestCase):
         self.discovery.loop = self.loop
 
     def test_listener(self):
+        def get_discovered():
+            self.discovery.udp_sock_server.close()
+            self.discovery.udp_sock.close()
+            self.discovery.server.cancel()
+            self.loop.call_soon_threadsafe(self.loop.stop)
+
         self.discovery.listen_for_crawlers()
         self.assertIsInstance(self.discovery.udp_sock, socket.socket)
         self.assertIsInstance(self.discovery.udp_sock_server, socket.socket)
-        self.discovery.udp_sock_server.close()
-        self.discovery.udp_sock.close()
+        t = Timer(0.01, get_discovered)
+        t.start()
+        self.loop.run_forever()
 
     def test_local(self):
         def get_discovered():

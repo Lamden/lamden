@@ -8,20 +8,19 @@ def run_node():
     from cilantro.logger import get_logger
     log = get_logger(__name__)
 
-    # For DEBUG test only
     signing_keys = {
-        'node_1':'133852f51ae13329e9776027529f3d2ef64459d65efca172fbc4a5487896cae1',
-        'node_2':'a8be57386aa395206536c50f4f3e7777733afc6c956f372f19e22e30ca5ec5db',
-        'node_3':'1479ee002156b36b48609166f9af1491e0e6eac583e4270e000f804bb8f0fec7',
-        'node_4':'e8f49c14a8320f93f00f0a38679a0f467e6bf2e12f05db6e2f7fe46d878f4e1a',
-        'node_5':'bb54502754ad80119632236b77a72577d725e9cd2d863d0ac9bc38568bdc9f89',
-        'node_6':'c4c56cf9a0b5ac73905a36826cce1e1c2bbcafb8576a72194c8808d82bb1ec13',
-        'node_7':'18e6cd97fb67f5331b9fea94ae005adef5521a79a79c5f33a62269e5ad01d3dc',
-        'node_8':'8d6ef7188a302898387d5e9e14fe8154abcad4a9851ebd5d9100f6a6bdfe5a55',
+        'node_1':'06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a',
+        'node_2':'91f7021a9e8c65ca873747ae24de08e0a7acf58159a8aa6548910fe152dab3d8',
+        'node_3':'f9489f880ef1a8b2ccdecfcad073e630ede1dd190c3b436421f665f767704c55',
+        'node_4':'8ddaf072b9108444e189773e2ddcb4cbd2a76bbf3db448e55d0bfc131409a197',
+        'node_5':'5664ec7306cc22e56820ae988b983bdc8ebec8246cdd771cfee9671299e98e3c',
+        'node_6':'20b577e71e0c3bddd3ae78c0df8f7bb42b29b0c0ce9ca42a44e6afea2912d17b'
     }
     sk = signing_keys.get(os.getenv('HOSTNAME'))
 
-    dht = DHT(mode='test', sk=sk, wipe_certs=True)
+    dht = DHT(mode='test', sk=sk, wipe_certs=True, block=False)
+
+
     dht.loop.run_forever()
 
 class TestSecureConnection(BaseNetworkTestCase):
@@ -29,7 +28,9 @@ class TestSecureConnection(BaseNetworkTestCase):
     compose_file = 'cilantro-nodes.yml'
     setuptime = 10
     def test_setup_server_clients(self):
-        for node in ['node_{}'.format(n) for n in range(1,8)]:
+        self.execute_python('node_1', run_node, async=True)
+        time.sleep(5)
+        for node in ['node_{}'.format(n) for n in range(2,7)]:
             self.execute_python(node, run_node, async=True)
         input('Press any key to continue...')
 

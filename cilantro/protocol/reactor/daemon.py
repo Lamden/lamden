@@ -5,6 +5,7 @@ from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages import ReactorCommand
 from cilantro import Constants
 from cilantro.protocol.overlay.dht import DHT
+from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
 from cilantro.protocol.statemachine import *
@@ -58,6 +59,7 @@ class ReactorDaemon:
             err_msg = '\n' + '!' * 64 + '\nDeamon Loop terminating with exception:\n' + str(traceback.format_exc())
             err_msg += '\n' + '!' * 64 + '\n'
             self.log.error(err_msg)
+        finally:
             self._teardown()
 
     async def _recv_messages(self):
@@ -169,7 +171,7 @@ class ReactorDaemon:
     async def _lookup_ip(self, cmd, url, vk, *args, **kwargs):
         ip = None
         try:
-            ip = await self.dht.network.lookup_ip(vk)
+            node = await self.dht.network.lookup_ip(vk)
         except Exception as e:
             delim_line = '!' * 64
             err_msg = '\n\n' + delim_line + '\n' + delim_line
@@ -180,7 +182,7 @@ class ReactorDaemon:
             err_msg += '\n' + delim_line + '\n' + delim_line
             self.log.error(err_msg)
 
-        if ip is None:
+        if node is None:
 
             kwargs = cmd.kwargs
             callback = ReactorCommand.create_callback(callback=StateInput.LOOKUP_FAILED, **kwargs)
@@ -191,6 +193,7 @@ class ReactorDaemon:
             return
 
         # Send interpolated command back through pipeline
+        ip = node.ip if type(node) == Node else node
         new_url = IPUtils.interpolate_url(url, ip)
         kwargs = cmd.kwargs
         kwargs['url'] = new_url
