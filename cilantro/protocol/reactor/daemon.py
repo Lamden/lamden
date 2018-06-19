@@ -89,12 +89,11 @@ class ReactorDaemon:
 
                 await self._execute_cmd(cmd)
         except asyncio.CancelledError:
-            self.log.warning("_recv_messages event loop canceled!")
+            self.log.warning("some ish got cacnelerd")
 
     def _signal_teardown(self, signal, frame):
-        print("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
+        self.log.critical("Daemon process got kill signal!")
         self._teardown()
-        sys.exit(0)
 
     def _teardown(self):
         """

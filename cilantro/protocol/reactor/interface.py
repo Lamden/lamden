@@ -68,11 +68,6 @@ class ReactorInterface:
         """
         self.log.critical("[MAIN PROC] Tearing down ReactorInferace process (the main process)")
 
-        # self.log.warning("Signaling KILL to Deamon process")
-        # self.socket.send(KILL_SIG)
-        # time.sleep(0.2)  # make sure message gets sent before we close the socket
-        # self.log.warning("kill sig sent")
-
         self.log.warning("Canceling recv_messages future")
         self.recv_fut.cancel()
         self.loop.call_soon_threadsafe(self.recv_fut.cancel)
@@ -81,7 +76,6 @@ class ReactorInterface:
         self.socket.close()
 
         self.log.warning("Closing event loop")
-        # self.loop.stop()
         self.loop.call_soon_threadsafe(self.loop.stop)
 
     def _start_daemon(self, url, vk, name):
@@ -121,7 +115,6 @@ class ReactorInterface:
                 msg = await self.socket.recv()
                 callback = ReactorCommand.from_bytes(msg)
                 self.log.debug("Got callback cmd <{}>".format(callback))
-
                 self.router.route_callback(callback)
         except asyncio.CancelledError:
             self.log.critical("_recv_messages future canceled!")
