@@ -2,6 +2,7 @@ from cilantro.protocol.statemachine.state import State, EmptyState
 from cilantro.protocol.statemachine.decorators import StateTransition
 from cilantro.utils import lazy_property
 import inspect
+import asyncio
 
 
 class StateMachine:
@@ -15,31 +16,44 @@ class StateMachine:
         """
         TODO -- docstring
         """
-        self.is_started = False
-
+        # Sanity checks (mostly for catching dev bugs)
         assert len(self._STATES) > 0, \
             "_STATES is empty. Register states using class decorator @StateMachineSubclass.register_state"
         assert self._INIT_STATE is not None, \
             "_INIT_STATE is None. Add an init state using class decorator @StateMachineSubclass.register_init_state"
+        assert self._INIT_STATE in self._STATES, "Init state {} not found in self._STATES {}".format(self._INIT_STATE,
+                                                                                                     self._STATES)
+        self.is_started = False
 
+        # Instantiate state objects
         self.state = EmptyState(self)
-        self.states = None
+        self.states = {s: s(self) for s in self._STATES}
 
-    def start(self):
+    def start(self, run_in_loop=False):
         """
-        Starts the StateMachine by instantiating all state classes, and then transitioning the machine into its
-        initial state
+        Starts the StateMachine by transitioning into its initial state. If run_in_loop is True, then this method start
+        an infinite event loop This is necessary for loop-using functionality like
+        state timeouts.
+
+        However, run_in_loop should always be false for Cilantro in production! This is because NodeBase, which is a
+        StateMachine subclass, manages its own event loop, that is gaurenteed to run_forever once StateMachine.start()
+        relinquishes control. run_in_loop=True should only be used in unit tests, or if the StateMachine class is intended
+        to be used as a standalone library (outside of Cilantro).
         """
         assert not self.is_started, "StateMachine already started -- .start() must only be invoked once."
 
-        states = self._STATES
-        init_state = self._INIT_STATE
-
-        self.states = {s: s(self) for s in states}
-        assert init_state in self.states, "Init state {} not in states {}".format(init_state, self.states)
-
         self.is_started = True
-        self.transition(init_state)
+        self.transition(self._INIT_STATE)
+
+        if run_in_loop:
+            self.loop = asyncio.get_event_loop()
+            asyncio.set_event_loop(self.loop)
+
+            # Sanity check to make sure if run_in_loop is True, then the default event loop is not already running
+            assert not self.loop.is_running(), "Loop cannot already be running if run_in_loop is passed!"
+
+            self._log("Running event loop forever")
+            self.loop.run_forever()
 
     def transition(self, next_state, *args, **kwargs):
         """
@@ -47,13 +61,12 @@ class StateMachine:
         :param next_state: The state to transition to. Must be a State class (not instance) or string.
         If it's a class, that class must exist in _STATES which is defined by the StateMachine subclass. If it's a
         string, a class of that name must exist in _STATES
-
         """
         # Validate next_state arg
         if type(next_state) is str:
             retrieved_state = self._state_cls_map.get(next_state)
             assert retrieved_state, "No state named {} found in self.states {} with _state_cls_map {}"\
-                               .format(next_state, self.states, self._state_cls_map)
+                                    .format(next_state, self.states, self._state_cls_map)
             next_state = retrieved_state
         elif inspect.isclass(next_state) and issubclass(next_state, State):
             pass

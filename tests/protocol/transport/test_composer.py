@@ -19,10 +19,10 @@ class TestComposer(TestCase):
         interface = MagicMock(spec=ReactorInterface)
         sender_id = 'yuh_boi'
 
-        comp = Composer(interface=interface, signing_key=sk, sender_id=sender_id)
+        comp = Composer(interface=interface, signing_key=sk)
 
         self.assertEqual(comp.interface, interface)
-        self.assertEqual(comp.sender_id, sender_id)
+        # self.assertEqual(comp.sender_id, sender_id)
         self.assertEqual(comp.signing_key, sk)
         self.assertEqual(comp.verifying_key, vk)
 

@@ -1,10 +1,19 @@
 """Module for initializing settings related to the built-in Cilantro logger
-
 Functions:
 -get_logger"""
 
 import logging, coloredlogs
 import os, sys
+
+def get_main_log_path():
+    from cilantro import logger
+
+    root = logger.__file__  # resolves to '/Users/davishaba/Developer/cilantro/cilantro/logger/__init__.py'
+    log_path = '/'.join(root.split('/')[:-3]) + '/logs/cilantro.log'
+
+    print("logging at path {}".format(log_path))
+
+    return log_path
 
 format = '%(asctime)s.%(msecs)03d %(name)s[%(process)d][%(processName)s] %(levelname)-2s %(message)s'
 
@@ -57,6 +66,7 @@ def get_logger(name=''):
     os.makedirs(filedir, exist_ok=True)
 
     filehandlers = [
+        logging.FileHandler(get_main_log_path()),
         logging.FileHandler(filename),
         ColoredFileHandler('{}_color'.format(filename)),
         ColoredStreamHandler()
@@ -66,7 +76,10 @@ def get_logger(name=''):
         handlers=filehandlers,
         level=logging.DEBUG
     )
+
     log = logging.getLogger(name)
+
     sys.stdout = LoggerWriter(log.debug)
     sys.stderr = LoggerWriter(log.warning)
+
     return log

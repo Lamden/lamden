@@ -1,4 +1,4 @@
-coloredlogs==9.0
+coloredlogs
 coverage
 vmnet
 ipython==6.4.0

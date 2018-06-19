@@ -14,7 +14,6 @@ def run_mn():
     from cilantro.logger import get_logger
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
     log = get_logger("MASTERNODE FACTORY")
 
@@ -28,7 +27,6 @@ def run_witness(slot_num):
     from cilantro.logger import get_logger
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
 
     log = get_logger("WITNESS FACTORY")
@@ -43,7 +41,6 @@ def run_delegate(slot_num):
     from cilantro.logger import get_logger
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
 
     log = get_logger("DELEGATE FACTORY")
@@ -51,6 +48,8 @@ def run_delegate(slot_num):
     d_info = Constants.Testnet.Delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
+    log.critical("Building delegate on slot {} with info {}".format(slot_num, d_info))
+    
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
 
 

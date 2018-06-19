@@ -8,6 +8,7 @@ from cilantro.protocol.overlay.dht import DHT
 from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
+import signal, sys
 from cilantro.protocol.statemachine import *
 import inspect
 
@@ -32,6 +33,13 @@ class ReactorDaemon:
 
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
+
+        self.context = zmq.asyncio.Context()
+        self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
+        self.socket.connect(self.url)
+
+        # Register signal handler to teardown
+        signal.signal(signal.SIGTERM, self._signal_teardown)
 
         # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
@@ -63,36 +71,41 @@ class ReactorDaemon:
             self._teardown()
 
     async def _recv_messages(self):
-        # Notify parent proc that this proc is ready
-        self.log.debug("reactorcore notifying main proc of ready")
-        self.socket.send(CHILD_RDY_SIG)
+        try:
+            # Notify parent proc that this proc is ready
+            self.log.debug("reactorcore notifying main proc of ready")
+            self.socket.send(CHILD_RDY_SIG)
 
-        self.log.info("-- Daemon proc listening to main proc on PAIR Socket at {} --".format(self.url))
-        while True:
-            self.log.debug("ReactorDaemon awaiting for command from main thread...")
-            cmd_bin = await self.socket.recv()
-            self.log.debug("Got cmd from queue: {}".format(cmd_bin))
+            self.log.info("-- Daemon proc listening to main proc on PAIR Socket at {} --".format(self.url))
+            while True:
+                self.log.debug("ReactorDaemon awaiting for command from main thread...")
+                cmd_bin = await self.socket.recv()
+                self.log.debug("Got cmd from queue: {}".format(cmd_bin))
 
-            if cmd_bin == KILL_SIG:
-                self._teardown()
-                return
+                if cmd_bin == KILL_SIG:
+                    self.log.critical("Daemon Process got kill signal from main proc")
+                    self._teardown()
+                    return
 
-            # Should from_bytes be in a try/catch? I suppose if we get a bad command from the main proc we might as well
-            # blow up because this is very likely because of a development error, so no try/catch for now
-            cmd = ReactorCommand.from_bytes(cmd_bin)
+                # Should from_bytes be in a try/catch? I suppose if we get a bad command from the main proc we might as well
+                # blow up because this is very likely because of a development error, so no try/catch for now
+                cmd = ReactorCommand.from_bytes(cmd_bin)
+                assert cmd.class_name and cmd.func_name, "Received invalid command with no class/func name!"
+                
+                self._execute_cmd(cmd)
+                
+        except asyncio.CancelledError:
+            self.log.warning("some ish got cacnelerd")
 
-            # DEBUG LINE, REMOVE LATER
-            # self.log.critical("got cmd from ReactorInterfac pair socket {}".format(cmd))
-
-            assert cmd.class_name and cmd.func_name, "Received invalid command with no class/func name!"
-
-            self._execute_cmd(cmd)
+    def _signal_teardown(self, signal, frame):
+        self.log.critical("Daemon process got kill signal!")
+        self._teardown()
 
     def _teardown(self):
         """
         Close sockets. Teardown executors. Close Event Loop.
         """
-        self.log.critical("Tearing down Reactor Daemon process")
+        self.log.critical("[DEAMON PROC] Tearing down Reactor Daemon process")
 
         self.log.warning("Closing pair socket")
         self.socket.close()
@@ -102,7 +115,7 @@ class ReactorDaemon:
             e.teardown()
 
         self.log.warning("Closing event loop")
-        self.loop.stop()
+        self.loop.call_soon_threadsafe(self.loop.stop)
 
     def _execute_cmd(self, cmd: ReactorCommand):
         """

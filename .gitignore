@@ -28,4 +28,5 @@ cilantro/faucet.json
 cilantro/protocol/networks/data
 
 tests/vmnet/docker-compose.yml
+.DS_Store
 certs
