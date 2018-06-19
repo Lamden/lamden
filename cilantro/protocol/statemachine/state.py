@@ -113,6 +113,10 @@ class StateMeta(type):
 
                 return
 
+    @classmethod
+    def __repr__(cls):
+        return cls.__name__
+
 
 class State(metaclass=StateMeta):
     def __init__(self, state_machine):
@@ -239,7 +243,7 @@ class State(metaclass=StateMeta):
         # At this point, no handler could be found. Warn the user and return None
         # self.log.warning("\nNo {} transition handler found for state {}. Any_handler = {} ... Transition "
         #                  "Registry = {}".format(trans_type, state, any_handler, trans_registry))
-        self.log.warning("\nNo {} transition handler found for state {}".format(trans_type, state))
+        self.log.warning("\nNo {} transition handler found for transitioning from state {} to {}".format(trans_type, self, state))
         return None
 
     def __eq__(self, other):
