@@ -108,10 +108,19 @@ class MNNewBlockState(MNBaseState):
         """
         def _validate_sigs(signatures, msg) -> bool:
             for sig in signatures:
-                self.log.info("mn verifying signature: {}".format(sig))
+                # TODO -- ensure that the sender belongs to the top delegate pool
+                self.log.debug("mn verifying signature: {}".format(sig))
                 if not sig.verify(msg, sig.sender):
-                    self.log.error("!!!! Oh no why couldnt we verify sig {}???".format(sig))
+                    self.log.error("Masternode could not verify signature!!! Sig={}".format(sig))
                     return False
+            return True
+
+        def _prove_merkle(block):
+            hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
+            tx_hashes = block.nodes[len(block.nodes) // 2:]
+            if not MerkleTree.verify_tree(tx_hashes, hash_of_nodes):
+                self.log.error("COULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}".format(block))
+                return False
             return True
 
         # Development sanity checks (these should be removed in production)
