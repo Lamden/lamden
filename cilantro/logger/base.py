@@ -80,4 +80,11 @@ def get_logger(name=''):
     sys.stdout = LoggerWriter(log.debug)
     sys.stderr = LoggerWriter(log.warning)
 
+    overwrite_logger_level(logging.WARNING)
+
     return log
+
+def overwrite_logger_level(level):
+    for name in logging.Logger.manager.loggerDict.keys():
+        log = logging.getLogger(name)
+        log.setLevel(level)

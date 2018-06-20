@@ -79,7 +79,7 @@ class Network(object):
         if authorized == True:
             log.debug('{}:{} is authorized'.format(node.ip, node.port))
         elif authorized == False:
-            log.critical('!UNAUTHORIZED! {}:{}'.format(node.ip, node.port))
+            log.warning('!UNAUTHORIZED! {}:{}'.format(node.ip, node.port))
         else:
             log.debug('Ignoring {}:{}'.format(node.ip, node.port))
         return authorized

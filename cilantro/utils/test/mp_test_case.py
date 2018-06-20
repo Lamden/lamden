@@ -65,7 +65,7 @@ class MPTestCase(TestCase):
 
         start_msg = '\n' + '#' * 80 + '\n' + '#' * 80
         start_msg += '\n\t\t\t TEST STARTING\n' + '#' * 80 + '\n' + '#' * 80
-        self.log.critical(start_msg)
+        self.log.debug(start_msg)
 
         # if not self._is_setup:
         #     self.__class__._is_setup = True
@@ -112,14 +112,14 @@ class MPTestCase(TestCase):
 
         # If there are no active testers left and none of them failed, we win
         if len(actives) + len(fails) == 0:
-            self.log.critical("\n\n{0}\n\n\t\t\tTESTERS SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
+            self.log.debug("\n\n{0}\n\n\t\t\tTESTERS SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
                               .format('$' * 120, timeout))
         else:
             fail_msg = "\n\n\nfail_msg:\n{0}\nASSERTIONS TIMED OUT FOR TESTERS: \n\n\n".format('-' * 120)
             for t in fails + actives:
                 fail_msg += "{}\n".format(t)
             fail_msg += "{0}\n".format('-' * 120)
-            self.log.critical(fail_msg)
+            self.log.error(fail_msg)
             raise Exception()
 
     def _poll_testers(self, timeout) -> tuple:
@@ -127,7 +127,7 @@ class MPTestCase(TestCase):
         start_msg += '\n Polling testers procs every {} seconds, with test timeout of {} seconds\n'\
             .format(TESTER_POLL_FREQ, timeout)
         start_msg += '~' * 80
-        self.log.critical(start_msg)
+        self.log.debug(start_msg)
 
         actives = [t for t in MPTesterBase.testers if t.assert_fn]
         passives = [t for t in MPTesterBase.testers if not t.assert_fn]
@@ -142,7 +142,7 @@ class MPTestCase(TestCase):
             for t in actives:
                 try:
                     msg = t.socket.recv(flags=zmq.NOBLOCK)
-                    self.log.critical("\nGOT MSG {} FROM TESTER <{}>\n".format(msg, t))
+                    self.log.debug("\nGOT MSG {} FROM TESTER <{}>\n".format(msg, t))
 
                     # 'ignore' SIG_RDY
                     if msg == SIG_RDY:

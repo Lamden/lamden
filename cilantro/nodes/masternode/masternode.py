@@ -41,20 +41,25 @@ class Masternode(NodeBase):
 class MNBaseState(State):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
-        self.log.critical("mn about to pub for tx {}".format(tx))  # debug line
+        self.log.debug("mn about to pub for tx {}".format(tx))  # debug line
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=tx)
 
     @input_request(BlockContender)
     def recv_block(self, block: BlockContender):
-        self.log.warning("Current state not configured to handle block contender: {}".format(block))
+        self.log.warning("Current state not configured to handle block contender")
+        self.log.debug('Block: {}'.format(block))
 
     @input_request(StateRequest)
     def handle_state_req(self, request: StateRequest):
-        self.log.warning("Current state not configured to handle state requests {}".format(request))
+        self.log.warning("Current state not configured to handle state requests")
+        self.log.debug('Request: {}'.format(request))
+
 
     @input(BlockDataReply)
     def recv_blockdata_reply(self, reply: BlockDataReply):
-        self.log.warning("Current state not configured to handle block data reply {}".format(reply))
+        self.log.warning("Current state not configured to handle block data reply")
+        self.log.debug('Reply: {}'.format(reply))
+
 
 
 @Masternode.register_init_state
@@ -64,7 +69,7 @@ class MNBootState(MNBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
-        self.log.critical("MN IP: {}".format(self.parent.ip))
+        self.log.debug("MN IP: {}".format(self.parent.ip))
 
         # Add publisher socket
         self.parent.composer.add_pub(ip=self.parent.ip)

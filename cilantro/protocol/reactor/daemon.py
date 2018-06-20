@@ -75,7 +75,7 @@ class ReactorDaemon:
                 self.log.debug("Got cmd from queue: {}".format(cmd_bin))
 
                 if cmd_bin == KILL_SIG:
-                    self.log.critical("Daemon Process got kill signal from main proc")
+                    self.log.debug("Daemon Process got kill signal from main proc")
                     self._teardown()
                     return
 
@@ -90,14 +90,14 @@ class ReactorDaemon:
             self.log.warning("some ish got cacnelerd")
 
     def _signal_teardown(self, signal, frame):
-        self.log.critical("Daemon process got kill signal!")
+        self.log.debug("Daemon process got kill signal!")
         self._teardown()
 
     def _teardown(self):
         """
         Close sockets. Teardown executors. Close Event Loop.
         """
-        self.log.critical("[DEAMON PROC] Tearing down Reactor Daemon process")
+        self.log.info("[DEAMON PROC] Tearing down Reactor Daemon process")
 
         self.log.warning("Closing pair socket")
         self.socket.close()

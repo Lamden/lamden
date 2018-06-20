@@ -107,6 +107,7 @@ class God:
             r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
             cls.log.debug("POST request got status code {}".format(r.status_code))
 
+
     @classmethod
     def random_std_tx(cls):
         sender, receiver = random.sample(ALL_WALLETS, 2)
@@ -122,5 +123,3 @@ class God:
 
     def send_status_request(self, url, status_req):
         pass
-
-    

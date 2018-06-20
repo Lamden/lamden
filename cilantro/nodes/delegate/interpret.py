@@ -30,12 +30,12 @@ class DelegateInterpretState(DelegateBaseState):
         with DB() as db:
             r = db.execute('select * from state_meta')
             results = r.fetchall()
-            self.log.critical("\n\n LATEST STATE INFO: {} \n\n".format(results))
+            self.log.critical("LATEST STATE INFO: {}".format(results))
 
     @exit_to_any
     def exit_any(self, next_state):
         # Flush queue if we are not leaving interpreting for consensus
-        self.log.critical("Delegate exiting interpreting for state {}, flushing queue".format(next_state))
+        self.log.warning("Delegate exiting interpreting for state {}, flushing queue".format(next_state))
         self.parent.interpreter.flush(update_state=False)
 
     @exit_to(DelegateConsensusState)
@@ -57,4 +57,3 @@ class DelegateInterpretState(DelegateBaseState):
         else:
             self.log.debug("Not consensus time yet, queue is only size {}/{}"
                            .format(self.parent.interpreter.queue_len, Constants.Nodes.MaxQueueSize))
-

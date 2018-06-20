@@ -53,8 +53,8 @@ class ReactorInterface:
             self.recv_fut = asyncio.gather(self._recv_messages(), *tasks)
             self.loop.run_until_complete(self.recv_fut)
         except Exception as e:
-            self.log.error("\n\nException in main event loop: {}\n\n".format(traceback.format_exc()))
-            self.log.critical("Tearing down from runtime loop exception")
+            self.log.error("Exception in main event loop: {}".format(traceback.format_exc()))
+            self.log.info("Tearing down from runtime loop exception")
             self._teardown()
 
     def _signal_teardown(self, signal, frame):
@@ -66,16 +66,16 @@ class ReactorInterface:
         """
         Close sockets. Close Event Loop. Teardown. Bless up.
         """
-        self.log.critical("[MAIN PROC] Tearing down ReactorInferace process (the main process)")
+        self.log.info("[MAIN PROC] Tearing down ReactorInferace process (the main process)")
 
-        self.log.warning("Canceling recv_messages future")
+        self.log.debug("Canceling recv_messages future")
         self.recv_fut.cancel()
         self.loop.call_soon_threadsafe(self.recv_fut.cancel)
 
-        self.log.warning("Closing pair socket")
+        self.log.debug("Closing pair socket")
         self.socket.close()
 
-        self.log.warning("Closing event loop")
+        self.log.debug("Closing event loop")
         self.loop.call_soon_threadsafe(self.loop.stop)
 
     def _start_daemon(self, url, sk, name):
@@ -117,19 +117,16 @@ class ReactorInterface:
                 self.log.debug("Got callback cmd <{}>".format(callback))
                 self.router.route_callback(callback)
         except asyncio.CancelledError:
-            self.log.critical("_recv_messages future canceled!")
+            self.log.debug("_recv_messages future canceled!")
 
     def notify_resume(self):
-        self.log.critical("NOTIFIY READY")
+        self.log.info("NOTIFIY READY")
         # TODO -- implement (add queue of tx, flush on notify ready, pause on notify_pause
 
     def notify_pause(self):
-        self.log.critical("NOTIFY PAUSE")
+        self.log.info("NOTIFY PAUSE")
         # TODO -- implement
 
     def send_cmd(self, cmd: ReactorCommand):
         assert isinstance(cmd, ReactorCommand), "Only ReactorCommand instances can sent through the reactor"
         self.socket.send(cmd.serialize())
-
-    def do_something(self, arg1='default'):
-        self.log.critical("\n *** DOING SOMETHING with arg1 = {} *** \n".format(arg1))

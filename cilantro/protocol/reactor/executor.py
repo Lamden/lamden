@@ -83,7 +83,6 @@ class Executor(metaclass=ExecutorMeta):
             env = self._validate_envelope(envelope_binary=env_binary, header=header)
 
             if not env:
-                self.log.warning("Could not validate envelope binary {}!".format(env_binary))
                 continue
 
             Executor._recently_seen.add(env.meta.uuid)
@@ -110,24 +109,24 @@ class Executor(metaclass=ExecutorMeta):
         try:
             env = Envelope.from_bytes(envelope_binary)
         except Exception as e:
-            self.log.error("\n\n\nError deserializing envelope: {}\n\n\n".format(e))
+            self.log.error("Error deserializing envelope: {}".format(e))
             return None
 
         # Check seal
         if not env.verify_seal():
-            self.log.error("\n\n\nSeal could not be verified for envelope {}\n\n\n".format(env))
+            self.log.error("Seal could not be verified for envelope {}".format(env))
             return None
 
         # If header is not none (meaning this is a ROUTE msg with an ID frame), then verify that the ID frame is
         # the same as the vk on the seal
         if header and (header != env.seal.verifying_key):
-            self.log.error("\n\n\nHeader frame {} does not match seal's vk {}\nfor envelope {}\n\n\n"
+            self.log.error("Header frame {} does not match seal's vk {}\nfor envelope {}"
                            .format(header, env.seal.verifying_key, env))
             return None
 
         # Make sure we haven't seen this message before
         if env.meta.uuid in Executor._recently_seen:
-            self.log.warning("Duplicate envelope detect with UUID {}. Ignoring.".format(env.meta.uuid))
+            self.log.debug("Duplicate envelope detect with UUID {}. Ignoring.".format(env.meta.uuid))
             return None
 
         # TODO -- checks timestamp to ensure this envelope is recv'd in a somewhat reasonable time (within N seconds)
@@ -284,8 +283,8 @@ class DealerRouterExecutor(Executor):
 
     def _timeout(self, url: str, request_envelope: bytes, reply_uuid: int):
         assert reply_uuid in self.expected_replies, "Timeout triggered but reply_uuid was not in expected_replies"
-        self.log.critical("Request to url {} timed out! (reply uuid {} not found). Request envelope: {}"
-                          .format(url, reply_uuid, request_envelope))
+        self.log.info("Request to url {} timed out! reply uuid {}".format(url, reply_uuid))
+        self.log.debug("Request envelope: {}".format(request_envelope))
 
         del(self.expected_replies[reply_uuid])
         self.call_on_mp(callback=StateInput.TIMEOUT, envelope_binary=request_envelope)
@@ -313,7 +312,7 @@ class DealerRouterExecutor(Executor):
         self.log.info("Creating dealer socket for url {} with id {}".format(url, id))
 
         curve_serverkey = self.ironhouse.vk2pk(vk)
-        self.log.critical('{}: add_dealer for url: {} where {} --> {}'.format(os.getenv('HOST_IP'), url, vk, curve_serverkey))
+        self.log.debug('{}: add_dealer for url: {}'.format(os.getenv('HOST_IP'), url))
         socket = self.context.socket(socket_type=zmq.DEALER)
         # socket = self.ironhouse.secure_socket(
         #     self.context.socket(socket_type=zmq.DEALER),
@@ -332,7 +331,7 @@ class DealerRouterExecutor(Executor):
 
     # TODO pass in the intended replier's vk so we can be sure the reply we get is actually from him
     def request(self, url: str, reply_uuid: str, envelope: bytes, timeout=0):
-        self.log.critical("ay we requesting /w reply uuid {} and env {}".format(reply_uuid, envelope))
+        self.log.debug("requesting /w reply uuid {} and env {}".format(reply_uuid, envelope))
         assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
             .format(url, self.dealers)
         assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
@@ -358,7 +357,7 @@ class DealerRouterExecutor(Executor):
 
     def remove_router(self, url):
         assert self.router, "Tried to remove router but self.router is not set"
-        self.log.critical("remove router not implemented")
+        self.log.warning("remove router not implemented")
         raise NotImplementedError
         # self.log.info("Removing router at url {}".format(url))
 

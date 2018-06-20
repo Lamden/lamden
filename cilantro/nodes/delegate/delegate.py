@@ -61,7 +61,7 @@ class DelegateBaseState(State):
 
     @input(NewBlockNotification)
     def handle_new_block_notif(self, notif: NewBlockNotification):
-        self.log.critical("got new block notification, but logic to handle it is not implement in subclass")
+        self.log.warning("got new block notification, but logic to handle it is not implement in subclass")
         raise NotImplementedError
         # TODO -- if we are in anything but consensus state, we need to go to update state
 

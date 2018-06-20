@@ -170,7 +170,7 @@ def create_db(name, should_reset=False):
 
     # reset database if specified
     if should_reset:
-        log.critical("Dropping database...")
+        log.debug("Dropping database...")
         db.execute('drop database if exists {}'.format(name))
         log.debug("Database dropped.")
 

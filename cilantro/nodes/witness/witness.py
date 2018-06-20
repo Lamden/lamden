@@ -19,7 +19,7 @@ from cilantro.db.db import VKBook
 class WitnessBaseState(State):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase, envelope: Envelope):
-        self.log.critical("Witness not configured to recv tx: {} with env {}".format(tx, envelope))
+        self.log.error("Witness not configured to recv tx: {} with env {}".format(tx, envelope))
 
 
 class WitnessBootState(WitnessBaseState):
@@ -68,9 +68,9 @@ class WitnessRunState(WitnessBaseState):
 
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase, envelope: Envelope):
-        self.log.critical("ayyyy witness got tx: {}, with env {}".format(tx, envelope))  # debug line, remove later
+        self.log.debug("witness got tx: {}, with env {}".format(tx, envelope))  # debug line, remove later
         self.parent.composer.send_pub_env(envelope=envelope, filter=Constants.ZmqFilters.WitnessDelegate)
-        self.log.critical("witness published dat tx to the homies")  # debug line, remove later
+        self.log.debug("witness published tx")  # debug line, remove later
 
 
 class Witness(NodeBase):
