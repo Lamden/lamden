@@ -1,7 +1,8 @@
 from cilantro.messages import MessageBase
 from cilantro.utils import lazy_property, set_lazy_property
-from cilantro.messages.consensus.merkle_signature import MerkleSignature
+from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 import pickle
+
 
 """
 BlockContender is the message object that is passed between delegates during consensus state. It consists of the merkle
@@ -73,3 +74,13 @@ class BlockContender(MessageBase):
     @property
     def nodes(self):
         return self._data[self.NODES]
+
+
+def build_test_contender():
+    """
+    Method to build a 'test' block contender. Used exclusively in unit tests.
+    """
+    sigs = [build_test_merkle_sig() for _ in range(8)]
+    nodes = [1, 2, 3, 4]
+
+    return BlockContender.create(signatures=sigs, nodes=nodes)
