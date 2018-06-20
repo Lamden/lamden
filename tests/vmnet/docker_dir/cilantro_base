@@ -22,6 +22,8 @@ RUN apt-get update \
     && apt-get install -y mariadb-server mariadb-plugin-rocksdb \
     && rm -rf /var/lib/apt/lists/*
 
+# LDFLAGS=-L/usr/local/opt/openssl/lib pip install mysqlclient
+
 # Install Python requirements
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
