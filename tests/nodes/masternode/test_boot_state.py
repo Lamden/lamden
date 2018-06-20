@@ -41,7 +41,6 @@ class TestMasterNodeBootState(TestCase):
     def test_entry_transitions_to_run(self):
         """
         Tests that boot state transitions to run state once setup has been done
-        :return:
         """
         mock_sm = MagicMock()
         state = MNBootState(state_machine=mock_sm)
@@ -49,4 +48,3 @@ class TestMasterNodeBootState(TestCase):
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
 
         mock_sm.transition.assert_called_with(MNRunState)
-

@@ -113,7 +113,6 @@ class MessageBase(metaclass=MessageBaseMeta):
         if hasattr(self._data, 'to_dict') and hasattr(other._data, 'to_dict'):
             return self._data.to_dict() == other._data.to_dict()
         else:
-
             raise NotImplementedError("Default __eq__ is only implement for messages that use capnp (no to_dict method "
                                       "found on object type {} or {}".format(type(self), type(other)))
 

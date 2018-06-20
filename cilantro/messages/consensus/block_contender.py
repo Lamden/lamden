@@ -38,6 +38,12 @@ class BlockContender(MessageBase):
 
     @classmethod
     def create(cls, signatures: list, nodes: list):
+        """
+        Creates a new block contender. Created by delegates to propose a block to Masternodes.
+        :param signatures: A list of MerkleSignature objects
+        :param nodes: A list of hashes of leaves (a list of byte objects)
+        :return:
+        """
         # Serialize list of signatures
         sigs_binary = []
 
