@@ -63,7 +63,7 @@ class MNNewBlockState(MNBaseState):
                 self.parent.transition(MNRunState, success=False)
 
     def new_block_procedure(self, block, txs):
-        self.log.critical("\n***\nDONE COLLECTING BLOCK DATA FROM NODES. Storing new block.\n***\n")
+        self.log.debug("DONE COLLECTING BLOCK DATA FROM NODES. Storing new block.")
 
         hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
         tree = b"".join(block.nodes).hex()
@@ -202,5 +202,6 @@ class MNFetchNewBlockState(MNNewBlockState):
 
     @input_timeout(BlockDataRequest)
     def timeout_block_req(self, request: BlockDataRequest, envelope: Envelope):
-        self.log.info("\n\nBlockDataRequest timed out for envelope with request data {}\n\n".format(envelope, request))
+        self.log.warning("BlockDataRequest timed out for envelope with request data")
+        self.log.debug("Envelope Data: {}".format(envelope))
         # TODO -- implement

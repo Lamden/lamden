@@ -26,9 +26,9 @@ KNOWN_ADRS = (STU, DAVIS, DENTON)
 
 def seed_wallets(amount=10000, i=0):
     log = get_logger("WalletSeeder")
-    log.critical("Seeding wallets with amount {}".format(amount))
+    log.info("Seeding wallets with amount {}".format(amount))
     with DB('{}_{}'.format(DB_NAME, i)) as db:
-        log.critical("GOT DB WITH NAME: {}".format(db.db_name))
+        log.debug("GOT DB WITH NAME: {}".format(db.db_name))
         for wallet in KNOWN_ADRS:
             q = insert(db.tables.balances).values(wallet=wallet[1].encode(), amount=amount)
             db.execute(q)
@@ -43,7 +43,7 @@ def send_tx(sender, receiver, amount):
     tx = StandardTransactionBuilder.create_tx(sender[0], sender[1], receiver, amount)
     # r = requests.post(MN_URL, data=Envelope.create(tx).serialize())
     r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
-    print("Request status code: {}".format(r.status_code))
+    log.debug("Request status code: {}".format(r.status_code))
 
 
 def send_vote():

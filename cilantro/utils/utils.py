@@ -99,7 +99,6 @@ def _check_hex(hex_str: str, length=0) -> bool:
     except:
         return False
 
-
 class IPUtils:
     url_pattern = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})', flags=re.IGNORECASE)
 
@@ -124,3 +123,16 @@ class IPUtils:
         if _check_hex(vk, length=64):
             return vk
         return False
+
+    @staticmethod
+    def get_ip(ip_url) -> str or False:
+        res = re.match(IPUtils.url_pattern, ip_url)
+        try:
+            protocol, ip, port = res.groups()
+            return ip
+        except:
+            return False
+
+class ErrorWithArgs(Exception):
+    def __init__(self, *args):
+        self.args = [a for a in args]

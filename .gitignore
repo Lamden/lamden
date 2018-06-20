@@ -23,7 +23,7 @@ cilantro.egg-info/
 
 # Data
 cilantro/protocol/networks/data
-
+certs
 tests/vmnet/docker-compose.yml
-
-.DS_store
+state.tmp
+.DS_Store

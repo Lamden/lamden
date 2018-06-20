@@ -8,9 +8,6 @@ networks:
         subnet: 172.29.0.0/16
 services:
   delegate_4:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: delegate_4
     environment:
     - HOSTNAME=delegate_4
@@ -19,8 +16,8 @@ services:
     - MGMT=172.29.5.0
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - TEST_NAME=bootstrap
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=pump_it
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -32,9 +29,6 @@ services:
       target: /app/
       type: bind
   delegate_5:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: delegate_5
     environment:
     - HOSTNAME=delegate_5
@@ -43,8 +37,8 @@ services:
     - MGMT=172.29.5.0
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - TEST_NAME=bootstrap
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=pump_it
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -56,9 +50,6 @@ services:
       target: /app/
       type: bind
   delegate_6:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: delegate_6
     environment:
     - HOSTNAME=delegate_6
@@ -67,8 +58,8 @@ services:
     - MGMT=172.29.5.0
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - TEST_NAME=bootstrap
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=pump_it
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -79,34 +70,7 @@ services:
     - source: ${LOCAL_PATH}/cilantro
       target: /app/
       type: bind
-  delegate_7:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    container_name: delegate_7
-    environment:
-    - HOSTNAME=delegate_7
-    - HOST_IP=172.29.5.7
-    - SLOT_NUM=3
-    - MGMT=172.29.5.0
-    - MASTERNODE=172.29.5.1
-    - WITNESS=172.29.5.2,172.29.5.3
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - TEST_NAME=bootstrap
-    image: cilantro_base.dev
-    networks:
-      cilantro:
-        ipv4_address: 172.29.5.7
-    stdin_open: true
-    tty: true
-    volumes:
-    - source: ${LOCAL_PATH}/cilantro
-      target: /app/
-      type: bind
   masternode:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: masternode
     environment:
     - HOSTNAME=masternode
@@ -114,8 +78,8 @@ services:
     - MGMT=172.29.5.0
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - TEST_NAME=bootstrap
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=pump_it
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -127,9 +91,6 @@ services:
       target: /app/
       type: bind
   mgmt:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: mgmt
     environment:
     - HOSTNAME=mgmt
@@ -137,8 +98,8 @@ services:
     - MGMT=172.29.5.0
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - TEST_NAME=bootstrap
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=pump_it
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -150,9 +111,6 @@ services:
       target: /app/
       type: bind
   witness_2:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: witness_2
     environment:
     - HOSTNAME=witness_2
@@ -161,8 +119,8 @@ services:
     - MGMT=172.29.5.0
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - TEST_NAME=bootstrap
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=pump_it
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -174,9 +132,6 @@ services:
       target: /app/
       type: bind
   witness_3:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     container_name: witness_3
     environment:
     - HOSTNAME=witness_3
@@ -185,8 +140,8 @@ services:
     - MGMT=172.29.5.0
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
-    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6,172.29.5.7
-    - TEST_NAME=bootstrap
+    - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
+    - TEST_NAME=pump_it
     image: cilantro_base.dev
     networks:
       cilantro:

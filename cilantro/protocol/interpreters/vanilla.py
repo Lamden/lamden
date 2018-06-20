@@ -49,7 +49,7 @@ class VanillaInterpreter(BaseInterpreter):
             # NOTE -- this just drops the scratch version of 'balances' for now. If interpretation of tx's were to
             #  operate on other tables, (and consequently other scratch tables), these would need to be dropped as well.
             q = delete(db.tables.mapping[db.tables.balances])
-            self.log.critical("\n attemtpign to executing query {}".format(q))
+            self.log.debug("\n attemtpign to executing query {}".format(q))
             db.execute(q)
 
         self.queue.clear()
@@ -90,6 +90,3 @@ class VanillaInterpreter(BaseInterpreter):
                 if scratch_q.__class__ == Update:
                     scratch_q.table = db.tables.mapping[scratch_q.table]
                 db.execute(scratch_q)
-
-
-

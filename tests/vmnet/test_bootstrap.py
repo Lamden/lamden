@@ -20,7 +20,6 @@ def run_mn():
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
     sk = Constants.Testnet.Masternodes[0]['sk']
 
-    log.critical("\n\n\nMASTERNODE BOOTING WITH IP {} AND SK {}".format(ip, sk))
     NodeFactory.run_masternode(ip=ip, signing_key=sk)
 
 
@@ -35,7 +34,6 @@ def run_witness(slot_num):
     w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
-    log.critical("Building witness on slot {} with info {}".format(slot_num, w_info))
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'])
 
 
@@ -51,6 +49,7 @@ def run_delegate(slot_num):
     d_info['ip'] = os.getenv('HOST_IP')
 
     log.critical("Building delegate on slot {} with info {}".format(slot_num, d_info))
+    
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
 
 
@@ -78,12 +77,11 @@ class TestBootstrap(BaseNetworkTestCase):
         # start mysql in all nodes
         for node_name in ['masternode'] + ['witness_{}'.format(i+1+1) for i in range(self.NUM_WITNESS)] + ['delegate_{}'.format(i+1+3) for i in range(self.NUM_DELEGATES)]:
             self.execute_python(node_name, start_mysqld, async=True)
-        time.sleep(3)
+        time.sleep(1)
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
 
-        time.sleep(3)
         # Bootstrap witnesses
         for i in range(self.NUM_WITNESS):
             self.execute_python('witness_{}'.format(i+1+1), wrap_func(run_witness, i), async=True)

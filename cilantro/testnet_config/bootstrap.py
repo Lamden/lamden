@@ -10,17 +10,17 @@ import sys
 import time
 
 """
-If running this on PyCharm, be sure enable to console output to see glorious colors. 
+If running this on PyCharm, be sure enable to console output to see glorious colors.
 Go to the run dropdown in top right, 'Edit Configurations', and then check 'Emulate Terminal output in Console'
 
 One can edit the number of Delegates/Witnesses in config.json (although multiple witnesses currently not supported)
 
-To send TX through the network, open up a python terminal and run 
+To send TX through the network, open up a python terminal and run
 -- from cilantro.testnet_config.tx_builder import *
 Then, before sending tx through the system, you must run
 -- seed_wallets()
 Then you can send standard transactions using
--- send_tx(DENTON, DAVIS, 420.42)  # works with DENTON, STU, and DAVIS  
+-- send_tx(DENTON, DAVIS, 420.42)  # works with DENTON, STU, and DAVIS
 """
 
 MULTI_PROC = True
@@ -43,7 +43,7 @@ def start_delelegate(i):
     db_name = DB_NAME + '_delegate_' + str(i)
 
     d_info = Constants.Testnet.Delegates[i]
-    log.critical("\n***Instantiating a new delegate on slot {} with db name: {}, and info {}\n".format(i, db_name, d_info))
+    log.debug("\n***Instantiating a new delegate on slot {} with db name: {}, and info {}\n".format(i, db_name, d_info))
 
     DB.set_context(db_name)
     with DB(should_reset=True) as db:
@@ -54,7 +54,7 @@ def start_delelegate(i):
 
 def start_mn():
     log = get_logger("MasternodeFactor")
-    log.critical("\n***Starting Masternode\n")
+    log.debug("\n***Starting Masternode\n")
 
     DB.set_context('{}_masternode'.format(DB_NAME))
 
@@ -72,7 +72,7 @@ def start_witness(i):
         pass
 
     w_info = Constants.Testnet.Witnesses[i]
-    log.critical("\n\nStarting witness on slot {} with info {}\n\n".format(i, w_info))
+    log.debug("\n\nStarting witness on slot {} with info {}\n\n".format(i, w_info))
     NodeFactory.run_witness(signing_key=w_info['sk'], ip=w_info['url'], name="Witness_{}".format(i + 1))
 
 
@@ -103,4 +103,3 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.pause()
-

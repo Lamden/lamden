@@ -23,7 +23,7 @@ class Witness(NodeBase):
 class WitnessBaseState(State):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase, envelope: Envelope):
-        self.log.critical("Witness not configured to recv tx: {} with env {}".format(tx, envelope))
+        self.log.error("Witness not configured to recv tx: {} with env {}".format(tx, envelope))
 
 
 @Witness.register_init_state
@@ -64,9 +64,9 @@ class WitnessRunState(WitnessBaseState):
 
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase, envelope: Envelope):
-        self.log.critical("ayyyy witness got tx: {}, with env {}".format(tx, envelope))  # debug line, remove later
+        self.log.debug("witness got tx: {}, with env {}".format(tx, envelope))  # debug line, remove later
         self.parent.composer.send_pub_env(envelope=envelope, filter=Constants.ZmqFilters.WitnessDelegate)
-        self.log.critical("witness published dat tx to the homies")  # debug line, remove later
+        self.log.debug("witness published tx")  # debug line, remove later
 
     @input(ContractSubmission)
     def handle_contract_submission(self, contract: ContractSubmission, envelope: Envelope):

@@ -45,7 +45,7 @@ def execute_python(node, fn, async=True, python_version='3.6'):
 def something():
     from cilantro.logger import get_logger
     log = get_logger("THIS IS ON A VM")
-    log.critical('\n\n\n\n\nayyyyyyyyy\n\n\n\n\n')
+    log.debug('\n\n\n\n\nayyyyyyyyy\n\n\n\n\n')
 
 
 def mp_testable(test_cls):
@@ -152,7 +152,7 @@ class MPTesterProcess:
         # Validate tasks
         assert type(tasks) is list or type(tasks) is tuple, \
             "3rd return val of build_obj must be a list/tuple of tasks... got {} instead".format(tasks)
-        assert len(tasks) >= 1, "Expected at least one task"
+        # assert len(tasks) >= 1, "Expected at least one task"
 
         # TODO investigate why this is not always working...soemtimes assert raises error for valid coro's
         # for t in tasks:
@@ -175,15 +175,15 @@ class MPTesterProcess:
                 # self.log.critical("\n!!!!!\nGOT ABORT SIG\n!!!!!\n")
                 errs = self._assertions()
                 if errs:
-                    self.log.critical("\n\n{0}\nASSERTIONS FAILED FOR {2}:\n{1}\n{0}\n".format('!' * 120, errs, self.name))
+                    self.log.error("\n\n{0}\nASSERTIONS FAILED FOR {2}:\n{1}\n{0}\n".format('!' * 120, errs, self.name))
                 self._teardown()
                 return
 
             # If we got a SIG_START, start polling for assertions (if self.assert_fn passed in)
             elif cmd == SIG_START:
-                self.log.critical("Got SIG_START from test orchestrator")
+                self.log.debug("Got SIG_START from test orchestrator")
                 if self.assert_fn:
-                    self.log.critical("\nStarting to check assertions every {} seconds\n".format(ASSERTS_POLL_FREQ))
+                    self.log.debug("\nStarting to check assertions every {} seconds\n".format(ASSERTS_POLL_FREQ))
                     asyncio.ensure_future(self._check_assertions())
                 continue
 
@@ -306,10 +306,10 @@ class MPTesterBase:
         #                                    self.config_fn, self.assert_fn), async=True)
         # execute_python('node_8', wrap_func(start_vm_test), async=True)
 
-        self.log.critical("tester waiting for child proc rdy sig...")
+        self.log.debug("tester waiting for child proc rdy sig...")
         msg = self.socket.recv_pyobj()
         assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
-        self.log.critical("GOT RDY SIG: {}".format(msg))
+        self.log.debug("GOT RDY SIG: {}".format(msg))
 
     def _run_test_proc(self, name, url, build_fn, config_fn, assert_fn):
         # TODO create socket outside of loop and pass it in for
@@ -345,5 +345,3 @@ class MPTesterBase:
 
     def __repr__(self):
         return self.name + "  " + str(type(self))
-
-
