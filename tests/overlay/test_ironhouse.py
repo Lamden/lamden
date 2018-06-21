@@ -9,7 +9,7 @@ from os import listdir
 from os.path import exists
 from threading import Timer
 import asyncio, shutil
-from utils import genkeys
+from .utils import genkeys
 
 def auth_validate(vk):
     print('Test: Received on validation: {}'.format(vk))

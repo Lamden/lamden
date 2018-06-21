@@ -4,7 +4,7 @@ from unittest.mock import patch
 from cilantro.protocol.overlay.dht import *
 from cilantro.protocol.overlay.network import *
 from os.path import exists, dirname
-from utils import genkeys
+from .utils import genkeys
 from threading import Timer
 from cilantro.utils import ErrorWithArgs
 from cilantro.protocol.overlay.utils import digest
@@ -50,7 +50,6 @@ class TestDHT(TestCase):
                                 max_wait=0.1,
                                 block=False,
                                 retry_discovery=1)
-
 
         t = Timer(0.01, run, [self])
         t.start()

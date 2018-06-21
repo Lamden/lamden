@@ -8,7 +8,7 @@ import random
 import hashlib
 
 
-from utils import mknode
+from .utils import mknode
 
 
 class NodeTest(unittest.TestCase):
