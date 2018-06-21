@@ -98,6 +98,26 @@ class MNNewBlockState(MNBaseState):
         if self.validate_block_contender(block):
             self.pending_blocks.append(block)
 
+    def _validate_sigs(self, block: BlockContender) -> bool:
+        signatures = block.signatures
+        msg = MerkleTree.hash_nodes(block.nodes)
+
+        for sig in signatures:
+            # TODO -- ensure that the sender belongs to the top delegate pool
+            self.log.debug("mn verifying signature: {}".format(sig))
+            if not sig.verify(msg, sig.sender):
+                self.log.error("Masternode could not verify signature!!! Sig={}".format(sig))
+                return False
+        return True
+
+    def _prove_merkle(self, block):
+        hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
+        tx_hashes = block.nodes[len(block.nodes) // 2:]
+        if not MerkleTree.verify_tree(tx_hashes, hash_of_nodes):
+            self.log.error("COULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}".format(block))
+            return False
+        return True
+
     def validate_block_contender(self, block: BlockContender) -> bool:
         """
         Helper method to validate a block contender. For a block contender to be valid it must:
@@ -106,44 +126,15 @@ class MNNewBlockState(MNBaseState):
         :param block_contender: The BlockContender to validate
         :return: True if the BlockContender is valid, false otherwise
         """
-        def _validate_sigs(signatures, msg) -> bool:
-            for sig in signatures:
-                # TODO -- ensure that the sender belongs to the top delegate pool
-                self.log.debug("mn verifying signature: {}".format(sig))
-                if not sig.verify(msg, sig.sender):
-                    self.log.error("Masternode could not verify signature!!! Sig={}".format(sig))
-                    return False
-            return True
-
-        def _prove_merkle(block):
-            hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
-            tx_hashes = block.nodes[len(block.nodes) // 2:]
-            if not MerkleTree.verify_tree(tx_hashes, hash_of_nodes):
-                self.log.error("COULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}".format(block))
-                return False
-            return True
-
-        # Development sanity checks (these should be removed in production)
+       # Development sanity checks (these should be removed in production)
         assert len(block.nodes) >= 1, "Masternode got block contender with no nodes! {}".format(block)
         assert len(block.signatures) >= Constants.Testnet.Majority, \
             "Received a block contender with only {} signatures (which is less than a majority of {}"\
             .format(len(block.signatures), Constants.Testnet.Majority)
 
-        # TODO -- ensure that this block contender's previous block is this Masternode's current block...
+        # TODO validate the sigs are actually from the top N delegates
 
-        # Prove Merkle Tree
-        hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
-        tx_hashes = block.nodes[len(block.nodes) // 2:]
-        if not MerkleTree.verify_tree(tx_hashes, hash_of_nodes):
-            self.log.error("\n\n\n\nCOULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}\n\n\n".format(block))
-            return False
-
-        # Validate signatures
-        if not _validate_sigs(block.signatures, hash_of_nodes):
-            self.log.error("MN COULD NOT VALIDATE SIGNATURES FOR CONTENDER {}".format(block))
-            return False
-
-        return True
+        return self._validate_sigs(block) and self._prove_merkle(block)
 
 
 @Masternode.register_state

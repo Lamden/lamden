@@ -75,7 +75,7 @@ class MerkleSignature(MessageBase):
         return self._data[self.SENDER]
 
 
-def build_test_merkle_sig(msg: bytes=b'some default payload', sender='', sk=None, vk=None) -> MerkleSignature:
+def build_test_merkle_sig(msg: bytes=b'some default payload', sk=None, vk=None) -> MerkleSignature:
     """
     Builds a 'test' merkle signature. Used exclusively for unit tests
     :return:
@@ -85,9 +85,6 @@ def build_test_merkle_sig(msg: bytes=b'some default payload', sender='', sk=None
     if not sk:
         sk, vk = ED25519Wallet.new()
 
-    if not sender:
-        sender = 'A' * 64
-
     signature = ED25519Wallet.sign(sk, msg)
 
-    return MerkleSignature.create(sig_hex=signature, timestamp=str(time.time()), sender=sender)
+    return MerkleSignature.create(sig_hex=signature, timestamp=str(time.time()), sender=vk)

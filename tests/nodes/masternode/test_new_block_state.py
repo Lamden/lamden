@@ -24,10 +24,46 @@ class TestMasterNodeNewBlockState(TestCase):
         mock_sm = MagicMock()
         state = MNNewBlockState(mock_sm)
 
-        msg = b'oh hi there'
+        msg = b'some default payload'
         sigs = [build_test_merkle_sig(msg=msg) for _ in range(8)]
 
-        is_valid = state.validate_block_contender._validate_sigs(sigs)
+        is_valid = state._validate_sigs(block=build_test_contender())
 
-    def test_validate_merkle(self):
+        print('is valid: {}'.format(is_valid))
+
+    def test_validate_sigs_bad(self):
+        """
+        Test _validate_sigs with invalid signatures
+        """
+        # TODO implement
         pass
+
+    def test_validate_sigs_invalid_delegate(self):
+        """
+        Test _validate_sigs with a delegate who is not part of the consensus pool
+        """
+        # TODO implement
+        pass
+
+    def test_validate_sigs_invalid_delegate2(self):
+        """
+        Test _validate_sigs with a signature from an actor who is not even a delegate
+        """
+        # TODO implement
+        pass
+
+    def test_prove_merkle(self):
+        """
+        Tests _prove_merkle
+        """
+        # TODO implement
+        pass
+
+    def test_prove_merkle_invalid(self):
+        """
+        Tests _prove_merkle with an invalid merkle proof (hashes don't link up)
+        """
+        # TODO implement ... failure case for test_validate_merkle
+        pass
+
+
