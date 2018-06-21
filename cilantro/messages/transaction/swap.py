@@ -12,16 +12,20 @@ class SwapTransaction(TransactionBase):
     name = "SWAP_TX"
 
     @classmethod
-    def deserialize_data(cls, data: bytes):
+    def _deserialize_data(cls, data: bytes):
         return transaction_capnp.SwapTransaction.from_bytes_packed(data)
 
     def validate_payload(self):
         if self.amount <= 0:
             raise Exception("Amount must be greater than 0 (amount={})".format(self.amount))
-        if len(self.hashlock) > 64:
-            raise Exception("Hashlock too long. Must be at max 64 bytes (length={})".format(len(self.hashlock)))
+        if len(self.hashlock) != 64:
+            raise Exception("Hashlock incorrect length. Must be 64 bytes (length={})".format(len(self.hashlock)))
         if self.expiration < int(time.time()):
             raise Exception("Expiration date is before now.")
+
+        validate_hex(self.receiver, length=64, field_name='Receiver')
+        validate_hex(self.sender, length=64, field_name='Sender')
+
 
     @property
     def receiver(self):
@@ -33,7 +37,7 @@ class SwapTransaction(TransactionBase):
 
     @property
     def hashlock(self):
-        return self._data.payload.hashlock.decode()
+        return self._data.payload.hashlock.hex()
 
     @property
     def expiration(self):
