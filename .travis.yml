@@ -8,7 +8,7 @@ install:
   - pip install -r requirements.txt
   - pip install -r dev-requirements.txt
   - python setup.py develop
-script: python ./tests/protocol/statemachine/test_state.py
+script: python ./tests/test_runner.py
 notifications:
   webhooks:
     - https://lamden-discord-travisci.herokuapp.com/webhook/
