@@ -53,7 +53,7 @@ class TestReactorCommand(TestCase):
         sk, vk = ED25519Wallet.new()
         tx = StandardTransactionBuilder.random_tx()
         sender = 'me'
-        env = Envelope.create_from_message(message=tx, signing_key=sk, sender_id=sender)
+        env = Envelope.create_from_message(message=tx, signing_key=sk)
 
         cmd = ReactorCommand.create_cmd('some_cls', 'some_func', envelope=env)
 

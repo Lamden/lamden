@@ -8,7 +8,7 @@ from cilantro.protocol.overlay.protocol import KademliaProtocol
 from cilantro.protocol.overlay.storage import ForgetfulStorage
 from cilantro.protocol.overlay.utils import digest
 from cilantro.db import VKBook
-from utils import genkeys
+from .utils import genkeys
 from os.path import exists, dirname
 from threading import Timer
 from asyncio.selector_events import _SelectorDatagramTransport
