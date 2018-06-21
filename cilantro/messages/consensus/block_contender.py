@@ -1,6 +1,7 @@
 from cilantro.messages import MessageBase
 from cilantro.utils import lazy_property, set_lazy_property
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
+from cilantro.protocol.structures import MerkleTree
 import pickle
 
 
@@ -29,10 +30,21 @@ class BlockContender(MessageBase):
     NODES = 'nodes'
 
     def validate(self):
+        # Validate field types and existence
         assert type(self._data) == dict, "BlockContender's _data must be a dict"
         assert BlockContender.SIGS in self._data, "signature field missing from data {}".format(self._data)
         assert BlockContender.NODES in self._data, "nodes field missing from data {}".format(self._data)
         self.signatures  # Attempt to deserialize signatures by reading property (will raise expection if can't)
+
+    def _validate_signatures(self):
+        """
+        Validates the signatures in the block contender. Raises an error if a signature cannot be validated
+        """
+        hash_of_nodes = MerkleTree.hash_nodes(self.nodes)
+
+        for sig in self.signatures:
+            assert isinstance(sig, MerkleSignature), "signatures must be a list of MerkleSignatures"
+            assert sig.validate()
 
     def serialize(self):
         return pickle.dumps(self._data)

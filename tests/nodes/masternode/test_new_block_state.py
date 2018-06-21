@@ -23,13 +23,12 @@ class TestMasterNodeNewBlockState(TestCase):
         """
         mock_sm = MagicMock()
         state = MNNewBlockState(mock_sm)
+        msg = b'hey this is the block data'
 
-        msg = b'some default payload'
-        sigs = [build_test_merkle_sig(msg=msg) for _ in range(8)]
-
-        is_valid = state._validate_sigs(block=build_test_contender())
-
-        print('is valid: {}'.format(is_valid))
+        # is_valid = state._validate_sigs(block=build_test_contender(block_binary=msg))
+        #
+        # self.assertTrue(is_valid)
+        # TODO -- implement
 
     def test_validate_sigs_bad(self):
         """
