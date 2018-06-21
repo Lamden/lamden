@@ -113,9 +113,11 @@ class MNNewBlockState(MNBaseState):
     def _prove_merkle(self, block):
         hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
         tx_hashes = block.nodes[len(block.nodes) // 2:]
+
         if not MerkleTree.verify_tree(tx_hashes, hash_of_nodes):
             self.log.error("COULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}".format(block))
             return False
+
         return True
 
     def validate_block_contender(self, block: BlockContender) -> bool:
