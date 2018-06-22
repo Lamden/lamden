@@ -24,6 +24,10 @@ MESSAGE_TESTS = [
     'tests.messages.transactions'
 ]
 
+CONSTANTS_TESTS = [
+    'tests.constants'
+]
+
 OVERLAY_TESTS = [
     'tests.overlay'
 ]
@@ -31,7 +35,8 @@ OVERLAY_TESTS = [
 TESTGROUPS = [
     PROTOCOL_TESTS,
     MESSAGE_TESTS,
-    OVERLAY_TESTS
+    CONSTANTS_TESTS,
+    # OVERLAY_TESTS
 ]
 
 
