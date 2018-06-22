@@ -10,6 +10,7 @@ aenum= "*"
 aiodns= "*"
 aiohttp = '*'
 aioprocessing = "*"
+coloredlogs = "*"
 Cython = "*"
 idna = "*"
 mysqlclient = "*"
@@ -31,7 +32,6 @@ SQLAlchemy = "*"
 urllib3 = "*"
 uvloop = "*"
 yarl = "*"
-coloredlogs = "*"
 
 [dev-packages]
 
