@@ -19,7 +19,11 @@ jobs:
             pip install -r requirements.txt
             export PYTHONPATH=$PYTHONPATH:~/cilantro
       - save_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
+          key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
+          paths:
+            - ".venv"
+            - "/usr/local/bin"
+            - "/usr/local/lib/python3.6/site-packages"
       - run:
           command: |
             python ~/cilantro/tests/test_runner.py
