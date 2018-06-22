@@ -16,7 +16,6 @@ jobs:
           command: |
             sudo pip install pipenv
             pipenv install
-            pip install -r requirements.txt
       - save_cache:
           key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
           paths:
@@ -25,6 +24,7 @@ jobs:
       - run:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
+            pipenv shell
             python ~/cilantro/tests/test_runner.py
       - store_test_results:
           path: test-results
