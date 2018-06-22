@@ -16,7 +16,7 @@ jobs:
             pipenv install
       - run:
           command: |
-            pipenv run "python ~/cilantro/tests/test_runner.py"
+            python ~/cilantro/tests/test_runner.py
       - store_test_results:
           path: test-results
       - store_artifacts:
