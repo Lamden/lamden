@@ -1,19 +1,21 @@
 import unittest
+import time
 from cilantro.logger import get_logger, overwrite_logger_level
 
 
 log = get_logger("TestRunner")
 
+delim = '-' * 40
 
 PROTOCOL_TESTS = [
     'tests.protocol.structures',
     'tests.protocol.statemachine'
 
     # TODO -- write tests/ensure existing tests pass for modules below
-    # 'tests.protocol.interprets',
+    # 'tests.protocol.interpreter',
     # 'tests.protocol.proofs',
     # 'tests.protocol.reactor',
-    # 'tests.protocol.transport',
+    'tests.protocol.transport',  # this should break ... so TODO: fix
     # 'tests.protocol.wallets',
     ]
 
@@ -41,6 +43,12 @@ TESTGROUPS = [
 
 
 if __name__ == '__main__':
+    # TODO -- implement args to ...
+    """
+    TODO -- implement args to...
+        - break on first failure, or continue
+        - thing 2
+    """
     TEST_FLAG = 'S'  # test flag represents failure (F) or success (S) of testing
     loader = unittest.TestLoader()
 
@@ -57,17 +65,24 @@ if __name__ == '__main__':
 
             runner = unittest.TextTestRunner(verbosity=3)
             log = get_logger("TestRunner")
+
+            start = time.time()
             test_result = runner.run(suite)
+            end = time.time()
+
+            run_time = round(end - start, 2)
+            tests_total = suite.countTestCases()
+            suite_failures = len(test_result.errors) + len(test_result.failures)
+            tests_passed = tests_total - suite_failures
 
             if test_result.errors:
                 for i in range(len(test_result.errors) + 1):
                     all_errors.append(test_result.errors[i])
-                    log.error("Error in {} - exiting test framework".format(test))
+                    log.error("Error in {}".format(test))
                     log.error('Number of errors: {}'.format(len(test_result.errors)))
-                    log.error('Error in: {}'.format(test_result.errors[i][0]))
+                    log.error('Error #{}: {}'.format(i+1, test_result.errors[i][0]))
                     log.error('Error traceback: {}'.format(test_result.errors[i][1]))
                     TEST_FLAG = 'F'
-                    break
 
             elif test_result.failures:
                 for i in range(len(test_result.failures) + 1):
@@ -77,10 +92,13 @@ if __name__ == '__main__':
                     log.error(test_result.failures[i][0])
                     log.error(test_result.failures[i][1])
                     TEST_FLAG = 'F'
-                    break
+
             else:
-                log.info("\n\nNo errors in {}\n\n".format(test))
+                log.info("No errors in {}".format(test))
                 num_success += 1
+
+            log.info('\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
+                     .format(test, run_time, tests_passed, tests_total) + delim)
 
     for err in all_errors:
         log.error("failure: {}".format(err))
@@ -88,13 +106,15 @@ if __name__ == '__main__':
     _l = log.info
 
     if TEST_FLAG == 'S':
-        log.info('\n\n All tests have finished running and passed - testing complete!\n\n')
+        log.info('\nAll tests have finished running and passed - testing complete!\n')
     elif TEST_FLAG == 'F':
-        log.error('\n\n Some tests have finished running and there are errors - check log\n\n')
+        log.error('\nSome tests have finished running and there are errors - check log\n')
         _l = log.critical
 
-    _l("{}\{} tests passed.".format(num_tests-len(all_errors), num_tests))
-    _l("{}/{} test suites passed.".format(num_suites, num_success))
+    result_msg = '\n' + delim + "\n\n{}\{} tests passed.".format(num_tests - len(all_errors), num_tests)
+    result_msg += "\n{}/{} test suites passed.".format(num_suites, num_success)
+    result_msg += '\n\n' + delim
+    _l(result_msg)
 
     # Overwrite logger level to surpress asyncio's whining
     overwrite_logger_level(9000)
