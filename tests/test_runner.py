@@ -35,7 +35,6 @@ TESTGROUPS = [
 ]
 
 
-
 if __name__ == '__main__':
     TEST_FLAG = 'S'  # test flag represents failure (F) or success (S) of testing
     loader = unittest.TestLoader()
