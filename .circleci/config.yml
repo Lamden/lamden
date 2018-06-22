@@ -22,7 +22,7 @@ jobs:
           paths:
             - ".venv"
             - "/usr/local/bin"
-       - run:
+      - run:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
       - run:
