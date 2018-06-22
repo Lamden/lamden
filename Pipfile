@@ -34,3 +34,5 @@ uvloop = "*"
 yarl = "*"
 
 [dev-packages]
+
+coloredlogs = "*"
