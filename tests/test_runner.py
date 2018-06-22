@@ -9,14 +9,14 @@ delim = '-' * 40
 
 PROTOCOL_TESTS = [
     'tests.protocol.structures',
-    'tests.protocol.statemachine'
+    'tests.protocol.statemachine',
 
     # TODO -- write tests/ensure existing tests pass for modules below
     # 'tests.protocol.interpreter',
     # 'tests.protocol.proofs',
     # 'tests.protocol.reactor',
-    'tests.protocol.transport',  # this should break ... so TODO: fix
-    # 'tests.protocol.wallets',
+    # 'tests.protocol.transport',  # this should break ... so TODO: fix
+    'tests.protocol.wallets',
     ]
 
 MESSAGE_TESTS = [
@@ -63,20 +63,21 @@ if __name__ == '__main__':
             num_suites += 1
             num_tests += suite.countTestCases()
 
-            runner = unittest.TextTestRunner(verbosity=3)
+            # runner = unittest.TextTestRunner(verbosity=3)
+            runner = unittest.TextTestRunner(verbosity=0)
             log = get_logger("TestRunner")
 
             start = time.time()
             test_result = runner.run(suite)
             end = time.time()
 
-            run_time = round(end - start, 2)
+            run_time = round(end - start, 3)
             tests_total = suite.countTestCases()
             suite_failures = len(test_result.errors) + len(test_result.failures)
             tests_passed = tests_total - suite_failures
 
             if test_result.errors:
-                for i in range(len(test_result.errors) + 1):
+                for i in range(len(test_result.errors)):
                     all_errors.append(test_result.errors[i])
                     log.error("Error in {}".format(test))
                     log.error('Number of errors: {}'.format(len(test_result.errors)))
@@ -85,7 +86,7 @@ if __name__ == '__main__':
                     TEST_FLAG = 'F'
 
             elif test_result.failures:
-                for i in range(len(test_result.failures) + 1):
+                for i in range(len(test_result.failures)):
                     all_errors.append(test_result.failures[i])
                     log.error("failure in {} - exiting test framework".format(test))
                     log.error('\nNumber of failures: {}'.format(len(test_result.failures)))
@@ -97,21 +98,21 @@ if __name__ == '__main__':
                 log.info("No errors in {}".format(test))
                 num_success += 1
 
-            log.info('\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
-                     .format(test, run_time, tests_passed, tests_total) + delim)
+            log.info('\n\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
+                     .format(test, run_time, tests_passed, tests_total) + delim + '\n')
 
     for err in all_errors:
-        log.error("failure: {}".format(err))
+        log.error("failure: " + str(err))
 
     _l = log.info
 
     if TEST_FLAG == 'S':
         log.info('\nAll tests have finished running and passed - testing complete!\n')
     elif TEST_FLAG == 'F':
-        log.error('\nSome tests have finished running and there are errors - check log\n')
-        _l = log.critical
+        log.critical('\nSome tests have finished running and there are errors - check log\n')
+        _l = log.error
 
-    result_msg = '\n' + delim + "\n\n{}\{} tests passed.".format(num_tests - len(all_errors), num_tests)
+    result_msg = '\n\n' + delim + "\n\n{}\{} tests passed.".format(num_tests - len(all_errors), num_tests)
     result_msg += "\n{}/{} test suites passed.".format(num_suites, num_success)
     result_msg += '\n\n' + delim
     _l(result_msg)
