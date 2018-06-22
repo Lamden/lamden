@@ -24,7 +24,7 @@ jobs:
       - run:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
-            pipenv run "python ~/cilantro/tests/test_runner.py"
+            pipenv run python ~/cilantro/tests/test_runner.py
       - store_test_results:
           path: test-results
       - store_artifacts:
