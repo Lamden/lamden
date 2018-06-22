@@ -17,13 +17,14 @@ jobs:
             sudo pip install pipenv
             pipenv install
             pip install -r requirements.txt
-            export PYTHONPATH=$PYTHONPATH:~/cilantro
       - save_cache:
           key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
           paths:
             - ".venv"
             - "/usr/local/bin"
-            - "/usr/local/lib/python3.6/site-packages"
+       - run:
+          command: |
+            export PYTHONPATH=$PYTHONPATH:~/cilantro
       - run:
           command: |
             python ~/cilantro/tests/test_runner.py
