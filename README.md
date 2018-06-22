@@ -40,7 +40,7 @@ will makeup the set of validators at a point in time.
 
 ### Delegates
 Delegates bundle up transactions into blocks and are rewarded with TAU for their actions. They receive approved transactions
-from delegates and broadcast blocks based on a 1 second or 10,000 transaction limit per block. A group of delegates exchange 
+from witnesses and broadcast blocks based on a 1 second or 10,000 transaction limit per block. A group of delegates exchange 
 signed merkle hashes of transactions in order to establish consensus. They also act as executors of the smart contracts 
 passed along in non-standard transactions and are critical to the Cilantro security model.
 
