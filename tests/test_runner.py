@@ -39,40 +39,38 @@ if __name__ == '__main__':
     TEST_FLAG = 'S'  # test flag represents failure (F) or success (S) of testing
     loader = unittest.TestLoader()
 
-    print('dat boy is runnin')
-
     all_errors = []
 
-    num_suites = 0
-    num_success = 0
+    num_suites, num_success, num_tests = 0, 0, 0
 
     for group in TESTGROUPS:
         for test in group:
 
             suite = loader.discover(test)  # finds all unit tests in the testgroup directory
             num_suites += 1
+            num_tests += suite.countTestCases()
 
             runner = unittest.TextTestRunner(verbosity=3)
             log = get_logger("TestRunner")
-            TestResult = runner.run(suite)
+            test_result = runner.run(suite)
 
-            if TestResult.errors:
-                for i in range(len(TestResult.errors) + 1):
-                    all_errors.append(TestResult.errors[i])
+            if test_result.errors:
+                for i in range(len(test_result.errors) + 1):
+                    all_errors.append(test_result.errors[i])
                     log.error("Error in {} - exiting test framework".format(test))
-                    log.error('Number of errors: {}'.format(len(TestResult.errors)))
-                    log.error('Error in: {}'.format(TestResult.errors[i][0]))
-                    log.error('Error traceback: {}'.format(TestResult.errors[i][1]))
+                    log.error('Number of errors: {}'.format(len(test_result.errors)))
+                    log.error('Error in: {}'.format(test_result.errors[i][0]))
+                    log.error('Error traceback: {}'.format(test_result.errors[i][1]))
                     TEST_FLAG = 'F'
                     break
 
-            elif TestResult.failures:
-                for i in range(len(TestResult.failures) + 1):
-                    all_errors.append(TestResult.failures[i])
+            elif test_result.failures:
+                for i in range(len(test_result.failures) + 1):
+                    all_errors.append(test_result.failures[i])
                     log.error("failure in {} - exiting test framework".format(test))
-                    log.error('\nNumber of failures: {}'.format(len(TestResult.failures)))
-                    log.error(TestResult.failures[i][0])
-                    log.error(TestResult.failures[i][1])
+                    log.error('\nNumber of failures: {}'.format(len(test_result.failures)))
+                    log.error(test_result.failures[i][0])
+                    log.error(test_result.failures[i][1])
                     TEST_FLAG = 'F'
                     break
             else:
@@ -80,14 +78,18 @@ if __name__ == '__main__':
                 num_success += 1
 
     for err in all_errors:
-        log.info("failure: {}".format(err))
+        log.error("failure: {}".format(err))
 
-    log.critical("Ran {} test suites with {} successes and {} failures.".format(num_suites, num_success, len(all_errors)))
+    _l = log.info
 
     if TEST_FLAG == 'S':
         log.info('\n\n All tests have finished running and passed - testing complete!\n\n')
     elif TEST_FLAG == 'F':
-        log.critical('\n\n Some tests have finished running and there are errors - check log\n\n')
+        log.error('\n\n Some tests have finished running and there are errors - check log\n\n')
+        _l = log.critical
+
+    _l("{}\{} tests passed.".format(num_tests-len(all_errors), num_tests))
+    _l("{}/{} test suites passed.".format(num_suites, num_success))
 
     # Overwrite logger level to surpress asyncio's whining
     overwrite_logger_level(9000)
