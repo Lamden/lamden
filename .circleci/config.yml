@@ -25,9 +25,6 @@ jobs:
       - run:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
-      - run:
-          command: |
-            export PYTHONPATH=$PYTHONPATH:~/cilantro
             python ~/cilantro/tests/test_runner.py
       - store_test_results:
           path: test-results
