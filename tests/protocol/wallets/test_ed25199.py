@@ -8,3 +8,7 @@ class TestEd25199Wallet(TestCase):
 
     def test_something(self):
         self.assertEqual(2 + 2, 4)
+
+    def test_something_else(self):
+        self.assertEqual(2 + 2, 4)
+
