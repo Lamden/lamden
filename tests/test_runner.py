@@ -117,7 +117,6 @@ if __name__ == '__main__':
         sys.exit(0)
     elif TEST_FLAG == 'F':
         log.critical('\nSome tests have finished running and there are errors - check log\n')
-        _l = log.error
         sys.exit(1)
 
     # Overwrite logger level to surpress asyncio's whining
