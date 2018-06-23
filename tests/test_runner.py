@@ -1,4 +1,5 @@
 import unittest
+import sys
 import time
 from cilantro.logger import get_logger, overwrite_logger_level
 
@@ -104,18 +105,20 @@ if __name__ == '__main__':
     for err in all_errors:
         log.error("failure: " + str(err))
 
-    _l = log.info
-
-    if TEST_FLAG == 'S':
-        log.info('\nAll tests have finished running and passed - testing complete!\n')
-    elif TEST_FLAG == 'F':
-        log.critical('\nSome tests have finished running and there are errors - check log\n')
-        _l = log.error
+    _l = log.info if TEST_FLAG == 'F' else log.critical
 
     result_msg = '\n\n' + delim + "\n\n{}\{} tests passed.".format(num_tests - len(all_errors), num_tests)
     result_msg += "\n{}/{} test suites passed.".format(num_suites, num_success)
     result_msg += '\n\n' + delim
     _l(result_msg)
+
+    if TEST_FLAG == 'S':
+        log.info('\nAll tests have finished running and passed - testing complete!\n')
+        sys.exit(0)
+    elif TEST_FLAG == 'F':
+        log.critical('\nSome tests have finished running and there are errors - check log\n')
+        _l = log.error
+        sys.exit(1)
 
     # Overwrite logger level to surpress asyncio's whining
     overwrite_logger_level(9000)
