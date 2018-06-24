@@ -55,7 +55,7 @@ Currently supported on Linux and macOS. Some dependencies are not available on W
 
     git clone https://github.com/Lamden/cilantro.git
     cd/to/cilantro
-    pip3 install -r requirements.txt
+    pip3 install -e .
     mkdir logs
 
 Now you're all set to get up and running! Poke around and have some fun. 
