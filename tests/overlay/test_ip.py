@@ -11,7 +11,7 @@ class TestIP(TestCase):
     @patch('requests.get')
     def test_get_public_ip_failed(self, requests_get):
         def mock_req(*args, **kwargs):
-            raise
+            raise Exception()
 
         requests_get.side_effect = mock_req
         self.assertRaises(Exception, get_public_ip)
