@@ -10,6 +10,7 @@ import dill
 from unittest import TestCase
 from cilantro.logger import get_logger
 from cilantro.utils.test.mp_test import MPTesterBase, SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC, SIG_START
+from .god import God
 
 # URL of orchestration node. TODO -- set this to env vars
 URL = "tcp://127.0.0.1:5020"
@@ -19,14 +20,9 @@ TESTER_POLL_FREQ = 0.1
 
 
 class MPTestCase(TestCase):
-    # TODO -- define this stuff in subclass
-    testname = 'cilantro_pub_sub'
+    testname = 'base_test'
     project = 'cilantro'
-    compose_file = '/Users/davishaba/Developer/Lamden/vmnet/tests/configs/cilantro-pub-sub.yml'
-    docker_dir = '/Users/davishaba/Developer/Lamden/vmnet/docker/docker_files/cilantro'
-    logdir = '/Users/davishaba/Developer/Lamden/cilantro/logs'
-    waittime = 15
-    _is_setup = False
+    compose_file = 'cilantro-nodes.yml'
 
     def run_script(self, params):
         """
@@ -49,45 +45,27 @@ class MPTestCase(TestCase):
             '&' if async else ''
         )
         os.system(exc_str)
-        # self.collect_log()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("MPTestOrchestrater")
-
-        # TODO set this propertly (maybe decorator?)
         self.project = 'cilantro'
 
     def setUp(self):
         super().setUp()
-        assert len(MPTesterBase.testers) == 0, "setUp called but MPTesterBase._testers is not empty ({})"\
-                                                .format(MPTesterBase.testers)
+        assert len(God.testers) == 0, "setUp called but God._testers is not empty ({})" \
+            .format(God.testers)
+
+        # God.node_map = self.nodemap  # TODO fix and implement
 
         start_msg = '\n' + '#' * 80 + '\n' + '#' * 80
         start_msg += '\n\t\t\t TEST STARTING\n' + '#' * 80 + '\n' + '#' * 80
         self.log.debug(start_msg)
 
-        # if not self._is_setup:
-        #     self.__class__._is_setup = True
-        #     self.testdir = '{}/{}'.format(self.logdir, self.testname)
-        #     try: shutil.rmtree(self.testdir)
-        #     except: pass
-        #     os.environ['TEST_NAME'] = self.testname
-        #     self.run_script('--clean')
-        #     self.run_script('--compose_file {} --docker_dir {} &'.format(
-        #         self.compose_file,
-        #         self.docker_dir
-        #     ))
-        #     print('Running test "{}" and waiting for {}s...'.format(self.testname, self.waittime))
-        #     time.sleep(self.waittime)
-        #     sys.stdout.flush()
-        # print("---- set up called ----")
-
     def tearDown(self):
         super().tearDown()
-        MPTesterBase.testers.clear()
-        # print("%%%% TEARDOWN CALLED %%%%%")
-        # self.log.critical("ACTIVE TESTERS: {}".format(MPTesterBase.testers))
+        God.testers.clear()
+        God.node_map = None
 
     def start(self, timeout=TEST_TIMEOUT):
         """
@@ -99,9 +77,9 @@ class MPTestCase(TestCase):
         waiting for them to finish (if ever). When an 'active' testers passes its assertions, we move it to
         'passives'. When all active testers are finished, we send SIG_ABORTs to all testers to clean them up
         """
-        # self.log.critical("\nSTARTING TEST WITH TESTERS {}\n".format(MPTesterBase.testers))
-        assert len(MPTesterBase.testers) > 0, "start() called, but list of testers empty (MPTesterBase._testers={})"\
-                                         .format(MPTesterBase.testers)
+        # self.log.critical("\nSTARTING TEST WITH TESTERS {}\n".format(God.testers))
+        assert len(God.testers) > 0, "start() called, but list of testers empty (MPTesterBase._testers={})"\
+                                         .format(God.testers)
 
         actives, passives, fails, timeout = self._poll_testers(timeout)
 
@@ -129,8 +107,8 @@ class MPTestCase(TestCase):
         start_msg += '~' * 80
         self.log.debug(start_msg)
 
-        actives = [t for t in MPTesterBase.testers if t.assert_fn]
-        passives = [t for t in MPTesterBase.testers if not t.assert_fn]
+        actives = [t for t in God.testers if t.assert_fn]
+        passives = [t for t in God.testers if not t.assert_fn]
         fails = []
 
         # Start the assertion on the active tester procs

@@ -8,6 +8,8 @@ import inspect
 import traceback
 from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger
+from .god import God
+
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
@@ -21,8 +23,6 @@ SIG_FAIL = b'BADSUCC'
 SIG_ABORT = b'NOSUCC'
 SIG_START = b'STARTSUCC'
 
-
-# TODO -- move these thangs to a better home
 import os
 import dill
 
@@ -41,11 +41,6 @@ def execute_python(node, fn, async=True, python_version='3.6'):
         '&' if async else ''
     )
     os.system(exc_str)
-
-def something():
-    from cilantro.logger import get_logger
-    log = get_logger("THIS IS ON A VM")
-    log.debug('\n\n\n\n\nayyyyyyyyy\n\n\n\n\n')
 
 
 def mp_testable(test_cls):
@@ -266,7 +261,6 @@ class MPTesterBase:
     """
     TODO docstring
     """
-    testers = []
     tester_cls = 'UNSET'
 
     def __init__(self, config_fn=None, assert_fn=None, name='TestableProcess', *args, **kwargs):
@@ -284,7 +278,7 @@ class MPTesterBase:
         self.socket.bind(self.url)
 
         # Add this object to the registry of testers
-        MPTesterBase.testers.append(self)
+        God.testers.append(self)
 
         # Create a wrapper around the build_obj with args and kwargs. We do this b/c this function will actually be
         # invoked in a separate process/machine, thus we need to capture the function call to serialize it and send
@@ -298,13 +292,6 @@ class MPTesterBase:
 
     def start_test(self):
         self.test_proc.start()
-
-        # self.log.critical("\n\n attempting to execute stuff on the vm \n\n")
-        # execute_python('node_8', wrap_func(start_vm_test, self.name, self.url, type(self).build_obj,
-        #                                    self.config_fn, self.assert_fn), async=True)
-        # execute_python('node_8', wrap_func(start_vm_test, self.name, self.url, build_reactor_obj,
-        #                                    self.config_fn, self.assert_fn), async=True)
-        # execute_python('node_8', wrap_func(start_vm_test), async=True)
 
         self.log.debug("tester waiting for child proc rdy sig...")
         msg = self.socket.recv_pyobj()
@@ -337,11 +324,12 @@ class MPTesterBase:
         raise NotImplementedError
 
     def teardown(self):
-        # self.log.critical("\n\nTEARING DOWN\n\n")
+        self.log.debug("{} tearing down...".format(self.name))
+
         self.socket.close()
-        # self.log.debug("---- joining {} ---".format(self.test_proc.name))
         self.test_proc.join()
-        # self.log.debug("***** {} joined *****".format(self.test_proc.name))
+
+        self.log.debug("{} done tearing down.".format(self.name))
 
     def __repr__(self):
         return self.name + "  " + str(type(self))
