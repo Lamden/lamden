@@ -31,17 +31,6 @@ def wrap_func(func, *args, **kwargs):
         return func(*args, **kwargs)
     return _func
 
-def execute_python(node, fn, async=True, python_version='3.6'):
-    fn_str = dill.dumps(fn, 0)
-    exc_str = 'docker exec {} /usr/bin/python{} -c \"import dill; fn = dill.loads({}); fn();\" {}'.format(
-        node,
-        python_version,
-        fn_str,
-        '&' if async else ''
-    )
-    os.system(exc_str)
-
-
 def mp_testable(test_cls):
     """
     Decorator to copy all the public API for object type test_cls to the decorated class. The decorated
@@ -68,7 +57,6 @@ def mp_testable(test_cls):
         return cls
 
     return _mp_testable
-
 
 def _gen_url(name=''):
     """
@@ -298,7 +286,10 @@ class MPTesterBase:
         assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
         self.log.debug("GOT RDY SIG: {}".format(msg))
 
-    def _run_test_proc(self, name, url, build_fn, config_fn, assert_fn):
+    @staticmethod
+    def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
+        log = get_logger("TestObjectRunner[{}]".format(name))
+
         # TODO create socket outside of loop and pass it in for
         tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
         tester_socket = tester.socket
@@ -306,7 +297,7 @@ class MPTesterBase:
         try:
             tester.start_test()
         except Exception as e:
-            self.log.error("\n\n TesterProcess encountered exception outside of internal loop! Error:\n {}\n\n"
+            log.error("\n\n TesterProcess encountered exception outside of internal loop! Error:\n {}\n\n"
                            .format(traceback.format_exc()))
             tester_socket.send_pyobj(SIG_FAIL)
             tester._teardown()
