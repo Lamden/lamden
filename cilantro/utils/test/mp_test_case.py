@@ -1,12 +1,11 @@
 import asyncio
 import zmq.asyncio
-
+from vmnet.test.base import *
 import time
 import os
 import shutil
 import sys
 import dill
-
 from unittest import TestCase
 from cilantro.logger import get_logger
 from cilantro.utils.test.mp_test import MPTesterBase, SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC, SIG_START
@@ -19,9 +18,8 @@ TEST_TIMEOUT = 5
 TESTER_POLL_FREQ = 0.1
 
 
-class MPTestCase(TestCase):
+class MPTestCase(BaseNetworkTestCase):
     testname = 'base_test'
-    project = 'cilantro'
     compose_file = 'cilantro-nodes.yml'
 
     def run_script(self, params):

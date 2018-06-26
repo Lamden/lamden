@@ -17,7 +17,7 @@ services:
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
     - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
-    - TEST_NAME=pump_it
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -38,7 +38,7 @@ services:
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
     - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
-    - TEST_NAME=pump_it
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -59,7 +59,7 @@ services:
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
     - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
-    - TEST_NAME=pump_it
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -79,7 +79,7 @@ services:
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
     - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
-    - TEST_NAME=pump_it
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -99,7 +99,7 @@ services:
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
     - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
-    - TEST_NAME=pump_it
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -120,7 +120,7 @@ services:
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
     - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
-    - TEST_NAME=pump_it
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
@@ -141,7 +141,7 @@ services:
     - MASTERNODE=172.29.5.1
     - WITNESS=172.29.5.2,172.29.5.3
     - DELEGATE=172.29.5.4,172.29.5.5,172.29.5.6
-    - TEST_NAME=pump_it
+    - TEST_NAME=bootstrap
     image: cilantro_base.dev
     networks:
       cilantro:
