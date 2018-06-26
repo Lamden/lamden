@@ -273,18 +273,26 @@ class MPTesterBase:
         # it across a socket
         build_fn = wrap_func(type(self).build_obj, *args, **kwargs)
 
-        # Create and start the subprocess that will run the blocking object
-        self.test_proc = LProcess(target=self._run_test_proc, args=(self.name, self.url, build_fn,
-                                                               self.config_fn, self.assert_fn,))
-        self.start_test()
+        # Create Tester object in a VM
+        if always_run_as_subproc or MPTestCase.vmnet_test_active:
+            self.log.info("Creating Tester object in a VM")
+            pass
 
-    def start_test(self):
-        self.test_proc.start()
+        # Create Tester object in a Subprocess
+        else:
+            self.log.info("Creating Tester object in a subprocess")
+            self.test_proc = LProcess(target=self._run_test_proc, args=(self.name, self.url, build_fn,
+                                                                    self.config_fn, self.assert_fn,))
+            self.test_proc.start()
 
-        self.log.debug("tester waiting for child proc rdy sig...")
+        # Block this process until we get a ready signal from the subprocess/VM
+        self.wait_for_test_object()
+
+    def wait_for_test_object(self):
+        self.log.info("Tester waiting for rdy sig from test object...")
         msg = self.socket.recv_pyobj()
         assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
-        self.log.debug("GOT RDY SIG: {}".format(msg))
+        self.log.info("GOT RDY SIG: {}".format(msg))
 
     @staticmethod
     def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
