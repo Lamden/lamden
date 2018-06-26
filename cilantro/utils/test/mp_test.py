@@ -8,7 +8,6 @@ import inspect
 import traceback
 from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger
-from .god import God
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -263,7 +262,7 @@ class MPTesterBase:
     """
     tester_cls = 'UNSET'
 
-    def __init__(self, config_fn=None, assert_fn=None, name='TestableProcess', *args, **kwargs):
+    def __init__(self, config_fn=None, assert_fn=None, name='TestableProcess', always_run_as_subproc=False, *args, **kwargs):
         super().__init__()
         self.log = get_logger(name)
         self.name = name
@@ -278,7 +277,8 @@ class MPTesterBase:
         self.socket.bind(self.url)
 
         # Add this object to the registry of testers
-        God.testers.append(self)
+        from .mp_test_case import MPTestCase
+        MPTestCase.testers.append(self)
 
         # Create a wrapper around the build_obj with args and kwargs. We do this b/c this function will actually be
         # invoked in a separate process/machine, thus we need to capture the function call to serialize it and send

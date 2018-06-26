@@ -8,8 +8,7 @@ import sys
 import dill
 from unittest import TestCase
 from cilantro.logger import get_logger
-from cilantro.utils.test.mp_test import MPTesterBase, SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC, SIG_START
-from .god import God
+from .mp_test import SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC, SIG_START
 
 # URL of orchestration node. TODO -- set this to env vars
 URL = "tcp://127.0.0.1:5020"
@@ -19,13 +18,13 @@ TESTER_POLL_FREQ = 0.1
 
 
 class MPTestCase(BaseNetworkTestCase):
-    testname = 'base_test'
+    testname = 'vmnet_test'
     compose_file = 'cilantro-nodes.yml'
 
     def run_script(self, params):
         """
-            Runs launch.py to start-up or tear-down for network of nodes in the
-            specifed Docker network.
+        Runs launch.py to start-up or tear-down for network of nodes in the
+        specifed Docker network.
         """
         launch_path = '/Users/davishaba/Developer/Lamden/vmnet/docker/launch.py'
         os.system('python {} --project {} {}'.format(
@@ -51,10 +50,8 @@ class MPTestCase(BaseNetworkTestCase):
 
     def setUp(self):
         super().setUp()
-        assert len(God.testers) == 0, "setUp called but God._testers is not empty ({})" \
-            .format(God.testers)
-
-        # God.node_map = self.nodemap  # TODO fix and implement
+        assert len(MPTestCase.testers) == 0, "setUp called but God._testers is not empty ({})" \
+            .format(MPTestCase.testers)
 
         start_msg = '\n' + '#' * 80 + '\n' + '#' * 80
         start_msg += '\n\t\t\t TEST STARTING\n' + '#' * 80 + '\n' + '#' * 80
@@ -62,8 +59,7 @@ class MPTestCase(BaseNetworkTestCase):
 
     def tearDown(self):
         super().tearDown()
-        God.testers.clear()
-        God.node_map = None
+        MPTestCase.testers.clear()
 
     def start(self, timeout=TEST_TIMEOUT):
         """
@@ -76,8 +72,8 @@ class MPTestCase(BaseNetworkTestCase):
         'passives'. When all active testers are finished, we send SIG_ABORTs to all testers to clean them up
         """
         # self.log.critical("\nSTARTING TEST WITH TESTERS {}\n".format(God.testers))
-        assert len(God.testers) > 0, "start() called, but list of testers empty (MPTesterBase._testers={})"\
-                                         .format(God.testers)
+        assert len(MPTestCase.testers) > 0, "start() called, but list of testers empty (MPTesterBase._testers={})"\
+                                            .format(MPTestCase.testers)
 
         actives, passives, fails, timeout = self._poll_testers(timeout)
 
@@ -89,7 +85,7 @@ class MPTestCase(BaseNetworkTestCase):
         # If there are no active testers left and none of them failed, we win
         if len(actives) + len(fails) == 0:
             self.log.debug("\n\n{0}\n\n\t\t\tTESTERS SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
-                              .format('$' * 120, timeout))
+                           .format('$' * 120, timeout))
         else:
             fail_msg = "\n\n\nfail_msg:\n{0}\nASSERTIONS TIMED OUT FOR TESTERS: \n\n\n".format('-' * 120)
             for t in fails + actives:
@@ -100,13 +96,13 @@ class MPTestCase(BaseNetworkTestCase):
 
     def _poll_testers(self, timeout) -> tuple:
         start_msg = '\n' + '~' * 80
-        start_msg += '\n Polling testers procs every {} seconds, with test timeout of {} seconds\n'\
+        start_msg += '\nPolling testers procs every {} seconds, with test timeout of {} seconds\n'\
             .format(TESTER_POLL_FREQ, timeout)
         start_msg += '~' * 80
         self.log.debug(start_msg)
 
-        actives = [t for t in God.testers if t.assert_fn]
-        passives = [t for t in God.testers if not t.assert_fn]
+        actives = [t for t in MPTestCase.testers if t.assert_fn]
+        passives = [t for t in MPTestCase.testers if not t.assert_fn]
         fails = []
 
         # Start the assertion on the active tester procs
