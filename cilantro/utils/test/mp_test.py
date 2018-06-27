@@ -277,6 +277,11 @@ class MPTesterBase:
             self.log.info("Creating Tester object in a VM on container named {} with ip address {}".format(name, ip))
             self.url = "tcp://{}:{}".format(ip, MP_PORT)
 
+            runner_func = wrap_func(self._run_test_proc, self.name, self.url, build_fn, self.config_fn, self.assert_fn)
+
+            # TODO -- will i need a butt load of imports and stuff to make this run smoothly...?
+            MPTestCase.execute_python(name, runner_func, async=True)
+
         # Create Tester object in a Subprocess
         else:
             self.log.info("Creating Tester object in a subprocess")

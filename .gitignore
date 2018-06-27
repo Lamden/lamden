@@ -31,3 +31,6 @@ tests/vmnet/docker-compose.yml
 .DS_Store
 certs
 state.tmp
+
+# Docker
+docker-compose.yml

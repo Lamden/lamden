@@ -1,6 +1,5 @@
 from cilantro import Constants
-from cilantro.utils.test import MPGod, MPMasternode, MPWitness
-from cilantro.utils.test import MPTestCase
+from cilantro.utils.test import MPGod, MPMasternode, MPWitness, MPTestCase, vmnet_test
 from unittest.mock import patch, call, MagicMock
 from cilantro.utils.test.god import *
 from cilantro.nodes import Masternode, Witness, Delegate
@@ -25,6 +24,7 @@ URLS = ['tcp://127.0.0.1:' + str(i) for i in range(9000, 9999, 10)]
 
 class TopologyIntegrationTest(MPTestCase):
 
+    @vmnet_test
     def test_masternode_receives_std_tx(self):
         """
         Tests that a Masternode properly receives a standard TXs from clients via its POST endpoint
