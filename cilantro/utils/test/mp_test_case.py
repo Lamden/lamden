@@ -21,32 +21,28 @@ class MPTestCase(BaseNetworkTestCase):
     testname = 'vmnet_test'
     compose_file = 'cilantro-nodes.yml'
 
-    def run_script(self, params):
-        """
-        Runs launch.py to start-up or tear-down for network of nodes in the
-        specifed Docker network.
-        """
-        launch_path = '/Users/davishaba/Developer/Lamden/vmnet/docker/launch.py'
-        os.system('python {} --project {} {}'.format(
-            launch_path,
-            self.project,
-            params
-        ))
-
-    def execute_python(self, node, fn, async=True, python_version='3.6'):
-        fn_str = dill.dumps(fn, 0)
-        exc_str = 'docker exec {} /usr/bin/python{} -c \"import dill; fn = dill.loads({}); fn();\" {}'.format(
-            node,
-            python_version,
-            fn_str,
-            '&' if async else ''
-        )
-        os.system(exc_str)
+    testers = []
+    curr_tester_index = 1
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("MPTestOrchestrater")
-        self.project = 'cilantro'
+
+    @classmethod
+    def _next_container(cls) -> tuple:
+        """
+        Retreives the next available docker image.
+        :return: A 2 tuple containing the ip and name of container in the form: (name: str, ip: str)
+        """
+        num = MPTestCase.curr_tester_index
+        name = "node_{}".format(num)
+
+        assert num <= len(cls.nodemap), "Tester object number {} exceeds tester capacity of {}".format(num, len(cls.nodemap))
+        assert name in cls.nodemap, "Node named {} not found in node map {}".format(name, cls.nodemap)
+
+        MPTestCase.curr_tester_index += 1
+
+        return name, cls.nodemap[name]
 
     def setUp(self):
         super().setUp()
@@ -59,7 +55,9 @@ class MPTestCase(BaseNetworkTestCase):
 
     def tearDown(self):
         super().tearDown()
+
         MPTestCase.testers.clear()
+        MPTestCase.curr_tester_index = 1
 
     def start(self, timeout=TEST_TIMEOUT):
         """
@@ -114,7 +112,7 @@ class MPTestCase(BaseNetworkTestCase):
             for t in actives:
                 try:
                     msg = t.socket.recv(flags=zmq.NOBLOCK)
-                    self.log.debug("\nGOT MSG {} FROM TESTER <{}>\n".format(msg, t))
+                    self.log.debug("GOT MSG {} FROM TESTER <{}>".format(msg, t))
 
                     # 'ignore' SIG_RDY
                     if msg == SIG_RDY:

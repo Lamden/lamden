@@ -15,15 +15,13 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 ASSERTS_POLL_FREQ = 0.1
 CHILD_PROC_TIMEOUT = 1
 
+MP_PORT = '8472'
 
 SIG_RDY = b'IM RDY'
 SIG_SUCC = b'G00DSUCC'
 SIG_FAIL = b'BADSUCC'
 SIG_ABORT = b'NOSUCC'
 SIG_START = b'STARTSUCC'
-
-import os
-import dill
 
 
 def wrap_func(func, *args, **kwargs):
@@ -157,7 +155,7 @@ class MPTesterProcess:
                 # self.log.critical("\n!!!!!\nGOT ABORT SIG\n!!!!!\n")
                 errs = self._assertions()
                 if errs:
-                    self.log.error("\n\n{0}\nASSERTIONS FAILED FOR {2}:\n{1}\n{0}\n".format('!' * 120, errs, self.name))
+                    self.log.critical("\n\n{0}\nASSERTIONS FAILED FOR {2}:\n{1}\n{0}\n".format('!' * 120, errs, self.name))
                 self._teardown()
                 return
 
@@ -181,9 +179,9 @@ class MPTesterProcess:
 
                 # If result is coroutine, run it in the event self.loop
                 if output and inspect.iscoroutine(output):
-                    self.log.debug("Coroutine detect for func name {}, running it in event self.loop".format(func))
+                    # self.log.debug("Coroutine detect for func name {}, running it in event self.loop".format(func))
                     result = await asyncio.ensure_future(output)
-                    self.log.debug("Got result from coroutine {}\nresult: {}".format(func, result))
+                    # self.log.debug("Got result from coroutine {}\nresult: {}".format(func, result))
                 # self.log.critical("got cmd: {}".format(cmd))
                 # self.log.critical("cmd name: {}\nkwargs: {}".format(func, kwargs))
             except Exception as e:
@@ -213,7 +211,7 @@ class MPTesterProcess:
             await asyncio.sleep(ASSERTS_POLL_FREQ)
 
         # Once out of the assertion checking self.loop, send success to main thread
-        self.log.debug("\n\nassertions passed! putting ready sig in queue\n\n")
+        self.log.debug("assertions passed! putting ready sig in queue")
         self.socket.send(SIG_SUCC)
 
     def _teardown(self):
@@ -254,15 +252,15 @@ class MPTesterBase:
         super().__init__()
         self.log = get_logger(name)
         self.name = name
-        self.url = _gen_url(name)
+        # self.url = _gen_url(name)
 
         self.config_fn = config_fn  # Function to configure object with mocks
         self.assert_fn = assert_fn  # Function to run assertions on said mocks
 
-        # 'socket' is used to proxy commands to blocking object running in a child process (possibly on a VM)
-        self.ctx = zmq.Context()
-        self.socket = self.ctx.socket(socket_type=zmq.PAIR)
-        self.socket.bind(self.url)
+        # # 'socket' is used to proxy commands to blocking object running in a child process (possibly on a VM)
+        # self.ctx = zmq.Context()
+        # self.socket = self.ctx.socket(socket_type=zmq.PAIR)
+        # self.socket.bind(self.url)
 
         # Add this object to the registry of testers
         from .mp_test_case import MPTestCase
@@ -275,15 +273,24 @@ class MPTesterBase:
 
         # Create Tester object in a VM
         if always_run_as_subproc or MPTestCase.vmnet_test_active:
-            self.log.info("Creating Tester object in a VM")
-            pass
+            name, ip = MPTestCase._next_container()
+            self.log.info("Creating Tester object in a VM on container named {} with ip address {}".format(name, ip))
+            self.url = "tcp://{}:{}".format(ip, MP_PORT)
 
         # Create Tester object in a Subprocess
         else:
             self.log.info("Creating Tester object in a subprocess")
+            self.url = _gen_url(name)
+
             self.test_proc = LProcess(target=self._run_test_proc, args=(self.name, self.url, build_fn,
                                                                     self.config_fn, self.assert_fn,))
             self.test_proc.start()
+
+        # 'socket' is used to proxy commands to blocking object running in a child process (possibly on a VM)
+        self.ctx = zmq.Context()
+        self.socket = self.ctx.socket(socket_type=zmq.PAIR)
+        self.log.debug("Binding to url {}".format(self.url))
+        self.socket.bind(self.url)
 
         # Block this process until we get a ready signal from the subprocess/VM
         self.wait_for_test_object()

@@ -57,6 +57,8 @@ if __name__ == '__main__':
 
     num_suites, num_success, num_tests = 0, 0, 0
 
+    abs_start = time.time()
+
     for group in TESTGROUPS:
         for test in group:
 
@@ -70,9 +72,8 @@ if __name__ == '__main__':
 
             start = time.time()
             test_result = runner.run(suite)
-            end = time.time()
 
-            run_time = round(end - start, 3)
+            run_time = round(time.time() - start, 3)
             tests_total = suite.countTestCases()
             suite_failures = len(test_result.errors) + len(test_result.failures)
             tests_passed = tests_total - suite_failures
@@ -102,6 +103,8 @@ if __name__ == '__main__':
             log.info('\n\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
                      .format(test, run_time, tests_passed, tests_total) + delim + '\n')
 
+    total_time = round(time.time() - abs_start, 3)
+
     for err in all_errors:
         log.error("failure: " + str(err))
 
@@ -109,6 +112,7 @@ if __name__ == '__main__':
 
     result_msg = '\n\n' + delim + "\n\n{}\{} tests passed.".format(num_tests - len(all_errors), num_tests)
     result_msg += "\n{}/{} test suites passed.".format(num_suites, num_success)
+    result_msg += "\nTotal run time: {} seconds".format(total_time)
     result_msg += '\n\n' + delim
     _l(result_msg)
 
