@@ -32,12 +32,9 @@ def wrap_func(func, *args, **kwargs):
 def mp_testable(test_cls):
     """
     Decorator to copy all the public API for object type test_cls to the decorated class. The decorated
-    MPTesterBase subclass will be able to proxy commands to the 'test_cls' instance on a child process via a queue.
+    MPTesterBase subclass will be able to proxy commands to the 'test_cls' instance on a child process/VM via a queue.
     """
     def propogate_cmd(cmd_name):
-        """
-        Sends cmd_name
-        """
         def send_cmd(self, *args, **kwargs):
             cmd = (cmd_name, args, kwargs)
             self.socket.send_pyobj(cmd)
@@ -179,11 +176,8 @@ class MPTesterProcess:
 
                 # If result is coroutine, run it in the event self.loop
                 if output and inspect.iscoroutine(output):
-                    # self.log.debug("Coroutine detect for func name {}, running it in event self.loop".format(func))
                     result = await asyncio.ensure_future(output)
-                    # self.log.debug("Got result from coroutine {}\nresult: {}".format(func, result))
-                # self.log.critical("got cmd: {}".format(cmd))
-                # self.log.critical("cmd name: {}\nkwargs: {}".format(func, kwargs))
+            # If something blows up, teardown and send a FAIL_SIG to orchestration process
             except Exception as e:
                 self.log.error("\n\n TESTER GOT EXCEPTION FROM EXECUTING CMD {}: {}\n\n".format(cmd, traceback.format_exc()))
                 self.socket.send_pyobj(SIG_FAIL)
@@ -257,11 +251,6 @@ class MPTesterBase:
         self.config_fn = config_fn  # Function to configure object with mocks
         self.assert_fn = assert_fn  # Function to run assertions on said mocks
 
-        # # 'socket' is used to proxy commands to blocking object running in a child process (possibly on a VM)
-        # self.ctx = zmq.Context()
-        # self.socket = self.ctx.socket(socket_type=zmq.PAIR)
-        # self.socket.bind(self.url)
-
         # Add this object to the registry of testers
         from .mp_test_case import MPTestCase
         MPTestCase.testers.append(self)
@@ -279,7 +268,7 @@ class MPTesterBase:
 
             runner_func = wrap_func(self._run_test_proc, self.name, self.url, build_fn, self.config_fn, self.assert_fn)
 
-            # TODO -- will i need a butt load of imports and stuff to make this run smoothly...?
+            # TODO -- will i need a ton of imports and stuff to make this run smoothly...?
             MPTestCase.execute_python(name, runner_func, async=True)
 
         # Create Tester object in a Subprocess
@@ -291,7 +280,7 @@ class MPTesterBase:
                                                                     self.config_fn, self.assert_fn,))
             self.test_proc.start()
 
-        # 'socket' is used to proxy commands to blocking object running in a child process (possibly on a VM)
+        # 'socket' is used to proxy commands to blocking object running in a child process (or possibly on a VM)
         self.ctx = zmq.Context()
         self.socket = self.ctx.socket(socket_type=zmq.PAIR)
         self.log.debug("Binding to url {}".format(self.url))
