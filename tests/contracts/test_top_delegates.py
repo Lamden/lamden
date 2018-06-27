@@ -15,16 +15,24 @@ policy_maker = 'policy_maker'
 class TestTopDelegates(SamrtContractTestCase):
     def test_voting_process(self):
         self.run_contract(code_str="""
-import top_delegates as ballot
 
-ballot_id = ballot.start_ballot('{policy_maker}')
-ballot.cast_vote('{voter_1}', ballot_id, ['{voter_1}'])
-ballot.cast_vote('{voter_1}', ballot_id, ['{voter_1}'])
-ballot.cast_vote('{voter_2}', ballot_id, ['{voter_1}','{voter_2}'])
-ballot.cast_vote('{voter_3}', ballot_id, ['{voter_3}'])
-res = ballot.tally_votes('{policy_maker}', ballot_id)
+import num_top_delegates as ntd
+
+ballot_id = ntd.start_ballot('{policy_maker}')
+ntd.cast_vote('{voter_1}', ballot_id, 2)
+ntd.cast_vote('{voter_2}', ballot_id, 2)
+ntd.cast_vote('{voter_3}', ballot_id, 3)
+res = ntd.tally_votes('{policy_maker}', ballot_id)
+
+import top_delegates as td
+
+ballot_id = td.start_ballot('{policy_maker}')
+td.cast_vote('{voter_1}', ballot_id, ['{voter_1}'])
+td.cast_vote('{voter_1}', ballot_id, ['{voter_1}'])
+td.cast_vote('{voter_2}', ballot_id, ['{voter_1}','{voter_2}'])
+td.cast_vote('{voter_3}', ballot_id, ['{voter_3}'])
+res = td.tally_votes('{policy_maker}', ballot_id)
 print('>>> voting result is:', res,'<<<')
-print('xxx', ballot.get('top_delegates'))
 
         """.format(policy_maker=policy_maker,
             voter_1=voter_1,

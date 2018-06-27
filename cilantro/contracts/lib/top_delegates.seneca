@@ -15,7 +15,6 @@ t_top_delegates_ballot = st.create_table(POLICY, [
     ('delegate_id', st.str_len(30))
 ])
 kv_policy = kv.create_kv('constants')
-num_top_delegates = 2 #ntd.get('num_top_delegates')
 
 @export
 def start_ballot(policy_maker_id):
@@ -23,6 +22,7 @@ def start_ballot(policy_maker_id):
     return ballot_id
 
 def filter_delegates(voter_id, ballot_id, top_delegates):
+    num_top_delegates = ntd.get('num_top_delegates')
     top_delegates = set(top_delegates)
     assert ballot.get_ballot(ballot_id), \
         'Ballot is not found or no longer opened'
@@ -48,12 +48,8 @@ def cast_vote(voter_id, ballot_id, top_delegates):
     ]).run()
 
 @export
-def cancel_vote():
-    # raise Exception('You cannot cancel your vote on this ballot')
-    pass
-
-@export
 def tally_votes(policy_maker_id, ballot_id):
+    num_top_delegates = ntd.get('num_top_delegates')
     res = t_top_delegates_ballot.select().where(
         t_top_delegates_ballot.ballot_id == ballot_id
     ).run()
@@ -69,11 +65,7 @@ def tally_votes(policy_maker_id, ballot_id):
 
 @export
 def get(attr):
-    #TODO list as type!
-    if attr == 'top_delegates':
-        return kv_policy.get(attr).run()[1:-1].split(',')
-    else:
-        return kv_policy.get(attr).run()
+    return kv_policy.get(attr).run()
 
 exports = make_exports()
 

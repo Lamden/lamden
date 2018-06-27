@@ -33,11 +33,6 @@ def cast_vote(voter_id, ballot_id, num_top_delegates):
     ]).run()
 
 @export
-def cancel_vote():
-    # raise Exception('You cannot cancel your vote on this ballot')
-    pass
-
-@export
 def tally_votes(policy_maker_id, ballot_id):
     res = t_num_top_delegates_ballot.select().where(
         t_num_top_delegates_ballot.ballot_id == ballot_id
