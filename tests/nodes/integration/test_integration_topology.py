@@ -42,26 +42,25 @@ class TopologyIntegrationTest(MPTestCase):
             run_state = mn.states[MNRunState]
             run_state.recv_tx.assert_has_calls([call(tx1), call(tx2)], any_order=True)
 
-        mn_url = Constants.Testnet.Masternode.InternalUrl
-        mn_sk = Constants.Testnet.Masternode.Sk
+        mn_sk = Constants.Testnet.Masternodes[0]['sk']
 
         tx1 = God.create_std_tx(FALCON, DAVIS, 210)
         tx2 = God.create_std_tx(STU, FALCON, 150)
 
-        masternode = MPMasternode(name='Masternode', config_fn=config_mn, assert_fn=assert_mn, sk=mn_sk, url=mn_url)
+        masternode = MPMasternode(name='Masternode', config_fn=config_mn, assert_fn=assert_mn, sk=mn_sk)
 
-        time.sleep(0.25)  # give masternode time to get his web server ready
+        time.sleep(0.25)  # give masternode a quick sec to get his web server ready
 
         God.send_tx(tx1)
         God.send_tx(tx2)
 
         self.start()
 
-    def test_masternode_witness_pubsub(self):
-        """
-        Tests that a Masternode publishes transactions to the witnesses
-        """
-        pass
+    # def test_masternode_witness_pubsub(self):
+    #     """
+    #     Tests that a Masternode publishes transactions to the witnesses
+    #     """
+    #     pass
 
 
 if __name__ == '__main__':

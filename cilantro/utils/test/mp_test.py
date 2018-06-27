@@ -264,6 +264,7 @@ class MPTesterBase:
         if always_run_as_subproc or MPTestCase.vmnet_test_active:
             name, ip = MPTestCase._next_container()
             self.log.info("Creating Tester object in a VM on container named {} with ip address {}".format(name, ip))
+            self.ip = ip
             self.url = "tcp://{}:{}".format(ip, MP_PORT)
 
             runner_func = wrap_func(self._run_test_proc, self.name, self.url, build_fn, self.config_fn, self.assert_fn)
@@ -274,10 +275,11 @@ class MPTesterBase:
         # Create Tester object in a Subprocess
         else:
             self.log.info("Creating Tester object in a subprocess")
+            self.ip = '127.0.0.1'
             self.url = _gen_url(name)
 
             self.test_proc = LProcess(target=self._run_test_proc, args=(self.name, self.url, build_fn,
-                                                                    self.config_fn, self.assert_fn,))
+                                                                        self.config_fn, self.assert_fn,))
             self.test_proc.start()
 
         # 'socket' is used to proxy commands to blocking object running in a child process (or possibly on a VM)

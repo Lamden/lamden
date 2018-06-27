@@ -9,9 +9,9 @@ from scipy.stats import poisson, expon
 
 
 if os.getenv('HOST_IP'):
-    MN_URL = "http://{}:8080".format(os.getenv('MASTERNODE', '0.0.0.0'))
+    _MN_URL = "http://{}:8080".format(os.getenv('MASTERNODE', '0.0.0.0'))
 else:
-    MN_URL = "http://0.0.0.0:8080"
+    _MN_URL = "http://0.0.0.0:8080"
 
 STU = ('db929395f15937f023b4682995634b9dc19b1a2b32799f1f67d6f080b742cdb1',
  '324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502')
@@ -42,6 +42,9 @@ class God:
 
     log = get_logger("GOD")
 
+    # Masternode URL
+    mn_url = _MN_URL
+
     def __init__(self, loop=None):
         self.log = get_logger("GOD")
 
@@ -65,6 +68,12 @@ class God:
             return c
 
     @classmethod
+    def set_mn_ip(cls, ip_addr):
+        url = "http://{}:8080".format(ip_addr)
+        cls.log.debug("Setting masternode URL to {}".format(url))
+        cls.mn_url = url
+
+    @classmethod
     def create_std_tx(cls, sender: tuple, receiver: tuple, amount: int) -> StandardTransaction:
         if type(receiver) is tuple:
             receiver = receiver[1]
@@ -78,8 +87,8 @@ class God:
 
     @classmethod
     def send_tx(cls, tx: TransactionBase):
-        r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
-        cls.log.info("POST request to MN at URL {} has status code: {}".format(MN_URL, r.status_code))
+        r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
+        cls.log.info("POST request to MN at URL {} has status code: {}".format(cls.mn_url, r.status_code))
 
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
@@ -111,9 +120,8 @@ class God:
             tx = gen_func()
 
             cls.log.debug("sending transaction {}".format(tx))
-            r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
+            r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
             cls.log.debug("POST request got status code {}".format(r.status_code))
-
 
     @classmethod
     def random_std_tx(cls):
