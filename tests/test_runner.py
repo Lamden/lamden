@@ -8,6 +8,7 @@ log = get_logger("TestRunner")
 
 delim = '-' * 40
 
+
 PROTOCOL_TESTS = [
     'tests.protocol.structures',
     'tests.protocol.statemachine',
@@ -35,10 +36,15 @@ OVERLAY_TESTS = [
     'tests.overlay'
 ]
 
+NODE_INTEGRATION_TESTS = [
+    'tests.nodes.integration'
+]
+
 TESTGROUPS = [
     PROTOCOL_TESTS,
     MESSAGE_TESTS,
     CONSTANTS_TESTS,
+    NODE_INTEGRATION_TESTS,
     # OVERLAY_TESTS
 ]
 
@@ -68,7 +74,6 @@ if __name__ == '__main__':
 
             # runner = unittest.TextTestRunner(verbosity=3)
             runner = unittest.TextTestRunner(verbosity=0)
-            log = get_logger("TestRunner")
 
             start = time.time()
             test_result = runner.run(suite)
@@ -78,6 +83,7 @@ if __name__ == '__main__':
             suite_failures = len(test_result.errors) + len(test_result.failures)
             tests_passed = tests_total - suite_failures
 
+            log = get_logger("TestRunner")
             if test_result.errors:
                 for i in range(len(test_result.errors)):
                     all_errors.append(test_result.errors[i])
@@ -108,7 +114,7 @@ if __name__ == '__main__':
     for err in all_errors:
         log.error("failure: " + str(err))
 
-    _l = log.info if TEST_FLAG == 'S' else log.critical
+    _l = log.info if TEST_FLAG == 'S' else log.error
 
     result_msg = '\n\n' + delim + "\n\n{}\{} tests passed.".format(num_tests - len(all_errors), num_tests)
     result_msg += "\n{}/{} test suites passed.".format(num_suites, num_success)
