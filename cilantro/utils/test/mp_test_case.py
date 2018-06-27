@@ -2,13 +2,10 @@ import asyncio
 import zmq.asyncio
 from vmnet.test.base import *
 import time
-import os
-import shutil
-import sys
-import dill
-from unittest import TestCase
 from cilantro.logger import get_logger
 from .mp_test import SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC, SIG_START
+from os.path import dirname
+import cilantro
 
 # URL of orchestration node. TODO -- set this to env vars
 URL = "tcp://127.0.0.1:5020"
@@ -16,10 +13,18 @@ URL = "tcp://127.0.0.1:5020"
 TEST_TIMEOUT = 5
 TESTER_POLL_FREQ = 0.1
 
+CILANTRO_PATH = dirname(dirname(cilantro.__path__[0]))
+
 
 class MPTestCase(BaseNetworkTestCase):
-    testname = 'vmnet_test'
-    compose_file = 'cilantro-nodes.yml'
+    testname = 'base_test'
+
+    # compose_file = '{}/cilantro/tests/vmnet/compose_files/cilantro-bootstrap.yml'.format(CILANTRO_PATH)
+    compose_file = '{}/cilantro/tests/vmnet/compose_files/cilantro-nodes.yml'.format(CILANTRO_PATH)
+
+    local_path = CILANTRO_PATH
+    docker_dir = '{}/cilantro/tests/vmnet/docker_dir'.format(CILANTRO_PATH)
+    logdir = '{}/cilantro/logs'.format(CILANTRO_PATH)
 
     testers = []
     curr_tester_index = 1

@@ -1,3 +1,4 @@
+import unittest
 from cilantro import Constants
 from cilantro.utils.test import MPGod, MPMasternode, MPWitness, MPTestCase, vmnet_test
 from unittest.mock import patch, call, MagicMock
@@ -63,3 +64,5 @@ class TopologyIntegrationTest(MPTestCase):
         pass
 
 
+if __name__ == '__main__':
+    unittest.main()
