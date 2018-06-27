@@ -3,7 +3,7 @@ import seneca.runtime as rt
 import seneca.stdlib as std
 from seneca.modulelib import export, make_exports
 
-t_ballot = st.create_table('ballot', [
+t_election = st.create_table('election', [
     ('policy_maker_id', st.str_len(30)),
     ('policy', st.str_len(64)),
     ('tags', st.str_len(256)), # Comma separated
@@ -20,23 +20,23 @@ def enum():
 STATUS = enum()
 
 @export
-def search_for_ballot(keyword):
+def search_for_election(keyword):
     """
-        Search for ballot based on keywords.
+        Search for election based on keywords.
     """
-    # return ballot_id
+    # return election_id
     pass
 
 @export
-def get_ballot(ballot_id):
-    return t_ballot.select().where(
-        t_ballot.id==ballot_id and
-        t_ballot.policy==STATUS.OPENED
+def get_election(election_id):
+    return t_election.select().where(
+        t_election.id==election_id and
+        t_election.policy==STATUS.OPENED
     )
 
 @export
-def create_ballot(policy_maker_id, policy, tags=[]):
-    return t_ballot.insert([{
+def create_election(policy_maker_id, policy, tags=[]):
+    return t_election.insert([{
         'policy_maker_id': policy_maker_id,
         'policy': policy,
         'tags': ','.join(tags),
@@ -45,15 +45,15 @@ def create_ballot(policy_maker_id, policy, tags=[]):
     }]).run()['last_row_id']
 
 @export
-def close_ballot(policy_maker_id, policy, status):
+def close_election(policy_maker_id, policy, status):
     assert STATUS[status], 'Not a valid status'
-    return t_ballot.update({
+    return t_election.update({
         'closed_ts': std.datetime.now(),
         'status': status,
     }).where(
-        t_ballot.policy_maker_id==policy_maker_id and
-        t_ballot.policy==policy and
-        t_ballot.status==STATUS.OPENED
+        t_election.policy_maker_id==policy_maker_id and
+        t_election.policy==policy and
+        t_election.status==STATUS.OPENED
     ).run()
 
 exports = make_exports()
