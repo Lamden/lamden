@@ -16,9 +16,9 @@ pyzmq==17.0.0
 rpcudp==3.0.0
 redis==2.10.6
 requests==2.18.4
+seneca
 six==1.11.0
 SQLAlchemy==1.2.6
 urllib3==1.22
 uvloop==0.9.1
 yarl==1.1.0
--e git+git://github.com/Lamden/seneca.git#egg=seneca

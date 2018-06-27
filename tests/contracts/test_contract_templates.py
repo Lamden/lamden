@@ -14,4 +14,3 @@ print("created user named {} with role {}".format('davis', 'god'))
         actual_code = ContractTemplate.interpolate_template('rbac', user='davis', role='god')
 
         self.assertEqual(expected_code.strip(), actual_code)
-

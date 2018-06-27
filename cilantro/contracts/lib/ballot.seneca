@@ -1,0 +1,62 @@
+import seneca.storage.tabular as st
+import seneca.runtime as rt
+import seneca.stdlib as std
+from seneca.modulelib import export, make_exports
+
+t_ballot = st.create_table('ballot', [
+    ('policy_maker_id', st.str_len(30)),
+    ('policy', st.str_len(64)),
+    ('tags', st.str_len(256)), # Comma separated
+    ('created_ts', std.datetime),
+    ('opened_ts', std.datetime),
+    ('closed_ts', std.datetime),
+    ('status', st.str_len(16))
+])
+
+@export
+def enum():
+    return std.enum('OPENED', 'PASSED', 'NOT_PASSED', 'CANCELLED')
+
+STATUS = enum()
+
+@export
+def search_for_ballot(keyword):
+    """
+        Search for ballot based on keywords.
+    """
+    # return ballot_id
+    pass
+
+@export
+def get_ballot(ballot_id):
+    return t_ballot.select().where(
+        t_ballot.id==ballot_id and
+        t_ballot.policy==STATUS.OPENED
+    )
+
+@export
+def create_ballot(policy_maker_id, policy, tags=[]):
+    return t_ballot.insert([{
+        'policy_maker_id': policy_maker_id,
+        'policy': policy,
+        'tags': ','.join(tags),
+        'opened_ts': std.datetime.now(),
+        'status': STATUS.OPENED
+    }]).run()['last_row_id']
+
+@export
+def close_ballot(policy_maker_id, policy, status):
+    assert STATUS[status], 'Not a valid status'
+    return t_ballot.update({
+        'closed_ts': std.datetime.now(),
+        'status': status,
+    }).where(
+        t_ballot.policy_maker_id==policy_maker_id and
+        t_ballot.policy==policy and
+        t_ballot.status==STATUS.OPENED
+    ).run()
+
+exports = make_exports()
+
+if __name__ == '__main__':
+    pass

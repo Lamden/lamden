@@ -1,0 +1,73 @@
+import seneca.storage.tabular as st
+import seneca.storage.kv as kv
+import seneca.runtime as rt
+import seneca.stdlib as std
+from seneca.modulelib import export, make_exports
+import num_top_delegates as ntd
+import ballot
+
+POLICY = 'top_delegates'
+STATUS = ballot.enum()
+
+t_top_delegates_ballot = st.create_table(POLICY, [
+    ('voter_id', st.str_len(30)),
+    ('ballot_id', st.str_len(30)),
+    ('delegate_id', st.str_len(30))
+])
+kv_policy = kv.create_kv('constants')
+
+@export
+def start_ballot(policy_maker_id):
+    ballot_id = ballot.create_ballot(policy_maker_id, POLICY)
+    return ballot_id
+
+def filter_delegates(voter_id, ballot_id, top_delegates):
+    num_top_delegates = ntd.get('num_top_delegates')
+    top_delegates = set(top_delegates)
+    assert ballot.get_ballot(ballot_id), \
+        'Ballot is not found or no longer opened'
+    assert len(top_delegates) <= num_top_delegates, 'You can only vote for {} delegates'.format(num_top_delegates)
+    res = t_top_delegates_ballot.select().where(
+        t_top_delegates_ballot.ballot_id == ballot_id and
+        t_top_delegates_ballot.voter_id == voter_id
+    ).run()
+    delegates_already_voted_for = set([r['delegate_id'] for r in res])
+    delegates_list_full = top_delegates.union(delegates_already_voted_for)
+    assert len(delegates_list_full) <= num_top_delegates, \
+        'You already voted for {}(max={}) delegates and tried to vote for {} more delegate(s).'.format(
+            len(delegates_already_voted_for), num_top_delegates, len(top_delegates)
+        )
+    return top_delegates.difference(delegates_already_voted_for)
+
+@export
+def cast_vote(voter_id, ballot_id, top_delegates):
+    delegates = filter_delegates(voter_id, ballot_id, top_delegates)
+    if len(delegates) == 0: return
+    t_top_delegates_ballot.insert([
+        {'ballot_id': ballot_id,'voter_id': voter_id,'delegate_id': d} for d in delegates
+    ]).run()
+
+@export
+def tally_votes(policy_maker_id, ballot_id):
+    num_top_delegates = ntd.get('num_top_delegates')
+    res = t_top_delegates_ballot.select().where(
+        t_top_delegates_ballot.ballot_id == ballot_id
+    ).run()
+    res = [r['delegate_id'] for r in res]
+    votes = list(reversed(sorted(
+        [(r, res.count(r)) for r in set(res)],
+        key=lambda x:x[1]
+    )))
+    top_delegates = votes[:num_top_delegates]
+    kv_policy.set([(POLICY, ','.join([d[0] for d in top_delegates]))]).run()
+    ballot.close_ballot(policy_maker_id, POLICY, STATUS.PASSED)
+    return top_delegates
+
+@export
+def get(attr):
+    return kv_policy.get(attr).run()
+
+exports = make_exports()
+
+if __name__ == '__main__':
+    pass

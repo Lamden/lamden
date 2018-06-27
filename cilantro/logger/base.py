@@ -80,7 +80,7 @@ def get_logger(name=''):
     sys.stdout = LoggerWriter(log.debug)
     sys.stderr = LoggerWriter(log.warning)
 
-    overwrite_logger_level(logging.WARNING)
+    overwrite_logger_level(logging.DEBUG)
 
     return log
 
