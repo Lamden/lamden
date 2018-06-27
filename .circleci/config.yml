@@ -6,6 +6,7 @@ jobs:
       - image: circleci/python:3.6.5
         environment:
           PIPENV_VENV_IN_PROJECT: true
+      - image: lamden/cilantro:firsttry
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
