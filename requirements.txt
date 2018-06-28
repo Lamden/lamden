@@ -20,7 +20,6 @@ redis==2.10.6
 requests==2.18.4
 seneca
 six==1.11.0
-seneca
 SQLAlchemy==1.2.6
 urllib3==1.22
 uvloop==0.9.1
