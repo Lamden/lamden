@@ -1,7 +1,5 @@
 from vmnet.test.base import *
 import unittest, time, random
-
-
 import vmnet
 
 
@@ -75,7 +73,7 @@ class TestBootstrap(BaseNetworkTestCase):
 
     def test_bootstrap(self):
         # start mysql in all nodes
-        for node_name in ['masternode'] + ['witness_{}'.format(i+1+1) for i in range(self.NUM_WITNESS)] + ['delegate_{}'.format(i+1+3) for i in range(self.NUM_DELEGATES)]:
+        for node_name in ['masternode'] + self.groups['witness'] + self.groups['delegate']:
             self.execute_python(node_name, start_mysqld, async=True)
         time.sleep(1)
 
@@ -83,12 +81,12 @@ class TestBootstrap(BaseNetworkTestCase):
         self.execute_python('masternode', run_mn, async=True)
 
         # Bootstrap witnesses
-        for i in range(self.NUM_WITNESS):
-            self.execute_python('witness_{}'.format(i+1+1), wrap_func(run_witness, i), async=True)
+        for i, nodename in enumerate(self.groups['witness']):
+            self.execute_python(nodename, wrap_func(run_witness, i), async=True)
 
         # Bootstrap delegates
-        for i in range(self.NUM_DELEGATES):
-            self.execute_python('delegate_{}'.format(i+1+3), wrap_func(run_delegate, i), async=True)
+        for i, nodename in enumerate(self.groups['delegate']):
+            self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
         input("\n\nEnter any key to terminate")
 

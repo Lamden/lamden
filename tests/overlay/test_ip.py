@@ -8,10 +8,10 @@ class TestIP(TestCase):
     def setUp(self):
         pass
 
-    @patch('__main__.requests.get')
+    @patch('requests.get')
     def test_get_public_ip_failed(self, requests_get):
         def mock_req(*args, **kwargs):
-            raise
+            raise Exception()
 
         requests_get.side_effect = mock_req
         self.assertRaises(Exception, get_public_ip)
@@ -56,5 +56,5 @@ class TestIP(TestCase):
     def tearDown(self):
         pass
 
-if __name__ == '__main__':
-    unittest.main()
+# if __name__ == '__main__':
+#     unittest.main()

@@ -13,7 +13,7 @@ class TestSwapTransaction(TestCase):
         the specified amount
         """
 
-        hashlock = h if h is not None else secrets.token_bytes(64)
+        hashlock = h if h is not None else secrets.token_bytes(32)
         expiration = e if e is not None else int(time.time()) + (60 * 60 * 24)
 
         s = Constants.Protocol.Wallets.new()
@@ -29,14 +29,14 @@ class TestSwapTransaction(TestCase):
         self.assertEqual(tx_struct.metadata.proof.decode(), tx_object.proof)
         self.assertEqual(tx_struct.metadata.signature.decode(), tx_object.signature)
         self.assertEqual(tx_struct.payload.sender.decode(), tx_object.sender)
-        self.assertEqual(int_to_decimal(tx_struct.payload.amount), tx_object.amount)
+        self.assertEqual(tx_struct.payload.amount, tx_object.amount)
         self.assertEqual(tx_struct.payload.receiver.decode(), tx_object.receiver)
 
     def test_from_bytes(self):
         """
         Tests from_bytes with a valid serialized capnp struct (no validation)
         """
-        tx_struct = TestSwapTransaction.create_tx_struct(3.14)
+        tx_struct = TestSwapTransaction.create_tx_struct(314)
         tx = SwapTransaction.from_bytes(tx_struct.to_bytes_packed(), validate=False)
         self.__assert_struct_equal_object(tx_struct, tx)
 
