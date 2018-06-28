@@ -18,7 +18,7 @@ pyzmq==17.0.0
 rpcudp==3.0.0
 redis==2.10.6
 requests==2.18.4
-seneca==0.0.16
+seneca
 six==1.11.0
 SQLAlchemy==1.2.6
 urllib3==1.22
