@@ -18,9 +18,6 @@ __pycache__/
 .cache/
 cilantro.egg-info/
 
-# FOR DEMO
-cilantro/faucet.json
-
 # LOGS
 **/logs
 
@@ -28,6 +25,6 @@ cilantro/faucet.json
 cilantro/protocol/networks/data
 certs
 tests/vmnet/docker-compose.yml
-.DS_Store
-certs
 state.tmp
+.DS_Store
+seneca

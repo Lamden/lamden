@@ -57,3 +57,4 @@ class DelegateInterpretState(DelegateBaseState):
         else:
             self.log.debug("Not consensus time yet, queue is only size {}/{}"
                            .format(self.parent.interpreter.queue_len, Constants.Nodes.MaxQueueSize))
+
