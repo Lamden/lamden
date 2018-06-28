@@ -8,10 +8,12 @@ from cilantro.protocol.overlay.protocol import KademliaProtocol
 from cilantro.protocol.overlay.storage import ForgetfulStorage
 from cilantro.protocol.overlay.utils import digest
 from cilantro.db import VKBook
-from .utils import genkeys
 from os.path import exists, dirname
 from threading import Timer
 from asyncio.selector_events import _SelectorDatagramTransport
+
+try: from utils import genkeys
+except: from .utils import genkeys
 
 def stop(self):
     self.a_net.stop()
@@ -46,6 +48,7 @@ class TestNetwork(TestCase):
     def test_attributes(self):
         def run(self):
             stop(self)
+            
         self.assertIsInstance(self.a_net.stethoscope_sock, socket.socket)
         self.assertIsInstance(self.a_net.ironhouse, Ironhouse)
         self.assertIsInstance(self.a_net.node, Node)
@@ -202,26 +205,22 @@ class TestNetwork(TestCase):
         t.start()
         self.loop.run_forever()
 
-
-    def test_save_load_state(self):
+    @patch('cilantro.protocol.overlay.network.Network.bootstrappableNeighbors')
+    def test_save_load_state(self, bootstrappableNeighbors):
         def run(self):
-            self.assertTrue(self.a_net.saveState('state.tmp'))
-            state = self.a_net.loadState('state.tmp')
-            os.remove('state.tmp')
-            self.assertEqual(state,{'alpha': 3,
-                'id': b"\xaa\xd0\xed\x91O\xa4e'\x06\xdd7\xf8\xf9\xe46p\x9f\x9a\xa1Y",
-                'ksize': 20,
-                'neighbors': [('127.0.0.1', 4321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]})
             stop(self)
+        def fn():
+            return [('127.0.0.1', 4321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]
 
+        bootstrappableNeighbors.side_effect = fn
 
-
-        result = self.loop.run_until_complete(
-            asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 3321),
-                ('127.0.0.1', 4321)
-            ]))
-        )
+        self.assertTrue(self.a_net.saveState('state.tmp'))
+        state = self.a_net.loadState('state.tmp')
+        os.remove('state.tmp')
+        self.assertEqual(state,{'alpha': 3,
+            'id': b"\xaa\xd0\xed\x91O\xa4e'\x06\xdd7\xf8\xf9\xe46p\x9f\x9a\xa1Y",
+            'ksize': 20,
+            'neighbors': [('127.0.0.1', 4321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]})
 
         t = Timer(0.01, run, [self])
         t.start()
@@ -230,12 +229,11 @@ class TestNetwork(TestCase):
     def test_save_fail(self):
         def run(self):
             stop(self)
-
         self.assertFalse(self.a_net.saveState('state.tmp'))
-
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()
+
 
     def test_lookup_ip(self):
         def run(self):

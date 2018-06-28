@@ -39,7 +39,7 @@ TESTGROUPS = [
     PROTOCOL_TESTS,
     MESSAGE_TESTS,
     CONSTANTS_TESTS,
-    # OVERLAY_TESTS
+    OVERLAY_TESTS
 ]
 
 
@@ -121,5 +121,3 @@ if __name__ == '__main__':
 
     # Overwrite logger level to surpress asyncio's whining
     overwrite_logger_level(9000)
-
-
