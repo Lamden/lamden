@@ -27,3 +27,4 @@ certs
 tests/vmnet/docker-compose.yml
 state.tmp
 .DS_Store
+seneca

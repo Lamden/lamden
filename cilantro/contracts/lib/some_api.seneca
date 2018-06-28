@@ -1,0 +1,10 @@
+# from seneca.modulelib import export, make_exports, api
+#
+# @api('POST')
+# def hello():
+#     return 'world'
+#
+# exports = make_exports()
+#
+# if __name__ == '__main__':
+#     pass
