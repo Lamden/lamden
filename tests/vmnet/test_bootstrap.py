@@ -79,7 +79,7 @@ class TestBootstrap(BaseNetworkTestCase):
     NUM_WITNESS = 2
     NUM_DELEGATES = 3
 
-    @vmnet_test
+    @vmnet_test(run_webui=True)
     def test_bootstrap(self):
         # start mysql in all nodes
         for node_name in ['masternode'] + self.groups['witness'] + self.groups['delegate']:

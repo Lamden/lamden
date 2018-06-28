@@ -86,6 +86,7 @@ class TestVKLookup(BaseNetworkTestCase):
     NUM_WITNESS = 2
     NUM_DELEGATES = 4
 
+    @vmnet_test(run_webui=True)
     def test_vklookup(self):
         # start mysql in all nodes
         for node_name in ['masternode'] + self.groups['witness'] + self.groups['delegate']:

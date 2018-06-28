@@ -2,6 +2,19 @@ import unittest
 import sys
 import time
 from cilantro.logger import get_logger, overwrite_logger_level
+import logging
+
+
+"""
+This file acts as a single point of entry for runner all unit and integration tests. If this file is run with no args,
+all tests are run.
+
+Options to:
+-- run only unit tests
+-- omit long running unit tests
+
+-- run only integration tests
+"""
 
 
 log = get_logger("TestRunner")
@@ -41,11 +54,11 @@ NODE_INTEGRATION_TESTS = [
 ]
 
 TESTGROUPS = [
+    OVERLAY_TESTS,
     PROTOCOL_TESTS,
     MESSAGE_TESTS,
     CONSTANTS_TESTS,
     NODE_INTEGRATION_TESTS,
-    # OVERLAY_TESTS
 ]
 
 
@@ -76,14 +89,17 @@ if __name__ == '__main__':
             runner = unittest.TextTestRunner(verbosity=0)
 
             start = time.time()
+
+            overwrite_logger_level(logging.WARNING)  # Set log level to warning to suppress most output from tests
             test_result = runner.run(suite)
+            overwrite_logger_level(logging.DEBUG)  # Change logging level back
 
             run_time = round(time.time() - start, 3)
             tests_total = suite.countTestCases()
             suite_failures = len(test_result.errors) + len(test_result.failures)
             tests_passed = tests_total - suite_failures
 
-            log = get_logger("TestRunner")
+            _l = log.critical
             if test_result.errors:
                 for i in range(len(test_result.errors)):
                     all_errors.append(test_result.errors[i])
@@ -103,23 +119,24 @@ if __name__ == '__main__':
                     TEST_FLAG = 'F'
 
             else:
+                _l = log.info
                 log.info("No errors in {}".format(test))
                 num_success += 1
 
-            log.info('\n\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
-                     .format(test, run_time, tests_passed, tests_total) + delim + '\n')
+            _l('\n\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
+               .format(test, run_time, tests_passed, tests_total) + delim + '\n')
 
     total_time = round(time.time() - abs_start, 3)
 
     for err in all_errors:
         log.error("failure: " + str(err))
 
-    _l = log.info if TEST_FLAG == 'S' else log.error
-
     result_msg = '\n\n' + delim + "\n\n{}\{} tests passed.".format(num_tests - len(all_errors), num_tests)
-    result_msg += "\n{}/{} test suites passed.".format(num_suites, num_success)
+    result_msg += "\n{}/{} test suites passed.".format(num_success, num_suites)
     result_msg += "\nTotal run time: {} seconds".format(total_time)
     result_msg += '\n\n' + delim
+
+    _l = log.info if TEST_FLAG == 'S' else log.error
     _l(result_msg)
 
     if TEST_FLAG == 'S':

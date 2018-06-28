@@ -76,6 +76,7 @@ class TestPump(BaseNetworkTestCase):
     setuptime = 10
     compose_file = 'cilantro-bootstrap.yml'
 
+    @vmnet_test(run_webui=True)
     def test_bootstrap(self):
         # start mysql in all nodes
         for node_name in ['masternode'] + self.groups['witness'] + self.groups['delegate']:

@@ -17,9 +17,6 @@ CILANTRO_PATH = dirname(dirname(cilantro.__path__[0]))
 
 
 class MPTestCase(BaseNetworkTestCase):
-    testname = 'base_test'
-
-    # compose_file = '{}/cilantro/tests/vmnet/compose_files/cilantro-bootstrap.yml'.format(CILANTRO_PATH)
     compose_file = '{}/cilantro/tests/vmnet/compose_files/cilantro-nodes.yml'.format(CILANTRO_PATH)
 
     local_path = CILANTRO_PATH
