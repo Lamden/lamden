@@ -55,9 +55,9 @@ NODE_INTEGRATION_TESTS = [
 
 TESTGROUPS = [
     # OVERLAY_TESTS,
-    PROTOCOL_TESTS,
-    MESSAGE_TESTS,
-    CONSTANTS_TESTS,
+    # PROTOCOL_TESTS,
+    # MESSAGE_TESTS,
+    # CONSTANTS_TESTS,
     NODE_INTEGRATION_TESTS,
 ]
 
@@ -90,14 +90,14 @@ if __name__ == '__main__':
 
             start = time.time()
 
-            overwrite_logger_level(logging.WARNING)  # Set log level to warning to suppress most output from tests
+            # overwrite_logger_level(logging.WARNING)  # Set log level to warning to suppress most output from tests
             test_result = runner.run(suite)
             overwrite_logger_level(logging.DEBUG)  # Change logging level back
 
             run_time = round(time.time() - start, 3)
             tests_total = suite.countTestCases()
-            suite_failures = len(test_result.errors) + len(test_result.failures)
-            tests_passed = tests_total - suite_failures
+            test_failures = max(len(test_result.errors), len(test_result.failures))
+            tests_passed = tests_total - test_failures
 
             _l = log.critical
             if test_result.errors:
