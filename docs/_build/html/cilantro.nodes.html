@@ -1,0 +1,182 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.nodes package &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cilantro-nodes-package">
+<h1>cilantro.nodes package<a class="headerlink" href="#cilantro-nodes-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cilantro.nodes.delegate.html">cilantro.nodes.delegate package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.nodes.delegate.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.nodes.delegate.html#module-cilantro.nodes.delegate.consensus">cilantro.nodes.delegate.consensus module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.nodes.delegate.html#module-cilantro.nodes.delegate.delegate">cilantro.nodes.delegate.delegate module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.nodes.delegate.html#module-cilantro.nodes.delegate.interpret">cilantro.nodes.delegate.interpret module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.nodes.delegate.html#module-cilantro.nodes.delegate">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cilantro.nodes.masternode.html">cilantro.nodes.masternode package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.nodes.masternode.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.nodes.masternode.html#module-cilantro.nodes.masternode.masternode">cilantro.nodes.masternode.masternode module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.nodes.masternode.html#module-cilantro.nodes.masternode.new_block">cilantro.nodes.masternode.new_block module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.nodes.masternode.html#module-cilantro.nodes.masternode">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cilantro.nodes.witness.html">cilantro.nodes.witness package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.nodes.witness.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.nodes.witness.html#module-cilantro.nodes.witness.witness">cilantro.nodes.witness.witness module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.nodes.witness.html#module-cilantro.nodes.witness">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-cilantro.nodes.base">
+<span id="cilantro-nodes-base-module"></span><h2>cilantro.nodes.base module<a class="headerlink" href="#module-cilantro.nodes.base" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.nodes.base.NodeBase">
+<em class="property">class </em><code class="descclassname">cilantro.nodes.base.</code><code class="descname">NodeBase</code><span class="sig-paren">(</span><em>ip</em>, <em>signing_key</em>, <em>loop</em>, <em>name='Node'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/base.html#NodeBase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.base.NodeBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="cilantro.protocol.statemachine.html#cilantro.protocol.statemachine.statemachine.StateMachine" title="cilantro.protocol.statemachine.statemachine.StateMachine"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.protocol.statemachine.statemachine.StateMachine</span></code></a></p>
+<dl class="attribute">
+<dt id="cilantro.nodes.base.NodeBase.composer">
+<code class="descname">composer</code><a class="headerlink" href="#cilantro.nodes.base.NodeBase.composer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.base.NodeBase.start">
+<code class="descname">start</code><span class="sig-paren">(</span><em>start_loop=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/base.html#NodeBase.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.base.NodeBase.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Kicks off the main event loop, and properly starts the Node. This call will block whatever thread its run on
+until the end of space and time (or until this Node/process is terminated)</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.nodes.factory">
+<span id="cilantro-nodes-factory-module"></span><h2>cilantro.nodes.factory module<a class="headerlink" href="#module-cilantro.nodes.factory" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.nodes.factory.NodeFactory">
+<em class="property">class </em><code class="descclassname">cilantro.nodes.factory.</code><code class="descname">NodeFactory</code><a class="reference internal" href="_modules/cilantro/nodes/factory.html#NodeFactory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.factory.NodeFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="staticmethod">
+<dt id="cilantro.nodes.factory.NodeFactory.run_delegate">
+<em class="property">static </em><code class="descname">run_delegate</code><span class="sig-paren">(</span><em>signing_key</em>, <em>ip</em>, <em>name='Delegate'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/factory.html#NodeFactory.run_delegate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.factory.NodeFactory.run_delegate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.nodes.factory.NodeFactory.run_masternode">
+<em class="property">static </em><code class="descname">run_masternode</code><span class="sig-paren">(</span><em>signing_key</em>, <em>ip</em>, <em>name='Masternode'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/factory.html#NodeFactory.run_masternode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.factory.NodeFactory.run_masternode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.nodes.factory.NodeFactory.run_witness">
+<em class="property">static </em><code class="descname">run_witness</code><span class="sig-paren">(</span><em>signing_key</em>, <em>ip</em>, <em>name='Witness'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/factory.html#NodeFactory.run_witness"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.factory.NodeFactory.run_witness" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.nodes">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cilantro.nodes" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">cilantro.nodes package</a><ul>
+<li><a class="reference internal" href="#subpackages">Subpackages</a></li>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-cilantro.nodes.base">cilantro.nodes.base module</a></li>
+<li><a class="reference internal" href="#module-cilantro.nodes.factory">cilantro.nodes.factory module</a></li>
+<li><a class="reference internal" href="#module-cilantro.nodes">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/cilantro.nodes.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/cilantro.nodes.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,230 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.protocol.overlay.protocol &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cilantro.protocol.overlay.protocol</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">select</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">rpcudp.protocol</span> <span class="k">import</span> <span class="n">RPCProtocol</span>
+<span class="kn">from</span> <span class="nn">cilantro.logger</span> <span class="k">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span> <span class="nn">cilantro.protocol.overlay.node</span> <span class="k">import</span> <span class="n">Node</span>
+<span class="kn">from</span> <span class="nn">cilantro.protocol.overlay.routing</span> <span class="k">import</span> <span class="n">RoutingTable</span>
+<span class="kn">from</span> <span class="nn">cilantro.protocol.overlay.utils</span> <span class="k">import</span> <span class="n">digest</span>
+<span class="kn">from</span> <span class="nn">cilantro.protocol.overlay.storage</span> <span class="k">import</span> <span class="n">ForgetfulStorage</span>
+
+<span class="n">log</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="KademliaProtocol"><a class="viewcode-back" href="../../../../cilantro.protocol.overlay.html#cilantro.protocol.overlay.network.KademliaProtocol">[docs]</a><span class="k">class</span> <span class="nc">KademliaProtocol</span><span class="p">(</span><span class="n">RPCProtocol</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sourceNode</span><span class="p">,</span> <span class="n">ksize</span><span class="p">,</span> <span class="n">network</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="n">RPCProtocol</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">waitTimeout</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">router</span> <span class="o">=</span> <span class="n">RoutingTable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ksize</span><span class="p">,</span> <span class="n">sourceNode</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">storage</span> <span class="o">=</span> <span class="n">ForgetfulStorage</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sourceNode</span> <span class="o">=</span> <span class="n">sourceNode</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="n">network</span>
+
+<div class="viewcode-block" id="KademliaProtocol.getRefreshIDs"><a class="viewcode-back" href="../../../../cilantro.protocol.overlay.html#cilantro.protocol.overlay.network.KademliaProtocol.getRefreshIDs">[docs]</a>    <span class="k">def</span> <span class="nf">getRefreshIDs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get ids to search for to keep old buckets up to date.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ids</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># TODO re-run discovery here</span>
+        <span class="k">for</span> <span class="n">bucket</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">getLonelyBuckets</span><span class="p">():</span>
+            <span class="n">rid</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="o">*</span><span class="n">bucket</span><span class="o">.</span><span class="n">range</span><span class="p">)</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">byteorder</span><span class="o">=</span><span class="s1">&#39;big&#39;</span><span class="p">)</span>
+            <span class="n">ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rid</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ids</span></div>
+
+<div class="viewcode-block" id="KademliaProtocol.rpc_ping"><a class="viewcode-back" href="../../../../cilantro.protocol.overlay.html#cilantro.protocol.overlay.network.KademliaProtocol.rpc_ping">[docs]</a>    <span class="k">def</span> <span class="nf">rpc_ping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sender</span><span class="p">,</span> <span class="n">public_key</span><span class="p">,</span> <span class="n">nodeid</span><span class="p">):</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">nodeid</span><span class="p">,</span> <span class="n">sender</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">sender</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">public_key</span><span class="o">=</span><span class="n">public_key</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">welcomeIfNewNode</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourceNode</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourceNode</span><span class="o">.</span><span class="n">public_key</span></div>
+
+<div class="viewcode-block" id="KademliaProtocol.rpc_store"><a class="viewcode-back" href="../../../../cilantro.protocol.overlay.html#cilantro.protocol.overlay.network.KademliaProtocol.rpc_store">[docs]</a>    <span class="k">def</span> <span class="nf">rpc_store</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sender</span><span class="p">,</span> <span class="n">public_key</span><span class="p">,</span> <span class="n">nodeid</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">nodeid</span><span class="p">,</span> <span class="n">sender</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">sender</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">public_key</span><span class="o">=</span><span class="n">public_key</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">welcomeIfNewNode</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;got a store request from </span><span class="si">%s</span><span class="s2">, storing &#39;</span><span class="si">%s</span><span class="s2">&#39;=&#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span><span class="p">,</span>
+                  <span class="n">sender</span><span class="p">,</span> <span class="n">key</span><span class="o">.</span><span class="n">hex</span><span class="p">(),</span> <span class="n">value</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">storage</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="KademliaProtocol.rpc_find_node"><a class="viewcode-back" href="../../../../cilantro.protocol.overlay.html#cilantro.protocol.overlay.network.KademliaProtocol.rpc_find_node">[docs]</a>    <span class="k">def</span> <span class="nf">rpc_find_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sender</span><span class="p">,</span> <span class="n">public_key</span><span class="p">,</span> <span class="n">nodeid</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;finding neighbors of </span><span class="si">%i</span><span class="s2"> in local table&quot;</span><span class="p">,</span>
+                 <span class="nb">int</span><span class="p">(</span><span class="n">nodeid</span><span class="o">.</span><span class="n">hex</span><span class="p">(),</span> <span class="mi">16</span><span class="p">))</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">nodeid</span><span class="p">,</span> <span class="n">sender</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">sender</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">public_key</span><span class="o">=</span><span class="n">public_key</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">welcomeIfNewNode</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+        <span class="n">node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="n">neighbors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">findNeighbors</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="n">source</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="n">neighbors</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="KademliaProtocol.rpc_find_value"><a class="viewcode-back" href="../../../../cilantro.protocol.overlay.html#cilantro.protocol.overlay.network.KademliaProtocol.rpc_find_value">[docs]</a>    <span class="k">def</span> <span class="nf">rpc_find_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sender</span><span class="p">,</span> <span class="n">public_key</span><span class="p">,</span> <span class="n">nodeid</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">nodeid</span><span class="p">,</span> <span class="n">sender</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">sender</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">public_key</span><span class="o">=</span><span class="n">public_key</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">welcomeIfNewNode</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">storage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rpc_find_node</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">public_key</span><span class="p">,</span> <span class="n">nodeid</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">value</span><span class="p">}</span></div>
+
+<div class="viewcode-block" id="KademliaProtocol.callFindNode"><a class="viewcode-back" href="../../../../cilantro.protocol.overlay.html#cilantro.protocol.overlay.network.KademliaProtocol.callFindNode">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">callFindNode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nodeToAsk</span><span class="p">,</span> <span class="n">nodeToFind</span><span class="p">):</span>
+        <span class="n">address</span> <span class="o">=</span> <span class="p">(</span><span class="n">nodeToAsk</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span> <span class="n">nodeToAsk</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_node</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourceNode</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourceNode</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                                      <span class="n">nodeToFind</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">authenticate</span><span class="p">(</span><span class="n">nodeToAsk</span><span class="p">):</span>
+            <span class="n">nodeToAsk</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleCallResponse</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">nodeToAsk</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="KademliaProtocol.callFindValue"><a class="viewcode-back" href="../../../../cilantro.protocol.overlay.html#cilantro.protocol.overlay.network.KademliaProtocol.callFindValue">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">callFindValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nodeToAsk</span><span class="p">,</span> <span class="n">nodeToFind</span><span class="p">):</span>
+        <span class="n">address</span> <span class="o">=</span> <span class="p">(</span><span class="n">nodeToAsk</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span> <span class="n">nodeToAsk</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_value</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourceNode</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourceNode</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                                       <span class="n">nodeToFind</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">authenticate</span><span class="p">(</span><span class="n">nodeToAsk</span><span class="p">):</span>
+            <span class="n">nodeToAsk</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleCallResponse</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">nodeToAsk</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="KademliaProtocol.callPing"><a class="viewcode-back" href="../../../../cilantro.protocol.overlay.html#cilantro.protocol.overlay.network.KademliaProtocol.callPing">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">callPing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nodeToAsk</span><span class="p">):</span>
+        <span class="n">address</span> <span class="o">=</span> <span class="p">(</span><span class="n">nodeToAsk</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span> <span class="n">nodeToAsk</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">ping</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourceNode</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourceNode</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">authenticate</span><span class="p">(</span><span class="n">nodeToAsk</span><span class="p">):</span>
+            <span class="n">nodeToAsk</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleCallResponse</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">nodeToAsk</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="KademliaProtocol.callStore"><a class="viewcode-back" href="../../../../cilantro.protocol.overlay.html#cilantro.protocol.overlay.network.KademliaProtocol.callStore">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">callStore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nodeToAsk</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">address</span> <span class="o">=</span> <span class="p">(</span><span class="n">nodeToAsk</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span> <span class="n">nodeToAsk</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourceNode</span><span class="o">.</span><span class="n">public_key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourceNode</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">authenticate</span><span class="p">(</span><span class="n">nodeToAsk</span><span class="p">):</span>
+            <span class="n">nodeToAsk</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleCallResponse</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">nodeToAsk</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="KademliaProtocol.welcomeIfNewNode"><a class="viewcode-back" href="../../../../cilantro.protocol.overlay.html#cilantro.protocol.overlay.network.KademliaProtocol.welcomeIfNewNode">[docs]</a>    <span class="k">def</span> <span class="nf">welcomeIfNewNode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given a new node, send it all the keys/values it should be storing,</span>
+<span class="sd">        then add it to the routing table.</span>
+
+<span class="sd">        @param node: A new node that just joined (or that we just found out</span>
+<span class="sd">        about).</span>
+
+<span class="sd">        Process:</span>
+<span class="sd">        For each key in storage, get k closest nodes.  If newnode is closer</span>
+<span class="sd">        than the furtherst in that list, and the node for this network</span>
+<span class="sd">        is closer than the closest in that list, then store the key/value</span>
+<span class="sd">        on the new node (per section 2.5 of the paper)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">node</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;This node is not welcomed.&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">isNewNode</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Skipping node </span><span class="si">{}</span><span class="s2"> that already exists in routing table&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">node</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;never seen </span><span class="si">%s</span><span class="s2"> before, adding to router&quot;</span><span class="p">,</span> <span class="n">node</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">storage</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">keynode</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">digest</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+            <span class="n">neighbors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">findNeighbors</span><span class="p">(</span><span class="n">keynode</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neighbors</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">last</span> <span class="o">=</span> <span class="n">neighbors</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">distanceTo</span><span class="p">(</span><span class="n">keynode</span><span class="p">)</span>
+                <span class="n">newNodeClose</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">distanceTo</span><span class="p">(</span><span class="n">keynode</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">last</span>
+                <span class="n">first</span> <span class="o">=</span> <span class="n">neighbors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">distanceTo</span><span class="p">(</span><span class="n">keynode</span><span class="p">)</span>
+                <span class="n">thisNodeClosest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourceNode</span><span class="o">.</span><span class="n">distanceTo</span><span class="p">(</span><span class="n">keynode</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">first</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">neighbors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="p">(</span><span class="n">newNodeClose</span> <span class="ow">and</span> <span class="n">thisNodeClosest</span><span class="p">):</span>
+                <span class="n">asyncio</span><span class="o">.</span><span class="n">ensure_future</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">callStore</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">addContact</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">connect_to_neighbor</span><span class="p">(</span><span class="n">node</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="KademliaProtocol.handleCallResponse"><a class="viewcode-back" href="../../../../cilantro.protocol.overlay.html#cilantro.protocol.overlay.network.KademliaProtocol.handleCallResponse">[docs]</a>    <span class="k">def</span> <span class="nf">handleCallResponse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If we get a response, add the node to the routing table.  If</span>
+<span class="sd">        we get no response, make sure it&#39;s removed from the routing table.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">node</span><span class="p">:</span>
+                <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;no response from </span><span class="si">%s</span><span class="s2">, removing from router&quot;</span><span class="p">,</span> <span class="n">node</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">router</span><span class="o">.</span><span class="n">removeContact</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;got successful response from </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">node</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">welcomeIfNewNode</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  <li><a href="../../../cilantro.html">cilantro</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

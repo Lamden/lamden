@@ -1,0 +1,191 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.protocol.wallets package &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cilantro-protocol-wallets-package">
+<h1>cilantro.protocol.wallets package<a class="headerlink" href="#cilantro-protocol-wallets-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-cilantro.protocol.wallets.base">
+<span id="cilantro-protocol-wallets-base-module"></span><h2>cilantro.protocol.wallets.base module<a class="headerlink" href="#module-cilantro.protocol.wallets.base" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.protocol.wallets.base.Wallet">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.wallets.base.</code><code class="descname">Wallet</code><a class="reference internal" href="_modules/cilantro/protocol/wallets/base.html#Wallet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.base.Wallet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.base.Wallet.format_to_keys">
+<em class="property">classmethod </em><code class="descname">format_to_keys</code><span class="sig-paren">(</span><em>s</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/base.html#Wallet.format_to_keys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.base.Wallet.format_to_keys" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.base.Wallet.generate_keys">
+<em class="property">classmethod </em><code class="descname">generate_keys</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/base.html#Wallet.generate_keys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.base.Wallet.generate_keys" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.base.Wallet.keys_to_format">
+<em class="property">classmethod </em><code class="descname">keys_to_format</code><span class="sig-paren">(</span><em>s</em>, <em>v</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/base.html#Wallet.keys_to_format"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.base.Wallet.keys_to_format" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.base.Wallet.new">
+<em class="property">classmethod </em><code class="descname">new</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/base.html#Wallet.new"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.base.Wallet.new" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.base.Wallet.sign">
+<em class="property">classmethod </em><code class="descname">sign</code><span class="sig-paren">(</span><em>s</em>, <em>msg</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/base.html#Wallet.sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.base.Wallet.sign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.base.Wallet.verify">
+<em class="property">classmethod </em><code class="descname">verify</code><span class="sig-paren">(</span><em>v</em>, <em>msg</em>, <em>sig</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/base.html#Wallet.verify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.base.Wallet.verify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.wallets.ed25519">
+<span id="cilantro-protocol-wallets-ed25519-module"></span><h2>cilantro.protocol.wallets.ed25519 module<a class="headerlink" href="#module-cilantro.protocol.wallets.ed25519" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.protocol.wallets.ed25519.ED25519Wallet">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.wallets.ed25519.</code><code class="descname">ED25519Wallet</code><span class="sig-paren">(</span><em>s=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/ed25519.html#ED25519Wallet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.ed25519.ED25519Wallet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cilantro.protocol.wallets.base.Wallet" title="cilantro.protocol.wallets.base.Wallet"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.protocol.wallets.base.Wallet</span></code></a></p>
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.ed25519.ED25519Wallet.format_to_keys">
+<em class="property">classmethod </em><code class="descname">format_to_keys</code><span class="sig-paren">(</span><em>s</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/ed25519.html#ED25519Wallet.format_to_keys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.ed25519.ED25519Wallet.format_to_keys" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.ed25519.ED25519Wallet.generate_keys">
+<em class="property">classmethod </em><code class="descname">generate_keys</code><span class="sig-paren">(</span><em>seed=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/ed25519.html#ED25519Wallet.generate_keys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.ed25519.ED25519Wallet.generate_keys" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.ed25519.ED25519Wallet.get_vk">
+<em class="property">classmethod </em><code class="descname">get_vk</code><span class="sig-paren">(</span><em>s</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/ed25519.html#ED25519Wallet.get_vk"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.ed25519.ED25519Wallet.get_vk" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.ed25519.ED25519Wallet.keys_to_format">
+<em class="property">classmethod </em><code class="descname">keys_to_format</code><span class="sig-paren">(</span><em>s</em>, <em>v</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/ed25519.html#ED25519Wallet.keys_to_format"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.ed25519.ED25519Wallet.keys_to_format" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.ed25519.ED25519Wallet.new">
+<em class="property">classmethod </em><code class="descname">new</code><span class="sig-paren">(</span><em>seed=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/ed25519.html#ED25519Wallet.new"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.ed25519.ED25519Wallet.new" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.ed25519.ED25519Wallet.sign">
+<em class="property">classmethod </em><code class="descname">sign</code><span class="sig-paren">(</span><em>s</em>, <em>msg</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/ed25519.html#ED25519Wallet.sign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.ed25519.ED25519Wallet.sign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.wallets.ed25519.ED25519Wallet.verify">
+<em class="property">classmethod </em><code class="descname">verify</code><span class="sig-paren">(</span><em>v</em>, <em>msg</em>, <em>sig</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/wallets/ed25519.html#ED25519Wallet.verify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.wallets.ed25519.ED25519Wallet.verify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.wallets">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cilantro.protocol.wallets" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">cilantro.protocol.wallets package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.wallets.base">cilantro.protocol.wallets.base module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.wallets.ed25519">cilantro.protocol.wallets.ed25519 module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.wallets">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/cilantro.protocol.wallets.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/cilantro.protocol.wallets.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

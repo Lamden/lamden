@@ -1,0 +1,429 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.utils package &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cilantro-utils-package">
+<h1>cilantro.utils package<a class="headerlink" href="#cilantro-utils-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cilantro.utils.test.html">cilantro.utils.test package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.utils.test.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.utils.test.html#module-cilantro.utils.test.god">cilantro.utils.test.god module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.utils.test.html#module-cilantro.utils.test.mp_test">cilantro.utils.test.mp_test module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.utils.test.html#module-cilantro.utils.test.mp_test_case">cilantro.utils.test.mp_test_case module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.utils.test.html#module-cilantro.utils.test.mp_testables">cilantro.utils.test.mp_testables module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.utils.test.html#module-cilantro.utils.test.picklable_mixin">cilantro.utils.test.picklable_mixin module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cilantro.utils.test.html#module-cilantro.utils.test">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-cilantro.utils.hasher">
+<span id="cilantro-utils-hasher-module"></span><h2>cilantro.utils.hasher module<a class="headerlink" href="#module-cilantro.utils.hasher" title="Permalink to this headline">¶</a></h2>
+<p>Utility class for hashing thangs</p>
+<dl class="class">
+<dt id="cilantro.utils.hasher.Hasher">
+<em class="property">class </em><code class="descclassname">cilantro.utils.hasher.</code><code class="descname">Hasher</code><a class="reference internal" href="_modules/cilantro/utils/hasher.html#Hasher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.hasher.Hasher" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Just an enum of hashing algs (print property hashlib.algorithms_available for full list)</p>
+<dl class="class">
+<dt id="cilantro.utils.hasher.Hasher.Alg">
+<em class="property">class </em><code class="descname">Alg</code><a class="reference internal" href="_modules/cilantro/utils/hasher.html#Hasher.Alg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.hasher.Hasher.Alg" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="attribute">
+<dt id="cilantro.utils.hasher.Hasher.Alg.MD5">
+<code class="descname">MD5</code><em class="property"> = 'md5'</em><a class="headerlink" href="#cilantro.utils.hasher.Hasher.Alg.MD5" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.utils.hasher.Hasher.Alg.RIPE">
+<code class="descname">RIPE</code><em class="property"> = 'ripemd160'</em><a class="headerlink" href="#cilantro.utils.hasher.Hasher.Alg.RIPE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.utils.hasher.Hasher.Alg.SHA1">
+<code class="descname">SHA1</code><em class="property"> = 'sha1'</em><a class="headerlink" href="#cilantro.utils.hasher.Hasher.Alg.SHA1" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.utils.hasher.Hasher.Alg.SHA3_256">
+<code class="descname">SHA3_256</code><em class="property"> = 'sha3_256'</em><a class="headerlink" href="#cilantro.utils.hasher.Hasher.Alg.SHA3_256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.utils.hasher.Hasher.Alg.SHAKE_128">
+<code class="descname">SHAKE_128</code><em class="property"> = 'shake_128'</em><a class="headerlink" href="#cilantro.utils.hasher.Hasher.Alg.SHAKE_128" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.utils.hasher.Hasher.Alg.SHAKE_256">
+<code class="descname">SHAKE_256</code><em class="property"> = 'shake_256'</em><a class="headerlink" href="#cilantro.utils.hasher.Hasher.Alg.SHAKE_256" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.utils.hasher.Hasher.DEFAULT_ALG">
+<code class="descname">DEFAULT_ALG</code><em class="property"> = 'sha3_256'</em><a class="headerlink" href="#cilantro.utils.hasher.Hasher.DEFAULT_ALG" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="cilantro.utils.hasher.Hasher.Test">
+<em class="property">class </em><code class="descname">Test</code><a class="reference internal" href="_modules/cilantro/utils/hasher.html#Hasher.Test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.hasher.Hasher.Test" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="attribute">
+<dt id="cilantro.utils.hasher.Hasher.Test.SOME_PROP">
+<code class="descname">SOME_PROP</code><em class="property"> = 1</em><a class="headerlink" href="#cilantro.utils.hasher.Hasher.Test.SOME_PROP" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.utils.hasher.Hasher.hash">
+<em class="property">static </em><code class="descname">hash</code><span class="sig-paren">(</span><em>data</em>, <em>algorithm='sha3_256'</em>, <em>return_bytes=False</em>, <em>digest_len=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/hasher.html#Hasher.hash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.hasher.Hasher.hash" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attempts to automatically cast the data to bytes, and hash it. If digest_len is specified, shake_256 will be
+used (unless algorithm is set to shake_128) to compute a variable size digest.
+:param data: The data to be hashes. This method will do its best to infer its type and cast it to bytes, but
+to be sure it will work you can pass in bytes explicity
+:param algorithm: The algorithm to use (a property of Hasher.Alg)
+:param return_bytes: If true, returns the hash as bytes. Otherwise, returns a hex string
+:type digest_len: <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>
+:param digest_len: The optional length of the digest (as an int). Max is 256.</p>
+<blockquote>
+<div>If this is specified, algorithm must be either Alg.SHAKE_256 or Alg.SHAKE_128</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code></a></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A string containing the hex digest of the resulting hash. If return_bytes is True, then this hex string</td>
+</tr>
+</tbody>
+</table>
+<p>is returned in binary format</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.utils.hasher.Hasher.hash_iterable">
+<em class="property">static </em><code class="descname">hash_iterable</code><span class="sig-paren">(</span><em>iterable</em>, <em>algorithm='sha3_256'</em>, <em>return_bytes=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/hasher.html#Hasher.hash_iterable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.hasher.Hasher.hash_iterable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hashes an iterable by casting all its elements to bytes (if necessary), concatenating them, and then hashing
+the resulting binary
+:param iterable: An iterable to hash. Elements can be homo/heterogeneous.
+:param algorithm: The algorithm to use (a property of Hasher.Alg
+:param return_bytes: If true, the hash will be returned as bytes. Otherwise, a hex string will be returned
+:rtype: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code></a>
+:return: The resulting hash in bytes or as a str</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.utils.lazy_property">
+<span id="cilantro-utils-lazy-property-module"></span><h2>cilantro.utils.lazy_property module<a class="headerlink" href="#module-cilantro.utils.lazy_property" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="cilantro.utils.lazy_property.lazy_func">
+<code class="descclassname">cilantro.utils.lazy_property.</code><code class="descname">lazy_func</code><span class="sig-paren">(</span><em>fn</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/lazy_property.html#lazy_func"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.lazy_property.lazy_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>Slap this decorator on a func and memoize it (assumes func has no input or is called with same input every time)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cilantro.utils.lazy_property.lazy_property">
+<code class="descclassname">cilantro.utils.lazy_property.</code><code class="descname">lazy_property</code><span class="sig-paren">(</span><em>fn</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/lazy_property.html#lazy_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.lazy_property.lazy_property" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator that makes a property lazy-evaluated.
+:param fn: The property function to be decorated</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cilantro.utils.lazy_property.set_lazy_property">
+<code class="descclassname">cilantro.utils.lazy_property.</code><code class="descname">set_lazy_property</code><span class="sig-paren">(</span><em>obj</em>, <em>fn_name</em>, <em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/lazy_property.html#set_lazy_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.lazy_property.set_lazy_property" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to set the value of a lazy property before it is read. In the case that the value is known ahead
+of time, this should be implement to improve performance
+:param obj: The object the lazy property should be set on
+:param fn_name: The name of the property function to be set as a string
+:param value: The value to set the property to</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.utils.lprocess">
+<span id="cilantro-utils-lprocess-module"></span><h2>cilantro.utils.lprocess module<a class="headerlink" href="#module-cilantro.utils.lprocess" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.utils.lprocess.LProcess">
+<em class="property">class </em><code class="descclassname">cilantro.utils.lprocess.</code><code class="descname">LProcess</code><span class="sig-paren">(</span><em>group=None</em>, <em>target=None</em>, <em>name=None</em>, <em>args=()</em>, <em>kwargs={}</em>, <em>*</em>, <em>daemon=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/lprocess.html#LProcess"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.lprocess.LProcess" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">multiprocessing.context.Process</span></code></p>
+<dl class="method">
+<dt id="cilantro.utils.lprocess.LProcess.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/lprocess.html#LProcess.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.lprocess.LProcess.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method to be run in sub-process; can be overridden in sub-class</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.utils.utils">
+<span id="cilantro-utils-utils-module"></span><h2>cilantro.utils.utils module<a class="headerlink" href="#module-cilantro.utils.utils" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.utils.utils.Encoder">
+<em class="property">class </em><code class="descclassname">cilantro.utils.utils.</code><code class="descname">Encoder</code><a class="reference internal" href="_modules/cilantro/utils/utils.html#Encoder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.Encoder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="staticmethod">
+<dt id="cilantro.utils.utils.Encoder.decimal">
+<em class="property">static </em><code class="descname">decimal</code><span class="sig-paren">(</span><em>b</em>, <em>precision=16</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#Encoder.decimal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.Encoder.decimal" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.utils.utils.Encoder.dict">
+<em class="property">static </em><code class="descname">dict</code><span class="sig-paren">(</span><em>d</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#Encoder.dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.Encoder.dict" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#cilantro.utils.utils.Encoder.dict" title="cilantro.utils.utils.Encoder.dict"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.utils.utils.Encoder.encode">
+<em class="property">static </em><code class="descname">encode</code><span class="sig-paren">(</span><em>o</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#Encoder.encode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.Encoder.encode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.utils.utils.Encoder.float">
+<em class="property">static </em><code class="descname">float</code><span class="sig-paren">(</span><em>b</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#Encoder.float"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.Encoder.float" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#cilantro.utils.utils.Encoder.float" title="cilantro.utils.utils.Encoder.float"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.utils.utils.Encoder.hash_tuple">
+<em class="property">static </em><code class="descname">hash_tuple</code><span class="sig-paren">(</span><em>t</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#Encoder.hash_tuple"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.Encoder.hash_tuple" title="Permalink to this definition">¶</a></dt>
+<dd><p>Squashes the tuple into a string, and hashes it using sha3. This can be used
+used for storing transaction tuples as redis keys
+:type t: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a>
+:param t: Any tuple
+:rtype: &lt;staticmethod object at 0x10f6ae160&gt;
+:return: A hex string representing the sha3 hash of the tuple</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.utils.utils.Encoder.int">
+<em class="property">static </em><code class="descname">int</code><span class="sig-paren">(</span><em>b</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#Encoder.int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.Encoder.int" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#cilantro.utils.utils.Encoder.int" title="cilantro.utils.utils.Encoder.int"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.utils.utils.Encoder.str">
+<em class="property">static </em><code class="descname">str</code><span class="sig-paren">(</span><em>b</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#Encoder.str"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.Encoder.str" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#cilantro.utils.utils.Encoder.str" title="cilantro.utils.utils.Encoder.str"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.utils.utils.Encoder.str_from_tuple">
+<em class="property">static </em><code class="descname">str_from_tuple</code><span class="sig-paren">(</span><em>t</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#Encoder.str_from_tuple"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.Encoder.str_from_tuple" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a compact string representation of a tuple, without parenthesis or spaces between commas
+Ex) (1, 2, ‘stu’) -&gt; “1,2,stu”
+:type t: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a>
+:param t: A tuple
+:rtype: &lt;staticmethod object at 0x10f6ae160&gt;
+:return: A compact string representing the tuple</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.utils.utils.Encoder.tuple_from_str">
+<em class="property">static </em><code class="descname">tuple_from_str</code><span class="sig-paren">(</span><em>s</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#Encoder.tuple_from_str"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.Encoder.tuple_from_str" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inverse operation of str_from_tuple. Takes a compact string representing a tuple, and returns the origin tuple
+(casting numeric values back to floats)
+:type s: &lt;staticmethod object at 0x10f6ae160&gt;
+:param s: A compact string representing the tuple
+:rtype: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a>
+:return: A tuple</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="exception">
+<dt id="cilantro.utils.utils.ErrorWithArgs">
+<em class="property">exception </em><code class="descclassname">cilantro.utils.utils.</code><code class="descname">ErrorWithArgs</code><span class="sig-paren">(</span><em>*args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#ErrorWithArgs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.ErrorWithArgs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.utils.utils.IPUtils">
+<em class="property">class </em><code class="descclassname">cilantro.utils.utils.</code><code class="descname">IPUtils</code><a class="reference internal" href="_modules/cilantro/utils/utils.html#IPUtils"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.IPUtils" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="staticmethod">
+<dt id="cilantro.utils.utils.IPUtils.get_ip">
+<em class="property">static </em><code class="descname">get_ip</code><span class="sig-paren">(</span><em>ip_url</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#IPUtils.get_ip"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.IPUtils.get_ip" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.utils.utils.IPUtils.get_vk">
+<em class="property">static </em><code class="descname">get_vk</code><span class="sig-paren">(</span><em>vk_url</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#IPUtils.get_vk"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.IPUtils.get_vk" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.utils.utils.IPUtils.interpolate_url">
+<em class="property">static </em><code class="descname">interpolate_url</code><span class="sig-paren">(</span><em>vk_url</em>, <em>ip_addr</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/utils/utils.html#IPUtils.interpolate_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.utils.utils.IPUtils.interpolate_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replaces the VK inside vk_url and
+:type vk_url: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>
+:param vk_url: A URL of form <a class="reference external" href="tcp://bbef0c...:7070">tcp://bbef0c…:7070</a>
+:type ip_addr: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>
+:param ip_addr: The IP address to replace the url with
+:rtype: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>
+:return: The URL with the VK replaced with ‘ip_addr’</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.utils.utils.IPUtils.url_pattern">
+<code class="descname">url_pattern</code><em class="property"> = re.compile('(tcp|http|udp)\\:\\/\\/([0-9A-F]{64}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})\\:([0-9]{4,5})', re.IGNORECASE)</em><a class="headerlink" href="#cilantro.utils.utils.IPUtils.url_pattern" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.utils">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cilantro.utils" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">cilantro.utils package</a><ul>
+<li><a class="reference internal" href="#subpackages">Subpackages</a></li>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-cilantro.utils.hasher">cilantro.utils.hasher module</a></li>
+<li><a class="reference internal" href="#module-cilantro.utils.lazy_property">cilantro.utils.lazy_property module</a></li>
+<li><a class="reference internal" href="#module-cilantro.utils.lprocess">cilantro.utils.lprocess module</a></li>
+<li><a class="reference internal" href="#module-cilantro.utils.utils">cilantro.utils.utils module</a></li>
+<li><a class="reference internal" href="#module-cilantro.utils">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/cilantro.utils.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/cilantro.utils.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

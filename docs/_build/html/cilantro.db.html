@@ -1,0 +1,336 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.db package &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cilantro-db-package">
+<h1>cilantro.db package<a class="headerlink" href="#cilantro-db-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-cilantro.db.blocks">
+<span id="cilantro-db-blocks-module"></span><h2>cilantro.db.blocks module<a class="headerlink" href="#module-cilantro.db.blocks" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="cilantro.db.blocks.build_blocks_table">
+<code class="descclassname">cilantro.db.blocks.</code><code class="descname">build_blocks_table</code><span class="sig-paren">(</span><em>ex</em>, <em>should_drop=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/blocks.html#build_blocks_table"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.blocks.build_blocks_table" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.db.blocks.seed_blocks">
+<code class="descclassname">cilantro.db.blocks.</code><code class="descname">seed_blocks</code><span class="sig-paren">(</span><em>ex</em>, <em>blocks_table</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/blocks.html#seed_blocks"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.blocks.seed_blocks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.db.blocks.validate_blockchain">
+<code class="descclassname">cilantro.db.blocks.</code><code class="descname">validate_blockchain</code><span class="sig-paren">(</span><em>ex</em>, <em>blocks_table</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/blocks.html#validate_blockchain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.blocks.validate_blockchain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Validates the cryptographic integrity of the block chain. This involves:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>ex</strong> – </li>
+<li><strong>blocks_table</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last">An exception/assertion if</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.db.contracts">
+<span id="cilantro-db-contracts-module"></span><h2>cilantro.db.contracts module<a class="headerlink" href="#module-cilantro.db.contracts" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="cilantro.db.contracts.build_contracts_table">
+<code class="descclassname">cilantro.db.contracts.</code><code class="descname">build_contracts_table</code><span class="sig-paren">(</span><em>ex</em>, <em>should_drop=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/contracts.html#build_contracts_table"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.contracts.build_contracts_table" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.db.contracts.get_contract_exports">
+<code class="descclassname">cilantro.db.contracts.</code><code class="descname">get_contract_exports</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/contracts.html#get_contract_exports"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.contracts.get_contract_exports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.db.contracts.module_loader_fn">
+<code class="descclassname">cilantro.db.contracts.</code><code class="descname">module_loader_fn</code><span class="sig-paren">(</span><em>ex</em>, <em>contract_table</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/contracts.html#module_loader_fn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.contracts.module_loader_fn" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a module loader function used for executing contracts
+:return: A function which takes a single parameter, a contract_id, and returns a tuple of (contract_data, code_str)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cilantro.db.contracts.run_contract">
+<code class="descclassname">cilantro.db.contracts.</code><code class="descname">run_contract</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/contracts.html#run_contract"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.contracts.run_contract" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.db.contracts.seed_contracts">
+<code class="descclassname">cilantro.db.contracts.</code><code class="descname">seed_contracts</code><span class="sig-paren">(</span><em>ex</em>, <em>contracts_table</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/contracts.html#seed_contracts"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.contracts.seed_contracts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Seeds the contracts table with all contracts found in cilantro/contracts</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.db.db">
+<span id="cilantro-db-db-module"></span><h2>cilantro.db.db module<a class="headerlink" href="#module-cilantro.db.db" title="Permalink to this headline">¶</a></h2>
+<p>The db module for delegate is for bootstrapping the in-memory database for delegate nodes to store scratch and
+execute smart contracts</p>
+<p>Functions include:
+-create_db
+-execute (execute smart contract query)</p>
+<p>Classes include:
+-DBSingletonMeta
+-DB (which inherits from DBSingletonMeta)</p>
+<dl class="class">
+<dt id="cilantro.db.db.DB">
+<em class="property">class </em><code class="descclassname">cilantro.db.db.</code><code class="descname">DB</code><span class="sig-paren">(</span><em>db_name</em>, <em>should_reset</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/db.html#DB"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.DB" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.db.db.DBSingletonMeta">
+<em class="property">class </em><code class="descclassname">cilantro.db.db.</code><code class="descname">DBSingletonMeta</code><a class="reference internal" href="_modules/cilantro/db/db.html#DBSingletonMeta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.DBSingletonMeta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">type</span></code></a></p>
+<dl class="attribute">
+<dt id="cilantro.db.db.DBSingletonMeta.log">
+<code class="descname">log</code><em class="property"> = &lt;Logger DBSingleton (DEBUG)&gt;</em><a class="headerlink" href="#cilantro.db.db.DBSingletonMeta.log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.db.db.DBSingletonMeta.set_context">
+<em class="property">classmethod </em><code class="descname">set_context</code><span class="sig-paren">(</span><em>db_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/db.html#DBSingletonMeta.set_context"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.DBSingletonMeta.set_context" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.db.db.ScratchCloningVisitor">
+<em class="property">class </em><code class="descclassname">cilantro.db.db.</code><code class="descname">ScratchCloningVisitor</code><a class="reference internal" href="_modules/cilantro/db/db.html#ScratchCloningVisitor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.ScratchCloningVisitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">sqlalchemy.sql.visitors.CloningVisitor</span></code></p>
+<dl class="method">
+<dt id="cilantro.db.db.ScratchCloningVisitor.replace">
+<code class="descname">replace</code><span class="sig-paren">(</span><em>elem</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/db.html#ScratchCloningVisitor.replace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.ScratchCloningVisitor.replace" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.db.db.ScratchCloningVisitor.traverse">
+<code class="descname">traverse</code><span class="sig-paren">(</span><em>obj</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/db.html#ScratchCloningVisitor.traverse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.ScratchCloningVisitor.traverse" title="Permalink to this definition">¶</a></dt>
+<dd><p>traverse and visit the given expression structure.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.db.db.VKBook">
+<em class="property">class </em><code class="descclassname">cilantro.db.db.</code><code class="descname">VKBook</code><a class="reference internal" href="_modules/cilantro/db/db.html#VKBook"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.VKBook" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="attribute">
+<dt id="cilantro.db.db.VKBook.DELEGATES">
+<code class="descname">DELEGATES</code><em class="property"> = ['3dd5291906dca320ab4032683d97f5aa285b6491e59bba25c958fc4b0de2efc8', 'ab59a17868980051cc846804e49c154829511380c119926549595bf4b48e2f85', '0c998fa1b2675d76372897a7d9b18d4c1fbe285dc0cc795a50e4aad613709baf']</em><a class="headerlink" href="#cilantro.db.db.VKBook.DELEGATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.db.db.VKBook.MASTERNODES">
+<code class="descname">MASTERNODES</code><em class="property"> = ['82540bb5a9c84162214c5540d6e43be49bbfe19cf49685660cab608998a65144']</em><a class="headerlink" href="#cilantro.db.db.VKBook.MASTERNODES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.db.db.VKBook.WITNESSES">
+<code class="descname">WITNESSES</code><em class="property"> = ['0e669c219a29f54c8ba4293a5a3df4371f5694b761a0a50a26bf5b50d5a76974', '50869c7ee2536d65c0e4ef058b50682cac4ba8a5aff36718beac517805e9c2c0']</em><a class="headerlink" href="#cilantro.db.db.VKBook.WITNESSES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.db.db.VKBook.get_all">
+<em class="property">static </em><code class="descname">get_all</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/db.html#VKBook.get_all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.VKBook.get_all" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.db.db.VKBook.get_delegates">
+<em class="property">static </em><code class="descname">get_delegates</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/db.html#VKBook.get_delegates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.VKBook.get_delegates" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.db.db.VKBook.get_masternodes">
+<em class="property">static </em><code class="descname">get_masternodes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/db.html#VKBook.get_masternodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.VKBook.get_masternodes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.db.db.VKBook.get_witnesses">
+<em class="property">static </em><code class="descname">get_witnesses</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/db.html#VKBook.get_witnesses"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.VKBook.get_witnesses" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="cilantro.db.db.contract">
+<code class="descclassname">cilantro.db.db.</code><code class="descname">contract</code><span class="sig-paren">(</span><em>tx_type</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/db.html#contract"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.contract" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.db.db.create_db">
+<code class="descclassname">cilantro.db.db.</code><code class="descname">create_db</code><span class="sig-paren">(</span><em>name</em>, <em>should_reset=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/db.html#create_db"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.create_db" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.db.db.execute">
+<code class="descclassname">cilantro.db.db.</code><code class="descname">execute</code><span class="sig-paren">(</span><em>query</em>, <em>check_scratch=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/db.html#execute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.execute" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.db.db.get_policy_for_node_list">
+<code class="descclassname">cilantro.db.db.</code><code class="descname">get_policy_for_node_list</code><span class="sig-paren">(</span><em>l</em>, <em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/db.html#get_policy_for_node_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.db.get_policy_for_node_list" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.db.tables">
+<span id="cilantro-db-tables-module"></span><h2>cilantro.db.tables module<a class="headerlink" href="#module-cilantro.db.tables" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="cilantro.db.tables.build_tables">
+<code class="descclassname">cilantro.db.tables.</code><code class="descname">build_tables</code><span class="sig-paren">(</span><em>ex</em>, <em>should_drop=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/tables.html#build_tables"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.tables.build_tables" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.db.tables.create_table">
+<code class="descclassname">cilantro.db.tables.</code><code class="descname">create_table</code><span class="sig-paren">(</span><em>ex</em>, <em>table</em>, <em>should_drop</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/tables.html#create_table"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.tables.create_table" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.db.templating">
+<span id="cilantro-db-templating-module"></span><h2>cilantro.db.templating module<a class="headerlink" href="#module-cilantro.db.templating" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.db.templating.ContractTemplate">
+<em class="property">class </em><code class="descclassname">cilantro.db.templating.</code><code class="descname">ContractTemplate</code><a class="reference internal" href="_modules/cilantro/db/templating.html#ContractTemplate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.templating.ContractTemplate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="staticmethod">
+<dt id="cilantro.db.templating.ContractTemplate.interpolate_template">
+<em class="property">static </em><code class="descname">interpolate_template</code><span class="sig-paren">(</span><em>template_name</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/db/templating.html#ContractTemplate.interpolate_template"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.db.templating.ContractTemplate.interpolate_template" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates smart contract code using the templates in contracts/templates. This works by creating placeholder
+variables in the template files using the syntax ‘{__some_arg__}’. Wrapping the variable ‘some_arg’ with a
+curly bracket and double underscore signifies a placeholder for a variable named ‘some_arg’. This function will
+then look for a variable of the same name in kwargs, and replace the placeholder with the specified value. For
+example passing in some_arg=10 will replace all occurrences of ‘{__some_arg__}’ in the template and return
+this interpolated code.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>template_name</strong> – The name of the template to use. Must be the name of the file in cilantro/contracts/templates</td>
+</tr>
+</tbody>
+</table>
+<p>(without the .template extension)
+extension)
+:param kwargs: Arguements to interpolate in the template. See docstring above on how to use this.
+:rtype: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>
+:return: A string representing the template code with kwargs interpolated</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.db">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cilantro.db" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">cilantro.db package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-cilantro.db.blocks">cilantro.db.blocks module</a></li>
+<li><a class="reference internal" href="#module-cilantro.db.contracts">cilantro.db.contracts module</a></li>
+<li><a class="reference internal" href="#module-cilantro.db.db">cilantro.db.db module</a></li>
+<li><a class="reference internal" href="#module-cilantro.db.tables">cilantro.db.tables module</a></li>
+<li><a class="reference internal" href="#module-cilantro.db.templating">cilantro.db.templating module</a></li>
+<li><a class="reference internal" href="#module-cilantro.db">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/cilantro.db.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/cilantro.db.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
