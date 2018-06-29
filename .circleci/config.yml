@@ -6,12 +6,6 @@ jobs:
       - image: circleci/python:3.6.5
         environment:
           PIPENV_VENV_IN_PROJECT: true
-      - run:
-        name: Install Docker Compose
-        command: |
-          curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
-          chmod +x ~/docker-compose
-          sudo mv ~/docker-compose /usr/local/bin/docker-compose
       - image: lamden/cilantro:firsttry
     steps:
       - checkout
@@ -28,6 +22,12 @@ jobs:
           paths:
             - ".venv"
             - "/usr/local/bin"
+      - run:
+        name: Install Docker Compose
+        command: |
+          curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
+          chmod +x ~/docker-compose
+          sudo mv ~/docker-compose /usr/local/bin/docker-compose
       - run:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
