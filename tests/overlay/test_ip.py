@@ -37,13 +37,13 @@ class TestIP(TestCase):
     def test_get_subnets_range(self):
         self.assertEqual(get_subnets_range('1.2.3.4'), (ip_to_decimal('1.2.0.0'), ip_to_decimal('1.3.0.0')))
 
-    def test_get_region_range(self):
-        public_ip = get_public_ip()
-        module_path = dirname(cilantro.__file__)
-        data_path = '{}/protocol/overlay/data'.format(module_path)
-        self.assertEqual(len(get_region_range(public_ip, recalculate=True)), 11)
-        self.assertTrue(exists('{}/world.csv'.format(data_path)), 'does not have the world\'s IPs')
-        self.assertTrue(exists('{}/neighborhood.txt'.format(data_path)), 'did not generate the neighbor\'s IPs file')
+    # def test_get_region_range(self):
+    #     public_ip = get_public_ip()
+    #     module_path = dirname(cilantro.__file__)
+    #     data_path = '{}/protocol/overlay/data'.format(module_path)
+    #     self.assertEqual(len(get_region_range(public_ip, recalculate=True)), 11)
+    #     self.assertTrue(exists('{}/world.csv'.format(data_path)), 'does not have the world\'s IPs')
+    #     self.assertTrue(exists('{}/neighborhood.txt'.format(data_path)), 'did not generate the neighbor\'s IPs file')
 
     def test_get_region_range_no_recalc(self):
         public_ip = get_public_ip()
