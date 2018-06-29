@@ -50,8 +50,8 @@ class MNBaseState(State):
         self.log.warning("Current state not configured to handle block contender")
         self.log.debug('Block: {}'.format(block))
 
-    @input_request(StateRequest)
-    def handle_state_req(self, request: StateRequest):
+    @input_request(StateUpdateRequest)
+    def handle_state_req(self, request: StateUpdateRequest):
         self.log.warning("Current state not configured to handle state requests")
         self.log.debug('Request: {}'.format(request))
 
