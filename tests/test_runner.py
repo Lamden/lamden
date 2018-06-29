@@ -54,11 +54,11 @@ NODE_INTEGRATION_TESTS = [
 ]
 
 TESTGROUPS = [
-    # OVERLAY_TESTS,
-    # PROTOCOL_TESTS,
-    # MESSAGE_TESTS,
-    # CONSTANTS_TESTS,
-    NODE_INTEGRATION_TESTS,
+    OVERLAY_TESTS,
+    PROTOCOL_TESTS,
+    MESSAGE_TESTS,
+    CONSTANTS_TESTS,
+    # NODE_INTEGRATION_TESTS,
 ]
 
 
@@ -131,7 +131,7 @@ if __name__ == '__main__':
     for err in all_errors:
         log.error("failure: " + str(err))
 
-    result_msg = '\n\n' + delim + "\n\n{}\{} tests passed.".format(num_tests - len(all_errors), num_tests)
+    result_msg = '\n\n' + delim + "\n\n{}/{} tests passed.".format(num_tests - len(all_errors), num_tests)
     result_msg += "\n{}/{} test suites passed.".format(num_success, num_suites)
     result_msg += "\nTotal run time: {} seconds".format(total_time)
     result_msg += '\n\n' + delim
