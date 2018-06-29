@@ -4,10 +4,11 @@ from unittest.mock import patch
 from cilantro.protocol.overlay.dht import *
 from cilantro.protocol.overlay.network import *
 from os.path import exists, dirname
-from .utils import genkeys
 from threading import Timer
 from cilantro.utils import ErrorWithArgs
 from cilantro.protocol.overlay.utils import digest
+try: from utils import genkeys
+except: from .utils import genkeys
 
 class TestDHT(TestCase):
     def setUp(self):
