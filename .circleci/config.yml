@@ -6,11 +6,11 @@ jobs:
       - image: circleci/python:3.6.5
         environment:
           PIPENV_VENV_IN_PROJECT: true
-      - run:
-          command: |
-            curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
-            chmod +x ~/docker-compose
-            sudo mv ~/docker-compose /usr/local/bin/docker-compose
+#      - run:
+#          command: |
+#            curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
+#            chmod +x ~/docker-compose
+#            sudo mv ~/docker-compose /usr/local/bin/docker-compose
 #      - image: lamden/cilantro:firsttry
     steps:
       - checkout
@@ -19,9 +19,20 @@ jobs:
       - restore_cache:
           key: cilantro-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
       - run:
+          name: Install Cilantro Requirements
           command: |
             sudo pip install pipenv
             pipenv install
+      - run:
+          name: Install Docker Compose
+          command: |
+            curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
+            chmod +x ~/docker-compose
+            sudo mv ~/docker-compose /usr/local/bin/docker-compose
+      - run:
+          name: Run Docker Daemon
+          command: |
+            dockerd &
       - save_cache:
           key: cilantro-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
           paths:
