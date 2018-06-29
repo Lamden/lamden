@@ -54,11 +54,11 @@ NODE_INTEGRATION_TESTS = [
 ]
 
 TESTGROUPS = [
-    OVERLAY_TESTS,
+    # OVERLAY_TESTS,
     PROTOCOL_TESTS,
     MESSAGE_TESTS,
     CONSTANTS_TESTS,
-    # NODE_INTEGRATION_TESTS,
+    NODE_INTEGRATION_TESTS,
 ]
 
 
@@ -141,9 +141,11 @@ if __name__ == '__main__':
 
     if TEST_FLAG == 'S':
         log.info('\n\nAll tests have finished running and passed - testing complete!\n')
+        overwrite_logger_level(9000)
         sys.exit(0)
     elif TEST_FLAG == 'F':
         log.critical('\n\nSome tests have finished running and there are errors - check log\n')
+        overwrite_logger_level(9000)
         sys.exit(1)
 
     # Overwrite logger level to surpress asyncio's whining
