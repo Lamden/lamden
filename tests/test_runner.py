@@ -2,11 +2,25 @@ import unittest
 import sys
 import time
 from cilantro.logger import get_logger, overwrite_logger_level
+import logging
+
+
+"""
+This file acts as a single point of entry for runner all unit and integration tests. If this file is run with no args,
+all tests are run.
+
+Options to:
+-- run only unit tests
+-- omit long running unit tests
+
+-- run only integration tests
+"""
 
 
 log = get_logger("TestRunner")
 
 delim = '-' * 40
+
 
 PROTOCOL_TESTS = [
     'tests.protocol.structures',
@@ -35,11 +49,16 @@ OVERLAY_TESTS = [
     'tests.overlay'
 ]
 
+NODE_INTEGRATION_TESTS = [
+    'tests.nodes.integration'
+]
+
 TESTGROUPS = [
+    # OVERLAY_TESTS,
     PROTOCOL_TESTS,
     MESSAGE_TESTS,
     CONSTANTS_TESTS,
-    OVERLAY_TESTS
+    # NODE_INTEGRATION_TESTS,
 ]
 
 
@@ -57,6 +76,8 @@ if __name__ == '__main__':
 
     num_suites, num_success, num_tests = 0, 0, 0
 
+    abs_start = time.time()
+
     for group in TESTGROUPS:
         for test in group:
 
@@ -66,17 +87,19 @@ if __name__ == '__main__':
 
             # runner = unittest.TextTestRunner(verbosity=3)
             runner = unittest.TextTestRunner(verbosity=0)
-            log = get_logger("TestRunner")
 
             start = time.time()
+
+            # overwrite_logger_level(logging.WARNING)  # Set log level to warning to suppress most output from tests
             test_result = runner.run(suite)
-            end = time.time()
+            overwrite_logger_level(logging.DEBUG)  # Change logging level back
 
-            run_time = round(end - start, 3)
+            run_time = round(time.time() - start, 3)
             tests_total = suite.countTestCases()
-            suite_failures = len(test_result.errors) + len(test_result.failures)
-            tests_passed = tests_total - suite_failures
+            test_failures = max(len(test_result.errors), len(test_result.failures))
+            tests_passed = tests_total - test_failures
 
+            _l = log.critical
             if test_result.errors:
                 for i in range(len(test_result.errors)):
                     all_errors.append(test_result.errors[i])
@@ -96,28 +119,36 @@ if __name__ == '__main__':
                     TEST_FLAG = 'F'
 
             else:
+                _l = log.info
                 log.info("No errors in {}".format(test))
                 num_success += 1
 
-            log.info('\n\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
-                     .format(test, run_time, tests_passed, tests_total) + delim + '\n')
+            _l('\n\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
+               .format(test, run_time, tests_passed, tests_total) + delim + '\n')
+
+    total_time = round(time.time() - abs_start, 3)
 
     for err in all_errors:
         log.error("failure: " + str(err))
 
-    _l = log.info if TEST_FLAG == 'F' else log.critical
-
-    result_msg = '\n\n' + delim + "\n\n{}\{} tests passed.".format(num_tests - len(all_errors), num_tests)
-    result_msg += "\n{}/{} test suites passed.".format(num_suites, num_success)
+    result_msg = '\n\n' + delim + "\n\n{}/{} tests passed.".format(num_tests - len(all_errors), num_tests)
+    result_msg += "\n{}/{} test suites passed.".format(num_success, num_suites)
+    result_msg += "\nTotal run time: {} seconds".format(total_time)
     result_msg += '\n\n' + delim
+
+    _l = log.info if TEST_FLAG == 'S' else log.error
     _l(result_msg)
 
     if TEST_FLAG == 'S':
-        log.info('\nAll tests have finished running and passed - testing complete!\n')
+        log.info('\n\nAll tests have finished running and passed - testing complete!\n')
+        overwrite_logger_level(9000)
         sys.exit(0)
     elif TEST_FLAG == 'F':
-        log.critical('\nSome tests have finished running and there are errors - check log\n')
+        log.critical('\n\nSome tests have finished running and there are errors - check log\n')
+        overwrite_logger_level(9000)
         sys.exit(1)
 
     # Overwrite logger level to surpress asyncio's whining
-    overwrite_logger_level(9000)
+    # overwrite_logger_level(9000)
+
+

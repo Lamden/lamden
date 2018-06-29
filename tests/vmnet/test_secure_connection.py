@@ -1,4 +1,4 @@
-from vmnet.test.base import BaseNetworkTestCase
+from vmnet.test.base import BaseNetworkTestCase, vmnet_test
 import unittest
 import time
 
@@ -27,6 +27,8 @@ class TestSecureConnection(BaseNetworkTestCase):
     testname = 'secure_connection'
     compose_file = 'cilantro-nodes.yml'
     setuptime = 10
+
+    @vmnet_test(run_webui=True)
     def test_setup_server_clients(self):
         self.execute_python('node_1', run_node, async=True)
         time.sleep(5)

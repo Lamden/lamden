@@ -5,11 +5,18 @@ Functions:
 import logging, coloredlogs
 import os, sys
 
+_LOG_LVL = logging.DEBUG
+
 def get_main_log_path():
     from cilantro import logger
 
     root = logger.__file__  # resolves to '/Users/davishaba/Developer/cilantro/cilantro/logger/__init__.py'
     log_path = '/'.join(root.split('/')[:-3]) + '/logs/cilantro.log'
+
+    # Create log directory if it does not exist
+    log_dir = os.path.dirname(log_path)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
 
     return log_path
 
@@ -76,6 +83,7 @@ def get_logger(name=''):
     )
 
     log = logging.getLogger(name)
+    log.setLevel(_LOG_LVL)
 
     sys.stdout = LoggerWriter(log.debug)
     sys.stderr = LoggerWriter(log.warning)
@@ -85,6 +93,9 @@ def get_logger(name=''):
     return log
 
 def overwrite_logger_level(level):
+    global _LOG_LVL
+    _LOG_LVL = level
+
     for name in logging.Logger.manager.loggerDict.keys():
         log = logging.getLogger(name)
         log.setLevel(level)

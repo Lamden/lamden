@@ -9,9 +9,9 @@ from scipy.stats import poisson, expon
 
 
 if os.getenv('HOST_IP'):
-    MN_URL = "http://{}:8080".format(os.getenv('MASTERNODE', '0.0.0.0'))
+    _MN_URL = "http://{}:8080".format(os.getenv('MASTERNODE', '0.0.0.0'))
 else:
-    MN_URL = "http://0.0.0.0:8080"
+    _MN_URL = "http://0.0.0.0:8080"
 
 STU = ('db929395f15937f023b4682995634b9dc19b1a2b32799f1f67d6f080b742cdb1',
  '324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502')
@@ -23,9 +23,12 @@ FALCON = ('bac886e7c6e4a9fae572e170adb333b27b590157409e62d88cc0c7bc9a7b3631',
  'ed19061921c593a9d16875ca660b57aa5e45c811c8cf7af0cfcbd23faa52cbcd')
 CARL = ('cf67a180f9578afa5fd704cea39b450c1542755d73614f6a4f41b627190b83bb',
  'cb9bfd4b57b243248796e9eb90bc4f0053d78f06ce68573e0fdca422f54bb0d2')
+ASHLEY = ('b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668',
+ 'c1f845ad8967b93092d59e4ef56aef3eba49c33079119b9c856a5354e9ccdf84')
+ETHAN = ('209c16b81dc6bee16aed6a86b59c5bbf26d3c4852c43a7e85c63e021e3c09a8e',
+ '4e7cbbd7bd458050d3f93a8c3c5018288940204709fdae7d2a898a11e885ff87')
 
-
-ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL]
+ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL, ASHLEY, ETHAN]
 
 
 class God:
@@ -33,7 +36,14 @@ class God:
     _DEFAULT_SK = '6b73b06b9faee35527f034fb1809e4fc94915a29568a708fd972fcfba20d8555'
     _DEFAULT_VK = '8ae53bad73b46a746384918dd41a9bed1410eda6d1a5fb57ec9e1b92748c6511'
 
+    # For MP tests
+    node_map = None
+    testers = []
+
     log = get_logger("GOD")
+
+    # Masternode URL
+    mn_url = _MN_URL
 
     def __init__(self, loop=None):
         self.log = get_logger("GOD")
@@ -42,7 +52,7 @@ class God:
         asyncio.set_event_loop(self.loop)
 
         mock_router = MagicMock()
-        self.interface = ReactorInterface(router=mock_router, loop=self.loop, verifying_key=God._DEFAULT_VK)
+        self.interface = ReactorInterface(router=mock_router, loop=self.loop, signing_key=God._DEFAULT_SK)
 
         # a dict of composer_sk to composer object
         self.composers = {}
@@ -56,6 +66,12 @@ class God:
             c = Composer(interface=self.interface, signing_key=signing_key, name='God-Composer-{}'.format(signing_key[:4]))
             self.composers[signing_key] = c
             return c
+
+    @classmethod
+    def set_mn_ip(cls, ip_addr):
+        url = "http://{}:8080".format(ip_addr)
+        cls.log.debug("Setting masternode URL to {}".format(url))
+        cls.mn_url = url
 
     @classmethod
     def create_std_tx(cls, sender: tuple, receiver: tuple, amount: int) -> StandardTransaction:
@@ -77,8 +93,8 @@ class God:
 
     @classmethod
     def send_tx(cls, tx: TransactionBase):
-        r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
-        cls.log.info("POST request to MN at URL {} has status code: {}".format(MN_URL, r.status_code))
+        r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
+        cls.log.info("POST request to MN at URL {} has status code: {}".format(cls.mn_url, r.status_code))
 
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
@@ -110,9 +126,8 @@ class God:
             tx = gen_func()
 
             cls.log.debug("sending transaction {}".format(tx))
-            r = requests.post(MN_URL, data=TransactionContainer.create(tx).serialize())
+            r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
             cls.log.debug("POST request got status code {}".format(r.status_code))
-
 
     @classmethod
     def random_std_tx(cls):

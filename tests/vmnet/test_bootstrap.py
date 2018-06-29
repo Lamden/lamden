@@ -1,12 +1,17 @@
 from vmnet.test.base import *
 import unittest, time, random
-import vmnet
+import vmnet, cilantro
+from os.path import dirname
+
+cilantro_path = dirname(dirname(cilantro.__path__[0]))
+# cilantro_path = cilantro.__path__[0]
 
 
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
         return fn(*args, **kwargs)
     return wrapper
+
 
 def run_mn():
     from cilantro.logger import get_logger
@@ -66,11 +71,15 @@ def start_mysqld():
 class TestBootstrap(BaseNetworkTestCase):
     testname = 'bootstrap'
     setuptime = 10
-    compose_file = 'cilantro-bootstrap.yml'
+    compose_file = '{}/cilantro/tests/vmnet/compose_files/cilantro-bootstrap.yml'.format(cilantro_path)
+    local_path = cilantro_path
+    docker_dir = '{}/cilantro/tests/vmnet/docker_dir'.format(cilantro_path)
+    logdir = '{}/cilantro/logs'.format(cilantro_path)
 
     NUM_WITNESS = 2
     NUM_DELEGATES = 3
 
+    @vmnet_test(run_webui=True)
     def test_bootstrap(self):
         # start mysql in all nodes
         for node_name in ['masternode'] + self.groups['witness'] + self.groups['delegate']:

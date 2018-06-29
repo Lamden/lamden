@@ -30,6 +30,11 @@ Cython = "==0.28.1"
 PyMySQL = "==0.8.0"
 PyNaCl = "==1.2.1"
 SQLAlchemy = "==1.2.6"
+coverage = "*"
+vmnet = "*"
+ipython = "==6.4.0"
+numpy = "*"
+scipy = "*"
 
 [dev-packages]
 

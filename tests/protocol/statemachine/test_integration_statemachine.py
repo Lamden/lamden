@@ -25,6 +25,7 @@ class IntegrationTestState(MPTestCase):
             # Assert that he got out of Factorio state
             assert not sm.did_timeout
             assert sm.state != FactorioState
+
             # Assert that he went into lift state with the specified args
             assert sm.state == LiftState
             assert sm.state.current_lift == LiftState.DEADLIFT
