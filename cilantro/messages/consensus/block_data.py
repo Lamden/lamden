@@ -1,20 +1,21 @@
 from cilantro.messages import MessageBase
 from cilantro.protocol.structures import MerkleTree
 
-"""
-BlockData requests/replies are used to transfer transactions from a block between masternode/delegate. 
 
-When Masternode is attempting to publish a new block, it creates a BlockDataRequest to request a single transaction from
-a delegate by specifying the transaction's hash.
-
-A delegate receives a BlockDataRequest, and creates a BlockDataReply including the binary for the specified transaction.
-
-TODO -- switch this class to use capnp
-"""
 
 
 class BlockDataRequest(MessageBase):
-    """Masternode sends block data request with specific hash as argument"""
+    """
+    BlockData requests/replies are used to transfer transactions from a block between masternode/delegate.
+
+    When Masternode is attempting to publish a new block, it creates a BlockDataRequest to request a single transaction from
+    a delegate by specifying the transaction's hash.
+
+    A delegate receives a BlockDataRequest, and creates a BlockDataReply including the binary for the specified transaction.
+
+    TODO -- switch this class to use capnp
+    """
+
     def validate(self):
         pass
 
@@ -38,16 +39,15 @@ class BlockDataRequest(MessageBase):
         return self._data
 
 
-"""
-BlockDataReply acts as a holder for an individual transaction. They are requested from delegates by Masternodes when
-a Masternode needs to retrieve the block data associated with a BlockContender
-"""
+
 
 
 class BlockDataReply(MessageBase):
     """
-    Underlying _data is just a binary blob storing a serialized transaction
+    BlockDataReply acts as a holder for an individual transaction. They are requested from delegates by Masternodes when
+    a Masternode needs to retrieve the block data associated with a BlockContender
     """
+
     def validate(self):
         pass
 
