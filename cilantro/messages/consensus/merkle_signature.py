@@ -4,27 +4,23 @@ from cilantro.messages.utils import validate_hex
 import json
 
 
-"""
-MerkleSignatures are exchanged among delegates during consensus to verify if they all have the same data.
-When a delegate starts consensus, it builds a Merkle tree with its entire transaction queue (all transaction that would
-be in the proposed block), signs the hash of the merkle tree, and creates a MerkleSignature with the resulting signature
-as well as the delegates id and a timestamp.
-
-Other delegates receive this MerkleSignature, and attempt to verify it using the sender's verifying key and the receiving
-delegate's own merkle hash (which should be the same as the sender's merkle hash if their blocks have the same 
-transactions).
-
-Once a delegate has enough signature, it creates a BlockContender and sends it to Masternode. The BlockContender
-contains the merkle tree as well as a list of these collected MerkleSignatures. 
-
-TODO -- switch this class to use capnp
-"""
-
-
 class MerkleSignature(MessageBase):
     """
-    _data is a dict with keys: 'signature', 'timestamp', 'sender'
+    MerkleSignatures are exchanged among delegates during consensus to verify if they all have the same data.
+    When a delegate starts consensus, it builds a Merkle tree with its entire transaction queue (all transaction that would
+    be in the proposed block), signs the hash of the merkle tree, and creates a MerkleSignature with the resulting signature
+    as well as the delegates id and a timestamp.
+
+    Other delegates receive this MerkleSignature, and attempt to verify it using the sender's verifying key and the receiving
+    delegate's own merkle hash (which should be the same as the sender's merkle hash if their blocks have the same
+    transactions).
+
+    Once a delegate has enough signature, it creates a BlockContender and sends it to Masternode. The BlockContender
+    contains the merkle tree as well as a list of these collected MerkleSignatures.
+
+    TODO -- switch this class to use capnp
     """
+
     SIG = 'signature'
     TS = 'timestamp'
     SENDER = 'sender'
@@ -62,13 +58,22 @@ class MerkleSignature(MessageBase):
         return json.loads(data.decode())
 
     @property
-    def signature(self):
+    def signature(self) -> str:
+        """
+        The cryptographic signature, represented as 128 character hex string.
+        """
         return self._data[self.SIG]
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> str:
+        """
+        The time the signature was created, currently stored as an unix epoch string.
+        """
         return self._data[self.TS]
 
     @property
-    def sender(self):
+    def sender(self) -> str:
+        """
+        The verifying key of the signer, represented as a 64 character hex string
+        """
         return self._data[self.SENDER]

@@ -1,0 +1,229 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.utils.test.god &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cilantro.utils.test.god</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">cilantro.messages</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">from</span> <span class="nn">cilantro.protocol.reactor</span> <span class="k">import</span> <span class="n">ReactorInterface</span>
+<span class="kn">from</span> <span class="nn">cilantro.protocol.transport</span> <span class="k">import</span> <span class="n">Composer</span>
+<span class="kn">from</span> <span class="nn">unittest.mock</span> <span class="k">import</span> <span class="n">MagicMock</span>
+<span class="kn">from</span> <span class="nn">cilantro.logger</span> <span class="k">import</span> <span class="n">get_logger</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">requests</span><span class="o">,</span> <span class="nn">time</span><span class="o">,</span> <span class="nn">random</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="k">import</span> <span class="n">poisson</span><span class="p">,</span> <span class="n">expon</span>
+
+
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;HOST_IP&#39;</span><span class="p">):</span>
+    <span class="n">_MN_URL</span> <span class="o">=</span> <span class="s2">&quot;http://</span><span class="si">{}</span><span class="s2">:8080&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;MASTERNODE&#39;</span><span class="p">,</span> <span class="s1">&#39;0.0.0.0&#39;</span><span class="p">))</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">_MN_URL</span> <span class="o">=</span> <span class="s2">&quot;http://0.0.0.0:8080&quot;</span>
+
+<span class="n">STU</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;db929395f15937f023b4682995634b9dc19b1a2b32799f1f67d6f080b742cdb1&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502&#39;</span><span class="p">)</span>
+<span class="n">DAVIS</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;21fee38471799f8c2989dd81c6d46f6c2e2db6caf63efa98a093fcba064a4b62&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;a103715914a7aae8dd8fddba945ab63a169dfe6e37f79b4a58bcf85bfd681694&#39;</span><span class="p">)</span>
+<span class="n">DENTON</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;9decc7f7f0b5a4fc87ab5ce700e2d6c5d51b7565923d50ea13cbf78031bb3acf&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;20da05fdba92449732b3871cc542a058075446fedb41430ee882e99f9091cc4d&#39;</span><span class="p">)</span>
+<span class="n">FALCON</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;bac886e7c6e4a9fae572e170adb333b27b590157409e62d88cc0c7bc9a7b3631&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;ed19061921c593a9d16875ca660b57aa5e45c811c8cf7af0cfcbd23faa52cbcd&#39;</span><span class="p">)</span>
+<span class="n">CARL</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;cf67a180f9578afa5fd704cea39b450c1542755d73614f6a4f41b627190b83bb&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;cb9bfd4b57b243248796e9eb90bc4f0053d78f06ce68573e0fdca422f54bb0d2&#39;</span><span class="p">)</span>
+<span class="n">ASHLEY</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;c1f845ad8967b93092d59e4ef56aef3eba49c33079119b9c856a5354e9ccdf84&#39;</span><span class="p">)</span>
+<span class="n">ETHAN</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;209c16b81dc6bee16aed6a86b59c5bbf26d3c4852c43a7e85c63e021e3c09a8e&#39;</span><span class="p">,</span>
+ <span class="s1">&#39;4e7cbbd7bd458050d3f93a8c3c5018288940204709fdae7d2a898a11e885ff87&#39;</span><span class="p">)</span>
+
+<span class="n">ALL_WALLETS</span> <span class="o">=</span> <span class="p">[</span><span class="n">STU</span><span class="p">,</span> <span class="n">DAVIS</span><span class="p">,</span> <span class="n">DENTON</span><span class="p">,</span> <span class="n">FALCON</span><span class="p">,</span> <span class="n">CARL</span><span class="p">,</span> <span class="n">ASHLEY</span><span class="p">,</span> <span class="n">ETHAN</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="God"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.god.God">[docs]</a><span class="k">class</span> <span class="nc">God</span><span class="p">:</span>
+
+    <span class="n">_DEFAULT_SK</span> <span class="o">=</span> <span class="s1">&#39;6b73b06b9faee35527f034fb1809e4fc94915a29568a708fd972fcfba20d8555&#39;</span>
+    <span class="n">_DEFAULT_VK</span> <span class="o">=</span> <span class="s1">&#39;8ae53bad73b46a746384918dd41a9bed1410eda6d1a5fb57ec9e1b92748c6511&#39;</span>
+
+    <span class="c1"># For MP tests</span>
+    <span class="n">node_map</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">testers</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">log</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;GOD&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Masternode URL</span>
+    <span class="n">mn_url</span> <span class="o">=</span> <span class="n">_MN_URL</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;GOD&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">loop</span> <span class="o">=</span> <span class="n">loop</span> <span class="ow">or</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">new_event_loop</span><span class="p">()</span>
+        <span class="n">asyncio</span><span class="o">.</span><span class="n">set_event_loop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
+
+        <span class="n">mock_router</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface</span> <span class="o">=</span> <span class="n">ReactorInterface</span><span class="p">(</span><span class="n">router</span><span class="o">=</span><span class="n">mock_router</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">,</span> <span class="n">signing_key</span><span class="o">=</span><span class="n">God</span><span class="o">.</span><span class="n">_DEFAULT_SK</span><span class="p">)</span>
+
+        <span class="c1"># a dict of composer_sk to composer object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">composers</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">_get_or_create_composer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">signing_key</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">signing_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">composers</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Existing Composer object found for signing key </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">signing_key</span><span class="p">))</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">composers</span><span class="p">[</span><span class="n">signing_key</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating new Composer object for signing key </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">signing_key</span><span class="p">))</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">Composer</span><span class="p">(</span><span class="n">interface</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">,</span> <span class="n">signing_key</span><span class="o">=</span><span class="n">signing_key</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;God-Composer-</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">signing_key</span><span class="p">[:</span><span class="mi">4</span><span class="p">]))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">composers</span><span class="p">[</span><span class="n">signing_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span>
+            <span class="k">return</span> <span class="n">c</span>
+
+<div class="viewcode-block" id="God.set_mn_ip"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.god.God.set_mn_ip">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">set_mn_ip</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">ip_addr</span><span class="p">):</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;http://</span><span class="si">{}</span><span class="s2">:8080&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ip_addr</span><span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Setting masternode URL to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">mn_url</span> <span class="o">=</span> <span class="n">url</span></div>
+
+<div class="viewcode-block" id="God.create_std_tx"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.god.God.create_std_tx">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">create_std_tx</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">sender</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">receiver</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">amount</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StandardTransaction</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">receiver</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">tuple</span><span class="p">:</span>
+            <span class="n">receiver</span> <span class="o">=</span> <span class="n">receiver</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">StandardTransactionBuilder</span><span class="o">.</span><span class="n">create_tx</span><span class="p">(</span><span class="n">sender</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">sender</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">receiver</span><span class="p">,</span> <span class="n">amount</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="God.send_std_tx"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.god.God.send_std_tx">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">send_std_tx</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">sender</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">receiver</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">amount</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">tx</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">create_std_tx</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">receiver</span><span class="p">,</span> <span class="n">amount</span><span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">send_tx</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="God.send_contract_submission"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.god.God.send_contract_submission">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">send_contract_submission</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">sender_id</span><span class="p">,</span> <span class="n">contract_code</span><span class="p">):</span>
+        <span class="n">contract_submission</span> <span class="o">=</span> <span class="n">ContractSubmission</span><span class="o">.</span><span class="n">user_create</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="n">sender_id</span><span class="p">,</span> <span class="n">contract_code</span><span class="o">=</span><span class="n">contract_code</span><span class="p">)</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">MN_URL</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">TransactionContainer</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">contract_submission</span><span class="p">)</span><span class="o">.</span><span class="n">serialize</span><span class="p">())</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;POST contract submission request to MN at url </span><span class="si">{}</span><span class="s2"> got status code </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">MN_URL</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="God.send_tx"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.god.God.send_tx">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">send_tx</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">tx</span><span class="p">:</span> <span class="n">TransactionBase</span><span class="p">):</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">mn_url</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">TransactionContainer</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span><span class="o">.</span><span class="n">serialize</span><span class="p">())</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;POST request to MN at URL </span><span class="si">{}</span><span class="s2"> has status code: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">mn_url</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">status_code</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="God.pump_it"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.god.God.pump_it">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">pump_it</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">rate</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">gen_func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_poisson</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This func blocks.</span>
+<span class="sd">        :param rate:</span>
+<span class="sd">        :param gen_func:</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">gen_func</span><span class="p">:</span>
+            <span class="n">gen_func</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">random_std_tx</span>
+
+        <span class="k">if</span> <span class="n">use_poisson</span><span class="p">:</span>
+            <span class="n">rvs_func</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">expon</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">rate</span><span class="p">)</span> <span class="o">-</span> <span class="n">rate</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rvs_func</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="mi">1</span><span class="o">/</span><span class="n">rate</span>
+
+        <span class="k">assert</span> <span class="n">callable</span><span class="p">(</span><span class="n">gen_func</span><span class="p">),</span> <span class="s2">&quot;Expected a callable for &#39;gen_func&#39; but got </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">gen_func</span><span class="p">)</span>
+
+        <span class="bp">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting to pump transactions at an average of </span><span class="si">{}</span><span class="s2"> transactions per second&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">rate</span><span class="p">))</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using generator func </span><span class="si">{}</span><span class="s2">, with use_possion=</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">gen_func</span><span class="p">,</span> <span class="n">use_poisson</span><span class="p">))</span>
+
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">wait</span> <span class="o">=</span> <span class="n">rvs_func</span><span class="p">()</span>
+
+            <span class="bp">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Sending next transaction in </span><span class="si">{}</span><span class="s2"> seconds&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">wait</span><span class="p">))</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">wait</span><span class="p">)</span>
+
+            <span class="n">tx</span> <span class="o">=</span> <span class="n">gen_func</span><span class="p">()</span>
+
+            <span class="bp">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;sending transaction </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tx</span><span class="p">))</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">mn_url</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">TransactionContainer</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span><span class="o">.</span><span class="n">serialize</span><span class="p">())</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;POST request got status code </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">status_code</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="God.random_std_tx"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.god.God.random_std_tx">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">random_std_tx</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="n">sender</span><span class="p">,</span> <span class="n">receiver</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">ALL_WALLETS</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">amount</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1260</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">create_std_tx</span><span class="p">(</span><span class="n">sender</span><span class="o">=</span><span class="n">sender</span><span class="p">,</span> <span class="n">receiver</span><span class="o">=</span><span class="n">receiver</span><span class="p">,</span> <span class="n">amount</span><span class="o">=</span><span class="n">amount</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="God.send_block_contender"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.god.God.send_block_contender">[docs]</a>    <span class="k">def</span> <span class="nf">send_block_contender</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">bc</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="God.send_merkle_sig"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.god.God.send_merkle_sig">[docs]</a>    <span class="k">def</span> <span class="nf">send_merkle_sig</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">merkle_sig</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="God.send_status_request"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.god.God.send_status_request">[docs]</a>    <span class="k">def</span> <span class="nf">send_status_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">status_req</span><span class="p">):</span>
+        <span class="k">pass</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  <li><a href="../../../cilantro.html">cilantro</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

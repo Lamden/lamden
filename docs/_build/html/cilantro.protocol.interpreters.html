@@ -1,0 +1,259 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.protocol.interpreters package &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cilantro-protocol-interpreters-package">
+<h1>cilantro.protocol.interpreters package<a class="headerlink" href="#cilantro-protocol-interpreters-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-cilantro.protocol.interpreters.base">
+<span id="cilantro-protocol-interpreters-base-module"></span><h2>cilantro.protocol.interpreters.base module<a class="headerlink" href="#module-cilantro.protocol.interpreters.base" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.protocol.interpreters.base.BaseInterpreter">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.interpreters.base.</code><code class="descname">BaseInterpreter</code><a class="reference internal" href="_modules/cilantro/protocol/interpreters/base.html#BaseInterpreter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.base.BaseInterpreter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="method">
+<dt id="cilantro.protocol.interpreters.base.BaseInterpreter.flush">
+<code class="descname">flush</code><span class="sig-paren">(</span><em>update_state=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/base.html#BaseInterpreter.flush"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.base.BaseInterpreter.flush" title="Permalink to this definition">¶</a></dt>
+<dd><p>Flushes internal queue and resets scratch. If update_state is True, then this also interprets its transactions
+against state</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cilantro.protocol.interpreters.base.BaseInterpreter.interpret">
+<code class="descname">interpret</code><span class="sig-paren">(</span><em>obj</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/base.html#BaseInterpreter.interpret"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.base.BaseInterpreter.interpret" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.interpreters.base.BaseInterpreter.queue_binary">
+<code class="descname">queue_binary</code><a class="headerlink" href="#cilantro.protocol.interpreters.base.BaseInterpreter.queue_binary" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.interpreters.base.BaseInterpreter.queue_size">
+<code class="descname">queue_size</code><a class="headerlink" href="#cilantro.protocol.interpreters.base.BaseInterpreter.queue_size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.interpreters.queries">
+<span id="cilantro-protocol-interpreters-queries-module"></span><h2>cilantro.protocol.interpreters.queries module<a class="headerlink" href="#module-cilantro.protocol.interpreters.queries" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="cilantro.protocol.interpreters.queries.process_election_tx">
+<code class="descclassname">cilantro.protocol.interpreters.queries.</code><code class="descname">process_election_tx</code><span class="sig-paren">(</span><em>tx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/queries.html#process_election_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.queries.process_election_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.interpreters.queries.process_redeem_tx">
+<code class="descclassname">cilantro.protocol.interpreters.queries.</code><code class="descname">process_redeem_tx</code><span class="sig-paren">(</span><em>tx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/queries.html#process_redeem_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.queries.process_redeem_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.interpreters.queries.process_stamp_tx">
+<code class="descclassname">cilantro.protocol.interpreters.queries.</code><code class="descname">process_stamp_tx</code><span class="sig-paren">(</span><em>tx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/queries.html#process_stamp_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.queries.process_stamp_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.interpreters.queries.process_std_tx">
+<code class="descclassname">cilantro.protocol.interpreters.queries.</code><code class="descname">process_std_tx</code><span class="sig-paren">(</span><em>tx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/queries.html#process_std_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.queries.process_std_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.interpreters.queries.process_swap_tx">
+<code class="descclassname">cilantro.protocol.interpreters.queries.</code><code class="descname">process_swap_tx</code><span class="sig-paren">(</span><em>tx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/queries.html#process_swap_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.queries.process_swap_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.interpreters.queries.process_vote_tx">
+<code class="descclassname">cilantro.protocol.interpreters.queries.</code><code class="descname">process_vote_tx</code><span class="sig-paren">(</span><em>tx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/queries.html#process_vote_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.queries.process_vote_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.interpreters.seneca">
+<span id="cilantro-protocol-interpreters-seneca-module"></span><h2>cilantro.protocol.interpreters.seneca module<a class="headerlink" href="#module-cilantro.protocol.interpreters.seneca" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.protocol.interpreters.seneca.SenecaInterpreter">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.interpreters.seneca.</code><code class="descname">SenecaInterpreter</code><span class="sig-paren">(</span><em>reset_db=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/seneca.html#SenecaInterpreter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.seneca.SenecaInterpreter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cilantro.protocol.interpreters.base.BaseInterpreter" title="cilantro.protocol.interpreters.base.BaseInterpreter"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.protocol.interpreters.base.BaseInterpreter</span></code></a></p>
+<dl class="method">
+<dt id="cilantro.protocol.interpreters.seneca.SenecaInterpreter.flush">
+<code class="descname">flush</code><span class="sig-paren">(</span><em>update_state=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/seneca.html#SenecaInterpreter.flush"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.seneca.SenecaInterpreter.flush" title="Permalink to this definition">¶</a></dt>
+<dd><p>Flushes internal queue and resets scratch. If update_state is True, then this also interprets its transactions
+against state</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cilantro.protocol.interpreters.seneca.SenecaInterpreter.get_contract_code">
+<code class="descname">get_contract_code</code><span class="sig-paren">(</span><em>contract_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/seneca.html#SenecaInterpreter.get_contract_code"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.seneca.SenecaInterpreter.get_contract_code" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.protocol.interpreters.seneca.SenecaInterpreter.interpret">
+<code class="descname">interpret</code><span class="sig-paren">(</span><em>obj</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/seneca.html#SenecaInterpreter.interpret"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.seneca.SenecaInterpreter.interpret" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.interpreters.seneca.SenecaInterpreter.queue_binary">
+<code class="descname">queue_binary</code><a class="headerlink" href="#cilantro.protocol.interpreters.seneca.SenecaInterpreter.queue_binary" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.interpreters.vanilla">
+<span id="cilantro-protocol-interpreters-vanilla-module"></span><h2>cilantro.protocol.interpreters.vanilla module<a class="headerlink" href="#module-cilantro.protocol.interpreters.vanilla" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.protocol.interpreters.vanilla.VanillaInterpreter">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.interpreters.vanilla.</code><code class="descname">VanillaInterpreter</code><a class="reference internal" href="_modules/cilantro/protocol/interpreters/vanilla.html#VanillaInterpreter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.vanilla.VanillaInterpreter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cilantro.protocol.interpreters.base.BaseInterpreter" title="cilantro.protocol.interpreters.base.BaseInterpreter"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.protocol.interpreters.base.BaseInterpreter</span></code></a></p>
+<p>A basic interpreter capable of interpreting transaction objects and performing the necessary db updates, or raising
+an exception in the case that the transactions are infeasible
+Currently supports:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Standard transactions</li>
+<li>Vote transactions</li>
+<li>Stamp transactions</li>
+<li>Swap transactions</li>
+<li>Redeem transactions</li>
+</ul>
+</div></blockquote>
+<dl class="method">
+<dt id="cilantro.protocol.interpreters.vanilla.VanillaInterpreter.flush">
+<code class="descname">flush</code><span class="sig-paren">(</span><em>update_state=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/vanilla.html#VanillaInterpreter.flush"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.vanilla.VanillaInterpreter.flush" title="Permalink to this definition">¶</a></dt>
+<dd><p>Flushes internal queue and resets scratch. If update_state is True, then this also interprets its transactions
+against state</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cilantro.protocol.interpreters.vanilla.VanillaInterpreter.interpret">
+<code class="descname">interpret</code><span class="sig-paren">(</span><em>tx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/interpreters/vanilla.html#VanillaInterpreter.interpret"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.interpreters.vanilla.VanillaInterpreter.interpret" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interprets the transaction, and updates scratch/balance state as necessary.
+If any validation fails (i.e. insufficient balance), this method will raise an exception
+:param tx: A TestNetTransaction object to interpret</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.interpreters.vanilla.VanillaInterpreter.queue_binary">
+<code class="descname">queue_binary</code><a class="headerlink" href="#cilantro.protocol.interpreters.vanilla.VanillaInterpreter.queue_binary" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.interpreters.vanilla.VanillaInterpreter.queue_size">
+<code class="descname">queue_size</code><a class="headerlink" href="#cilantro.protocol.interpreters.vanilla.VanillaInterpreter.queue_size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.interpreters">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cilantro.protocol.interpreters" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">cilantro.protocol.interpreters package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.interpreters.base">cilantro.protocol.interpreters.base module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.interpreters.queries">cilantro.protocol.interpreters.queries module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.interpreters.seneca">cilantro.protocol.interpreters.seneca module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.interpreters.vanilla">cilantro.protocol.interpreters.vanilla module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.interpreters">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/cilantro.protocol.interpreters.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/cilantro.protocol.interpreters.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,253 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.protocol.structures package &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cilantro-protocol-structures-package">
+<h1>cilantro.protocol.structures package<a class="headerlink" href="#cilantro-protocol-structures-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-cilantro.protocol.structures.bidict">
+<span id="cilantro-protocol-structures-bidict-module"></span><h2>cilantro.protocol.structures.bidict module<a class="headerlink" href="#module-cilantro.protocol.structures.bidict" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.protocol.structures.bidict.Bidict">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.structures.bidict.</code><code class="descname">Bidict</code><a class="reference internal" href="_modules/cilantro/protocol/structures/bidict.html#Bidict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.bidict.Bidict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a></p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.structures.capped_containers">
+<span id="cilantro-protocol-structures-capped-containers-module"></span><h2>cilantro.protocol.structures.capped_containers module<a class="headerlink" href="#module-cilantro.protocol.structures.capped_containers" title="Permalink to this headline">¶</a></h2>
+<p>Here we provide augmented data structures, namely a set and a dict, which have an upper bound or ‘cap’ on the number of
+elements they can contain. Once this cap is reached, elements are deleted FIFO.</p>
+<p>From the outside, these containers have exactly the same API as their parents.</p>
+<dl class="class">
+<dt id="cilantro.protocol.structures.capped_containers.CappedDict">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.structures.capped_containers.</code><code class="descname">CappedDict</code><span class="sig-paren">(</span><em>max_size=65536</em>, <em>name=''</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/capped_containers.html#CappedDict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.capped_containers.CappedDict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/collections.html#collections.OrderedDict" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">collections.OrderedDict</span></code></a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.protocol.structures.capped_containers.CappedSet">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.structures.capped_containers.</code><code class="descname">CappedSet</code><span class="sig-paren">(</span><em>max_size=65536</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/capped_containers.html#CappedSet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.capped_containers.CappedSet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#set" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">set</span></code></a></p>
+<dl class="method">
+<dt id="cilantro.protocol.structures.capped_containers.CappedSet.add">
+<code class="descname">add</code><span class="sig-paren">(</span><em>element</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/capped_containers.html#CappedSet.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.capped_containers.CappedSet.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an element to a set.</p>
+<p>This has no effect if the element is already present.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.structures.envelope_auth">
+<span id="cilantro-protocol-structures-envelope-auth-module"></span><h2>cilantro.protocol.structures.envelope_auth module<a class="headerlink" href="#module-cilantro.protocol.structures.envelope_auth" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.protocol.structures.envelope_auth.EnvelopeAuth">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.structures.envelope_auth.</code><code class="descname">EnvelopeAuth</code><a class="reference internal" href="_modules/cilantro/protocol/structures/envelope_auth.html#EnvelopeAuth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.envelope_auth.EnvelopeAuth" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="staticmethod">
+<dt id="cilantro.protocol.structures.envelope_auth.EnvelopeAuth.reply_uuid">
+<em class="property">static </em><code class="descname">reply_uuid</code><span class="sig-paren">(</span><em>request_uuid</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/envelope_auth.html#EnvelopeAuth.reply_uuid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.envelope_auth.EnvelopeAuth.reply_uuid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the associated reply UUID for some request UUID. This is simply the SHA3 256 hash of the request’s UUID.
+:type request_uuid: <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>
+:param request_uuid: The request UUID to generate a reply UUID for
+:return: An int, denoting the reply UUID associated with the passed in request UUID</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.protocol.structures.envelope_auth.EnvelopeAuth.seal">
+<em class="property">static </em><code class="descname">seal</code><span class="sig-paren">(</span><em>signing_key</em>, <em>meta</em>, <em>message</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/envelope_auth.html#EnvelopeAuth.seal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.envelope_auth.EnvelopeAuth.seal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a signature for constructing a seal, as a function of the MessageMeta binary and MessageBase binary
+:type signing_key: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>
+:param signing_key: The signing key as a hex string
+:param meta: The MessageMeta, as a MessageMeta instance or bytes (a serialized MessageMeta)
+:param message: The MessageBase, as a MessageBase instance or bytes (a serialized MessageBase)
+:rtype: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>
+:return: The signed MessageMeta and MessageBase, as a 128 hex char long string</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.protocol.structures.envelope_auth.EnvelopeAuth.verify_seal">
+<em class="property">static </em><code class="descname">verify_seal</code><span class="sig-paren">(</span><em>seal</em>, <em>meta</em>, <em>message</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/envelope_auth.html#EnvelopeAuth.verify_seal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.envelope_auth.EnvelopeAuth.verify_seal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Verifies an envelope’s seal, returning True if the signature is valid and False otherwise
+:type seal: <a class="reference internal" href="cilantro.messages.envelope.html#cilantro.messages.envelope.seal.Seal" title="cilantro.messages.envelope.seal.Seal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Seal</span></code></a>
+:param seal: The seal, as a Seal instance
+:type meta: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code></a>
+:param meta: The MessageMeta binary, as bytes
+:type message: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code></a>
+:param message: The MessageBase binary, as a bytes
+:rtype: <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>
+:return: True if the seal’s signature is valid; False otherwise</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.structures.merkle_tree">
+<span id="cilantro-protocol-structures-merkle-tree-module"></span><h2>cilantro.protocol.structures.merkle_tree module<a class="headerlink" href="#module-cilantro.protocol.structures.merkle_tree" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.protocol.structures.merkle_tree.MerkleTree">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.structures.merkle_tree.</code><code class="descname">MerkleTree</code><span class="sig-paren">(</span><em>leaves=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/merkle_tree.html#MerkleTree"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.merkle_tree.MerkleTree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Data structure for computing a merkle tree</p>
+<dl class="method">
+<dt id="cilantro.protocol.structures.merkle_tree.MerkleTree.children">
+<code class="descname">children</code><span class="sig-paren">(</span><em>i</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/merkle_tree.html#MerkleTree.children"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.merkle_tree.MerkleTree.children" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.protocol.structures.merkle_tree.MerkleTree.data_for_hash">
+<code class="descname">data_for_hash</code><span class="sig-paren">(</span><em>h</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/merkle_tree.html#MerkleTree.data_for_hash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.merkle_tree.MerkleTree.data_for_hash" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.protocol.structures.merkle_tree.MerkleTree.hash">
+<em class="property">static </em><code class="descname">hash</code><span class="sig-paren">(</span><em>o</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/merkle_tree.html#MerkleTree.hash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.merkle_tree.MerkleTree.hash" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.protocol.structures.merkle_tree.MerkleTree.hash_nodes">
+<em class="property">static </em><code class="descname">hash_nodes</code><span class="sig-paren">(</span><em>nodes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/merkle_tree.html#MerkleTree.hash_nodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.merkle_tree.MerkleTree.hash_nodes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.protocol.structures.merkle_tree.MerkleTree.hash_of_nodes">
+<code class="descname">hash_of_nodes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/merkle_tree.html#MerkleTree.hash_of_nodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.merkle_tree.MerkleTree.hash_of_nodes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.protocol.structures.merkle_tree.MerkleTree.merklize">
+<em class="property">static </em><code class="descname">merklize</code><span class="sig-paren">(</span><em>leaves</em>, <em>hash_leaves=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/merkle_tree.html#MerkleTree.merklize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.merkle_tree.MerkleTree.merklize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Builds a merkle tree from leaves and returns the tree as a list (representing an implicitly stored binary tree)
+:type leaves: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>
+:param leaves: The leaves to form a merkle tree from.
+:param hash_leaves: True if the leaves should be hashed before building the tree.
+:rtype: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>
+:return: A list, which serves as an implicit representation of the merkle tree</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cilantro.protocol.structures.merkle_tree.MerkleTree.root">
+<code class="descname">root</code><span class="sig-paren">(</span><em>i=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/merkle_tree.html#MerkleTree.root"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.merkle_tree.MerkleTree.root" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="cilantro.protocol.structures.merkle_tree.MerkleTree.verify_tree">
+<em class="property">static </em><code class="descname">verify_tree</code><span class="sig-paren">(</span><em>nodes</em>, <em>tree_hash</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/structures/merkle_tree.html#MerkleTree.verify_tree"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.structures.merkle_tree.MerkleTree.verify_tree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attempts to verify merkle tree represented implicitly by the list ‘nodes’. The tree is valid if it maintains
+the invariant that the value of each non-leaf node is the hash of its left child’s value concatenated with
+its right child’s value.
+:type nodes: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></a>
+:param nodes: The nodes in the tree, represented implicitly as a list
+:type tree_hash: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code></a>
+:param tree_hash: The expected hash of the merkle tree formed from nodes (the ‘hash of a merkle tree’ is the
+value returned by the .hash_of_nodes method on this class)
+:return: True if the tree is valid; False otherwise</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.structures">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cilantro.protocol.structures" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">cilantro.protocol.structures package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.structures.bidict">cilantro.protocol.structures.bidict module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.structures.capped_containers">cilantro.protocol.structures.capped_containers module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.structures.envelope_auth">cilantro.protocol.structures.envelope_auth module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.structures.merkle_tree">cilantro.protocol.structures.merkle_tree module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.structures">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/cilantro.protocol.structures.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/cilantro.protocol.structures.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

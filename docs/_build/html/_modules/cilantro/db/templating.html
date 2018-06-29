@@ -1,0 +1,151 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.db.templating &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cilantro.db.templating</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+
+
+<span class="k">def</span> <span class="nf">_read_templates</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">_get_template_name</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;Expected a template file of format some_name.template but instead got </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">filename</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;template&#39;</span><span class="p">,</span> <span class="s2">&quot;Expected a template file with extension .template but got filename </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">filename</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span>
+    <span class="n">dir_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">templates_dir</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/../contracts/templates&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dir_path</span><span class="p">)</span>
+
+    <span class="n">templates</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">templates_dir</span><span class="p">)):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">templates_dir</span><span class="p">,</span> <span class="n">filename</span><span class="p">),</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">template_str</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="n">template_name</span> <span class="o">=</span> <span class="n">_get_template_name</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+            <span class="n">templates</span><span class="p">[</span><span class="n">template_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">template_str</span>
+
+    <span class="k">return</span> <span class="n">templates</span>
+
+
+<span class="n">templates</span> <span class="o">=</span> <span class="n">_read_templates</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="ContractTemplate"><a class="viewcode-back" href="../../../cilantro.db.html#cilantro.db.templating.ContractTemplate">[docs]</a><span class="k">class</span> <span class="nc">ContractTemplate</span><span class="p">:</span>
+
+<div class="viewcode-block" id="ContractTemplate.interpolate_template"><a class="viewcode-back" href="../../../cilantro.db.html#cilantro.db.templating.ContractTemplate.interpolate_template">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">interpolate_template</span><span class="p">(</span><span class="n">template_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates smart contract code using the templates in contracts/templates. This works by creating placeholder</span>
+<span class="sd">        variables in the template files using the syntax &#39;{__some_arg__}&#39;. Wrapping the variable &#39;some_arg&#39; with a</span>
+<span class="sd">        curly bracket and double underscore signifies a placeholder for a variable named &#39;some_arg&#39;. This function will</span>
+<span class="sd">        then look for a variable of the same name in kwargs, and replace the placeholder with the specified value. For</span>
+<span class="sd">        example passing in some_arg=10 will replace all occurrences of &#39;{__some_arg__}&#39; in the template and return</span>
+<span class="sd">        this interpolated code.</span>
+
+<span class="sd">        :param template_name: The name of the template to use. Must be the name of the file in cilantro/contracts/templates</span>
+<span class="sd">        (without the .template extension)</span>
+<span class="sd">        extension)</span>
+<span class="sd">        :param kwargs: Arguements to interpolate in the template. See docstring above on how to use this.</span>
+<span class="sd">        :return: A string representing the template code with kwargs interpolated</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">template_name</span> <span class="ow">in</span> <span class="n">templates</span><span class="p">,</span> <span class="s2">&quot;No template named </span><span class="si">{}</span><span class="s2"> found in templates </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">template_name</span><span class="p">,</span> <span class="n">templates</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">code_str</span> <span class="o">=</span> <span class="n">templates</span><span class="p">[</span><span class="n">template_name</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">placeholder</span> <span class="o">=</span> <span class="n">_placeholder_for_arg</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">code_str</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">placeholder</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;No placeholder(s) named </span><span class="si">{}</span><span class="s2"> found for template named </span><span class="si">{}</span><span class="s2">&quot;</span>\
+                                                    <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">placeholder</span><span class="p">,</span> <span class="n">template_name</span><span class="p">)</span>
+
+            <span class="n">code_str</span> <span class="o">=</span> <span class="n">code_str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">placeholder</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="n">arg</span><span class="p">]))</span>
+
+        <span class="c1"># TODO sanity check to ensure ALL placeholders were interpolated (maybe just ask falc supply some lit regex)</span>
+
+        <span class="k">return</span> <span class="n">code_str</span></div></div>
+
+
+<span class="k">def</span> <span class="nf">_placeholder_for_arg</span><span class="p">(</span><span class="n">arg_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="s1">&#39;{__&#39;</span> <span class="o">+</span> <span class="n">arg_name</span> <span class="o">+</span> <span class="s1">&#39;__}&#39;</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  <li><a href="../../cilantro.html">cilantro</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

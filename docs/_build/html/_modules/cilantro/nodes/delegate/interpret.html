@@ -1,0 +1,143 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.nodes.delegate.interpret &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cilantro.nodes.delegate.interpret</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">cilantro</span> <span class="k">import</span> <span class="n">Constants</span>
+<span class="kn">from</span> <span class="nn">cilantro.nodes.delegate.delegate</span> <span class="k">import</span> <span class="n">Delegate</span><span class="p">,</span> <span class="n">DelegateBaseState</span>
+<span class="kn">from</span> <span class="nn">cilantro.protocol.statemachine</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">cilantro.protocol.interpreters</span> <span class="k">import</span> <span class="n">VanillaInterpreter</span>
+<span class="kn">from</span> <span class="nn">cilantro.db</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">cilantro.messages</span> <span class="k">import</span> <span class="o">*</span>
+
+
+<span class="n">DelegateBootState</span> <span class="o">=</span> <span class="s2">&quot;DelegateBootState&quot;</span>
+<span class="n">DelegateInterpretState</span> <span class="o">=</span> <span class="s2">&quot;DelegateInterpretState&quot;</span>
+<span class="n">DelegateConsensusState</span> <span class="o">=</span> <span class="s2">&quot;DelegateConsensusState&quot;</span>
+
+
+<div class="viewcode-block" id="DelegateInterpretState"><a class="viewcode-back" href="../../../../cilantro.nodes.delegate.html#cilantro.nodes.delegate.interpret.DelegateInterpretState">[docs]</a><span class="nd">@Delegate</span><span class="o">.</span><span class="n">register_state</span>
+<span class="k">class</span> <span class="nc">DelegateInterpretState</span><span class="p">(</span><span class="n">DelegateBaseState</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Delegate interpret state has the delegate receive and interpret that transactions are valid according to the</span>
+<span class="sd">    interpreter chosen. Once the number of transactions in the queue exceeds the size or a time interval is reached the</span>
+<span class="sd">    delegate moves into consensus state</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="DelegateInterpretState.enter_from_any"><a class="viewcode-back" href="../../../../cilantro.nodes.delegate.html#cilantro.nodes.delegate.interpret.DelegateInterpretState.enter_from_any">[docs]</a>    <span class="nd">@enter_from_any</span>
+    <span class="k">def</span> <span class="nf">enter_from_any</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prev_state</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Flushing pending tx queue of </span><span class="si">{}</span><span class="s2"> txs&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">pending_txs</span><span class="p">)))</span>
+        <span class="k">for</span> <span class="n">tx</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">pending_txs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">interpret_tx</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">pending_txs</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># (for debugging) TODO remove</span>
+        <span class="k">with</span> <span class="n">DB</span><span class="p">()</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;select * from state_meta&#39;</span><span class="p">)</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="s2">&quot;LATEST STATE INFO: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">results</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="DelegateInterpretState.exit_any"><a class="viewcode-back" href="../../../../cilantro.nodes.delegate.html#cilantro.nodes.delegate.interpret.DelegateInterpretState.exit_any">[docs]</a>    <span class="nd">@exit_to_any</span>
+    <span class="k">def</span> <span class="nf">exit_any</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">next_state</span><span class="p">):</span>
+        <span class="c1"># Flush queue if we are not leaving interpreting for consensus</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Delegate exiting interpreting for state </span><span class="si">{}</span><span class="s2">, flushing queue&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">next_state</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">interpreter</span><span class="o">.</span><span class="n">flush</span><span class="p">(</span><span class="n">update_state</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DelegateInterpretState.exit_to_consensus"><a class="viewcode-back" href="../../../../cilantro.nodes.delegate.html#cilantro.nodes.delegate.interpret.DelegateInterpretState.exit_to_consensus">[docs]</a>    <span class="nd">@exit_to</span><span class="p">(</span><span class="n">DelegateConsensusState</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">exit_to_consensus</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="DelegateInterpretState.handle_tx"><a class="viewcode-back" href="../../../../cilantro.nodes.delegate.html#cilantro.nodes.delegate.interpret.DelegateInterpretState.handle_tx">[docs]</a>    <span class="nd">@input</span><span class="p">(</span><span class="n">TransactionBase</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">handle_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tx</span><span class="p">:</span> <span class="n">TransactionBase</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interpret_tx</span><span class="p">(</span><span class="n">tx</span><span class="o">=</span><span class="n">tx</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DelegateInterpretState.interpret_tx"><a class="viewcode-back" href="../../../../cilantro.nodes.delegate.html#cilantro.nodes.delegate.interpret.DelegateInterpretState.interpret_tx">[docs]</a>    <span class="k">def</span> <span class="nf">interpret_tx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tx</span><span class="p">:</span> <span class="n">TransactionBase</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">interpreter</span><span class="o">.</span><span class="n">interpret_transaction</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Size of queue: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">interpreter</span><span class="o">.</span><span class="n">queue</span><span class="p">)))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">interpreter</span><span class="o">.</span><span class="n">queue_len</span> <span class="o">&gt;=</span> <span class="n">Constants</span><span class="o">.</span><span class="n">Nodes</span><span class="o">.</span><span class="n">MaxQueueSize</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Consensus time!&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">DelegateConsensusState</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Not consensus time yet, queue is only size </span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">&quot;</span>
+                           <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">interpreter</span><span class="o">.</span><span class="n">queue_len</span><span class="p">,</span> <span class="n">Constants</span><span class="o">.</span><span class="n">Nodes</span><span class="o">.</span><span class="n">MaxQueueSize</span><span class="p">))</span></div></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  <li><a href="../../../cilantro.html">cilantro</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

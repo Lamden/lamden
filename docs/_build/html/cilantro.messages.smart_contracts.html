@@ -1,0 +1,217 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.messages.smart_contracts package &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cilantro-messages-smart-contracts-package">
+<h1>cilantro.messages.smart_contracts package<a class="headerlink" href="#cilantro-messages-smart-contracts-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-cilantro.messages.smart_contracts.contract_container">
+<span id="cilantro-messages-smart-contracts-contract-container-module"></span><h2>cilantro.messages.smart_contracts.contract_container module<a class="headerlink" href="#module-cilantro.messages.smart_contracts.contract_container" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.messages.smart_contracts.contract_container.ContractContainer">
+<em class="property">class </em><code class="descclassname">cilantro.messages.smart_contracts.contract_container.</code><code class="descname">ContractContainer</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/messages/smart_contracts/contract_container.html#ContractContainer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_container.ContractContainer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="cilantro.messages.base.html#cilantro.messages.base.base_json.MessageBaseJson" title="cilantro.messages.base.base_json.MessageBaseJson"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.messages.base.base_json.MessageBaseJson</span></code></a></p>
+<dl class="attribute">
+<dt id="cilantro.messages.smart_contracts.contract_container.ContractContainer.CONTRACT_ID">
+<code class="descname">CONTRACT_ID</code><em class="property"> = 'contract_id'</em><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_container.ContractContainer.CONTRACT_ID" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.messages.smart_contracts.contract_container.ContractContainer.KWARGS">
+<code class="descname">KWARGS</code><em class="property"> = 'kwargs'</em><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_container.ContractContainer.KWARGS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.messages.smart_contracts.contract_container.ContractContainer.SENDER_ID">
+<code class="descname">SENDER_ID</code><em class="property"> = 'sender_id'</em><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_container.ContractContainer.SENDER_ID" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.messages.smart_contracts.contract_container.ContractContainer.contract_id">
+<code class="descname">contract_id</code><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_container.ContractContainer.contract_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.messages.smart_contracts.contract_container.ContractContainer.create">
+<em class="property">classmethod </em><code class="descname">create</code><span class="sig-paren">(</span><em>contract_id</em>, <em>sender_id</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/messages/smart_contracts/contract_container.html#ContractContainer.create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_container.ContractContainer.create" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.messages.smart_contracts.contract_container.ContractContainer.kwargs">
+<code class="descname">kwargs</code><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_container.ContractContainer.kwargs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.messages.smart_contracts.contract_container.ContractContainer.sender_id">
+<code class="descname">sender_id</code><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_container.ContractContainer.sender_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.messages.smart_contracts.contract_container.ContractContainer.validate">
+<code class="descname">validate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/messages/smart_contracts/contract_container.html#ContractContainer.validate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_container.ContractContainer.validate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Validates the underlying data, raising an exception if something is wrong
+:return: Void
+:raises: An exception if there if an issues arrises validating the underlying data</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.messages.smart_contracts.contract_submission">
+<span id="cilantro-messages-smart-contracts-contract-submission-module"></span><h2>cilantro.messages.smart_contracts.contract_submission module<a class="headerlink" href="#module-cilantro.messages.smart_contracts.contract_submission" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.messages.smart_contracts.contract_submission.ContractSubmission">
+<em class="property">class </em><code class="descclassname">cilantro.messages.smart_contracts.contract_submission.</code><code class="descname">ContractSubmission</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/messages/smart_contracts/contract_submission.html#ContractSubmission"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_submission.ContractSubmission" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="cilantro.messages.base.html#cilantro.messages.base.base_json.MessageBaseJson" title="cilantro.messages.base.base_json.MessageBaseJson"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.messages.base.base_json.MessageBaseJson</span></code></a></p>
+<dl class="attribute">
+<dt id="cilantro.messages.smart_contracts.contract_submission.ContractSubmission.CONTRACT_CODE">
+<code class="descname">CONTRACT_CODE</code><em class="property"> = 'contract_code'</em><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_submission.ContractSubmission.CONTRACT_CODE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.messages.smart_contracts.contract_submission.ContractSubmission.CONTRACT_ID">
+<code class="descname">CONTRACT_ID</code><em class="property"> = 'contract_id'</em><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_submission.ContractSubmission.CONTRACT_ID" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.messages.smart_contracts.contract_submission.ContractSubmission.USER_ID">
+<code class="descname">USER_ID</code><em class="property"> = 'user_id'</em><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_submission.ContractSubmission.USER_ID" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.messages.smart_contracts.contract_submission.ContractSubmission.contract_code">
+<code class="descname">contract_code</code><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_submission.ContractSubmission.contract_code" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.messages.smart_contracts.contract_submission.ContractSubmission.contract_id">
+<code class="descname">contract_id</code><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_submission.ContractSubmission.contract_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.messages.smart_contracts.contract_submission.ContractSubmission.node_create">
+<em class="property">classmethod </em><code class="descname">node_create</code><span class="sig-paren">(</span><em>user_id</em>, <em>contract_code</em>, <em>block_hash</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/messages/smart_contracts/contract_submission.html#ContractSubmission.node_create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_submission.ContractSubmission.node_create" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.messages.smart_contracts.contract_submission.ContractSubmission.user_create">
+<em class="property">classmethod </em><code class="descname">user_create</code><span class="sig-paren">(</span><em>user_id</em>, <em>contract_code</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/messages/smart_contracts/contract_submission.html#ContractSubmission.user_create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_submission.ContractSubmission.user_create" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.messages.smart_contracts.contract_submission.ContractSubmission.user_id">
+<code class="descname">user_id</code><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_submission.ContractSubmission.user_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.messages.smart_contracts.contract_submission.ContractSubmission.validate">
+<code class="descname">validate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/messages/smart_contracts/contract_submission.html#ContractSubmission.validate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.messages.smart_contracts.contract_submission.ContractSubmission.validate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Validates the underlying data, raising an exception if something is wrong
+:return: Void
+:raises: An exception if there if an issues arrises validating the underlying data</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.messages.smart_contracts">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cilantro.messages.smart_contracts" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">cilantro.messages.smart_contracts package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-cilantro.messages.smart_contracts.contract_container">cilantro.messages.smart_contracts.contract_container module</a></li>
+<li><a class="reference internal" href="#module-cilantro.messages.smart_contracts.contract_submission">cilantro.messages.smart_contracts.contract_submission module</a></li>
+<li><a class="reference internal" href="#module-cilantro.messages.smart_contracts">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/cilantro.messages.smart_contracts.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/cilantro.messages.smart_contracts.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

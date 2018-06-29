@@ -1,0 +1,335 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.protocol.statemachine package &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cilantro-protocol-statemachine-package">
+<h1>cilantro.protocol.statemachine package<a class="headerlink" href="#cilantro-protocol-statemachine-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-cilantro.protocol.statemachine.decorators">
+<span id="cilantro-protocol-statemachine-decorators-module"></span><h2>cilantro.protocol.statemachine.decorators module<a class="headerlink" href="#module-cilantro.protocol.statemachine.decorators" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.protocol.statemachine.decorators.StateInput">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.statemachine.decorators.</code><code class="descname">StateInput</code><a class="reference internal" href="_modules/cilantro/protocol/statemachine/decorators.html#StateInput"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateInput" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A grouping of constants</p>
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.decorators.StateInput.ALL">
+<code class="descname">ALL</code><em class="property"> = ['_route_input', '_route_request', '_route_timeout', '_lookup_failed']</em><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateInput.ALL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.decorators.StateInput.INPUT">
+<code class="descname">INPUT</code><em class="property"> = '_route_input'</em><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateInput.INPUT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.decorators.StateInput.LOOKUP_FAILED">
+<code class="descname">LOOKUP_FAILED</code><em class="property"> = '_lookup_failed'</em><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateInput.LOOKUP_FAILED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.decorators.StateInput.REQUEST">
+<code class="descname">REQUEST</code><em class="property"> = '_route_request'</em><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateInput.REQUEST" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.decorators.StateInput.TIMEOUT">
+<code class="descname">TIMEOUT</code><em class="property"> = '_route_timeout'</em><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateInput.TIMEOUT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.protocol.statemachine.decorators.StateTimeout">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.statemachine.decorators.</code><code class="descname">StateTimeout</code><a class="reference internal" href="_modules/cilantro/protocol/statemachine/decorators.html#StateTimeout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateTimeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.decorators.StateTimeout.TIMEOUT_DUR">
+<code class="descname">TIMEOUT_DUR</code><em class="property"> = '_state_timeout_duration'</em><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateTimeout.TIMEOUT_DUR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.decorators.StateTimeout.TIMEOUT_FLAG">
+<code class="descname">TIMEOUT_FLAG</code><em class="property"> = '_state_timeout_flag'</em><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateTimeout.TIMEOUT_FLAG" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.protocol.statemachine.decorators.StateTransition">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.statemachine.decorators.</code><code class="descname">StateTransition</code><a class="reference internal" href="_modules/cilantro/protocol/statemachine/decorators.html#StateTransition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateTransition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.decorators.StateTransition.ACCEPT_ALL">
+<code class="descname">ACCEPT_ALL</code><em class="property"> = '_ACCEPT_ALL_STATES'</em><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateTransition.ACCEPT_ALL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.decorators.StateTransition.ENTER">
+<code class="descname">ENTER</code><em class="property"> = '_enter'</em><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateTransition.ENTER" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.decorators.StateTransition.ENTER_ANY">
+<code class="descname">ENTER_ANY</code><em class="property"> = '_enter_any_state'</em><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateTransition.ENTER_ANY" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.decorators.StateTransition.EXIT">
+<code class="descname">EXIT</code><em class="property"> = '_exit'</em><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateTransition.EXIT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.decorators.StateTransition.EXIT_ANY">
+<code class="descname">EXIT_ANY</code><em class="property"> = '_exit_any_state'</em><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateTransition.EXIT_ANY" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.statemachine.decorators.StateTransition.get_any_attr">
+<em class="property">classmethod </em><code class="descname">get_any_attr</code><span class="sig-paren">(</span><em>trans_attr</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/decorators.html#StateTransition.get_any_attr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.StateTransition.get_any_attr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.statemachine.decorators.enter_from">
+<code class="descclassname">cilantro.protocol.statemachine.decorators.</code><code class="descname">enter_from</code><span class="sig-paren">(</span><em>*args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/decorators.html#enter_from"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.enter_from" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.statemachine.decorators.enter_from_any">
+<code class="descclassname">cilantro.protocol.statemachine.decorators.</code><code class="descname">enter_from_any</code><span class="sig-paren">(</span><em>func</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/decorators.html#enter_from_any"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.enter_from_any" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.statemachine.decorators.exit_to">
+<code class="descclassname">cilantro.protocol.statemachine.decorators.</code><code class="descname">exit_to</code><span class="sig-paren">(</span><em>*args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/decorators.html#exit_to"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.exit_to" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.statemachine.decorators.exit_to_any">
+<code class="descclassname">cilantro.protocol.statemachine.decorators.</code><code class="descname">exit_to_any</code><span class="sig-paren">(</span><em>func</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/decorators.html#exit_to_any"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.exit_to_any" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.statemachine.decorators.input">
+<code class="descclassname">cilantro.protocol.statemachine.decorators.</code><code class="descname">input</code><span class="sig-paren">(</span><em>msg_type</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/decorators.html#input"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.input" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.statemachine.decorators.input_request">
+<code class="descclassname">cilantro.protocol.statemachine.decorators.</code><code class="descname">input_request</code><span class="sig-paren">(</span><em>msg_type</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/decorators.html#input_request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.input_request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.statemachine.decorators.input_timeout">
+<code class="descclassname">cilantro.protocol.statemachine.decorators.</code><code class="descname">input_timeout</code><span class="sig-paren">(</span><em>msg_type</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/decorators.html#input_timeout"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.input_timeout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cilantro.protocol.statemachine.decorators.timeout_after">
+<code class="descclassname">cilantro.protocol.statemachine.decorators.</code><code class="descname">timeout_after</code><span class="sig-paren">(</span><em>timeout</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/decorators.html#timeout_after"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.decorators.timeout_after" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.statemachine.state">
+<span id="cilantro-protocol-statemachine-state-module"></span><h2>cilantro.protocol.statemachine.state module<a class="headerlink" href="#module-cilantro.protocol.statemachine.state" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.protocol.statemachine.state.EmptyState">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.statemachine.state.</code><code class="descname">EmptyState</code><span class="sig-paren">(</span><em>state_machine</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/state.html#EmptyState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.state.EmptyState" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cilantro.protocol.statemachine.state.State" title="cilantro.protocol.statemachine.state.State"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.protocol.statemachine.state.State</span></code></a></p>
+<dl class="method">
+<dt id="cilantro.protocol.statemachine.state.EmptyState.exit_any">
+<code class="descname">exit_any</code><span class="sig-paren">(</span><em>next_state</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/state.html#EmptyState.exit_any"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.state.EmptyState.exit_any" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.state.EmptyState.log">
+<code class="descname">log</code><em class="property"> = &lt;Logger EmptyState (DEBUG)&gt;</em><a class="headerlink" href="#cilantro.protocol.statemachine.state.EmptyState.log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.protocol.statemachine.state.EmptyState.reset_attrs">
+<code class="descname">reset_attrs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/state.html#EmptyState.reset_attrs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.state.EmptyState.reset_attrs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.protocol.statemachine.state.State">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.statemachine.state.</code><code class="descname">State</code><span class="sig-paren">(</span><em>state_machine</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/state.html#State"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.state.State" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="method">
+<dt id="cilantro.protocol.statemachine.state.State.call_input_handler">
+<code class="descname">call_input_handler</code><span class="sig-paren">(</span><em>message</em>, <em>input_type</em>, <em>envelope=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/state.html#State.call_input_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.state.State.call_input_handler" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.protocol.statemachine.state.State.call_transition_handler">
+<code class="descname">call_transition_handler</code><span class="sig-paren">(</span><em>trans_type</em>, <em>state</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/state.html#State.call_transition_handler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.state.State.call_transition_handler" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.protocol.statemachine.state.State.log">
+<code class="descname">log</code><em class="property"> = &lt;Logger State (DEBUG)&gt;</em><a class="headerlink" href="#cilantro.protocol.statemachine.state.State.log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.protocol.statemachine.state.State.reset_attrs">
+<code class="descname">reset_attrs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/state.html#State.reset_attrs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.state.State.reset_attrs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.protocol.statemachine.state.StateMeta">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.statemachine.state.</code><code class="descname">StateMeta</code><a class="reference internal" href="_modules/cilantro/protocol/statemachine/state.html#StateMeta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.state.StateMeta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">type</span></code></a></p>
+<p>Metaclass to register state receivers.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.statemachine.statemachine">
+<span id="cilantro-protocol-statemachine-statemachine-module"></span><h2>cilantro.protocol.statemachine.statemachine module<a class="headerlink" href="#module-cilantro.protocol.statemachine.statemachine" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.protocol.statemachine.statemachine.StateMachine">
+<em class="property">class </em><code class="descclassname">cilantro.protocol.statemachine.statemachine.</code><code class="descname">StateMachine</code><a class="reference internal" href="_modules/cilantro/protocol/statemachine/statemachine.html#StateMachine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.statemachine.StateMachine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>TODO – docstring</p>
+<dl class="classmethod">
+<dt id="cilantro.protocol.statemachine.statemachine.StateMachine.register_init_state">
+<em class="property">classmethod </em><code class="descname">register_init_state</code><span class="sig-paren">(</span><em>state_cls</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/statemachine.html#StateMachine.register_init_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.statemachine.StateMachine.register_init_state" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="cilantro.protocol.statemachine.statemachine.StateMachine.register_state">
+<em class="property">classmethod </em><code class="descname">register_state</code><span class="sig-paren">(</span><em>state_cls</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/statemachine.html#StateMachine.register_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.statemachine.StateMachine.register_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator to register states in a StateMachine</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cilantro.protocol.statemachine.statemachine.StateMachine.start">
+<code class="descname">start</code><span class="sig-paren">(</span><em>run_in_loop=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/statemachine.html#StateMachine.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.statemachine.StateMachine.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starts the StateMachine by transitioning into its initial state. If run_in_loop is True, then this method start
+an infinite event loop This is necessary for loop-using functionality like
+state timeouts.</p>
+<p>However, run_in_loop should always be false for Cilantro in production! This is because NodeBase, which is a
+StateMachine subclass, manages its own event loop, that is gaurenteed to run_forever once StateMachine.start()
+relinquishes control. run_in_loop=True should only be used in unit tests, or if the StateMachine class is intended
+to be used as a standalone library (outside of Cilantro).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cilantro.protocol.statemachine.statemachine.StateMachine.transition">
+<code class="descname">transition</code><span class="sig-paren">(</span><em>next_state</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/protocol/statemachine/statemachine.html#StateMachine.transition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.protocol.statemachine.statemachine.StateMachine.transition" title="Permalink to this definition">¶</a></dt>
+<dd><p>TODO thiccer docstrings
+:param next_state: The state to transition to. Must be a State class (not instance) or string.
+If it’s a class, that class must exist in _STATES which is defined by the StateMachine subclass. If it’s a
+string, a class of that name must exist in _STATES</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.protocol.statemachine">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cilantro.protocol.statemachine" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">cilantro.protocol.statemachine package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.statemachine.decorators">cilantro.protocol.statemachine.decorators module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.statemachine.state">cilantro.protocol.statemachine.state module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.statemachine.statemachine">cilantro.protocol.statemachine.statemachine module</a></li>
+<li><a class="reference internal" href="#module-cilantro.protocol.statemachine">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/cilantro.protocol.statemachine.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/cilantro.protocol.statemachine.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
