@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     working_directory: ~/cilantro
-    docker:
+    machine:
       - image: circleci/python:3.6.5
         environment:
           PIPENV_VENV_IN_PROJECT: true
