@@ -15,7 +15,7 @@ jobs:
       - run:
           command: |
             sudo pip install pipenv
-            pipenv install
+            pipenv install -r requirements.txt
       - save_cache:
           key: cilantro-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
           paths:

@@ -22,47 +22,44 @@ class TestDiscovery(TestCase):
         self.discovery.listen_for_crawlers()
         self.assertIsInstance(self.discovery.udp_sock, socket.socket)
         self.assertIsInstance(self.discovery.udp_sock_server, socket.socket)
+
         t = Timer(0.01, get_discovered)
         t.start()
         self.loop.run_forever()
 
     def test_local(self):
-        def get_discovered():
-            result = future.result()
-            self.assertEqual(list(result.keys()), ['127.0.0.1'])
-            self.discovery.server.cancel()
-            self.loop.call_soon_threadsafe(self.loop.stop)
-            self.discovery.udp_sock_server.close()
-            self.discovery.udp_sock.close()
-
-        self.discovery.max_wait = 0.1
+        self.discovery.max_wait = 0.25
         self.discovery.listen_for_crawlers()
 
-        future = asyncio.ensure_future(self.discovery.discover('test'))
-
-        t = Timer(0.2, get_discovered)
-        t.start()
-        self.loop.run_forever()
-
-    def test_neighbor(self):
-        def get_discovered():
-            result = future.result()
+        try:
+            result = self.loop.run_until_complete(
+                asyncio.ensure_future(self.discovery.discover('test'))
+            )
+        finally:
             self.assertEqual(list(result.keys()), ['127.0.0.1'])
             self.discovery.server.cancel()
             self.loop.call_soon_threadsafe(self.loop.stop)
             self.discovery.udp_sock_server.close()
             self.discovery.udp_sock.close()
 
-        self.discovery.max_wait = 0.2
+
+    def test_neighbor(self):
+
+        self.discovery.max_wait = 0.5
         self.discovery.return_asap = True
         self.discovery.min_bootstrap_nodes = 1
         self.discovery.listen_for_crawlers()
 
-        future = asyncio.ensure_future(self.discovery.discover('neighborhood'))
-
-        t = Timer(0.3, get_discovered)
-        t.start()
-        self.loop.run_forever()
+        try:
+            result = self.loop.run_until_complete(
+                asyncio.ensure_future(self.discovery.discover('neighborhood'))
+            )
+        finally:
+            self.assertEqual(list(result.keys()), ['127.0.0.1'])
+            self.discovery.server.cancel()
+            self.loop.call_soon_threadsafe(self.loop.stop)
+            self.discovery.udp_sock_server.close()
+            self.discovery.udp_sock.close()
 
     def test_stop_discovery(self):
         def run():
