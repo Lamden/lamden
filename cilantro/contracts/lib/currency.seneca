@@ -1,0 +1,106 @@
+#!/usr/bin/env seneca_0.1
+## Example currency smart contract ##
+# UNITTEST_FLAG_CURRENCY_SENECA 1729
+
+
+import seneca.storage.tabular as st
+import seneca.crypto as crypto
+import seneca.runtime as rt
+import seneca.stdlib as std
+from seneca.modulelib import export, make_exports
+
+
+ledger = st.create_table('ledger', [
+    ('wallet_id', st.str_len(200), True),
+    ('balance', int),
+])
+
+
+@export
+def get_balance(wallet_id):
+    return ledger.select('balance').where(ledger.wallet_id == wallet_id).run()[0]['balance']
+
+
+@export
+def wallet_exists(wallet_id):
+    query = ledger.select('wallet_id').where(ledger.wallet_id == wallet_id)
+    return len(query.run()) == 1
+
+
+@export
+def create_wallet(wallet_id):
+    assert not wallet_exists(wallet_id), "Wallet already exists"
+    ledger.insert([{'wallet_id': wallet_id, 'balance': 0}]).run()
+
+
+def add_coins(wallet_id, amount_to_add):
+    assert amount_to_add >= 0, "It's not possible to 'add' a negative balance"
+
+    if not wallet_exists(wallet_id):
+        create_wallet(wallet_id)
+
+    old_balance = get_balance(wallet_id)
+    ledger.update({'balance': old_balance + amount_to_add}) \
+        .where(ledger.wallet_id == wallet_id).run()
+
+
+def remove_coins(wallet_id, amount_to_remove):
+    assert wallet_exists(wallet_id), "Wallet id is not present in ledger"
+    assert amount_to_remove >= 0, "Removing negative balances not permitted"
+
+    old_balance = get_balance(wallet_id)
+    assert old_balance - amount_to_remove >= 0, "No negative balances allowed"
+    ledger.update({'balance': old_balance - amount_to_remove}) \
+        .where(ledger.wallet_id == wallet_id).run()
+
+
+@export
+def transfer_coins(receiver_id, amount):
+    sender_id = rt.global_run_data.author
+
+    print("transfering {} coins from {} --> {}".format(amount, sender_id, receiver_id))
+
+    # print("REMOVING COINS FROM {}".format(sender_id))
+    remove_coins(sender_id, amount)
+    # print("ADDING COINS TO {}".format(receiver_id))
+    add_coins(receiver_id, amount)
+
+
+exports = make_exports()
+
+if __name__ == '__main__':
+    # print("\n\n STARTING CURRENCY CONTRACT MAIN FUNC \n\n")
+
+    GENESIS_WALLETS = [
+        {
+            "wallet": "CARL",
+            "amount": 3696947
+        },
+        {
+            "wallet": "DAVIS",
+            "amount": 3696947
+        },
+        {
+            "wallet": "324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502",
+            "amount": 3696947
+        },
+        {
+            "wallet": "a103715914a7aae8dd8fddba945ab63a169dfe6e37f79b4a58bcf85bfd681694",
+            "amount": 3696947
+        },
+        {
+            "wallet": "20da05fdba92449732b3871cc542a058075446fedb41430ee882e99f9091cc4d",
+            "amount": 3696947
+        },
+        {
+            "wallet": "ed19061921c593a9d16875ca660b57aa5e45c811c8cf7af0cfcbd23faa52cbcd",
+            "amount": 3696947
+        },
+        {
+            "wallet": "cb9bfd4b57b243248796e9eb90bc4f0053d78f06ce68573e0fdca422f54bb0d2",
+            "amount": 3696947
+        }
+    ]
+
+    # Seed genesis wallets
+    list(map(lambda x: add_coins(x['wallet'], x['amount']), GENESIS_WALLETS))

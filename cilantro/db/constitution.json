@@ -21,6 +21,13 @@
       "amount": 3696947
     }
   ],
+  "blocks": [
+    {
+      "hash": "deadbeef",
+      "tree": 0,
+      "signatures": 0
+    }
+  ],
   "constants" : [
     {
       "policy" : "something",
