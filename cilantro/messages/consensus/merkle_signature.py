@@ -62,13 +62,22 @@ class MerkleSignature(MessageBase):
         return json.loads(data.decode())
 
     @property
-    def signature(self):
+    def signature(self) -> str:
+        """
+        The cryptographic signature, represented as 128 character hex string.
+        """
         return self._data[self.SIG]
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> str:
+        """
+        The time the signature was created, currently stored as an unix epoch string.
+        """
         return self._data[self.TS]
 
     @property
-    def sender(self):
+    def sender(self) -> str:
+        """
+        The verifying key of the signer, represented as a 64 character hex string
+        """
         return self._data[self.SENDER]

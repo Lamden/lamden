@@ -30,4 +30,4 @@ class StateRequestTest(TestCase):
         sr_clone = StateUpdateRequest.from_bytes(sr_bin)
 
         self.assertEqual(sr, sr_clone)
-        self.assertTrue(sr_clone.current_block_hash is None)
+        self.assertTrue(sr_clone.block_hash is None)

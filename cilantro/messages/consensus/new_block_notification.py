@@ -1,5 +1,11 @@
 from cilantro.messages import MessageBaseJson
-import json
+
+
+"""
+NewBlockNotifications are published by Masternodes to all delegates once a new block has been published. They simply
+inform delegates that a new block has been published. To retrieve the latest block data, Delegates will have to request
+StateUpdateRequests from a Masternode. 
+"""
 
 
 class NewBlockNotification(MessageBaseJson):

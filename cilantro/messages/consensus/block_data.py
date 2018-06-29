@@ -27,11 +27,21 @@ class BlockDataRequest(MessageBase):
 
     @classmethod
     def create(cls, tx_hash: bytes):
+        # TODO -- validate tx_hash is valid 64 char hex
         return cls.from_data(tx_hash)
 
     @property
-    def tx_hash(self):
+    def tx_hash(self) -> str:
+        """
+        The hash of the transaction to request (64 characters, valid hex)
+        """
         return self._data
+
+
+"""
+BlockDataReply acts as a holder for an individual transaction. They are requested from delegates by Masternodes when
+a Masternode needs to retrieve the block data associated with a BlockContender
+"""
 
 
 class BlockDataReply(MessageBase):
@@ -53,9 +63,15 @@ class BlockDataReply(MessageBase):
         return cls.from_data(tx_binary)
 
     @property
-    def raw_tx(self):
+    def raw_tx(self) -> bytes:
+        """
+        The raw data for the requested transaction, as bytes
+        """
         return self._data
 
     @property
-    def tx_hash(self):
+    def tx_hash(self) -> str:
+        """
+        The hash of the requested transaction (64 characters, valid hex)
+        """
         return MerkleTree.hash(self._data)
