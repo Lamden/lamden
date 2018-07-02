@@ -3,7 +3,11 @@ import sys
 import time
 from cilantro.logger import get_logger, overwrite_logger_level
 import logging
+import argparse
 
+# Hack to import stuff from groups.py regardless of where this file is run
+try: from .groups import *
+except: from groups import *
 
 """
 This file acts as a single point of entry for runner all unit and integration tests. If this file is run with no args,
@@ -16,69 +20,29 @@ Options to:
 -- run only integration tests
 """
 
-
 log = get_logger("TestRunner")
-
 delim = '-' * 40
 
 
-PROTOCOL_TESTS = [
-    'tests.protocol.structures',
-    'tests.protocol.statemachine',
+def main(args):
 
-    # TODO -- write tests/ensure existing tests pass for modules below
-    # 'tests.protocol.interpreter',
-    # 'tests.protocol.proofs',
-    # 'tests.protocol.reactor',
-    # 'tests.protocol.transport',  # this should break ... so TODO: fix
-    'tests.protocol.wallets',
-    ]
+    log.debug("Running test suite with unit_tests={} and integration_tests={} and --verbosity={}".format(args.unit_tests, args.integration_tests, args.verbosity))
 
-MESSAGE_TESTS = [
-    'tests.messages.consensus',
-    'tests.messages.envelope',
-    'tests.messages.reactor',
-    'tests.messages.transactions'
-]
+    all_tests = []
+    if args.unit_tests:
+        all_tests += UNIT_TESTS
+    if args.integration_tests:
+        all_tests += INTEGRATION_TESTS
 
-CONSTANTS_TESTS = [
-    'tests.constants'
-]
+    log.critical("Running test groups {}".format(all_tests))
 
-OVERLAY_TESTS = [
-    'tests.overlay'
-]
-
-NODE_INTEGRATION_TESTS = [
-    'tests.nodes.integration'
-]
-
-TESTGROUPS = [
-    # OVERLAY_TESTS,
-    PROTOCOL_TESTS,
-    MESSAGE_TESTS,
-    CONSTANTS_TESTS,
-    # NODE_INTEGRATION_TESTS,
-]
-
-
-if __name__ == '__main__':
-    # TODO -- implement args to ...
-    """
-    TODO -- implement args to...
-        - break on first failure, or continue
-        - thing 2
-    """
     TEST_FLAG = 'S'  # test flag represents failure (F) or success (S) of testing
     loader = unittest.TestLoader()
-
     all_errors = []
-
     num_suites, num_success, num_tests = 0, 0, 0
-
     abs_start = time.time()
 
-    for group in TESTGROUPS:
+    for group in all_tests:
         for test in group:
 
             suite = loader.discover(test)  # finds all unit tests in the testgroup directory
@@ -90,7 +54,8 @@ if __name__ == '__main__':
 
             start = time.time()
 
-            # overwrite_logger_level(logging.WARNING)  # Set log level to warning to suppress most output from tests
+            if not args.verbosity:
+                overwrite_logger_level(logging.WARNING)  # Set log level to warning to suppress most output from tests
             test_result = runner.run(suite)
             overwrite_logger_level(logging.DEBUG)  # Change logging level back
 
@@ -151,4 +116,18 @@ if __name__ == '__main__':
     # Overwrite logger level to surpress asyncio's whining
     # overwrite_logger_level(9000)
 
+
+if __name__ == '__main__':
+    args = argparse.ArgumentParser()
+
+    # -v or --verbosity: Optional verbosity. If true, no output from unit/integration tests will be surpressed
+    args.add_argument('-v', '--verbosity', action='store_true', help='Optional verbosity. If true, no output from unit/integration tests will be surpressed')
+
+    # --unit_tests [0/1]: Optional unit tests
+    args.add_argument("--unit_tests", type=int, default=1, help="Flag to run unit tests. Default is True")
+
+    #  --integration_tests [0/1]: Optional integration tests
+    args.add_argument("--integration_tests", type=int, default=1, help="Flag to run integration tests. Default is True")
+
+    main(args.parse_args())
 
