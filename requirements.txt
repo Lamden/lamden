@@ -28,6 +28,3 @@ coverage
 vmnet
 numpy
 scipy
-
-pip install sphinx
-pip install sphinx-autodoc-typehints
