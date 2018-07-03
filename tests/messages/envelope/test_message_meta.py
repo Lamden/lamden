@@ -1,14 +1,17 @@
 from unittest import TestCase
-from cilantro.messages import MessageMeta
+from cilantro.messages import MessageMeta, MessageBase, StandardTransaction
 
 
 class TestMessageMeta(TestCase):
+
+    def _standard_type(self) -> int:
+        return MessageBase.registry[StandardTransaction]
 
     def test_create(self):
         """
         Tests that create(...) returns a MessageMeta object with the expected properties
         """
-        type = 1
+        type = self._standard_type()
         timestamp = 'now'
         sender = 'me'
         uuid = 1260
@@ -23,7 +26,7 @@ class TestMessageMeta(TestCase):
         """
         Test a random UUID is created if create does not have a uuid in kwargs
         """
-        type = 1
+        type = self._standard_type()
         timestamp = 'now'
 
         mm = MessageMeta.create(type=type, timestamp=timestamp)
@@ -34,7 +37,7 @@ class TestMessageMeta(TestCase):
         """
         Tests __eq__
         """
-        type = 1
+        type = self._standard_type()
         timestamp = 'now'
         uuid = 1260
 
@@ -47,7 +50,7 @@ class TestMessageMeta(TestCase):
         """
         Tests that serialize/deserialize are inverse operations
         """
-        type = 1
+        type = self._standard_type()
         timestamp = 'now'
         uuid = 1260
 

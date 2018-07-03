@@ -67,7 +67,7 @@ class TestEnvelopefromObjects(TestCase):
         meta = self._default_meta()
         message = self._default_msg()
 
-        env = Envelope.create_from_objects(seal=seal, meta=meta, message=message.serialize())
+        env = Envelope._create_from_objects(seal=seal, meta=meta, message=message.serialize())
 
         self.assertEqual(env.seal, seal)
         self.assertEqual(env.meta, meta)
@@ -81,7 +81,7 @@ class TestEnvelopefromObjects(TestCase):
         meta = self._default_meta()
         message = self._default_msg()
 
-        self.assertRaises(Exception, Envelope.create_from_objects, seal, meta, message.serialize())
+        self.assertRaises(Exception, Envelope._create_from_objects, seal, meta, message.serialize())
 
     def test_create_from_bad_meta(self):
         """
@@ -91,7 +91,7 @@ class TestEnvelopefromObjects(TestCase):
         meta = 'hi im a bad message meta'
         message = self._default_msg()
 
-        self.assertRaises(Exception, Envelope.create_from_objects, seal, meta, message.serialize())
+        self.assertRaises(Exception, Envelope._create_from_objects, seal, meta, message.serialize())
 
     def test_create_from_bad_message(self):
         """
@@ -101,7 +101,7 @@ class TestEnvelopefromObjects(TestCase):
         meta = self._default_meta()
         message = 'hi this is a string message with no redeeming qualities'
 
-        self.assertRaises(Exception, Envelope.create_from_objects, seal, meta, message)
+        self.assertRaises(Exception, Envelope._create_from_objects, seal, meta, message)
 
     def test_verify_seal_invalid(self):
         """
@@ -115,7 +115,7 @@ class TestEnvelopefromObjects(TestCase):
         signature = EnvelopeAuth.seal(signing_key=sk_prime, meta=meta, message=message)
         seal = Seal.create(signature=signature, verifying_key=vk)
 
-        env = Envelope.create_from_objects(seal=seal, meta=meta, message=message.serialize())
+        env = Envelope._create_from_objects(seal=seal, meta=meta, message=message.serialize())
 
         env.verify_seal()
 
@@ -130,7 +130,7 @@ class TestEnvelopefromObjects(TestCase):
         signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
         seal = Seal.create(signature=signature, verifying_key=vk)
 
-        env = Envelope.create_from_objects(seal=seal, meta=meta, message=message.serialize())
+        env = Envelope._create_from_objects(seal=seal, meta=meta, message=message.serialize())
 
         env.validate()
 
@@ -144,7 +144,7 @@ class TestEnvelopefromObjects(TestCase):
 
         seal = Seal.create(signature=signature, verifying_key=vk2)
 
-        env = Envelope.create_from_objects(seal=seal, meta=meta, message=message.serialize())
+        env = Envelope._create_from_objects(seal=seal, meta=meta, message=message.serialize())
 
         self.assertFalse(env.verify_seal())
 
@@ -158,7 +158,7 @@ class TestEnvelopefromObjects(TestCase):
 
         seal = Seal.create(signature=signature, verifying_key=vk2)
 
-        self.assertRaises(Exception, Envelope.create_from_objects, seal, meta, message.serialize())
+        self.assertRaises(Exception, Envelope._create_from_objects, seal, meta, message.serialize())
 
     def test_validate_bad_message(self):
         meta = self._default_meta()
@@ -166,6 +166,7 @@ class TestEnvelopefromObjects(TestCase):
         sk, vk = W.new()
 
         self.assertRaises(Exception, EnvelopeAuth.seal, sk, meta, message)  # auth fails b/c message is not string
+
 
 class TestEnvelopefromMessage(TestCase):
     """Envelope tests using Envelope.create_from_message() to create envelopes (the intended way)"""

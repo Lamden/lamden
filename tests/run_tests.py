@@ -21,7 +21,7 @@ Options to:
 """
 
 log = get_logger("TestRunner")
-delim = '-' * 40
+delim = '-' * 80
 
 
 def main(args):
@@ -34,7 +34,7 @@ def main(args):
     if args.integration_tests:
         all_tests += INTEGRATION_TESTS
 
-    log.critical("Running test groups {}".format(all_tests))
+    log.debug("Running test groups {}".format(all_tests))
 
     TEST_FLAG = 'S'  # test flag represents failure (F) or success (S) of testing
     loader = unittest.TestLoader()

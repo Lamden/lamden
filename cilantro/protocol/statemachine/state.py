@@ -260,7 +260,7 @@ class State(metaclass=StateMeta):
         elif type(other) is str:
             return self.__name__ == other
 
-        # Otherwise, this is an invalid comparison ('other' belongs to incompatible equivalence class)
+        # Otherwise, this is an invalid comparison ('other' and 'self' are incomparable)
         else:
             raise ValueError("Invalid comparison -- RHS (right hand side of equation) must be either a State instance "
                              "instance or String or State Class (not {})".format(other))
