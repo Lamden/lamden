@@ -89,9 +89,9 @@ class TestVKLookup(BaseNetworkTestCase):
     @vmnet_test(run_webui=True)
     def test_vklookup(self):
         # start mysql in all nodes
-        for node_name in ['masternode'] + self.groups['witness'] + self.groups['delegate']:
-            self.execute_python(node_name, start_mysqld, async=True)
-        time.sleep(3)
+        # for node_name in ['masternode'] + self.groups['witness'] + self.groups['delegate']:
+        #     self.execute_python(node_name, start_mysqld, async=True)
+        # time.sleep(3)
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
