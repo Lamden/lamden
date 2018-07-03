@@ -14,7 +14,7 @@ STATUS = election.enum()
 
 t_num_top_delegates_election = st.create_table(POLICY, [
     ('election_id', st.str_len(30)),
-    ('electionr_id', st.str_len(30), True),
+    ('voter_id', st.str_len(30), True),
     ('num_top_delegates', int)
 ])
 
@@ -26,10 +26,10 @@ def start_election(policy_maker_id):
     return election_id
 
 @export
-def cast_vote(electionr_id, election_id, num_top_delegates):
+def cast_vote(voter_id, election_id, num_top_delegates):
     assert election.get_election(election_id), 'election is not found or no longer opened'
     t_num_top_delegates_election.insert([
-        {'election_id': election_id,'electionr_id': electionr_id, 'num_top_delegates': num_top_delegates}
+        {'election_id': election_id,'voter_id': voter_id, 'num_top_delegates': num_top_delegates}
     ]).run()
 
 @export

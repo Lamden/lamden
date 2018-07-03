@@ -1,0 +1,30 @@
+FROM python:3.6-alpine3.7
+
+MAINTAINER Falcon Wong version: 0.1
+
+COPY . /app
+WORKDIR /app
+
+RUN apt-get update && \
+    apk add mariadb mariadb-client && \
+    apk add --update --no-cache --virtual .build-deps \
+        build-base wget freetype-dev libpng-dev openblas-dev libffi-dev \
+        python3-dev make \
+        linux-headers perl libc-dev \
+        g++ gfortran file binutils \
+        musl-dev gcc libc-dev unixodbc-dev && \
+    ln -s /usr/include/locale.h /usr/include/xlocale.h && \
+    pip3 install --upgrade setuptools wheel && \
+    pip3 install --upgrade --no-cache-dir -r dev-requirements.txt && \
+    pip3 install --upgrade --no-cache-dir -r requirements.txt && \
+    rm /usr/include/xlocale.h && \
+    apk del .build-deps
+
+CMD mysqld \
+    --skip-grant-tables \
+    --skip-innodb \
+    --collation-server latin1_bin \
+    --default-storage-engine ROCKSDB \
+    --default-tmp-storage-engine MyISAM \
+    --binlog_format ROW \
+    --user=mysql
