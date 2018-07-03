@@ -24,28 +24,65 @@ log = get_logger("TestRunner")
 delim = '-' * 80
 
 
-def main(args):
+def skip_tests(test_suite: unittest.TestSuite, test_names: list):
+    if not test_names:
+        return
 
-    log.debug("Running test suite with unit_tests={} and integration_tests={} and --verbosity={}".format(args.unit_tests, args.integration_tests, args.verbosity))
+    for name in test_names:
+        split = name.split('.')
+        assert len(split) == 2, "Invalid test name {} ... test names must be specified as TestClassName.test_name,\
+                                ie TestSomeClass.test_some_func".format(name)
+
+    _skip_tests(test_suite, test_names)
+
+def _skip_tests(test_suite: unittest.TestSuite, test_names: list):
+    for t in test_suite:
+        if isinstance(t, unittest.TestCase):
+            _apply_skips(t, test_names)
+        else:
+            _skip_tests(t, test_names)
+
+def _apply_skips(test_case: unittest.TestCase, test_names: list):
+    def split_test_name(name):
+        split = name.split('.')
+        return split[0], split[1]
+
+    # TODO we make this more efficient/pretty by precomputing a module_name: test_names(list) mapping
+    for module_name, test_name in map(split_test_name, test_names):
+        if module_name == type(test_case).__name__:
+            for func in dir(test_case):
+                if func == test_name:
+                    setattr(test_case, func, unittest.skip('skip specified in command line args')(getattr(test_case, func)))
+                    break
+
+
+def main(args):
+    log.debug("\nRunning test suites with \nrun unit tests={}\nrun integration tests={}\nverbosity={}\nskip tests={}\n"
+              .format(args.unit, args.integration, args.verbosity, args.skip))
 
     all_tests = []
-    if args.unit_tests:
+    if args.unit:
         all_tests += UNIT_TESTS
-    if args.integration_tests:
+    if args.integration:
         all_tests += INTEGRATION_TESTS
-
-    log.debug("Running test groups {}".format(all_tests))
+    skip_test_names = args.skip
 
     TEST_FLAG = 'S'  # test flag represents failure (F) or success (S) of testing
     loader = unittest.TestLoader()
     all_errors = []
-    num_suites, num_success, num_tests = 0, 0, 0
+    num_suites, num_success, = 0, 0
+    num_tests = -len(skip_test_names) if skip_test_names else 0
     abs_start = time.time()
 
     for group in all_tests:
         for test in group:
 
             suite = loader.discover(test)  # finds all unit tests in the testgroup directory
+
+            # Skip tests specified in command line args
+            # skip_test_names = ['TestEd25199Wallet.test_something_hella_long']
+            skip_tests(suite, skip_test_names)
+
             num_suites += 1
             num_tests += suite.countTestCases()
 
@@ -124,10 +161,13 @@ if __name__ == '__main__':
     args.add_argument('-v', '--verbosity', action='store_true', help='Optional verbosity. If true, no output from unit/integration tests will be surpressed')
 
     # --unit_tests [0/1]: Optional unit tests
-    args.add_argument("--unit_tests", type=int, default=1, help="Flag to run unit tests. Default is True")
+    args.add_argument("--unit", type=int, default=1, help="Flag to run unit tests. Default is True")
 
     #  --integration_tests [0/1]: Optional integration tests
-    args.add_argument("--integration_tests", type=int, default=1, help="Flag to run integration tests. Default is True")
+    args.add_argument("--integration", type=int, default=1, help="Flag to run integration tests. Default is True")
+
+    # --skip_tests TestEd25199Wallet.test_something_hella_long, ... : Skip tests by specifying TestClassName.ModuleName
+    args.add_argument("--skip", nargs='+', type=str)
 
     main(args.parse_args())
 
