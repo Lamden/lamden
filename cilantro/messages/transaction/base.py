@@ -1,7 +1,7 @@
 from cilantro import Constants
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
-# from cilantro.db import contract
+from cilantro.db import contract
 from cilantro.utils import lazy_property
 import capnp
 
@@ -22,8 +22,7 @@ class TransactionBase(MessageBase):
         :return: SQLAlchemy query objects
         """
         assert hasattr(type(self), 'contract'), "Transaction type {} has no contract defined".format(type(self))
-        raise NotImplementedError
-        # return contract(type(self))(type(self).contract)(self, *args, **kwargs)
+        return contract(type(self))(type(self).contract)(self, *args, **kwargs)
 
     def validate(self):
         """
@@ -95,6 +94,3 @@ class TransactionBase(MessageBase):
     @property
     def sender(self):
         return self._data.payload.sender.decode()
-
-
-

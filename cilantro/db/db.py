@@ -102,9 +102,9 @@ def create_db(name, should_reset=False):
     log = get_logger("DBCreator")
     log.info("Creating DB connection for DB with name {}".format(name))
 
-    ex = Executer.init_local_noauth_dev(db_name=name)
-    # db = create_engine('mysql+pymysql://root@localhost')
-    # metadata = MetaData()
+    # ex = Executer.init_local_noauth_dev(db_name=name)
+    db = create_engine('mysql+pymysql://root@localhost')
+    metadata = MetaData()
 
     # create the tables that we want / need for our smart contracts
     balances = Table('balances', metadata,
@@ -315,7 +315,8 @@ class DB(metaclass=DBSingletonMeta):
         self.log.info("Creating DB instance for {} with should_reset={}".format(db_name, should_reset))
         self.lock = Lock()
 
-        self.tables = build_tables(db_name, should_reset)
+        # self.tables = build_tables(db_name, should_reset)
+        self.db, self.tables = create_db(db_name, should_reset=True)
 
     def __enter__(self):
         self.log.debug("Acquiring lock {}".format(self.lock))
@@ -325,6 +326,10 @@ class DB(metaclass=DBSingletonMeta):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.log.debug("Releasing lock {}".format(self.lock))
         self.lock.release()
+
+    def execute(self, query):
+        self.log.debug("Executing query {}".format(query))
+        return self.db.execute(query)
 
 
 class VKBook:

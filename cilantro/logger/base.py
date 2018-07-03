@@ -5,7 +5,10 @@ Functions:
 import logging, coloredlogs
 import os, sys
 
-_LOG_LVL = logging.DEBUG
+VALID_LVLS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+_LOG_LVL = os.getenv('LOG_LEVEL', 'DEBUG')
+assert _LOG_LVL in VALID_LVLS, "Log level {} not in valid levels {}".format(_LOG_LVL, VALID_LVLS)
+_LOG_LVL = getattr(logging, _LOG_LVL)
 
 def get_main_log_path():
     from cilantro import logger
@@ -86,9 +89,7 @@ def get_logger(name=''):
     log.setLevel(_LOG_LVL)
 
     sys.stdout = LoggerWriter(log.debug)
-    sys.stderr = LoggerWriter(log.warning)
-
-    # overwrite_logger_level(logging.WARNING)
+    sys.stderr = LoggerWriter(log.error)
 
     return log
 
