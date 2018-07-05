@@ -27,7 +27,7 @@ jobs:
           command: |
             curl -L https://github.com/docker/compose/releases/download/1.21.1/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
             chmod +x ~/docker-compose
-            sudo mv ~/docker-compose /usr/local/bin/docker-compose
+            sudo mv -f ~/docker-compose /usr/local/bin/docker-compose
 
       # - setup_remote_docker:
       #     version: 18.03.1-ce
