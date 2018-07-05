@@ -19,6 +19,21 @@
     {
       "wallet": "cb9bfd4b57b243248796e9eb90bc4f0053d78f06ce68573e0fdca422f54bb0d2",
       "amount": 3696947
+    },
+    {
+      "wallet": "c1f845ad8967b93092d59e4ef56aef3eba49c33079119b9c856a5354e9ccdf84",
+      "amount": 3696947
+    },
+    {
+      "wallet": "4e7cbbd7bd458050d3f93a8c3c5018288940204709fdae7d2a898a11e885ff87",
+      "amount": 3696947
+    }
+  ],
+  "blocks": [
+    {
+      "hash": "deadbeef",
+      "tree": 0,
+      "signatures": 0
     }
   ],
   "constants" : [

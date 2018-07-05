@@ -1,0 +1,175 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.protocol.interpreters.vanilla &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cilantro.protocol.interpreters.vanilla</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">cilantro.messages</span> <span class="k">import</span> <span class="n">TransactionBase</span>
+<span class="kn">from</span> <span class="nn">cilantro.logger</span> <span class="k">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">deque</span>
+<span class="kn">from</span> <span class="nn">cilantro.db</span> <span class="k">import</span> <span class="n">ScratchCloningVisitor</span><span class="p">,</span> <span class="n">DB</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.sql</span> <span class="k">import</span> <span class="n">Update</span>
+<span class="kn">from</span> <span class="nn">cilantro.protocol.interpreters.queries</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">cilantro.protocol.interpreters.base</span> <span class="k">import</span> <span class="n">BaseInterpreter</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+
+
+<div class="viewcode-block" id="VanillaInterpreter"><a class="viewcode-back" href="../../../../cilantro.protocol.interpreters.html#cilantro.VanillaInterpreter">[docs]</a><span class="k">class</span> <span class="nc">VanillaInterpreter</span><span class="p">(</span><span class="n">BaseInterpreter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A basic interpreter capable of interpreting transaction objects and performing the necessary db updates, or raising</span>
+<span class="sd">    an exception in the case that the transactions are infeasible</span>
+<span class="sd">    Currently supports:</span>
+<span class="sd">        - Standard transactions</span>
+<span class="sd">        - Vote transactions</span>
+<span class="sd">        - Stamp transactions</span>
+<span class="sd">        - Swap transactions</span>
+<span class="sd">        - Redeem transactions</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+<div class="viewcode-block" id="VanillaInterpreter.flush"><a class="viewcode-back" href="../../../../cilantro.protocol.interpreters.html#cilantro.VanillaInterpreter.flush">[docs]</a>    <span class="k">def</span> <span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">update_state</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Flushes internal queue and resets scratch. If update_state is True, then this also interprets its transactions</span>
+<span class="sd">        against state</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Flushing queue with update_state=</span><span class="si">{}</span><span class="s2"> for </span><span class="si">{}</span><span class="s2"> items&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">update_state</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">)))</span>
+
+        <span class="k">if</span> <span class="n">update_state</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Updating state...&quot;</span><span class="p">)</span>
+            <span class="n">queries</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;got queries to execute: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">queries</span><span class="p">)))</span>
+
+            <span class="k">with</span> <span class="n">DB</span><span class="p">()</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">queries</span><span class="p">:</span>
+                    <span class="n">qt</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">compile_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;literal_binds&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;executing query </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">qt</span><span class="p">))</span>
+                    <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+            <span class="c1"># TODO -- implement</span>
+            <span class="c1"># for query in self.queue:</span>
+            <span class="c1">#     tables.db.execute(query)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Done updating state&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Drop scratch</span>
+        <span class="k">with</span> <span class="n">DB</span><span class="p">()</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
+            <span class="c1"># NOTE -- this just drops the scratch version of &#39;balances&#39; for now. If interpretation of tx&#39;s were to</span>
+            <span class="c1">#  operate on other tables, (and consequently other scratch tables), these would need to be dropped as well.</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="n">delete</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">tables</span><span class="o">.</span><span class="n">mapping</span><span class="p">[</span><span class="n">db</span><span class="o">.</span><span class="n">tables</span><span class="o">.</span><span class="n">balances</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2"> attemtpign to executing query </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">q</span><span class="p">))</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">queue_binary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">serialize</span><span class="p">()</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">queue_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="p">)</span>
+
+<div class="viewcode-block" id="VanillaInterpreter.interpret"><a class="viewcode-back" href="../../../../cilantro.protocol.interpreters.html#cilantro.VanillaInterpreter.interpret">[docs]</a>    <span class="k">def</span> <span class="nf">interpret</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tx</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Interprets the transaction, and updates scratch/balance state as necessary.</span>
+<span class="sd">        If any validation fails (i.e. insufficient balance), this method will raise an exception</span>
+<span class="sd">        :param tx: A TestNetTransaction object to interpret</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Interpreting tx </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tx</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">tx</span><span class="p">),</span> <span class="n">TransactionBase</span><span class="p">),</span> <span class="s2">&quot;Transaction type </span><span class="si">{}</span><span class="s2"> is not a subclass of TransactionBase&quot;</span> \
+            <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">tx</span><span class="p">))</span>
+
+        <span class="n">queries</span> <span class="o">=</span> <span class="n">tx</span><span class="o">.</span><span class="n">interpret</span><span class="p">(</span><span class="n">compile_deltas</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">queries</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">!!! Error interpreting tx </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tx</span><span class="p">))</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Got queries </span><span class="si">{}</span><span class="s2"> for tx </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">queries</span><span class="p">,</span> <span class="n">tx</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">tx</span><span class="p">,</span> <span class="o">*</span><span class="n">queries</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">queries</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;About to get scratch query for query </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">q</span><span class="p">))</span>
+            <span class="n">scratch_q</span> <span class="o">=</span> <span class="n">ScratchCloningVisitor</span><span class="p">()</span><span class="o">.</span><span class="n">traverse</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+
+            <span class="c1"># TODO move context manager outside of loop</span>
+            <span class="k">with</span> <span class="n">DB</span><span class="p">()</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">scratch_q</span><span class="o">.</span><span class="vm">__class__</span> <span class="o">==</span> <span class="n">Update</span><span class="p">:</span>
+                    <span class="n">scratch_q</span><span class="o">.</span><span class="n">table</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">tables</span><span class="o">.</span><span class="n">mapping</span><span class="p">[</span><span class="n">scratch_q</span><span class="o">.</span><span class="n">table</span><span class="p">]</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">scratch_q</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  <li><a href="../../../cilantro.html">cilantro</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

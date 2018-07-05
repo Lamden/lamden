@@ -11,7 +11,7 @@ class VoteTransaction(TransactionBase):
     name = "VOTE_TX"
 
     @classmethod
-    def deserialize_data(cls, data: bytes):
+    def _deserialize_data(cls, data: bytes):
         return transaction_capnp.VoteTransaction.from_bytes_packed(data)
 
     def validate_payload(self):

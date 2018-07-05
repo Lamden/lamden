@@ -132,7 +132,6 @@ class State(metaclass=StateMeta):
         if (isinstance(handler_func, MagicMock) and envelope) or self._has_envelope_arg(handler_func):
             assert envelope, "Envelope arg was found for input func {}, " \
                              "but no envelope passed into call_input_handler".format(handler_func)
-            # self.log.debug("ENVELOPE DETECTED IN HANDLER ARGS")  # todo remove this
             output = handler_func(message, envelope=envelope)
         else:
             output = handler_func(message)
@@ -239,7 +238,7 @@ class State(metaclass=StateMeta):
         # At this point, no handler could be found. Warn the user and return None
         # self.log.warning("\nNo {} transition handler found for state {}. Any_handler = {} ... Transition "
         #                  "Registry = {}".format(trans_type, state, any_handler, trans_registry))
-        self.log.warning("\nNo {} transition handler found for transitioning from state {} to {}".format(trans_type, self, state))
+        self.log.warning("No {} transition handler found for transitioning from state {} to {}".format(trans_type, self, state))
         return None
 
     def __eq__(self, other):
@@ -260,7 +259,7 @@ class State(metaclass=StateMeta):
         elif type(other) is str:
             return self.__name__ == other
 
-        # Otherwise, this is an invalid comparison ('other' belongs to incompatible equivalence class)
+        # Otherwise, this is an invalid comparison ('other' and 'self' are incomparable)
         else:
             raise ValueError("Invalid comparison -- RHS (right hand side of equation) must be either a State instance "
                              "instance or String or State Class (not {})".format(other))

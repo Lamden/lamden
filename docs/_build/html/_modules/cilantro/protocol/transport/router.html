@@ -1,0 +1,172 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.protocol.transport.router &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cilantro.protocol.transport.router</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">from</span> <span class="nn">cilantro.protocol.statemachine</span> <span class="k">import</span> <span class="n">StateMachine</span><span class="p">,</span> <span class="n">StateInput</span><span class="p">,</span> <span class="n">State</span>
+<span class="kn">from</span> <span class="nn">cilantro.messages</span> <span class="k">import</span> <span class="n">ReactorCommand</span><span class="p">,</span> <span class="n">Envelope</span><span class="p">,</span> <span class="n">MessageMeta</span><span class="p">,</span> <span class="n">Seal</span><span class="p">,</span> <span class="n">MessageBase</span>
+<span class="kn">from</span> <span class="nn">cilantro.logger</span> <span class="k">import</span> <span class="n">get_logger</span>
+
+
+<div class="viewcode-block" id="Router"><a class="viewcode-back" href="../../../../cilantro.protocol.transport.html#cilantro.protocol.transport.router.Router">[docs]</a><span class="k">class</span> <span class="nc">Router</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Router class transports incoming data from the ReactorDaemon to the appropriate State Machine logic.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">statemachine</span><span class="p">:</span> <span class="n">StateMachine</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Node&#39;</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">.Router&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sm</span> <span class="o">=</span> <span class="n">statemachine</span>
+
+        <span class="c1"># Define mapping between callback names and router functions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">routes</span> <span class="o">=</span> <span class="p">{</span><span class="n">StateInput</span><span class="o">.</span><span class="n">INPUT</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_route</span><span class="p">,</span>
+                       <span class="n">StateInput</span><span class="o">.</span><span class="n">REQUEST</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_route_request</span><span class="p">,</span>
+                       <span class="n">StateInput</span><span class="o">.</span><span class="n">TIMEOUT</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_route</span><span class="p">,</span>
+                       <span class="n">StateInput</span><span class="o">.</span><span class="n">LOOKUP_FAILED</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_failed</span><span class="p">}</span>
+
+<div class="viewcode-block" id="Router.route_callback"><a class="viewcode-back" href="../../../../cilantro.protocol.transport.html#cilantro.protocol.transport.router.Router.route_callback">[docs]</a>    <span class="k">def</span> <span class="nf">route_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">ReactorCommand</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Takes in a callback from a ReactorInterface, and invokes the appropriate receiver on the state machine</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;ROUTING CALLBACK:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">ReactorCommand</span><span class="p">),</span> <span class="s2">&quot;route_callback must take a ReactorCommand instance as input&quot;</span>
+        <span class="k">assert</span> <span class="n">cmd</span><span class="o">.</span><span class="n">callback</span><span class="p">,</span> <span class="s2">&quot;ReactorCommand </span><span class="si">{}</span><span class="s2"> does not have &#39;callback&#39; in kwargs&quot;</span>
+        <span class="k">assert</span> <span class="n">cmd</span><span class="o">.</span><span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">routes</span><span class="p">,</span> <span class="s2">&quot;Unrecognized callback name&quot;</span>
+
+        <span class="c1"># TODO remove below (this is just debug checking)</span>
+        <span class="c1"># Super extra sanity check to make sure id frame from requests matches seal&#39;s vk (this is also done in Daemon)</span>
+        <span class="k">if</span> <span class="n">cmd</span><span class="o">.</span><span class="n">callback</span> <span class="o">==</span> <span class="n">StateInput</span><span class="o">.</span><span class="n">REQUEST</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">cmd</span><span class="o">.</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;header&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span><span class="o">.</span><span class="n">seal</span><span class="o">.</span><span class="n">verifying_key</span><span class="p">,</span> <span class="s2">&quot;Header frame and VK dont match!!!&quot;</span>
+            <span class="k">assert</span> <span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span><span class="o">.</span><span class="n">verify_seal</span><span class="p">(),</span> <span class="s2">&quot;Envelope couldnt be verified! This should of been checked &quot;</span> \
+                                               <span class="s2">&quot;by the ReactorDaemon!!!!&quot;</span>
+
+        <span class="k">if</span> <span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span><span class="p">:</span>
+            <span class="n">envelope</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">envelope</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">envelope</span><span class="o">.</span><span class="n">verify_seal</span><span class="p">():</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n\n</span><span class="s2"> Could not verify seal for envelope </span><span class="si">{}</span><span class="s2"> </span><span class="se">\n\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">envelope</span><span class="p">))</span>
+                    <span class="k">return</span>
+                <span class="c1"># Ensure its possible to deserialize the data (this will raise exception if not)</span>
+                <span class="c1"># Deserializing the data (via from_bytes(..) also runs .validate() on the message)</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="n">envelope</span><span class="o">.</span><span class="n">message</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">!!!!!</span><span class="se">\n</span><span class="s2">Error unpacking cmd envelope </span><span class="si">{}</span><span class="se">\n</span><span class="s2">Cmd:</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s2">!!!!</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">cmd</span><span class="p">))</span>
+
+        <span class="c1"># Route command to subroutine based on callback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">routes</span><span class="p">[</span><span class="n">cmd</span><span class="o">.</span><span class="n">callback</span><span class="p">](</span><span class="n">cmd</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_route</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">ReactorCommand</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Should be for internal use only.</span>
+<span class="sd">        Routes an envelope to the appropriate @input or @timeout receiver</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sm</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">call_input_handler</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span><span class="o">.</span><span class="n">message</span><span class="p">,</span> <span class="n">cmd</span><span class="o">.</span><span class="n">callback</span><span class="p">,</span> <span class="n">envelope</span><span class="o">=</span><span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_route_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">ReactorCommand</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Should be for internal use only.</span>
+<span class="sd">        Routes a reply envelope to the appropriate @input receiver. This is different that a &#39;regular&#39; (non request)</span>
+<span class="sd">        envelope, because data returned to the @input function will be packaged as a reply and sent off to the daemon</span>
+<span class="sd">        by the composer</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reply</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sm</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">call_input_handler</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span><span class="o">.</span><span class="n">message</span><span class="p">,</span> <span class="n">cmd</span><span class="o">.</span><span class="n">callback</span><span class="p">,</span> <span class="n">envelope</span><span class="o">=</span><span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">reply</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No reply returned for request msg of type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span><span class="o">.</span><span class="n">message</span><span class="p">)))</span>
+            <span class="k">return</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reply</span><span class="p">,</span> <span class="n">MessageBase</span><span class="p">),</span> <span class="s2">&quot;whatever is returned from @input_request function must be a &quot;</span> \
+                                               <span class="s2">&quot;MessageBase subclass instance&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Sending reply message </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">reply</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sm</span><span class="o">.</span><span class="n">composer</span><span class="o">.</span><span class="n">send_reply</span><span class="p">(</span><span class="n">message</span><span class="o">=</span><span class="n">reply</span><span class="p">,</span> <span class="n">request_envelope</span><span class="o">=</span><span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_lookup_failed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">:</span> <span class="n">ReactorCommand</span><span class="p">):</span>
+
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">kwargs</span>
+        <span class="k">del</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;callback&#39;</span><span class="p">])</span>
+        <span class="n">new_cmd</span> <span class="o">=</span> <span class="n">ReactorCommand</span><span class="o">.</span><span class="n">create_cmd</span><span class="p">(</span><span class="n">envelope</span><span class="o">=</span><span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="kn">import</span> <span class="nn">time</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sm</span><span class="o">.</span><span class="n">composer</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">send_cmd</span><span class="p">(</span><span class="n">new_cmd</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  <li><a href="../../../cilantro.html">cilantro</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

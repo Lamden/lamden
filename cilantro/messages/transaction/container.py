@@ -20,8 +20,8 @@ class TransactionContainer(MessageBase):
     @classmethod
     def create(cls, tx: TransactionBase):
         assert issubclass(type(tx), MessageBase), "TransactionContainer data must be a TransactionBase subclass"
-        assert type(tx) in MessageBase.registry, "MessageBase class {} not found in registry {}"\
-            .format(type(tx), MessageBase.registry)
+        # assert type(tx) in MessageBase.registry, "MessageBase class {} not found in registry {}"\
+        #     .format(type(tx), MessageBase.registry)
 
         container = transaction_capnp.TransactionContainer.new_message()
         container.type = MessageBase.registry[type(tx)]

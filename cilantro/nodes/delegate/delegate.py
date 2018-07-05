@@ -61,7 +61,7 @@ class DelegateBaseState(State):
 
     @input(NewBlockNotification)
     def handle_new_block_notif(self, notif: NewBlockNotification):
-        self.log.critical("got new block notification, but logic to handle it is not implement in subclass")
+        self.log.warning("got new block notification, but logic to handle it is not implement in subclass")
         raise NotImplementedError
         # TODO -- if we are in anything but consensus state, we need to go to update state
 
@@ -77,6 +77,10 @@ class DelegateBootState(DelegateBaseState):
     def enter_any(self, prev_state):
         # Sub to other delegates
         for delegate_vk in VKBook.get_delegates():
+            # Do not sub to ourself
+            if delegate_vk == self.parent.verifying_key:
+                continue
+
             self.parent.composer.add_sub(vk=delegate_vk, filter=Constants.ZmqFilters.DelegateDelegate)
 
         # Sub to witnesses
@@ -142,6 +146,3 @@ class DelegateBootState(DelegateBaseState):
 #
 #         return clsobj
 ## END TESTING
-
-
-

@@ -1,0 +1,224 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.utils.test.mp_test_case &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cilantro.utils.test.mp_test_case</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">zmq.asyncio</span>
+<span class="kn">from</span> <span class="nn">vmnet.test.base</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">cilantro.logger</span> <span class="k">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span> <span class="nn">.mp_test</span> <span class="k">import</span> <span class="n">SIG_ABORT</span><span class="p">,</span> <span class="n">SIG_FAIL</span><span class="p">,</span> <span class="n">SIG_RDY</span><span class="p">,</span> <span class="n">SIG_SUCC</span><span class="p">,</span> <span class="n">SIG_START</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="k">import</span> <span class="n">dirname</span>
+<span class="kn">import</span> <span class="nn">cilantro</span>
+
+<span class="c1"># URL of orchestration node. TODO -- set this to env vars</span>
+<span class="n">URL</span> <span class="o">=</span> <span class="s2">&quot;tcp://127.0.0.1:5020&quot;</span>
+
+<span class="n">TEST_TIMEOUT</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">TESTER_POLL_FREQ</span> <span class="o">=</span> <span class="mf">0.1</span>
+
+<span class="n">CILANTRO_PATH</span> <span class="o">=</span> <span class="n">dirname</span><span class="p">(</span><span class="n">dirname</span><span class="p">(</span><span class="n">cilantro</span><span class="o">.</span><span class="n">__path__</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+
+<div class="viewcode-block" id="MPTestCase"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.mp_test_case.MPTestCase">[docs]</a><span class="k">class</span> <span class="nc">MPTestCase</span><span class="p">(</span><span class="n">BaseNetworkTestCase</span><span class="p">):</span>
+    <span class="n">compose_file</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/cilantro/tests/vmnet/compose_files/cilantro-nodes.yml&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">CILANTRO_PATH</span><span class="p">)</span>
+
+    <span class="n">local_path</span> <span class="o">=</span> <span class="n">CILANTRO_PATH</span>
+    <span class="n">docker_dir</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/cilantro/tests/vmnet/docker_dir&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">CILANTRO_PATH</span><span class="p">)</span>
+    <span class="n">logdir</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/cilantro/logs&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">CILANTRO_PATH</span><span class="p">)</span>
+
+    <span class="n">testers</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">curr_tester_index</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;MPTestOrchestrater&quot;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_next_container</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retreives the next available docker image.</span>
+<span class="sd">        :return: A 2 tuple containing the ip and name of container in the form: (name: str, ip: str)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="n">MPTestCase</span><span class="o">.</span><span class="n">curr_tester_index</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;node_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">num</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">nodemap</span><span class="p">),</span> <span class="s2">&quot;Tester object number </span><span class="si">{}</span><span class="s2"> exceeds tester capacity of </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">nodemap</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">nodemap</span><span class="p">,</span> <span class="s2">&quot;Node named </span><span class="si">{}</span><span class="s2"> not found in node map </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">nodemap</span><span class="p">)</span>
+
+        <span class="n">MPTestCase</span><span class="o">.</span><span class="n">curr_tester_index</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">name</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">nodemap</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+<div class="viewcode-block" id="MPTestCase.setUp"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.mp_test_case.MPTestCase.setUp">[docs]</a>    <span class="k">def</span> <span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">setUp</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">MPTestCase</span><span class="o">.</span><span class="n">testers</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;setUp called but God._testers is not empty (</span><span class="si">{}</span><span class="s2">)&quot;</span> \
+            <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">MPTestCase</span><span class="o">.</span><span class="n">testers</span><span class="p">)</span>
+
+        <span class="n">start_msg</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="s1">&#39;#&#39;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="s1">&#39;#&#39;</span> <span class="o">*</span> <span class="mi">80</span>
+        <span class="n">start_msg</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n\t\t\t</span><span class="s1"> TEST STARTING</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="s1">&#39;#&#39;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="s1">&#39;#&#39;</span> <span class="o">*</span> <span class="mi">80</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">start_msg</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MPTestCase.tearDown"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.mp_test_case.MPTestCase.tearDown">[docs]</a>    <span class="k">def</span> <span class="nf">tearDown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">tearDown</span><span class="p">()</span>
+
+        <span class="n">MPTestCase</span><span class="o">.</span><span class="n">testers</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">MPTestCase</span><span class="o">.</span><span class="n">curr_tester_index</span> <span class="o">=</span> <span class="mi">1</span></div>
+
+<div class="viewcode-block" id="MPTestCase.start"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.mp_test_case.MPTestCase.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">TEST_TIMEOUT</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start the test orchestrator, which polls tester objects living on seperate process/machines for assertions.</span>
+
+<span class="sd">        We organize all registered testers into &#39;active&#39; testers, which are passed in an assertions function,</span>
+<span class="sd">        and &#39;passive&#39; testers which do not make assertions but still interact with other testers.</span>
+<span class="sd">        Testers&#39; output queues are polled  every TEST_POLL_FREQ seconds for maximum of TEST_TIMEOUT seconds,</span>
+<span class="sd">        waiting for them to finish (if ever). When an &#39;active&#39; testers passes its assertions, we move it to</span>
+<span class="sd">        &#39;passives&#39;. When all active testers are finished, we send SIG_ABORTs to all testers to clean them up</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># self.log.critical(&quot;\nSTARTING TEST WITH TESTERS {}\n&quot;.format(God.testers))</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">MPTestCase</span><span class="o">.</span><span class="n">testers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;start() called, but list of testers empty (MPTesterBase._testers=</span><span class="si">{}</span><span class="s2">)&quot;</span>\
+                                            <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">MPTestCase</span><span class="o">.</span><span class="n">testers</span><span class="p">)</span>
+
+        <span class="n">actives</span><span class="p">,</span> <span class="n">passives</span><span class="p">,</span> <span class="n">fails</span><span class="p">,</span> <span class="n">timeout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_poll_testers</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Cleaning up tester processes&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">actives</span> <span class="o">+</span> <span class="n">passives</span> <span class="o">+</span> <span class="n">fails</span><span class="p">:</span>
+            <span class="n">t</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">SIG_ABORT</span><span class="p">)</span>
+            <span class="n">t</span><span class="o">.</span><span class="n">teardown</span><span class="p">()</span>
+
+        <span class="c1"># If there are no active testers left and none of them failed, we win</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">actives</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">fails</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="si">{0}</span><span class="se">\n\n\t\t\t</span><span class="s2">TESTERS SUCCEEDED WITH </span><span class="si">{1}</span><span class="s2"> SECONDS LEFT</span><span class="se">\n\n</span><span class="si">{0}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                           <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;$&#39;</span> <span class="o">*</span> <span class="mi">120</span><span class="p">,</span> <span class="n">timeout</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fail_msg</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n\n</span><span class="s2">fail_msg:</span><span class="se">\n</span><span class="si">{0}</span><span class="se">\n</span><span class="s2">ASSERTIONS TIMED OUT FOR TESTERS: </span><span class="se">\n\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;-&#39;</span> <span class="o">*</span> <span class="mi">120</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">fails</span> <span class="o">+</span> <span class="n">actives</span><span class="p">:</span>
+                <span class="n">fail_msg</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+            <span class="n">fail_msg</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="si">{0}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;-&#39;</span> <span class="o">*</span> <span class="mi">120</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">fail_msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_poll_testers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="n">start_msg</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="s1">&#39;~&#39;</span> <span class="o">*</span> <span class="mi">80</span>
+        <span class="n">start_msg</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Polling testers procs every </span><span class="si">{}</span><span class="s1"> seconds, with test timeout of </span><span class="si">{}</span><span class="s1"> seconds</span><span class="se">\n</span><span class="s1">&#39;</span>\
+            <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">TESTER_POLL_FREQ</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">start_msg</span> <span class="o">+=</span> <span class="s1">&#39;~&#39;</span> <span class="o">*</span> <span class="mi">80</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">start_msg</span><span class="p">)</span>
+
+        <span class="n">actives</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">MPTestCase</span><span class="o">.</span><span class="n">testers</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">assert_fn</span><span class="p">]</span>
+        <span class="n">passives</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">MPTestCase</span><span class="o">.</span><span class="n">testers</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">assert_fn</span><span class="p">]</span>
+        <span class="n">fails</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Start the assertion on the active tester procs</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">actives</span><span class="p">:</span>
+            <span class="n">t</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">SIG_START</span><span class="p">)</span>
+
+        <span class="c1"># Poll testers for a max of &#39;timeout&#39; seconds</span>
+        <span class="k">while</span> <span class="n">timeout</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">actives</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">msg</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="n">flags</span><span class="o">=</span><span class="n">zmq</span><span class="o">.</span><span class="n">NOBLOCK</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;GOT MSG </span><span class="si">{}</span><span class="s2"> FROM TESTER &lt;</span><span class="si">{}</span><span class="s2">&gt;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">t</span><span class="p">))</span>
+
+                    <span class="c1"># &#39;ignore&#39; SIG_RDY</span>
+                    <span class="k">if</span> <span class="n">msg</span> <span class="o">==</span> <span class="n">SIG_RDY</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="n">actives</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">msg</span> <span class="o">==</span> <span class="n">SIG_SUCC</span><span class="p">:</span>
+                        <span class="n">passives</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">fails</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+            <span class="c1"># Break if all active testers have finished</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">actives</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Breaking from loop, no active tester left&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+
+            <span class="c1"># Sleep for TEST_POLL_FREQ seconds</span>
+            <span class="n">timeout</span> <span class="o">-=</span> <span class="n">TESTER_POLL_FREQ</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">TESTER_POLL_FREQ</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">actives</span><span class="p">,</span> <span class="n">passives</span><span class="p">,</span> <span class="n">fails</span><span class="p">,</span> <span class="n">timeout</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  <li><a href="../../../cilantro.html">cilantro</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

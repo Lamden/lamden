@@ -1,0 +1,274 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.db.contracts &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cilantro.db.contracts</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">cilantro.logger</span> <span class="k">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span> <span class="nn">cilantro.utils</span> <span class="k">import</span> <span class="n">Hasher</span>
+<span class="kn">from</span> <span class="nn">cilantro.db.tables</span> <span class="k">import</span> <span class="n">create_table</span>
+<span class="kn">import</span> <span class="nn">seneca.seneca_internal.storage.easy_db</span> <span class="k">as</span> <span class="nn">t</span>
+<span class="kn">from</span> <span class="nn">seneca.execute_sc</span> <span class="k">import</span> <span class="n">execute_contract</span><span class="p">,</span> <span class="n">get_contract_exports</span> <span class="k">as</span> <span class="n">get_exports</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+
+<span class="n">log</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;ContractsTable&quot;</span><span class="p">)</span>
+
+<span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span>
+<span class="n">dir_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<span class="n">CONTRACTS_DIR</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/../contracts/lib&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dir_path</span><span class="p">)</span>
+
+<span class="n">GENESIS_AUTHOR</span> <span class="o">=</span> <span class="s1">&#39;default_cilantro_contract&#39;</span>
+<span class="n">GENESIS_DATE</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">MINYEAR</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="build_contracts_table"><a class="viewcode-back" href="../../../cilantro.db.html#cilantro.db.contracts.build_contracts_table">[docs]</a><span class="k">def</span> <span class="nf">build_contracts_table</span><span class="p">(</span><span class="n">ex</span><span class="p">,</span> <span class="n">should_drop</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">contracts</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">Table</span><span class="p">(</span><span class="s1">&#39;smart_contracts&#39;</span><span class="p">,</span>
+                        <span class="n">t</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="s1">&#39;contract_id&#39;</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">str_len</span><span class="p">(</span><span class="mi">64</span><span class="p">),</span> <span class="kc">True</span><span class="p">),</span>
+                        <span class="p">[</span>
+                            <span class="n">t</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="s1">&#39;code_str&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span>
+                            <span class="n">t</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="s1">&#39;author&#39;</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">str_len</span><span class="p">(</span><span class="mi">64</span><span class="p">)),</span>
+                            <span class="n">t</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="s1">&#39;execution_datetime&#39;</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">),</span>
+                            <span class="n">t</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="s1">&#39;execution_status&#39;</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">str_len</span><span class="p">(</span><span class="mi">30</span><span class="p">)),</span>
+                        <span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">create_table</span><span class="p">(</span><span class="n">ex</span><span class="p">,</span> <span class="n">contracts</span><span class="p">,</span> <span class="n">should_drop</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="seed_contracts"><a class="viewcode-back" href="../../../cilantro.db.html#cilantro.db.contracts.seed_contracts">[docs]</a><span class="k">def</span> <span class="nf">seed_contracts</span><span class="p">(</span><span class="n">ex</span><span class="p">,</span> <span class="n">contracts_table</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Seeds the contracts table with all contracts found in cilantro/contracts</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Insert contract code from files in file system into database table</span>
+    <span class="k">for</span> <span class="n">contract_id</span><span class="p">,</span> <span class="n">code_str</span> <span class="ow">in</span> <span class="n">_read_contract_files</span><span class="p">():</span>
+        <span class="n">contracts_table</span><span class="o">.</span><span class="n">insert</span><span class="p">([{</span>
+            <span class="s1">&#39;contract_id&#39;</span><span class="p">:</span> <span class="n">contract_id</span><span class="p">,</span>
+            <span class="s1">&#39;code_str&#39;</span><span class="p">:</span> <span class="n">code_str</span><span class="p">,</span>
+            <span class="s1">&#39;author&#39;</span><span class="p">:</span> <span class="n">GENESIS_AUTHOR</span><span class="p">,</span>
+            <span class="s1">&#39;execution_datetime&#39;</span><span class="p">:</span> <span class="n">GENESIS_DATE</span><span class="p">,</span>
+            <span class="s1">&#39;execution_status&#39;</span><span class="p">:</span> <span class="s1">&#39;pending&#39;</span><span class="p">,</span>
+        <span class="p">}])</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span>
+
+    <span class="c1"># Run contracts</span>
+    <span class="k">for</span> <span class="n">contract_id</span><span class="p">,</span> <span class="n">code_str</span> <span class="ow">in</span> <span class="n">_read_contract_files</span><span class="p">():</span>
+        <span class="n">run_contract</span><span class="p">(</span><span class="n">ex</span><span class="p">,</span> <span class="n">contracts_table</span><span class="p">,</span> <span class="n">contract_id</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="module_loader_fn"><a class="viewcode-back" href="../../../cilantro.db.html#cilantro.db.contracts.module_loader_fn">[docs]</a><span class="k">def</span> <span class="nf">module_loader_fn</span><span class="p">(</span><span class="n">ex</span><span class="p">,</span> <span class="n">contract_table</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a module loader function used for executing contracts</span>
+<span class="sd">    :return: A function which takes a single parameter, a contract_id, and returns a tuple of (contract_data, code_str)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">_module_loader_fn</span><span class="p">(</span><span class="n">contract_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="n">author</span><span class="p">,</span> <span class="n">exec_dt</span><span class="p">,</span> <span class="n">code_str</span> <span class="o">=</span> <span class="n">_lookup_contract_info</span><span class="p">(</span><span class="n">ex</span><span class="p">,</span> <span class="n">contract_table</span><span class="p">,</span> <span class="n">contract_id</span><span class="p">)</span>
+        <span class="n">runtime_data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;author&#39;</span><span class="p">:</span> <span class="n">author</span><span class="p">,</span> <span class="s1">&#39;contract_id&#39;</span><span class="p">:</span> <span class="n">contract_id</span><span class="p">,</span> <span class="s1">&#39;execution_datetime&#39;</span><span class="p">:</span> <span class="n">exec_dt</span><span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">runtime_data</span><span class="p">,</span> <span class="n">code_str</span>
+
+    <span class="k">return</span> <span class="n">_module_loader_fn</span></div>
+
+
+<span class="c1"># def run_contract(executor, contract_table, contract_id: str=&#39;&#39;, user_id=GENESIS_AUTHOR, code_str: str=&#39;&#39;):</span>
+<span class="c1">#     assert bool(contract_id) ^ bool(code_str), &quot;Either contract_id or code_str must be passed in (XOR, one or the other)&quot;</span>
+<span class="c1">#     log.debug(&quot;[inside _execute_contract] Executing contract with id {} and user_id {}&quot;.format(contract_id, user_id))</span>
+<span class="c1">#</span>
+<span class="c1">#     if code_str:</span>
+<span class="c1">#         author = user_id</span>
+<span class="c1">#         exec_dt = None  # todo make this current datetime</span>
+<span class="c1">#     else:</span>
+<span class="c1">#         author, exec_dt, code_str = _lookup_contract_info(executor, contract_table, contract_id)</span>
+<span class="c1">#</span>
+<span class="c1">#     global_run_data = {&#39;caller_user_id&#39;: user_id, &#39;execution_datetime&#39;: exec_dt, &#39;caller_contract_id&#39;: contract_id}</span>
+<span class="c1">#     this_contract_run_data = {&#39;author&#39;: author, &#39;execution_datetime&#39;: exec_dt, &#39;contract_id&#39;: contract_id}</span>
+<span class="c1">#</span>
+<span class="c1">#     result = execute_contract(global_run_data, this_contract_run_data, code_str, is_main=True,</span>
+<span class="c1">#                               module_loader=module_loader_fn(executor, contract_table), db_executer=executor)</span>
+<span class="c1">#</span>
+<span class="c1">#     log.debug(&quot;\n result of executor contract with id {}: \n {} \n\n&quot;.format(contract_id, result))</span>
+<span class="c1">#</span>
+<span class="c1">#     return result</span>
+
+<span class="k">def</span> <span class="nf">_ex_contract</span><span class="p">(</span><span class="n">executor</span><span class="p">,</span> <span class="n">contract_table</span><span class="p">,</span> <span class="n">contract_id</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="n">GENESIS_AUTHOR</span><span class="p">,</span> <span class="n">code_str</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">get_contract</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">bool</span><span class="p">(</span><span class="n">contract_id</span><span class="p">)</span> <span class="o">^</span> <span class="nb">bool</span><span class="p">(</span><span class="n">code_str</span><span class="p">),</span> <span class="s2">&quot;Either contract_id or code_str must be passed in (XOR, one or the other)&quot;</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;[inside _execute_contract] Executing contract with id </span><span class="si">{}</span><span class="s2"> and user_id </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">contract_id</span><span class="p">,</span> <span class="n">user_id</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">code_str</span><span class="p">:</span>
+            <span class="n">author</span> <span class="o">=</span> <span class="n">user_id</span>
+            <span class="n">exec_dt</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># todo make this current datetime</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">author</span><span class="p">,</span> <span class="n">exec_dt</span><span class="p">,</span> <span class="n">code_str</span> <span class="o">=</span> <span class="n">_lookup_contract_info</span><span class="p">(</span><span class="n">executor</span><span class="p">,</span> <span class="n">contract_table</span><span class="p">,</span> <span class="n">contract_id</span><span class="p">)</span>
+
+        <span class="n">global_run_data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;caller_user_id&#39;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span> <span class="s1">&#39;execution_datetime&#39;</span><span class="p">:</span> <span class="n">exec_dt</span><span class="p">,</span> <span class="s1">&#39;caller_contract_id&#39;</span><span class="p">:</span> <span class="n">contract_id</span><span class="p">}</span>
+        <span class="n">this_contract_run_data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;author&#39;</span><span class="p">:</span> <span class="n">author</span><span class="p">,</span> <span class="s1">&#39;execution_datetime&#39;</span><span class="p">:</span> <span class="n">exec_dt</span><span class="p">,</span> <span class="s1">&#39;contract_id&#39;</span><span class="p">:</span> <span class="n">contract_id</span><span class="p">}</span>
+
+        <span class="n">_ex_func</span> <span class="o">=</span> <span class="n">get_exports</span> <span class="k">if</span> <span class="n">get_contract</span> <span class="k">else</span> <span class="n">execute_contract</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">_ex_func</span><span class="p">(</span><span class="n">global_run_data</span><span class="p">,</span> <span class="n">this_contract_run_data</span><span class="p">,</span> <span class="n">code_str</span><span class="p">,</span>
+                                  <span class="n">module_loader</span><span class="o">=</span><span class="n">module_loader_fn</span><span class="p">(</span><span class="n">executor</span><span class="p">,</span> <span class="n">contract_table</span><span class="p">),</span> <span class="n">db_executer</span><span class="o">=</span><span class="n">executor</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span>
+
+<div class="viewcode-block" id="get_contract_exports"><a class="viewcode-back" href="../../../cilantro.db.html#cilantro.db.contracts.get_contract_exports">[docs]</a><span class="k">def</span> <span class="nf">get_contract_exports</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_ex_contract</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">get_contract</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="run_contract"><a class="viewcode-back" href="../../../cilantro.db.html#cilantro.db.contracts.run_contract">[docs]</a><span class="k">def</span> <span class="nf">run_contract</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_ex_contract</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">get_contract</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_lookup_contract_info</span><span class="p">(</span><span class="n">executor</span><span class="p">,</span> <span class="n">contract_table</span><span class="p">,</span> <span class="n">contract_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Looks up the contract info for the specified contract id. This includes the author, execution datetime, and code</span>
+<span class="sd">    string. These values a returned in a tuple of that order.</span>
+<span class="sd">    :param contract_id: The id of the contract to lookup</span>
+<span class="sd">    :return: A tuple, containing 3 elements (author: str, execution_datetime: datetime.datetime, code_str: str)</span>
+<span class="sd">    :raises: An exception if the contract_id cannot be found</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">contract_table</span><span class="o">.</span><span class="n">select</span><span class="p">()</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">contract_table</span><span class="o">.</span><span class="n">contract_id</span> <span class="o">==</span> <span class="n">contract_id</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">executor</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">query</span><span class="o">.</span><span class="n">rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;No rows found for contract_id </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">contract_id</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">query</span><span class="o">.</span><span class="n">rows</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Multiple rows found for contract_id </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">contract_id</span><span class="p">)</span>
+
+    <span class="n">author</span> <span class="o">=</span> <span class="n">query</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;author&#39;</span><span class="p">]</span>
+    <span class="n">exec_dt</span> <span class="o">=</span> <span class="n">query</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;execution_datetime&#39;</span><span class="p">]</span>
+    <span class="n">code_str</span> <span class="o">=</span> <span class="n">query</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;code_str&#39;</span><span class="p">]</span>
+
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">code_str</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Contract id </span><span class="si">{}</span><span class="s1"> with author </span><span class="si">{}</span><span class="s1"> has empty code string&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">contract_id</span><span class="p">,</span> <span class="n">author</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">author</span><span class="p">,</span> <span class="n">exec_dt</span><span class="p">,</span> <span class="n">code_str</span>
+
+
+<span class="k">def</span> <span class="nf">_read_contract_files</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reads all contracts in the cilantro/contracts directory.</span>
+<span class="sd">    :return: A list of tuples containing (contract_id, contract_code). Both values are strings</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Loading smart contracts at directory </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">CONTRACTS_DIR</span><span class="p">))</span>
+    <span class="n">contracts</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">CONTRACTS_DIR</span><span class="p">)):</span>
+        <span class="n">_validate_filename</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;[inside _read_contract_files] Loading contract code for file </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">CONTRACTS_DIR</span><span class="p">,</span> <span class="n">filename</span><span class="p">),</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">code_str</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">code_str</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Empty code string for filename </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+            <span class="n">contract_id</span> <span class="o">=</span> <span class="n">_contract_id_for_filename</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+            <span class="n">contracts</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">contract_id</span><span class="p">,</span> <span class="n">code_str</span><span class="p">))</span>
+
+            <span class="c1"># TODO remove this (debug lines)</span>
+            <span class="c1"># max_len = min(len(code_str), 60)</span>
+            <span class="c1"># log.debug(&quot;[inside _read_contract_files] filename {} has contract_id {} has author {} and code has code: &quot;</span>
+            <span class="c1">#           &quot;\n {} ....[SNIPPED TRUNCATED]&quot;</span>
+            <span class="c1">#           .format(filename, contract_id, GENESIS_AUTHOR, code_str[0:max_len]))</span>
+            <span class="c1"># end debug</span>
+
+    <span class="k">return</span> <span class="n">contracts</span>
+
+
+<span class="k">def</span> <span class="nf">_contract_id_for_filename</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the contract_id associated with a filename</span>
+
+<span class="sd">    For now this is just the filename without the extensions (ie &#39;hello.seneca&#39; -&gt; &#39;hello&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_validate_filename</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+    <span class="c1"># contract_id = Hasher.hash(filename)</span>
+    <span class="n">contract_id</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">contract_id</span>
+
+
+<span class="k">def</span> <span class="nf">_validate_filename</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ensures filename has a proper .seneca extension</span>
+<span class="sd">    :return: None</span>
+<span class="sd">    :raises: An assertion if the filename is invalid</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">err_str</span> <span class="o">=</span> <span class="s2">&quot;file named </span><span class="si">{}</span><span class="s2"> is not a valid smart contract (must be a .seneca file)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;Got filename that is empty string&quot;</span>
+
+    <span class="n">dot_idx</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">dot_idx</span><span class="p">,</span> <span class="n">err_str</span>
+
+    <span class="n">extension</span> <span class="o">=</span> <span class="n">filename</span><span class="p">[</span><span class="n">dot_idx</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="k">assert</span> <span class="n">extension</span> <span class="o">==</span> <span class="s1">&#39;seneca&#39;</span><span class="p">,</span> <span class="n">err_str</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  <li><a href="../../cilantro.html">cilantro</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

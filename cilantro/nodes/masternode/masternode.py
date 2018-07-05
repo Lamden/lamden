@@ -11,6 +11,7 @@ from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import *
 from cilantro.messages import *
 from aiohttp import web
+from cilantro.db import *
 
 
 MNNewBlockState = 'MNNewBlockState'
@@ -41,20 +42,28 @@ class Masternode(NodeBase):
 class MNBaseState(State):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
-        self.log.critical("mn about to pub for tx {}".format(tx))  # debug line
+        self.log.debug("mn about to pub for tx {}".format(tx))  # debug line
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=tx)
 
     @input_request(BlockContender)
-    def recv_block(self, block: BlockContender):
-        self.log.warning("Current state not configured to handle block contender: {}".format(block))
+    def handle_block_contender(self, block: BlockContender):
+        self.log.warning("Current state not configured to handle block contender")
+        self.log.debug('Block: {}'.format(block))
 
-    @input_request(StateRequest)
-    def handle_state_req(self, request: StateRequest):
-        self.log.warning("Current state not configured to handle state requests {}".format(request))
+    @input_request(StateUpdateRequest)
+    def handle_state_req(self, request: StateUpdateRequest):
+        self.log.warning("Current state not configured to handle state requests")
+        self.log.debug('Request: {}'.format(request))
 
     @input(BlockDataReply)
     def recv_blockdata_reply(self, reply: BlockDataReply):
-        self.log.warning("Current state not configured to handle block data reply {}".format(reply))
+        self.log.warning("Current state not configured to handle block data reply")
+        self.log.debug('Reply: {}'.format(reply))
+
+    @input(ContractContainer)
+    def handle_contract(self, contract: ContractContainer):
+        self.log.debug("Masternode got contract: {}\nPublishing that to witnesses".format(contract))
+        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=contract)
 
 
 @Masternode.register_init_state
@@ -64,13 +73,17 @@ class MNBootState(MNBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
-        self.log.critical("MN IP: {}".format(self.parent.ip))
+        self.log.debug("MN IP: {}".format(self.parent.ip))
 
         # Add publisher socket
         self.parent.composer.add_pub(ip=self.parent.ip)
 
         # Add router socket
         self.parent.composer.add_router(ip=self.parent.ip)
+
+        # Add dealer sockets to delegates, for purposes of requesting block data
+        for vk in VKBook.get_delegates():
+            self.parent.composer.add_dealer(vk=vk)
 
         # Once done booting, transition to run
         self.parent.transition(MNRunState)
@@ -100,10 +113,10 @@ class MNRunState(MNBaseState):
     @enter_from(MNNewBlockState)
     def enter_from_newblock(self, success=False):
         if not success:
+            # this should really just be a warning, but for dev we log it as an error
             self.log.error("\n\nNewBlockState transitioned back with failure!!!\n\n")
 
     @input_request(BlockContender)
-    def recv_block(self, block: BlockContender):
+    def handle_block_contender(self, block: BlockContender):
         self.log.info("Masternode received block contender. Transitioning to NewBlockState".format(block))
         self.parent.transition(MNNewBlockState, block=block)
-

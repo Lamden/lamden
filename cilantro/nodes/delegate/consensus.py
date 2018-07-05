@@ -34,10 +34,10 @@ class DelegateConsensusState(DelegateBaseState):
     # TODO -- i think this should only occur when entering from Interpretting state yea?
     @enter_from_any
     def enter_any(self, prev_state):
-        assert self.parent.interpreter.queue_len > 0, "Entered consensus state, but interpreter queue is empty!"
+        assert self.parent.interpreter.queue_size > 0, "Entered consensus state, but interpreter queue is empty!"
 
         # Merkle-ize transaction queue and create signed merkle hash
-        all_tx = self.parent.interpreter.get_queue_binary()
+        all_tx = self.parent.interpreter.queue_binary
         self.log.info("Delegate got tx from interpreter queue: {}".format(all_tx))
         self.merkle = MerkleTree(all_tx)
         self.merkle_hash = self.merkle.hash_of_nodes()
@@ -66,17 +66,18 @@ class DelegateConsensusState(DelegateBaseState):
 
         # Verify sender's vk exists in the state
         if sig.sender not in VKBook.get_delegates():
-            self.log.critical("Received merkle sig from sender {} who was not registered nodes {}"
+            self.log.debug("Received merkle sig from sender {} who was not registered nodes {}"
                               .format(sig.sender, VKBook.get_delegates()))
             return False
         # Verify we havne't received this signature already
         if sig in self.signatures:
-            self.log.critical("Already received a signature from sender {}".format(sig.sender))
+            self.log.debug("Already received a signature from sender {}".format(sig.sender))
             return False
 
         # Below is just for debugging, so we can see if a signature cannot be verified
         if not sig.verify(self.merkle_hash, sig.sender):
-            self.log.critical("Delegate could not verify signature: {}".format(sig))
+            self.log.warning("Delegate could not verify signature")
+            self.log.debug("Signature: {}".format(sig))
 
         return sig.verify(self.merkle_hash, sig.sender)
 
@@ -85,7 +86,7 @@ class DelegateConsensusState(DelegateBaseState):
                        .format(len(self.signatures), self.NUM_DELEGATES))
 
         if len(self.signatures) >= Constants.Testnet.Majority:
-            self.log.critical("\n\n\nDelegate in consensus!\n\n\n")
+            self.log.info("Delegate in consensus!")
             self.in_consensus = True
 
             # Create BlockContender and send it to all Masternode(s)
@@ -121,12 +122,12 @@ class DelegateConsensusState(DelegateBaseState):
 
         # If the new block hash is the same as our 'scratch block', then just copy scratch to state
         if bytes.fromhex(notif.block_hash) == self.merkle_hash:
-            self.log.critical("\n\n New block hash is the same as ours!!! \n\n")
+            self.log.debug("New block hash is the same as ours!!!")
             self.update_from_scratch(new_block_hash=notif.block_hash, new_block_num=notif.block_num)
             self.parent.transition(DelegateInterpretState)
         # Otherwise, our block is out of consensus and we must request the latest from a Masternode
         else:
-            self.log.critical("\n\n New block hash {} does not match out own merkle_hash {} \n\n"
+            self.log.warning("New block hash {} does not match out own merkle_hash {}"
                               .format(notif.block_hash, self.merkle_hash))
             # self.parent.transition(DelegateOutConsensusUpdateState)
 

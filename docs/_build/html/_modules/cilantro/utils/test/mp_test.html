@@ -1,0 +1,420 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.utils.test.mp_test &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cilantro.utils.test.mp_test</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Integration testing tools for processes with blocking event loops</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">asyncio</span><span class="o">,</span> <span class="nn">uvloop</span>
+<span class="kn">import</span> <span class="nn">zmq.asyncio</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
+<span class="kn">from</span> <span class="nn">cilantro.utils.lprocess</span> <span class="k">import</span> <span class="n">LProcess</span>
+<span class="kn">from</span> <span class="nn">cilantro.logger</span> <span class="k">import</span> <span class="n">get_logger</span>
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">set_event_loop_policy</span><span class="p">(</span><span class="n">uvloop</span><span class="o">.</span><span class="n">EventLoopPolicy</span><span class="p">())</span>
+
+
+<span class="n">ASSERTS_POLL_FREQ</span> <span class="o">=</span> <span class="mf">0.1</span>
+<span class="n">CHILD_PROC_TIMEOUT</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="n">MP_PORT</span> <span class="o">=</span> <span class="s1">&#39;8472&#39;</span>
+
+<span class="n">SIG_RDY</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;IM RDY&#39;</span>
+<span class="n">SIG_SUCC</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;G00DSUCC&#39;</span>
+<span class="n">SIG_FAIL</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;BADSUCC&#39;</span>
+<span class="n">SIG_ABORT</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;NOSUCC&#39;</span>
+<span class="n">SIG_START</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;STARTSUCC&#39;</span>
+
+
+<div class="viewcode-block" id="wrap_func"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.mp_test.wrap_func">[docs]</a><span class="k">def</span> <span class="nf">wrap_func</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_func</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_func</span></div>
+
+<div class="viewcode-block" id="mp_testable"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.mp_test.mp_testable">[docs]</a><span class="k">def</span> <span class="nf">mp_testable</span><span class="p">(</span><span class="n">test_cls</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Decorator to copy all the public API for object type test_cls to the decorated class. The decorated</span>
+<span class="sd">    MPTesterBase subclass will be able to proxy commands to the &#39;test_cls&#39; instance on a child process/VM via a queue.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">propogate_cmd</span><span class="p">(</span><span class="n">cmd_name</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">send_cmd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="n">cmd_name</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">send_cmd</span>
+
+    <span class="k">def</span> <span class="nf">_mp_testable</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">test_cls</span> <span class="o">=</span> <span class="n">test_cls</span>
+
+        <span class="c1"># Only copy non-internal and callable methods</span>
+        <span class="n">search_scope</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">test_cls</span><span class="p">)</span> <span class="k">if</span>
+                        <span class="p">((</span><span class="n">callable</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">test_cls</span><span class="p">,</span> <span class="n">name</span><span class="p">)))</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">name</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;__&#39;</span><span class="p">))]</span>
+        <span class="k">for</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">search_scope</span><span class="p">:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">propogate_cmd</span><span class="p">(</span><span class="n">func</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="bp">cls</span>
+
+    <span class="k">return</span> <span class="n">_mp_testable</span></div>
+
+<span class="k">def</span> <span class="nf">_gen_url</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper method to generate a random URL for use in a PAIR socket</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># TODO set host name from env vars if on VM</span>
+    <span class="n">HOST_NAME</span> <span class="o">=</span> <span class="s1">&#39;127.0.0.1&#39;</span>  <span class="c1"># or node name (i.e delegate_1)</span>
+    <span class="n">rand_num</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">16</span><span class="p">))</span>
+    <span class="k">return</span> <span class="s2">&quot;ipc://mptest-</span><span class="si">{}</span><span class="s2">-</span><span class="si">{}</span><span class="s2">-</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">HOST_NAME</span><span class="p">,</span> <span class="n">rand_num</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="MPTesterProcess"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.mp_test.MPTesterProcess">[docs]</a><span class="k">class</span> <span class="nc">MPTesterProcess</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    We create the blocking tester object, and configure it with mock objects using a function passed in</span>
+<span class="sd">    Then, we ensure futures __recv_cmd() to read from cmd_self.socket for proxy&#39;d commands, and __check_assertions() to</span>
+<span class="sd">    check assertions on a scheduled basis until they complete or until we get a SIG_ABORT from main thread</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">build_fn</span><span class="p">,</span> <span class="n">config_fn</span><span class="p">,</span> <span class="n">assert_fn</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config_fn</span> <span class="o">=</span> <span class="n">config_fn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_fn</span> <span class="o">=</span> <span class="n">assert_fn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gathered_tasks</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;TesterProc[</span><span class="si">{}</span><span class="s2">]&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">tester_obj</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tasks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_components</span><span class="p">(</span><span class="n">build_fn</span><span class="p">)</span>
+
+        <span class="c1"># Connect to parent process over ipc PAIR self.socket</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">asyncio</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket_type</span><span class="o">=</span><span class="n">zmq</span><span class="o">.</span><span class="n">PAIR</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_fn</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tester_obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tester_obj</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MPTesterProcess.start_test"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.mp_test.MPTesterProcess.start_test">[docs]</a>    <span class="k">def</span> <span class="nf">start_test</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sends ready signal to parent process, and then starts the event self.loop in this process</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">gathered_tasks</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;start_test can only be called once&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gathered_tasks</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_recv_cmd</span><span class="p">(),</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">tasks</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;sending ready sig to parent&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">SIG_RDY</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;starting tester proc event loop&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gathered_tasks</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># If the tasks were canceled internally, then do not run _teardown() again</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="ow">is</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Task(s) cancel detected. Closing event loop.&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                <span class="k">return</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">Exception in main TesterProc loop: </span><span class="si">{}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">SIG_FAIL</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_teardown</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_build_components</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">build_fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="n">objs</span> <span class="o">=</span> <span class="n">build_fn</span><span class="p">()</span>
+
+        <span class="c1"># Validate tuple</span>
+        <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">objs</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">tuple</span><span class="p">,</span> <span class="s2">&quot;Expected a tuple of length 3 with (tester_obj, loop, tasks)&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">objs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;Expected a tuple of length 3 with (tester_obj, loop, tasks)&quot;</span>
+
+        <span class="n">tester_obj</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span> <span class="n">tasks</span> <span class="o">=</span> <span class="n">objs</span>
+
+        <span class="c1"># Validate loop</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">loop</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">AbstractEventLoop</span><span class="p">),</span> \
+            <span class="s2">&quot;Got </span><span class="si">{}</span><span class="s2"> that isn&#39;t an instance of asyncio.AbstractEventLoop&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
+        <span class="n">asyncio</span><span class="o">.</span><span class="n">set_event_loop</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
+
+        <span class="c1"># Validate tasks</span>
+        <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">list</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">tuple</span><span class="p">,</span> \
+            <span class="s2">&quot;3rd return val of build_obj must be a list/tuple of tasks... got </span><span class="si">{}</span><span class="s2"> instead&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span>
+        <span class="c1"># assert len(tasks) &gt;= 1, &quot;Expected at least one task&quot;</span>
+
+        <span class="c1"># TODO investigate why this is not always working...soemtimes assert raises error for valid coro&#39;s</span>
+        <span class="c1"># for t in tasks:</span>
+        <span class="c1">#     assert inspect.iscoroutine(t), &quot;Tasks must be a list of coroutines. Element {} is not a coro.&quot;.format(t)</span>
+
+        <span class="k">return</span> <span class="n">tester_obj</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span> <span class="n">tasks</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_recv_cmd</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Receive commands from the main process and execute them on the tester object. If cmd is equal to ABORT_SIG,</span>
+<span class="sd">        then we execute __teardown() to stop this self.loop. If its an SIG_START, we start polling for assertions.</span>
+<span class="sd">        Otherwise, cmd is assumed to be a a tuple of command info of the format</span>
+<span class="sd">        (func_name: str, args: list, kwargs: dict).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>  <span class="c1"># recv commands/events from test orchestrator</span>
+
+            <span class="c1"># If we got a SIG_ABORT, tear this bish down</span>
+            <span class="k">if</span> <span class="n">cmd</span> <span class="o">==</span> <span class="n">SIG_ABORT</span><span class="p">:</span>
+                <span class="c1"># self.log.critical(&quot;\n!!!!!\nGOT ABORT SIG\n!!!!!\n&quot;)</span>
+                <span class="n">errs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assertions</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">errs</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="si">{0}</span><span class="se">\n</span><span class="s2">ASSERTIONS FAILED FOR </span><span class="si">{2}</span><span class="s2">:</span><span class="se">\n</span><span class="si">{1}</span><span class="se">\n</span><span class="si">{0}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;!&#39;</span> <span class="o">*</span> <span class="mi">120</span><span class="p">,</span> <span class="n">errs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_teardown</span><span class="p">()</span>
+                <span class="k">return</span>
+
+            <span class="c1"># If we got a SIG_START, start polling for assertions (if self.assert_fn passed in)</span>
+            <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="n">SIG_START</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Got SIG_START from test orchestrator&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">assert_fn</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Starting to check assertions every </span><span class="si">{}</span><span class="s2"> seconds</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ASSERTS_POLL_FREQ</span><span class="p">))</span>
+                    <span class="n">asyncio</span><span class="o">.</span><span class="n">ensure_future</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_check_assertions</span><span class="p">())</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># If msg is not a signal, we assume its a command tuple of form (func, args, kwargs)</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="n">cmd</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;Expected command tuple of len 3 with form (func: str, args: list, kwargs: dict) but &quot;</span> \
+                           <span class="s2">&quot;got </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+            <span class="n">func</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="n">cmd</span>
+
+            <span class="c1"># Execute cmd in a try/catch, and send a SIG_FAIL to test orchestrator proc if something blow up</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tester_obj</span><span class="p">,</span> <span class="n">func</span><span class="p">)(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+                <span class="c1"># If result is coroutine, run it in the event self.loop</span>
+                <span class="k">if</span> <span class="n">output</span> <span class="ow">and</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutine</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">ensure_future</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+            <span class="c1"># If something blows up, teardown and send a FAIL_SIG to orchestration process</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2"> TESTER GOT EXCEPTION FROM EXECUTING CMD </span><span class="si">{}</span><span class="s2">: </span><span class="si">{}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">SIG_FAIL</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_teardown</span><span class="p">()</span>
+                <span class="k">return</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_check_assertions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Schedule assertion check every TEST_CHECK_FREQ seconds, until either:</span>
+<span class="sd">            1) The assertions exceed, in which case we send a success signal SUCC_SIG to main thread</span>
+<span class="sd">            2) The assertions timeout, in which case we send a fail signal FAIL_SIG to main thread</span>
+<span class="sd">            3) We get can abort cmd (read in __recv_cmd), in which case we send an ABORT_SIG to main thread</span>
+
+<span class="sd">        Once one one of these conditions is met, the corresponding signal is sent to the main thread as this</span>
+<span class="sd">        process calls __teardown() cleans up the event self.loop.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Starting assertion checks&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Run assertions for until either case (1) or (2) described above occurs</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assertions</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="c1"># Sleep until next assertion check</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">ASSERTS_POLL_FREQ</span><span class="p">)</span>
+
+        <span class="c1"># Once out of the assertion checking self.loop, send success to main thread</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;assertions passed! putting ready sig in queue&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">SIG_SUCC</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_teardown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stop all tasks and close this processes event self.loop. Invoked after we successfully pass all assertions, or</span>
+<span class="sd">        timeout.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Tearing down&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Closing pair socket&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Stopping tasks&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gathered_tasks</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_assertions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper method to run tester object&#39;s assertions, and return the error raised as a string, or None if no</span>
+<span class="sd">        assertions are raised</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">assert_fn</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assert_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tester_obj</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MPTesterBase"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.mp_test.MPTesterBase">[docs]</a><span class="k">class</span> <span class="nc">MPTesterBase</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    TODO docstring</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tester_cls</span> <span class="o">=</span> <span class="s1">&#39;UNSET&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">assert_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TestableProcess&#39;</span><span class="p">,</span> <span class="n">always_run_as_subproc</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="c1"># self.url = _gen_url(name)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">config_fn</span> <span class="o">=</span> <span class="n">config_fn</span>  <span class="c1"># Function to configure object with mocks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_fn</span> <span class="o">=</span> <span class="n">assert_fn</span>  <span class="c1"># Function to run assertions on said mocks</span>
+
+        <span class="c1"># Add this object to the registry of testers</span>
+        <span class="kn">from</span> <span class="nn">.mp_test_case</span> <span class="k">import</span> <span class="n">MPTestCase</span>
+        <span class="n">MPTestCase</span><span class="o">.</span><span class="n">testers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c1"># Create a wrapper around the build_obj with args and kwargs. We do this b/c this function will actually be</span>
+        <span class="c1"># invoked in a separate process/machine, thus we need to capture the function call to serialize it and send</span>
+        <span class="c1"># it across a socket</span>
+        <span class="n">build_fn</span> <span class="o">=</span> <span class="n">wrap_func</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">build_obj</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Create Tester object in a VM</span>
+        <span class="k">if</span> <span class="n">always_run_as_subproc</span> <span class="ow">or</span> <span class="n">MPTestCase</span><span class="o">.</span><span class="n">vmnet_test_active</span><span class="p">:</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">ip</span> <span class="o">=</span> <span class="n">MPTestCase</span><span class="o">.</span><span class="n">_next_container</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Creating Tester object in a VM on container named </span><span class="si">{}</span><span class="s2"> with ip address </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">ip</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ip</span> <span class="o">=</span> <span class="n">ip</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;tcp://</span><span class="si">{}</span><span class="s2">:</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="n">MP_PORT</span><span class="p">)</span>
+
+            <span class="n">runner_func</span> <span class="o">=</span> <span class="n">wrap_func</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_test_proc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">build_fn</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_fn</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">assert_fn</span><span class="p">)</span>
+
+            <span class="c1"># TODO -- will i need a ton of imports and stuff to make this run smoothly...?</span>
+            <span class="n">MPTestCase</span><span class="o">.</span><span class="n">execute_python</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">runner_func</span><span class="p">,</span> <span class="k">async</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Create Tester object in a Subprocess</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Creating Tester object in a subprocess&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ip</span> <span class="o">=</span> <span class="s1">&#39;127.0.0.1&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">_gen_url</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_proc</span> <span class="o">=</span> <span class="n">LProcess</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_test_proc</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">build_fn</span><span class="p">,</span>
+                                                                        <span class="bp">self</span><span class="o">.</span><span class="n">config_fn</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">assert_fn</span><span class="p">,))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_proc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+        <span class="c1"># &#39;socket&#39; is used to proxy commands to blocking object running in a child process (or possibly on a VM)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket_type</span><span class="o">=</span><span class="n">zmq</span><span class="o">.</span><span class="n">PAIR</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Binding to url </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+
+        <span class="c1"># Block this process until we get a ready signal from the subprocess/VM</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wait_for_test_object</span><span class="p">()</span>
+
+<div class="viewcode-block" id="MPTesterBase.wait_for_test_object"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.mp_test.MPTesterBase.wait_for_test_object">[docs]</a>    <span class="k">def</span> <span class="nf">wait_for_test_object</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Tester waiting for rdy sig from test object...&quot;</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv_pyobj</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">msg</span> <span class="o">==</span> <span class="n">SIG_RDY</span><span class="p">,</span> <span class="s2">&quot;Got msg from child thread </span><span class="si">{}</span><span class="s2"> but expected SIG_RDY&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;GOT RDY SIG: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">msg</span><span class="p">))</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_run_test_proc</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">build_fn</span><span class="p">,</span> <span class="n">config_fn</span><span class="p">,</span> <span class="n">assert_fn</span><span class="p">):</span>
+        <span class="n">log</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;TestObjectRunner[</span><span class="si">{}</span><span class="s2">]&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+
+        <span class="c1"># TODO create socket outside of loop and pass it in for</span>
+        <span class="n">tester</span> <span class="o">=</span> <span class="n">MPTesterProcess</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">build_fn</span><span class="o">=</span><span class="n">build_fn</span><span class="p">,</span> <span class="n">config_fn</span><span class="o">=</span><span class="n">config_fn</span><span class="p">,</span> <span class="n">assert_fn</span><span class="o">=</span><span class="n">assert_fn</span><span class="p">)</span>
+        <span class="n">tester_socket</span> <span class="o">=</span> <span class="n">tester</span><span class="o">.</span><span class="n">socket</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">tester</span><span class="o">.</span><span class="n">start_test</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2"> TesterProcess encountered exception outside of internal loop! Error:</span><span class="se">\n</span><span class="s2"> </span><span class="si">{}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+                           <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()))</span>
+            <span class="n">tester_socket</span><span class="o">.</span><span class="n">send_pyobj</span><span class="p">(</span><span class="n">SIG_FAIL</span><span class="p">)</span>
+            <span class="n">tester</span><span class="o">.</span><span class="n">_teardown</span><span class="p">()</span>
+
+<div class="viewcode-block" id="MPTesterBase.build_obj"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.mp_test.MPTesterBase.build_obj">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">build_obj</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Override to define how the blocking object should be initialized. Must return 2 element tuple, in the order</span>
+<span class="sd">        &lt;loop&gt; (an EventLoop instance), and &lt;object&gt; (an instance of the blocking object to test).</span>
+<span class="sd">        :return: Tuple of the form (loop, object_instance)</span>
+
+<span class="sd">        It is assumed the object being returning is passed an event loop into its constructor, which it uses internally</span>
+<span class="sd">        to schedule all its events.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+<div class="viewcode-block" id="MPTesterBase.teardown"><a class="viewcode-back" href="../../../../cilantro.utils.test.html#cilantro.utils.test.mp_test.MPTesterBase.teardown">[docs]</a>    <span class="k">def</span> <span class="nf">teardown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> tearing down...&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_proc</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> done tearing down.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">))</span></div>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;  &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  <li><a href="../../../cilantro.html">cilantro</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

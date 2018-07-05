@@ -52,10 +52,16 @@ class BlockContenderTest(TestCase):
     def test_create_bc_missing_fields(self):
         # tests creating a BlockContender with valid json but missing fields throws an error
         bad_dict1 = {'sig': ['sig1', 'sig2', 'sig3'], 'nodes': None}
-        self.assertRaises(Exception, BlockContender.create, bad_dict1)
+        self.assertRaises(Exception, BlockContender.from_data, bad_dict1)
 
         bad_dict2 = {'sig': None, 'nodes': [1, 2, 3]}
-        self.assertRaises(Exception, BlockContender.create, bad_dict2)
+        self.assertRaises(Exception, BlockContender.from_data, bad_dict2)
+
+    def test_create_bc_invaild_signatures(self):
+        bad_sigs = ['not merkle sig object', 'also not a merkle sig object']
+        mock_nodes = [b'this is a node', b'this is another node']
+
+        self.assertRaises(Exception, BlockContender.create, bad_sigs, mock_nodes)
 
     def test_create_bc_normal_fields(self):
         msg = b'payload'

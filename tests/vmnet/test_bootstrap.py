@@ -1,14 +1,17 @@
 from vmnet.test.base import *
 import unittest, time, random
+import vmnet, cilantro
+from os.path import dirname
 
-
-import vmnet
+cilantro_path = dirname(dirname(cilantro.__path__[0]))
+# cilantro_path = cilantro.__path__[0]
 
 
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
         return fn(*args, **kwargs)
     return wrapper
+
 
 def run_mn():
     from cilantro.logger import get_logger
@@ -20,7 +23,6 @@ def run_mn():
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
     sk = Constants.Testnet.Masternodes[0]['sk']
 
-    log.critical("\n\n\nMASTERNODE BOOTING WITH IP {} AND SK {}".format(ip, sk))
     NodeFactory.run_masternode(ip=ip, signing_key=sk)
 
 
@@ -35,7 +37,6 @@ def run_witness(slot_num):
     w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
-    log.critical("Building witness on slot {} with info {}".format(slot_num, w_info))
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'])
 
 
@@ -51,6 +52,7 @@ def run_delegate(slot_num):
     d_info['ip'] = os.getenv('HOST_IP')
 
     log.critical("Building delegate on slot {} with info {}".format(slot_num, d_info))
+    
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
 
 
@@ -69,28 +71,31 @@ def start_mysqld():
 class TestBootstrap(BaseNetworkTestCase):
     testname = 'bootstrap'
     setuptime = 10
-    compose_file = 'cilantro-bootstrap.yml'
+    compose_file = '{}/cilantro/tests/vmnet/compose_files/cilantro-bootstrap.yml'.format(cilantro_path)
+    local_path = cilantro_path
+    docker_dir = '{}/cilantro/tests/vmnet/docker_dir'.format(cilantro_path)
+    logdir = '{}/cilantro/logs'.format(cilantro_path)
 
     NUM_WITNESS = 2
     NUM_DELEGATES = 3
 
+    @vmnet_test(run_webui=True)
     def test_bootstrap(self):
         # start mysql in all nodes
-        for node_name in ['masternode'] + ['witness_{}'.format(i+1+1) for i in range(self.NUM_WITNESS)] + ['delegate_{}'.format(i+1+3) for i in range(self.NUM_DELEGATES)]:
+        for node_name in ['masternode'] + self.groups['witness'] + self.groups['delegate']:
             self.execute_python(node_name, start_mysqld, async=True)
-        time.sleep(3)
+        time.sleep(1)
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
 
-        time.sleep(3)
         # Bootstrap witnesses
-        for i in range(self.NUM_WITNESS):
-            self.execute_python('witness_{}'.format(i+1+1), wrap_func(run_witness, i), async=True)
+        for i, nodename in enumerate(self.groups['witness']):
+            self.execute_python(nodename, wrap_func(run_witness, i), async=True)
 
         # Bootstrap delegates
-        for i in range(self.NUM_DELEGATES):
-            self.execute_python('delegate_{}'.format(i+1+3), wrap_func(run_delegate, i), async=True)
+        for i, nodename in enumerate(self.groups['delegate']):
+            self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
         input("\n\nEnter any key to terminate")
 

@@ -6,6 +6,7 @@ from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.statemachine import StateMachine
 from cilantro.nodes import Masternode, Delegate, Witness, NodeFactory
 import asyncio
+import os
 
 
 @mp_testable(Composer)
@@ -19,7 +20,7 @@ class MPComposer(MPTesterBase):
         mock_sm.__name__ = name
         router = MagicMock()
 
-        reactor = ReactorInterface(router=router, loop=loop, verifying_key=Constants.Protocol.Wallets.get_vk(sk))
+        reactor = ReactorInterface(router=router, loop=loop, signing_key=sk)
         composer = Composer(interface=reactor, signing_key=sk)
 
         return composer, loop, [reactor._recv_messages()]
@@ -52,12 +53,21 @@ class MPGod(MPTesterBase):
 
 @mp_testable(Masternode)
 class MPMasternode(MPTesterBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Set God's Masternode URL to use this guy's IP
+        self.log.debug("Setting God's Masternode IP to {}".format(self.ip))
+        God.set_mn_ip(self.ip)
+
     @classmethod
-    def build_obj(cls, sk, url, name='Masternode') -> tuple:
+    def build_obj(cls, sk, name='Masternode') -> tuple:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        mn = NodeFactory._build_node(loop=loop, signing_key=sk, ip=url, node_cls=Masternode, name=name)
+        ip = os.getenv('HOST_IP', '127.0.0.1')
+
+        mn = NodeFactory._build_node(loop=loop, signing_key=sk, ip=ip, node_cls=Masternode, name=name)
         mn.start(start_loop=False)
 
         tasks = mn.tasks + [mn.composer.interface._recv_messages()]

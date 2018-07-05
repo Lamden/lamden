@@ -1,0 +1,216 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.messages.reactor.reactor_command &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cilantro.messages.reactor.reactor_command</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">cilantro.utils</span> <span class="k">import</span> <span class="n">lazy_property</span>
+<span class="kn">from</span> <span class="nn">cilantro.messages</span> <span class="k">import</span> <span class="n">MessageBase</span><span class="p">,</span> <span class="n">Envelope</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+
+<span class="kn">import</span> <span class="nn">capnp</span>
+<span class="kn">import</span> <span class="nn">reactor_capnp</span>
+
+
+<span class="c1"># We create convenience properties for commonly used fields on ReactorCommands,</span>
+<span class="n">CLS_NAME</span> <span class="o">=</span> <span class="s1">&#39;class_name&#39;</span>
+<span class="n">FN_NAME</span> <span class="o">=</span> <span class="s1">&#39;func_name&#39;</span>
+<span class="n">CALLB</span> <span class="o">=</span> <span class="s1">&#39;callback&#39;</span>
+<span class="n">HEADER</span> <span class="o">=</span> <span class="s1">&#39;header&#39;</span>
+
+
+<div class="viewcode-block" id="ReactorCommand"><a class="viewcode-back" href="../../../../cilantro.messages.reactor.html#cilantro.messages.reactor.reactor_command.ReactorCommand">[docs]</a><span class="k">class</span> <span class="nc">ReactorCommand</span><span class="p">(</span><span class="n">MessageBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ReactorCommand defines a data serialization format for messages passed over inproc PAIR</span>
+<span class="sd">    sockets between ReactorInterface (on the main proc), and ReactorDaemon (on daemon)</span>
+
+<span class="sd">    Messages from ReactorInterface --&gt; ReactorDaemon are nicknamed &quot;commands&quot;, since they specify the</span>
+<span class="sd">    executor name/function/kwargs that ReactorDaemon should run.</span>
+<span class="sd">    This includes required fields &#39;class_name&#39; and &#39;func_name&#39;. Commands which compose data over the</span>
+<span class="sd">    wire (i.e. pub, request, reply) must have the envelope arg specified as a valid Envelope instance.</span>
+
+<span class="sd">    Messages from ReactorDaemon --&gt; ReactorInterface are nicknamed &quot;callbacks&quot;, since they specify</span>
+<span class="sd">    some callback on the StateMachine as a function of incoming data.</span>
+<span class="sd">    All callbacks have a &#39;callback&#39; field which is a string denoting the callback function on the router.</span>
+<span class="sd">    All callback excepts timeouts will have an &#39;envelope&#39; property, which correspondes to the serialized Envelope capnp</span>
+<span class="sd">    data received from the outside world.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ReactorCommand.validate"><a class="viewcode-back" href="../../../../cilantro.messages.reactor.html#cilantro.messages.reactor.reactor_command.ReactorCommand.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># TODO -- implement</span>
+        <span class="k">pass</span></div>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_deserialize_data</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">reactor_capnp</span><span class="o">.</span><span class="n">ReactorCommand</span><span class="o">.</span><span class="n">from_bytes_packed</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ReactorCommand.create_cmd"><a class="viewcode-back" href="../../../../cilantro.messages.reactor.html#cilantro.messages.reactor.reactor_command.ReactorCommand.create_cmd">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">create_cmd</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">class_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">func_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">envelope</span><span class="p">:</span> <span class="n">Envelope</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="n">CLS_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="n">class_name</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="n">FN_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="n">func_name</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">envelope</span><span class="o">=</span><span class="n">envelope</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ReactorCommand.create_callback"><a class="viewcode-back" href="../../../../cilantro.messages.reactor.html#cilantro.messages.reactor.reactor_command.ReactorCommand.create_callback">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">create_callback</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">envelope</span><span class="p">:</span> <span class="n">Envelope</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">envelope_binary</span><span class="p">:</span> <span class="nb">bytes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># TODO -- simplify API for command creation process</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="n">CALLB</span><span class="p">]</span> <span class="o">=</span> <span class="n">callback</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">envelope</span><span class="o">=</span><span class="n">envelope</span><span class="p">,</span> <span class="n">envelope_binary</span><span class="o">=</span><span class="n">envelope_binary</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ReactorCommand.create"><a class="viewcode-back" href="../../../../cilantro.messages.reactor.html#cilantro.messages.reactor.reactor_command.ReactorCommand.create">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">create</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">envelope</span><span class="p">:</span> <span class="n">Envelope</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">envelope_binary</span><span class="p">:</span> <span class="nb">bytes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="p">(</span><span class="n">envelope</span> <span class="ow">and</span> <span class="n">envelope_binary</span><span class="p">),</span> <span class="s2">&quot;Either envelope or envelope_binary should be passed in (not both)&quot;</span>
+
+        <span class="n">cmd</span> <span class="o">=</span> <span class="n">reactor_capnp</span><span class="o">.</span><span class="n">ReactorCommand</span><span class="o">.</span><span class="n">new_message</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">envelope</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">envelope</span><span class="p">,</span> <span class="n">Envelope</span><span class="p">),</span> <span class="s2">&quot;&#39;envelope&#39; kwarg must be an Envelope instance&quot;</span>
+            <span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">envelope</span><span class="o">.</span><span class="n">serialize</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">envelope_binary</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">envelope_binary</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">),</span> <span class="s2">&quot;&#39;envelope_binary&#39; must be bytes&quot;</span>
+            <span class="n">cmd</span><span class="o">.</span><span class="n">envelope</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">envelope_binary</span>
+
+        <span class="n">cmd</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s1">&#39;kwargs&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">kwargs</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">cmd</span><span class="o">.</span><span class="n">kwargs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">cmd</span><span class="o">.</span><span class="n">kwargs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">from_data</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span></div>
+
+    <span class="nd">@lazy_property</span>
+    <span class="k">def</span> <span class="nf">envelope</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">envelope</span><span class="o">.</span><span class="n">which</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;unset&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Envelope</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">envelope</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="nd">@lazy_property</span>
+    <span class="k">def</span> <span class="nf">envelope_binary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">envelope</span><span class="o">.</span><span class="n">which</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;unset&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">envelope</span><span class="o">.</span><span class="n">data</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">arg</span><span class="o">.</span><span class="n">key</span><span class="p">:</span> <span class="n">arg</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">kwargs</span><span class="p">}</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">class_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">CLS_NAME</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">func_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">FN_NAME</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">callback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">CALLB</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">header</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">HEADER</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">:</span>
+            <span class="nb">repr</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[CALLBACK] ReactorCommand with&quot;</span>
+            <span class="nb">repr</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n\t</span><span class="s2">callback = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">)</span>
+            <span class="nb">repr</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n\t</span><span class="s2">kwargs = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_name</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">func_name</span><span class="p">:</span>
+            <span class="nb">repr</span> <span class="o">=</span>  <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[COMMAND] ReactorCommand with&quot;</span>
+            <span class="nb">repr</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n\t</span><span class="s2">target func = </span><span class="si">{}</span><span class="s2">.</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">class_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">func_name</span><span class="p">)</span>
+            <span class="nb">repr</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n\t</span><span class="s2">kwargs = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Invalid reactor command! No callback/ no classname and func_name!&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">envelope</span><span class="p">:</span>
+            <span class="nb">repr</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n\t</span><span class="s2"> envelope = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">envelope</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">repr</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This is just used for asserting equality in unit/integration tests, so the blaring suboptimal envelope</span>
+<span class="sd">        binary copying is excusable</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">my_kwargs</span><span class="p">,</span> <span class="n">other_kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">kwargs</span>
+
+        <span class="c1"># manually copy envelope binary to kwaargs for comparison</span>
+        <span class="n">my_kwargs</span><span class="p">[</span><span class="s1">&#39;env_bin&#39;</span><span class="p">],</span> <span class="n">other_kwargs</span><span class="p">[</span><span class="s1">&#39;env_bin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">envelope_binary</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">envelope_binary</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">kwargs</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  <li><a href="../../../cilantro.html">cilantro</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

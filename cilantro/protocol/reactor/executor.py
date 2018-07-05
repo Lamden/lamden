@@ -3,10 +3,10 @@ from cilantro.logger import get_logger
 from cilantro.messages import ReactorCommand, Envelope
 from collections import defaultdict
 from cilantro.protocol.structures import CappedSet, EnvelopeAuth
-import traceback
+import traceback, os
 from cilantro.protocol.statemachine import StateInput
-
-from kade.dht import DHT
+from cilantro.utils import IPUtils
+from cilantro.protocol.overlay.dht import DHT
 import asyncio, time
 import zmq.asyncio
 
@@ -37,11 +37,12 @@ class Executor(metaclass=ExecutorMeta):
     _recently_seen = CappedSet(max_size=Constants.Protocol.DupeTableSize)
     _parent_name = 'ReactorDaemon'  # used for log names
 
-    def __init__(self, loop, context, inproc_socket):
+    def __init__(self, loop, context, inproc_socket, ironhouse):
         self.loop = loop
         asyncio.set_event_loop(self.loop)
         self.context = context
         self.inproc_socket = inproc_socket
+        self.ironhouse = ironhouse
         self.log = get_logger("{}.{}".format(Executor._parent_name, type(self).__name__))
 
     def add_listener(self, listener_fn, *args, **kwargs):
@@ -82,7 +83,6 @@ class Executor(metaclass=ExecutorMeta):
             env = self._validate_envelope(envelope_binary=env_binary, header=header)
 
             if not env:
-                self.log.warning("Could not validate envelope binary {}!".format(env_binary))
                 continue
 
             Executor._recently_seen.add(env.meta.uuid)
@@ -95,11 +95,11 @@ class Executor(metaclass=ExecutorMeta):
 
         cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary, **kwargs)
 
-        self.log.critical("\ncalling callback cmd to reactor interface: {}".format(cmd))  # deubg line remove this
+        # self.log.critical("\ncalling callback cmd to reactor interface: {}".format(cmd))  # DEBUG line remove this
 
         self.inproc_socket.send(cmd.serialize())
 
-        self.log.critical("command sent: {}".format(cmd))  # debug line, remove this later
+        # self.log.critical("command sent: {}".format(cmd))  # DEBUG line, remove this later
 
     def _validate_envelope(self, envelope_binary: bytes, header: str) -> Union[None, Envelope]:
         # TODO return/raise custom exceptions in this instead of just logging stuff and returning none
@@ -109,24 +109,24 @@ class Executor(metaclass=ExecutorMeta):
         try:
             env = Envelope.from_bytes(envelope_binary)
         except Exception as e:
-            self.log.error("\n\n\nError deserializing envelope: {}\n\n\n".format(e))
+            self.log.error("Error deserializing envelope: {}".format(e))
             return None
 
         # Check seal
         if not env.verify_seal():
-            self.log.error("\n\n\nSeal could not be verified for envelope {}\n\n\n".format(env))
+            self.log.error("Seal could not be verified for envelope {}".format(env))
             return None
 
         # If header is not none (meaning this is a ROUTE msg with an ID frame), then verify that the ID frame is
         # the same as the vk on the seal
         if header and (header != env.seal.verifying_key):
-            self.log.error("\n\n\nHeader frame {} does not match seal's vk {}\nfor envelope {}\n\n\n"
+            self.log.error("Header frame {} does not match seal's vk {}\nfor envelope {}"
                            .format(header, env.seal.verifying_key, env))
             return None
 
         # Make sure we haven't seen this message before
         if env.meta.uuid in Executor._recently_seen:
-            self.log.warning("Duplicate envelope detect with UUID {}. Ignoring.".format(env.meta.uuid))
+            self.log.debug("Duplicate envelope detect with UUID {}. Ignoring.".format(env.meta.uuid))
             return None
 
         # TODO -- checks timestamp to ensure this envelope is recv'd in a somewhat reasonable time (within N seconds)
@@ -139,8 +139,8 @@ class Executor(metaclass=ExecutorMeta):
 
 
 class SubPubExecutor(Executor):
-    def __init__(self, loop, context, inproc_socket):
-        super().__init__(loop, context, inproc_socket)
+    def __init__(self, loop, context, inproc_socket, *args, **kwargs):
+        super().__init__(loop, context, inproc_socket, *args, **kwargs)
         self.sub = None  # Subscriber socket
         self.sub_handler = None  # asyncio future from subscriber's recv_multipart
 
@@ -168,16 +168,24 @@ class SubPubExecutor(Executor):
         assert url not in self.pubs, "Attempted to add pub on url that is already in self.pubs"
 
         self.log.info("Creating publisher socket on url {}".format(url))
+        # self.pubs[url] = self.ironhouse.secure_socket(
+        #     self.context.socket(socket_type=zmq.PUB))
         self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
         self.pubs[url].bind(url)
         time.sleep(0.2)
 
-    def add_sub(self, url: str, filter: str):
+    def add_sub(self, url: str, filter: str, vk: str):
         assert isinstance(filter, str), "'id' arg must be a string"
+        assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
 
         if not self.sub:
-            self.log.info("Creating subscriber socket")
+            self.log.info("Creating subscriber socket to {}".format(url))
+            curve_serverkey = self.ironhouse.vk2pk(vk)
+
             self.sub = self.context.socket(socket_type=zmq.SUB)
+            # self.sub = self.ironhouse.secure_socket(
+            #     self.context.socket(socket_type=zmq.SUB),
+            #     curve_serverkey=curve_serverkey)
 
         if url not in self.sub_urls:
             self.add_sub_url(url)
@@ -244,8 +252,8 @@ class SubPubExecutor(Executor):
 
 
 class DealerRouterExecutor(Executor):
-    def __init__(self, loop, context, inproc_socket):
-        super().__init__(loop, context, inproc_socket)
+    def __init__(self, loop, context, inproc_socket, *args, **kwargs):
+        super().__init__(loop, context, inproc_socket, *args, **kwargs)
 
         # 'dealers' is a simple nested dict for holding sockets by URL as well as their associated recv handlers
         # key for 'dealers' is socket URL, and value is another dict with keys 'socket' (value is Socket instance)
@@ -275,8 +283,8 @@ class DealerRouterExecutor(Executor):
 
     def _timeout(self, url: str, request_envelope: bytes, reply_uuid: int):
         assert reply_uuid in self.expected_replies, "Timeout triggered but reply_uuid was not in expected_replies"
-        self.log.critical("Request to url {} timed out! (reply uuid {} not found). Request envelope: {}"
-                          .format(url, reply_uuid, request_envelope))
+        self.log.info("Request to url {} timed out! reply uuid {}".format(url, reply_uuid))
+        self.log.debug("Request envelope: {}".format(request_envelope))
 
         del(self.expected_replies[reply_uuid])
         self.call_on_mp(callback=StateInput.TIMEOUT, envelope_binary=request_envelope)
@@ -286,12 +294,15 @@ class DealerRouterExecutor(Executor):
 
         self.log.info("Creating router socket on url {}".format(url))
         self.router = self.context.socket(socket_type=zmq.ROUTER)
+        # self.router = self.ironhouse.secure_socket(
+        #     self.context.socket(socket_type=zmq.ROUTER))
         self.router.bind(url)
 
         self.router_handler = self.add_listener(self.recv_multipart, socket=self.router,
                                                 callback_fn=self._recv_request_env)
 
-    def add_dealer(self, url: str, id: str):
+    def add_dealer(self, url: str, id: str, vk: str):
+        assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
         if url in self.dealers:
             self.log.warning("Attempted to add dealer {} that is already in self.dealers".format(url))
             return
@@ -300,7 +311,13 @@ class DealerRouterExecutor(Executor):
         assert isinstance(id, str), "'id' arg must be a string"
         self.log.info("Creating dealer socket for url {} with id {}".format(url, id))
 
+        curve_serverkey = self.ironhouse.vk2pk(vk)
+        self.log.debug('{}: add_dealer for url: {}'.format(os.getenv('HOST_IP'), url))
         socket = self.context.socket(socket_type=zmq.DEALER)
+        # socket = self.ironhouse.secure_socket(
+        #     self.context.socket(socket_type=zmq.DEALER),
+        #     curve_serverkey=curve_serverkey)
+
         socket.identity = id.encode('ascii')
 
         self.log.info("Dealer socket connecting to url {}".format(url))
@@ -314,7 +331,7 @@ class DealerRouterExecutor(Executor):
 
     # TODO pass in the intended replier's vk so we can be sure the reply we get is actually from him
     def request(self, url: str, reply_uuid: str, envelope: bytes, timeout=0):
-        self.log.critical("ay we requesting /w reply uuid {} and env {}".format(reply_uuid, envelope))
+        self.log.debug("requesting /w reply uuid {} and env {}".format(reply_uuid, envelope))
         assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
             .format(url, self.dealers)
         assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
@@ -340,7 +357,7 @@ class DealerRouterExecutor(Executor):
 
     def remove_router(self, url):
         assert self.router, "Tried to remove router but self.router is not set"
-        self.log.critical("remove router not implemented")
+        self.log.warning("remove router not implemented")
         raise NotImplementedError
         # self.log.info("Removing router at url {}".format(url))
 

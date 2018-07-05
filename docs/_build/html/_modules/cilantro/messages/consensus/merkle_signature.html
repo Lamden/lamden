@@ -1,0 +1,166 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.messages.consensus.merkle_signature &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cilantro.messages.consensus.merkle_signature</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">cilantro</span> <span class="k">import</span> <span class="n">Constants</span>
+<span class="kn">from</span> <span class="nn">cilantro.messages</span> <span class="k">import</span> <span class="n">MessageBase</span>
+<span class="kn">from</span> <span class="nn">cilantro.messages.utils</span> <span class="k">import</span> <span class="n">validate_hex</span>
+<span class="kn">import</span> <span class="nn">json</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">MerkleSignatures are exchanged among delegates during consensus to verify if they all have the same data.</span>
+<span class="sd">When a delegate starts consensus, it builds a Merkle tree with its entire transaction queue (all transaction that would</span>
+<span class="sd">be in the proposed block), signs the hash of the merkle tree, and creates a MerkleSignature with the resulting signature</span>
+<span class="sd">as well as the delegates id and a timestamp.</span>
+
+<span class="sd">Other delegates receive this MerkleSignature, and attempt to verify it using the sender&#39;s verifying key and the receiving</span>
+<span class="sd">delegate&#39;s own merkle hash (which should be the same as the sender&#39;s merkle hash if their blocks have the same </span>
+<span class="sd">transactions).</span>
+
+<span class="sd">Once a delegate has enough signature, it creates a BlockContender and sends it to Masternode. The BlockContender</span>
+<span class="sd">contains the merkle tree as well as a list of these collected MerkleSignatures. </span>
+
+<span class="sd">TODO -- switch this class to use capnp</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="MerkleSignature"><a class="viewcode-back" href="../../../../cilantro.messages.consensus.html#cilantro.messages.consensus.merkle_signature.MerkleSignature">[docs]</a><span class="k">class</span> <span class="nc">MerkleSignature</span><span class="p">(</span><span class="n">MessageBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    _data is a dict with keys: &#39;signature&#39;, &#39;timestamp&#39;, &#39;sender&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">SIG</span> <span class="o">=</span> <span class="s1">&#39;signature&#39;</span>
+    <span class="n">TS</span> <span class="o">=</span> <span class="s1">&#39;timestamp&#39;</span>
+    <span class="n">SENDER</span> <span class="o">=</span> <span class="s1">&#39;sender&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other_ms</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Check two merkle signatures have identical features&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">==</span> <span class="n">other_ms</span><span class="o">.</span><span class="n">_data</span>
+
+<div class="viewcode-block" id="MerkleSignature.validate"><a class="viewcode-back" href="../../../../cilantro.messages.consensus.html#cilantro.messages.consensus.merkle_signature.MerkleSignature.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span><span class="p">,</span> <span class="s2">&quot;_data is not a dictionary&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">SIG</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">,</span> <span class="s2">&quot;Signature field missing from _data: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">TS</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">,</span> <span class="s2">&quot;Timestamp field missing from _data: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">SENDER</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">,</span> <span class="s2">&quot;Sender field missing from _data: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>
+
+        <span class="n">validate_hex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">SIG</span><span class="p">],</span> <span class="mi">128</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">SIG</span><span class="p">)</span>
+        <span class="n">validate_hex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">SENDER</span><span class="p">],</span> <span class="mi">64</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">SENDER</span><span class="p">)</span></div>
+        <span class="c1"># Validate timestamp somehow?</span>
+
+<div class="viewcode-block" id="MerkleSignature.serialize"><a class="viewcode-back" href="../../../../cilantro.messages.consensus.html#cilantro.messages.consensus.merkle_signature.MerkleSignature.serialize">[docs]</a>    <span class="k">def</span> <span class="nf">serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MerkleSignature.verify"><a class="viewcode-back" href="../../../../cilantro.messages.consensus.html#cilantro.messages.consensus.merkle_signature.MerkleSignature.verify">[docs]</a>    <span class="k">def</span> <span class="nf">verify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">verifying_key</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">validate_hex</span><span class="p">(</span><span class="n">verifying_key</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">raise_err</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Constants</span><span class="o">.</span><span class="n">Protocol</span><span class="o">.</span><span class="n">Wallets</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">verifying_key</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="MerkleSignature.create"><a class="viewcode-back" href="../../../../cilantro.messages.consensus.html#cilantro.messages.consensus.merkle_signature.MerkleSignature.create">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">create</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">sig_hex</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">sender</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">SIG</span><span class="p">:</span> <span class="n">sig_hex</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">TS</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">SENDER</span><span class="p">:</span> <span class="n">sender</span><span class="p">}</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">from_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="n">validate</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_deserialize_data</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">decode</span><span class="p">())</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">signature</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The cryptographic signature, represented as 128 character hex string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">SIG</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">timestamp</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The time the signature was created, currently stored as an unix epoch string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">TS</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">sender</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The verifying key of the signer, represented as a 64 character hex string</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">SENDER</span><span class="p">]</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  <li><a href="../../../cilantro.html">cilantro</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

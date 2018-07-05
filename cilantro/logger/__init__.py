@@ -1,1 +1,1 @@
-from cilantro.logger.base import get_logger
+from cilantro.logger.base import get_logger, overwrite_logger_level

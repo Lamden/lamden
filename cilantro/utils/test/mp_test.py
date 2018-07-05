@@ -8,12 +8,14 @@ import inspect
 import traceback
 from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger
+
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 ASSERTS_POLL_FREQ = 0.1
 CHILD_PROC_TIMEOUT = 1
 
+MP_PORT = '8472'
 
 SIG_RDY = b'IM RDY'
 SIG_SUCC = b'G00DSUCC'
@@ -22,41 +24,17 @@ SIG_ABORT = b'NOSUCC'
 SIG_START = b'STARTSUCC'
 
 
-# TODO -- move these thangs to a better home
-import os
-import dill
-
-
 def wrap_func(func, *args, **kwargs):
     def _func():
         return func(*args, **kwargs)
     return _func
 
-def execute_python(node, fn, async=True, python_version='3.6'):
-    fn_str = dill.dumps(fn, 0)
-    exc_str = 'docker exec {} /usr/bin/python{} -c \"import dill; fn = dill.loads({}); fn();\" {}'.format(
-        node,
-        python_version,
-        fn_str,
-        '&' if async else ''
-    )
-    os.system(exc_str)
-
-def something():
-    from cilantro.logger import get_logger
-    log = get_logger("THIS IS ON A VM")
-    log.critical('\n\n\n\n\nayyyyyyyyy\n\n\n\n\n')
-
-
 def mp_testable(test_cls):
     """
     Decorator to copy all the public API for object type test_cls to the decorated class. The decorated
-    MPTesterBase subclass will be able to proxy commands to the 'test_cls' instance on a child process via a queue.
+    MPTesterBase subclass will be able to proxy commands to the 'test_cls' instance on a child process/VM via a queue.
     """
     def propogate_cmd(cmd_name):
-        """
-        Sends cmd_name
-        """
         def send_cmd(self, *args, **kwargs):
             cmd = (cmd_name, args, kwargs)
             self.socket.send_pyobj(cmd)
@@ -74,7 +52,6 @@ def mp_testable(test_cls):
         return cls
 
     return _mp_testable
-
 
 def _gen_url(name=''):
     """
@@ -181,9 +158,9 @@ class MPTesterProcess:
 
             # If we got a SIG_START, start polling for assertions (if self.assert_fn passed in)
             elif cmd == SIG_START:
-                self.log.critical("Got SIG_START from test orchestrator")
+                self.log.debug("Got SIG_START from test orchestrator")
                 if self.assert_fn:
-                    self.log.critical("\nStarting to check assertions every {} seconds\n".format(ASSERTS_POLL_FREQ))
+                    self.log.debug("\nStarting to check assertions every {} seconds\n".format(ASSERTS_POLL_FREQ))
                     asyncio.ensure_future(self._check_assertions())
                 continue
 
@@ -199,11 +176,8 @@ class MPTesterProcess:
 
                 # If result is coroutine, run it in the event self.loop
                 if output and inspect.iscoroutine(output):
-                    self.log.debug("Coroutine detect for func name {}, running it in event self.loop".format(func))
                     result = await asyncio.ensure_future(output)
-                    self.log.debug("Got result from coroutine {}\nresult: {}".format(func, result))
-                # self.log.critical("got cmd: {}".format(cmd))
-                # self.log.critical("cmd name: {}\nkwargs: {}".format(func, kwargs))
+            # If something blows up, teardown and send a FAIL_SIG to orchestration process
             except Exception as e:
                 self.log.error("\n\n TESTER GOT EXCEPTION FROM EXECUTING CMD {}: {}\n\n".format(cmd, traceback.format_exc()))
                 self.socket.send_pyobj(SIG_FAIL)
@@ -231,7 +205,7 @@ class MPTesterProcess:
             await asyncio.sleep(ASSERTS_POLL_FREQ)
 
         # Once out of the assertion checking self.loop, send success to main thread
-        self.log.debug("\n\nassertions passed! putting ready sig in queue\n\n")
+        self.log.debug("assertions passed! putting ready sig in queue")
         self.socket.send(SIG_SUCC)
 
     def _teardown(self):
@@ -266,52 +240,67 @@ class MPTesterBase:
     """
     TODO docstring
     """
-    testers = []
     tester_cls = 'UNSET'
 
-    def __init__(self, config_fn=None, assert_fn=None, name='TestableProcess', *args, **kwargs):
+    def __init__(self, config_fn=None, assert_fn=None, name='TestableProcess', always_run_as_subproc=False, *args, **kwargs):
         super().__init__()
         self.log = get_logger(name)
         self.name = name
-        self.url = _gen_url(name)
+        # self.url = _gen_url(name)
 
         self.config_fn = config_fn  # Function to configure object with mocks
         self.assert_fn = assert_fn  # Function to run assertions on said mocks
 
-        # 'socket' is used to proxy commands to blocking object running in a child process (possibly on a VM)
-        self.ctx = zmq.Context()
-        self.socket = self.ctx.socket(socket_type=zmq.PAIR)
-        self.socket.bind(self.url)
-
         # Add this object to the registry of testers
-        MPTesterBase.testers.append(self)
+        from .mp_test_case import MPTestCase
+        MPTestCase.testers.append(self)
 
         # Create a wrapper around the build_obj with args and kwargs. We do this b/c this function will actually be
         # invoked in a separate process/machine, thus we need to capture the function call to serialize it and send
         # it across a socket
         build_fn = wrap_func(type(self).build_obj, *args, **kwargs)
 
-        # Create and start the subprocess that will run the blocking object
-        self.test_proc = LProcess(target=self._run_test_proc, args=(self.name, self.url, build_fn,
-                                                               self.config_fn, self.assert_fn,))
-        self.start_test()
+        # Create Tester object in a VM
+        if always_run_as_subproc or MPTestCase.vmnet_test_active:
+            name, ip = MPTestCase._next_container()
+            self.log.info("Creating Tester object in a VM on container named {} with ip address {}".format(name, ip))
+            self.ip = ip
+            self.url = "tcp://{}:{}".format(ip, MP_PORT)
 
-    def start_test(self):
-        self.test_proc.start()
+            runner_func = wrap_func(self._run_test_proc, self.name, self.url, build_fn, self.config_fn, self.assert_fn)
 
-        # self.log.critical("\n\n attempting to execute stuff on the vm \n\n")
-        # execute_python('node_8', wrap_func(start_vm_test, self.name, self.url, type(self).build_obj,
-        #                                    self.config_fn, self.assert_fn), async=True)
-        # execute_python('node_8', wrap_func(start_vm_test, self.name, self.url, build_reactor_obj,
-        #                                    self.config_fn, self.assert_fn), async=True)
-        # execute_python('node_8', wrap_func(start_vm_test), async=True)
+            # TODO -- will i need a ton of imports and stuff to make this run smoothly...?
+            MPTestCase.execute_python(name, runner_func, async=True)
 
-        self.log.critical("tester waiting for child proc rdy sig...")
+        # Create Tester object in a Subprocess
+        else:
+            self.log.info("Creating Tester object in a subprocess")
+            self.ip = '127.0.0.1'
+            self.url = _gen_url(name)
+
+            self.test_proc = LProcess(target=self._run_test_proc, args=(self.name, self.url, build_fn,
+                                                                        self.config_fn, self.assert_fn,))
+            self.test_proc.start()
+
+        # 'socket' is used to proxy commands to blocking object running in a child process (or possibly on a VM)
+        self.ctx = zmq.Context()
+        self.socket = self.ctx.socket(socket_type=zmq.PAIR)
+        self.log.debug("Binding to url {}".format(self.url))
+        self.socket.bind(self.url)
+
+        # Block this process until we get a ready signal from the subprocess/VM
+        self.wait_for_test_object()
+
+    def wait_for_test_object(self):
+        self.log.info("Tester waiting for rdy sig from test object...")
         msg = self.socket.recv_pyobj()
         assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
-        self.log.critical("GOT RDY SIG: {}".format(msg))
+        self.log.info("GOT RDY SIG: {}".format(msg))
 
-    def _run_test_proc(self, name, url, build_fn, config_fn, assert_fn):
+    @staticmethod
+    def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
+        log = get_logger("TestObjectRunner[{}]".format(name))
+
         # TODO create socket outside of loop and pass it in for
         tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
         tester_socket = tester.socket
@@ -319,7 +308,7 @@ class MPTesterBase:
         try:
             tester.start_test()
         except Exception as e:
-            self.log.error("\n\n TesterProcess encountered exception outside of internal loop! Error:\n {}\n\n"
+            log.error("\n\n TesterProcess encountered exception outside of internal loop! Error:\n {}\n\n"
                            .format(traceback.format_exc()))
             tester_socket.send_pyobj(SIG_FAIL)
             tester._teardown()
@@ -337,13 +326,12 @@ class MPTesterBase:
         raise NotImplementedError
 
     def teardown(self):
-        # self.log.critical("\n\nTEARING DOWN\n\n")
+        self.log.debug("{} tearing down...".format(self.name))
+
         self.socket.close()
-        # self.log.debug("---- joining {} ---".format(self.test_proc.name))
         self.test_proc.join()
-        # self.log.debug("***** {} joined *****".format(self.test_proc.name))
+
+        self.log.debug("{} done tearing down.".format(self.name))
 
     def __repr__(self):
         return self.name + "  " + str(type(self))
-
-

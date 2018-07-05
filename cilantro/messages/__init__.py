@@ -10,7 +10,7 @@ from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.transaction.container import TransactionContainer
 
 from cilantro.messages.consensus import MerkleSignature, BlockContender, BlockDataRequest, BlockDataReply, \
-                                        NewBlockNotification, StateRequest
+                                        NewBlockNotification, StateUpdateRequest
 
 from cilantro.messages.transaction.standard import StandardTransaction, StandardTransactionBuilder
 from cilantro.messages.transaction.vote import VoteTransaction, VoteTransactionBuilder
@@ -18,5 +18,7 @@ from cilantro.messages.transaction.swap import SwapTransaction, SwapTransactionB
 from cilantro.messages.transaction.redeem import RedeemTransaction, RedeemTransactionBuilder
 from cilantro.messages.transaction.stamp import StampTransaction
 from cilantro.messages.transaction.election import ElectionTransaction
+
+from cilantro.messages.smart_contracts import ContractSubmission, ContractContainer
 
 

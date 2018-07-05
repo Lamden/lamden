@@ -1,0 +1,53 @@
+#!/usr/bin/env seneca_0.1
+
+import seneca.storage.tabular as st
+import seneca.storage.kv as kv
+import seneca.crypto as crypto
+import seneca.runtime as rt
+import seneca.stdlib as std
+from seneca.modulelib import export, make_exports
+import basic_math
+import election
+
+POLICY = 'num_top_delegates'
+STATUS = election.enum()
+
+t_num_top_delegates_election = st.create_table(POLICY, [
+    ('election_id', st.str_len(30)),
+    ('voter_id', st.str_len(30), True),
+    ('num_top_delegates', int)
+])
+
+kv_policy = kv.create_kv('constants')
+
+@export
+def start_election(policy_maker_id):
+    election_id = election.create_election(policy_maker_id, POLICY)
+    return election_id
+
+@export
+def cast_vote(voter_id, election_id, num_top_delegates):
+    assert election.get_election(election_id), 'election is not found or no longer opened'
+    t_num_top_delegates_election.insert([
+        {'election_id': election_id,'voter_id': voter_id, 'num_top_delegates': num_top_delegates}
+    ]).run()
+
+@export
+def tally_votes(policy_maker_id, election_id):
+    res = t_num_top_delegates_election.select().where(
+        t_num_top_delegates_election.election_id == election_id
+    ).run()
+    elections = [r[POLICY] for r in res]
+    num_top_delegates = basic_math.mode(elections)
+    kv_policy.set([(POLICY, num_top_delegates)]).run()
+    election.close_election(policy_maker_id, POLICY, STATUS.PASSED)
+    return num_top_delegates
+
+@export
+def get(attr):
+    return kv_policy.get(attr).run()
+
+exports = make_exports()
+
+if __name__ == '__main__':
+    pass

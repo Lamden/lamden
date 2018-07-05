@@ -94,6 +94,3 @@ class TransactionBase(MessageBase):
     @property
     def sender(self):
         return self._data.payload.sender.decode()
-
-
-

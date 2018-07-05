@@ -1,0 +1,331 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.nodes.masternode package &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cilantro-nodes-masternode-package">
+<h1>cilantro.nodes.masternode package<a class="headerlink" href="#cilantro-nodes-masternode-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-cilantro.nodes.masternode.masternode">
+<span id="cilantro-nodes-masternode-masternode-module"></span><h2>cilantro.nodes.masternode.masternode module<a class="headerlink" href="#module-cilantro.nodes.masternode.masternode" title="Permalink to this headline">¶</a></h2>
+<p>Masternode
+These are the entry points to the blockchain and pass messages on throughout the system. They are also the cold
+storage points for the blockchain once consumption is done by the network.</p>
+<p>They have no say as to what is ‘right,’ as governance is ultimately up to the network. However, they can monitor
+the behavior of nodes and tell the network who is misbehaving.</p>
+<dl class="class">
+<dt id="cilantro.nodes.masternode.masternode.MNBaseState">
+<em class="property">class </em><code class="descclassname">cilantro.nodes.masternode.masternode.</code><code class="descname">MNBaseState</code><span class="sig-paren">(</span><em>state_machine</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNBaseState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBaseState" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="cilantro.protocol.statemachine.html#cilantro.protocol.statemachine.state.State" title="cilantro.protocol.statemachine.state.State"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.protocol.statemachine.state.State</span></code></a></p>
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNBaseState.handle_contract">
+<code class="descname">handle_contract</code><span class="sig-paren">(</span><em>contract</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNBaseState.handle_contract"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBaseState.handle_contract" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNBaseState.handle_state_req">
+<code class="descname">handle_state_req</code><span class="sig-paren">(</span><em>request</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNBaseState.handle_state_req"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBaseState.handle_state_req" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.nodes.masternode.masternode.MNBaseState.log">
+<code class="descname">log</code><em class="property"> = &lt;Logger MNBaseState (DEBUG)&gt;</em><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBaseState.log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNBaseState.recv_block">
+<code class="descname">recv_block</code><span class="sig-paren">(</span><em>block</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNBaseState.recv_block"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBaseState.recv_block" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNBaseState.recv_blockdata_reply">
+<code class="descname">recv_blockdata_reply</code><span class="sig-paren">(</span><em>reply</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNBaseState.recv_blockdata_reply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBaseState.recv_blockdata_reply" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNBaseState.recv_tx">
+<code class="descname">recv_tx</code><span class="sig-paren">(</span><em>tx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNBaseState.recv_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBaseState.recv_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.nodes.masternode.masternode.MNBootState">
+<em class="property">class </em><code class="descclassname">cilantro.nodes.masternode.masternode.</code><code class="descname">MNBootState</code><span class="sig-paren">(</span><em>state_machine</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNBootState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBootState" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cilantro.nodes.masternode.masternode.MNBaseState" title="cilantro.nodes.masternode.masternode.MNBaseState"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.nodes.masternode.masternode.MNBaseState</span></code></a></p>
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNBootState.enter_any">
+<code class="descname">enter_any</code><span class="sig-paren">(</span><em>prev_state</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNBootState.enter_any"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBootState.enter_any" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNBootState.exit_any">
+<code class="descname">exit_any</code><span class="sig-paren">(</span><em>next_state</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNBootState.exit_any"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBootState.exit_any" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.nodes.masternode.masternode.MNBootState.log">
+<code class="descname">log</code><em class="property"> = &lt;Logger MNBootState (DEBUG)&gt;</em><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBootState.log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNBootState.recv_tx">
+<code class="descname">recv_tx</code><span class="sig-paren">(</span><em>tx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNBootState.recv_tx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBootState.recv_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNBootState.reset_attrs">
+<code class="descname">reset_attrs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNBootState.reset_attrs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNBootState.reset_attrs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.nodes.masternode.masternode.MNRunState">
+<em class="property">class </em><code class="descclassname">cilantro.nodes.masternode.masternode.</code><code class="descname">MNRunState</code><span class="sig-paren">(</span><em>state_machine</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNRunState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNRunState" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cilantro.nodes.masternode.masternode.MNBaseState" title="cilantro.nodes.masternode.masternode.MNBaseState"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.nodes.masternode.masternode.MNBaseState</span></code></a></p>
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNRunState.enter_from_boot">
+<code class="descname">enter_from_boot</code><span class="sig-paren">(</span><em>prev_state</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNRunState.enter_from_boot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNRunState.enter_from_boot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNRunState.enter_from_newblock">
+<code class="descname">enter_from_newblock</code><span class="sig-paren">(</span><em>success=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNRunState.enter_from_newblock"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNRunState.enter_from_newblock" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.nodes.masternode.masternode.MNRunState.log">
+<code class="descname">log</code><em class="property"> = &lt;Logger MNRunState (DEBUG)&gt;</em><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNRunState.log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNRunState.recv_block">
+<code class="descname">recv_block</code><span class="sig-paren">(</span><em>block</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNRunState.recv_block"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNRunState.recv_block" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.MNRunState.reset_attrs">
+<code class="descname">reset_attrs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#MNRunState.reset_attrs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.MNRunState.reset_attrs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.nodes.masternode.masternode.Masternode">
+<em class="property">class </em><code class="descclassname">cilantro.nodes.masternode.masternode.</code><code class="descname">Masternode</code><span class="sig-paren">(</span><em>ip</em>, <em>signing_key</em>, <em>loop</em>, <em>name='Node'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#Masternode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.Masternode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="cilantro.nodes.html#cilantro.nodes.base.NodeBase" title="cilantro.nodes.base.NodeBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.nodes.base.NodeBase</span></code></a></p>
+<dl class="method">
+<dt id="cilantro.nodes.masternode.masternode.Masternode.route_http">
+<code class="descname">route_http</code><span class="sig-paren">(</span><em>request</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/masternode.html#Masternode.route_http"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.masternode.Masternode.route_http" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.nodes.masternode.new_block">
+<span id="cilantro-nodes-masternode-new-block-module"></span><h2>cilantro.nodes.masternode.new_block module<a class="headerlink" href="#module-cilantro.nodes.masternode.new_block" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="cilantro.nodes.masternode.new_block.MNFetchNewBlockState">
+<em class="property">class </em><code class="descclassname">cilantro.nodes.masternode.new_block.</code><code class="descname">MNFetchNewBlockState</code><span class="sig-paren">(</span><em>state_machine</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNFetchNewBlockState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNFetchNewBlockState" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cilantro.nodes.masternode.new_block.MNNewBlockState" title="cilantro.nodes.masternode.new_block.MNNewBlockState"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.nodes.masternode.new_block.MNNewBlockState</span></code></a></p>
+<dl class="attribute">
+<dt id="cilantro.nodes.masternode.new_block.MNFetchNewBlockState.NODE_AVAILABLE">
+<code class="descname">NODE_AVAILABLE</code><em class="property"> = 0</em><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNFetchNewBlockState.NODE_AVAILABLE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.nodes.masternode.new_block.MNFetchNewBlockState.NODE_AWAITING">
+<code class="descname">NODE_AWAITING</code><em class="property"> = 1</em><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNFetchNewBlockState.NODE_AWAITING" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.nodes.masternode.new_block.MNFetchNewBlockState.NODE_TIMEOUT">
+<code class="descname">NODE_TIMEOUT</code><em class="property"> = 2</em><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNFetchNewBlockState.NODE_TIMEOUT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.new_block.MNFetchNewBlockState.enter_any">
+<code class="descname">enter_any</code><span class="sig-paren">(</span><em>prev_state</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNFetchNewBlockState.enter_any"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNFetchNewBlockState.enter_any" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.new_block.MNFetchNewBlockState.enter_from_new_block">
+<code class="descname">enter_from_new_block</code><span class="sig-paren">(</span><em>prev_state</em>, <em>block_contender</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNFetchNewBlockState.enter_from_new_block"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNFetchNewBlockState.enter_from_new_block" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.nodes.masternode.new_block.MNFetchNewBlockState.log">
+<code class="descname">log</code><em class="property"> = &lt;Logger MNFetchNewBlockState (DEBUG)&gt;</em><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNFetchNewBlockState.log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.new_block.MNFetchNewBlockState.recv_blockdata_reply">
+<code class="descname">recv_blockdata_reply</code><span class="sig-paren">(</span><em>reply</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNFetchNewBlockState.recv_blockdata_reply"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNFetchNewBlockState.recv_blockdata_reply" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.new_block.MNFetchNewBlockState.reset_attrs">
+<code class="descname">reset_attrs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNFetchNewBlockState.reset_attrs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNFetchNewBlockState.reset_attrs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.new_block.MNFetchNewBlockState.timeout_block_req">
+<code class="descname">timeout_block_req</code><span class="sig-paren">(</span><em>request</em>, <em>envelope</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNFetchNewBlockState.timeout_block_req"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNFetchNewBlockState.timeout_block_req" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cilantro.nodes.masternode.new_block.MNNewBlockState">
+<em class="property">class </em><code class="descclassname">cilantro.nodes.masternode.new_block.</code><code class="descname">MNNewBlockState</code><span class="sig-paren">(</span><em>state_machine</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNNewBlockState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNNewBlockState" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cilantro.nodes.masternode.masternode.MNBaseState" title="cilantro.nodes.masternode.masternode.MNBaseState"><code class="xref py py-class docutils literal notranslate"><span class="pre">cilantro.nodes.masternode.masternode.MNBaseState</span></code></a></p>
+<dl class="method">
+<dt id="cilantro.nodes.masternode.new_block.MNNewBlockState.enter_any">
+<code class="descname">enter_any</code><span class="sig-paren">(</span><em>prev_state</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNNewBlockState.enter_any"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNNewBlockState.enter_any" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.new_block.MNNewBlockState.enter_from_fetch_block">
+<code class="descname">enter_from_fetch_block</code><span class="sig-paren">(</span><em>success=False</em>, <em>retrieved_txs=None</em>, <em>pending_blocks=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNNewBlockState.enter_from_fetch_block"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNNewBlockState.enter_from_fetch_block" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.new_block.MNNewBlockState.enter_from_run">
+<code class="descname">enter_from_run</code><span class="sig-paren">(</span><em>block</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNNewBlockState.enter_from_run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNNewBlockState.enter_from_run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.new_block.MNNewBlockState.handle_block_contender">
+<code class="descname">handle_block_contender</code><span class="sig-paren">(</span><em>block</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNNewBlockState.handle_block_contender"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNNewBlockState.handle_block_contender" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cilantro.nodes.masternode.new_block.MNNewBlockState.log">
+<code class="descname">log</code><em class="property"> = &lt;Logger MNNewBlockState (DEBUG)&gt;</em><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNNewBlockState.log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.new_block.MNNewBlockState.new_block_procedure">
+<code class="descname">new_block_procedure</code><span class="sig-paren">(</span><em>block</em>, <em>txs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNNewBlockState.new_block_procedure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNNewBlockState.new_block_procedure" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.new_block.MNNewBlockState.reset_attrs">
+<code class="descname">reset_attrs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNNewBlockState.reset_attrs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNNewBlockState.reset_attrs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cilantro.nodes.masternode.new_block.MNNewBlockState.validate_block_contender">
+<code class="descname">validate_block_contender</code><span class="sig-paren">(</span><em>block</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cilantro/nodes/masternode/new_block.html#MNNewBlockState.validate_block_contender"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cilantro.nodes.masternode.new_block.MNNewBlockState.validate_block_contender" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper method to validate a block contender. For a block contender to be valid it must:
+1) Have a provable merkle tree, ie. all nodes must be hash of (left child + right child)
+2) Be signed by at least 2/3 of the top 32 delegates
+:param block_contender: The BlockContender to validate
+:rtype: <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>
+:return: True if the BlockContender is valid, false otherwise</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cilantro.nodes.masternode">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cilantro.nodes.masternode" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">cilantro.nodes.masternode package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-cilantro.nodes.masternode.masternode">cilantro.nodes.masternode.masternode module</a></li>
+<li><a class="reference internal" href="#module-cilantro.nodes.masternode.new_block">cilantro.nodes.masternode.new_block module</a></li>
+<li><a class="reference internal" href="#module-cilantro.nodes.masternode">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/cilantro.nodes.masternode.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/cilantro.nodes.masternode.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

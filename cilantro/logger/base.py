@@ -5,16 +5,23 @@ Functions:
 import logging, coloredlogs
 import os, sys
 
+VALID_LVLS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+_LOG_LVL = os.getenv('LOG_LEVEL', 'DEBUG')
+assert _LOG_LVL in VALID_LVLS, "Log level {} not in valid levels {}".format(_LOG_LVL, VALID_LVLS)
+_LOG_LVL = getattr(logging, _LOG_LVL)
+
 def get_main_log_path():
     from cilantro import logger
 
     root = logger.__file__  # resolves to '/Users/davishaba/Developer/cilantro/cilantro/logger/__init__.py'
     log_path = '/'.join(root.split('/')[:-3]) + '/logs/cilantro.log'
 
-    print("logging at path {}".format(log_path))
+    # Create log directory if it does not exist
+    log_dir = os.path.dirname(log_path)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
 
     return log_path
-
 
 format = '%(asctime)s.%(msecs)03d %(name)s[%(process)d][%(processName)s] %(levelname)-2s %(message)s'
 
@@ -79,8 +86,17 @@ def get_logger(name=''):
     )
 
     log = logging.getLogger(name)
+    log.setLevel(_LOG_LVL)
 
     sys.stdout = LoggerWriter(log.debug)
-    sys.stderr = LoggerWriter(log.warning)
+    sys.stderr = LoggerWriter(log.error)
 
     return log
+
+def overwrite_logger_level(level):
+    global _LOG_LVL
+    _LOG_LVL = level
+
+    for name in logging.Logger.manager.loggerDict.keys():
+        log = logging.getLogger(name)
+        log.setLevel(level)

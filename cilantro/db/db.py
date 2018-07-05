@@ -12,7 +12,11 @@ Classes include:
 
 from multiprocessing import Lock
 import os, json
+from datetime import datetime
 from cilantro.logger import get_logger
+from functools import wraps
+
+# TODO remove this stuff once we can 100% deprecate it
 from sqlalchemy import *
 from sqlalchemy.sql.visitors import *
 from sqlalchemy.sql.sqltypes import *
@@ -20,7 +24,8 @@ from sqlalchemy.sql.functions import coalesce
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy import select, insert, update, delete, and_
 
-from functools import wraps
+
+from cilantro.db.tables import build_tables
 
 DB_NAME = 'cilantro'
 SCRATCH_PREFIX = 'scratch_'
@@ -95,8 +100,9 @@ def execute(query, check_scratch=True):
 
 def create_db(name, should_reset=False):
     log = get_logger("DBCreator")
-    log.info("Creating MySQLAlchemy DB connection for DB with name {}".format(name))
+    log.info("Creating DB connection for DB with name {}".format(name))
 
+    # ex = Executer.init_local_noauth_dev(db_name=name)
     db = create_engine('mysql+pymysql://root@localhost')
     metadata = MetaData()
 
@@ -170,7 +176,7 @@ def create_db(name, should_reset=False):
 
     # reset database if specified
     if should_reset:
-        log.critical("Dropping database...")
+        log.debug("Dropping database...")
         db.execute('drop database if exists {}'.format(name))
         log.debug("Database dropped.")
 
@@ -185,7 +191,6 @@ def create_db(name, should_reset=False):
 
     # Seed database if it is newly created
     if name not in db_names:
-        log.critical("\n\n database {} not found, seeding that shit \n\n".format(name))
 
         masternodes = []
         delegates = []
@@ -310,7 +315,8 @@ class DB(metaclass=DBSingletonMeta):
         self.log.info("Creating DB instance for {} with should_reset={}".format(db_name, should_reset))
         self.lock = Lock()
 
-        self.db, self.tables = create_db(db_name, should_reset)
+        # self.tables = build_tables(db_name, should_reset)
+        self.db, self.tables = create_db(db_name, should_reset=True)
 
     def __enter__(self):
         self.log.debug("Acquiring lock {}".format(self.lock))
@@ -328,18 +334,29 @@ class DB(metaclass=DBSingletonMeta):
 
 class VKBook:
 
-    @staticmethod
-    def _destu_ify(data: str):
-        assert len(data) % 64 == 0, "Length of data should be divisible by 64! Logic error!"
-        li = []
-        for i in range(0, len(data), 64):
-            li.append(data[i:i+64])
-        return li
+    MASTERNODES = ['82540bb5a9c84162214c5540d6e43be49bbfe19cf49685660cab608998a65144']
+    DELEGATES = [
+      "3dd5291906dca320ab4032683d97f5aa285b6491e59bba25c958fc4b0de2efc8",
+      "ab59a17868980051cc846804e49c154829511380c119926549595bf4b48e2f85",
+      "0c998fa1b2675d76372897a7d9b18d4c1fbe285dc0cc795a50e4aad613709baf"
+    ]
+    WITNESSES = [
+      "0e669c219a29f54c8ba4293a5a3df4371f5694b761a0a50a26bf5b50d5a76974",
+      "50869c7ee2536d65c0e4ef058b50682cac4ba8a5aff36718beac517805e9c2c0"
+    ]
+
 
     @staticmethod
-    def _get_vks(policy: str):
+    def _destu_ify(data: str):
+        assert len(data) % 64 == 0, "Length of data should be divisible by 64, but len={}! Logic error!".format(len(data))
+        return [data[i:i+64] for i in range(0, len(data), 64)]
+
+    @staticmethod
+    def _get_vks(policy=None):
+        condition = "where policy='{}'".format(policy) if policy else ''
+        print("select value from constants {}".format(condition))
         with DB() as db:
-            q = db.execute("select value from constants where policy='{}'".format(policy))
+            q = db.execute("select value from constants {}".format(condition))
             rows = q.fetchall()
 
             val = rows[0][0]
@@ -347,13 +364,21 @@ class VKBook:
             return VKBook._destu_ify(val)
 
     @staticmethod
+    def get_all():
+        return VKBook.MASTERNODES + VKBook.DELEGATES + VKBook.WITNESSES
+        return VKBook._get_vks()
+
+    @staticmethod
     def get_masternodes():
+        return VKBook.MASTERNODES
         return VKBook._get_vks('masternodes')
 
     @staticmethod
     def get_delegates():
+        return VKBook.DELEGATES
         return VKBook._get_vks('delegates')
 
     @staticmethod
     def get_witnesses():
+        return VKBook.WITNESSES
         return VKBook._get_vks('witnesses')

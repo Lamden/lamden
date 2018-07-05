@@ -21,9 +21,6 @@ services:
     ip: 172.29.5.0
     stdin_open: true
     tty: true
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     image: cilantro_base.dev
     volumes:
       - type: bind
@@ -33,9 +30,6 @@ services:
     ip: 172.29.5.1
     stdin_open: true
     tty: true
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     image: cilantro_base.dev
     volumes:
       - type: bind
@@ -48,9 +42,6 @@ services:
       - 3
     stdin_open: true
     tty: true
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     image: cilantro_base.dev
     volumes:
       - type: bind
@@ -60,12 +51,9 @@ services:
     ip: 172.29.5.x
     range:
       - 4
-      - 7
+      - 6
     stdin_open: true
     tty: true
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     image: cilantro_base.dev
     volumes:
       - type: bind

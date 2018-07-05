@@ -1,0 +1,184 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cilantro.logger.base &#8212; cilantro 9000 BC documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cilantro.logger.base</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module for initializing settings related to the built-in Cilantro logger</span>
+<span class="sd">Functions:</span>
+<span class="sd">-get_logger&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">logging</span><span class="o">,</span> <span class="nn">coloredlogs</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+
+<span class="n">_LOG_LVL</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span>
+
+<div class="viewcode-block" id="get_main_log_path"><a class="viewcode-back" href="../../../cilantro.logger.html#cilantro.logger.base.get_main_log_path">[docs]</a><span class="k">def</span> <span class="nf">get_main_log_path</span><span class="p">():</span>
+    <span class="kn">from</span> <span class="nn">cilantro</span> <span class="k">import</span> <span class="n">logger</span>
+
+    <span class="n">root</span> <span class="o">=</span> <span class="n">logger</span><span class="o">.</span><span class="vm">__file__</span>  <span class="c1"># resolves to &#39;/Users/davishaba/Developer/cilantro/cilantro/logger/__init__.py&#39;</span>
+    <span class="n">log_path</span> <span class="o">=</span> <span class="s1">&#39;/&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[:</span><span class="o">-</span><span class="mi">3</span><span class="p">])</span> <span class="o">+</span> <span class="s1">&#39;/logs/cilantro.log&#39;</span>
+
+    <span class="c1"># Create log directory if it does not exist</span>
+    <span class="n">log_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">log_path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">log_dir</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">log_dir</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">log_path</span></div>
+
+<span class="nb">format</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1">.</span><span class="si">%(msecs)03d</span><span class="s1"> </span><span class="si">%(name)s</span><span class="s1">[</span><span class="si">%(process)d</span><span class="s1">][</span><span class="si">%(processName)s</span><span class="s1">] </span><span class="si">%(levelname)-2s</span><span class="s1"> </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
+
+<span class="n">coloredlogs</span><span class="o">.</span><span class="n">DEFAULT_LEVEL_STYLES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;critical&#39;</span><span class="p">:{</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span><span class="s1">&#39;white&#39;</span><span class="p">,</span> <span class="s1">&#39;bold&#39;</span><span class="p">:</span><span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;background&#39;</span><span class="p">:</span> <span class="s1">&#39;red&#39;</span> <span class="p">},</span>
+    <span class="s1">&#39;debug&#39;</span><span class="p">:{</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span><span class="s1">&#39;green&#39;</span> <span class="p">},</span>
+    <span class="s1">&#39;error&#39;</span><span class="p">:{</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span><span class="s1">&#39;red&#39;</span> <span class="p">},</span>
+    <span class="s1">&#39;info&#39;</span><span class="p">:{</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span><span class="s1">&#39;white&#39;</span> <span class="p">},</span>
+    <span class="s1">&#39;notice&#39;</span><span class="p">:{</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span><span class="s1">&#39;magenta&#39;</span> <span class="p">},</span>
+    <span class="s1">&#39;spam&#39;</span><span class="p">:{</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span><span class="s1">&#39;green&#39;</span><span class="p">,</span> <span class="s1">&#39;faint&#39;</span><span class="p">:</span><span class="kc">True</span> <span class="p">},</span>
+    <span class="s1">&#39;success&#39;</span><span class="p">:{</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span><span class="s1">&#39;green&#39;</span><span class="p">,</span> <span class="s1">&#39;bold&#39;</span><span class="p">:</span><span class="kc">True</span> <span class="p">},</span>
+    <span class="s1">&#39;verbose&#39;</span><span class="p">:{</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span><span class="s1">&#39;blue&#39;</span> <span class="p">},</span>
+    <span class="s1">&#39;warning&#39;</span><span class="p">:{</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span><span class="s1">&#39;yellow&#39;</span> <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">coloredlogs</span><span class="o">.</span><span class="n">DEFAULT_FIELD_STYLES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;asctime&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;green&#39;</span><span class="p">},</span>
+    <span class="s1">&#39;hostname&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;magenta&#39;</span><span class="p">},</span>
+    <span class="s1">&#39;levelname&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="s1">&#39;bright&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+    <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;blue&#39;</span><span class="p">},</span>
+    <span class="s1">&#39;programname&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;cyan&#39;</span><span class="p">}</span>
+<span class="p">}</span>
+
+<div class="viewcode-block" id="LoggerWriter"><a class="viewcode-back" href="../../../cilantro.logger.html#cilantro.logger.base.LoggerWriter">[docs]</a><span class="k">class</span> <span class="nc">LoggerWriter</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">level</span> <span class="o">=</span> <span class="n">level</span>
+<div class="viewcode-block" id="LoggerWriter.write"><a class="viewcode-back" href="../../../cilantro.logger.html#cilantro.logger.base.LoggerWriter.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">message</span> <span class="o">!=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">level</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></div>
+<div class="viewcode-block" id="LoggerWriter.flush"><a class="viewcode-back" href="../../../cilantro.logger.html#cilantro.logger.base.LoggerWriter.flush">[docs]</a>    <span class="k">def</span> <span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span></div></div>
+
+<div class="viewcode-block" id="ColoredFileHandler"><a class="viewcode-back" href="../../../cilantro.logger.html#cilantro.logger.base.ColoredFileHandler">[docs]</a><span class="k">class</span> <span class="nc">ColoredFileHandler</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span>
+            <span class="n">coloredlogs</span><span class="o">.</span><span class="n">ColoredFormatter</span><span class="p">(</span><span class="nb">format</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="ColoredStreamHandler"><a class="viewcode-back" href="../../../cilantro.logger.html#cilantro.logger.base.ColoredStreamHandler">[docs]</a><span class="k">class</span> <span class="nc">ColoredStreamHandler</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span>
+            <span class="n">coloredlogs</span><span class="o">.</span><span class="n">ColoredFormatter</span><span class="p">(</span><span class="nb">format</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="get_logger"><a class="viewcode-back" href="../../../cilantro.logger.html#cilantro.logger.base.get_logger">[docs]</a><span class="k">def</span> <span class="nf">get_logger</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+
+    <span class="n">filedir</span> <span class="o">=</span> <span class="s2">&quot;logs/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;TEST_NAME&#39;</span><span class="p">,</span> <span class="s1">&#39;test&#39;</span><span class="p">))</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">.log&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filedir</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;HOSTNAME&#39;</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">filedir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">filehandlers</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="n">get_main_log_path</span><span class="p">()),</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="n">filename</span><span class="p">),</span>
+        <span class="n">ColoredFileHandler</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_color&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filename</span><span class="p">)),</span>
+        <span class="n">ColoredStreamHandler</span><span class="p">()</span>
+    <span class="p">]</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+        <span class="nb">format</span><span class="o">=</span><span class="nb">format</span><span class="p">,</span>
+        <span class="n">handlers</span><span class="o">=</span><span class="n">filehandlers</span><span class="p">,</span>
+        <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span>
+    <span class="p">)</span>
+
+    <span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">_LOG_LVL</span><span class="p">)</span>
+
+    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">LoggerWriter</span><span class="p">(</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span> <span class="o">=</span> <span class="n">LoggerWriter</span><span class="p">(</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">)</span>
+
+    <span class="c1"># overwrite_logger_level(logging.WARNING)</span>
+
+    <span class="k">return</span> <span class="n">log</span></div>
+
+<div class="viewcode-block" id="overwrite_logger_level"><a class="viewcode-back" href="../../../cilantro.logger.html#cilantro.logger.base.overwrite_logger_level">[docs]</a><span class="k">def</span> <span class="nf">overwrite_logger_level</span><span class="p">(</span><span class="n">level</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">_LOG_LVL</span>
+    <span class="n">_LOG_LVL</span> <span class="o">=</span> <span class="n">level</span>
+
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">loggerDict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">level</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  <li><a href="../../cilantro.html">cilantro</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, team@lamden.io.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

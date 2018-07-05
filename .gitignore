@@ -26,7 +26,12 @@ cilantro/faucet.json
 
 # Data
 cilantro/protocol/networks/data
-
+certs
 tests/vmnet/docker-compose.yml
-
 .DS_Store
+certs
+state.tmp
+seneca
+
+# Docker
+docker-compose.yml
