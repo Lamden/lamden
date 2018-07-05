@@ -9,7 +9,6 @@ from cilantro.protocol.proofs import POW
 import hashlib
 import secrets
 
-
 class SHA3POW(POW):
     @staticmethod
     def find(o: bytes):

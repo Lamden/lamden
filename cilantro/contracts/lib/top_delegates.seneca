@@ -10,7 +10,7 @@ POLICY = 'top_delegates'
 STATUS = election.enum()
 
 t_top_delegates_election = st.create_table(POLICY, [
-    ('electionr_id', st.str_len(30)),
+    ('voter_id', st.str_len(30)),
     ('election_id', st.str_len(30)),
     ('delegate_id', st.str_len(30))
 ])
@@ -21,7 +21,7 @@ def start_election(policy_maker_id):
     election_id = election.create_election(policy_maker_id, POLICY)
     return election_id
 
-def filter_delegates(electionr_id, election_id, top_delegates):
+def filter_delegates(voter_id, election_id, top_delegates):
     num_top_delegates = ntd.get('num_top_delegates')
     top_delegates = set(top_delegates)
     assert election.get_election(election_id), \
@@ -29,7 +29,7 @@ def filter_delegates(electionr_id, election_id, top_delegates):
     assert len(top_delegates) <= num_top_delegates, 'You can only election for {} delegates'.format(num_top_delegates)
     res = t_top_delegates_election.select().where(
         t_top_delegates_election.election_id == election_id and
-        t_top_delegates_election.electionr_id == electionr_id
+        t_top_delegates_election.voter_id == voter_id
     ).run()
     delegates_already_electiond_for = set([r['delegate_id'] for r in res])
     delegates_list_full = top_delegates.union(delegates_already_electiond_for)
@@ -40,11 +40,11 @@ def filter_delegates(electionr_id, election_id, top_delegates):
     return top_delegates.difference(delegates_already_electiond_for)
 
 @export
-def cast_vote(electionr_id, election_id, top_delegates):
-    delegates = filter_delegates(electionr_id, election_id, top_delegates)
+def cast_vote(voter_id, election_id, top_delegates):
+    delegates = filter_delegates(voter_id, election_id, top_delegates)
     if len(delegates) == 0: return
     t_top_delegates_election.insert([
-        {'election_id': election_id,'electionr_id': electionr_id,'delegate_id': d} for d in delegates
+        {'election_id': election_id,'voter_id': voter_id,'delegate_id': d} for d in delegates
     ]).run()
 
 @export

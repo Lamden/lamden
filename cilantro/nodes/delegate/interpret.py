@@ -47,14 +47,13 @@ class DelegateInterpretState(DelegateBaseState):
         self.interpret_tx(tx=tx)
 
     def interpret_tx(self, tx: TransactionBase):
-        self.parent.interpreter.interpret_transaction(tx)
+        self.parent.interpreter.interpret(tx)
 
         self.log.debug("Size of queue: {}".format(len(self.parent.interpreter.queue)))
 
-        if self.parent.interpreter.queue_len >= Constants.Nodes.MaxQueueSize:
+        if self.parent.interpreter.queue_size >= Constants.Nodes.MaxQueueSize:
             self.log.info("Consensus time!")
             self.parent.transition(DelegateConsensusState)
         else:
             self.log.debug("Not consensus time yet, queue is only size {}/{}"
-                           .format(self.parent.interpreter.queue_len, Constants.Nodes.MaxQueueSize))
-
+                           .format(self.parent.interpreter.queue_size, Constants.Nodes.MaxQueueSize))
