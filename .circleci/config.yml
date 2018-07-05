@@ -35,7 +35,8 @@ jobs:
            chmod +x ~/docker-compose
            sudo mv ~/docker-compose /usr/local/bin/docker-compose
 
-     - setup_remote_docker
+     - setup_remote_docker:
+         docker_layer_caching: true
 
      - save_cache:
          key: cilantro-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
