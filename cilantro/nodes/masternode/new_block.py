@@ -129,13 +129,14 @@ class MNNewBlockState(MNBaseState):
         :param block_contender: The BlockContender to validate
         :return: True if the BlockContender is valid, false otherwise
         """
-       # Development sanity checks (these should be removed in production)
+        # Development sanity checks (these should be removed in production)
         assert len(block.nodes) >= 1, "Masternode got block contender with no nodes! {}".format(block)
         assert len(block.signatures) >= Constants.Testnet.Majority, \
             "Received a block contender with only {} signatures (which is less than a majority of {}"\
             .format(len(block.signatures), Constants.Testnet.Majority)
 
         # TODO validate the sigs are actually from the top N delegates
+        # TODO -- ensure that this block contender's previous block is this Masternode's current block...
 
         return self._validate_sigs(block) and self._prove_merkle(block)
 

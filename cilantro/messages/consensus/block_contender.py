@@ -52,7 +52,7 @@ class BlockContender(MessageBase):
         Creates a new block contender. Created by delegates to propose a block to Masternodes.
         :param signatures: A list of MerkleSignature objects
         :param nodes: A list of hashes of leaves (a list of byte objects)
-        :return:
+        :return: A BlockContender object
         """
         # Serialize list of signatures
         sigs_binary = []
