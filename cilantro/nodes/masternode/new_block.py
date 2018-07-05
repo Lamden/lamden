@@ -46,7 +46,6 @@ class MNNewBlockState(MNBaseState):
             assert retrieved_txs and len(retrieved_txs) > 0, "Success is true but retrieved_txs {} is None/empty"
             self.log.info("FetchNewBlockState finished successfully. Storing new block.")
 
-            # TODO store new block
             self.new_block_procedure(block=self.current_block, txs=retrieved_txs)
 
             self.log.info("Done storing new block. Transitioning back to run state with success=True")
@@ -94,7 +93,7 @@ class MNNewBlockState(MNBaseState):
         notif = NewBlockNotification.create(new_block_hash=hash_of_nodes.hex(), new_block_num=block_num)
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
 
-    @input(BlockContender)
+    @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
         if self.validate_block_contender(block):
             self.pending_blocks.append(block)
@@ -166,15 +165,9 @@ class MNFetchNewBlockState(MNNewBlockState):
         self.block_contender = block_contender
         self.tx_hashes = block_contender.nodes[len(block_contender.nodes) // 2:]
 
-        # Add dealer sockets for Delegates to fetch block tx data
+        # Populate self.node_states delegates who signed this block
         for sig in block_contender.signatures:
-            vk = sig.sender
             self.node_states[sig.sender] = self.NODE_AVAILABLE
-            self.parent.composer.add_dealer(vk=vk)
-
-            # TODO experiment if this still works without sleeps (i think it should)
-            import time
-            time.sleep(0.1)
 
         repliers = list(self.node_states.keys())
 
@@ -248,4 +241,4 @@ class MNFetchNewBlockState(MNNewBlockState):
         self.log.warning("BlockDataRequest timed out for envelope with request data")
         self.log.debug("Envelope Data: {}".format(envelope))
 
-        # TODO -- implement
+        # TODO -- implement a way to get the VK of the dude we originally requested from

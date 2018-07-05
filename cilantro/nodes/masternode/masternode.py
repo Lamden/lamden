@@ -46,7 +46,7 @@ class MNBaseState(State):
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=tx)
 
     @input_request(BlockContender)
-    def recv_block(self, block: BlockContender):
+    def handle_block_contender(self, block: BlockContender):
         self.log.warning("Current state not configured to handle block contender")
         self.log.debug('Block: {}'.format(block))
 
@@ -81,6 +81,10 @@ class MNBootState(MNBaseState):
         # Add router socket
         self.parent.composer.add_router(ip=self.parent.ip)
 
+        # Add dealer sockets to delegates, for purposes of requesting block data
+        for vk in VKBook.get_delegates():
+            self.parent.composer.add_dealer(vk=vk)
+
         # Once done booting, transition to run
         self.parent.transition(MNRunState)
 
@@ -109,9 +113,10 @@ class MNRunState(MNBaseState):
     @enter_from(MNNewBlockState)
     def enter_from_newblock(self, success=False):
         if not success:
+            # this should really just be a warning, but for dev we log it as an error
             self.log.error("\n\nNewBlockState transitioned back with failure!!!\n\n")
 
     @input_request(BlockContender)
-    def recv_block(self, block: BlockContender):
+    def handle_block_contender(self, block: BlockContender):
         self.log.info("Masternode received block contender. Transitioning to NewBlockState".format(block))
         self.parent.transition(MNNewBlockState, block=block)
