@@ -80,7 +80,6 @@ def main(args):
             suite = loader.discover(test)  # finds all unit tests in the testgroup directory
 
             # Skip tests specified in command line args
-            # skip_test_names = ['TestEd25199Wallet.test_something_hella_long']
             skip_tests(suite, skip_test_names)
 
             num_suites += 1
@@ -160,13 +159,14 @@ if __name__ == '__main__':
     # -v or --verbosity: Optional verbosity. If true, no output from unit/integration tests will be surpressed
     args.add_argument('-v', '--verbosity', action='store_true', help='Optional verbosity. If true, no output from unit/integration tests will be surpressed')
 
-    # --unit_tests [0/1]: Optional unit tests
+    # --unit_tests [0/1]: Optional unit tests. Default is 1
     args.add_argument("--unit", type=int, default=1, help="Flag to run unit tests. Default is True")
 
-    #  --integration_tests [0/1]: Optional integration tests
+    #  --integration_tests [0/1]: Optional integration tests. Default is 1
     args.add_argument("--integration", type=int, default=1, help="Flag to run integration tests. Default is True")
 
-    # --skip_tests TestEd25199Wallet.test_something_hella_long, ... : Skip tests by specifying TestClassName.ModuleName
+    # --skip_tests TestEd25199Wallet.test_something_hella_long, ... : Skip tests by specifying TestClassName.ModuleName,
+    # seperated by commas
     args.add_argument("--skip", nargs='+', type=str)
 
     main(args.parse_args())
