@@ -10,6 +10,8 @@ jobs:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
+      - restore_cache:
+          key: cilantro-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
       # - run:
       #     name: Install Docker client
       #     command: |
@@ -27,8 +29,7 @@ jobs:
 
       # - setup_remote_docker:
       #     version: 18.03.1-ce
-      - restore_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
+
       - run:
           name: Install Cilantro Requirements
           command: |
@@ -45,7 +46,7 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            pipenv run python ~/cilantro/tests/run_tests.py --integration_tests 0
+            pipenv run python ~/cilantro/tests/run_tests.py
       - store_artifacts:
           path: test-results
           destination: tr1
