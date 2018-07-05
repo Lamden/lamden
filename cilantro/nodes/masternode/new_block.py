@@ -46,7 +46,7 @@ class MNNewBlockState(MNBaseState):
             assert retrieved_txs and len(retrieved_txs) > 0, "Success is true but retrieved_txs {} is None/empty"
             self.log.info("FetchNewBlockState finished successfully. Storing new block.")
 
-            self.new_block_procedure(block=self.current_block, txs=retrieved_txs)
+            self._new_block_procedure(block=self.current_block, txs=retrieved_txs)
 
             self.log.info("Done storing new block. Transitioning back to run state with success=True")
             self.parent.transition(MNRunState, success=True)
@@ -62,7 +62,7 @@ class MNNewBlockState(MNBaseState):
                 self.log.warning("No more pending blocks. Transitioning back to RunState /w success=False")
                 self.parent.transition(MNRunState, success=False)
 
-    def new_block_procedure(self, block, txs):
+    def _new_block_procedure(self, block, txs):
         self.log.debug("DONE COLLECTING BLOCK DATA FROM NODES. Storing new block.")
 
         hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
@@ -70,6 +70,7 @@ class MNNewBlockState(MNBaseState):
         signatures = "".join([merk_sig.signature for merk_sig in block.signatures])
 
         # Store the block + transaction data
+        # TODO -- put this in its own class/module
         block_num = -1
         with DB() as db:
             tables = db.tables
@@ -98,6 +99,28 @@ class MNNewBlockState(MNBaseState):
         if self.validate_block_contender(block):
             self.pending_blocks.append(block)
 
+    def _validate_sigs(self, block: BlockContender) -> bool:
+        signatures = block.signatures
+        msg = MerkleTree.hash_nodes(block.nodes)
+
+        for sig in signatures:
+            # TODO -- ensure that the sender belongs to the top delegate pool
+            self.log.debug("mn verifying signature: {}".format(sig))
+            if not sig.verify(msg, sig.sender):
+                self.log.error("Masternode could not verify signature!!! Sig={}".format(sig))
+                return False
+        return True
+
+    def _prove_merkle(self, block):
+        hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
+        tx_hashes = block.nodes[len(block.nodes) // 2:]
+
+        if not MerkleTree.verify_tree(tx_hashes, hash_of_nodes):
+            self.log.error("COULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}".format(block))
+            return False
+
+        return True
+
     def validate_block_contender(self, block: BlockContender) -> bool:
         """
         Helper method to validate a block contender. For a block contender to be valid it must:
@@ -106,35 +129,16 @@ class MNNewBlockState(MNBaseState):
         :param block_contender: The BlockContender to validate
         :return: True if the BlockContender is valid, false otherwise
         """
-        def _validate_sigs(signatures, msg) -> bool:
-            for sig in signatures:
-                self.log.info("mn verifying signature: {}".format(sig))
-                if not sig.verify(msg, sig.sender):
-                    self.log.error("!!!! Oh no why couldnt we verify sig {}???".format(sig))
-                    return False
-            return True
-
         # Development sanity checks (these should be removed in production)
         assert len(block.nodes) >= 1, "Masternode got block contender with no nodes! {}".format(block)
         assert len(block.signatures) >= Constants.Testnet.Majority, \
             "Received a block contender with only {} signatures (which is less than a majority of {}"\
             .format(len(block.signatures), Constants.Testnet.Majority)
 
+        # TODO validate the sigs are actually from the top N delegates
         # TODO -- ensure that this block contender's previous block is this Masternode's current block...
 
-        # Prove Merkle Tree
-        hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
-        tx_hashes = block.nodes[len(block.nodes) // 2:]
-        if not MerkleTree.verify_tree(tx_hashes, hash_of_nodes):
-            self.log.error("\n\n\n\nCOULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}\n\n\n".format(block))
-            return False
-
-        # Validate signatures
-        if not _validate_sigs(block.signatures, hash_of_nodes):
-            self.log.error("MN COULD NOT VALIDATE SIGNATURES FOR CONTENDER {}".format(block))
-            return False
-
-        return True
+        return self._validate_sigs(block) and self._prove_merkle(block)
 
 
 @Masternode.register_state
@@ -242,3 +246,4 @@ class MNFetchNewBlockState(MNNewBlockState):
         self.log.debug("Envelope Data: {}".format(envelope))
 
         # TODO -- implement a way to get the VK of the dude we originally requested from
+        # TODO also it appears timeouts are not working....need to fix integration tests on this and see whatsup
