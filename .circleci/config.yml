@@ -43,6 +43,8 @@ jobs:
           paths:
             - ".venv"
             - "/usr/local/bin"
+            - "~/.local"
+            - "~/.cache"
 
       - run:
           command: |
