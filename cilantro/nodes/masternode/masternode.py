@@ -55,12 +55,10 @@ class MNBaseState(State):
         self.log.warning("Current state not configured to handle state requests")
         self.log.debug('Request: {}'.format(request))
 
-
     @input(BlockDataReply)
     def recv_blockdata_reply(self, reply: BlockDataReply):
         self.log.warning("Current state not configured to handle block data reply")
         self.log.debug('Reply: {}'.format(reply))
-
 
     @input(ContractContainer)
     def handle_contract(self, contract: ContractContainer):

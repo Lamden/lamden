@@ -5,6 +5,7 @@ from cilantro.db import *
 from cilantro.messages import *
 from cilantro.protocol.structures import MerkleTree
 from collections import deque
+import random
 
 
 MNRunState = "MNRunState"
@@ -139,6 +140,10 @@ class MNNewBlockState(MNBaseState):
 
 @Masternode.register_state
 class MNFetchNewBlockState(MNNewBlockState):
+
+    # Enum to describe delegates we are requesting block data from. A delegate who has no pending requests is in
+    # NODE_AVAILABLE state. Once a request is sent to a delegate we set it to NODE_AWAITING. If the request times out,
+    # we set the timed out node to NODE_TIMEOUT
     NODE_AVAILABLE, NODE_AWAITING, NODE_TIMEOUT = range(3)
 
     def reset_attrs(self):
@@ -175,12 +180,50 @@ class MNFetchNewBlockState(MNNewBlockState):
 
         # Request individual block data from delegates
         for i in range(len(self.tx_hashes)):
-            tx = self.tx_hashes[i]
-            replier_vk = repliers[i % len(repliers)]
-            req = BlockDataRequest.create(tx)
+            tx_hash = self.tx_hashes[i]
+            vk = repliers[i % len(repliers)]
+            self._request_from_delegate(tx_hash, vk)
 
-            self.log.debug("Requesting tx hash {} from VK {}".format(tx, replier_vk))
-            self.parent.composer.send_request_msg(message=req, timeout=1, vk=replier_vk)
+    def _request_from_delegate(self, tx_hash: str, delegate_vk: str=''):
+        """
+        Helper method to request a transaction from a delegate via the transactions hash.
+        :param tx_hash:  The hash of the transaction to request
+        :param delegate_vk:  The verifying key of the delegate to request. If not specified,
+        self._first_available_node() is used
+        """
+        if delegate_vk:
+            assert delegate_vk in self.node_states, "Expected to request from a delegate state that known in node_states"
+        else:
+            delegate_vk = self._first_available_node()
+
+        self.log.debug("Requesting tx hash {} from VK {}".format(tx_hash, delegate_vk))
+
+        req = BlockDataRequest.create(tx_hash)
+        self.parent.composer.send_request_msg(message=req, timeout=1, vk=delegate_vk)
+
+        self.node_states[delegate_vk] = self.NODE_AWAITING
+
+    def _first_available_node(self) -> str:
+        """
+        Get the first available node to request block information from. The first available node will be the first node
+        that is in state NODE_AVAILABLE, or otherwise a random node with state NODE_AWAITING. If all nodes are in
+        NODE_TIMEOUT state, then this method returns None
+        :return: The verifying key of the first available node, as a str. If no available node exist, returns None.
+        """
+        awaiting_node = None
+        awaiting_node_count = 0
+
+        for node, state in self.node_states.items():
+            if state == self.NODE_AVAILABLE:
+                return node
+            elif state == self.NODE_AWAITING:
+                # Set this node as awaiting_node with probability 1/awaiting_node_count. This efficiently allows us to
+                # uniformly select an awaiting node from a stream (i.e. with EXACTLY ONE iteration of self.node_states)
+                awaiting_node_count += 1
+                if random.random() <= 1/awaiting_node_count:
+                    awaiting_node = node
+
+        return awaiting_node  # this will intentionally be None if no NODE_AWAITING nodes are found
 
     @input(BlockDataReply)
     def recv_blockdata_reply(self, reply: BlockDataReply):
@@ -204,4 +247,5 @@ class MNFetchNewBlockState(MNNewBlockState):
     def timeout_block_req(self, request: BlockDataRequest, envelope: Envelope):
         self.log.warning("BlockDataRequest timed out for envelope with request data")
         self.log.debug("Envelope Data: {}".format(envelope))
+
         # TODO -- implement

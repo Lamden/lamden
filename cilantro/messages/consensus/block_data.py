@@ -27,7 +27,7 @@ class BlockDataRequest(MessageBase):
         return self._data
 
     @classmethod
-    def create(cls, tx_hash: bytes):
+    def create(cls, tx_hash: str):
         # TODO -- validate tx_hash is valid 64 char hex
         return cls.from_data(tx_hash)
 
@@ -37,9 +37,6 @@ class BlockDataRequest(MessageBase):
         The hash of the transaction to request (64 characters, valid hex)
         """
         return self._data
-
-
-
 
 
 class BlockDataReply(MessageBase):
