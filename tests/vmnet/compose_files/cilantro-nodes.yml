@@ -9,10 +9,7 @@ networks:
           gateway: 172.29.5.253
 services:
   base:
-    build:
-      context: ${LOCAL_PATH}/cilantro
-      dockerfile: ${DOCKER_DIR}/cilantro_base.dev
-    image: cilantro_base.dev
+    image: lamden/cilantro:ci
     volumes:
       - type: bind
         source: /storage/docker/mysql-datadir
@@ -26,7 +23,7 @@ services:
     range:
       - 1
       - 6
-    image: cilantro_base.dev
+    image: lamden/cilantro:ci
     volumes:
       - type: bind
         source: ${LOCAL_PATH}/cilantro
