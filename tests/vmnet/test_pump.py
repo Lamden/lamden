@@ -11,25 +11,28 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def run_mn():
-    from cilantro.logger import get_logger
+    from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
-    log = get_logger("MASTERNODE FACTORY")
+    import logging
+
+    overwrite_logger_level(logging.WARNING)
+
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
     sk = Constants.Testnet.Masternodes[0]['sk']
     NodeFactory.run_masternode(ip=ip, signing_key=sk)
 
 
 def run_witness(slot_num):
-    from cilantro.logger import get_logger
+    from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
+    import logging
 
-    log = get_logger("WITNESS FACTORY")
+    overwrite_logger_level(logging.WARNING)
+
     w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
@@ -37,13 +40,13 @@ def run_witness(slot_num):
 
 
 def run_delegate(slot_num):
-    from cilantro.logger import get_logger
+    from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
+    import logging
 
-    log = get_logger("DELEGATE FACTORY")
+    overwrite_logger_level(logging.WARNING)
 
     d_info = Constants.Testnet.Delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')

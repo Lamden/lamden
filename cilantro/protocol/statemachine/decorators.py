@@ -12,6 +12,11 @@ This file implements and describes the various decorators used by States and Sta
 Input Decorators
 ----------------------------------------
 
+@input(msg_type: MessageBase)
+@input_request(msg_type: MessageBase)
+@input_timeout(msg_type: MessageBase)
+
+
 Input decorators allow states to define logic for incoming messages from the ReactorDaemon. These messages can be
 envelopes from other actors, or timeout callbacks from unreceived replies.
 
@@ -21,9 +26,6 @@ envelopes from other actors, or timeout callbacks from unreceived replies.
 
 
 class StateInput:
-    """
-    A grouping of constants
-    """
     INPUT = '_route_input'
     REQUEST = '_route_request'
     TIMEOUT = '_route_timeout'
@@ -34,7 +36,6 @@ class StateInput:
 
 def input(msg_type):
     def decorate(func):
-        # func._recv = msg_type
         setattr(func, StateInput.INPUT, msg_type)
         return func
     return decorate
@@ -42,7 +43,6 @@ def input(msg_type):
 
 def input_request(msg_type):
     def decorate(func):
-        # func._reply = msg_type
         setattr(func, StateInput.REQUEST, msg_type)
         return func
     return decorate
@@ -50,7 +50,6 @@ def input_request(msg_type):
 
 def input_timeout(msg_type):
     def decorate(func):
-        # func._timeout = msg_type
         setattr(func, StateInput.TIMEOUT, msg_type)
         return func
     return decorate
@@ -60,6 +59,13 @@ def input_timeout(msg_type):
 ----------------------------------------
 State Timeout Decorator
 ----------------------------------------
+
+@timeout_after(duration)
+
+
+A State instance method may be decorated with @timeout_after(duration) to trigger this method to be called after the
+specified time. It is assumed that the timeout trigger will then transition the StateMachine into another state.
+If the state is exited before the specified timeout duration, the future is canceled and the function is not triggered. 
 """
 
 class StateTimeout:
@@ -83,16 +89,23 @@ def timeout_after(timeout: int):
 Transition Decorators
 ----------------------------------------
 
+@enter_from_any
+@enter_from(OtherState)
+@enter_from(OtherState, OtherState2, ... )
+
+@exit_from_any
+@exit_to(OtherState)
+@exit_to(OtherState, OtherState2, ... )
+
+
 Transition decorators allow states to define logic surrounding state transitions. Methods can be decorated to execute
 some code whenever the defining state is transition into from another state, using enter_state(...), or transitioned
 out of into another state, using exit_state(....).
 
 For either decorator enter_state(...)/exit_state(...), if no arguement is specified then that method will act as a
 'wildcard' and be called for ALL transitions, unless the state has another method that is decorated to handle a
-a particular state.
+a particular state. A warning (but not exception) is thrown if no entry/exit method is specified.
 
-# TODO clearer explanation
-# TODO examples
 """
 log = get_logger("StateMeta (Compile Time)")
 
@@ -122,9 +135,6 @@ def _set_state_registry(func, attr_name, states):
     registry = []
 
     for s in states:
-        # assert issubclass(s, cilantro.protocol.statemachine.state.State), \
-        #     "Transition func decorator arg {} must be a State subclass".format(s)
-
         # Cast classes to names where necessary
         if inspect.isclass(s):
             s = s.__name__
