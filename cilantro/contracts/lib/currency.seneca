@@ -2,7 +2,6 @@
 ## Example currency smart contract ##
 # UNITTEST_FLAG_CURRENCY_SENECA 1729
 
-
 import seneca.storage.tabular as st
 import seneca.crypto as crypto
 import seneca.runtime as rt
@@ -61,7 +60,6 @@ def remove_coins(wallet_id, amount_to_remove):
 @export
 def transfer_coins(receiver_id, amount):
     sender_id = rt.global_run_data.author
-
     print("transfering {} coins from {} --> {}".format(amount, sender_id, receiver_id))
 
     # print("REMOVING COINS FROM {}".format(sender_id))
@@ -69,30 +67,31 @@ def transfer_coins(receiver_id, amount):
     # print("ADDING COINS TO {}".format(receiver_id))
     add_coins(receiver_id, amount)
 
-# TODO WARNING WARNING WARNING WARNING WARNING
-#name MUST be the name of the contract calling this code
-# sync up /w Carl on how we can do this
 # @export
-def is_locked(wallet_id, name):
-    return bool(safe.select().where(safe.wallet_id == wallet_id and safe.name == name).run())
+def is_locked(wallet_id):
+    name = rt.global_run_data.address
+    locked_obj = safe.select().where(safe.wallet_id == wallet_id and safe.name == name).run()
+    return locked_obj
 
-# TODO WARNING WARNING WARNING WARNING WARNING
 @export
-def lock_coins(amount, name):
+def lock_coins(amount):
     wallet_id = rt.global_run_data.author
-    assert not is_locked(wallet_id, name), 'Already locked for "{}"'.format(name))
+    name = rt.global_run_data.address
+    assert not is_locked(wallet_id), 'Already locked for "{}"'.format(name)
     remove_coins(wallet_id, amount)
     safe.insert([
         {'wallet_id': wallet_id, 'amount': amount, 'name': name}
     ]).run()
 
-# TODO WARNING WARNING WARNING WARNING WARNING
 @export
-def unlock_coins(name):
+def unlock_coins():
     wallet_id = rt.global_run_data.author
-    assert is_locked(wallet_id, name), 'No coins in the lock "{}"'.format(name))
+    name = rt.global_run_data.address
+    locked_obj = is_locked(wallet_id)
+    assert len(locked_obj)!=0, 'No coins in the lock "{}"'.format(name)
+    amount = locked_obj[0]['amount']
     add_coins(wallet_id, amount)
-    safe.delete().where({'wallet_id': wallet_id, 'name': name}).run()
+    safe.delete().where(safe.wallet_id == wallet_id and safe.name == name).run()
 
 exports = make_exports()
 

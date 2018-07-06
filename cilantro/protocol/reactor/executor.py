@@ -168,9 +168,9 @@ class SubPubExecutor(Executor):
         assert url not in self.pubs, "Attempted to add pub on url that is already in self.pubs"
 
         self.log.info("Creating publisher socket on url {}".format(url))
-        # self.pubs[url] = self.ironhouse.secure_socket(
-        #     self.context.socket(socket_type=zmq.PUB))
-        self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
+        self.pubs[url] = self.ironhouse.secure_socket(
+            self.context.socket(socket_type=zmq.PUB))
+        # self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
         self.pubs[url].bind(url)
         time.sleep(0.2)
 
@@ -182,10 +182,10 @@ class SubPubExecutor(Executor):
             self.log.info("Creating subscriber socket to {}".format(url))
             curve_serverkey = self.ironhouse.vk2pk(vk)
 
-            self.sub = self.context.socket(socket_type=zmq.SUB)
-            # self.sub = self.ironhouse.secure_socket(
-            #     self.context.socket(socket_type=zmq.SUB),
-            #     curve_serverkey=curve_serverkey)
+            # self.sub = self.context.socket(socket_type=zmq.SUB)
+            self.sub = self.ironhouse.secure_socket(
+                self.context.socket(socket_type=zmq.SUB),
+                curve_serverkey=curve_serverkey)
 
         if url not in self.sub_urls:
             self.add_sub_url(url)
@@ -293,9 +293,9 @@ class DealerRouterExecutor(Executor):
         assert self.router is None, "Attempted to add router on url {} but socket already configured".format(url)
 
         self.log.info("Creating router socket on url {}".format(url))
-        self.router = self.context.socket(socket_type=zmq.ROUTER)
-        # self.router = self.ironhouse.secure_socket(
-        #     self.context.socket(socket_type=zmq.ROUTER))
+        # self.router = self.context.socket(socket_type=zmq.ROUTER)
+        self.router = self.ironhouse.secure_socket(
+            self.context.socket(socket_type=zmq.ROUTER))
         self.router.bind(url)
 
         self.router_handler = self.add_listener(self.recv_multipart, socket=self.router,
@@ -313,10 +313,10 @@ class DealerRouterExecutor(Executor):
 
         curve_serverkey = self.ironhouse.vk2pk(vk)
         self.log.debug('{}: add_dealer for url: {}'.format(os.getenv('HOST_IP'), url))
-        socket = self.context.socket(socket_type=zmq.DEALER)
-        # socket = self.ironhouse.secure_socket(
-        #     self.context.socket(socket_type=zmq.DEALER),
-        #     curve_serverkey=curve_serverkey)
+        # socket = self.context.socket(socket_type=zmq.DEALER)
+        socket = self.ironhouse.secure_socket(
+            self.context.socket(socket_type=zmq.DEALER),
+            curve_serverkey=curve_serverkey)
 
         socket.identity = id.encode('ascii')
 

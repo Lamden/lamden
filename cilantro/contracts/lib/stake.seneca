@@ -4,12 +4,15 @@
 
 
 import seneca.storage.tabular as st
+import seneca.storage.kv as kv
 import seneca.crypto as crypto
 import seneca.runtime as rt
 import seneca.stdlib as std
 from seneca.modulelib import export, make_exports
-import currency
 import election
+import basic_math
+
+STATUS = election.enum()
 
 t_stake_election = st.create_table('stake_election', [
     ('election_id', st.str_len(30)),
@@ -18,7 +21,7 @@ t_stake_election = st.create_table('stake_election', [
 ])
 
 # This table is just for normalizing the structure
-t_policy_election = st.create_table('stake_election', [
+t_policies = st.create_table('policies', [
     ('election_id', st.str_len(30)),
     ('policy', st.str_len(30))
 ])
@@ -34,9 +37,9 @@ def start_election(policy):
     policy_maker_id = rt.global_run_data.author
     assert policy in ['witness_stake', 'delegate_stake', 'masternode_stake']
     election_id = election.create_election(policy_maker_id, policy)
-    t_policy_election.insert([{
+    t_policies.insert([{
         'election_id': election_id, 'policy': policy
-    }])
+    }]).run()
     return election_id
 
 @export
@@ -48,12 +51,13 @@ def cast_vote(election_id, amount):
     ]).run()
 
 @export
-def tally_votes(policy_maker_id, election_id):
+def tally_votes(election_id):
+    policy_maker_id = rt.global_run_data.author
     res = t_stake_election.select().where(
         t_stake_election.election_id == election_id
     ).run()
-    policy = t_policy_election.select().where(
-        t_stake_election.election_id == election_id
+    policy = t_policies.select().where(
+        t_policies.election_id == election_id
     ).run()[0]['policy']
     elections = [r['amount'] for r in res]
     stake_amount = basic_math.mode(elections)
@@ -66,8 +70,3 @@ def get(attr):
     return kv_policy.get(attr).run()
 
 exports = make_exports()
-
-if __name__ == '__main__':
-    safe_id = rt.global_run_data.author
-    if not currency.wallets(safe_id):
-        currency.create_wallet(safe_id)
