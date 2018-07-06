@@ -2,6 +2,7 @@ from cilantro import Constants
 from cilantro.messages import MessageBase
 from cilantro.messages.utils import validate_hex
 import json
+from cilantro.protocol.wallets import ED25519Wallet
 
 
 class MerkleSignature(MessageBase):
@@ -77,3 +78,18 @@ class MerkleSignature(MessageBase):
         The verifying key of the signer, represented as a 64 character hex string
         """
         return self._data[self.SENDER]
+
+
+def build_test_merkle_sig(msg: bytes=b'some default payload', sk=None, vk=None) -> MerkleSignature:
+    """
+    Builds a 'test' merkle signature. Used exclusively for unit tests
+    :return:
+    """
+    import time
+
+    if not sk:
+        sk, vk = ED25519Wallet.new()
+
+    signature = ED25519Wallet.sign(sk, msg)
+
+    return MerkleSignature.create(sig_hex=signature, timestamp=str(time.time()), sender=vk)

@@ -14,13 +14,14 @@ TODO -- better documentation on whats going on here
 PROTOCOL_TESTS = [
     'tests.protocol.structures',
     'tests.protocol.statemachine',
+    'tests.protocol.wallets',
+    'tests.nodes.masternode',
 
     # TODO -- write tests/ensure existing tests pass for modules below
     # 'tests.protocol.interpreter',
     # 'tests.protocol.proofs',
     # 'tests.protocol.reactor',
     # 'tests.protocol.transport',  # this should break ... so TODO: fix
-    'tests.protocol.wallets',
     ]
 
 MESSAGE_TESTS = [
