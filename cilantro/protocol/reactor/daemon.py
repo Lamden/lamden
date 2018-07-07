@@ -174,7 +174,7 @@ class ReactorDaemon:
         return executor_name, executor_func, kwargs
 
     async def _lookup_ip(self, cmd, url, vk, *args, **kwargs):
-        ip = None
+        ip, node = None, None
         try:
             node = await self.dht.network.lookup_ip(vk)
 
