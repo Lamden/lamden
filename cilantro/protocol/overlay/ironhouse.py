@@ -32,7 +32,6 @@ class Ironhouse:
         self.keys_dir = os.path.join(self.base_dir, 'certificates')
         self.public_keys_dir = os.path.join(self.base_dir, 'public_keys')
         self.secret_keys_dir = os.path.join(self.base_dir, 'private_keys')
-        self.secret_file = os.path.join(self.secret_keys_dir, "{}.key_secret".format(self.keyname))
         if auth_validate:
             self.auth_validate = auth_validate
         else:
@@ -40,10 +39,17 @@ class Ironhouse:
         self.wipe_certs = wipe_certs
         if sk:
             self.generate_certificates(sk)
+        self.secret_file = os.path.join(self.secret_keys_dir, "{}.key_secret".format(decode(self.public_key).hex()))
         self.public_key, self.secret = zmq.auth.load_certificate(self.secret_file)
 
     def vk2pk(self, vk):
         return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
+
+    def remove_key(self, curve_key):
+        file_path = os.path.join(self.public_keys_dir, '{}.key'.format(decode(curve_key).hex()))
+        for d in [self.public_keys_dir]:
+            if os.path.exists(file_path):
+                os.remove(file_path)
 
     def generate_certificates(self, sk):
         sk = SigningKey(seed=bytes.fromhex(sk))
@@ -79,7 +85,7 @@ class Ironhouse:
         self.public_key = public_key = encode(publ._public_key)
         secret_key = encode(priv._private_key)
 
-        base_filename = os.path.join(self.keys_dir, self.keyname)
+        base_filename = os.path.join(self.keys_dir, decode(self.public_key).hex())
         secret_key_file = "{0}.key_secret".format(base_filename)
         public_key_file = "{0}.key".format(base_filename)
         now = datetime.datetime.now()

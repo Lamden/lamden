@@ -77,6 +77,9 @@ def is_locked(wallet_id):
 def lock_coins(amount):
     wallet_id = rt.global_run_data.author
     name = rt.global_run_data.address
+
+    print("[inside of currency] rt.global_run_data.address={}".format(rt.global_run_data.address))
+
     assert not is_locked(wallet_id), 'Already locked for "{}"'.format(name)
     remove_coins(wallet_id, amount)
     safe.insert([
@@ -100,7 +103,7 @@ if __name__ == '__main__':
 
     GENESIS_WALLETS = [
         {
-            "wallet": "CARL",
+            "wallet": "CARLOS",
             "amount": 3696947
         },
         {

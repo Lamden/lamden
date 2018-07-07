@@ -85,6 +85,8 @@ class DelegateBootState(DelegateBaseState):
 
         # Sub to witnesses
         for witness_vk in VKBook.get_witnesses():
+            self.log.critical('subbing to {}'.format(witness_vk))
+            # self.parent.composer.add_sub(filter=Constants.ZmqFilters.WitnessDelegate, vk=witness_vk)
             self.parent.composer.add_sub(vk=witness_vk, filter=Constants.ZmqFilters.WitnessDelegate)
 
         # Pub on our own url

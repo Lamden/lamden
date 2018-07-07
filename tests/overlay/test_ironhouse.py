@@ -6,7 +6,7 @@ from zmq.auth.asyncio import AsyncioAuthenticator
 from cilantro.protocol.overlay.ironhouse import Ironhouse
 from zmq.utils.z85 import decode, encode
 from os import listdir
-from os.path import exists
+from os.path import exists, abspath
 from threading import Timer
 import asyncio, shutil
 try: from utils import genkeys
@@ -23,6 +23,8 @@ class TestIronhouse(TestCase):
         self.private_key = 'f0ca3d349e56e419e72f11c1fd734ae929a483f9490907d2ded554d9f794f361'
         self.public_key = '73619fa1464ce16802b480a0fd7868ffcce0f7285050a927a07ef1ffdd34c162'
         self.curve_public_key = b'B77YmmOI=O0<)GJ@DJ2Q+&5jzp/absPNMCh?88@S'
+        self.new_public_key = '3b6a5bbb53b0cc26cf3c2ff0ea4c610b6a3c94b2986b07c74cf6d920d41d1f4b'
+        self.new_curve_public_key = b'j8e0iq)sE)=PA(I(p+Q]ycm-^M$(@Eo.NcZ!eYS7'
         self.ironhouse = Ironhouse(self.sk, wipe_certs=True, auth_validate=auth_validate)
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -64,9 +66,15 @@ class TestIronhouse(TestCase):
         self.assertEqual(self.public_key, decode(self.ironhouse.public_key).hex(), 'public key generation is incorrect')
 
     def test_generate_from_public_key(self):
-        self.ironhouse.create_from_public_key(encode(self.public_key.encode()))
+        self.ironhouse.create_from_public_key(self.new_curve_public_key)
         self.assertTrue(listdir(self.ironhouse.public_keys_dir), 'public keys dir not created')
-        self.assertTrue(exists('{}/ironhouse.key'.format(self.ironhouse.public_keys_dir)), 'public key not generated')
+        self.assertTrue(exists(abspath('{}/{}.key'.format(self.ironhouse.public_keys_dir, self.new_public_key))), 'public key not generated')
+
+    def test_remove_certificate(self):
+        self.ironhouse.create_from_public_key(self.new_curve_public_key)
+        self.assertTrue(listdir(self.ironhouse.public_keys_dir), 'public keys dir not created')
+        self.ironhouse.remove_key(self.new_curve_public_key)
+        self.assertFalse(exists(abspath('{}/{}.key'.format(self.ironhouse.public_keys_dir, self.new_public_key))), 'public key not generated')
 
     def test_secure_context_async(self):
         ctx, auth = self.ironhouse.secure_context(async=True)

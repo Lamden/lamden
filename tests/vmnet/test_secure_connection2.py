@@ -69,9 +69,11 @@ def run_node(mode):
 
     if mode == 'pub':
         sock = ctx.socket(zmq.PUB)
-        sec_sock = dht.network.ironhouse.secure_socket(sock, curve_serverkey=None)
+        sec_sock = dht.network.ironhouse.secure_socket(sock)
+
         dht.network.ironhouse.create_from_public_key(client_key)
         dht.network.ironhouse.reconfigure_curve(auth)
+
         url = 'tcp://*:{}'.format(auth_port)
         log.info('Started pub server on {}'.format(url))
         sec_sock.bind(url)
