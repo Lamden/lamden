@@ -7,7 +7,6 @@ import seneca.crypto as crypto
 import seneca.runtime as rt
 import seneca.stdlib as std
 from seneca.modulelib import export, make_exports
-import stake
 
 ledger = st.create_table('ledger', [
     ('wallet_id', st.str_len(200), True),
