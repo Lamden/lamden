@@ -39,7 +39,7 @@ jobs:
 #      - setup_remote_docker
 
       - save_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "reqiurements.txt" }}
+          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}
           paths:
             - ".venv"
             - "/usr/local/bin"
