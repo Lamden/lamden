@@ -11,7 +11,7 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
+          key: cilantro-{{ .Branch }}-{{ checksum "reqiurements.txt" }}
       - run:
           name: Install Cilantro Requirements
           command: |
@@ -39,7 +39,7 @@ jobs:
 #      - setup_remote_docker
 
       - save_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
+          key: cilantro-{{ .Branch }}-{{ checksum "reqiurements.txt" }}
           paths:
             - ".venv"
             - "/usr/local/bin"
