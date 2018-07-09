@@ -45,6 +45,7 @@ def tally_votes(policy_maker_id, election_id):
 
 @export
 def get(attr):
+    print('calling from:::', rt.global_run_data)
     return kv_policy.get(attr).run()
 
 exports = make_exports()

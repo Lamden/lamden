@@ -39,7 +39,6 @@ def _insert_role(name, create_table, drop_table, edit_users, edit_roles, edit_da
         'perm_edit_data': edit_data,
     }])
 
-    print(q)
     q.run()
 
 

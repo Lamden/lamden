@@ -138,12 +138,25 @@ class Executor(metaclass=ExecutorMeta):
         raise NotImplementedError
 
 
+class AuthExecutor(Executor):
+    def add_vk(self, *vks):
+        for vk in vks:
+            curve_key = self.ironhouse.vk2pk(vk)
+            self.ironhouse.create_from_public_key(curve_key)
+        self.ironhouse.reconfigure_curve(self.ironhouse.auth)
+
+    def remove_vk(self, *vks):
+        for vk in vks:
+            curve_key = self.ironhouse.vk2pk(vk)
+            self.ironhouse.remove_key(curve_key)
+        self.ironhouse.reconfigure_curve(self.ironhouse.auth)
+
 class SubPubExecutor(Executor):
     def __init__(self, loop, context, inproc_socket, *args, **kwargs):
         super().__init__(loop, context, inproc_socket, *args, **kwargs)
-        self.sub = None  # Subscriber socket
         self.sub_handler = None  # asyncio future from subscriber's recv_multipart
 
+        self.subs = {}
         self.pubs = {}  # Key is url, value is Publisher socket
 
         self.sub_urls = set()  # Set of URLS (as strings) we are subscribed to
@@ -168,9 +181,10 @@ class SubPubExecutor(Executor):
         assert url not in self.pubs, "Attempted to add pub on url that is already in self.pubs"
 
         self.log.info("Creating publisher socket on url {}".format(url))
-        # self.pubs[url] = self.ironhouse.secure_socket(
-        #     self.context.socket(socket_type=zmq.PUB))
-        self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
+        self.pubs[url] = self.ironhouse.secure_socket(
+            self.context.socket(socket_type=zmq.PUB))
+
+        # self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
         self.pubs[url].bind(url)
         time.sleep(0.2)
 
@@ -178,23 +192,32 @@ class SubPubExecutor(Executor):
         assert isinstance(filter, str), "'id' arg must be a string"
         assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
 
-        if not self.sub:
+        self.log.critical('subbing to {} with filter {}'.format(url, filter))
+
+        if not self.subs.get(url):
             self.log.info("Creating subscriber socket to {}".format(url))
             curve_serverkey = self.ironhouse.vk2pk(vk)
+            self.subs[url] = self.ironhouse.secure_socket(
+                self.context.socket(socket_type=zmq.SUB),
+                curve_serverkey=curve_serverkey)
 
-            self.sub = self.context.socket(socket_type=zmq.SUB)
-            # self.sub = self.ironhouse.secure_socket(
-            #     self.context.socket(socket_type=zmq.SUB),
-            #     curve_serverkey=curve_serverkey)
+        # if not self.sub:
+        #     self.log.info("Creating subscriber socket to {}".format(url))
+        #     curve_serverkey = self.ironhouse.vk2pk(vk)
+        #
+        #     # self.sub = self.context.socket(socket_type=zmq.SUB)
+        #     self.sub = self.ironhouse.secure_socket(
+        #         self.context.socket(socket_type=zmq.SUB),
+        #         curve_serverkey=curve_serverkey)
 
         if url not in self.sub_urls:
             self.add_sub_url(url)
         if filter not in self.sub_filters:
-            self.add_sub_filter(filter)
+            self.add_sub_filter(url, filter)
 
         if not self.sub_handler:
             self.log.info("Starting listener event for subscriber socket")
-            self.sub_handler = self.add_listener(self.recv_multipart, socket=self.sub, callback_fn=self._recv_pub_env,
+            self.sub_handler = self.add_listener(self.recv_multipart, socket=self.subs[url], callback_fn=self._recv_pub_env,
                                                  ignore_first_frame=True)
 
     def add_sub_url(self, url: str):
@@ -202,40 +225,42 @@ class SubPubExecutor(Executor):
 
         self.log.info("Subscribing to url {}".format(url))
         self.sub_urls.add(url)
-        self.sub.connect(url)
+        self.subs[url].connect(url)
 
-    def add_sub_filter(self, filter: str):
+        self.ironhouse.reconfigure_curve(self.ironhouse.auth)
+
+    def add_sub_filter(self, url: str, filter: str):
         assert isinstance(filter, str), "'id' arg must be a string"
         assert filter not in self.sub_filters, "Attempted to add filter that is already added"
 
         self.log.info("Adding filter {} to subscriber socket".format(filter))
         self.sub_filters.add(filter)
-        self.sub.setsockopt(zmq.SUBSCRIBE, filter.encode())
+        self.subs[url].setsockopt(zmq.SUBSCRIBE, filter.encode())
 
     def remove_sub(self, url: str, filter: str):
         assert isinstance(filter, str), "'filter' arg must be a string"
-        assert self.sub, "Remove sub command invoked but sub socket is not set"
+        assert self.subs.get(url), "Remove sub command invoked but sub socket is not set"
         assert url in self.sub_urls, "Attempted to remove a sub that was not registered in self.sub_urls"
         assert filter in self.sub_filters, "Attempted ro remove a sub /w filter that is not registered self.sub_filters"
 
         self.remove_sub_url(url)
-        self.remove_sub_filter(filter)
+        self.remove_sub_filter(filter, url)
 
     def remove_sub_url(self, url: str):
         assert url in self.sub_urls, "Attempted to remove a URL {} that is not in self.sub_urls"
-        assert self.sub, "Sub socket must be set before you can do any remove operation"
+        assert self.subs.get(url), "Sub socket must be set before you can do any remove operation"
 
         self.log.debug("Removing sub url {}".format(url))
-        self.sub.disconnect(url)
+        self.subs[url].disconnect(url)
         self.sub_urls.remove(url)
 
-    def remove_sub_filter(self, filter: str):
+    def remove_sub_filter(self, filter: str, url: str):
         assert isinstance(filter, str), "'filter' arg must be a string"
         assert filter in self.sub_filters
-        assert self.sub, "Sub socket must be set before you can do any remove operation"
+        assert self.subs.get(url), "Sub socket must be set before you can do any remove operation"
 
         self.log.debug("Removing sub filter {}".format(filter))
-        self.sub.setsockopt(zmq.UNSUBSCRIBE, filter.encode())
+        self.subs[url].setsockopt(zmq.UNSUBSCRIBE, filter.encode())
         self.sub_filters.remove(filter)
 
     def remove_pub(self, url: str):
@@ -293,9 +318,9 @@ class DealerRouterExecutor(Executor):
         assert self.router is None, "Attempted to add router on url {} but socket already configured".format(url)
 
         self.log.info("Creating router socket on url {}".format(url))
-        self.router = self.context.socket(socket_type=zmq.ROUTER)
-        # self.router = self.ironhouse.secure_socket(
-        #     self.context.socket(socket_type=zmq.ROUTER))
+        # self.router = self.context.socket(socket_type=zmq.ROUTER)
+        self.router = self.ironhouse.secure_socket(
+            self.context.socket(socket_type=zmq.ROUTER))
         self.router.bind(url)
 
         self.router_handler = self.add_listener(self.recv_multipart, socket=self.router,
@@ -313,10 +338,10 @@ class DealerRouterExecutor(Executor):
 
         curve_serverkey = self.ironhouse.vk2pk(vk)
         self.log.debug('{}: add_dealer for url: {}'.format(os.getenv('HOST_IP'), url))
-        socket = self.context.socket(socket_type=zmq.DEALER)
-        # socket = self.ironhouse.secure_socket(
-        #     self.context.socket(socket_type=zmq.DEALER),
-        #     curve_serverkey=curve_serverkey)
+        # socket = self.context.socket(socket_type=zmq.DEALER)
+        socket = self.ironhouse.secure_socket(
+            self.context.socket(socket_type=zmq.DEALER),
+            curve_serverkey=curve_serverkey)
 
         socket.identity = id.encode('ascii')
 

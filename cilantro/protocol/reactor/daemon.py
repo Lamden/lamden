@@ -26,7 +26,7 @@ class ReactorDaemon:
         self.url = url
 
         # Comment out below for more granularity in debugging
-        self.log.setLevel(logging.INFO)
+        # self.log.setLevel(logging.INFO)
 
         # TODO optimize cache
         self.ip_cache = CappedDict(max_size=64)
@@ -177,6 +177,7 @@ class ReactorDaemon:
         ip, node = None, None
         try:
             node = await self.dht.network.lookup_ip(vk)
+
         except Exception as e:
             delim_line = '!' * 64
             err_msg = '\n\n' + delim_line + '\n' + delim_line

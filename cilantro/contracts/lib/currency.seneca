@@ -2,19 +2,23 @@
 ## Example currency smart contract ##
 # UNITTEST_FLAG_CURRENCY_SENECA 1729
 
-
 import seneca.storage.tabular as st
 import seneca.crypto as crypto
 import seneca.runtime as rt
 import seneca.stdlib as std
 from seneca.modulelib import export, make_exports
-
+import stake
 
 ledger = st.create_table('ledger', [
     ('wallet_id', st.str_len(200), True),
     ('balance', int),
 ])
 
+safe = st.create_table('safe', [
+    ('wallet_id', st.str_len(200)),
+    ('amount', int),
+    ('name', st.str_len(200)) # Name of contract using this safe
+])
 
 @export
 def get_balance(wallet_id):
@@ -25,7 +29,6 @@ def get_balance(wallet_id):
 def wallet_exists(wallet_id):
     query = ledger.select('wallet_id').where(ledger.wallet_id == wallet_id)
     return len(query.run()) == 1
-
 
 @export
 def create_wallet(wallet_id):
@@ -57,7 +60,6 @@ def remove_coins(wallet_id, amount_to_remove):
 @export
 def transfer_coins(receiver_id, amount):
     sender_id = rt.global_run_data.author
-
     print("transfering {} coins from {} --> {}".format(amount, sender_id, receiver_id))
 
     # print("REMOVING COINS FROM {}".format(sender_id))
@@ -65,6 +67,34 @@ def transfer_coins(receiver_id, amount):
     # print("ADDING COINS TO {}".format(receiver_id))
     add_coins(receiver_id, amount)
 
+# @export
+def is_locked(wallet_id):
+    name = rt.global_run_data.address
+    locked_obj = safe.select().where(safe.wallet_id == wallet_id and safe.name == name).run()
+    return locked_obj
+
+@export
+def lock_coins(amount):
+    wallet_id = rt.global_run_data.author
+    name = rt.global_run_data.address
+
+    print("[inside of currency] rt.global_run_data.address={}".format(rt.global_run_data.address))
+
+    assert not is_locked(wallet_id), 'Already locked for "{}"'.format(name)
+    remove_coins(wallet_id, amount)
+    safe.insert([
+        {'wallet_id': wallet_id, 'amount': amount, 'name': name}
+    ]).run()
+
+@export
+def unlock_coins():
+    wallet_id = rt.global_run_data.author
+    name = rt.global_run_data.address
+    locked_obj = is_locked(wallet_id)
+    assert len(locked_obj)!=0, 'No coins in the lock "{}"'.format(name)
+    amount = locked_obj[0]['amount']
+    add_coins(wallet_id, amount)
+    safe.delete().where(safe.wallet_id == wallet_id and safe.name == name).run()
 
 exports = make_exports()
 
@@ -73,7 +103,7 @@ if __name__ == '__main__':
 
     GENESIS_WALLETS = [
         {
-            "wallet": "CARL",
+            "wallet": "CARLOS",
             "amount": 3696947
         },
         {
