@@ -22,6 +22,8 @@ sk4, vk4 = W.new()
 FILTERS = ['FILTER_' + str(i) for i in range(100)]
 URLS = ['tcp://127.0.0.1:' + str(i) for i in range(9000, 9999, 10)]
 
+log = get_logger("TopologyIntegrationTest")
+
 
 class TopologyIntegrationTest(MPTestCase):
 
@@ -47,13 +49,18 @@ class TopologyIntegrationTest(MPTestCase):
         tx1 = God.create_std_tx(FALCON, DAVIS, 210)
         tx2 = God.create_std_tx(STU, FALCON, 150)
 
-        masternode = MPMasternode(name='Masternode', config_fn=config_mn, assert_fn=assert_mn, sk=mn_sk)
+        log.critical("CREATING MASTERNODE")
+        # masternode = MPMasternode(name='Masternode', config_fn=config_mn, assert_fn=assert_mn, sk=mn_sk)
+        from cilantro.utils.test import MPComposer
+        comp = MPComposer(sk=mn_sk)
+        log.critical("MASTERNODE CREATED")
 
         time.sleep(0.25)  # give masternode a quick sec to get his web server ready
 
         God.send_tx(tx1)
         God.send_tx(tx2)
 
+        log.critical("STARTING TEST")
         self.start()
 
     # def test_masternode_witness_pubsub(self):

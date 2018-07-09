@@ -57,7 +57,7 @@ def _apply_skips(test_case: unittest.TestCase, test_names: list):
 
 
 def main(args):
-    log.debug("\nRunning test suites with \nrun unit tests={}\nrun integration tests={}\nverbosity={}\nskip tests={}\n"
+    log.debug("\nRunning test suites with flags:\n\n\trun unit tests={}\n\trun integration tests={}\n\tverbosity={}\n\tskip tests={}\n"
               .format(args.unit, args.integration, args.verbosity, args.skip))
 
     all_tests = []

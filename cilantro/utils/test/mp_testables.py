@@ -1,5 +1,6 @@
 from cilantro import Constants
-from cilantro.utils.test import MPTesterBase, mp_testable, God
+from cilantro.logger import get_logger
+from cilantro.utils.test import MPTesterBase, mp_testable, God, MPTestCase
 from unittest.mock import patch, call, MagicMock
 from cilantro.protocol.transport import Router, Composer
 from cilantro.protocol.reactor import ReactorInterface
@@ -56,9 +57,11 @@ class MPMasternode(MPTesterBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Set God's Masternode URL to use this guy's IP
-        self.log.debug("Setting God's Masternode IP to {}".format(self.ip))
-        God.set_mn_ip(self.ip)
+        # Set God's Masternode URL to use this guy updated port if we are running on VM
+        if MPTestCase.vmnet_test_active:
+            assert
+            self.log.critical("Setting God's Masternode IP to {}".format(self.ip))  # TODO change to debug
+            God.set_mn_url(port=)
 
     @classmethod
     def build_obj(cls, sk, name='Masternode') -> tuple:
@@ -66,6 +69,9 @@ class MPMasternode(MPTesterBase):
         asyncio.set_event_loop(loop)
 
         ip = os.getenv('HOST_IP', '127.0.0.1')
+
+        log = get_logger("MPMasternode Builder")
+        log.info("Creating Masternode with IP {}, signing key {}..., and name {}".format(ip, sk[:8], name))
 
         mn = NodeFactory._build_node(loop=loop, signing_key=sk, ip=ip, node_cls=Masternode, name=name)
         mn.start(start_loop=False)

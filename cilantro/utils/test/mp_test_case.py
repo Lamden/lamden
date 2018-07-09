@@ -22,6 +22,7 @@ class MPTestCase(BaseNetworkTestCase):
     local_path = CILANTRO_PATH
     docker_dir = '{}/cilantro/tests/vmnet/docker_dir'.format(CILANTRO_PATH)
     logdir = '{}/cilantro/logs'.format(CILANTRO_PATH)
+    setuptime = 8
 
     testers = []
     curr_tester_index = 1

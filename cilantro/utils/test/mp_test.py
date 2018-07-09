@@ -15,7 +15,9 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 ASSERTS_POLL_FREQ = 0.1
 CHILD_PROC_TIMEOUT = 1
 
-MP_PORT = '8472'
+TEST_PROC_SETUP_TIME = 20
+
+MP_PORT = '10200'
 
 SIG_RDY = b'IM RDY'
 SIG_SUCC = b'G00DSUCC'
@@ -57,10 +59,8 @@ def _gen_url(name=''):
     """
     Helper method to generate a random URL for use in a PAIR socket
     """
-    # TODO set host name from env vars if on VM
-    HOST_NAME = '127.0.0.1'  # or node name (i.e delegate_1)
     rand_num = random.randint(0, pow(2, 16))
-    return "ipc://mptest-{}-{}-{}".format(name, HOST_NAME, rand_num)
+    return "ipc://mptest-{}-{}".format(name, rand_num)
 
 
 class MPTesterProcess:
@@ -76,14 +76,16 @@ class MPTesterProcess:
         self.config_fn = config_fn
         self.assert_fn = assert_fn
         self.gathered_tasks = None
-        self.log = get_logger("TesterProc[{}]".format(name))
+        self.log = get_logger("TesterProc-{}".format(name))
 
         self.tester_obj, self.loop, self.tasks = self._build_components(build_fn)
 
         # Connect to parent process over ipc PAIR self.socket
         self.ctx = zmq.asyncio.Context()
         self.socket = self.ctx.socket(socket_type=zmq.PAIR)
-        self.socket.connect(self.url)
+        # self.socket.connect(self.url)
+        self.log.info("TestProcess binding to URL {}".format(self.url))
+        self.socket.bind(self.url)
 
         if self.config_fn:
             self.tester_obj = self.config_fn(self.tester_obj)
@@ -95,8 +97,27 @@ class MPTesterProcess:
         assert self.gathered_tasks is None, "start_test can only be called once"
         self.gathered_tasks = asyncio.gather(self._recv_cmd(), *self.tasks)
 
+        # DEBUG
+        self.log.critical("sleeping before sending ready sig to parent")
+        import time
+        time.sleep(0.5)
+        self.log.critical("done sleeping")
+
+        import os
+        self.log.critical("this nodes ip: {}".format(os.getenv('HOST_IP')))
+        # END DBUG
+
         self.log.debug("sending ready sig to parent")
         self.socket.send_pyobj(SIG_RDY)
+
+        while True:
+            time.sleep(4)
+            self.log.debug("sending another rdy sig")
+            self.socket.send_pyobj(SIG_RDY)
+
+        self.log.critical("sleeping again after sending parent ready sig")
+        time.sleep(1.5)
+        self.log.critical("done with second sleep")
 
         try:
             self.log.debug("starting tester proc event loop")
@@ -246,10 +267,11 @@ class MPTesterBase:
         super().__init__()
         self.log = get_logger(name)
         self.name = name
-        # self.url = _gen_url(name)
 
         self.config_fn = config_fn  # Function to configure object with mocks
         self.assert_fn = assert_fn  # Function to run assertions on said mocks
+
+        self.container_name = None  # Name of the docker container this object is proxying to (if run on VM)
 
         # Add this object to the registry of testers
         from .mp_test_case import MPTestCase
@@ -260,11 +282,16 @@ class MPTesterBase:
         # it across a socket
         build_fn = wrap_func(type(self).build_obj, *args, **kwargs)
 
+        # TODO DEBUG
+        self.log.critical("always run as subproc: {}".format(always_run_as_subproc))
+        self.log.critical("vm test active: {}".format(MPTestCase.vmnet_test_active))
+        # TODO END DEBUG
+
         # Create Tester object in a VM
-        if always_run_as_subproc or MPTestCase.vmnet_test_active:
+        if MPTestCase.vmnet_test_active and not always_run_as_subproc:
             name, ip = MPTestCase._next_container()
             self.log.info("Creating Tester object in a VM on container named {} with ip address {}".format(name, ip))
-            self.ip = ip
+            self.container_name = name
             self.url = "tcp://{}:{}".format(ip, MP_PORT)
 
             runner_func = wrap_func(self._run_test_proc, self.name, self.url, build_fn, self.config_fn, self.assert_fn)
@@ -275,7 +302,6 @@ class MPTesterBase:
         # Create Tester object in a Subprocess
         else:
             self.log.info("Creating Tester object in a subprocess")
-            self.ip = '127.0.0.1'
             self.url = _gen_url(name)
 
             self.test_proc = LProcess(target=self._run_test_proc, args=(self.name, self.url, build_fn,
@@ -285,15 +311,17 @@ class MPTesterBase:
         # 'socket' is used to proxy commands to blocking object running in a child process (or possibly on a VM)
         self.ctx = zmq.Context()
         self.socket = self.ctx.socket(socket_type=zmq.PAIR)
-        self.log.debug("Binding to url {}".format(self.url))
-        self.socket.bind(self.url)
+        self.log.debug("Connecting to url {}".format(self.url))
+        self.socket.connect(self.url)
 
         # Block this process until we get a ready signal from the subprocess/VM
         self.wait_for_test_object()
 
     def wait_for_test_object(self):
-        self.log.info("Tester waiting for rdy sig from test object...")
+        self.log.info("Tester waiting for rdy sig from test process...")
+        self.log.critical("Waiting for ready sig from test process")
         msg = self.socket.recv_pyobj()
+        self.log.critical("\n\n\n thank fuck for that \n\n\n")
         assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
         self.log.info("GOT RDY SIG: {}".format(msg))
 
@@ -302,7 +330,9 @@ class MPTesterBase:
         log = get_logger("TestObjectRunner[{}]".format(name))
 
         # TODO create socket outside of loop and pass it in for
+        log.debug("Creating MPTesterProcess named {}...".format(name))
         tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
+        log.debug("MPTesterProcess named {} created".format(name))
         tester_socket = tester.socket
 
         try:
@@ -334,4 +364,4 @@ class MPTesterBase:
         self.log.debug("{} done tearing down.".format(self.name))
 
     def __repr__(self):
-        return self.name + "  " + str(type(self))
+        return '<' + self.name + "  " + str(type(self)) + '>'
