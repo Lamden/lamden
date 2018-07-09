@@ -10,7 +10,11 @@ def contract(*contract_ids):
         def test_fn(self):
             contracts = []
             for contract_id in contract_ids:
-                contracts.append(get_contract_exports(self.ex, self.tables.contracts, contract_id=contract_id))
+                if type(contract_id) in (tuple, list):
+                    user_id, contract_id = contract_id
+                    contracts.append(get_contract_exports(self.ex, self.tables.contracts, contract_id=contract_id, user_id=user_id))
+                else:
+                    contracts.append(get_contract_exports(self.ex, self.tables.contracts, contract_id=contract_id))
             return fn(self, *contracts)
         return test_fn
     return decorator

@@ -16,7 +16,8 @@ ledger = st.create_table('ledger', [
 safe = st.create_table('safe', [
     ('wallet_id', st.str_len(200)),
     ('amount', int),
-    ('name', st.str_len(200)) # Name of contract using this safe
+    ('locked_until', std.datetime),
+    ('contract_id', st.str_len(200)) # Name of contract using this safe
 ])
 
 allowed = st.create_table('allowed', [
@@ -101,29 +102,41 @@ def transfer_coins_from(from_id, to_id, amount):
 
 @export
 def is_locked(wallet_id):
-    name = rt.global_run_data.address
-    return safe.select().where(safe.wallet_id == wallet_id and safe.name == name).run()
+    contract_id = rt.global_run_data.address
+    return safe.select().where(
+        safe.wallet_id == wallet_id and \
+        safe.contract_id == contract_id
+    ).run()
 
 @export
-def lock_coins(amount):
+def lock_coins(amount, duration):
     wallet_id = rt.global_run_data.author
-    name = rt.global_run_data.address
+    contract_id = rt.global_run_data.address
     assert amount > 0, 'Cannot lock negative amounts'
-    assert not is_locked(wallet_id), 'Already locked for "{}"'.format(name)
+    assert not is_locked(wallet_id), 'Already locked for "{}"'.format(contract_id)
+    assert type(duration) == std.timedelta, 'Must use {} for duration'.format(std.timedelta)
     remove_coins(wallet_id, amount)
-    safe.insert([
-        {'wallet_id': wallet_id, 'amount': amount, 'name': name}
-    ]).run()
+    safe.insert([{
+        'wallet_id': wallet_id,
+        'amount': amount,
+        'contract_id': contract_id,
+        'locked_until': std.datetime.now()+duration
+    }]).run()
 
 @export
 def unlock_coins():
     wallet_id = rt.global_run_data.author
-    name = rt.global_run_data.address
+    contract_id = rt.global_run_data.address
     locked_obj = is_locked(wallet_id)
-    assert len(locked_obj)!=0, 'No coins in the lock "{}"'.format(name)
+    assert len(locked_obj)!=0, 'No coins in the lock "{}"'.format(contract_id)
     amount = locked_obj[0]['amount']
+    res = safe.delete().where(
+        safe.wallet_id == wallet_id and \
+        safe.contract_id == contract_id and \
+        safe.locked_until<=std.datetime.now()).run()
+    assert res['row_count'] != 0, 'Cannot unlock coin yet'
     add_coins(wallet_id, amount)
-    safe.delete().where(safe.wallet_id == wallet_id and safe.name == name).run()
+
 
 exports = make_exports()
 
