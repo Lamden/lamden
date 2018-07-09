@@ -11,7 +11,7 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "reqiurements.txt" }}
+          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
           name: Install Cilantro Requirements
           command: |
