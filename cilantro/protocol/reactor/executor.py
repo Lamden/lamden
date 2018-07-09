@@ -192,6 +192,8 @@ class SubPubExecutor(Executor):
         assert isinstance(filter, str), "'id' arg must be a string"
         assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
 
+        self.log.critical('subbing to {} with filter {}'.format(url, filter))
+
         if not self.subs.get(url):
             self.log.info("Creating subscriber socket to {}".format(url))
             curve_serverkey = self.ironhouse.vk2pk(vk)
@@ -242,7 +244,7 @@ class SubPubExecutor(Executor):
         assert filter in self.sub_filters, "Attempted ro remove a sub /w filter that is not registered self.sub_filters"
 
         self.remove_sub_url(url)
-        self.remove_sub_filter(filter)
+        self.remove_sub_filter(filter, url)
 
     def remove_sub_url(self, url: str):
         assert url in self.sub_urls, "Attempted to remove a URL {} that is not in self.sub_urls"
@@ -252,13 +254,13 @@ class SubPubExecutor(Executor):
         self.subs[url].disconnect(url)
         self.sub_urls.remove(url)
 
-    def remove_sub_filter(self, filter: str):
+    def remove_sub_filter(self, filter: str, url: str):
         assert isinstance(filter, str), "'filter' arg must be a string"
         assert filter in self.sub_filters
         assert self.subs.get(url), "Sub socket must be set before you can do any remove operation"
 
         self.log.debug("Removing sub filter {}".format(filter))
-        self.sub.setsockopt(zmq.UNSUBSCRIBE, filter.encode())
+        self.subs[url].setsockopt(zmq.UNSUBSCRIBE, filter.encode())
         self.sub_filters.remove(filter)
 
     def remove_pub(self, url: str):

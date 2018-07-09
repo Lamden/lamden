@@ -66,17 +66,6 @@ def run_mgmt():
     mpc = MPComposer(name='mgmt', sk=s)
     mpc.add_sub(filter='a', vk=vk)
 
-def start_mysqld():
-    import os
-    os.system('mysqld \
-   --skip-grant-tables \
-   --skip-innodb \
-   --collation-server latin1_bin \
-   --default-storage-engine ROCKSDB \
-   --default-tmp-storage-engine MyISAM \
-   --binlog_format ROW \
-   --user=mysql &')
-
 
 class TestVKLookup(BaseNetworkTestCase):
     testname = 'vklookup'
@@ -88,11 +77,6 @@ class TestVKLookup(BaseNetworkTestCase):
 
     @vmnet_test(run_webui=True)
     def test_vklookup(self):
-        # start mysql in all nodes
-        # for node_name in ['masternode'] + self.groups['witness'] + self.groups['delegate']:
-        #     self.execute_python(node_name, start_mysqld, async=True)
-        # time.sleep(3)
-
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
 
