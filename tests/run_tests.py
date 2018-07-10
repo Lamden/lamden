@@ -87,7 +87,6 @@ def main(args):
 
             if _should_skip_module(test, skip_module_names):
                 log.info("Skipping test module {}".format(test))
-                log.critical("\n\nSkipping test module {}\n\n".format(test))
                 continue
 
             suite = loader.discover(test)  # finds all unit tests in the testgroup directory
@@ -173,36 +172,37 @@ if __name__ == '__main__':
     """
     -v or --verbosity
     
-    Optional verbosity. If true, no output from unit/integration tests will be surpressed
+    Optional verbosity. If true, no output from unit/integration tests will be suppressed
     """
     args.add_argument('-v', '--verbosity', action='store_true', help='Optional verbosity. If true, no output from unit/integration tests will be surpressed')
 
     """
     --unit [0/1]
     
-    Enable/disable unit tests. Default is 1
+    Enable/disable unit tests. Default is 1 (enabled)
     """
     args.add_argument("--unit", type=int, default=1, help="Flag to run unit tests. Default is True")
 
     """
     --integration [0/1]
     
-    Enable/disable integration tests. Default is 1
+    Enable/disable integration tests. Default is 1 (enabled)
     """
     args.add_argument("--integration", type=int, default=1, help="Flag to run integration tests. Default is True")
 
     """
     --skip_tests TestEd25199Wallet.test_something_hella_long, SomeOtherModule.some_other_test, ...
     
-    Skip individual test case functions by specifying TestClassName.test_func_name, seperated by commas
+    Skip individual test case functions by specifying TestClassName.test_func_name, separated by commas
     """
     args.add_argument("--skip_tests", nargs='+', type=str)
 
     """
     --skip_modules tests.protocol.wallets, tests.constants, ...
     
-    Skip test modules by specifying a list of modules names separated by commas. These module(s) must be defined 
-    somewhere in cilantro/tests/groups.py
+    Skip test modules by specifying a list of modules names separated by commas. Specifying a higher level module will 
+    skip all submodules, ie. specifying 'tests.protocol' will skip 'tests.protocol.proofs', 'tests.protocol.reactor',
+    and any other 'tests.protocol.*'
     """
     args.add_argument("--skip_modules", nargs='+', type=str)
 
