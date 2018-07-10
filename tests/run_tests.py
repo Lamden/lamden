@@ -55,7 +55,7 @@ def _apply_skips(test_case: unittest.TestCase, test_names: list):
 
 def _should_skip_module(module_name: str, modules_to_skip: list) -> bool:
     for mod in modules_to_skip:
-        if type(module_name) is list:
+        if type(mod) is list:
             if _should_skip_module(module_name, mod):
                 return True
         elif mod == module_name or mod.startswith(module_name):
