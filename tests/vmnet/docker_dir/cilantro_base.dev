@@ -24,6 +24,7 @@ RUN apt-get update \
 # Install Python requirements
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        sudo git ssh tar gzip ca-certificates \
         openssl python3.6 \
         python3-pip python3.6-dev build-essential \
             gcc g++ git autoconf automake \

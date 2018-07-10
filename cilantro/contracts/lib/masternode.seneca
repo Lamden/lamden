@@ -1,0 +1,40 @@
+#!/usr/bin/env seneca_0.1
+## Example currency smart contract ##
+# UNITTEST_FLAG_CURRENCY_SENECA 1729
+
+import seneca.storage.tabular as st
+import seneca.crypto as crypto
+import seneca.runtime as rt
+import seneca.stdlib as std
+from seneca.modulelib import export, make_exports
+import currency
+import stake
+import witness
+
+CONTRACT = 'masternode'
+
+t_masternodes = st.create_table('masternode', [
+    ('masternode_id', st.str_len(30), True)
+])
+
+kv_policy = kv.create_kv('constants')
+
+@export
+def stake():
+    sender_id = rt.global_run_data.author
+    stake_amount = stake.get('masternode_stake')
+    currency.lock_coins(stake_amount, CONTRACT)
+    t_masternodes.insert([
+        {'witneess_id':sender_id}
+    ])
+
+@export
+def unstake():
+    sender_id = rt.global_run_data.author
+    currency.unlock_coins(CONTRACT)
+
+@export
+def get_vks(attr):
+    return t_masternodes.select()
+
+exports = make_exports()

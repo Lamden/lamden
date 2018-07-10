@@ -2,19 +2,29 @@
 ## Example currency smart contract ##
 # UNITTEST_FLAG_CURRENCY_SENECA 1729
 
-
 import seneca.storage.tabular as st
 import seneca.crypto as crypto
 import seneca.runtime as rt
 import seneca.stdlib as std
 from seneca.modulelib import export, make_exports
 
-
 ledger = st.create_table('ledger', [
     ('wallet_id', st.str_len(200), True),
     ('balance', int),
 ])
 
+safe = st.create_table('safe', [
+    ('wallet_id', st.str_len(200)),
+    ('amount', int),
+    ('locked_until', std.datetime),
+    ('contract_id', st.str_len(200)) # Name of contract using this safe
+])
+
+allowed = st.create_table('allowed', [
+    ('from_id', st.str_len(200)),
+    ('to_id', st.str_len(200)),
+    ('amount', int),
+])
 
 @export
 def get_balance(wallet_id):
@@ -25,7 +35,6 @@ def get_balance(wallet_id):
 def wallet_exists(wallet_id):
     query = ledger.select('wallet_id').where(ledger.wallet_id == wallet_id)
     return len(query.run()) == 1
-
 
 @export
 def create_wallet(wallet_id):
@@ -57,13 +66,76 @@ def remove_coins(wallet_id, amount_to_remove):
 @export
 def transfer_coins(receiver_id, amount):
     sender_id = rt.global_run_data.author
-
-    print("transfering {} coins from {} --> {}".format(amount, sender_id, receiver_id))
-
-    # print("REMOVING COINS FROM {}".format(sender_id))
     remove_coins(sender_id, amount)
-    # print("ADDING COINS TO {}".format(receiver_id))
     add_coins(receiver_id, amount)
+
+@export
+def get_approved(from_id, to_id):
+    approved = allowed.select().where(allowed.from_id == from_id and allowed.to_id == to_id).run()
+    if len(approved) == 1:
+        return approved[0]['amount']
+
+@export
+def approve(to_id, amount):
+    assert amount > 0, 'Cannot approve negative amount'
+    from_id = rt.global_run_data.author
+    approved_amount = get_approved(from_id, to_id)
+    if approved_amount != None:
+        approved_amount = approved_amount + amount
+        allowed.update({'amount': approved_amount}) \
+            .where(allowed.from_id == from_id and allowed.to_id == to_id).run()
+    else:
+        allowed.insert([{
+            'from_id': from_id, 'to_id': to_id, 'amount': amount
+        }]).run()
+
+@export
+def transfer_coins_from(from_id, to_id, amount):
+    approved_amount = get_approved(from_id, to_id)
+    assert approved_amount, 'Not approved to transfer'
+    assert approved_amount >= amount, 'Attempting to transfer more than approved'
+    approved_amount = approved_amount - amount
+    allowed.update({'amount': approved_amount}) \
+        .where(allowed.from_id == from_id and allowed.to_id == to_id).run()
+    remove_coins(from_id, amount)
+    add_coins(to_id, amount)
+
+@export
+def is_locked(wallet_id):
+    contract_id = rt.global_run_data.address
+    return safe.select().where(
+        safe.wallet_id == wallet_id and \
+        safe.contract_id == contract_id
+    ).run()
+
+@export
+def lock_coins(amount, duration):
+    wallet_id = rt.global_run_data.author
+    contract_id = rt.global_run_data.address
+    assert amount > 0, 'Cannot lock negative amounts'
+    assert not is_locked(wallet_id), 'Already locked for "{}"'.format(contract_id)
+    assert type(duration) == std.timedelta, 'Must use {} for duration'.format(std.timedelta)
+    remove_coins(wallet_id, amount)
+    safe.insert([{
+        'wallet_id': wallet_id,
+        'amount': amount,
+        'contract_id': contract_id,
+        'locked_until': std.datetime.now()+duration
+    }]).run()
+
+@export
+def unlock_coins():
+    wallet_id = rt.global_run_data.author
+    contract_id = rt.global_run_data.address
+    locked_obj = is_locked(wallet_id)
+    assert len(locked_obj)!=0, 'No coins in the lock "{}"'.format(contract_id)
+    amount = locked_obj[0]['amount']
+    res = safe.delete().where(
+        safe.wallet_id == wallet_id and \
+        safe.contract_id == contract_id and \
+        safe.locked_until<=std.datetime.now()).run()
+    assert res['row_count'] != 0, 'Cannot unlock coin yet'
+    add_coins(wallet_id, amount)
 
 
 exports = make_exports()
