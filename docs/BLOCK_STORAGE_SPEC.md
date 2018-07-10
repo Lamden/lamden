@@ -10,7 +10,7 @@ consists of 2 parts:
   - A key-value store containing both required and optional metadata about this block.
 
 Below is a diagram detailing the properties of blocks and how they are linked together.
-<div style="width: 640px; height: 480px; margin: 10px; position: relative;"><iframe allowfullscreen frameborder="0" style="width:640px; height:480px" src="https://www.lucidchart.com/documents/embeddedchart/eafeb214-2e73-429e-8471-a4286dcc33bc" id="QvkUfQSfV0UG"></iframe></div>
+![Blockchain Spec Diagram](https://www.lucidchart.com/publicSegments/view/f375769e-b275-450e-93ad-46a3212dcf7b/image.png)
 
 ## Individual Block Schema
 
