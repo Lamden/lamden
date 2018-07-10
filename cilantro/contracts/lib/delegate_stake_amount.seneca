@@ -1,3 +1,7 @@
+#!/usr/bin/env seneca_0.1
+## Example currency smart contract ##
+# UNITTEST_FLAG_CURRENCY_SENECA 1729
+
 import seneca.storage.tabular as st
 import seneca.storage.kv as kv
 import seneca.crypto as crypto
@@ -9,7 +13,7 @@ import election
 
 @export
 def create_election(*args, **kwargs):
-    return election.create_election(*args, **kwargs)
+    return election.create_election(*args, int, **kwargs)
 
 @export
 def cast_vote(*args, **kwargs):
@@ -24,6 +28,3 @@ def get(*args, **kwargs):
     return election.get(*args, **kwargs)
 
 exports = make_exports()
-
-if __name__ == '__main__':
-    pass
