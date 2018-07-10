@@ -5,6 +5,7 @@ import json, os
 log = get_logger("DB Creator")
 
 GENESIS_HASH = '0' * 64
+DB_NAME = 'seneca_test'
 
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
@@ -15,9 +16,9 @@ def build_tables(ex, should_drop=True):
 
     if should_drop:
         log.info("Dropping Seneca database")
-        ex.raw('DROP DATABASE IF EXISTS seneca_test;')
-        ex.raw('CREATE DATABASE seneca_test;')
-        ex.raw('USE seneca_test;')
+        ex.raw('DROP DATABASE IF EXISTS {};'.format(DB_NAME))
+    ex.raw('CREATE DATABASE IF NOT EXISTS {};'.format(DB_NAME))
+    ex.raw('USE seneca_test;')
 
     # Create tables
     contracts = build_contracts_table(ex, should_drop)

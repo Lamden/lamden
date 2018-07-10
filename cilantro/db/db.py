@@ -275,7 +275,6 @@ class DBSingletonMeta(type):
             cls.log.debug("(__call__) Releasing DBSingleton lock {}".format(DBSingletonMeta._lock))
             return cls._instances[pid]
 
-
 class DB(metaclass=DBSingletonMeta):
     def __init__(self, should_reset):
         self.log = get_logger("DB")
@@ -294,10 +293,6 @@ class DB(metaclass=DBSingletonMeta):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.log.debug("Releasing lock {}".format(self.lock))
         self.lock.release()
-
-    def execute(self, query):
-        self.log.debug("Executing query {}".format(query))
-        return self.db.execute(query)
 
 
 class VKBook:

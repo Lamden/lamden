@@ -28,13 +28,16 @@ class TestDBSingleton(TestCase):
         procs = [multiprocessing.Process(target=TestDBSingleton._run_db_proc, args=(shared_mem,)) for _ in range(num_procs)]
         for p in procs:
             p.start()
+        for p in procs:
             p.join()
 
         # Ensure a new instance was created for each process
         self.assertTrue(len(shared_mem) == num_procs)
 
         # Ensure all the locks are the created instances are unique
-        self.assertTrue(len(set(shared_mem.values())) == num_procs)
+        # TODO figure out a way to do this. The id() function does not necessarily return unique values for unique
+        # objects since Python will recycle is memory space once the object has no references
+        # self.assertTrue(len(set(shared_mem.values())) == len(shared_mem))
 
     def test_creates_new_db(self):
         """
