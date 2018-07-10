@@ -75,3 +75,14 @@ NODE_INTEGRATION_TESTS = [
 INTEGRATION_TESTS = [
     NODE_INTEGRATION_TESTS
 ]
+
+
+"""
+------------------------------------------------------------------------------------------------------------------
+                                            Special Groups
+------------------------------------------------------------------------------------------------------------------
+"""
+
+# Tests to skip on the CI.
+# CI_DISABLED_TESTS = OVERLAY_TESTS + INTEGRATION_TESTS + DB_TESTS + SMART_CONTRACT_TESTS
+
