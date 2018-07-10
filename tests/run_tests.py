@@ -61,10 +61,10 @@ def _should_skip_module(module_name: str, modules_to_skip: list) -> bool:
 
 
 def main(args):
-    log.debug("\nRunning test suites with \n\trun unit tests={}\n\trun integration tests={}\n\tverbosity={}\n\t"
-              "skip modules={}\n\tskip tests={}\n"
-              .format(args.unit, args.integration, args.verbosity, args.skip_modules, args.skip_tests))
-
+    log.debug("\nRunning test suites with args \n\trun unit tests={}\n\trun integration tests={}\n\tverbosity={}\n\t"
+              "skip modules={}\n\tskip tests={}\n\t[env var] CILANTRO_DEBUG={}\n\t[env var] CI={}\n"
+              .format(args.unit, args.integration, args.verbosity, args.skip_modules, args.skip_tests,
+                      os.getenv('CILANTRO_DEBUG'), os.getenv('CI')))
 
     all_tests = []
     if args.unit:
@@ -73,7 +73,12 @@ def main(args):
         all_tests += INTEGRATION_TESTS
 
     skip_test_names = args.skip_tests
+
     skip_module_names = args.skip_modules or []
+    if os.getenv('CILANTRO_DEBUG'):
+        skip_module_names += DEBUG_DISABLED_TESTS
+    if os.getenv('CI'):
+        skip_module_names += CI_DISABLED_TESTS
 
     TEST_FLAG = 'S'  # test flag represents failure (F) or success (S) of testing
     loader = unittest.TestLoader()
