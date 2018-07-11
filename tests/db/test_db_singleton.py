@@ -81,6 +81,8 @@ class TestDBSingleton(TestCase):
 
     # TODO -- test locking functionality
 
+    # TODO -- test reset_db() function
+
 
 
 

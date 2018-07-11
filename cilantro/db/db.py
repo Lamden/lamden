@@ -10,6 +10,8 @@ Classes include:
 -DB (which inherits from DBSingletonMeta)
 """
 
+from seneca.seneca_internal.storage.mysql_executer import Executer
+
 from multiprocessing import Lock
 import os, json
 from datetime import datetime
@@ -25,7 +27,7 @@ from sqlalchemy.sql.selectable import Select
 from sqlalchemy import select, insert, update, delete, and_
 
 
-from cilantro.db.tables import build_tables
+from cilantro.db.tables import build_tables, _reset_db
 
 DB_NAME = 'cilantro'
 SCRATCH_PREFIX = 'scratch_'
@@ -253,6 +255,11 @@ class ScratchCloningVisitor(CloningVisitor):
         return replacement_traverse(obj, self.__traverse_options__, replace)
 
 
+def reset_db():
+    with DB() as db:
+        _reset_db(db.ex)
+
+
 class DBSingletonMeta(type):
     _lock = Lock()
     _instances = {}
@@ -275,6 +282,7 @@ class DBSingletonMeta(type):
             cls.log.debug("(__call__) Releasing DBSingleton lock {}".format(DBSingletonMeta._lock))
             return cls._instances[pid]
 
+
 class DB(metaclass=DBSingletonMeta):
     def __init__(self, should_reset):
         self.log = get_logger("DB")
@@ -282,8 +290,8 @@ class DB(metaclass=DBSingletonMeta):
 
         self.lock = Lock()
 
-        # self.tables = build_tables(db_name, should_reset)
-        # self.db, self.tables = create_db(db_name, should_reset=True)
+        self.ex = Executer.init_local_noauth_dev()
+        self.tables = build_tables(self.ex, should_drop=should_reset)
 
     def __enter__(self):
         self.log.debug("Acquiring lock {}".format(self.lock))
