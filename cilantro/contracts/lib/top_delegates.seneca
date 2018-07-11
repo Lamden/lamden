@@ -36,10 +36,11 @@ def cast_vote(election_id, top_delegates):
 
 def processor(res):
     num_top_delegates = ntd.get()
-    elections = list(reversed(sorted(
+    res = [y for x in [r.split(',') for r in res] for y in x]
+    elections = [r[0] for r in reversed(sorted(
         [(r, res.count(r)) for r in set(res)],
         key=lambda x:x[1]
-    )))
+    ))]
     return elections[:num_top_delegates]
 
 @export

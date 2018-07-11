@@ -20,8 +20,8 @@ def tally_votes(election_id):
     return election.tally_votes(election_id, basic_math.mode)
 
 @export
-def get(*args, **kwargs): # HACK TODO change back to stack when policy name is included
-    return election.get('num_top_delegates')
+def get(*args, **kwargs):
+    return election.get()
 
 exports = make_exports()
 

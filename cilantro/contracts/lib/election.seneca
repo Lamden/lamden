@@ -132,10 +132,11 @@ def close_election(election_id, status):
     ).run()
 
 @export
-def get():
+def get(value_name=None):
     policy_name = rt.call_stack[-1][1]
+    if not value_name: value_name = policy_name
     policy_kv = kv.get_kv('kv_{}'.format(policy_name))
-    return policy_kv.get('value').run()
+    return policy_kv.get(value_name).run()
 
 exports = make_exports()
 

@@ -29,8 +29,7 @@ class TestTopDelegates(SmartContractTestCase):
         b2.cast_vote(election_id, ['a','b'])
         c2.cast_vote(election_id, ['c'])
         res = a2.tally_votes(election_id)
-        print(res, '!!!')
-        # self.assertEqual(res[0], ('a', 2))
+        self.assertEqual(res[0], 'a')
 
 if __name__ == '__main__':
     unittest.main()
