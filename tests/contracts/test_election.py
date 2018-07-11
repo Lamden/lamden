@@ -34,12 +34,11 @@ class TestElection(SmartContractTestCase):
         e = election.get_election(election_id)
         self.assertEqual(e['opened_ts'], e['expire_on']-std.timedelta(seconds=37))
 
-    # TODO wait until Seneca support time comparison
-    # @contract('election')
-    # def test_get_election_failed(self, election):
-    #     election_id = election.create_election(std.timedelta(seconds=1), int)
-    #     time.sleep(1.5)
-    #     e = election.get_active_election(election_id, if_active=True)
+    @contract('election')
+    def test_create_election_exhaustion(self, election):
+        election_id = election.create_election(std.timedelta(seconds=1), int)
+        with self.assertRaises(Exception) as context:
+            election.create_election(std.timedelta(seconds=1), int)
 
     @contract('election')
     def test_pass(self, election):

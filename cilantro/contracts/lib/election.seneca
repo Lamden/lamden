@@ -4,6 +4,8 @@ import seneca.runtime as rt
 import seneca.stdlib as std
 from seneca.modulelib import export, make_exports
 
+DAYS_BETWEEN_ELECTION = std.timedelta(days=30)
+
 t_election = st.create_table('election', [
     ('policy_maker_id', st.str_len(30)),
     ('policy_name', st.str_len(64), True),
@@ -11,12 +13,9 @@ t_election = st.create_table('election', [
     ('opened_ts', std.datetime),
     ('closed_ts', std.datetime),
     ('expire_on', std.datetime),
-    ('effective_until', std.datetime),
-    ('status', st.str_len(16)),
-    ('tags', st.str_len(200))
+    ('next_election', std.datetime),
+    ('status', st.str_len(16))
 ])
-
-EFFECTIVE_TERM = std.timedelta(days=30)
 
 @export
 def enum():
@@ -41,7 +40,7 @@ def get_election(election_id):
         return res[0]
 
 @export
-def create_election(term, value_type, tags=[]):
+def create_election(term, value_type):
     assert value_type in std.supported_db_types, 'value type {} not supported!'.format(value_type)
     assert type(term) == std.timedelta, 'election term must be of type {}'.format(std.timedelta)
     policy_maker_id = rt.global_run_data.author
@@ -53,15 +52,14 @@ def create_election(term, value_type, tags=[]):
     ).run()
 
     if policy_election:
-        effective_until = policy_election[0]['effective_until']
-        tags = set(policy_election[0]['effective_until']['tags'] + tags)
-        assert st.datetime.now() > effective_until, 'Cannot start another election until {}'.format(effective_until)
+        next_election = policy_election[0]['next_election']
+        assert now > next_election, 'Cannot start another election for "{}" until {}'.format(policy_name, next_election)
         t_election.update({
             'policy_maker_id': policy_maker_id,
             'opened_ts': now,
-            'effective_until': now+term+EFFECTIVE_TERM,
-            'status': STATUS.OPENED,
-            'tags': tags
+            'expire_on': now+term,
+            'next_election': now+term+DAYS_BETWEEN_ELECTION,
+            'status': STATUS.OPENED
         }).where(t_election.policy_name == policy_name)
     else:
         policy_table = st.create_table('t_{}'.format(policy_name), [
@@ -76,9 +74,8 @@ def create_election(term, value_type, tags=[]):
             'policy_name': policy_name,
             'opened_ts': now,
             'expire_on': now+term,
-            'effective_until': now+term+EFFECTIVE_TERM,
-            'status': STATUS.OPENED,
-            'tags': tags
+            'next_election': now+term+DAYS_BETWEEN_ELECTION,
+            'status': STATUS.OPENED
         }]).run()['last_row_id']
 
 @export
