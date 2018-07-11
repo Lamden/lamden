@@ -11,7 +11,9 @@ t_election = st.create_table('election', [
     ('opened_ts', std.datetime),
     ('closed_ts', std.datetime),
     ('expire_on', std.datetime),
-    ('status', st.str_len(16))
+    ('effective_until', std.datetime),
+    ('status', st.str_len(16)),
+    ('tags', st.str_len(200))
 ])
 
 @export
@@ -26,6 +28,7 @@ def search_for_election(keyword):
         Search for election based on keywords.
     """
     # return election_id
+    pass
 
 @export
 def get_election(election_id):
@@ -37,53 +40,72 @@ def get_election(election_id):
 
 @export
 def create_election(term, value_type, tags=[]):
-    assert value_type in std.supported_types, 'value type {} not supported!'.format(value_type)
+    assert value_type in std.supported_db_types, 'value type {} not supported!'.format(value_type)
     assert type(term) == std.timedelta, 'election term must be of type {}'.format(std.timedelta)
+
     policy_maker_id = rt.global_run_data.author
-    policy_name = rt.global_run_data.address
+    policy_name = rt.call_stack[-1][1]
     now = std.datetime.now()
     st.create_table('t_{}'.format(policy_name), [
         ('election_id', st.str_len(30)),
-        ('voter_id', st.str_len(30)),
+        ('voter_id', st.str_len(30), True),
         ('value', value_type)
     ])
     kv.create_kv('kv_{}'.format(policy_name))
 
-    #TODO add tags to KV
     return t_election.insert([{
         'policy_maker_id': policy_maker_id,
         'policy_name': policy_name,
         'opened_ts': now,
         'expire_on': now+term,
-        'status': STATUS.OPENED
+        'status': STATUS.OPENED,
+        'tags': tags
     }]).run()['last_row_id']
 
 @export
-def cast_vote(election_id, value):
+def cast_vote(election_id, value, allow_update=False):
     voter_id = rt.global_run_data.author
-    policy_name = rt.global_run_data.address
+    policy_name = rt.call_stack[-1][1]
     policy_table = st.get_table('t_{}'.format(policy_name))
     res = t_election.select().where(
         t_election.id==election_id
     ).run()
+
     if res:
         e = res[0]
         assert int(e['status']) == STATUS.OPENED, 'Cannot vote on elections which are not OPENED'
         assert std.datetime.now() <= e['expire_on'], 'The election has ended, please help by calling "tally_votes()"'
-        #TODO change to upsert when implemented
-        policy_table.insert([{'election_id': election_id, 'voter_id': voter_id, 'value': value}]).run()
+        #TODO upsert when ready
+        policy_table.insert([{
+            'election_id': election_id,
+            'voter_id': voter_id,
+            'value': value
+        }]).run()
+
+    res = policy_table.select().where(
+        policy_table.election_id==election_id
+    ).run()
 
 @export
 def tally_votes(election_id, processor):
-    policy_name = rt.global_run_data.address
+    policy_name = rt.call_stack[-1][1]
     policy_table = st.get_table('t_{}'.format(policy_name))
     policy_kv = kv.get_kv('kv_{}'.format(policy_name))
     results = [r['value'] for r in policy_table.select().where(
         policy_table.election_id == election_id
     ).run()]
     val = processor(results)
-    policy_kv.set([('value', val)]).run()
+    policy_kv.set([(policy_name, val)]).run()
     return val
+
+@export
+def get_voter_votes(election_id, voter_id):
+    policy_name = rt.call_stack[-1][1]
+    policy_table = st.get_table('t_{}'.format(policy_name))
+    return policy_table.select().where(
+        policy_table.election_id == election_id and \
+        policy_table.voter_id == voter_id
+    ).run()
 
 @export
 def pass_election(election_id):
@@ -111,7 +133,7 @@ def close_election(election_id, status):
 
 @export
 def get():
-    policy_name = rt.global_run_data.address
+    policy_name = rt.call_stack[-1][1]
     policy_kv = kv.get_kv('kv_{}'.format(policy_name))
     return policy_kv.get('value').run()
 

@@ -10,13 +10,14 @@ log = get_logger("TestElection")
 user_id = 'tester'
 
 class TestElection(SmartContractTestCase):
+
     @contract(
         ('a', 'witness_stake_amount'),
         ('b', 'witness_stake_amount'),
         ('c', 'witness_stake_amount')
     )
     def test_stake_amount(self,a,b,c):
-        election_id = a.create_election(std.timedelta(seconds=30), int)
+        election_id = a.create_election(std.timedelta(seconds=30))
         a.cast_vote(election_id, 10000)
         b.cast_vote(election_id, 10000)
         c.cast_vote(election_id, 12000)
@@ -31,7 +32,7 @@ class TestElection(SmartContractTestCase):
     #     ('c', 'witness_stake_amount')
     # )
     # def test_update_vote(self,a,b,c):
-    #     election_id = a.create_election(std.timedelta(seconds=30), int)
+    #     election_id = a.create_election(std.timedelta(seconds=30))
     #     a.cast_vote(election_id, 10000)
     #     a.cast_vote(election_id, 12000)
     #     b.cast_vote(election_id, 10000)

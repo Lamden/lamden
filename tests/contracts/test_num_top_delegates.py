@@ -16,7 +16,7 @@ class TestNumTopDelegates(SmartContractTestCase):
         'basic_math'
     )
     def test_voting_process(self, pm, v1, v2, v3, basic_math):
-        election_id = pm.create_election(std.timedelta(seconds=30), int)
+        election_id = pm.create_election(std.timedelta(seconds=30))
         v1.cast_vote(election_id, 5)
         v2.cast_vote(election_id, 5)
         v3.cast_vote(election_id, 7)

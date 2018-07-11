@@ -8,8 +8,8 @@ import basic_math
 import election
 
 @export
-def create_election(*args, **kwargs):
-    return election.create_election(*args, **kwargs)
+def create_election(duration):
+    return election.create_election(duration, int)
 
 @export
 def cast_vote(*args, **kwargs):
@@ -20,8 +20,8 @@ def tally_votes(election_id):
     return election.tally_votes(election_id, basic_math.mode)
 
 @export
-def get(*args, **kwargs):
-    return election.get(*args, **kwargs)
+def get(*args, **kwargs): # HACK TODO change back to stack when policy name is included
+    return election.get('num_top_delegates')
 
 exports = make_exports()
 

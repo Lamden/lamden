@@ -9,22 +9,8 @@ import basic_math
 import election
 
 @export
-def create_election(*args, **kwargs):
-    return election.create_election(*args, int, **kwargs)
-
-@export
-def cast_vote(*args, **kwargs):
-    return election.cast_vote(*args, **kwargs)
-
-@export
-def tally_votes(election_id):
-    return election.tally_votes(election_id, basic_math.mode)
-
-exports = make_exports()
-
-@export
-def get(*args, **kwargs):
-    return election.get(*args, **kwargs)
+def create_election(duration):
+    return election.create_election(duration, list)
 
 def filter_delegates(election_id, top_delegates):
     voter_id = rt.global_run_data.author
@@ -32,18 +18,16 @@ def filter_delegates(election_id, top_delegates):
     top_delegates = set(top_delegates)
     assert election.get_election(election_id), \
         'election is not found or no longer opened'
-    assert len(top_delegates) <= num_top_delegates, 'You can only election for {} delegates'.format(num_top_delegates)
-    res = t_top_delegates_election.select().where(
-        t_top_delegates_election.election_id == election_id and
-        t_top_delegates_election.voter_id == voter_id
-    ).run()
+    assert len(top_delegates) <= num_top_delegates, \
+        'You can only election for {} delegates'.format(num_top_delegates)
+    res = election.get_voter_votes(election_id, voter_id)
     delegates_already_electiond_for = set([r['delegate_id'] for r in res])
     delegates_list_full = top_delegates.union(delegates_already_electiond_for)
     assert len(delegates_list_full) <= num_top_delegates, \
         'You already electiond for {}(max={}) delegates and tried to election for {} more delegate(s).'.format(
             len(delegates_already_electiond_for), num_top_delegates, len(top_delegates)
         )
-    return top_delegates.difference(delegates_already_electiond_for)
+    return list(top_delegates.difference(delegates_already_electiond_for))
 
 @export
 def cast_vote(election_id, top_delegates):
@@ -51,6 +35,7 @@ def cast_vote(election_id, top_delegates):
     return election.cast_vote(election_id, delegates)
 
 def processor(res):
+    num_top_delegates = ntd.get()
     elections = list(reversed(sorted(
         [(r, res.count(r)) for r in set(res)],
         key=lambda x:x[1]
@@ -60,6 +45,10 @@ def processor(res):
 @export
 def tally_votes(election_id):
     return election.tally_votes(election_id, processor)
+
+@export
+def get(*args, **kwargs):
+    return election.get(*args, **kwargs)
 
 exports = make_exports()
 

@@ -20,7 +20,7 @@ kv_policy = kv.create_kv('constants')
 @export
 def stake():
     sender_id = rt.global_run_data.author
-    print("[inside of witness] rt.global_run_data.address={}".format(rt.global_run_data.address))
+    print("[inside of witness] last_caller={}".format(rt.call_stack[-1][1]))
     stake_amount = sc_stake.get('witness_stake')
     currency.lock_coins(stake_amount)
     t_witnesses.insert([
