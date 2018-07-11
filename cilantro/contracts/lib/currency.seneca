@@ -102,7 +102,7 @@ def transfer_coins_from(from_id, to_id, amount):
 
 @export
 def is_locked(wallet_id):
-    contract_id = rt.call_stack[-1][1]
+    contract_id = rt.caller_contract_id
     return safe.select().where(
         safe.wallet_id == wallet_id and \
         safe.contract_id == contract_id
@@ -111,7 +111,7 @@ def is_locked(wallet_id):
 @export
 def lock_coins(amount, duration):
     wallet_id = rt.global_run_data.author
-    contract_id = rt.call_stack[-1][1]
+    contract_id = rt.caller_contract_id
     assert amount > 0, 'Cannot lock negative amounts'
     assert not is_locked(wallet_id), 'Already locked for "{}"'.format(contract_id)
     assert type(duration) == std.timedelta, 'Must use {} for duration'.format(std.timedelta)
@@ -126,7 +126,7 @@ def lock_coins(amount, duration):
 @export
 def unlock_coins():
     wallet_id = rt.global_run_data.author
-    contract_id = rt.call_stack[-1][1]
+    contract_id = rt.caller_contract_id
     locked_obj = is_locked(wallet_id)
     assert len(locked_obj)!=0, 'No coins in the lock "{}"'.format(contract_id)
     amount = locked_obj[0]['amount']
