@@ -12,6 +12,8 @@ consists of 2 parts:
 Below is a diagram detailing the properties of blocks and how they are linked together.
 ![Blockchain Spec Diagram](https://www.lucidchart.com/publicSegments/view/f375769e-b275-450e-93ad-46a3212dcf7b/image.png)
 
+[Lucid Charts Link](https://www.lucidchart.com/invitations/accept/ec094dee-23c3-4763-a114-7dc865c8c127)
+
 ## Individual Block Schema
 
 ### Block Data
