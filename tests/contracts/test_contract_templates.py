@@ -1,3 +1,4 @@
+import unittest
 from unittest import TestCase
 from cilantro.db import ContractTemplate
 
@@ -14,3 +15,6 @@ print("created user named {} with role {}".format('davis', 'god'))
         actual_code = ContractTemplate.interpolate_template('rbac', user='davis', role='god')
 
         self.assertEqual(expected_code.strip(), actual_code)
+
+if __name__ == '__main__':
+    unittest.main()
