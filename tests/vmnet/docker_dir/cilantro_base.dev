@@ -24,19 +24,19 @@ RUN apt-get update \
 # Install Python requirements
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        sudo git ssh tar gzip ca-certificates \
+        sudo ssh tar gzip ca-certificates curl \
         openssl python3.6 \
         python3-pip python3.6-dev build-essential \
-            gcc g++ git autoconf automake \
-            libffi-dev libtool dpkg \
-            gsl-bin zlib1g-dev libboost-all-dev \
+        gcc g++ git autoconf automake \
+        libffi-dev libtool dpkg \
+        gsl-bin zlib1g-dev libboost-all-dev \
     && pip3 install --upgrade setuptools wheel \
     && pip3 install -r requirements.txt \
     && pip3 install -r dev-requirements.txt \
     && rm -rf capnproto \
     && apt-get remove -y --allow-remove-essential \
         python3-pip python3.6-dev build-essential \
-        gcc g++ git \
+        gcc g++ \
         libffi-dev libtool \
         gsl-bin zlib1g-dev libboost-all-dev \
         autoconf automake \

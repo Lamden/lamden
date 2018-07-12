@@ -8,7 +8,7 @@ import time
 
 log = get_logger("TestElection")
 
-class TestElection(SmartContractTestCase):
+class TestCurrency(SmartContractTestCase):
     @contract('currency')
     def test_get_balance(self, currency):
         balance = currency.get_balance('DAVIS')
