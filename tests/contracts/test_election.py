@@ -40,6 +40,13 @@ class TestElection(SmartContractTestCase):
         with self.assertRaises(Exception) as context:
             election.create_election(std.timedelta(seconds=1), int)
 
+    #TODO when mock now will work
+    # @contract('election')
+    # def test_create_election_recreate_(self, election):
+    #     election_id = election.create_election(std.timedelta(seconds=1), int)
+    #     time.sleep(2.1)
+    #     election.create_election(std.timedelta(seconds=1), int)
+
     @contract('election')
     def test_pass(self, election):
         election_id = election.create_election(std.timedelta(seconds=10), int)

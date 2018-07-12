@@ -58,18 +58,6 @@ def pump_it(lamd, use_poisson):
     from cilantro.utils.test import God
     God.pump_it(rate=lamd, gen_func=God.random_std_tx, use_poisson=use_poisson)
 
-def start_mysqld():
-    import os
-    os.system('mysqld \
-   --skip-grant-tables \
-   --skip-innodb \
-   --collation-server latin1_bin \
-   --default-storage-engine ROCKSDB \
-   --default-tmp-storage-engine MyISAM \
-   --binlog_format ROW \
-   --user=mysql &')
-
-
 class TestPump(BaseNetworkTestCase):
 
     EXPECTED_TRANSACTION_RATE = 0.1  # Avg transaction/second. lambda parameter in Poission distribution

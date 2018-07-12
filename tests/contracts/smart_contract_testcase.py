@@ -1,5 +1,5 @@
 from unittest import TestCase
-import mock
+from unittest import mock
 from cilantro.db import *
 from cilantro.logger import get_logger
 from seneca.execute_sc import execute_contract
