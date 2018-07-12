@@ -27,7 +27,9 @@ allowed = st.create_table('allowed', [
 ])
 
 @export
-def get_balance(wallet_id):
+def get_balance(wallet_id=None):
+    if not wallet_id:
+        wallet_id = rt.global_run_data.author
     return ledger.select('balance').where(ledger.wallet_id == wallet_id).run()[0]['balance']
 
 
@@ -103,17 +105,18 @@ def transfer_coins_from(from_id, to_id, amount):
 @export
 def is_locked(wallet_id):
     contract_id = rt.caller_contract_id
-    return safe.select().where(
+    return bool(safe.select().where(
         safe.wallet_id == wallet_id and \
-        safe.contract_id == contract_id
-    ).run()
+        safe.contract_id == contract_id and \
+        safe.locked_until<=std.datetime.now()
+    ).run())
 
 @export
 def lock_coins(amount, duration):
     wallet_id = rt.global_run_data.author
     contract_id = rt.caller_contract_id
     assert amount > 0, 'Cannot lock negative amounts'
-    assert not is_locked(wallet_id), 'Already locked for "{}"'.format(contract_id)
+    assert not is_locked(wallet_id), 'Wallet {} already locked for "{}"'.format(wallet_id, contract_id)
     assert type(duration) == std.timedelta, 'Must use {} for duration'.format(std.timedelta)
     remove_coins(wallet_id, amount)
     safe.insert([{
