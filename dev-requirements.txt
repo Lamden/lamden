@@ -6,4 +6,3 @@ numpy
 scipy
 sphinx
 sphinx-autodoc-typehints
-mock
