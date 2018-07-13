@@ -13,8 +13,8 @@ class MerkleTree:
 
     def __init__(self, leaves: List[bytes], hash_leaves=True):
         """
-        WARNING -- It is recommmended that you do not use this API directly, but rather use one of the Factory methods
-        below (ie from_raw_transactions, from_raw_leaves, from_hex_leaves)
+        WARNING -- It is recommended that you do not init this class directly using MerkleTree(leaves),
+        but rather use one of the Factory methods below (ie from_raw_transactions, from_raw_leaves, from_hex_leaves, ..)
 
         Creates a merkle tree from a list of leaves. If hash_leaves is False, then it is assumed that the leaves being
         passed in are the actual leaves of the Merkle tree. Otherwise, the list of leaves will be hashed, and then this
@@ -35,24 +35,27 @@ class MerkleTree:
     @classmethod
     def from_raw_transactions(cls, raw_transactions: List[bytes]):
         """
-        Creates a MerkleTree from a list of raw transactions.
+        Creates a MerkleTree from a list of raw transactions. The raw_transactions are hashed into the leaves.
         :param raw_transactions: A list of bytes. These are hashed and then used as the 'real' leaves in the MerkleTree
+        :return: A MerkleTree object
         """
         return cls(leaves=raw_transactions, hash_leaves=True)
 
     @classmethod
     def from_raw_leaves(cls, leaves: List[bytes]):
         """
-        Creates a MerkleTree from a list of raw leaves (hashed transactions, as bytes).
+        Creates a MerkleTree from a list of 'real' Merkle leaves in byte format (transaction hashes, as bytes).
         :param leaves: A list of bytes, representing the leaves of the MerkleTree
+        :return: A MerkleTree object
         """
         return cls(leaves=leaves, hash_leaves=False)
 
     @classmethod
     def from_hex_leaves(cls, leaves: List[str]):
         """
-        Creates a MerkleTree from a list of leaves (hashed transactions, as hex strings)
+        Creates a MerkleTree from a list of 'real' Merkle leaves in hex string format (transaction hashes, as hex str)
         :param leaves: A list of leaves to use for the MerkleTree
+        :return: A MerkleTree object
         """
         leaves = [bytes.fromhex(leaf) for leaf in leaves]
         return cls(leaves=leaves, hash_leaves=False)
@@ -132,6 +135,7 @@ class MerkleTree:
         return None
 
     def hash_of_nodes(self):
+        log.warning("HASH NODES API SHOULD BE DEPRECATED")
         return MerkleTree.hash_nodes(self.nodes)
 
     @staticmethod
@@ -188,4 +192,5 @@ class MerkleTree:
 
     @staticmethod
     def hash_nodes(nodes: list):
+        log.warning("HASH NODES API SHOULD BE DEPRECATED")
         return Hasher.hash_iterable(nodes, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)
