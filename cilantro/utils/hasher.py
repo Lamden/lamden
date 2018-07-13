@@ -31,16 +31,18 @@ class Hasher:
         """
         # MessageBase imported here to fix cyclic imports...TODO -- fix dependencies
         from cilantro.messages import MessageBase
+        from cilantro.utils import int_to_bytes
 
         t = type(data)
 
         if t is str:
             data = data.encode()
         elif t is int:
-            try:
-                data = bytes.fromhex(hex(data)[2:])
-            except:
-                data = bytes.fromhex('0' + hex(data)[2:])
+            data = int_to_bytes(data)
+            # try:
+            #     data = bytes.fromhex(hex(data)[2:])
+            # except:
+            #     data = bytes.fromhex('0' + hex(data)[2:])
         elif issubclass(t, MessageBase):
             data = data.serialize()
 
@@ -103,12 +105,14 @@ class Hasher:
         :param return_bytes: If true, the hash will be returned as bytes. Otherwise, a hex string will be returned
         :return: The resulting hash in bytes or as a str
         """
-        hasher = hashlib.new(algorithm)
 
-        # Hash individual datums and add to hasher
+        # Concatenate individual binary datums
+        data = b''
         for i in iterable:
-            data = Hasher._cast_to_bytes(i)
-            hasher.update(Hasher.hash(data, algorithm=algorithm, return_bytes=True))
+            data += Hasher._cast_to_bytes(i)
+
+        hasher = hashlib.new(algorithm)
+        hasher.update(data)
 
         return Hasher._read_hasher(hasher, return_bytes=return_bytes)
 

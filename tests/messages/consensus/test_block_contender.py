@@ -1,5 +1,8 @@
 from unittest import TestCase
 from cilantro.messages import MerkleSignature, BlockContender
+from cilantro.messages.consensus.block_contender import build_test_contender
+from cilantro.messages.consensus.merkle_signature import build_test_merkle_sig
+from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallets import ED25519Wallet
 import json
 
@@ -26,7 +29,7 @@ class BlockContenderTest(TestCase):
         Tests that a created BlockContender has the expected properties
         """
         msg = b'DEADBEEF'
-        nodes = [1, 2]
+        nodes = ['A' * 64, 'B' * 64]
 
         sig1, sk1, vk1 = self._create_merkle_sig(msg)
         sig2, sk2, vk2 = self._create_merkle_sig(msg)
@@ -36,10 +39,29 @@ class BlockContenderTest(TestCase):
 
         # assert bc.signatures = signature over all signatures
         for i in range(len(signatures)):
-            self.assertTrue(bc.signatures[i].__eq__(signatures[i]))  # __eq__ way to test signatures are equal
+            self.assertTrue(bc.signatures[i] == (signatures[i]))
 
         for i in range(len(nodes)):
-            self.assertTrue(bc.nodes[i].__eq__(nodes[i]))
+            self.assertTrue(bc.merkle_leaves[i] == (nodes[i]))
+
+    def test_bc_creation_from_bytes(self):
+        msg = b'DEADBEEF'
+        nodes = ['A' * 64, 'B' * 64]
+
+        sig1, sk1, vk1 = self._create_merkle_sig(msg)
+        sig2, sk2, vk2 = self._create_merkle_sig(msg)
+        signatures = [sig1, sig2]
+
+        bc = BlockContender.create(signatures, nodes)
+
+        clone = BlockContender.from_bytes(bc.serialize())
+
+        # assert bc.signatures = signature over all signatures
+        for i in range(len(signatures)):
+            self.assertTrue(clone.signatures[i] == (signatures[i]))
+
+        for i in range(len(nodes)):
+            self.assertTrue(clone.merkle_leaves[i] == (nodes[i]))
 
     def test_create_bc_bad_json(self):
         """
@@ -65,7 +87,7 @@ class BlockContenderTest(TestCase):
 
     def test_create_bc_normal_fields(self):
         msg = b'payload'
-        nodes = [1, 2, 3, 4]
+        nodes = ['A' * 64, 'B' * 64, 'C' * 64, 'D' * 64]
 
         sig1, sk1, vk1 = self._create_merkle_sig(msg)
         sig2, sk2, vk2 = self._create_merkle_sig(msg)
@@ -81,7 +103,7 @@ class BlockContenderTest(TestCase):
         Tests that the same object is recovered when serialized and deserialized
         """
         msg = b'payload'
-        nodes = [1, 2, 3, 4]
+        nodes = ['A' * 64, 'B' * 64, 'C' * 64, 'D' * 64]
 
         sig1, sk1, vk1 = self._create_merkle_sig(msg)
         sig2, sk2, vk2 = self._create_merkle_sig(msg)
@@ -100,11 +122,60 @@ class BlockContenderTest(TestCase):
             self.assertEqual(bc.signatures[i], clone.signatures[i])
 
         for i in range(len(nodes)):
-            self.assertEqual(bc.nodes[i], clone.nodes[i])
+            self.assertEqual(bc.merkle_leaves[i], clone.merkle_leaves[i])
 
     def test_deserialize_invalid_object(self):
-        bad_json = {'nodes': [1,2,3,4], 'signatures': [b'lol'.decode('utf-8'), b'sup'.decode('utf-8'),
-                                                       b'cats'.decode('utf-8')]}
+        nodes = ['A' * 64, 'B' * 64, 'C' * 64, 'D' * 64]
+        bad_json = {'nodes': nodes, 'signatures': [b'lol'.decode('utf-8'), b'sup'.decode('utf-8'),
+                                                   b'cats'.decode('utf-8')]}
         bad_bc = json.dumps(bad_json)
 
         self.assertRaises(TypeError, BlockContender.from_bytes, bad_bc)  # type error
+
+    def test_build_test_contender(self):
+        """
+        Tests build_test_contender. This is used exclusively unit tests, so we basically just want to make sure it
+        doesn't blow up here first.
+        """
+        bc = build_test_contender()
+
+    def test_validate_signatures(self):
+        nodes = [1, 2, 3, 4]
+        tree = MerkleTree(leaves=nodes)
+        sigs = [build_test_merkle_sig(msg=tree.root) for _ in range(8)]
+
+        msg = tree.root
+        nodes = tree.leaves
+
+        sig1, sk1, vk1 = self._create_merkle_sig(msg)
+        sig2, sk2, vk2 = self._create_merkle_sig(msg)
+        sig3, sk3, vk3 = self._create_merkle_sig(msg)
+        sig4, sk4, vk4 = self._create_merkle_sig(msg)
+
+        signatures = [sig1, sig2, sig3, sig4]
+
+        bc = BlockContender.create(signatures, nodes)
+        is_valid = bc.validate_signatures()
+
+        self.assertTrue(is_valid)
+
+    def test_validate_signatures_invalid(self):
+        nodes = [1, 2, 3, 4]
+        tree = MerkleTree(leaves=nodes)
+        sigs = [build_test_merkle_sig(msg=tree.root) for _ in range(8)]
+
+        msg = tree.root
+        bad_msg = b'lol this is def not a merkle root'
+        nodes = tree.leaves
+
+        sig1, sk1, vk1 = self._create_merkle_sig(msg)
+        sig2, sk2, vk2 = self._create_merkle_sig(msg)
+        sig3, sk3, vk3 = self._create_merkle_sig(msg)
+        sig4, sk4, vk4 = self._create_merkle_sig(bad_msg)
+
+        signatures = [sig1, sig2, sig3, sig4]
+
+        bc = BlockContender.create(signatures, nodes)
+        is_valid = bc.validate_signatures()
+
+        self.assertFalse(is_valid)

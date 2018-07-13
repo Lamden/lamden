@@ -40,7 +40,7 @@ class TestBuildTables(TestCase):
             'hash': GENESIS_HASH,
             'merkle_root': GENESIS_EMPTY_STR,
             'merkle_leaves': GENESIS_EMPTY_STR,
-            'prev_block_hash': GENESIS_HASH,
+            'prev_block_hash': GENESIS_EMPTY_HASH,
             'timestamp': GENESIS_TIMESTAMP,
             'masternode_signature': GENESIS_EMPTY_STR
         }
