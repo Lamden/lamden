@@ -35,6 +35,7 @@ class TestBuildTables(TestCase):
 
         assert tables.blocks
         assert tables.contracts
+        assert tables.transactions
 
     def test_seed_blocks(self):
         tables = build_tables(self.ex, should_drop=True)

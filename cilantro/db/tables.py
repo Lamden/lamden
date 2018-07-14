@@ -13,6 +13,7 @@ constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'cons
 def build_tables(ex, should_drop=True):
     from cilantro.db.contracts import build_contracts_table, seed_contracts
     from cilantro.db.blocks import build_blocks_table, seed_blocks
+    from cilantro.db.transactions import build_transactions_table, seed_transactions
 
     if should_drop:
         _reset_db(ex)
@@ -22,13 +23,15 @@ def build_tables(ex, should_drop=True):
     # Create tables
     contracts = build_contracts_table(ex, should_drop)
     blocks = build_blocks_table(ex, should_drop)
+    transactions = build_transactions_table(ex, should_drop)
 
     # Only seed database if we just dropped it
     if should_drop:
         seed_contracts(ex, contracts)
         seed_blocks(ex, blocks)
+        seed_transactions(ex, blocks)
 
-    tables = type('Tables', (object,), {'contracts': contracts, 'blocks': blocks})
+    tables = type('Tables', (object,), {'contracts': contracts, 'blocks': blocks, 'transactions': transactions})
 
     return tables
 
