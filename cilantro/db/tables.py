@@ -18,6 +18,7 @@ def build_tables(ex, should_drop=True):
     if should_drop:
         _reset_db(ex)
     else:
+        ex.raw('CREATE DATABASE IF NOT EXISTS {};'.format(DB_NAME))
         ex.raw('USE {};'.format(DB_NAME))
 
     # Create tables
