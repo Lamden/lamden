@@ -7,7 +7,7 @@ jobs:
         environment:
           PIPENV_VENV_IN_PROJECT: true
       - image: circleci/mysql:5.7
-        command: [mysqld]
+#        command: [mysqld]
         environment:
           MYSQL_ALLOW_EMPTY_PASSWORD: yes
           MYSQL_ROOT_PASSWORD: ""
