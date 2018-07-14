@@ -68,6 +68,9 @@ def remove_coins(wallet_id, amount_to_remove):
 @export
 def transfer_coins(receiver_id, amount):
     sender_id = rt.global_run_data.author
+    _transfer_coins(sender_id, receiver_id)
+
+def _transfer_coins(sender_id, receiver_id):
     assert wallet_exists(sender_id), "Wallet id is not present in ledger"
     assert wallet_exists(receiver_id), "Wallet id is not present in ledger"
     remove_coins(sender_id, amount)
@@ -107,8 +110,7 @@ def transfer_coins_from(owner_id, amount):
     new_approved_amount = approved_amount - amount
     allowed.update({'amount': new_approved_amount}) \
         .where(allowed.owner_id == owner_id and allowed.spender_id == spender_id).run()
-    remove_coins(owner_id, amount)
-    add_coins(spender_id, amount)
+    _transfer_coins(owner_id, spender_id, amount)
 
 @export
 def strict_add_to_approval(spender_id, additional_amount):
