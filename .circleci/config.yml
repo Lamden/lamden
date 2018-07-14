@@ -21,7 +21,6 @@ jobs:
              pip install -r requirements.txt
              sudo apt install -y mysql-client
 
-
 #      # This should go into custom primary image, here's only for the sake of explanation
 #      - run:
 #          name: Install Docker client
@@ -58,7 +57,6 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-#            sleep 30
             python3.6 ~/cilantro/tests/run_tests.py --integration 0 --skip_modules tests.contracts
 #            pipenv run python ~/cilantro/tests/run_tests.py --integration 0 --skip_modules tests.contracts
 
