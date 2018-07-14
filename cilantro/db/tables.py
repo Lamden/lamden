@@ -5,6 +5,7 @@ import json, os
 log = get_logger("DB Creator")
 
 GENESIS_HASH = '0' * 64
+DB_NAME = 'seneca_test'
 
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
@@ -14,10 +15,9 @@ def build_tables(ex, should_drop=True):
     from cilantro.db.blocks import build_blocks_table, seed_blocks
 
     if should_drop:
-        log.info("Dropping Seneca database")
-        ex.raw('DROP DATABASE IF EXISTS seneca_test;')
-        ex.raw('CREATE DATABASE seneca_test;')
-        ex.raw('USE seneca_test;')
+        _reset_db(ex)
+    else:
+        ex.raw('USE {};'.format(DB_NAME))
 
     # Create tables
     contracts = build_contracts_table(ex, should_drop)
@@ -43,5 +43,13 @@ def create_table(ex, table, should_drop):
             else:
                 raise
 
-    table.create_table().run(ex)
+    table.create_table(if_not_exists=True).run(ex)
+
     return table
+
+
+def _reset_db(ex):
+    log.info("Dropping database named {}".format(DB_NAME))
+    ex.raw('DROP DATABASE IF EXISTS {};'.format(DB_NAME))
+    ex.raw('CREATE DATABASE IF NOT EXISTS {};'.format(DB_NAME))
+    ex.raw('USE {};'.format(DB_NAME))

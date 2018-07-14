@@ -84,7 +84,7 @@ class Encoder:
         return tuple([attempt_convert_float(x) for x in s.split(',')])
 
 
-def _check_hex(hex_str: str, length=0) -> bool:
+def is_valid_hex(hex_str: str, length=0) -> bool:
     """
     Returns true if hex_str is valid hex. False otherwise
     :param hex_str: The string to check
@@ -92,12 +92,22 @@ def _check_hex(hex_str: str, length=0) -> bool:
     :return: A bool, true if hex_str is valid hex
     """
     try:
+        assert isinstance(hex_str, str)
         int(hex_str, 16)
         if length:
             assert len(hex_str) == length
         return True
     except:
         return False
+
+
+def int_to_bytes(x):
+    return x.to_bytes((x.bit_length() + 7) // 8, 'big')
+
+
+def bytes_to_int(xbytes):
+    return int.from_bytes(xbytes, 'big')
+
 
 class IPUtils:
     url_pattern = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})', flags=re.IGNORECASE)
@@ -120,7 +130,7 @@ class IPUtils:
         res = re.match(IPUtils.url_pattern, vk_url)
         protocol, vk, port = res.groups()
 
-        if _check_hex(vk, length=64):
+        if is_valid_hex(vk, length=64):
             return vk
         return False
 

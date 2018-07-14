@@ -38,12 +38,14 @@ class MerkleSignature(MessageBase):
 
         validate_hex(self._data[self.SIG], 128, self.SIG)
         validate_hex(self._data[self.SENDER], 64, self.SENDER)
-        # Validate timestamp somehow?
+        # TODO Validate timestamp somehow?
 
     def serialize(self):
         return json.dumps(self._data).encode()
 
-    def verify(self, msg, verifying_key):
+    def verify(self, msg):
+        verifying_key = self.sender
+
         if validate_hex(verifying_key, length=64, raise_err=False):
             return Constants.Protocol.Wallets.verify(verifying_key, msg, self.signature)
         else:
