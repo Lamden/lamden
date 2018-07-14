@@ -108,7 +108,6 @@ class BlockContender(MessageBase):
         return True
 
 
-
 def build_test_contender(tree: MerkleTree=None):
     """
     Method to build a 'test' block contender. Used exclusively in unit tests.

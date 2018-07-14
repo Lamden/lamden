@@ -134,7 +134,7 @@ class BlockStorageDriver:
         with DB() as db:
             res = db.tables.blocks.insert([{'hash': block_hash, **block_data}]).run(db.ex)
             if res:
-                log.info("Successfully inserted new block with number {}".format(res['last_row_id'], res['row_count']))
+                log.info("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block_hash))
             else:
                 log.error("Error inserting block! Got None/False result back from insert query. Result={}".format(res))
 

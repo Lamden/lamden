@@ -4,6 +4,7 @@ from seneca.seneca_internal.storage.mysql_executer import Executer
 from cilantro.db.blocks import *
 from cilantro.db.contracts import *
 from cilantro.db.contracts import _read_contract_files, _contract_id_for_filename, _lookup_contract_info
+from cilantro.db.db import DBSingletonMeta
 import unittest
 import time
 
@@ -13,6 +14,10 @@ EXPECTED_SNIPPET = '# UNITTEST_FLAG_CURRENCY_SENECA 1729'
 
 
 class TestBuildTables(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        DBSingletonMeta._instances.clear()
 
     def setUp(self):
         super().setUp()

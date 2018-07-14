@@ -15,8 +15,8 @@ import time
 
 class TestBlockStorageDriver(TestCase):
 
-    def setUp(self):
-        reset_db()
+    # def setUp(self):
+    #     reset_db()
 
     def _build_valid_block_data(self, num_transactions=4) -> dict:
         """
@@ -71,9 +71,11 @@ class TestBlockStorageDriver(TestCase):
                           publisher_sk=bad_sk, timestamp=timestamp)
 
     def test_get_latest_block_hash(self):
+        reset_db()
+
         first_hash = BlockStorageDriver._get_latest_block_hash()
 
-        # We are resetting the DB between tests, so the latest hash we pull should be the genesis hash
+        # We reset the DB, so the latest hash we pull should be the genesis hash
         self.assertEqual(first_hash, GENESIS_HASH)
 
     def test_validate_block_data_valid(self):
@@ -195,6 +197,8 @@ class TestBlockStorageDriver(TestCase):
         self.assertEqual(expected_hash, actual_hash)
 
     def test_store_block_inserts(self):
+        reset_db()
+
         with DB() as db:
             initial_num_blocks = len(db.tables.blocks.select().run(db.ex))
 
@@ -308,8 +312,10 @@ class TestBlockStorageDriver(TestCase):
         self.assertRaises(InvalidBlockLinkException, BlockStorageDriver._validate_block_link, bd1, bd2)
 
     def test_validate_blockchain(self):
+        reset_db()
+
         # Stuff a bunch of blocks in
-        for _ in range(24):
+        for _ in range(4):
             mn_sk = Constants.Testnet.Masternodes[0]['sk']
             timestamp = random.randint(0, pow(2, 32))
             raw_transactions = [build_test_transaction().serialize() for _ in range(19)]
@@ -323,12 +329,16 @@ class TestBlockStorageDriver(TestCase):
         # This should not blow up
         BlockStorageDriver.validate_blockchain()
 
-    def test_validate_blockchain_invalid(self):
-        # TODO implement
-        pass
+        print("THIS TEST SHOULD FUCKING RETURN NOW")
 
-    def test_super_test(self):
-        """
-        This test does way to much but ay that's the point of a super test
-        """
+    # def test_validate_blockchain_invalid(self):
+    #     # TODO implement
+    #     pass
+    #
+    # def test_super_test(self):
+    #     """
+    #     This test does way to much but ay that's the point of a super test
+    #     """
+    #     # TODO implement
+    #     pass
 
