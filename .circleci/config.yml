@@ -59,7 +59,7 @@ jobs:
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
             sleep 20
-            mysql -h 127.0.0.1 -u root
+#            mysql -h 127.0.0.1 -u root
             python3.6 ~/cilantro/tests/run_tests.py --integration 0 --skip_modules tests.contracts
 #            pipenv run python ~/cilantro/tests/run_tests.py --integration 0 --skip_modules tests.contracts
 
