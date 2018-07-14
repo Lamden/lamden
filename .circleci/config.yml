@@ -58,7 +58,7 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            sleep 20
+            sleep 30
             python3.6 ~/cilantro/tests/run_tests.py --integration 0 --skip_modules tests.contracts
 #            pipenv run python ~/cilantro/tests/run_tests.py --integration 0 --skip_modules tests.contracts
 
