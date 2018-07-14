@@ -49,6 +49,11 @@ jobs:
             - "/usr/local/lib/python3.6/site-packages"
 
       - run:
+          name: Wait For mysqld
+          command: |
+            dockerize -wait tcp://localhost:3306 -timeout 1m
+
+      - run:
           name: Run Tests
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
