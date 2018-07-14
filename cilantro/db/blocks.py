@@ -7,6 +7,7 @@ from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.db import DB
 from typing import List
+import time
 
 
 log = get_logger("BlocksStorage")
@@ -42,13 +43,17 @@ binary types (yet)
 TODO -- pls not this
 """
 def _serialize_contender(block_contender: BlockContender) -> str:
-    return block_contender.serialize().hex()
+    hex_str = block_contender.serialize().hex()
+    return hex_str
 def _deserialize_contender(block_contender: str) -> BlockContender:
+    # Genesis Block Contender is None/Empty and thus should not be deserialized
+    if block_contender == GENESIS_BLOCK_CONTENDER:
+        return block_contender
     return BlockContender.from_bytes(bytes.fromhex(block_contender))
 
 
 def build_blocks_table(ex, should_drop=True):
-    blocks = t.Table('blocks', t.AutoIncrementColumn('number'), [t.Column('hash', t.str_len(64), True),] +
+    blocks = t.Table('blocks', t.AutoIncrementColumn('number'), [t.Column('hash', t.str_len(64), True)] +
                      [t.Column(field_name, field_type) for field_name, field_type in BLOCK_DATA_COLS.items()])
 
     return create_table(ex, blocks, should_drop)
@@ -64,6 +69,8 @@ class BlockStorageValidationException(BlockStorageException): pass
 class InvalidBlockContenderException(BlockStorageValidationException): pass
 class InvalidMerkleTreeException(BlockStorageValidationException): pass
 class InvalidBlockSignatureException(BlockStorageValidationException): pass
+class InvalidBlockHashException(BlockStorageValidationException): pass
+class InvalidBlockLinkException(BlockStorageValidationException): pass
 
 
 class BlockStorageDriver:
@@ -82,6 +89,8 @@ class BlockStorageDriver:
         Persist a new block to the blockchain, along with the raw transactions associated with the block. An exception
         will be raised if an error occurs either validating the new block data, or storing the block. Thus, it is
         recommended that this method is wrapped in a try block.
+
+        TODO -- docstring
 
         :param block_contender:
         :param raw_transactions:
@@ -117,32 +126,138 @@ class BlockStorageDriver:
         # Compute block hash
         block_hash = cls._compute_block_hash(block_data)
 
-        # Convert block_contender to binary
-        block_data['block_contender'] = _serialize_contender(block_data['block_contender'])
+        # Encode block data for serializiation
+        block_data = cls._encode_block(block_data)
 
         # Finally, persist the data
         log.info("Attempting to persist new block with hash {}".format(block_hash))
         with DB() as db:
             res = db.tables.blocks.insert([{'hash': block_hash, **block_data}]).run(db.ex)
-            log.debug("Result of persisting block query: {}".format(res))
-            log.critical("Result of persisting block query: {}".format(res))
+            if res:
+                log.info("Successfully inserted new block with number {}".format(res['last_row_id'], res['row_count']))
+            else:
+                log.error("Error inserting block! Got None/False result back from insert query. Result={}".format(res))
 
     @classmethod
-    def retrieve_block(cls, block_num: int=0, block_hash: str='') -> dict:
-        pass
+    def retrieve_block(cls, number: int=0, hash: str= '') -> dict:
+        """
+        Retrieves a block by its hash, or autoincrement number. Returns a dictionary with a key for each column in the
+        blocks table. Returns None if no block with the specified hash/number is found.
+        :param number: The number of the block to fetch. The genesis block is number 1, and the first 'real' block
+        is number 2, and so on.
+        :param hash: The hash of the block to lookup. Must be valid 64 char hex string
+        :return: A dictionary, containing a key for each column in the blocks table.
+        """
+        assert bool(number > 0) ^ bool(hash), "Either number XOR hash arg must be given"
+
+        with DB() as db:
+            blocks = db.tables.blocks
+
+            if number > 0:
+                block = blocks.select().where(blocks.number == number).run(db.ex)
+                return cls._decode_block(block[0]) if block else None
+
+            elif hash:
+                assert is_valid_hex(hash, length=64), "Invalid block hash {}".format(hash)
+                block = blocks.select().where(blocks.hash == hash).run(db.ex)
+                return cls._decode_block(block[0]) if block else None
 
     @classmethod
-    def validate_blockchain(cls, async=True):
+    def retrieve_latest_block(cls) -> dict:
+        """
+        Retrieves the latest block published in the chain.
+        :return: A dictionary representing the latest block, containing a key for each column in the blocks table.
+        """
+        with DB() as db:
+            latest = db.tables.blocks.select().order_by('number', desc=True).limit(1).run(db.ex)
+            assert latest, "No blocks found! There should be a genesis. Was the database properly seeded?"
+            return cls._decode_block(latest[0])
+
+    @classmethod
+    def _decode_block(cls, block_data: dict) -> dict:
+        """
+        Takes a dictionary with keys for all columns in the block table, and returns the same dictionary but with any
+        serailized values decoded. Currently, the only value being serialized is the 'block_contender' column.
+        :param block_data: A dictionary, containing a key for each column in the blocks table. Some values might be encoded
+        in a serialization format.
+        :return: A dictionary, containing a key for each column in the blocks table.
+        """
+        # Convery block_contender back to a BlockContender instance
+        block_data['block_contender'] = _deserialize_contender(block_data['block_contender'])
+
+        return block_data
+
+    @classmethod
+    def _encode_block(cls, block_data: dict) -> dict:
+        """
+        Takes a dictionary with keys for all columns in the block table, and returns the same dictionary but with any
+        non-serializable columns encoded. Currently, the only value being serialized is the 'block_contender' column.
+        :param block_data: A dictionary, containing a key for each column in the blocks table.
+        :return: A dictionary, containing a key for each column in the blocks table. Some values might be encoded
+        in a serialization format.
+        """
+        # Convert block_contender to binary
+        block_data['block_contender'] = _serialize_contender(block_data['block_contender'])
+
+        return block_data
+
+    @classmethod
+    def validate_blockchain(cls, async=False):
         """
         Validates the cryptographic integrity of the block chain.
-        :param async:
+        # TODO docstring
+        :param async: If true, run this in a separate process
+        :raises: An exception if validation fails
         """
-        pass
+        start = time.time()
+
+        if async:
+            raise NotImplementedError()
+
+        with DB() as db:
+            blocks = db.tables.blocks.select().order_by('number', desc=False).run(db.ex)
+            assert blocks, "No blocks found! There should be a genesis. Was the database properly seeded?"
+
+            for i in range(len(blocks) - 1):
+                cls._validate_block_link(cls._decode_block(blocks[i]), cls._decode_block(blocks[i+1]))
+
+        log.info("Blockchain validation completed successfully in {} seconds.".format(round(time.time() - start, 2)))
+
+    @classmethod
+    def _validate_block_link(cls, parent: dict, child: dict):
+        """
+        Validates the cryptographic integrity of the link between a connected parent and child block
+        :param parent: The predecesor of the block 'child' in the blockchain.
+        :param child: The child's previous_block_hash should point to the parent's hash
+        :raises: An exception if validation fails
+        """
+        assert parent['number'] + 1 == child['number'], "Attempted to validate non-adjacent blocks\nparent={}\nchild={}"\
+                                                        .format(parent, child)
+
+        # Ensure child links to parent
+        if child['prev_block_hash'] != parent['hash']:
+            raise InvalidBlockLinkException("Child block's previous hash does not point to parent!\nparent={}\nchild={}"
+                                            .format(parent, child))
+
+        for block in (parent, child):
+            # We remove the 'hash'/'number' cols so we can reuse _validate_block_data, which doesnt expect header cols
+            block_hash = block.pop('hash')
+            block_num = block.pop('number')
+
+            # Only validate block data if it is not the genesis block
+            if block_num != 1:
+                cls._validate_block_data(block)
+
+            # Ensure block data hashes to block hash
+            expected_hash = cls._compute_block_hash(block)
+            if expected_hash != block_hash:
+                raise InvalidBlockHashException("hash(block_data) != block_hash for block number {}!".format(block_num))
 
     @classmethod
     def _validate_block_data(cls, block_data: dict):
         """
-        Validates the block_data dictionary. If any validation fails, an exception is raised.
+        Validates the block_data dictionary. 'block_data' should be a strict subset of the 'block' dictionary, keys for all
+        columns in the block table EXCEPT 'number' and 'hash'. If any validation fails, an exception is raised.
         For a block_data dictionary to be valid, it must:
          - Have a key for each block data column specified in BLOCK_DATA_COLS (at top of blocks.py)
          - BlockContender successfully validates with the Merkle root (meaning all signatures in the BlockContender
@@ -228,5 +343,5 @@ class BlockStorageDriver:
 
 
 # This needs to be declared below BlockStorageDriver class definition
-# TODO put this in another file so its not just chillin down here
+# TODO put this in another file so hes not just chillin down here
 GENESIS_HASH = BlockStorageDriver._compute_block_hash(GENESIS_BLOCK_DATA)

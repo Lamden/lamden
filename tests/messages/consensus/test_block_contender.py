@@ -4,6 +4,7 @@ from cilantro.messages.consensus.block_contender import build_test_contender
 from cilantro.messages.consensus.merkle_signature import build_test_merkle_sig
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallets import ED25519Wallet
+import secrets
 import json
 
 
@@ -140,12 +141,10 @@ class BlockContenderTest(TestCase):
         bc = build_test_contender()
 
     def test_validate_signatures(self):
-        nodes = [1, 2, 3, 4]
-        tree = MerkleTree(leaves=nodes)
-        sigs = [build_test_merkle_sig(msg=tree.root) for _ in range(8)]
+        nodes = [secrets.token_bytes(8) for _ in range(4)]
+        tree = MerkleTree.from_raw_transactions(nodes)
 
         msg = tree.root
-        nodes = tree.leaves
 
         sig1, sk1, vk1 = self._create_merkle_sig(msg)
         sig2, sk2, vk2 = self._create_merkle_sig(msg)
@@ -154,19 +153,18 @@ class BlockContenderTest(TestCase):
 
         signatures = [sig1, sig2, sig3, sig4]
 
-        bc = BlockContender.create(signatures, nodes)
+        bc = BlockContender.create(signatures, merkle_leaves=tree.leaves_as_hex)
         is_valid = bc.validate_signatures()
 
         self.assertTrue(is_valid)
 
     def test_validate_signatures_invalid(self):
-        nodes = [1, 2, 3, 4]
-        tree = MerkleTree(leaves=nodes)
-        sigs = [build_test_merkle_sig(msg=tree.root) for _ in range(8)]
+        nodes = [secrets.token_bytes(8) for _ in range(4)]
+        tree = MerkleTree.from_raw_transactions(nodes)
 
         msg = tree.root
+
         bad_msg = b'lol this is def not a merkle root'
-        nodes = tree.leaves
 
         sig1, sk1, vk1 = self._create_merkle_sig(msg)
         sig2, sk2, vk2 = self._create_merkle_sig(msg)
@@ -175,7 +173,25 @@ class BlockContenderTest(TestCase):
 
         signatures = [sig1, sig2, sig3, sig4]
 
-        bc = BlockContender.create(signatures, nodes)
+        bc = BlockContender.create(signatures, merkle_leaves=tree.leaves_as_hex)
         is_valid = bc.validate_signatures()
 
         self.assertFalse(is_valid)
+
+    def test_eq(self):
+        nodes = [secrets.token_bytes(8) for _ in range(4)]
+        tree = MerkleTree.from_raw_transactions(nodes)
+
+        msg = tree.root
+
+        sig1, sk1, vk1 = self._create_merkle_sig(msg)
+        sig2, sk2, vk2 = self._create_merkle_sig(msg)
+        sig3, sk3, vk3 = self._create_merkle_sig(msg)
+        sig4, sk4, vk4 = self._create_merkle_sig(msg)
+
+        signatures = [sig1, sig2, sig3, sig4]
+
+        bc1 = BlockContender.create(signatures, merkle_leaves=tree.leaves_as_hex)
+        bc2 = BlockContender.create(signatures, merkle_leaves=tree.leaves_as_hex)
+
+        self.assertEquals(bc1, bc2)

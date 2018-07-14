@@ -69,11 +69,12 @@ class MerkleTree:
         :return: A MerkleTree object
         """
         assert len(hex_str) % 64 == 0, "Expected the concatenated hex_str to be divisble by 64! (Got {})".format(hex_str)
+        assert len(hex_str) >= 64, "hex_str must be at least 64 characters"
+
         leaves = [bytes.fromhex(hex_str[i:i+64]) for i in range(0, len(hex_str), 64)]
         obj = cls(leaves, hash_leaves=False)
 
         return obj
-
 
     @lazy_property
     def leaves_as_hex(self) -> List[str]:
@@ -135,7 +136,7 @@ class MerkleTree:
         return None
 
     def hash_of_nodes(self):
-        log.warning("HASH NODES API SHOULD BE DEPRECATED")
+        log.warning("HASH LEAVES API SHOULD BE DEPRECATED")
         return MerkleTree.hash_nodes(self.nodes)
 
     @staticmethod
@@ -192,5 +193,5 @@ class MerkleTree:
 
     @staticmethod
     def hash_nodes(nodes: list):
-        log.warning("HASH NODES API SHOULD BE DEPRECATED")
+        log.warning("HASH LEAVES API SHOULD BE DEPRECATED")
         return Hasher.hash_iterable(nodes, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)

@@ -63,7 +63,7 @@ class MNNewBlockState(MNBaseState):
                 self.parent.transition(MNRunState, success=False)
 
     def _new_block_procedure(self, block, txs):
-        self.log.debug("DONE COLLECTING BLOCK DATA FROM NODES. Storing new block.")
+        self.log.debug("DONE COLLECTING BLOCK DATA FROM LEAVES. Storing new block.")
 
         hash_of_nodes = MerkleTree.hash_nodes(block.merkle_leaves)
         tree = b"".join(block.merkle_leaves).hex()

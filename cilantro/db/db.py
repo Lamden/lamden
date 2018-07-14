@@ -256,8 +256,9 @@ class ScratchCloningVisitor(CloningVisitor):
 
 
 def reset_db():
-    with DB() as db:
-        _reset_db(db.ex)
+    with DB(should_reset=True) as db:
+        pass
+    DBSingletonMeta._instances.clear()
 
 
 class DBSingletonMeta(type):
@@ -271,16 +272,14 @@ class DBSingletonMeta(type):
         is lazily created.
         :return: A DB instance
         """
-        cls.log.debug("(__call__) Acquiring DBSingleton lock {}".format(DBSingletonMeta._lock))
-        with DBSingletonMeta._lock:
-            pid = os.getpid()
+        # with DBSingletonMeta._lock:
+        pid = os.getpid()
 
-            # Instantiate an instance of DB for this process if it does not exist
-            if pid not in cls._instances:
-                cls._instances[pid] = super(DBSingletonMeta, cls).__call__(should_reset=should_reset)
+        # Instantiate an instance of DB for this process if it does not exist
+        if pid not in cls._instances:
+            cls._instances[pid] = super(DBSingletonMeta, cls).__call__(should_reset=should_reset)
 
-            cls.log.debug("(__call__) Releasing DBSingleton lock {}".format(DBSingletonMeta._lock))
-            return cls._instances[pid]
+        return cls._instances[pid]
 
 
 class DB(metaclass=DBSingletonMeta):

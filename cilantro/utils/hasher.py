@@ -105,7 +105,6 @@ class Hasher:
         :param return_bytes: If true, the hash will be returned as bytes. Otherwise, a hex string will be returned
         :return: The resulting hash in bytes or as a str
         """
-
         # Concatenate individual binary datums
         data = b''
         for i in iterable:
