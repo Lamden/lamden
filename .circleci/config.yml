@@ -6,10 +6,10 @@ jobs:
       - image: circleci/python:3.6.5
 #        environment:
 #          PIPENV_VENV_IN_PROJECT: true
-      - image: circleci/mysql:5.7
-        environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_ROOT_PASSWORD: ""
+#      - image: circleci/mysql:5.7
+#        environment:
+#          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+#          MYSQL_ROOT_PASSWORD: ""
 
     steps:
       - checkout
