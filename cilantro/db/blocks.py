@@ -187,34 +187,6 @@ class BlockStorageDriver:
             return cls._decode_block(latest[0])
 
     @classmethod
-    def _decode_block(cls, block_data: dict) -> dict:
-        """
-        Takes a dictionary with keys for all columns in the block table, and returns the same dictionary but with any
-        encoded values decoded. Currently, the only value being serialized is the 'block_contender' column.
-        :param block_data: A dictionary, containing a key for each column in the blocks table. Some values might be encoded
-        in a serialization format.
-        :return: A dictionary, containing a key for each column in the blocks table.
-        """
-        # Convert block_contender back to a BlockContender instance
-        block_data['block_contender'] = _deserialize_contender(block_data['block_contender'])
-
-        return block_data
-
-    @classmethod
-    def _encode_block(cls, block_data: dict) -> dict:
-        """
-        Takes a dictionary with keys for all columns in the block table, and returns the same dictionary but with any
-        non-serializable columns encoded. Currently, the only value being serialized is the 'block_contender' column.
-        :param block_data: A dictionary, containing a key for each column in the blocks table.
-        :return: A dictionary, containing a key for each column in the blocks table. Some values might be encoded
-        in a serialization format.
-        """
-        # Convert block_contender to a serializable format
-        block_data['block_contender'] = _serialize_contender(block_data['block_contender'])
-
-        return block_data
-
-    @classmethod
     def validate_blockchain(cls, async=False):
         """
         Validates the cryptographic integrity of the blockchain. See spec in docs folder for details on what defines a
@@ -361,6 +333,34 @@ class BlockStorageDriver:
             assert is_valid_hex(last_hash, length=64), "Latest block hash is invalid 64 char hex! Got {}".format(last_hash)
 
             return last_hash
+
+    @classmethod
+    def _decode_block(cls, block_data: dict) -> dict:
+        """
+        Takes a dictionary with keys for all columns in the block table, and returns the same dictionary but with any
+        encoded values decoded. Currently, the only value being serialized is the 'block_contender' column.
+        :param block_data: A dictionary, containing a key for each column in the blocks table. Some values might be encoded
+        in a serialization format.
+        :return: A dictionary, containing a key for each column in the blocks table.
+        """
+        # Convert block_contender back to a BlockContender instance
+        block_data['block_contender'] = _deserialize_contender(block_data['block_contender'])
+
+        return block_data
+
+    @classmethod
+    def _encode_block(cls, block_data: dict) -> dict:
+        """
+        Takes a dictionary with keys for all columns in the block table, and returns the same dictionary but with any
+        non-serializable columns encoded. Currently, the only value being serialized is the 'block_contender' column.
+        :param block_data: A dictionary, containing a key for each column in the blocks table.
+        :return: A dictionary, containing a key for each column in the blocks table. Some values might be encoded
+        in a serialization format.
+        """
+        # Convert block_contender to a serializable format
+        block_data['block_contender'] = _serialize_contender(block_data['block_contender'])
+
+        return block_data
 
 
 # This needs to be declared below BlockStorageDriver class definition, as it uses a class function on BlockStorageDriver
