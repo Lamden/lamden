@@ -4,20 +4,22 @@ jobs:
     working_directory: ~/cilantro
     docker:
       - image: circleci/python:3.6.5
+      - image: circleci/mysql:5.7
         environment:
-          PIPENV_VENV_IN_PROJECT: true
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_ROOT_PASSWORD: ""
+
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}
+          key: cilantro-2-{{ checksum "requirements.txt" }}
       - run:
           name: Install Cilantro Requirements
           command: |
-            sudo pip install pipenv
-            pipenv install
-
+             pip install -r requirements.txt
+             sudo apt install -y mysql-client
 
 #      # This should go into custom primary image, here's only for the sake of explanation
 #      - run:
@@ -39,17 +41,24 @@ jobs:
 #      - setup_remote_docker
 
       - save_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}
+          key: cilantro-2-{{ checksum "requirements.txt" }}
           paths:
-            - ".venv"
             - "/usr/local/bin"
+            - "/usr/local/sbin"
+            - "/usr/local/lib/python3.6/site-packages"
+
+      - run:
+          name: Wait For mysqld
+          command: |
+            dockerize -wait tcp://localhost:3306 -timeout 1m
 
       - run:
           name: Run Tests
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            pipenv run python ~/cilantro/tests/run_tests.py --integration 0 --skip_modules tests.db tests.contracts
+            python3.6 ~/cilantro/tests/run_tests.py
+#            pipenv run python ~/cilantro/tests/run_tests.py --integration 0 --skip_modules tests.contracts
 
       - store_artifacts:
           path: test-results

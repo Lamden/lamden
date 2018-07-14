@@ -24,7 +24,7 @@ def contract(*contract_ids):
 class SmartContractTestCase(TestCase):
     def setUp(self):
         super().setUp()
-        self.ex = Executer.init_local_noauth_dev()
+        self.ex = Executer('root', '', '', '127.0.0.1')
         self.tables = build_tables(self.ex, should_drop=True)
 
     def tearDown(self):

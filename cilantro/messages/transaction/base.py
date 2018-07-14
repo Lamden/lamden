@@ -94,3 +94,14 @@ class TransactionBase(MessageBase):
     @property
     def sender(self):
         return self._data.payload.sender.decode()
+
+
+def build_test_transaction() -> TransactionBase:
+    """
+    Utility method to build a random transaction (an instance of a subclass of TransactionBase). Used exclusively for
+    unit/integration tests.
+    :return: An instance of a subclass of TransactionBase
+    """
+    from cilantro.messages import StandardTransactionBuilder
+    return StandardTransactionBuilder.random_tx()
+

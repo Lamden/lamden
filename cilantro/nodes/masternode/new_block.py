@@ -63,10 +63,10 @@ class MNNewBlockState(MNBaseState):
                 self.parent.transition(MNRunState, success=False)
 
     def _new_block_procedure(self, block, txs):
-        self.log.debug("DONE COLLECTING BLOCK DATA FROM NODES. Storing new block.")
+        self.log.debug("DONE COLLECTING BLOCK DATA FROM LEAVES. Storing new block.")
 
-        hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
-        tree = b"".join(block.nodes).hex()
+        hash_of_nodes = MerkleTree.hash_nodes(block.merkle_leaves)
+        tree = b"".join(block.merkle_leaves).hex()
         signatures = "".join([merk_sig.signature for merk_sig in block.signatures])
 
         # Store the block + transaction data
@@ -101,7 +101,7 @@ class MNNewBlockState(MNBaseState):
 
     def _validate_sigs(self, block: BlockContender) -> bool:
         signatures = block.signatures
-        msg = MerkleTree.hash_nodes(block.nodes)
+        msg = MerkleTree.hash_nodes(block.merkle_leaves)
 
         for sig in signatures:
             # TODO -- ensure that the sender belongs to the top delegate pool
@@ -112,8 +112,8 @@ class MNNewBlockState(MNBaseState):
         return True
 
     def _prove_merkle(self, block):
-        hash_of_nodes = MerkleTree.hash_nodes(block.nodes)
-        tx_hashes = block.nodes[len(block.nodes) // 2:]
+        hash_of_nodes = MerkleTree.hash_nodes(block.merkle_leaves)
+        tx_hashes = block.merkle_leaves[len(block.merkle_leaves) // 2:]
 
         if not MerkleTree.verify_tree(tx_hashes, hash_of_nodes):
             self.log.error("COULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}".format(block))
@@ -130,7 +130,7 @@ class MNNewBlockState(MNBaseState):
         :return: True if the BlockContender is valid, false otherwise
         """
         # Development sanity checks (these should be removed in production)
-        assert len(block.nodes) >= 1, "Masternode got block contender with no nodes! {}".format(block)
+        assert len(block.merkle_leaves) >= 1, "Masternode got block contender with no nodes! {}".format(block)
         assert len(block.signatures) >= Constants.Testnet.Majority, \
             "Received a block contender with only {} signatures (which is less than a majority of {}"\
             .format(len(block.signatures), Constants.Testnet.Majority)
@@ -167,7 +167,7 @@ class MNFetchNewBlockState(MNNewBlockState):
         self.log.debug("Fetching block data for contender {}".format(block_contender))
 
         self.block_contender = block_contender
-        self.tx_hashes = block_contender.nodes[len(block_contender.nodes) // 2:]
+        self.tx_hashes = block_contender.merkle_leaves[len(block_contender.merkle_leaves) // 2:]
 
         # Populate self.node_states delegates who signed this block
         for sig in block_contender.signatures:

@@ -12,7 +12,7 @@ class Block:
     def __init__(self, txs, last_block):
         self.merkle_tree = MerkleTree(txs)
         self.last_block = last_block
-        self.hash = self.merkle_tree.root()
+        self.hash = self.merkle_tree.parent()
 
     def encode(self):
         return pickle.dumps([self.merkle_tree.raw_leaves, self.last_block])
@@ -25,7 +25,7 @@ class Block:
     def __eq__(self, other):
         if self.hash != other.hash:
             return False
-        elif self.merkle_tree.nodes != other.merkle_tree.nodes:
+        elif self.merkle_tree.nodes != other.merkle_tree.merkle_leaves:
             return False
         elif self.last_block != other.last_block:
             return False

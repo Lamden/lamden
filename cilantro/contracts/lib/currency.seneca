@@ -1,5 +1,4 @@
-#!/usr/bin/env seneca_0.1
-## Example currency smart contract ##
+# do not delete the comment below. it is necessary for unit tests.
 # UNITTEST_FLAG_CURRENCY_SENECA 1729
 
 import seneca.storage.tabular as st

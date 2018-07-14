@@ -10,6 +10,8 @@ Classes include:
 -DB (which inherits from DBSingletonMeta)
 """
 
+from seneca.seneca_internal.storage.mysql_executer import Executer
+
 from multiprocessing import Lock
 import os, json
 from datetime import datetime
@@ -25,7 +27,7 @@ from sqlalchemy.sql.selectable import Select
 from sqlalchemy import select, insert, update, delete, and_
 
 
-from cilantro.db.tables import build_tables
+from cilantro.db.tables import build_tables, _reset_db
 
 DB_NAME = 'cilantro'
 SCRATCH_PREFIX = 'scratch_'
@@ -253,70 +255,43 @@ class ScratchCloningVisitor(CloningVisitor):
         return replacement_traverse(obj, self.__traverse_options__, replace)
 
 
+def reset_db():
+    with DB(should_reset=True) as db:
+        pass
+    DBSingletonMeta._instances.clear()
+
+
 class DBSingletonMeta(type):
     _lock = Lock()
-    _contexts = {}
     _instances = {}
     log = get_logger("DBSingleton")
 
-    def __call__(cls, db_name=DB_NAME, should_reset=False):
+    def __call__(cls, should_reset=False):
         """
-        Intercepts the init of the DB class to make it behave like a singleton.
-        - Each process should have its own 'context', which has a unique DB instance for each db name as well as a
-          default instance which you can set with DB.set_context(db_name)
-        - Each unique DB name will have it's own singleton instance.
-        - DB names are denoted by arg 'db_name'
-
-        :param db_name: The name of the db to create
+        Intercepts the init of the DB class to make it behave like a singleton. Each process has its own instance, which
+        is lazily created.
         :return: A DB instance
         """
-        cls.log.debug("(__call__) Acquiring DBSingleton lock {}".format(DBSingletonMeta._lock))
-        with DBSingletonMeta._lock:
-            instance_id = DBSingletonMeta._instance_id(db_name)
-            pid = os.getpid()
+        # with DBSingletonMeta._lock:
+        pid = os.getpid()
 
-            # Set default context for this process if not already set
-            if pid in cls._contexts:
-                # If called without any args, use default context
-                if db_name == DB_NAME:
-                    instance_id = cls._contexts[pid]
-                    db_name = DBSingletonMeta._db_name(instance_id)
-                    cls.log.debug("Process found default instance id {} in _contexts: {}".format(instance_id, cls._contexts))
-            else:
-                cls._contexts[pid] = instance_id
-                cls.log.debug("Setting default context for pid {} to instance id {} ... _contexts: {}"
-                              .format(pid, instance_id, cls._contexts))
+        # Instantiate an instance of DB for this process if it does not exist
+        if pid not in cls._instances:
+            cls._instances[pid] = super(DBSingletonMeta, cls).__call__(should_reset=should_reset)
 
-            # Instantiate an instance of DB for instance_id if it does not exist
-            if instance_id not in cls._instances:
-                cls._instances[instance_id] = super(DBSingletonMeta, cls).__call__(db_name, should_reset=should_reset)
-
-            cls.log.debug("(__call__) Releasing DBSingleton lock {}".format(DBSingletonMeta._lock))
-            return cls._instances[instance_id]
-
-    @staticmethod
-    def _instance_id(db_name):
-        return "{}_{}".format(os.getpid(), db_name)
-
-    @staticmethod
-    def _db_name(instance_id):
-        return instance_id[instance_id.find('_') + 1:]
-
-    @classmethod
-    def set_context(cls, db_name):
-        cls.log.debug("setting context for pid {} with db name: {}".format(os.getpid(), db_name))
-        cls._contexts[os.getpid()] = cls._instance_id(db_name)
+        return cls._instances[pid]
 
 
 class DB(metaclass=DBSingletonMeta):
-    def __init__(self, db_name, should_reset):
-        self.db_name = db_name
-        self.log = get_logger("DB-{}".format(db_name))
-        self.log.info("Creating DB instance for {} with should_reset={}".format(db_name, should_reset))
+    def __init__(self, should_reset):
+        self.log = get_logger("DB")
+        self.log.info("Creating DB instance with should_reset={}".format(should_reset))
+
         self.lock = Lock()
 
-        # self.tables = build_tables(db_name, should_reset)
-        self.db, self.tables = create_db(db_name, should_reset=True)
+        # self.ex = Executer.init_local_noauth_dev()
+        self.ex = Executer('root', '', '', '127.0.0.1')
+        self.tables = build_tables(self.ex, should_drop=should_reset)
 
     def __enter__(self):
         self.log.debug("Acquiring lock {}".format(self.lock))
@@ -326,10 +301,6 @@ class DB(metaclass=DBSingletonMeta):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.log.debug("Releasing lock {}".format(self.lock))
         self.lock.release()
-
-    def execute(self, query):
-        self.log.debug("Executing query {}".format(query))
-        return self.db.execute(query)
 
 
 class VKBook:
