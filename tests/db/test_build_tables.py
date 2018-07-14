@@ -22,7 +22,7 @@ class TestBuildTables(TestCase):
     def setUp(self):
         super().setUp()
 
-        self.ex = Executer.init_local_noauth_dev()
+        self.ex = Executer('root', '', '', '127.0.0.1')
 
     def tearDown(self):
         super().tearDown()
