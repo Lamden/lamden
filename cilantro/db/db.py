@@ -258,6 +258,11 @@ class ScratchCloningVisitor(CloningVisitor):
 def reset_db():
     with DB(should_reset=True) as db:
         pass
+
+    for instance in DBSingletonMeta._instances.values():
+        instance.ex.cur.close()
+        instance.ex.conn.close()
+
     DBSingletonMeta._instances.clear()
 
 

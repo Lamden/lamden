@@ -50,6 +50,9 @@ class TestBlockStorageDriver(TestCase):
             'timestamp': timestamp
         }
 
+    def test_cant_init(self):
+        self.assertRaises(NotImplementedError, BlockStorageDriver)
+
     def test_build_valid_block_data_params(self):
         """
         Since _build_valid_block_data relies on lot of other API, we make include this isolated test to make it clear
@@ -197,8 +200,6 @@ class TestBlockStorageDriver(TestCase):
         self.assertEqual(expected_hash, actual_hash)
 
     def test_store_block_inserts(self):
-        reset_db()
-
         with DB() as db:
             initial_num_blocks = len(db.tables.blocks.select().run(db.ex))
 
@@ -216,14 +217,63 @@ class TestBlockStorageDriver(TestCase):
             self.assertEquals(len(blocks) - initial_num_blocks, 1)
             self.assertEquals(blocks[-1]['timestamp'], timestamp)
 
-    def test_retrieve_block_invalid_args(self):
-        self.assertRaises(AssertionError, BlockStorageDriver.retrieve_block, )
-        self.assertRaises(AssertionError, BlockStorageDriver.retrieve_block, number=-10)
-        self.assertRaises(AssertionError, BlockStorageDriver.retrieve_block, hash='not valid hex')
-        self.assertRaises(AssertionError, BlockStorageDriver.retrieve_block, hash='aabbccddeeff0011')
+    def test_store_block_contender_raw_tx_mismatch(self):
+        mn_sk = Constants.Testnet.Masternodes[0]['sk']
+        timestamp = random.randint(0, pow(2, 32))
+        raw_transactions = [build_test_transaction().serialize() for _ in range(8)]
 
-    def test_retrieve_block_by_number(self):
-        genesis = BlockStorageDriver.retrieve_block(number=1)
+        tree = MerkleTree(raw_transactions)
+        bc = build_test_contender(tree=tree)
+
+        # Generate some arbitrary raw transactions that are not the same as the ones signed inside the BlockContender
+        mismatched_transactions = [build_test_transaction().serialize() for _ in range(8)]
+
+        self.assertRaises(InvalidBlockContenderException, BlockStorageDriver.store_block, block_contender=bc,
+                          raw_transactions=mismatched_transactions, publisher_sk=mn_sk, timestamp=timestamp)
+
+    def test_store_block_inserts_transactions(self):
+        num_txs = 4
+
+        with DB() as db:
+            initial_txs = len(db.tables.transactions.select().run(db.ex))
+
+        mn_sk = Constants.Testnet.Masternodes[0]['sk']
+        timestamp = random.randint(0, pow(2, 32))
+        raw_transactions = [build_test_transaction().serialize() for _ in range(num_txs)]
+
+        tree = MerkleTree(raw_transactions)
+        bc = build_test_contender(tree=tree)
+
+        BlockStorageDriver.store_block(block_contender=bc, raw_transactions=raw_transactions, publisher_sk=mn_sk, timestamp=timestamp)
+        block_hash = BlockStorageDriver._get_latest_block_hash()
+
+        with DB() as db:
+            transactions = db.tables.transactions
+            all_tx_query = transactions.select().run(db.ex)
+
+            # Ensure the correct number of transactions was inserted
+            self.assertEquals(len(all_tx_query) - initial_txs, num_txs)
+
+            # Ensure the transactions were correctly inserted
+            for raw_tx in raw_transactions:
+                tx_hash = Hasher.hash(raw_tx)
+
+                rows = transactions.select().where(transactions.hash == tx_hash).run(db.ex)
+                self.assertTrue(rows, "Expected there to be a row for inserted tx {}".format(raw_tx))
+
+                tx_row = rows[0]
+                self.assertEquals(tx_row['hash'], tx_hash, "Expected fetched tx to have hash equal to its hashed data")
+                self.assertEquals(tx_row['data'], encode_tx(raw_tx), "Expected tx data col to equal encoded raw tx")
+                self.assertEquals(tx_row['block_hash'], block_hash, "Expected inserted tx to reference last block")
+
+    def test_get_block_invalid_args(self):
+        self.assertRaises(AssertionError, BlockStorageDriver.get_block, )
+        self.assertRaises(AssertionError, BlockStorageDriver.get_block, number=-10)
+        self.assertRaises(AssertionError, BlockStorageDriver.get_block, hash='not valid hex')
+        self.assertRaises(AssertionError, BlockStorageDriver.get_block, hash='aabbccddeeff0011')
+
+    def test_get_block_by_number(self):
+        genesis = BlockStorageDriver.get_block(number=1)
 
         self.assertTrue(genesis)
         self.assertEquals(genesis['number'], 1)
@@ -231,22 +281,22 @@ class TestBlockStorageDriver(TestCase):
         self.assertEquals(genesis['timestamp'], GENESIS_TIMESTAMP)
         self.assertEquals(genesis['block_contender'], GENESIS_BLOCK_CONTENDER)
 
-    def test_retrieve_block_by_number_doesnt_exist(self):
-        block = BlockStorageDriver.retrieve_block(number=90000)
+    def test_get_block_by_number_doesnt_exist(self):
+        block = BlockStorageDriver.get_block(number=90000)
         self.assertFalse(block)
 
-    def test_retrieve_block_by_hash(self):
-        genesis = BlockStorageDriver.retrieve_block(hash=GENESIS_HASH)
+    def test_get_block_by_hash(self):
+        genesis = BlockStorageDriver.get_block(hash=GENESIS_HASH)
 
         self.assertEquals(genesis['number'], 1)
         self.assertEquals(genesis['hash'], GENESIS_HASH)
         self.assertEquals(genesis['timestamp'], GENESIS_TIMESTAMP)
 
-    def test_retrieve_block_by_hash_doesnt_exist(self):
-        block = BlockStorageDriver.retrieve_block(hash='A' * 64)
+    def test_get_block_by_hash_doesnt_exist(self):
+        block = BlockStorageDriver.get_block(hash='A' * 64)
         self.assertFalse(block)
 
-    def test_retrieve_latest_inserted(self):
+    def test_get_latest_inserted(self):
         mn_sk = Constants.Testnet.Masternodes[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions = [build_test_transaction().serialize() for _ in range(19)]
@@ -256,7 +306,7 @@ class TestBlockStorageDriver(TestCase):
 
         BlockStorageDriver.store_block(block_contender=bc, raw_transactions=raw_transactions, publisher_sk=mn_sk, timestamp=timestamp)
 
-        latest = BlockStorageDriver.retrieve_latest_block()
+        latest = BlockStorageDriver.get_latest_block()
 
         self.assertTrue(latest)
         self.assertEquals(latest['timestamp'], timestamp)
@@ -329,16 +379,66 @@ class TestBlockStorageDriver(TestCase):
         # This should not blow up
         BlockStorageDriver.validate_blockchain()
 
-        print("THIS TEST SHOULD FUCKING RETURN NOW")
+    def test_validate_blockchain_invalid(self):
+        reset_db()
 
-    # def test_validate_blockchain_invalid(self):
-    #     # TODO implement
-    #     pass
-    #
-    # def test_super_test(self):
-    #     """
-    #     This test does way to much but ay that's the point of a super test
-    #     """
-    #     # TODO implement
-    #     pass
+        # Stuff a bunch of valid blocks in
+        for _ in range(4):
+            mn_sk = Constants.Testnet.Masternodes[0]['sk']
+            timestamp = random.randint(0, pow(2, 32))
+            raw_transactions = [build_test_transaction().serialize() for _ in range(19)]
+
+            tree = MerkleTree(raw_transactions)
+            bc = build_test_contender(tree=tree)
+
+            BlockStorageDriver.store_block(block_contender=bc, raw_transactions=raw_transactions, publisher_sk=mn_sk,
+                                           timestamp=timestamp)
+
+        # Stuff a sketch block in that doesn't link to the last
+        sketch_block = self._build_valid_block_data()  # by default this has prev_block_hash = 'AAAAA...'
+        sketch_block['hash'] = BlockStorageDriver._compute_block_hash(sketch_block)
+        with DB() as db:
+            db.tables.blocks.insert([BlockStorageDriver._encode_block(sketch_block)]).run(db.ex)
+
+        self.assertRaises(InvalidBlockLinkException, BlockStorageDriver.validate_blockchain)
+
+    def test_get_raw_transaction(self):
+        mn_sk = Constants.Testnet.Masternodes[0]['sk']
+        timestamp = random.randint(0, pow(2, 32))
+        raw_transactions = [build_test_transaction().serialize() for _ in range(4)]
+
+        tree = MerkleTree(raw_transactions)
+        bc = build_test_contender(tree=tree)
+
+        BlockStorageDriver.store_block(block_contender=bc, raw_transactions=raw_transactions, publisher_sk=mn_sk, timestamp=timestamp)
+
+        # Ensure all these transactions are retrievable
+        for raw_tx in raw_transactions:
+            retrieved_tx = BlockStorageDriver.get_raw_transaction(Hasher.hash(raw_tx))
+            self.assertEquals(raw_tx, retrieved_tx)
+
+    def test_get_raw_transaction_doesnt_exist(self):
+        tx = BlockStorageDriver.get_raw_transaction('DEADBEEF' * 8)
+        self.assertTrue(tx is None)
+
+    def test_get_raw_transaction_from_block_doesnt_exist(self):
+        tx = BlockStorageDriver.get_raw_transactions_from_block('ABCD' * 16)
+        self.assertTrue(tx is None)
+
+    def test_get_raw_transaction_from_block(self):
+        mn_sk = Constants.Testnet.Masternodes[0]['sk']
+        timestamp = random.randint(0, pow(2, 32))
+        raw_transactions = [build_test_transaction().serialize() for _ in range(4)]
+
+        tree = MerkleTree(raw_transactions)
+        bc = build_test_contender(tree=tree)
+
+        BlockStorageDriver.store_block(block_contender=bc, raw_transactions=raw_transactions, publisher_sk=mn_sk, timestamp=timestamp)
+        latest_hash = BlockStorageDriver._get_latest_block_hash()
+
+        added_txs = BlockStorageDriver.get_raw_transactions_from_block(block_hash=latest_hash)
+
+        for tx in raw_transactions:
+            self.assertTrue(tx in added_txs)
+
 
