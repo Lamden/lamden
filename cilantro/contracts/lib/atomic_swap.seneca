@@ -5,16 +5,6 @@ import seneca.stdlib as std
 from seneca.modulelib import export, make_exports
 import currency
 
-def status_enums():
-    return std.enum(
-        'EXPIRED',
-        'SUCCESS',
-        'PENDING',
-        'FAILED'
-    )
-
-STATUS = status_enums()
-
 t_agreement = st.create_table('agreement', [
     ('initiator_id', st.str_len(128)),
     ('participant_id', st.str_len(128)),
