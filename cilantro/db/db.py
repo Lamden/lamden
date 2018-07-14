@@ -289,7 +289,8 @@ class DB(metaclass=DBSingletonMeta):
 
         self.lock = Lock()
 
-        self.ex = Executer.init_local_noauth_dev()
+        # self.ex = Executer.init_local_noauth_dev()
+        self.ex = Executer('root', '', '', '127.0.0.1')
         self.tables = build_tables(self.ex, should_drop=should_reset)
 
     def __enter__(self):
