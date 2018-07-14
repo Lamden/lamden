@@ -13,15 +13,22 @@ import time
 log = get_logger("BlocksStorage")
 
 
-# Block Data Fields
-# REQUIRED_COLS must exist in all Cilantro based blockchains
+"""
+Block Data fields
+
+
+REQUIRED_COLS must exist in all Cilantro based blockchains
+Custom Cilantro configurations can configure OPTIONAL_COLS to add additional fields to block metadata
+"""
 REQUIRED_COLS = {'merkle_root': str, 'merkle_leaves': str, 'prev_block_hash': str, 'block_contender': str}  # TODO block_contender should be binary blob
-# Custom Cilantro blockchains can configure OPTIONAL_COLS to add additional fields to block metadata
 OPTIONAL_COLS = {'timestamp': int, 'masternode_signature': str, 'masternode_vk': str}
 
 BLOCK_DATA_COLS = {**REQUIRED_COLS, **OPTIONAL_COLS}  # combines the 2 dictionaries
 
 
+"""
+Genesis Block default values
+"""
 GENESIS_EMPTY_STR = ''
 GENESIS_TIMESTAMP = 0
 GENESIS_BLOCK_CONTENDER = ''
@@ -38,20 +45,8 @@ GENESIS_BLOCK_DATA = {
 }
 
 """
-Below we have some horrible cringe worth functions to store block contenders are strings since EasyDB doesnt support 
-binary types (yet)
-TODO -- pls not this
+Methods to create and seed the 'blocks' table
 """
-def _serialize_contender(block_contender: BlockContender) -> str:
-    hex_str = block_contender.serialize().hex()
-    return hex_str
-def _deserialize_contender(block_contender: str) -> BlockContender:
-    # Genesis Block Contender is None/Empty and thus should not be deserialized
-    if block_contender == GENESIS_BLOCK_CONTENDER:
-        return block_contender
-    return BlockContender.from_bytes(bytes.fromhex(block_contender))
-
-
 def build_blocks_table(ex, should_drop=True):
     blocks = t.Table('blocks', t.AutoIncrementColumn('number'), [t.Column('hash', t.str_len(64), True)] +
                      [t.Column(field_name, field_type) for field_name, field_type in BLOCK_DATA_COLS.items()])
@@ -63,6 +58,22 @@ def seed_blocks(ex, blocks_table):
     blocks_table.insert([{'hash': GENESIS_HASH, **GENESIS_BLOCK_DATA}]).run(ex)
 
 
+"""
+Utility Functions to encode/decode block data for serialization 
+"""
+def _serialize_contender(block_contender: BlockContender) -> str:
+    hex_str = block_contender.serialize().hex()
+    return hex_str
+def _deserialize_contender(block_contender: str) -> BlockContender:
+    # Genesis Block Contender is None/Empty and thus should not be deserialized
+    if block_contender == GENESIS_BLOCK_CONTENDER:
+        return block_contender
+    return BlockContender.from_bytes(bytes.fromhex(block_contender))
+
+
+"""
+Custom Exceptions for block storage operations 
+"""
 class BlockStorageException(Exception): pass
 class BlockStorageValidationException(BlockStorageException): pass
 
@@ -128,8 +139,9 @@ class BlockStorageDriver:
         block_hash = cls._compute_block_hash(block_data)
 
         # Encode block data for serialization and finally persist the data
-        block_data = cls._encode_block(block_data)
         log.info("Attempting to persist new block with hash {}".format(block_hash))
+        block_data = cls._encode_block(block_data)
+
         with DB() as db:
             res = db.tables.blocks.insert([{'hash': block_hash, **block_data}]).run(db.ex)
             if res:
@@ -351,6 +363,6 @@ class BlockStorageDriver:
             return last_hash
 
 
-# This needs to be declared below BlockStorageDriver class definition
+# This needs to be declared below BlockStorageDriver class definition, as it uses a class function on BlockStorageDriver
 # TODO put this in another file so hes not just chillin down here
 GENESIS_HASH = BlockStorageDriver._compute_block_hash(GENESIS_BLOCK_DATA)
