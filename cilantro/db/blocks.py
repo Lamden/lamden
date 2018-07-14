@@ -84,29 +84,30 @@ class BlockStorageDriver:
     @classmethod
     def store_block(cls, block_contender: BlockContender, raw_transactions: List[bytes], publisher_sk: str, timestamp: int = 0):
         """
-        TODO -- think really hard and make sure that this is 'collision proof' (v unlikely, but still possible)
 
         Persist a new block to the blockchain, along with the raw transactions associated with the block. An exception
         will be raised if an error occurs either validating the new block data, or storing the block. Thus, it is
         recommended that this method is wrapped in a try block.
 
-        TODO -- docstring
-
-        :param block_contender:
-        :param raw_transactions:
-        :param publisher_sk:
-        :param timestamp:
+        :param block_contender: A BlockContender instance
+        :param raw_transactions: A list of ordered raw transactions contained in the block
+        :param publisher_sk: The signing key of the publisher (a Masternode) who is publishing the block
+        :param timestamp: The time the block was published, in unix epoch time. If 0, time.time() is used
         :return: None
         :raises: An assertion error if invalid args are passed into this function, or a BlockStorageValidationException
          if validation fails on the attempted block
+
+        TODO -- think really hard and make sure that this is 'collision proof' (v unlikely, but still possible)
+        - could there be a hash collision in the Merkle tree?
+        - hash collision in transaction space?
         """
         assert isinstance(block_contender, BlockContender), "Expected block_contender arg to be BlockContender instance"
         assert is_valid_hex(publisher_sk, 64), "Invalid signing key {}. Expected 64 char hex str".format(publisher_sk)
 
-        # Build Merkle tree from raw_transactions
-        tree = MerkleTree.from_raw_transactions(raw_transactions)
+        if not timestamp:
+            timestamp = int(time.time())
 
-        prev_block_hash = cls._get_latest_block_hash()
+        tree = MerkleTree.from_raw_transactions(raw_transactions)
 
         publisher_vk = ED25519Wallet.get_vk(publisher_sk)
         publisher_sig = ED25519Wallet.sign(publisher_sk, tree.root)
@@ -117,7 +118,7 @@ class BlockStorageDriver:
             'timestamp': timestamp,
             'merkle_root': tree.root_as_hex,
             'merkle_leaves': tree.leaves_as_concat_hex_str,
-            'prev_block_hash': prev_block_hash,
+            'prev_block_hash': cls._get_latest_block_hash(),
             'masternode_signature': publisher_sig,
             'masternode_vk': publisher_vk,
         }
@@ -126,10 +127,8 @@ class BlockStorageDriver:
         # Compute block hash
         block_hash = cls._compute_block_hash(block_data)
 
-        # Encode block data for serializiation
+        # Encode block data for serialization and finally persist the data
         block_data = cls._encode_block(block_data)
-
-        # Finally, persist the data
         log.info("Attempting to persist new block with hash {}".format(block_hash))
         with DB() as db:
             res = db.tables.blocks.insert([{'hash': block_hash, **block_data}]).run(db.ex)
@@ -137,6 +136,8 @@ class BlockStorageDriver:
                 log.info("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block_hash))
             else:
                 log.error("Error inserting block! Got None/False result back from insert query. Result={}".format(res))
+
+            # TODO -- store raw_transactions
 
     @classmethod
     def retrieve_block(cls, number: int=0, hash: str= '') -> dict:
@@ -148,7 +149,7 @@ class BlockStorageDriver:
         :param hash: The hash of the block to lookup. Must be valid 64 char hex string
         :return: A dictionary, containing a key for each column in the blocks table.
         """
-        assert bool(number > 0) ^ bool(hash), "Either number XOR hash arg must be given"
+        assert bool(number > 0) ^ bool(hash), "Either 'number' XOR 'hash' arg must be given"
 
         with DB() as db:
             blocks = db.tables.blocks
@@ -177,12 +178,12 @@ class BlockStorageDriver:
     def _decode_block(cls, block_data: dict) -> dict:
         """
         Takes a dictionary with keys for all columns in the block table, and returns the same dictionary but with any
-        serailized values decoded. Currently, the only value being serialized is the 'block_contender' column.
+        encoded values decoded. Currently, the only value being serialized is the 'block_contender' column.
         :param block_data: A dictionary, containing a key for each column in the blocks table. Some values might be encoded
         in a serialization format.
         :return: A dictionary, containing a key for each column in the blocks table.
         """
-        # Convery block_contender back to a BlockContender instance
+        # Convert block_contender back to a BlockContender instance
         block_data['block_contender'] = _deserialize_contender(block_data['block_contender'])
 
         return block_data
@@ -196,7 +197,7 @@ class BlockStorageDriver:
         :return: A dictionary, containing a key for each column in the blocks table. Some values might be encoded
         in a serialization format.
         """
-        # Convert block_contender to binary
+        # Convert block_contender to a serializable format
         block_data['block_contender'] = _serialize_contender(block_data['block_contender'])
 
         return block_data
@@ -204,7 +205,8 @@ class BlockStorageDriver:
     @classmethod
     def validate_blockchain(cls, async=False):
         """
-        Validates the cryptographic integrity of the block chain.
+        Validates the cryptographic integrity of the blockchain. See spec in docs folder for details on what defines a
+        valid blockchain structure.
         # TODO docstring
         :param async: If true, run this in a separate process
         :raises: An exception if validation fails
@@ -226,7 +228,8 @@ class BlockStorageDriver:
     @classmethod
     def _validate_block_link(cls, parent: dict, child: dict):
         """
-        Validates the cryptographic integrity of the link between a connected parent and child block
+        Validates the cryptographic integrity of the link between a connected parent and child block, as well as the
+        integrity of each block individually.
         :param parent: The predecesor of the block 'child' in the blockchain.
         :param child: The child's previous_block_hash should point to the parent's hash
         :raises: An exception if validation fails
@@ -298,14 +301,19 @@ class BlockStorageDriver:
                 raise InvalidBlockContenderException("BlockContender leaves do not match Merkle leaves\nblock leaves = "
                                                      "{}\nmerkle leaves = {}".format(block_leaves, tree.leaves_as_hex))
 
-        # Validate MerkleSignatures inside BlockContender
+        # Validate MerkleSignatures inside BlockContender match Merkle leaves from raw transactions
         bc = block_data['block_contender']
         if not bc.validate_signatures():
             raise InvalidBlockContenderException("BlockContender signatures could not be validated! BC = {}".format(bc))
 
         # TODO validate MerkleSignatures are infact signed by valid delegates
+        # this is tricky b/c we would need to know who the delegates were at the time of the block, not necessarily the
+        # current delegates
 
         # Validate Masternode Signature
+        if not is_valid_hex(block_data['masternode_vk'], length=64):
+            raise InvalidBlockSignatureException("Invalid verifying key for field masternode_vk: {}"
+                                                 .format(block_data['masternode_vk']))
         if not ED25519Wallet.verify(block_data['masternode_vk'], bytes.fromhex(block_data['merkle_root']), block_data['masternode_signature']):
             raise InvalidBlockSignatureException("Could not validate Masternode's signature on block data")
 
@@ -337,6 +345,7 @@ class BlockStorageDriver:
         with DB() as db:
             row = db.tables.blocks.select().order_by('number', desc=True).limit(1).run(db.ex)[0]
             last_hash = row['hash']
+
             assert is_valid_hex(last_hash, length=64), "Latest block hash is invalid 64 char hex! Got {}".format(last_hash)
 
             return last_hash
