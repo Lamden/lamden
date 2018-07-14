@@ -44,7 +44,6 @@ jobs:
           key: cilantro-2-{{ checksum "requirements.txt" }}
           paths:
             - "/usr/local/bin"
-            - "/usr/local/sbin"
             - "/usr/local/lib/python3.6/site-packages"
 
       - run:
