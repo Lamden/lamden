@@ -4,10 +4,9 @@ jobs:
     working_directory: ~/cilantro
     docker:
       - image: circleci/python:3.6.5
-        environment:
-          PIPENV_VENV_IN_PROJECT: true
+#        environment:
+#          PIPENV_VENV_IN_PROJECT: true
       - image: circleci/mysql:5.7
-#        command: [mysqld]
         environment:
           MYSQL_ALLOW_EMPTY_PASSWORD: yes
           MYSQL_ROOT_PASSWORD: ""
@@ -17,11 +16,12 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-420-{{ checksum "requirements.txt" }}
+          key: cilantro-1-{{ checksum "requirements.txt" }}
       - run:
           name: Install Cilantro Requirements
           command: |
              pip install -r requirements.txt
+             pip install -r dev-requirements.txt
              sudo apt install -y mysql-client
 #             pip install -r dev-requirements.txt
 #            sudo pip install pipenv
@@ -48,7 +48,7 @@ jobs:
 #      - setup_remote_docker
 
       - save_cache:
-          key: cilantro-420-{{ checksum "requirements.txt" }}
+          key: cilantro-1-{{ checksum "requirements.txt" }}
           paths:
             - "/usr/local/bin"
             - "/usr/local/lib/python3.6/site-packages"
