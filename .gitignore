@@ -35,3 +35,6 @@ seneca
 
 # Docker
 docker-compose.yml
+
+# Docs
+docs/sphinx/_build

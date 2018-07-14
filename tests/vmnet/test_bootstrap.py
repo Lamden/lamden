@@ -52,20 +52,8 @@ def run_delegate(slot_num):
     d_info['ip'] = os.getenv('HOST_IP')
 
     log.critical("Building delegate on slot {} with info {}".format(slot_num, d_info))
-    
+
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
-
-
-def start_mysqld():
-    import os
-    os.system('mysqld \
-   --skip-grant-tables \
-   --skip-innodb \
-   --collation-server latin1_bin \
-   --default-storage-engine ROCKSDB \
-   --default-tmp-storage-engine MyISAM \
-   --binlog_format ROW \
-   --user=mysql &')
 
 
 class TestBootstrap(BaseNetworkTestCase):
@@ -81,10 +69,6 @@ class TestBootstrap(BaseNetworkTestCase):
 
     @vmnet_test(run_webui=True)
     def test_bootstrap(self):
-        # start mysql in all nodes
-        for node_name in ['masternode'] + self.groups['witness'] + self.groups['delegate']:
-            self.execute_python(node_name, start_mysqld, async=True)
-        time.sleep(1)
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)

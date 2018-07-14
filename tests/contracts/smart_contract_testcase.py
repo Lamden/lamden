@@ -1,7 +1,9 @@
 from unittest import TestCase
+from unittest import mock
 from cilantro.db import *
 from cilantro.logger import get_logger
 from seneca.execute_sc import execute_contract
+from seneca.smart_contract_user_libs import stdlib as std
 from seneca.seneca_internal.storage.mysql_executer import Executer
 from cilantro.db.contracts import run_contract, get_contract_exports
 
@@ -29,3 +31,26 @@ class SmartContractTestCase(TestCase):
         super().tearDown()
         self.ex.cur.close()
         self.ex.conn.close()
+
+def mock_datetime(target, datetime_module):
+    class DatetimeSubclassMeta(type):
+        @classmethod
+        def __instancecheck__(mcs, obj):
+            return isinstance(obj, std.datetime)
+
+    class BaseMockedDatetime(std.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return target.replace(tzinfo=tz)
+
+        @classmethod
+        def utcnow(cls):
+            return target
+
+        @classmethod
+        def today(cls):
+            return target
+
+    MockedDatetime = DatetimeSubclassMeta('datetime', (BaseMockedDatetime,), {})
+
+    return mock.patch.object(datetime_module, 'datetime', MockedDatetime)
