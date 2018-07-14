@@ -22,8 +22,8 @@ jobs:
           name: Install Cilantro Requirements
           command: |
              pip install -r requirements.txt
-             pip install -r dev-requirements.txt
              sudo apt install mysql-client
+#             pip install -r dev-requirements.txt
 #            sudo pip install pipenv
 #            pipenv install
 
