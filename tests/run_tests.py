@@ -64,8 +64,8 @@ def _should_skip_module(module_name: str, modules_to_skip: list) -> bool:
 
 
 def main(args):
-    log.debug("\nRunning test suites with args \n\trun unit tests={}\n\trun integration tests={}\n\tverbosity={}\n\t"
-              "skip modules={}\n\tskip tests={}\n\t[env var] CILANTRO_DEBUG={}\n\t[env var] CI={}\n"
+    log.debug("\nRunning test suites with args\n\nrun unit tests={}\nrun integration tests={}\nverbosity={}\n"
+              "skip modules={}\nskip tests={}\n[env var] CILANTRO_DEBUG={}\n[env var] CI={}\n"
               .format(args.unit, args.integration, args.verbosity, args.skip_modules, args.skip_tests,
                       os.getenv('CILANTRO_DEBUG'), os.getenv('CI')))
 

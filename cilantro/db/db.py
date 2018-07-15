@@ -33,6 +33,9 @@ DB_NAME = 'cilantro'
 SCRATCH_PREFIX = 'scratch_'
 
 
+log = get_logger("DB")
+
+
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
 
@@ -257,7 +260,13 @@ class ScratchCloningVisitor(CloningVisitor):
 
 def reset_db():
     with DB(should_reset=True) as db:
+        log.info("Resetting database")
         pass
+
+    for instance in DBSingletonMeta._instances.values():
+        instance.ex.cur.close()
+        instance.ex.conn.close()
+
     DBSingletonMeta._instances.clear()
 
 
