@@ -33,6 +33,9 @@ DB_NAME = 'cilantro'
 SCRATCH_PREFIX = 'scratch_'
 
 
+log = get_logger("DB")
+
+
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
 
