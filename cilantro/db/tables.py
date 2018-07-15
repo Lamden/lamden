@@ -26,8 +26,8 @@ def build_tables(ex, should_drop=True):
     blocks = build_blocks_table(ex, should_drop)
     transactions = build_transactions_table(ex, should_drop)
 
-    # Only seed database if we just dropped it
-    if should_drop:
+    # Only seed database if we just dropped it, or if db is empty
+    if should_drop or not blocks.select().run(ex):
         seed_contracts(ex, contracts)
         seed_blocks(ex, blocks)
         seed_transactions(ex, blocks)
