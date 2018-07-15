@@ -49,11 +49,9 @@ class TopologyIntegrationTest(MPTestCase):
         tx1 = God.create_std_tx(FALCON, DAVIS, 210)
         tx2 = God.create_std_tx(STU, FALCON, 150)
 
-        log.critical("CREATING MASTERNODE")
-        # masternode = MPMasternode(name='Masternode', config_fn=config_mn, assert_fn=assert_mn, sk=mn_sk)
+        masternode = MPMasternode(name='Masternode', config_fn=config_mn, assert_fn=assert_mn, sk=mn_sk)
         from cilantro.utils.test import MPComposer
-        comp = MPComposer(sk=mn_sk)
-        log.critical("MASTERNODE CREATED")
+        # comp = MPComposer(sk=mn_sk)
 
         time.sleep(0.25)  # give masternode a quick sec to get his web server ready
 

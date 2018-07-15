@@ -68,9 +68,9 @@ class God:
             return c
 
     @classmethod
-    def set_mn_url(cls, ip_addr='localhost', port=8080):
-        url = "http://{}:{}".format(ip_addr, port)
-        cls.log.debug("Setting masternode URL to {}".format(url))
+    def set_mn_url(cls, ip='localhost', port=8080):
+        url = "http://{}:{}".format(ip, port)
+        cls.log.info("Setting masternode URL to {}".format(url))
         cls.mn_url = url
 
     @classmethod

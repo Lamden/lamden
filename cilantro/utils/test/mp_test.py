@@ -17,7 +17,7 @@ CHILD_PROC_TIMEOUT = 1
 
 TEST_PROC_SETUP_TIME = 20
 
-MP_PORT = '10200'
+MPTEST_PORT = '10200'
 
 SIG_RDY = b'IM RDY'
 SIG_SUCC = b'G00DSUCC'
@@ -83,7 +83,6 @@ class MPTesterProcess:
         # Connect to parent process over ipc PAIR self.socket
         self.ctx = zmq.asyncio.Context()
         self.socket = self.ctx.socket(socket_type=zmq.PAIR)
-        # self.socket.connect(self.url)
         self.log.info("TestProcess binding to URL {}".format(self.url))
         self.socket.bind(self.url)
 
@@ -97,27 +96,8 @@ class MPTesterProcess:
         assert self.gathered_tasks is None, "start_test can only be called once"
         self.gathered_tasks = asyncio.gather(self._recv_cmd(), *self.tasks)
 
-        # DEBUG
-        self.log.critical("sleeping before sending ready sig to parent")
-        import time
-        time.sleep(0.5)
-        self.log.critical("done sleeping")
-
-        import os
-        self.log.critical("this nodes ip: {}".format(os.getenv('HOST_IP')))
-        # END DBUG
-
         self.log.debug("sending ready sig to parent")
         self.socket.send_pyobj(SIG_RDY)
-
-        while True:
-            time.sleep(4)
-            self.log.debug("sending another rdy sig")
-            self.socket.send_pyobj(SIG_RDY)
-
-        self.log.critical("sleeping again after sending parent ready sig")
-        time.sleep(1.5)
-        self.log.critical("done with second sleep")
 
         try:
             self.log.debug("starting tester proc event loop")
@@ -271,16 +251,29 @@ class MPTesterBase:
         self.config_fn = config_fn  # Function to configure object with mocks
         self.assert_fn = assert_fn  # Function to run assertions on said mocks
 
+        self.test_proc = None
         self.container_name = None  # Name of the docker container this object is proxying to (if run on VM)
-
-        # Add this object to the registry of testers
-        from .mp_test_case import MPTestCase
-        MPTestCase.testers.append(self)
 
         # Create a wrapper around the build_obj with args and kwargs. We do this b/c this function will actually be
         # invoked in a separate process/machine, thus we need to capture the function call to serialize it and send
         # it across a socket
         build_fn = wrap_func(type(self).build_obj, *args, **kwargs)
+
+        self._config_url_and_test_proc(build_fn, always_run_as_subproc)
+
+        # 'socket' is used to proxy commands to blocking object running in a child process (or possibly on a VM)
+        self.ctx = zmq.Context()
+        self.socket = self.ctx.socket(socket_type=zmq.PAIR)
+        self.log.debug("Test Orchestrator connecting to url {}".format(self.url))
+        self.socket.connect(self.url)
+
+        # Block this process until we get a ready signal from the subprocess/VM
+        self.wait_for_test_object()
+
+    def _config_url_and_test_proc(self, build_fn, always_run_as_subproc):
+        # Add this object to the registry of testers
+        from .mp_test_case import MPTestCase
+        MPTestCase.testers.append(self)
 
         # TODO DEBUG
         self.log.critical("always run as subproc: {}".format(always_run_as_subproc))
@@ -289,12 +282,24 @@ class MPTesterBase:
 
         # Create Tester object in a VM
         if MPTestCase.vmnet_test_active and not always_run_as_subproc:
-            name, ip = MPTestCase._next_container()
-            self.log.info("Creating Tester object in a VM on container named {} with ip address {}".format(name, ip))
-            self.container_name = name
-            self.url = "tcp://{}:{}".format(ip, MP_PORT)
+            assert hasattr(MPTestCase, 'ports'), "VMNet test is active, but MPTestCase has no attribute ports"
+            assert MPTestCase.ports, "VMNet test is active, but MPTestCase.ports is not set"
 
-            runner_func = wrap_func(self._run_test_proc, self.name, self.url, build_fn, self.config_fn, self.assert_fn)
+            name, ip = MPTestCase.next_container()
+            assert name in MPTestCase.ports, "Node named {} not found in ports {}".format(name, MPTestCase.ports)
+            assert MPTEST_PORT in MPTestCase.ports[name], "MPTEST_PORT {} not found in docker node {}'s ports {}"\
+                                                          .format(MPTEST_PORT, name, MPTestCase.ports[name])
+
+            url = MPTestCase.ports[name][MPTEST_PORT]  # URL the orchestration node should connect to
+            url = url.replace('localhost', '127.0.0.1') # Adjust localhost to 127.0.0.1
+            url = "tcp://{}".format(url)
+
+            remote_url = "tcp://{}:{}".format(ip, MPTEST_PORT)  # URL the remote node should bind to
+            # self.log.critical("ports: {}".format(MPTestCase.ports))
+            self.container_name = name
+            self.url = url
+
+            runner_func = wrap_func(self._run_test_proc, self.name, remote_url, build_fn, self.config_fn, self.assert_fn)
 
             # TODO -- will i need a ton of imports and stuff to make this run smoothly...?
             MPTestCase.execute_python(name, runner_func, async=True)
@@ -302,26 +307,15 @@ class MPTesterBase:
         # Create Tester object in a Subprocess
         else:
             self.log.info("Creating Tester object in a subprocess")
-            self.url = _gen_url(name)
+            self.url = _gen_url(self.name)
 
             self.test_proc = LProcess(target=self._run_test_proc, args=(self.name, self.url, build_fn,
                                                                         self.config_fn, self.assert_fn,))
             self.test_proc.start()
 
-        # 'socket' is used to proxy commands to blocking object running in a child process (or possibly on a VM)
-        self.ctx = zmq.Context()
-        self.socket = self.ctx.socket(socket_type=zmq.PAIR)
-        self.log.debug("Connecting to url {}".format(self.url))
-        self.socket.connect(self.url)
-
-        # Block this process until we get a ready signal from the subprocess/VM
-        self.wait_for_test_object()
-
     def wait_for_test_object(self):
         self.log.info("Tester waiting for rdy sig from test process...")
-        self.log.critical("Waiting for ready sig from test process")
         msg = self.socket.recv_pyobj()
-        self.log.critical("\n\n\n thank fuck for that \n\n\n")
         assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
         self.log.info("GOT RDY SIG: {}".format(msg))
 
@@ -359,7 +353,15 @@ class MPTesterBase:
         self.log.debug("{} tearing down...".format(self.name))
 
         self.socket.close()
-        self.test_proc.join()
+
+        if self.test_proc:
+            self.log.debug("Joining tester proc {}...".format(self.name))
+            self.test_proc.join()
+            self.log.debug("Tester Proc {} joined".format(self.name))
+
+        if self.container_name:
+            # TODO clean up container???
+            pass
 
         self.log.debug("{} done tearing down.".format(self.name))
 

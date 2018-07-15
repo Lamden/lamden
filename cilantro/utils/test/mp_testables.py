@@ -55,13 +55,18 @@ class MPGod(MPTesterBase):
 @mp_testable(Masternode)
 class MPMasternode(MPTesterBase):
     def __init__(self, *args, **kwargs):
+        self.log = get_logger("MPMasternode")
+        self.log.critical("Calling base class init on MPMasternode's __init__")
         super().__init__(*args, **kwargs)
+        self.log.critical("base class init done on MPMasternode's __init__")
+
+        # self.log.critical("vmnet_test_active: {}".format(MPTestCase.vmnet_test_active))
 
         # Set God's Masternode URL to use this guy updated port if we are running on VM
         if MPTestCase.vmnet_test_active:
-            assert
-            self.log.critical("Setting God's Masternode IP to {}".format(self.ip))  # TODO change to debug
-            God.set_mn_url(port=)
+            node_ports = MPTestCase.ports[self.container_name]
+            assert '8080' in node_ports, "Expected port 8080 to be available in Falcon's docker external port thing"
+            God.set_mn_url(ip='127.0.0.1', port=node_ports['8080'].split(':')[-1])
 
     @classmethod
     def build_obj(cls, sk, name='Masternode') -> tuple:
