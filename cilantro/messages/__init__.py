@@ -19,6 +19,4 @@ from cilantro.messages.transaction.redeem import RedeemTransaction, RedeemTransa
 from cilantro.messages.transaction.stamp import StampTransaction
 from cilantro.messages.transaction.election import ElectionTransaction
 
-from cilantro.messages.smart_contracts import ContractSubmission, ContractContainer
-
 
