@@ -67,9 +67,9 @@ class God:
             return c
 
     @classmethod
-    def set_mn_ip(cls, ip_addr):
-        url = "http://{}:8080".format(ip_addr)
-        cls.log.debug("Setting masternode URL to {}".format(url))
+    def set_mn_url(cls, ip='localhost', port=8080):
+        url = "http://{}:{}".format(ip, port)
+        cls.log.info("Setting masternode URL to {}".format(url))
         cls.mn_url = url
 
     @classmethod
@@ -83,12 +83,12 @@ class God:
     def send_std_tx(cls, sender: tuple, receiver: tuple, amount: int):
         tx = cls.create_std_tx(sender, receiver, amount)
         cls.send_tx(tx)
-
-    @classmethod
-    def send_contract_submission(cls, sender_id, contract_code):
-        contract_submission = ContractSubmission.user_create(user_id=sender_id, contract_code=contract_code)
-        r = requests.post(MN_URL, data=TransactionContainer.create(contract_submission).serialize())
-        cls.log.info("POST contract submission request to MN at url {} got status code {}".format(MN_URL, r.status_code))
+    #
+    # @classmethod
+    # def send_contract_submission(cls, sender_id, contract_code):
+    #     contract_submission = ContractSubmission.user_create(user_id=sender_id, contract_code=contract_code)
+    #     r = requests.post(MN_URL, data=TransactionContainer.create(contract_submission).serialize())
+    #     cls.log.info("POST contract submission request to MN at url {} got status code {}".format(MN_URL, r.status_code))
 
     @classmethod
     def send_tx(cls, tx: TransactionBase):

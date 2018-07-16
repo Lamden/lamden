@@ -1,5 +1,6 @@
 from cilantro import Constants
-from cilantro.utils.test import MPTesterBase, mp_testable, God
+from cilantro.logger import get_logger
+from cilantro.utils.test import MPTesterBase, mp_testable, God, MPTestCase
 from unittest.mock import patch, call, MagicMock
 from cilantro.protocol.transport import Router, Composer
 from cilantro.protocol.reactor import ReactorInterface
@@ -54,11 +55,18 @@ class MPGod(MPTesterBase):
 @mp_testable(Masternode)
 class MPMasternode(MPTesterBase):
     def __init__(self, *args, **kwargs):
+        self.log = get_logger("MPMasternode")
+        self.log.critical("Calling base class init on MPMasternode's __init__")
         super().__init__(*args, **kwargs)
+        self.log.critical("base class init done on MPMasternode's __init__")
 
-        # Set God's Masternode URL to use this guy's IP
-        self.log.debug("Setting God's Masternode IP to {}".format(self.ip))
-        God.set_mn_ip(self.ip)
+        # self.log.critical("vmnet_test_active: {}".format(MPTestCase.vmnet_test_active))
+
+        # Set God's Masternode URL to use this guy updated port if we are running on VM
+        if MPTestCase.vmnet_test_active:
+            node_ports = MPTestCase.ports[self.container_name]
+            assert '8080' in node_ports, "Expected port 8080 to be available in Falcon's docker external port thing"
+            God.set_mn_url(ip='127.0.0.1', port=node_ports['8080'].split(':')[-1])
 
     @classmethod
     def build_obj(cls, sk, name='Masternode') -> tuple:
@@ -66,6 +74,9 @@ class MPMasternode(MPTesterBase):
         asyncio.set_event_loop(loop)
 
         ip = os.getenv('HOST_IP', '127.0.0.1')
+
+        log = get_logger("MPMasternode Builder")
+        log.info("Creating Masternode with IP {}, signing key {}..., and name {}".format(ip, sk[:8], name))
 
         mn = NodeFactory._build_node(loop=loop, signing_key=sk, ip=ip, node_cls=Masternode, name=name)
         mn.start(start_loop=False)

@@ -22,6 +22,7 @@ class MPTestCase(BaseNetworkTestCase):
     local_path = CILANTRO_PATH
     docker_dir = '{}/cilantro/tests/vmnet/docker_dir'.format(CILANTRO_PATH)
     logdir = '{}/cilantro/logs'.format(CILANTRO_PATH)
+    setuptime = 8
 
     testers = []
     curr_tester_index = 1
@@ -31,7 +32,7 @@ class MPTestCase(BaseNetworkTestCase):
         self.log = get_logger("MPTestOrchestrater")
 
     @classmethod
-    def _next_container(cls) -> tuple:
+    def next_container(cls) -> tuple:
         """
         Retreives the next available docker image.
         :return: A 2 tuple containing the ip and name of container in the form: (name: str, ip: str)
@@ -87,7 +88,7 @@ class MPTestCase(BaseNetworkTestCase):
             self.log.debug("\n\n{0}\n\n\t\t\tTESTERS SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
                            .format('$' * 120, timeout))
         else:
-            fail_msg = "\n\n\nfail_msg:\n{0}\nASSERTIONS TIMED OUT FOR TESTERS: \n\n\n".format('-' * 120)
+            fail_msg = "\n\nfail_msg:\n{0}\nASSERTIONS TIMED OUT FOR TESTERS: \n\n".format('-' * 120)
             for t in fails + actives:
                 fail_msg += "{}\n".format(t)
             fail_msg += "{0}\n".format('-' * 120)
