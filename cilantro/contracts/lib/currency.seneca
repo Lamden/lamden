@@ -16,21 +16,22 @@ safe = st.create_table('safe', [
     ('wallet_id', st.str_len(200)),
     ('amount', int),
     ('locked_until', std.datetime),
-    ('contract_id', st.str_len(200)) # Name of contract using this safe
+    ('lock_id', st.str_len(200)) # contract name + name of the lock (if specified)
 ])
 
 allowed = st.create_table('allowed', [
-    ('from_id', st.str_len(200)),
-    ('to_id', st.str_len(200)),
+    ('owner_id', st.str_len(200)),
+    ('spender_id', st.str_len(200)),
     ('amount', int),
 ])
+
+LOCKED_DURATION = std.timedelta(days=2)
 
 @export
 def get_balance(wallet_id=None):
     if not wallet_id:
         wallet_id = rt.global_run_data.author
     return ledger.select('balance').where(ledger.wallet_id == wallet_id).run()[0]['balance']
-
 
 @export
 def wallet_exists(wallet_id):
@@ -63,80 +64,163 @@ def remove_coins(wallet_id, amount_to_remove):
     ledger.update({'balance': old_balance - amount_to_remove}) \
         .where(ledger.wallet_id == wallet_id).run()
 
-
 @export
 def transfer_coins(receiver_id, amount):
     sender_id = rt.global_run_data.author
+    _transfer_coins(sender_id, receiver_id, amount)
+
+def _transfer_coins(sender_id, receiver_id, amount):
+    assert wallet_exists(sender_id), "Wallet id is not present in ledger"
+    assert wallet_exists(receiver_id), "Wallet id is not present in ledger"
     remove_coins(sender_id, amount)
     add_coins(receiver_id, amount)
 
+################################################################################
+#   ERC20 Protocol
+################################################################################
+
 @export
-def get_approved(from_id, to_id):
-    approved = allowed.select().where(allowed.from_id == from_id and allowed.to_id == to_id).run()
+def current_approved_amount(owner_id, spender_id):
+    approved = allowed.select().where(allowed.owner_id == owner_id and allowed.spender_id == spender_id).run()
     if len(approved) == 1:
         return approved[0]['amount']
 
 @export
-def approve(to_id, amount):
+def approve(spender_id, amount):
     assert amount > 0, 'Cannot approve negative amount'
-    from_id = rt.global_run_data.author
-    approved_amount = get_approved(from_id, to_id)
-    if approved_amount != None:
-        approved_amount = approved_amount + amount
-        allowed.update({'amount': approved_amount}) \
-            .where(allowed.from_id == from_id and allowed.to_id == to_id).run()
+    owner_id = rt.global_run_data.author
+    approved_amount = current_approved_amount(owner_id, spender_id)
+    if approved_amount:
+        allowed.update({'amount': amount}).where(
+            allowed.owner_id == owner_id and \
+            allowed.spender_id == spender_id).run()
     else:
+        allowed.insert([
+            {'owner_id': owner_id, 'spender_id': spender_id, 'amount': amount}
+        ]).run()
+
+@export
+def transfer_coins_from(owner_id, amount):
+    spender_id = rt.global_run_data.author
+    approved_amount = current_approved_amount(owner_id, spender_id)
+    assert approved_amount, 'Not approved to transfer'
+    assert amount > 0, 'Cannot transfer negative amont'
+    assert approved_amount >= amount, 'Attempting to transfer more than approved'
+    new_approved_amount = approved_amount - amount
+    allowed.update({'amount': new_approved_amount}) \
+        .where(allowed.owner_id == owner_id and allowed.spender_id == spender_id).run()
+    _transfer_coins(owner_id, spender_id, amount)
+
+@export
+def strict_add_to_approval(spender_id, additional_amount):
+    assert additional_amount > 0, 'Cannot approve negative amount'
+    lock_name = '{}$_approved_'.format(spender_id)
+    owner_id = rt.global_run_data.author
+    approved_amount = current_approved_amount(owner_id, spender_id)
+    if approved_amount != None:
+        new_approved_amount = approved_amount + additional_amount
+        remove_coins(owner_id, additional_amount)
+        _set_lock_amount(owner_id, new_approved_amount, lock_name)
+        allowed.update({'amount': new_approved_amount}) \
+            .where(allowed.owner_id == owner_id and allowed.spender_id == spender_id).run()
+    else:
+        lock_coins(additional_amount, lock_name=lock_name)
         allowed.insert([{
-            'from_id': from_id, 'to_id': to_id, 'amount': amount
+            'owner_id': owner_id, 'spender_id': spender_id, 'amount': additional_amount
         }]).run()
 
 @export
-def transfer_coins_from(from_id, to_id, amount):
-    approved_amount = get_approved(from_id, to_id)
+def strict_transfer_coins_from(owner_id, amount):
+    spender_id = rt.global_run_data.author
+    lock_name = '{}$_approved_'.format(spender_id)
+    approved_amount = current_approved_amount(owner_id, spender_id)
     assert approved_amount, 'Not approved to transfer'
+    assert amount > 0, 'Cannot transfer negative amont'
     assert approved_amount >= amount, 'Attempting to transfer more than approved'
-    approved_amount = approved_amount - amount
-    allowed.update({'amount': approved_amount}) \
-        .where(allowed.from_id == from_id and allowed.to_id == to_id).run()
-    remove_coins(from_id, amount)
-    add_coins(to_id, amount)
+    new_approved_amount = approved_amount - amount
+    _set_lock_amount(owner_id, new_approved_amount, lock_name)
+    allowed.update({'amount': new_approved_amount}) \
+        .where(allowed.owner_id == owner_id and allowed.spender_id == spender_id).run()
+    add_coins(spender_id, amount)
+
+################################################################################
+#   Locks
+################################################################################
 
 @export
-def is_locked(wallet_id):
-    contract_id = rt.caller_contract_id
-    return bool(safe.select().where(
-        safe.wallet_id == wallet_id and \
-        safe.contract_id == contract_id and \
-        safe.locked_until<=std.datetime.now()
-    ).run())
+def is_locked(wallet_id, amount=None, lock_name='default'):
+    if not wallet_id:
+        wallet_id = rt.global_run_data.author
+    lock_id = '$'.join([rt.caller_contract_id, lock_name])
+    if lock_id.endswith('$_shared_'):
+        return safe.select().where(
+            safe.wallet_id != wallet_id and \
+            safe.lock_id == lock_id and \
+            safe.locked_until > std.datetime.now()
+        ).run()
+    elif amount != None:
+        return safe.select().where(
+            safe.wallet_id == wallet_id and \
+            safe.lock_id == lock_id and \
+            safe.locked_until<=std.datetime.now()
+        ).run()
+    else:
+        return safe.select().where(
+            safe.wallet_id == wallet_id and \
+            safe.lock_id == lock_id and \
+            safe.amount == amount and \
+            safe.locked_until<=std.datetime.now()
+        ).run()
 
 @export
-def lock_coins(amount, duration):
+def lock_coins(amount, duration=None, lock_name='default'):
+    if not duration:
+        duration = std.timedelta(seconds=0)
     wallet_id = rt.global_run_data.author
     contract_id = rt.caller_contract_id
+    lock_id = '$'.join([contract_id, lock_name])
     assert amount > 0, 'Cannot lock negative amounts'
-    assert not is_locked(wallet_id), 'Wallet {} already locked for "{}"'.format(wallet_id, contract_id)
+    assert not is_locked(wallet_id, lock_name=lock_name), \
+        'Wallet {} already locked for "{}"'.format(wallet_id, contract_id)
     assert type(duration) == std.timedelta, 'Must use {} for duration'.format(std.timedelta)
     remove_coins(wallet_id, amount)
     safe.insert([{
         'wallet_id': wallet_id,
         'amount': amount,
-        'contract_id': contract_id,
+        'lock_id': lock_id,
         'locked_until': std.datetime.now()+duration
     }]).run()
 
+def _set_lock_amount(wallet_id, new_amount, lock_name='default'):
+    lock_id = '$'.join([rt.caller_contract_id, lock_name])
+    safe.update({
+        'amount': new_amount,
+        'locked_until': std.datetime.now() + LOCKED_DURATION
+    }).where(safe.lock_id == lock_id).run()
+
 @export
-def unlock_coins():
+def unlock_coins(lock_name='default'):
     wallet_id = rt.global_run_data.author
     contract_id = rt.caller_contract_id
-    locked_obj = is_locked(wallet_id)
-    assert len(locked_obj)!=0, 'No coins in the lock "{}"'.format(contract_id)
+    _unlock_coins(wallet_id, lock_name)
+
+def _unlock_coins(wallet_id, lock_name):
+    lock_id = '$'.join([rt.caller_contract_id, lock_name])
+    locked_obj = is_locked(wallet_id, lock_name=lock_name)
+    if lock_name.endswith('$_shared_'):
+        res = safe.delete().where(
+            safe.wallet_id != wallet_id and \
+            safe.lock_id == lock_id).run()
+    else:
+        assert locked_obj, 'No coins in the lock "{}"'.format(lock_id)
+        assert not lock_name.endswith('$_approved_'), \
+            'Approved transfers cannot be unlocked until after expiry'
+        res = safe.delete().where(
+            safe.wallet_id == wallet_id and \
+            safe.lock_id == lock_id and \
+            safe.locked_until<=std.datetime.now()).run()
+    assert res['row_count'] != 0, 'Cannot unlock coin (yet)'
     amount = locked_obj[0]['amount']
-    res = safe.delete().where(
-        safe.wallet_id == wallet_id and \
-        safe.contract_id == contract_id and \
-        safe.locked_until<=std.datetime.now()).run()
-    assert res['row_count'] != 0, 'Cannot unlock coin yet'
     add_coins(wallet_id, amount)
 
 
@@ -173,6 +257,10 @@ if __name__ == '__main__':
         {
             "wallet": "cb9bfd4b57b243248796e9eb90bc4f0053d78f06ce68573e0fdca422f54bb0d2",
             "amount": 3696947
+        },
+        {
+            "wallet": "FALCON",
+            "amount": 0 # :(
         }
     ]
 
