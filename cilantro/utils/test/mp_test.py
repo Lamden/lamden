@@ -275,11 +275,6 @@ class MPTesterBase:
         from .mp_test_case import MPTestCase
         MPTestCase.testers.append(self)
 
-        # TODO DEBUG
-        self.log.critical("always run as subproc: {}".format(always_run_as_subproc))
-        self.log.critical("vm test active: {}".format(MPTestCase.vmnet_test_active))
-        # TODO END DEBUG
-
         # Create Tester object in a VM
         if MPTestCase.vmnet_test_active and not always_run_as_subproc:
             assert hasattr(MPTestCase, 'ports'), "VMNet test is active, but MPTestCase has no attribute ports"

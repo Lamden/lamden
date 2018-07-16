@@ -5,7 +5,6 @@ from cilantro.protocol.transport import Composer
 from unittest.mock import MagicMock
 from cilantro.logger import get_logger
 import os, requests, time, random
-from scipy.stats import poisson, expon
 
 
 if os.getenv('HOST_IP'):
@@ -108,6 +107,7 @@ class God:
             gen_func = cls.random_std_tx
 
         if use_poisson:
+            from scipy.stats import poisson, expon
             rvs_func = lambda: expon.rvs(rate) - rate
         else:
             rvs_func = lambda: 1/rate

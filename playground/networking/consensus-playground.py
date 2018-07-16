@@ -42,11 +42,11 @@ def print_stuff():
 
     print('\n===MERKLE TREE HASHED===')
     h = hashlib.sha3_256()
-    [h.update(mm) for mm in m.nodes]
+    [h.update(mm) for mm in m.merkle_leaves]
     print(h.digest().hex())
 
     print('\n===ENTIRE MERKLE TREE===')
-    [print(mm.hex()) for mm in m.nodes]
+    [print(mm.hex()) for mm in m.merkle_leaves]
 
     print('\n===SIGNATURE OF MERKLE HASH===')
     [print(ED25519Wallet.sign(k[0], h.digest())) for k in delegates]

@@ -32,10 +32,10 @@ connection_list = ['inproc://{}'.format(k[1]) for k in delegates]
 # # c. repeat for X number of times (then trigger timeout?)
 # # d. we should have all the data at this point
 
-broadcasted_merkle_tree = m.nodes
-broadcasted_merkle_leaves = m.nodes[len(m.nodes) // 2:]
+broadcasted_merkle_tree = m.merkle_leaves
+broadcasted_merkle_leaves = m.merkle_leaves[len(m.merkle_leaves) // 2:]
 
-correct_raw_data = [None for _ in range(len(m.nodes) // 2 + 1)]
+correct_raw_data = [None for _ in range(len(m.merkle_leaves) // 2 + 1)]
 
 
 def get_data_from_delegates():

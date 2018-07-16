@@ -1,71 +1,55 @@
 import seneca.storage.tabular as st
 import seneca.storage.kv as kv
+import seneca.crypto as crypto
 import seneca.runtime as rt
 import seneca.stdlib as std
 from seneca.modulelib import export, make_exports
 import num_top_delegates as ntd
+import basic_math
 import election
 
-POLICY = 'top_delegates'
-STATUS = election.enum()
-
-t_top_delegates_election = st.create_table(POLICY, [
-    ('voter_id', st.str_len(30)),
-    ('election_id', st.str_len(30)),
-    ('delegate_id', st.str_len(30))
-])
-kv_policy = kv.create_kv('constants')
-
 @export
-def start_election(policy_maker_id):
-    election_id = election.create_election(policy_maker_id, POLICY)
-    return election_id
+def create_election(duration):
+    return election.create_election(duration, list)
 
-def filter_delegates(voter_id, election_id, top_delegates):
-    num_top_delegates = ntd.get('num_top_delegates')
+def filter_delegates(election_id, top_delegates):
+    voter_id = rt.global_run_data.author
+    num_top_delegates = ntd.get()
     top_delegates = set(top_delegates)
     assert election.get_election(election_id), \
         'election is not found or no longer opened'
-    assert len(top_delegates) <= num_top_delegates, 'You can only election for {} delegates'.format(num_top_delegates)
-    res = t_top_delegates_election.select().where(
-        t_top_delegates_election.election_id == election_id and
-        t_top_delegates_election.voter_id == voter_id
-    ).run()
+    assert len(top_delegates) <= num_top_delegates, \
+        'You can only election for {} delegates'.format(num_top_delegates)
+    res = election.get_voter_votes(election_id, voter_id)
     delegates_already_electiond_for = set([r['delegate_id'] for r in res])
     delegates_list_full = top_delegates.union(delegates_already_electiond_for)
     assert len(delegates_list_full) <= num_top_delegates, \
         'You already electiond for {}(max={}) delegates and tried to election for {} more delegate(s).'.format(
             len(delegates_already_electiond_for), num_top_delegates, len(top_delegates)
         )
-    return top_delegates.difference(delegates_already_electiond_for)
+    return list(top_delegates.difference(delegates_already_electiond_for))
 
 @export
-def cast_vote(voter_id, election_id, top_delegates):
-    delegates = filter_delegates(voter_id, election_id, top_delegates)
-    if len(delegates) == 0: return
-    t_top_delegates_election.insert([
-        {'election_id': election_id,'voter_id': voter_id,'delegate_id': d} for d in delegates
-    ]).run()
+def cast_vote(election_id, top_delegates):
+    delegates = filter_delegates(election_id, top_delegates)
+    return election.cast_vote(election_id, delegates)
 
-@export
-def tally_votes(policy_maker_id, election_id):
-    num_top_delegates = ntd.get('num_top_delegates')
-    res = t_top_delegates_election.select().where(
-        t_top_delegates_election.election_id == election_id
-    ).run()
-    res = [r['delegate_id'] for r in res]
-    elections = list(reversed(sorted(
+def processor(res):
+    num_top_delegates = ntd.get()
+    res = [y for x in [r.split(',') for r in res] for y in x]
+    elections = [r[0] for r in reversed(sorted(
         [(r, res.count(r)) for r in set(res)],
         key=lambda x:x[1]
-    )))
-    top_delegates = elections[:num_top_delegates]
-    kv_policy.set([(POLICY, ','.join([d[0] for d in top_delegates]))]).run()
-    election.close_election(policy_maker_id, POLICY, STATUS.PASSED)
-    return top_delegates
+    ))]
+    return elections[:num_top_delegates]
 
 @export
-def get(attr):
-    return kv_policy.get(attr).run()
+def tally_votes(election_id):
+    return election.tally_votes(election_id, processor)
+
+@export
+def get(*args, **kwargs):
+    return election.get(*args, **kwargs)
 
 exports = make_exports()
 

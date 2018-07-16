@@ -75,11 +75,11 @@ class DelegateConsensusState(DelegateBaseState):
             return False
 
         # Below is just for debugging, so we can see if a signature cannot be verified
-        if not sig.verify(self.merkle_hash, sig.sender):
+        if not sig.verify(self.merkle_hash):
             self.log.warning("Delegate could not verify signature")
             self.log.debug("Signature: {}".format(sig))
 
-        return sig.verify(self.merkle_hash, sig.sender)
+        return sig.verify(self.merkle_hash)
 
     def check_majority(self):
         self.log.debug("delegate has {} signatures out of {} total delegates"
@@ -90,7 +90,7 @@ class DelegateConsensusState(DelegateBaseState):
             self.in_consensus = True
 
             # Create BlockContender and send it to all Masternode(s)
-            bc = BlockContender.create(signatures=self.signatures, nodes=self.merkle.nodes)
+            bc = BlockContender.create(signatures=self.signatures, merkle_leaves=self.merkle.nodes)
             for mn_vk in VKBook.get_masternodes():
                 self.parent.composer.send_request_msg(message=bc, vk=mn_vk)
 
