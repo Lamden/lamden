@@ -46,13 +46,13 @@ class ED25519Wallet(Wallet):
         return cls.keys_to_format(s, v)
 
     @classmethod
-    def sign(cls, s, msg: bytes):
+    def sign(cls, s: str, msg: bytes):
         assert type(msg).__name__ == 'bytes', 'Message argument must be a byte string.'
         (s, v) = cls.format_to_keys(s)
         return s.sign(msg).signature.hex()
 
     @classmethod
-    def verify(cls, v, msg, sig):
+    def verify(cls, v: str, msg, sig):
         v = bytes.fromhex(v)
         sig = bytes.fromhex(sig)
         v = nacl.signing.VerifyKey(v)

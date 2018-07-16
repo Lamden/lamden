@@ -35,6 +35,10 @@ CONSTANTS_TESTS = [
     'tests.constants'
 ]
 
+UTIL_TESTS = [
+    'tests.utils'
+]
+
 OVERLAY_TESTS = [
     'tests.overlay'
 ]
@@ -48,8 +52,8 @@ SMART_CONTRACT_TESTS = [
 ]
 
 """
-I think OVERLAY_TESTS arent working on CI b/c dat boi falcon is trying to open up ports and stuff on a CI container... 
-so I think we need to run those tests as integration tests in a docker container
+I think OVERLAY_TESTS arent working on CI b/c dat boi falcon is trying to open up ports and stuff on a CI container 
+... so I think we need to run those tests as integration tests inside a docker container
 """
 UNIT_TESTS = [
     DB_TESTS,
@@ -58,6 +62,7 @@ UNIT_TESTS = [
     PROTOCOL_TESTS,
     MESSAGE_TESTS,
     CONSTANTS_TESTS,
+    UTIL_TESTS,
 ]
 # All unit tests
 
@@ -84,5 +89,7 @@ INTEGRATION_TESTS = [
 """
 
 # Tests to skip on the CI.
-# CI_DISABLED_TESTS = OVERLAY_TESTS + INTEGRATION_TESTS + DB_TESTS + SMART_CONTRACT_TESTS
+CI_DISABLED_TESTS = OVERLAY_TESTS #+ DB_TESTS + SMART_CONTRACT_TESTS
 
+# Tests that are skipped if the environment variable $CILANTRO_DEBUG is set
+DEBUG_DISABLED_TESTS = [] # SMART_CONTRACT_TESTS

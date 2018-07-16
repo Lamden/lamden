@@ -1,6 +1,7 @@
 from unittest import TestCase
 from cilantro.messages import MerkleSignature
 from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.messages.consensus.merkle_signature import build_test_merkle_sig
 import json
 
 
@@ -184,16 +185,11 @@ class TestMerkleSignature(TestCase):
         signature = ED25519Wallet.sign(sk, msg)
         ms = MerkleSignature.create(sig_hex=signature, timestamp=timestamp, sender=vk)
 
-        self.assertTrue(ms.verify(msg, vk))
+        self.assertTrue(ms.verify(msg))
 
-    def test_verify_wrong_ms(self):
-        # Test merkle tree validation returns false for incorrect verifying (public) key
-        msg = b'this is a pretend merkle tree hash'
-        timestamp = 'now'
-        sk, vk = ED25519Wallet.new()
-        signature = ED25519Wallet.sign(sk, msg)
-        ms = MerkleSignature.create(sig_hex=signature, timestamp=timestamp, sender=vk)
-
-        sk1, vk1 = ED25519Wallet.new()
-
-        self.assertFalse(ms.verify(msg, vk1))
+    def test_build_test_merkle_sig(self):
+        """
+        Tests build_test_contender. This is used exclusively unit tests, so we basically just want to make sure it
+        doesn't blow up here first.
+        """
+        sig = build_test_merkle_sig()

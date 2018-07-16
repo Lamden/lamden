@@ -55,16 +55,19 @@ def _apply_skips(test_case: unittest.TestCase, test_names: list):
 
 def _should_skip_module(module_name: str, modules_to_skip: list) -> bool:
     for mod in modules_to_skip:
-        if mod == module_name or mod.startswith(module_name):
+        if type(mod) is list:
+            if _should_skip_module(module_name, mod):
+                return True
+        elif mod == module_name or mod.startswith(module_name):
             return True
     return False
 
 
 def main(args):
-    log.debug("\nRunning test suites with \n\trun unit tests={}\n\trun integration tests={}\n\tverbosity={}\n\t"
-              "skip modules={}\n\tskip tests={}\n"
-              .format(args.unit, args.integration, args.verbosity, args.skip_modules, args.skip_tests))
-
+    log.debug("\nRunning test suites with args\n\nrun unit tests={}\nrun integration tests={}\nverbosity={}\n"
+              "skip modules={}\nskip tests={}\n[env var] CILANTRO_DEBUG={}\n[env var] CI={}\n"
+              .format(args.unit, args.integration, args.verbosity, args.skip_modules, args.skip_tests,
+                      os.getenv('CILANTRO_DEBUG'), os.getenv('CI')))
 
     all_tests = []
     if args.unit:
@@ -73,7 +76,12 @@ def main(args):
         all_tests += INTEGRATION_TESTS
 
     skip_test_names = args.skip_tests
+
     skip_module_names = args.skip_modules or []
+    if os.getenv('CILANTRO_DEBUG'):
+        skip_module_names += DEBUG_DISABLED_TESTS
+    if os.getenv('CI'):
+        skip_module_names += CI_DISABLED_TESTS
 
     TEST_FLAG = 'S'  # test flag represents failure (F) or success (S) of testing
     loader = unittest.TestLoader()
@@ -110,29 +118,30 @@ def main(args):
 
             run_time = round(time.time() - start, 3)
             tests_total = suite.countTestCases()
-            test_failures = max(len(test_result.errors), len(test_result.failures))
+            # test_failures = max(len(test_result.errors), len(test_result.failures))
+            test_failures = len(test_result.errors) + len(test_result.failures)
             tests_passed = tests_total - test_failures
 
             _l = log.critical
             if test_result.errors:
                 for i in range(len(test_result.errors)):
-                    all_errors.append(test_result.errors[i])
+                    all_errors.append(test_result.errors[i][0])
                     log.error("Error in {}".format(test))
                     log.error('Number of errors: {}'.format(len(test_result.errors)))
-                    log.error('Error #{}: {}'.format(i+1, test_result.errors[i][0]))
+                    log.error('Error #{}: {}'.format(i+1, test_result.errors[i][0]))  # test_result.errors[i][0] = test_retrieve_block_invalid_args (tests.db.test_blockchain_storage.TestBlockStorageDriver)
                     log.error('Error traceback: {}'.format(test_result.errors[i][1]))
                     TEST_FLAG = 'F'
 
-            elif test_result.failures:
+            if test_result.failures:
                 for i in range(len(test_result.failures)):
-                    all_errors.append(test_result.failures[i])
+                    all_errors.append(test_result.failures[i][0])
                     log.error("failure in {} - exiting test framework".format(test))
                     log.error('\nNumber of failures: {}'.format(len(test_result.failures)))
                     log.error(test_result.failures[i][0])
                     log.error(test_result.failures[i][1])
                     TEST_FLAG = 'F'
 
-            else:
+            if not test_result.errors and not test_result.failures:
                 _l = log.info
                 log.info("No errors in {}".format(test))
                 num_success += 1
@@ -142,8 +151,12 @@ def main(args):
 
     total_time = round(time.time() - abs_start, 3)
 
-    for err in all_errors:
-        log.error("failure: " + str(err))
+    if all_errors:
+        fails_str = '\n\n' + delim + '\nTEST FAILURES:\n\n'
+        for err in all_errors:
+            fails_str += str(err) + '\n'
+        fails_str += '\n' + delim
+        log.error(fails_str)
 
     result_msg = '\n\n' + delim + "\n\n{}/{} tests passed.".format(num_tests - len(all_errors), num_tests)
     result_msg += "\n{}/{} test suites passed.".format(num_success, num_suites)

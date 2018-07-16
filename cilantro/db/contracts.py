@@ -102,8 +102,10 @@ def _ex_contract(executor, contract_table, contract_id: str='', user_id=GENESIS_
 
         return result
 
+
 def get_contract_exports(*args, **kwargs):
     return _ex_contract(*args, **kwargs, get_contract=True)
+
 
 def run_contract(*args, **kwargs):
     return _ex_contract(*args, **kwargs, get_contract=False)

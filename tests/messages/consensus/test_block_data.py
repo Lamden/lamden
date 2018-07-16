@@ -9,7 +9,7 @@ class TestBlockDataRequest(TestCase):
         """
         Tests that a created block data request has the expected properties
         """
-        tx_hash = b'DEADBEEF1337'
+        tx_hash = 'A' * 64
         bdr = BlockDataRequest.create(tx_hash)
 
         self.assertEqual(bdr.tx_hash, tx_hash)
@@ -19,7 +19,7 @@ class TestBlockDataRequest(TestCase):
         Tests that a message successfully serializes and deserializes. The deserialized object should have the same
         properties as the original one before it was serialized.
         """
-        tx_hash = b'DEADBEEF1337'
+        tx_hash = 'A' * 64
         original = BlockDataRequest.create(tx_hash)
         original_binary = original.serialize()
         clone = BlockDataRequest.from_bytes(original_binary)  # deserialize byte object
