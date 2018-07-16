@@ -59,26 +59,68 @@ class TestCurrency(SmartContractTestCase):
     @contract(('DAVIS', 'currency'))
     def test_approve(self, davis):
         davis.approve('FALCON', 123)
-        self.assertEqual(davis.get_approved('DAVIS', 'FALCON'), 123)
+        self.assertEqual(davis.current_approved_amount('DAVIS', 'FALCON'), 123)
 
-    @contract(('DAVIS', 'currency'))
-    def test_approve_transfer(self, davis):
+    @contract(('DAVIS', 'currency'),('FALCON', 'currency'))
+    def test_approve_transfer(self, davis, falcon):
         davis.approve('FALCON', 123)
-        davis.transfer_coins_from('DAVIS', 'FALCON', 100)
-        self.assertEqual(davis.get_approved('DAVIS', 'FALCON'), 23)
+        falcon.transfer_coins_from('DAVIS', 100)
+        self.assertEqual(davis.current_approved_amount('DAVIS', 'FALCON'), 23)
         self.assertEqual(davis.get_balance('DAVIS'), 3696847)
         self.assertEqual(davis.get_balance('FALCON'), 100)
 
-    @contract(('DAVIS', 'currency'))
-    def test_approve_transfer_not_approved(self, davis):
+    @contract(('DAVIS', 'currency'),('FALCON', 'currency'))
+    def test_update_approve_transfer(self, davis, falcon):
+        davis.approve('FALCON', 123)
+        falcon.transfer_coins_from('DAVIS', 23)
+        self.assertEqual(davis.current_approved_amount('DAVIS', 'FALCON'), 100)
+        davis.approve('FALCON', 166)
+        self.assertEqual(davis.current_approved_amount('DAVIS', 'FALCON'), 166)
+
+    @contract(('DAVIS', 'currency'),('FALCON', 'currency'))
+    def test_strict_approve_transfer(self, davis, falcon):
+        davis.strict_add_to_approval('FALCON', 123)
+        falcon.strict_transfer_coins_from('DAVIS', 100)
+        self.assertEqual(davis.current_approved_amount('DAVIS', 'FALCON'), 23)
+        self.assertEqual(davis.get_balance('DAVIS'), 3696824)
+        self.assertEqual(davis.get_balance('FALCON'), 100)
+
+    @contract(('DAVIS','currency'))
+    def test_not_enough_coins_to_approve(self, davis):
+        davis.strict_add_to_approval('FALCON', 3696947)
         with self.assertRaises(Exception) as context:
-            davis.transfer_coins_from('DAVIS', 'FALCON', 1)
+            davis.strict_add_to_approval('JOHN', 1)
+
+    @contract(('DAVIS', 'currency'),('FALCON', 'currency'))
+    def test_approve_transfer_not_approved(self, davis, falcon):
+        with self.assertRaises(Exception) as context:
+            falcon.transfer_coins_from('DAVIS', 1)
 
     @contract(('DAVIS', 'currency'))
     def test_approve_transfer_not_enough_approval(self, davis):
         davis.approve('FALCON', 123)
         with self.assertRaises(Exception) as context:
-            davis.transfer_coins_from('DAVIS', 'FALCON', 10000)
+            falcon.transfer_coins_from('DAVIS', 10000)
+
+    @contract(('DAVIS','currency'), ('FALCON','currency'))
+    def test_hack_to_rescind_approval(self, davis, falcon):
+        davis.approve('FALCON', 3696947)
+        falcon.transfer_coins_from('DAVIS', 30)
+        with self.assertRaises(Exception) as context:
+            davis.unlock_coins('FALCON$_approved_')
+
+    @contract(('DAVIS','currency'), ('FALCON','currency'))
+    def test_hack_to_give_approver_money(self, davis, falcon):
+        davis.approve('FALCON', 3696947)
+        with self.assertRaises(Exception) as context:
+            falcon.transfer_coins_from('DAVIS', -30)
+        self.assertEqual(davis.current_approved_amount('DAVIS','FALCON'), 3696947)
+
+    @contract(('DAVIS','currency'), ('FALCON','currency'))
+    def test_hack_to_give_approver_money(self, davis, falcon):
+        davis.approve('FALCON', 30)
+        falcon.transfer_coins_from('DAVIS', 30)
+        self.assertEqual(davis.current_approved_amount('DAVIS','FALCON'), 0)
 
     @contract(('DAVIS','currency'))
     def test_lock_coins(self, davis):
@@ -118,6 +160,8 @@ class TestCurrency(SmartContractTestCase):
     def test_lock_coins_negative(self, davis):
         with self.assertRaises(Exception) as context:
             davis.lock_coins(-123, std.timedelta(seconds=1))
+
+
 
 if __name__ == '__main__':
     unittest.main()
