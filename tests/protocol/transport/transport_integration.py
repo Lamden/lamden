@@ -49,7 +49,7 @@ class TransportIntegrationTest(MPTestCase):
             return composer
 
         def assert_sub(composer: Composer):
-            from cilantro.messages import ReactorCommand
+            from cilantro.messages import ReactorCommand, Envelope
             from cilantro.protocol.statemachine.decorators import StateInput
 
             # DEBUG
@@ -60,9 +60,11 @@ class TransportIntegrationTest(MPTestCase):
             log.critical("Env_bin: {}".format(env_bin))
             # END DEBUG
 
-            cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
+            env_clone = Envelope.from_bytes(env_bin)
+
+            cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env_clone)
             composer.interface.router.route_callback.assert_called_once_with(cb)
-            raise Exception("dill is an inexcusably pathetic ill conceived piece of shit library")
+            # raise Exception("dill is an inexcusably pathetic ill conceived piece of shit library")
 
         env = random_envelope()
         env_bin = env.serialize()
