@@ -60,11 +60,6 @@ class TransportIntegrationTest(MPTestCase):
             log.critical("Env_bin: {}".format(env_bin))
             # END DEBUG
 
-            # We do this b/c dill is a piece of shit library and for some obscure reason this seems to fix errors
-            # ... for some moronic reason resetting the vars seems to work somewhat consistently
-            cb_str = StateInput.INPUT
-            env = Envelope.from_bytes(env_bin)
-
             cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
             composer.interface.router.route_callback.assert_called_once_with(cb)
             raise Exception("dill is an inexcusably pathetic ill conceived piece of shit library")
