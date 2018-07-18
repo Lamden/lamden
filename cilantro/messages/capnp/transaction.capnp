@@ -11,6 +11,16 @@ struct MetaData {
     timestamp @2 :Float32;
 }
 
+struct ContractTransaction {
+    metadata @0: MetaData;
+    payload @1: Payload;
+
+    struct Payload {
+        sender @0 :Data;
+        code @1 :Text;
+    }
+}
+
 struct StandardTransaction {
     metadata @0 :MetaData;
     payload @1 :Payload;

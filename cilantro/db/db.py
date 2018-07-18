@@ -260,8 +260,7 @@ class ScratchCloningVisitor(CloningVisitor):
 
 def reset_db():
     with DB(should_reset=True) as db:
-        log.info("Resetting database")
-        pass
+        log.info("Database reset")
 
     for instance in DBSingletonMeta._instances.values():
         instance.ex.cur.close()
@@ -298,7 +297,6 @@ class DB(metaclass=DBSingletonMeta):
 
         self.lock = Lock()
 
-        # self.ex = Executer.init_local_noauth_dev()
         self.ex = Executer('root', '', '', '127.0.0.1')
         self.tables = build_tables(self.ex, should_drop=should_reset)
 
@@ -324,7 +322,6 @@ class VKBook:
       "0e669c219a29f54c8ba4293a5a3df4371f5694b761a0a50a26bf5b50d5a76974",
       "50869c7ee2536d65c0e4ef058b50682cac4ba8a5aff36718beac517805e9c2c0"
     ]
-
 
     @staticmethod
     def _destu_ify(data: str):

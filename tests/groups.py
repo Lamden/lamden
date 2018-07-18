@@ -12,13 +12,13 @@ TODO -- better documentation on whats going on here
 """
 
 PROTOCOL_TESTS = [
+    'tests.protocol.interpreters',
     'tests.protocol.structures',
     'tests.protocol.statemachine',
     'tests.protocol.wallets',
     'tests.nodes.masternode',
 
     # TODO -- write tests/ensure existing tests pass for modules below
-    # 'tests.protocol.interpreter',
     # 'tests.protocol.proofs',
     # 'tests.protocol.reactor',
     # 'tests.protocol.transport',  # this should break ... so TODO: fix
@@ -56,13 +56,13 @@ I think OVERLAY_TESTS arent working on CI b/c dat boi falcon is trying to open u
 ... so I think we need to run those tests as integration tests inside a docker container
 """
 UNIT_TESTS = [
-    DB_TESTS,
-    SMART_CONTRACT_TESTS,
     # OVERLAY_TESTS,  # TODO see note above
     PROTOCOL_TESTS,
     MESSAGE_TESTS,
     CONSTANTS_TESTS,
     UTIL_TESTS,
+    DB_TESTS,
+    SMART_CONTRACT_TESTS,
 ]
 # All unit tests
 

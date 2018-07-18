@@ -15,22 +15,27 @@ def build_tables(ex, should_drop=True):
     from cilantro.db.blocks import build_blocks_table, seed_blocks
     from cilantro.db.transactions import build_transactions_table, seed_transactions
 
+    log.debug("Building tables with should_drop={}".format(should_drop))
+
     if should_drop:
         _reset_db(ex)
     else:
+        log.debug("Creating database {} if it doesnt already exist".format(DB_NAME))
         ex.raw('CREATE DATABASE IF NOT EXISTS {};'.format(DB_NAME))
         ex.raw('USE {};'.format(DB_NAME))
 
-    # Create tables
+    log.debug("Creating DB tables")
     contracts = build_contracts_table(ex, should_drop)
     blocks = build_blocks_table(ex, should_drop)
     transactions = build_transactions_table(ex, should_drop)
 
     # Only seed database if we just dropped it, or if db is empty
     if should_drop or not blocks.select().run(ex):
+        log.info("Seeding database...")
         seed_contracts(ex, contracts)
         seed_blocks(ex, blocks)
         seed_transactions(ex, blocks)
+        log.info("Done seeding database.")
 
     tables = type('Tables', (object,), {'contracts': contracts, 'blocks': blocks, 'transactions': transactions})
 

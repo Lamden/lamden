@@ -60,10 +60,11 @@ class MNBaseState(State):
         self.log.warning("Current state not configured to handle block data reply")
         self.log.debug('Reply: {}'.format(reply))
 
-    @input(ContractContainer)
-    def handle_contract(self, contract: ContractContainer):
-        self.log.debug("Masternode got contract: {}\nPublishing that to witnesses".format(contract))
-        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=contract)
+    # TODO replace with new SmartContract object type? Or nah, cause we good /w tx base...
+    # @input(ContractContainer)
+    # def handle_contract(self, contract: ContractContainer):
+    #     self.log.debug("Masternode got contract: {}\nPublishing that to witnesses".format(contract))
+    #     self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=contract)
 
 
 @Masternode.register_init_state
