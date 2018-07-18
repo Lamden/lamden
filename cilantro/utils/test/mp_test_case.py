@@ -104,6 +104,7 @@ class MPTestCase(BaseNetworkTestCase):
                 fail_msg += "{}\n".format(t)
             fail_msg += "{0}\n".format('-' * 120)
             self.log.error(fail_msg)
+            time.sleep(0.2)  # block while this message has time to log correctly
             raise Exception()
 
     def _poll_testers(self, timeout) -> tuple:
