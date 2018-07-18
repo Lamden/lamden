@@ -58,6 +58,22 @@ class TestSenecaInterpreter(TestCase):
         # NOTE this will require some engineering in the SenecaInterpreter class as well
         pass
 
+    def test_run_goods_then_bads(self):
+        """
+        Tests running a bunch of good/passing contracts, and then a single bad one. The bad one should be reverted,
+        and the 'state' should be rolled back to before the failing contract was executed.
+
+        For example, say we run a chain of successful contract S_n, ie
+        S_1, S_2, S_3
+        ...And then we run a failing contract B_1, so the chain of execution looks like:
+        S_1, S_2, S_3, B_1
+        ...Upon realizing B_1 fails, the state should be rollbacked to look like:
+        S_1, S_2, S_3
+        """
+        # TODO implement
+        # NOTE this will require some engineering in the SenecaInterpreter class as well
+        pass
+
     def test_interpret_invalid_type(self):
         interpreter = SenecaInterpreter()
         not_a_contract = 'sup bro im a string'
