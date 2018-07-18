@@ -1,4 +1,5 @@
 from cilantro.protocol.interpreters import SenecaInterpreter
+from cilantro.db import reset_db, DB
 from cilantro.messages import *
 import unittest
 from unittest import TestCase
@@ -6,20 +7,23 @@ from unittest import TestCase
 
 class TestSenecaInterpreter(TestCase):
 
-    def test_interpret_submission(self):
-        interpreter = SenecaInterpreter()
+    @classmethod
+    def setUpClass(cls):
+        reset_db()
 
-        submission = ContractSubmission.node_create(user_id='its me', contract_code='while True: pass', block_hash='00')
+    def test_init(self):
+        interpreter = SenecaInterpreter()  # this should not blow up
+        self.assertTrue(interpreter.ex is not None)
+        self.assertTrue(interpreter.contracts_table is not None)
 
-        interpreter.interpret(submission)
+    def test_interpret_currency(self):
+        pass
 
-        # q = interpreter.contract_table.select().run(interpreter.ex)
+    def test_interpet_not_contract(self):
+        interpreter = SenecaInterpreter()  # this should not blow up
+        not_a_contract = 'sup bro im a string'
 
-        lookup = interpreter.get_contract_code(submission.contract_id)
-        # q.keys is an array of keys (the columns)
-        # q.rows is a list of tuples, where each tuple is a row
-        # print("got query: \n"
-        #       "{}".format(q))
+        self.assertRaises(AssertionError, interpreter.interpret, not_a_contract)
 
 if __name__ == '__main__':
     unittest.main()
