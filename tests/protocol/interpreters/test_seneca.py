@@ -21,6 +21,12 @@ class TestSenecaInterpreter(TestCase):
         self.assertTrue(interpreter.ex is not None)
         self.assertTrue(interpreter.contracts_table is not None)
 
+    def test_interpret_invalid_type(self):
+        interpreter = SenecaInterpreter()
+        not_a_contract = 'sup bro im a string'
+
+        self.assertRaises(AssertionError, interpreter.interpret, not_a_contract)
+
     def test_interpret_currency(self):
         amount = 1260
         receiver = BOB_VK
@@ -73,12 +79,6 @@ class TestSenecaInterpreter(TestCase):
         # TODO implement
         # NOTE this will require some engineering in the SenecaInterpreter class as well
         pass
-
-    def test_interpret_invalid_type(self):
-        interpreter = SenecaInterpreter()
-        not_a_contract = 'sup bro im a string'
-
-        self.assertRaises(AssertionError, interpreter.interpret, not_a_contract)
 
     def test_flushes_with_update(self):
         """
