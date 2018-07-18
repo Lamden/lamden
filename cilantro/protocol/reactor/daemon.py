@@ -87,7 +87,7 @@ class ReactorDaemon:
                 self._execute_cmd(cmd)
 
         except asyncio.CancelledError:
-            self.log.warning("some ish got cacnelerd")
+            self.log.warning("Daemon _recv_messages task canceled externally")
 
     def _signal_teardown(self, signal, frame):
         self.log.debug("Daemon process got kill signal!")

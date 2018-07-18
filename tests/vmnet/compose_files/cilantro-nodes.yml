@@ -23,6 +23,9 @@ services:
     tty: true
     expose:
       - '10000-20000'
+    ports:
+      - "10200"
+      - "8080"
     range:
       - 1
       - 6
