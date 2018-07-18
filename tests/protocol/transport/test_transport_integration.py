@@ -37,7 +37,7 @@ def random_envelope(sk=None, tx=None):
     return Envelope.create_from_message(message=tx, signing_key=sk)
 
 
-class TransportIntegrationTest(MPTestCase):
+class TestTransportIntegration(MPTestCase):
 
     @vmnet_test
     def test_pubsub_1_1_1(self):
@@ -53,18 +53,8 @@ class TransportIntegrationTest(MPTestCase):
         def assert_sub(composer: Composer):
             from cilantro.messages import ReactorCommand, Envelope
             from cilantro.protocol.statemachine.decorators import StateInput
-
-            # DEBUG
-            # from cilantro.logger import get_logger
-            # log = get_logger("AssertSub")
-            # log.critical("assert sub running")
-            # log.critical("state input: {}".format(StateInput.INPUT))
-            # log.critical("Env_bin: {}".format(env_bin))
-            # END DEBUG
-
             cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
             composer.interface.router.route_callback.assert_called_once_with(cb)
-            # raise Exception("get rekt son")
 
         env = random_envelope()
 
@@ -80,6 +70,56 @@ class TransportIntegrationTest(MPTestCase):
         pub.send_pub_env(filter=FILTER, envelope=env)
 
         self.start()
+
+    @vmnet_test
+    def test_pubsub_n_1_n(self):
+        """
+        Tests pub/sub with 2 pubs, 1 pub, and multiple messages and the same filter
+        """
+        def config_sub(composer: Composer):
+            from unittest.mock import MagicMock
+            composer.interface.router = MagicMock()
+            return composer
+
+        def assert_sub(composer: Composer):
+            from cilantro.messages import ReactorCommand, Envelope
+            from cilantro.protocol.statemachine.decorators import StateInput
+            from unittest.mock import call
+
+            expected_calls = []
+            for env in envs:
+                callback = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
+                expected_calls.append(call(callback))
+
+            call_args = composer.interface.router.route_callback.call_args_list
+
+            assert len(call_args) == len(expected_calls), "route_callback should be called exactly {} times, not {} " \
+                                                          "times with {}".format(len(expected_calls), len(call_args), call_args)
+            composer.interface.router.route_callback.assert_has_calls(expected_calls, any_order=True)
+
+        envs = [random_envelope() for _ in range(4)]
+
+        sub = MPComposer(config_fn=config_sub, assert_fn=assert_sub, name='** [MN1] SUB', sk=sk1)
+        pub1 = MPComposer(name='++ [Delegate1] PUB1', sk=sk2)
+        pub2 = MPComposer(name='++ [Delegate2] PUB2', sk=sk3)
+
+        sub.add_sub(vk=vk2, filter=FILTER)
+        sub.add_sub(vk=vk3, filter=FILTER)
+
+        pub1.add_pub(ip=pub1.ip)
+        pub2.add_pub(ip=pub2.ip)
+
+        time.sleep(1.0)
+
+        pub1.send_pub_env(filter=FILTER, envelope=envs[0])
+        pub1.send_pub_env(filter=FILTER, envelope=envs[1])
+
+        pub2.send_pub_env(filter=FILTER, envelope=envs[2])
+        pub2.send_pub_env(filter=FILTER, envelope=envs[3])
+
+        self.start()
+
+    # TODO same test as above, but with multiple filters
 
     @vmnet_test
     def test_pubsub_n_1_n_removesub(self):
@@ -99,8 +139,6 @@ class TransportIntegrationTest(MPTestCase):
             callback1 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env1)
             callback2 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env2)
             calls = [call(callback1), call(callback2)]
-
-            # i = 10 / 0
 
             call_args = composer.interface.router.route_callback.call_args_list
 

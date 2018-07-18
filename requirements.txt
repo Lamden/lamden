@@ -23,4 +23,5 @@ urllib3==1.22
 uvloop==0.9.1
 yarl==1.1.0
 wheel
-vmnet
+
+-e git://github.com/Lamden/vmnet.git#egg=vmnet

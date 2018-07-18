@@ -285,8 +285,7 @@ class MPTesterBase:
             assert MPTEST_PORT in MPTestCase.ports[name], "MPTEST_PORT {} not found in docker node {}'s ports {}"\
                                                           .format(MPTEST_PORT, name, MPTestCase.ports[name])
 
-           # TODO -- make this just a warning instead
-            self.log.critical("Executing tester on container {} with ip {}".format(name, ip))
+            self.log.warning("Executing tester on container {} with ip {}".format(name, ip))
 
             url = MPTestCase.ports[name][MPTEST_PORT]  # URL the orchestration node should connect to
             url = url.replace('localhost', '127.0.0.1') # Adjust localhost to 127.0.0.1
