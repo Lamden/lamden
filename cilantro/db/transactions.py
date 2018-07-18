@@ -19,7 +19,7 @@ def build_transactions_table(ex, should_drop=True):
 
 
 def seed_transactions(ex, transactions_table):
-    # Currently we are not seeding any transactions, but I provide this API for uniformity
+    # Currently we are not seeding any transactions, but I provide this API for uniformity --davis
     pass
 
 

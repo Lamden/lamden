@@ -2,9 +2,9 @@ from cilantro.protocol.interpreters.base import BaseInterpreter
 from cilantro.db.contracts import run_contract
 from cilantro.messages import ContractTransaction
 from seneca.seneca_internal.storage.mysql_spits_executer import Executer
-from cilantro.db.tables import build_tables, DB_NAME
-from cilantro.db.contracts import build_contracts_table
+from cilantro.db.tables import DB_NAME
 from cilantro.db import DB
+from typing import List
 
 
 class SenecaInterpreter(BaseInterpreter):
@@ -39,7 +39,7 @@ class SenecaInterpreter(BaseInterpreter):
         assert isinstance(contract, ContractTransaction), "Seneca Interpreter can only interpret use_contracts transactions"
 
         self.log.debug("Executing use_contracts from user {}".format(contract.sender))
-        res = run_contract(contract_id=None, user_id=contract.sender, code_str=contract.code)
+        res = run_contract(self.ex, self.contracts_table, contract_id=None, user_id=contract.sender, code_str=contract.code)
 
         if not res:
             self.log.error("Error executing use_contracts from user {} with code:\n{}".format(contract.sender, contract.code))
@@ -50,5 +50,5 @@ class SenecaInterpreter(BaseInterpreter):
             self.queue.append(contract)
 
     @property
-    def queue_binary(self):
-        raise NotImplementedError
+    def queue_binary(self) -> List[bytes]:
+        return [contract.serialize() for contract in self.queue]
