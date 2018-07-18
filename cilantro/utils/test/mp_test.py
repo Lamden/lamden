@@ -214,7 +214,7 @@ class MPTesterProcess:
         Stop all tasks and close this processes event self.loop. Invoked after we successfully pass all assertions, or
         timeout.
         """
-        self.log.info("Tearing down")
+        self.log.info("Tearing down TesterProcess bound to URL {}".format(self.url))
 
         self.log.debug("Closing pair socket")
         self.socket.close()
@@ -285,14 +285,16 @@ class MPTesterBase:
             assert MPTEST_PORT in MPTestCase.ports[name], "MPTEST_PORT {} not found in docker node {}'s ports {}"\
                                                           .format(MPTEST_PORT, name, MPTestCase.ports[name])
 
+            self.log.warning("Executing tester on container {} with ip {}".format(name, ip))
+
             url = MPTestCase.ports[name][MPTEST_PORT]  # URL the orchestration node should connect to
             url = url.replace('localhost', '127.0.0.1') # Adjust localhost to 127.0.0.1
             url = "tcp://{}".format(url)
 
             remote_url = "tcp://{}:{}".format(ip, MPTEST_PORT)  # URL the remote node should bind to
-            # self.log.critical("ports: {}".format(MPTestCase.ports))
             self.container_name = name
             self.url = url
+            self.ip = ip
 
             runner_func = wrap_func(self._run_test_proc, self.name, remote_url, build_fn, self.config_fn, self.assert_fn)
 
@@ -301,7 +303,7 @@ class MPTesterBase:
 
         # Create Tester object in a Subprocess
         else:
-            self.log.info("Creating Tester object in a subprocess")
+            self.log.warning("Creating Tester object in a subprocess")
             self.url = _gen_url(self.name)
 
             self.test_proc = LProcess(target=self._run_test_proc, args=(self.name, self.url, build_fn,

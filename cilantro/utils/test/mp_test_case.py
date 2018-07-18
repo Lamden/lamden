@@ -16,6 +16,17 @@ TESTER_POLL_FREQ = 0.1
 CILANTRO_PATH = dirname(dirname(cilantro.__path__[0]))
 
 
+import signal
+import sys
+import os
+def signal_handler(sig, frame):
+    print("Killing docker containers...")
+    os.system("docker kill $(docker ps -q)")
+    print("Docker containers be ded")
+    sys.exit(0)
+signal.signal(signal.SIGINT, signal_handler)
+
+
 class MPTestCase(BaseNetworkTestCase):
     compose_file = '{}/cilantro/tests/vmnet/compose_files/cilantro-nodes.yml'.format(CILANTRO_PATH)
 
@@ -86,13 +97,14 @@ class MPTestCase(BaseNetworkTestCase):
         # If there are no active testers left and none of them failed, we win
         if len(actives) + len(fails) == 0:
             self.log.debug("\n\n{0}\n\n\t\t\tTESTERS SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
-                           .format('$' * 120, timeout))
+                           .format('$' * 120, round(timeout, 2)))
         else:
             fail_msg = "\n\nfail_msg:\n{0}\nASSERTIONS TIMED OUT FOR TESTERS: \n\n".format('-' * 120)
             for t in fails + actives:
                 fail_msg += "{}\n".format(t)
             fail_msg += "{0}\n".format('-' * 120)
             self.log.error(fail_msg)
+            time.sleep(0.2)  # block while this message has time to log correctly
             raise Exception()
 
     def _poll_testers(self, timeout) -> tuple:

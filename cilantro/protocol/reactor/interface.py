@@ -66,17 +66,18 @@ class ReactorInterface:
         """
         Close sockets. Close Event Loop. Teardown. Bless up.
         """
-        self.log.info("[MAIN PROC] Tearing down ReactorInferace process (the main process)")
+        self.log.info("[MAIN PROC] Tearing down Reactor Interface process (the main process)")
 
-        self.log.debug("Canceling recv_messages future")
-        self.recv_fut.cancel()
-        self.loop.call_soon_threadsafe(self.recv_fut.cancel)
+        # TODO -- why is this complaining of no attribute 'recv_fut' ???
+        # self.log.debug("Canceling recv_messages future")
+        # self.recv_fut.cancel()
+        # self.loop.call_soon_threadsafe(self.recv_fut.cancel)
 
         self.log.debug("Closing pair socket")
         self.socket.close()
 
-        self.log.debug("Closing event loop")
-        self.loop.call_soon_threadsafe(self.loop.stop)
+        # self.log.debug("Closing event loop")
+        # self.loop.call_soon_threadsafe(self.loop.stop)
 
     def _start_daemon(self, url, sk, name):
         """
