@@ -56,59 +56,112 @@ class TestSenecaInterpreter(TestCase):
         # TODO implement
         pass
 
-    def test_run_bad_contract_reverts_partial_changes(self):
+        def test_run_bad_contract_reverts_to_last_successful_contract(self):
+            """
+            Tests that running a failing contract reverts any database changes it made before the point of failure
+            """
+            receiver = BOB_VK
+            sender = ALICE_VK
+
+            interpreter = SenecaInterpreter()
+            currency_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='currency')
+
+            sender_initial_balance = currency_contract.get_balance(sender)
+            contract_tx = ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=1000)
+            interpreter.interpret(contract_tx)
+            self.assertEquals(currency_contract.get_balance(sender), sender_initial_balance - 1000)
+            contract_tx = ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=200)
+            interpreter.interpret(contract_tx)
+            self.assertEquals(currency_contract.get_balance(sender), sender_initial_balance - 1200)
+            contract_tx = ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=60)
+            interpreter.interpret(contract_tx)
+            self.assertEquals(currency_contract.get_balance(sender), sender_initial_balance - 1260)
+
+            contract_tx = ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=3696947)
+            interpreter.interpret(contract_tx)
+            self.assertEquals(currency_contract.get_balance(sender), sender_initial_balance - 1260)
+
+    def test_run_bad_contract_reverts_to_last_successful_contract_remove_partial(self):
         """
         Tests that running a failing contract reverts any database changes it made before the point of failure
         """
-        # TODO implement
-        # NOTE this will require some engineering in the SenecaInterpreter class as well
-        pass
+        sender = ALICE_VK
+        receiver = BOB_VK
 
-    def test_run_goods_then_bads(self):
-        """
-        Tests running a bunch of good/passing contracts, and then a single bad one. The bad one should be reverted,
-        and the 'state' should be rolled back to before the failing contract was executed.
+        interpreter = SenecaInterpreter()
+        dummy_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='dummy')
 
-        For example, say we run a chain of successful contract S_n, ie
-        S_1, S_2, S_3
-        ...And then we run a failing contract B_1, so the chain of execution looks like:
-        S_1, S_2, S_3, B_1
-        ...Upon realizing B_1 fails, the state should be rollbacked to look like:
-        S_1, S_2, S_3
-        """
-        # TODO implement
-        # NOTE this will require some engineering in the SenecaInterpreter class as well
-        pass
+        self.assertEquals(dummy_contract.get_balance(sender), 0)
+        contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
+        interpreter.interpret(contract_tx)
+        self.assertEquals(dummy_contract.get_balance(sender), 500)
+        # NOTE it attempts to update the balance to 123 and add the same user again
+        #   Updating should work and adding already added user
+        contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=True)
+        interpreter.interpret(contract_tx)
+        self.assertEquals(dummy_contract.get_balance(sender), 500)
 
     def test_flushes_with_update(self):
         """
         Tests that calling .flush on an interpreter with update_state=True after interpreting several transactions
         successfully commits the changes to the database
         """
-        # TODO implement
-        pass
+        sender = ALICE_VK
+        receiver = BOB_VK
+
+        interpreter = SenecaInterpreter()
+        dummy_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='dummy')
+
+        contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
+        interpreter.interpret(contract_tx)
+        self.assertEquals(dummy_contract.get_balance(sender), 500)
+        contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
+        interpreter.interpret(contract_tx)
+        interpreter.flush(update_state=True)
+        self.assertEquals(dummy_contract.get_balance(sender), 1000)
 
     def test_flushes_without_update(self):
         """
         Tests that calling .flush on an interpreter with update_state=False after interpreting several transactions
         successfully rolls back
         """
-        # TODO implement
-        pass
-    
+        sender = ALICE_VK
+        receiver = BOB_VK
+
+        interpreter = SenecaInterpreter()
+        dummy_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='dummy')
+
+        contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
+        interpreter.interpret(contract_tx)
+        contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
+        interpreter.interpret(contract_tx)
+        interpreter.flush(update_state=True)
+        self.assertEquals(dummy_contract.get_balance(sender), 1000)
+
+        contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
+        interpreter.interpret(contract_tx)
+
+        interpreter.flush(update_state=False)
+        self.assertEquals(dummy_contract.get_balance(sender), 1000)
+
     def test_queue_binary(self):
         """
         Tests that queue_binary returns a list of serialized ContractTransactions
         """
-        # TODO implement
-        pass
+        sender = ALICE_VK
+        receiver = BOB_VK
 
-    def test_queue_binary_with_bad_contracts(self):
-        """
-        Same test as above (test_queue_binary), except with interpreting some contracts that fail
-        """
-        # TODO implement
-        pass
+        interpreter = SenecaInterpreter()
+        dummy_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='dummy')
+
+        contracts = []
+        for i in range(5):
+            contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
+            interpreter.interpret(contract_tx)
+            contracts.append(contract_tx)
+
+        for actual, expected in zip([c.serialize() for c in contracts], interpreter.queue_binary):
+            self.assertEqual(actual, expected)
 
 
 if __name__ == '__main__':
