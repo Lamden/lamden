@@ -12,8 +12,12 @@ CARLOS_SK, CARLOS_VK = "8ddaf072b9108444e189773e2ddcb4cbd2a76bbf3db448e55d0bfc13
 
 class TestSenecaInterpreter(TestCase):
 
-    @classmethod
-    def setUpClass(cls):
+    # @classmethod
+    # def setUpClass(cls):
+    #     reset_db()
+
+    def setUp(self):
+        super().setUp()
         reset_db()
 
     def test_init(self):
@@ -49,37 +53,30 @@ class TestSenecaInterpreter(TestCase):
         self.assertEquals(interpreter.queue_size, 1)
         self.assertEquals(interpreter.queue[0], contract_tx)
 
-    def test_run_bad_contract_not_in_queue(self):
+    def test_run_bad_contract_reverts_to_last_successful_contract(self):
         """
-        Tests that interpretting a bad contract does not get added to the queue
+        Tests that running a failing contract reverts any database changes it made before the point of failure
         """
-        # TODO implement
-        pass
+        receiver = BOB_VK
+        sender = ALICE_VK
 
-        def test_run_bad_contract_reverts_to_last_successful_contract(self):
-            """
-            Tests that running a failing contract reverts any database changes it made before the point of failure
-            """
-            receiver = BOB_VK
-            sender = ALICE_VK
+        interpreter = SenecaInterpreter()
+        currency_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='currency')
 
-            interpreter = SenecaInterpreter()
-            currency_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='currency')
+        sender_initial_balance = currency_contract.get_balance(sender)
+        contract_tx = ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=1000)
+        interpreter.interpret(contract_tx)
+        self.assertEquals(currency_contract.get_balance(sender), sender_initial_balance - 1000)
+        contract_tx = ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=200)
+        interpreter.interpret(contract_tx)
+        self.assertEquals(currency_contract.get_balance(sender), sender_initial_balance - 1200)
+        contract_tx = ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=60)
+        interpreter.interpret(contract_tx)
+        self.assertEquals(currency_contract.get_balance(sender), sender_initial_balance - 1260)
 
-            sender_initial_balance = currency_contract.get_balance(sender)
-            contract_tx = ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=1000)
-            interpreter.interpret(contract_tx)
-            self.assertEquals(currency_contract.get_balance(sender), sender_initial_balance - 1000)
-            contract_tx = ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=200)
-            interpreter.interpret(contract_tx)
-            self.assertEquals(currency_contract.get_balance(sender), sender_initial_balance - 1200)
-            contract_tx = ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=60)
-            interpreter.interpret(contract_tx)
-            self.assertEquals(currency_contract.get_balance(sender), sender_initial_balance - 1260)
-
-            contract_tx = ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=3696947)
-            interpreter.interpret(contract_tx)
-            self.assertEquals(currency_contract.get_balance(sender), sender_initial_balance - 1260)
+        contract_tx = ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=3696947)
+        interpreter.interpret(contract_tx)
+        self.assertEquals(currency_contract.get_balance(sender), sender_initial_balance - 1260)
 
     def test_run_bad_contract_reverts_to_last_successful_contract_remove_partial(self):
         """
