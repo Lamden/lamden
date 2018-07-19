@@ -11,9 +11,8 @@ BOB_SK, BOB_VK = "5664ec7306cc22e56820ae988b983bdc8ebec8246cdd771cfee9671299e98e
 CARLOS_SK, CARLOS_VK = "8ddaf072b9108444e189773e2ddcb4cbd2a76bbf3db448e55d0bfc131409a197", "3dd5291906dca320ab4032683d97f5aa285b6491e59bba25c958fc4b0de2efc8"
 
 class TestSenecaInterpreter(TestCase):
-
-    @classmethod
-    def setUpClass(cls):
+    
+    def setUp(self):
         reset_db()
 
     def test_init(self):
