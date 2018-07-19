@@ -195,7 +195,7 @@ class MNFetchNewBlockState(MNNewBlockState):
 
         self.log.debug("Requesting tx hash {} from VK {}".format(tx_hash, delegate_vk))
 
-        req = BlockDataRequest.create(tx_hash)
+        req = TransactionRequest.create(tx_hash)
         self.parent.composer.send_request_msg(message=req, timeout=1, vk=delegate_vk)
 
         self.node_states[delegate_vk] = self.NODE_AWAITING
@@ -222,8 +222,8 @@ class MNFetchNewBlockState(MNNewBlockState):
 
         return awaiting_node  # this will intentionally be None if no NODE_AWAITING nodes are found
 
-    @input(BlockDataReply)
-    def recv_blockdata_reply(self, reply: BlockDataReply):
+    @input(TransactionReply)
+    def recv_blockdata_reply(self, reply: TransactionReply):
         self.log.debug("Masternode got block data reply: {}".format(reply))
 
         if reply.tx_hash in self.tx_hashes:
@@ -240,9 +240,9 @@ class MNFetchNewBlockState(MNNewBlockState):
             self.log.debug("Still {} transactions yet to request until we can build the block"
                            .format(len(self.tx_hashes) - len(self.retrieved_txs)))
 
-    @input_timeout(BlockDataRequest)
-    def timeout_block_req(self, request: BlockDataRequest, envelope: Envelope):
-        self.log.warning("BlockDataRequest timed out for envelope with request data")
+    @input_timeout(TransactionRequest)
+    def timeout_block_req(self, request: TransactionRequest, envelope: Envelope):
+        self.log.warning("TransactionRequest timed out for envelope with request data")
         self.log.debug("Envelope Data: {}".format(envelope))
 
         # TODO -- implement a way to get the VK of the dude we originally requested from

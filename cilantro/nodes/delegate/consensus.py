@@ -101,15 +101,15 @@ class DelegateConsensusState(DelegateBaseState):
             self.signatures.append(sig)
             self.check_majority()
 
-    @input_request(BlockDataRequest)
-    def handle_blockdata_req(self, block_data: BlockDataRequest):
+    @input_request(TransactionRequest)
+    def handle_blockdata_req(self, block_data: TransactionRequest):
         # Development check -- should be removed in production
         assert block_data.tx_hash in self.merkle.leaves, "Block hash {} not found in leaves {}"\
             .format(block_data.tx_hash, self.merkle.leaves)
 
         tx_binary = self.merkle.data_for_hash(block_data.tx_hash)
         self.log.info("Replying to tx hash request {} with tx binary: {}".format(block_data.tx_hash, tx_binary))
-        reply = BlockDataReply.create(tx_binary)
+        reply = TransactionReply.create(tx_binary)
         return reply
 
     @input(NewBlockNotification)

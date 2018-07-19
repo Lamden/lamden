@@ -4,14 +4,14 @@ from cilantro.protocol.structures import MerkleTree
 
 
 
-class BlockDataRequest(MessageBase):
+class TransactionRequest(MessageBase):
     """
     BlockData requests/replies are used to transfer transactions from a block between masternode/delegate.
 
-    When Masternode is attempting to publish a new block, it creates a BlockDataRequest to request a single transaction from
+    When Masternode is attempting to publish a new block, it creates a TransactionRequest to request a single transaction from
     a delegate by specifying the transaction's hash.
 
-    A delegate receives a BlockDataRequest, and creates a BlockDataReply including the binary for the specified transaction.
+    A delegate receives a TransactionRequest, and creates a TransactionReply including the binary for the specified transaction.
 
     TODO -- switch this class to use capnp
     """
@@ -39,9 +39,9 @@ class BlockDataRequest(MessageBase):
         return self._data
 
 
-class BlockDataReply(MessageBase):
+class TransactionReply(MessageBase):
     """
-    BlockDataReply acts as a holder for an individual transaction. They are requested from delegates by Masternodes when
+    TransactionReply acts as a holder for an individual transaction. They are requested from delegates by Masternodes when
     a Masternode needs to retrieve the block data associated with a BlockContender
     """
 
