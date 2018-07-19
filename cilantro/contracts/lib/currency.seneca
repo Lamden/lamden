@@ -43,7 +43,6 @@ def create_wallet(wallet_id):
     assert not wallet_exists(wallet_id), "Wallet already exists"
     ledger.insert([{'wallet_id': wallet_id, 'balance': 0}]).run()
 
-
 def add_coins(wallet_id, amount_to_add):
     assert amount_to_add >= 0, "It's not possible to 'add' a negative balance"
 
