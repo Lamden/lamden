@@ -12,12 +12,8 @@ CARLOS_SK, CARLOS_VK = "8ddaf072b9108444e189773e2ddcb4cbd2a76bbf3db448e55d0bfc13
 
 class TestSenecaInterpreter(TestCase):
 
-    # @classmethod
-    # def setUpClass(cls):
-    #     reset_db()
-
-    def setUp(self):
-        super().setUp()
+    @classmethod
+    def setUpClass(cls):
         reset_db()
 
     def test_init(self):
@@ -88,15 +84,16 @@ class TestSenecaInterpreter(TestCase):
         interpreter = SenecaInterpreter()
         dummy_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='dummy')
 
-        self.assertEquals(dummy_contract.get_balance(sender), 0)
+        sender_initial_balance = dummy_contract.get_balance(sender)
+        self.assertEquals(dummy_contract.get_balance(sender), sender_initial_balance)
         contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
         interpreter.interpret(contract_tx)
-        self.assertEquals(dummy_contract.get_balance(sender), 500)
+        self.assertEquals(dummy_contract.get_balance(sender), sender_initial_balance + 500)
         # NOTE it attempts to update the balance to 123 and add the same user again
         #   Updating should work and adding already added user
         contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=True)
         interpreter.interpret(contract_tx)
-        self.assertEquals(dummy_contract.get_balance(sender), 500)
+        self.assertEquals(dummy_contract.get_balance(sender), sender_initial_balance + 500)
 
     def test_flushes_with_update(self):
         """
@@ -109,13 +106,14 @@ class TestSenecaInterpreter(TestCase):
         interpreter = SenecaInterpreter()
         dummy_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='dummy')
 
+        sender_initial_balance = dummy_contract.get_balance(sender)
         contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
         interpreter.interpret(contract_tx)
-        self.assertEquals(dummy_contract.get_balance(sender), 500)
+        self.assertEquals(dummy_contract.get_balance(sender), sender_initial_balance + 500)
         contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
         interpreter.interpret(contract_tx)
         interpreter.flush(update_state=True)
-        self.assertEquals(dummy_contract.get_balance(sender), 1000)
+        self.assertEquals(dummy_contract.get_balance(sender), sender_initial_balance + 1000)
 
     def test_flushes_without_update(self):
         """
@@ -128,18 +126,19 @@ class TestSenecaInterpreter(TestCase):
         interpreter = SenecaInterpreter()
         dummy_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='dummy')
 
+        sender_initial_balance = dummy_contract.get_balance(sender)
         contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
         interpreter.interpret(contract_tx)
         contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
         interpreter.interpret(contract_tx)
         interpreter.flush(update_state=True)
-        self.assertEquals(dummy_contract.get_balance(sender), 1000)
+        self.assertEquals(dummy_contract.get_balance(sender), sender_initial_balance + 1000)
 
         contract_tx = ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)
         interpreter.interpret(contract_tx)
 
         interpreter.flush(update_state=False)
-        self.assertEquals(dummy_contract.get_balance(sender), 1000)
+        self.assertEquals(dummy_contract.get_balance(sender), sender_initial_balance + 1000)
 
     def test_queue_binary(self):
         """
