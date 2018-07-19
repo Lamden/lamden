@@ -3,8 +3,8 @@ from cilantro.messages import TransactionReply, TransactionRequest
 from cilantro.protocol.structures import MerkleTree
 
 
-class TestBlockDataRequest(TestCase):
-
+class TestTransactionRequest(TestCase):
+# TODO conform to new API and implement
     def test_creation(self):
         """
         Tests that a created block data request has the expected properties
@@ -27,8 +27,8 @@ class TestBlockDataRequest(TestCase):
         self.assertEqual(original.tx_hash, clone.tx_hash)
 
 
-class TestBlockDataReply(TestCase):
-
+class TestTransactionReply(TestCase):
+# TODO conform to new API and implement
     def test_creation(self):
         """
         Tests that a created block data reply has the expected properties

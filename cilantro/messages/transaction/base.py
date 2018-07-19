@@ -3,7 +3,6 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
 from cilantro.db import contract
 from cilantro.utils import lazy_property
-import capnp
 
 
 class TransactionBase(MessageBase):
@@ -21,6 +20,7 @@ class TransactionBase(MessageBase):
         Interprets the transaction and returns the SQLAlchemy queries associated with the transaction's changes
         :return: SQLAlchemy query objects
         """
+        # TODO deprecate and remove this
         assert hasattr(type(self), 'contract'), "Transaction type {} has no contract defined".format(type(self))
         return contract(type(self))(type(self).contract)(self, *args, **kwargs)
 

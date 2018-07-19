@@ -1,9 +1,9 @@
-from cilantro.messages import MessageBase
-from cilantro.protocol.structures import MerkleTree
+from cilantro.messages import MessageBase, ContractTransaction
+from cilantro.utils import lazy_property, Hasher
+from typing import List
 
 
-
-
+# TODO switch this class to use capnp, and also
 class TransactionRequest(MessageBase):
     """
     BlockData requests/replies are used to transfer transactions from a block between masternode/delegate.
@@ -13,10 +13,10 @@ class TransactionRequest(MessageBase):
 
     A delegate receives a TransactionRequest, and creates a TransactionReply including the binary for the specified transaction.
 
-    TODO -- switch this class to use capnp
     """
 
     def validate(self):
+        # TODO validate all elemetns of tx_hash are valid 64 char hex
         pass
 
     @classmethod
@@ -27,16 +27,14 @@ class TransactionRequest(MessageBase):
         return self._data
 
     @classmethod
-    def create(cls, tx_hash: str):
-        # TODO -- validate tx_hash is valid 64 char hex
-        return cls.from_data(tx_hash)
+    def create(cls, transaction_hashes: List[str]):
+        # TODO implement
+        pass
 
     @property
-    def tx_hash(self) -> str:
-        """
-        The hash of the transaction to request (64 characters, valid hex)
-        """
-        return self._data
+    def tx_hashes(self) -> List[str]:
+        # TODO implement
+        pass
 
 
 class TransactionReply(MessageBase):
@@ -46,6 +44,7 @@ class TransactionReply(MessageBase):
     """
 
     def validate(self):
+        self.transactions  # will raise exception if a ContractTransaction cannot be deserialized
         pass
 
     @classmethod
@@ -56,19 +55,28 @@ class TransactionReply(MessageBase):
         return self._data
 
     @classmethod
-    def create(cls, tx_binary: bytes):
-        return cls.from_data(tx_binary)
+    def create(cls, raw_transactions: List[bytes]):
+        """
+        Creates a TransactionReply object from a list of ContractTransaction binaries.
+        :param raw_transactions: A list of ContractTransaction binaries
+        :return: A TransactionReply object
+        """
+        # TODO implement
+        pass
 
-    @property
-    def raw_tx(self) -> bytes:
+    def validate_matches_request(self, request: TransactionRequest) -> bool:
         """
-        The raw data for the requested transaction, as bytes
+        Validates that this TransactionReply contains transactions, whose hashes match the hashes in TransactionRequest.
+        Returns True if this class contains every transaction for each transaction hash in the TransactionRequest
+        (none missing, and no extras). Otherwise, returns false
+        :param request:
+        :return: True if this object has a transaction for every hash in TransactionRequest. False otherwise.
         """
-        return self._data
+        # TODO implement
+        pass
 
-    @property
-    def tx_hash(self) -> str:
-        """
-        The hash of the requested transaction (64 characters, valid hex)
-        """
-        return MerkleTree.hash(self._data)
+    @lazy_property
+    def transactions(self) -> List[ContractTransaction]:
+        # TODO implement ... loop over raw transactions and deserialize using ContractTransaction.from_bytes(...)
+        pass
+
