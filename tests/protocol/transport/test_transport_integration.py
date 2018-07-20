@@ -65,7 +65,7 @@ class TestTransportIntegration(MPTestCase):
         sub.add_sub(vk=vk2, filter=FILTER)
         pub.add_pub(ip=pub_ip)
 
-        time.sleep(0.2)
+        time.sleep(3.0)
 
         pub.send_pub_env(filter=FILTER, envelope=env)
 
@@ -74,7 +74,7 @@ class TestTransportIntegration(MPTestCase):
     @vmnet_test
     def test_pubsub_n_1_n(self):
         """
-        Tests pub/sub with 2 pubs, 1 pub, and multiple messages and the same filter
+        Tests pub/sub with 2 pubs, 1 sub, and multiple messages and the same filter
         """
         def config_sub(composer: Composer):
             from unittest.mock import MagicMock
@@ -109,7 +109,7 @@ class TestTransportIntegration(MPTestCase):
         pub1.add_pub(ip=pub1.ip)
         pub2.add_pub(ip=pub2.ip)
 
-        time.sleep(1.0)
+        time.sleep(3.0)
 
         pub1.send_pub_env(filter=FILTER, envelope=envs[0])
         pub1.send_pub_env(filter=FILTER, envelope=envs[1])
@@ -160,13 +160,13 @@ class TestTransportIntegration(MPTestCase):
         pub1.add_pub(ip=pub1.ip)  # Pub on its own URL
         pub2.add_pub(ip=pub2.ip)  # Pub on its own URL
 
-        time.sleep(0.2)
+        time.sleep(3.0)
 
         pub1.send_pub_env(filter=FILTER, envelope=env1)
         pub2.send_pub_env(filter=FILTER, envelope=env2)
 
         time.sleep(1.0)  # allow messages to go through
-        sub.remove_sub_url(vk=vk3)  # unsub to pub2
+        sub.remove_sub(vk=vk3)  # unsub to pub2
         time.sleep(1.0)  # allow remove_sub_url command to go through
 
         pub2.send_pub_env(filter=FILTER, envelope=env3)  # this should not be recv by sub, as he removed this guy's url
@@ -265,7 +265,7 @@ class TestTransportIntegration(MPTestCase):
         dealer.add_dealer(vk=router_vk)
         router.add_router(vk=router_vk)
 
-        time.sleep(1.0)
+        time.sleep(3.0)
 
         dealer.send_request_env(vk=router_vk, envelope=request_env)
 
