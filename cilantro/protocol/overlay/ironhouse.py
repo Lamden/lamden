@@ -45,9 +45,18 @@ class Ironhouse:
     def vk2pk(self, vk):
         return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
 
-    def generate_certificates(self, sk):
-        sk = SigningKey(seed=bytes.fromhex(sk))
+    def generate_certificates(self, sk_hex):
+        sk = SigningKey(seed=bytes.fromhex(sk_hex))
         self.vk = sk.verify_key.encode().hex()
+        """
+            # DEBUG TEST CODE
+            if os.getenv('HOST_IP').endswith('3'):
+                from cilantro import Constants
+                fake_vk = Constants.Testnet.Delegates[2]['vk']
+                log.critical("Overriding original vk {} to fake vk {}".format(self.vk, fake_vk))
+                self.vk = fake_vk
+            # DEBUG END TEST CODE
+        """
         self.public_key = self.vk2pk(self.vk)
         private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key).hex()
 

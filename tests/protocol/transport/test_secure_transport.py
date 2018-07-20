@@ -27,7 +27,6 @@ FILTER = 'TEST_FILTER'
 FILTERS = ['FILTER_' + str(i) for i in range(100)]
 URLS = ['tcp://127.0.0.1:' + str(i) for i in range(9000, 9999, 10)]
 
-
 def random_msg():
     return StandardTransactionBuilder.random_tx()
 
@@ -121,7 +120,6 @@ class TestSecureTransport(MPTestCase):
         time.sleep(3.0)  # allow PUB envelopes to go through
 
         self.start()
-
 
 
 if __name__ == '__main__':
