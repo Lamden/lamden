@@ -12,10 +12,6 @@ import time
 
 
 W = Constants.Protocol.Wallets
-# sk1, vk1 = W.new()
-# sk2, vk2 = W.new()
-# sk3, vk3 = W.new()
-# sk4, vk4 = W.new()
 sk1, vk1 = Constants.Testnet.Masternodes[0]['sk'], Constants.Testnet.Masternodes[0]['vk']
 sk2, vk2 = Constants.Testnet.Delegates[0]['sk'], Constants.Testnet.Delegates[0]['vk']
 sk3, vk3 = Constants.Testnet.Delegates[1]['sk'], Constants.Testnet.Delegates[1]['vk']

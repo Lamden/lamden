@@ -135,7 +135,7 @@ class Ironhouse:
         sock.curve_secretkey = self.secret
         sock.curve_publickey = self.public_key
         if curve_serverkey:
-            self.create_from_public_key(curve_serverkey)
+            # self.create_from_public_key(curve_serverkey) #NOTE Do not automatically trust
             sock.curve_serverkey = curve_serverkey
         else: sock.curve_server = True
         return sock
@@ -201,6 +201,7 @@ class Ironhouse:
                     self.create_from_public_key(public_key)
                     log.debug('sending secure reply: {}'.format(self.vk))
                     self.sec_sock.send(self.vk.encode())
+
         finally:
             self.cleanup()
 
