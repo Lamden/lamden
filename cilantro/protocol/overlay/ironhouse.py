@@ -49,6 +49,7 @@ class Ironhouse:
         sk = SigningKey(seed=bytes.fromhex(sk_hex))
         self.vk = sk.verify_key.encode().hex()
         """
+            #this debug line
             # DEBUG TEST CODE
             if os.getenv('HOST_IP').endswith('3'):
                 from cilantro import Constants
