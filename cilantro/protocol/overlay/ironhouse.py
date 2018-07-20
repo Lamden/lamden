@@ -45,9 +45,19 @@ class Ironhouse:
     def vk2pk(self, vk):
         return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
 
-    def generate_certificates(self, sk):
-        sk = SigningKey(seed=bytes.fromhex(sk))
+    def generate_certificates(self, sk_hex):
+        sk = SigningKey(seed=bytes.fromhex(sk_hex))
         self.vk = sk.verify_key.encode().hex()
+        """
+            #this debug line
+            # DEBUG TEST CODE
+            if os.getenv('HOST_IP').endswith('3'):
+                from cilantro import Constants
+                fake_vk = Constants.Testnet.Delegates[2]['vk']
+                log.critical("Overriding original vk {} to fake vk {}".format(self.vk, fake_vk))
+                self.vk = fake_vk
+            # DEBUG END TEST CODE
+        """
         self.public_key = self.vk2pk(self.vk)
         private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key).hex()
 
@@ -135,7 +145,7 @@ class Ironhouse:
         sock.curve_secretkey = self.secret
         sock.curve_publickey = self.public_key
         if curve_serverkey:
-            self.create_from_public_key(curve_serverkey)
+            # self.create_from_public_key(curve_serverkey) #NOTE Do not automatically trust
             sock.curve_serverkey = curve_serverkey
         else: sock.curve_server = True
         return sock
@@ -201,6 +211,7 @@ class Ironhouse:
                     self.create_from_public_key(public_key)
                     log.debug('sending secure reply: {}'.format(self.vk))
                     self.sec_sock.send(self.vk.encode())
+
         finally:
             self.cleanup()
 

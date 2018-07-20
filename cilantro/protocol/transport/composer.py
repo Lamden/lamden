@@ -65,7 +65,7 @@ class Composer:
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, filter=filter, url=url, vk=vk)
         self.interface.send_cmd(cmd)
 
-    def remove_sub(self, filter: str, ip: str='', vk: str=''):
+    def remove_sub(self, ip: str='', vk: str=''):
         """
         Stop subscribing to a URL and filter. Note that all other subscriber connections will drop this filter as well
         (so if there is another URL you are subscribing to with the same filter, that sub will no longer work). The
@@ -81,28 +81,17 @@ class Composer:
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
         url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, filter=filter, url=url, vk=vk)
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, url=url)
         self.interface.send_cmd(cmd)
 
-    def remove_sub_url(self, ip: str='', vk: str=''):
-        """
-        Disconnects the sub URL from url. Unlike the remove_sub API, this does not remove a filter from the
-        socket. It only disconnects from the url.
-        received
-        :param url: The URL of the router that the created dealer socket should CONNECT to.
-        :param vk: The Node's VK to connect to. This will be looked up in the overlay network
-        """
-        url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub_url.__name__, url=url)
-        self.interface.send_cmd(cmd)
-
-    def remove_sub_filter(self, filter: str):
+    def remove_sub_filter(self, filter: str, ip: str='', vk: str=''):
         """
         Removes a filters from the sub socket. Unlike the remove_sub API, this does not disconnect a URL. It only
         unsubscribes to 'filter
         :param filter: A string to use as the filter frame. This filter will be unsubscribed.
         """
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub_filter.__name__, filter=filter)
+        url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
+        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub_filter.__name__, url=url, filter=filter)
         self.interface.send_cmd(cmd)
 
     def send_pub_msg(self, filter: str, message: MessageBase):
