@@ -176,7 +176,6 @@ class ReactorDaemon:
     async def _lookup_ip(self, cmd, url, vk, *args, **kwargs):
         ip, node = None, None
         try:
-            assert vk in VKBook.get_all(), 'VK {} not found'.format(vk)
             node = await self.dht.network.lookup_ip(vk)
         except Exception as e:
             delim_line = '!' * 64
