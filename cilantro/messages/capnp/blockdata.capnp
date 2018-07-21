@@ -19,8 +19,7 @@ struct BlockMetaData {
 struct BlockMetaDataReply {
     blocks :union {
         unset @0 :Void;
-#        data @1 :List(BlockMetaData);
-        data @1 :List(Data);
+        data @1 :List(BlockMetaData);
     }
 }
 
@@ -38,5 +37,3 @@ struct TransactionRequest {
 struct TransactionReply {
     transactions @0: List(Data);  # List of transaction binaries
 }
-
-

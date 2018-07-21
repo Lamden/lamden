@@ -1,7 +1,14 @@
-from cilantro.messages import MessageBase, ContractTransaction
+from cilantro.messages import MessageBase
+from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.utils import lazy_property, Hasher
+from cilantro.messages.utils import validate_hex
 from typing import List
+from cilantro.logger import get_logger
 
+import capnp
+import blockdata_capnp
+
+log = get_logger(__name__)
 
 # TODO switch this class to use capnp, and also
 class TransactionRequest(MessageBase):
@@ -16,25 +23,24 @@ class TransactionRequest(MessageBase):
     """
 
     def validate(self):
-        # TODO validate all elemetns of tx_hash are valid 64 char hex
-        pass
+        for hash in self._data.transactions:
+            validate_hex(hash, 64)
+        return True
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return data
-
-    def serialize(self):
-        return self._data
+        return blockdata_capnp.TransactionRequest.from_bytes_packed(data)
 
     @classmethod
     def create(cls, transaction_hashes: List[str]):
-        # TODO implement
-        pass
+        struct = blockdata_capnp.TransactionRequest.new_message()
+        struct.init('transactions', len(transaction_hashes))
+        struct.transactions = transaction_hashes
+        return cls.from_data(struct)
 
     @property
     def tx_hashes(self) -> List[str]:
-        # TODO implement
-        pass
+        return [hash.decode() for hash in self._data.transactions]
 
 
 class TransactionReply(MessageBase):
@@ -45,14 +51,10 @@ class TransactionReply(MessageBase):
 
     def validate(self):
         self.transactions  # will raise exception if a ContractTransaction cannot be deserialized
-        pass
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return data
-
-    def serialize(self):
-        return self._data
+        return blockdata_capnp.TransactionReply.from_bytes_packed(data)
 
     @classmethod
     def create(cls, raw_transactions: List[bytes]):
@@ -61,8 +63,10 @@ class TransactionReply(MessageBase):
         :param raw_transactions: A list of ContractTransaction binaries
         :return: A TransactionReply object
         """
-        # TODO implement
-        pass
+        struct = blockdata_capnp.TransactionReply.new_message()
+        struct.init('transactions', len(raw_transactions))
+        struct.transactions = raw_transactions
+        return cls.from_data(struct)
 
     def validate_matches_request(self, request: TransactionRequest) -> bool:
         """
@@ -72,11 +76,15 @@ class TransactionReply(MessageBase):
         :param request:
         :return: True if this object has a transaction for every hash in TransactionRequest. False otherwise.
         """
-        # TODO implement
-        pass
+        if len(self._data.transactions) != len(request._data.transactions):
+            return False
+        req_hashes = request.tx_hashes
+        for i, self_t in enumerate(self._data.transactions):
+            request_t = req_hashes[i]
+            if Hasher.hash(self_t) != request_t:
+                return False
+        return True
 
     @lazy_property
     def transactions(self) -> List[ContractTransaction]:
-        # TODO implement ... loop over raw transactions and deserialize using ContractTransaction.from_bytes(...)
-        pass
-
+        return [ContractTransaction.from_bytes(t) for t in self._data.transactions]
