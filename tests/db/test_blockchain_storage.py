@@ -414,11 +414,11 @@ class TestBlockStorageDriver(TestCase):
 
         # Ensure all these transactions are retrievable
         for raw_tx in raw_transactions:
-            retrieved_tx = BlockStorageDriver.get_raw_transaction(Hasher.hash(raw_tx))
+            retrieved_tx = BlockStorageDriver.get_raw_transactions(Hasher.hash(raw_tx))[0]
             self.assertEquals(raw_tx, retrieved_tx)
 
     def test_get_raw_transaction_doesnt_exist(self):
-        tx = BlockStorageDriver.get_raw_transaction('DEADBEEF' * 8)
+        tx = BlockStorageDriver.get_raw_transactions('DEADBEEF' * 8)
         self.assertTrue(tx is None)
 
     def test_get_raw_transaction_from_block_doesnt_exist(self):
@@ -436,9 +436,29 @@ class TestBlockStorageDriver(TestCase):
         BlockStorageDriver.store_block(block_contender=bc, raw_transactions=raw_transactions, publisher_sk=mn_sk, timestamp=timestamp)
         latest_hash = BlockStorageDriver._get_latest_block_hash()
 
-        added_txs = BlockStorageDriver.get_raw_transactions_from_block(block_hash=latest_hash)
+        added_txs = BlockStorageDriver.get_raw_transactions_from_block(block_hashes=latest_hash)
 
         for tx in raw_transactions:
             self.assertTrue(tx in added_txs)
 
+    def test_get_raw_transaction_from_multiple_blocks(self):
+        mn_sk = Constants.Testnet.Masternodes[0]['sk']
+        timestamp = random.randint(0, pow(2, 32))
+        raw_transactions1 = [build_test_transaction().serialize() for _ in range(4)]
+        raw_transactions2 = [build_test_transaction().serialize() for _ in range(4)]
+        block_hashes = []
 
+        # Store 2 blocks
+        for raw_txs in (raw_transactions1, raw_transactions2):
+            tree = MerkleTree(raw_txs)
+            bc = build_test_contender(tree=tree)
+
+            h = BlockStorageDriver.store_block(block_contender=bc, raw_transactions=raw_txs, publisher_sk=mn_sk, timestamp=timestamp)
+            block_hashes.append(h)
+
+        added_txs = BlockStorageDriver.get_raw_transactions_from_block(block_hashes)
+
+        for tx in raw_transactions1 + raw_transactions2:
+            self.assertTrue(tx in added_txs)
+
+    # TODO get_raw_transactions with multiple tx hashes

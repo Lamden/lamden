@@ -1,5 +1,6 @@
 from cilantro.logger import get_logger
 import seneca.seneca_internal.storage.easy_db as t
+from seneca.smart_contract_user_libs.storage.tabular import and_, or_
 from cilantro.db.tables import create_table
 from cilantro.messages import BlockContender, TransactionBase
 from cilantro.utils import is_valid_hex, Hasher
@@ -26,10 +27,6 @@ OPTIONAL_COLS = {'timestamp': int, 'masternode_signature': str, 'masternode_vk':
 
 BLOCK_DATA_COLS = {**REQUIRED_COLS, **OPTIONAL_COLS}  # combines the 2 dictionaries
 
-
-"""
-Genesis Block default values
-"""
 GENESIS_EMPTY_STR = ''
 GENESIS_TIMESTAMP = 0
 GENESIS_BLOCK_CONTENDER = ''
@@ -105,18 +102,19 @@ class BlockStorageDriver:
         raise NotImplementedError("Do not instantiate this class! Instead, use the class methods.")
 
     @classmethod
-    def store_block(cls, block_contender: BlockContender, raw_transactions: List[bytes], publisher_sk: str, timestamp: int = 0):
+    def store_block(cls, block_contender: BlockContender, raw_transactions: List[bytes], publisher_sk: str,
+                    timestamp: int = 0) -> str:
         """
-
         Persist a new block to the blockchain, along with the raw transactions associated with the block. An exception
         will be raised if an error occurs either validating the new block data, or storing the block. Thus, it is
-        recommended that this method is wrapped in a try block.
+        recommended that this method is wrapped in a try block. If the block was successfully stored, this method will
+        return the hash of the stored block.
 
         :param block_contender: A BlockContender instance
         :param raw_transactions: A list of ordered raw transactions contained in the block
         :param publisher_sk: The signing key of the publisher (a Masternode) who is publishing the block
         :param timestamp: The time the block was published, in unix epoch time. If 0, time.time() is used
-        :return: None
+        :return: The hash of the stored block
         :raises: An assertion error if invalid args are passed into this function, or a BlockStorageValidationException
          if validation fails on the attempted block
 
@@ -176,6 +174,8 @@ class BlockStorageDriver:
             else:
                 log.error("Error inserting raw transactions! Got None from insert query. Result={}".format(res))
 
+            return block_hash
+
     @classmethod
     def get_block(cls, number: int=0, hash: str='') -> dict or None:
         """
@@ -211,41 +211,26 @@ class BlockStorageDriver:
             assert latest, "No blocks found! There should be a genesis. Was the database properly seeded?"
             return cls._decode_block(latest[0])
 
+    # TODO refactor get_raw_transactions and get_raw_transactions_from_block to use same base function
     @classmethod
-    def get_raw_transaction(cls, tx_hash: str) -> bytes or None:
+    def get_raw_transactions(cls, tx_hashes: str or list) -> bytes or None:
         """
         Retrieves a single raw transaction from its hash. Returns None if no transaction for that hash can be found
-        :param tx_hash: The hash of the raw transaction to lookup. Should be a 64 character hex string
+        :param tx_hashes: The hash of the raw transaction to lookup (as a str), or a list of hashes. Hashes should
+        be 64 character hex strings.
         :return: The raw transactions as bytes, or None if no transaction with that hash can be found
         """
-        assert is_valid_hex(tx_hash, length=64), "Expected tx_hash to be 64 char hex str, not {}".format(tx_hash)
-
-        with DB() as db:
-            transactions = db.tables.transactions
-            rows = transactions.select().where(transactions.hash == tx_hash).run(db.ex)
-            if not rows:
-                return None
-            else:
-                assert len(rows) == 1, "Multiple Transactions found with has {}! BIG TIME DEVELOPMENT ERROR!!!".format(tx_hash)
-                return decode_tx(rows[0]['data'])
+        return cls._get_raw_transactions(hashes=tx_hashes, is_block_hashes=False)
 
     @classmethod
-    def get_raw_transactions_from_block(cls, block_hash: str) -> List[bytes] or None:
+    def get_raw_transactions_from_block(cls, block_hashes: str or list) -> List[bytes] or None:
         """
         Retrieves a list of raw transactions associated with a particular block. Returns None if no block with
         the given hash can be found.
-        :param block_hash:
+        :param block_hashes: A single transaction hash (as a 64 char string), or a list of transaction hashes
         :return: A list of raw transactions each as bytes, or None if no block with the given hash can be found
         """
-        assert is_valid_hex(block_hash, length=64), "Expected block_hash to be 64 char hex str, not {}".format(block_hash)
-
-        with DB() as db:
-            transactions = db.tables.transactions
-            rows = transactions.select().where(transactions.block_hash == block_hash).run(db.ex)
-            if not rows:
-                return None
-            else:
-                return [decode_tx(row['data']) for row in rows]
+        return cls._get_raw_transactions(hashes=block_hashes, is_block_hashes=True)
 
     @classmethod
     def validate_blockchain(cls, async=False):
@@ -346,6 +331,36 @@ class BlockStorageDriver:
         """
         ordered_values = [block_data[key] for key in sorted(block_data.keys())]
         return Hasher.hash_iterable(ordered_values)
+
+    @classmethod
+    def _get_raw_transactions(cls, hashes: str or list, is_block_hashes=False):
+        """
+        Helper method to query raw transactions, either from a list of hashes or a single hash. If is_block_hashes=True,
+        then the hashes are assumed to refer to block hashes, in which case all the transactions belonging to that
+        particular block is returned.
+        :param hashes: A single hash (as a string), or a list of hashes
+        :param is_block_hashes: If true, 'hashes' is assumed to refer to block hashes, and all transactions belonging
+        to the specified block hash(es) will be returned. If False, 'hashes' are assumed to be transaction hashes.
+        :return: A list of raw transactions, each as bytes, or None if no block with the given hash can be found
+        """
+        assert isinstance(hashes, str) or isinstance(hashes, list), "Expected hashes to be a str or list"
+
+        if isinstance(hashes, str):
+            hashes = [hashes]
+
+        for h in hashes:
+            assert is_valid_hex(h, length=64), "Expected hashes to be 64 char hex str, not {}".format(h)
+
+        with DB() as db:
+            transactions = db.tables.transactions
+            comparison_col = transactions.block_hash if is_block_hashes else transactions.hash
+            where_clause = or_(*[(comparison_col == h) for h in hashes])
+
+            rows = transactions.select().where(where_clause).run(db.ex)
+            if not rows:
+                return None
+            else:
+                return [decode_tx(row['data']) for row in rows]
 
     @classmethod
     def _validate_block_link(cls, parent: dict, child: dict):

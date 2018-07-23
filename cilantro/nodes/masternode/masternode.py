@@ -41,7 +41,7 @@ class Masternode(NodeBase):
 
 class MNBaseState(State):
     @input(TransactionBase)
-    def recv_tx(self, tx: TransactionBase):
+    def handle_tx(self, tx: TransactionBase):
         self.log.debug("mn about to pub for tx {}".format(tx))  # debug line
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=tx)
 
@@ -50,21 +50,15 @@ class MNBaseState(State):
         self.log.warning("Current state not configured to handle block contender")
         self.log.debug('Block: {}'.format(block))
 
-    @input_request(StateUpdateRequest)
-    def handle_state_req(self, request: StateUpdateRequest):
-        self.log.warning("Current state not configured to handle state requests")
-        self.log.debug('Request: {}'.format(request))
-
     @input(TransactionReply)
-    def recv_blockdata_reply(self, reply: TransactionReply):
-        self.log.warning("Current state not configured to handle block data reply")
+    def handle_tx_reply(self, reply: TransactionReply):
+        self.log.warning("Current state not configured to handle transaction reply")
         self.log.debug('Reply: {}'.format(reply))
 
-    # TODO replace with new SmartContract object type? Or nah, cause we good /w tx base...
-    # @input(ContractContainer)
-    # def handle_contract(self, contract: ContractContainer):
-    #     self.log.debug("Masternode got contract: {}\nPublishing that to witnesses".format(contract))
-    #     self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=contract)
+    @input(TransactionRequest)
+    def handle_tx_request(self, request: TransactionRequest):
+        self.log.debug("Masternode received TransactionRequest request: {}".format(request))
+        # TODO reply with transaction data
 
 
 @Masternode.register_init_state
@@ -94,8 +88,12 @@ class MNBootState(MNBaseState):
         self.log.debug("Bootstate exiting for next state {}".format(next_state))
 
     @input(TransactionBase)
-    def recv_tx(self, tx: TransactionBase):
-        self.log.warning("MN BootState not configured to recv transactions")
+    def handle_tx(self, tx: TransactionBase):
+        self.log.warning("MN BootState not configured to handle transactions")
+
+    @input(TransactionRequest)
+    def handle_tx_request(self, request: TransactionRequest):
+        self.log.warning("MN BootState not ready to handle TransactionRequests")
 
 
 @Masternode.register_state
