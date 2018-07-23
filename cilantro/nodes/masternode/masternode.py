@@ -58,7 +58,9 @@ class MNBaseState(State):
     @input(TransactionRequest)
     def handle_tx_request(self, request: TransactionRequest):
         self.log.debug("Masternode received TransactionRequest request: {}".format(request))
-        # TODO reply with transaction data
+        tx_blobs = BlockStorageDriver.get_raw_transactions(request.tx_hashes)
+        reply = TransactionReply.create(raw_transactions=tx_blobs)
+        return reply
 
 
 @Masternode.register_init_state
