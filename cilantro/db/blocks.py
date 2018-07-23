@@ -1,7 +1,7 @@
 from cilantro.logger import get_logger
 import seneca.seneca_internal.storage.easy_db as t
 from cilantro.db.tables import create_table
-from cilantro.messages import BlockContender, TransactionBase
+from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.utils import is_valid_hex, Hasher
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallets import ED25519Wallet
@@ -62,7 +62,7 @@ def seed_blocks(ex, blocks_table):
 
 
 """
-Utility Functions to encode/decode block data for serialization 
+Utility Functions to encode/decode block data for serialization
 
 TODO -- a lot of this encoding can be completely omitted or at least improved once we get blob types in EasyDB
 """
@@ -81,7 +81,7 @@ def _deserialize_contender(block_contender: str) -> BlockContender:
 
 
 """
-Custom Exceptions for block storage operations 
+Custom Exceptions for block storage operations
 """
 class BlockStorageException(Exception): pass
 class BlockStorageValidationException(BlockStorageException): pass

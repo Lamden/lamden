@@ -7,7 +7,7 @@ struct BlockMetaData {
 
     # BlockData fields (see BLOCK_DATA_COLS in db/blocks.py)
     merkleRoot @1 :Data;
-    merkleLeaves @2 :List(Data);
+    merkleLeaves @2 :Data;
     prevBlockHash @3 :Data;
     timestamp @4 :UInt64;
     masternodeSignature @5 :Data;
@@ -18,8 +18,9 @@ struct BlockMetaData {
 
 struct BlockMetaDataReply {
     blocks :union {
-        unset @0 :Void;
-        data @1 :List(BlockMetaData);
+        isLatest @0 :Void;
+        isInvalid @1 :Void;
+        data @2 :List(BlockMetaData);
     }
 }
 
