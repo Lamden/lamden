@@ -1,7 +1,7 @@
 from cilantro import Constants
 from cilantro.protocol.statemachine import *
 from cilantro.nodes.masternode import MNBaseState, Masternode
-from cilantro.db import *
+from cilantro.db.blocks import *
 from cilantro.messages import *
 from cilantro.protocol.structures import MerkleTree
 from collections import deque
@@ -53,45 +53,31 @@ class MNNewBlockState(MNBaseState):
         # If failure, then try the next block contender in the queue (if any).
         else:
             self.log.warning("FetchNewBlockState failed for block {}. Trying next block (if any)".format(self.current_block))
+            self._try_next_block()
 
-            if len(self.pending_blocks) > 0:
-                self.current_block = self.pending_blocks.popleft()
-                self.log.debug("Entering fetch state for block contender {}".format(self.current_block))
-                self.parent.transition(MNFetchNewBlockState, block_contender=self.current_block)
-            else:
-                self.log.warning("No more pending blocks. Transitioning back to RunState /w success=False")
-                self.parent.transition(MNRunState, success=False)
+    def _try_next_block(self):
+        if len(self.pending_blocks) > 0:
+            self.current_block = self.pending_blocks.popleft()
+            self.log.debug("Entering fetch state for block contender {}".format(self.current_block))
+            self.parent.transition(MNFetchNewBlockState, block_contender=self.current_block)
+        else:
+            self.log.warning("No more pending blocks. Transitioning back to RunState /w success=False")
+            self.parent.transition(MNRunState, success=False)
 
-    def _new_block_procedure(self, block, txs):
+    def _new_block_procedure(self, block: BlockContender, txs: List[bytes]):
         self.log.debug("DONE COLLECTING BLOCK DATA FROM LEAVES. Storing new block.")
 
-        hash_of_nodes = MerkleTree.hash_nodes(block.merkle_leaves)
-        tree = b"".join(block.merkle_leaves).hex()
-        signatures = "".join([merk_sig.signature for merk_sig in block.signatures])
-
-        # Store the block + transaction data
-        # TODO -- put this in its own class/module
-        block_num = -1
-        with DB() as db:
-            tables = db.tables
-            q = insert(tables.blocks).values(hash=hash_of_nodes, tree=tree, signatures=signatures)
-            q_result = db.execute(q)
-            block_num = q_result.lastrowid
-
-            for key, value in txs.items():
-                tx = {
-                    'key': key,
-                    'value': value
-                }
-                qq = insert(tables.transactions).values(tx)
-                db.execute(qq)
-
-        assert block_num > 0, "Block num must be greater than 0! Was it not set in the DB() context session?"
+        # Attempt to store block
+        try:
+            block_hash = BlockStorageDriver.store_block(block_contender=block, raw_transactions=txs, publisher_sk=self.parent.signing_key)
+        except BlockStorageException as e:
+            self.log.error("Error storing block!\nError = {}".format(e))
+            self._try_next_block()
+            return
 
         # Notify delegates of new block
-        self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {} and block num {}"
-                      .format(hash_of_nodes, block_num))
-        notif = NewBlockNotification.create(new_block_hash=hash_of_nodes.hex(), new_block_num=block_num)
+        self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {} ".format(block_hash))
+        notif = NewBlockNotification.create(new_block_hash=block_hash)
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
 
     @input_request(BlockContender)
@@ -195,7 +181,8 @@ class MNFetchNewBlockState(MNNewBlockState):
 
         self.log.debug("Requesting tx hash {} from VK {}".format(tx_hash, delegate_vk))
 
-        req = TransactionRequest.create(tx_hash)
+        # TODO make this more optimal by requesting hashes in batch
+        req = TransactionRequest.create([tx_hash])
         self.parent.composer.send_request_msg(message=req, timeout=1, vk=delegate_vk)
 
         self.node_states[delegate_vk] = self.NODE_AWAITING
@@ -226,11 +213,13 @@ class MNFetchNewBlockState(MNNewBlockState):
     def recv_blockdata_reply(self, reply: TransactionReply):
         self.log.debug("Masternode got block data reply: {}".format(reply))
 
-        if reply.tx_hash in self.tx_hashes:
-            self.retrieved_txs[reply.tx_hash] = reply.raw_tx
-        else:
-            self.log.error("Received block data reply with tx hash {} that is not in tx_hashes")
-            return
+        for tx in reply.transactions:
+            tx_hash = Hasher.hash(tx)
+            if tx_hash in self.tx_hashes:
+                self.retrieved_txs[tx_hash] = tx
+            else:
+                self.log.error("Received block data reply with tx hash {} that is not in tx_hashes")
+                return
 
         if len(self.retrieved_txs) == len(self.tx_hashes):
             self.log.debug("Done collecting block data. Transitioning back to NewBlockState.")

@@ -67,12 +67,25 @@ class MNBaseState(State):
         self.log.debug("Masternode received BlockMetaDataRequest: {}".format(request))
 
         # Get a list of block hashes up until this most recent block
+        # TODO get_child_block_hashes return an error/assertion/something if block cannot be found
+        child_hashes = BlockStorageDriver.get_child_block_hashes(request.current_block_hash)
+        self.log.debug("Got descended block hashes {} for block hash {}".format(child_hashes, request.current_block_hash))
 
-        # Get the block_data for each of these hashes
+        # If this hash could not be found or if it was the latest hash, no need to lookup any blocks
+        if not child_hashes:
+            self.log.debug("Requested block hash {} is already up to date".format(request.current_block_hash))
+            reply = BlockMetaDataReply.create(block_metas=None)
+            return reply
 
-        # Build the BlockMetaData objects
+        # Build a BlockMetaData object for each descendant block
+        block_metas = []
+        for block_hash in child_hashes:
+            block_data = BlockStorageDriver.get_block(hash=block_hash)
+            meta = BlockMetaData.create(**block_data)  # TODO make sure all the kwargs match up with the create API
+            block_metas.append(meta)
 
-        # Build the reply wit tha block boiz loaded
+        reply = BlockMetaDataReply.create(block_metas=block_metas)
+        return reply
 
 
 @Masternode.register_init_state

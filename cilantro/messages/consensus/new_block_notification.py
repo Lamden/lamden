@@ -15,7 +15,7 @@ class NewBlockNotification(MessageBaseJson):
         pass
 
     @classmethod
-    def create(cls, new_block_hash: str, new_block_num: int):
+    def create(cls, new_block_hash: str, new_block_num: int=-1):
         data = {cls.B_HASH: new_block_hash, cls.B_NUM: new_block_num}
         return cls.from_data(data)
 
