@@ -64,7 +64,7 @@ class MPTestCase(BaseNetworkTestCase):
             .format(MPTestCase.testers)
 
         start_msg = '\n' + '#' * 80 + '\n' + '#' * 80
-        start_msg += '\n\t\t\t TEST STARTING\n' + '#' * 80 + '\n' + '#' * 80
+        start_msg += '\n{} STARTING\n'.format(self.id()) + '#' * 80 + '\n' + '#' * 80
         self.log.debug(start_msg)
 
     def tearDown(self):
@@ -96,8 +96,8 @@ class MPTestCase(BaseNetworkTestCase):
 
         # If there are no active testers left and none of them failed, we win
         if len(actives) + len(fails) == 0:
-            self.log.debug("\n\n{0}\n\n\t\t\tTESTERS SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
-                           .format('$' * 120, round(timeout, 2)))
+            self.log.debug("\n\n{0}\n\n{2} SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
+                           .format('$' * 120, round(timeout, 2), self.id()))
         else:
             fail_msg = "\n\nfail_msg:\n{0}\nASSERTIONS TIMED OUT FOR TESTERS: \n\n".format('-' * 120)
             for t in fails + actives:
