@@ -38,11 +38,10 @@ class Delegate(NodeBase):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         # Properties shared among all states (ie via self.parent.some_prop)
         self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
-
         self.interpreter = SenecaInterpreter()
+        self.current_hash = BlockStorageDriver.get_latest_block_hash()
 
 
 class DelegateBaseState(State):

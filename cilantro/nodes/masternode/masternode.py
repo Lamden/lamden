@@ -62,6 +62,18 @@ class MNBaseState(State):
         reply = TransactionReply.create(raw_transactions=tx_blobs)
         return reply
 
+    @input(BlockMetaDataRequest)
+    def handle_blockmeta_request(self, request: BlockMetaDataRequest):
+        self.log.debug("Masternode received BlockMetaDataRequest: {}".format(request))
+
+        # Get a list of block hashes up until this most recent block
+
+        # Get the block_data for each of these hashes
+
+        # Build the BlockMetaData objects
+
+        # Build the reply wit tha block boiz loaded
+
 
 @Masternode.register_init_state
 class MNBootState(MNBaseState):
@@ -96,6 +108,10 @@ class MNBootState(MNBaseState):
     @input(TransactionRequest)
     def handle_tx_request(self, request: TransactionRequest):
         self.log.warning("MN BootState not ready to handle TransactionRequests")
+
+    @input(BlockMetaDataRequest)
+    def handle_blockmeta_request(self, request: BlockMetaDataRequest):
+        self.log.warning("MN BootState not ready to handle BlockMetaDataRequest")
 
 
 @Masternode.register_state

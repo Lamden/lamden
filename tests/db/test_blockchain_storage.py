@@ -15,9 +15,6 @@ import time
 
 class TestBlockStorageDriver(TestCase):
 
-    # def setUp(self):
-    #     reset_db()
-
     def _build_valid_block_data(self, num_transactions=4) -> dict:
         """
         Utility method to build a dictionary with all the params needed to invoke store_block
@@ -76,7 +73,7 @@ class TestBlockStorageDriver(TestCase):
     def test_get_latest_block_hash(self):
         reset_db()
 
-        first_hash = BlockStorageDriver._get_latest_block_hash()
+        first_hash = BlockStorageDriver.get_latest_block_hash()
 
         # We reset the DB, so the latest hash we pull should be the genesis hash
         self.assertEqual(first_hash, GENESIS_HASH)
@@ -245,7 +242,7 @@ class TestBlockStorageDriver(TestCase):
         bc = build_test_contender(tree=tree)
 
         BlockStorageDriver.store_block(block_contender=bc, raw_transactions=raw_transactions, publisher_sk=mn_sk, timestamp=timestamp)
-        block_hash = BlockStorageDriver._get_latest_block_hash()
+        block_hash = BlockStorageDriver.get_latest_block_hash()
 
         with DB() as db:
             transactions = db.tables.transactions
@@ -417,6 +414,23 @@ class TestBlockStorageDriver(TestCase):
             retrieved_tx = BlockStorageDriver.get_raw_transactions(Hasher.hash(raw_tx))[0]
             self.assertEquals(raw_tx, retrieved_tx)
 
+    def test_get_raw_transactions_with_multiple_hashes(self):
+        mn_sk = Constants.Testnet.Masternodes[0]['sk']
+        timestamp = random.randint(0, pow(2, 32))
+        raw_transactions = [build_test_transaction().serialize() for _ in range(4)]
+        hashes = list(map(Hasher.hash, raw_transactions))
+
+        tree = MerkleTree(raw_transactions)
+        bc = build_test_contender(tree=tree)
+
+        BlockStorageDriver.store_block(block_contender=bc, raw_transactions=raw_transactions, publisher_sk=mn_sk, timestamp=timestamp)
+
+        # Ensure all these transactions are retrievable
+        retrieved_txs = BlockStorageDriver.get_raw_transactions(hashes)
+        self.assertEquals(len(retrieved_txs), len(raw_transactions))
+        for raw_tx in raw_transactions:
+            self.assertTrue(raw_tx in retrieved_txs)
+
     def test_get_raw_transaction_doesnt_exist(self):
         tx = BlockStorageDriver.get_raw_transactions('DEADBEEF' * 8)
         self.assertTrue(tx is None)
@@ -434,7 +448,7 @@ class TestBlockStorageDriver(TestCase):
         bc = build_test_contender(tree=tree)
 
         BlockStorageDriver.store_block(block_contender=bc, raw_transactions=raw_transactions, publisher_sk=mn_sk, timestamp=timestamp)
-        latest_hash = BlockStorageDriver._get_latest_block_hash()
+        latest_hash = BlockStorageDriver.get_latest_block_hash()
 
         added_txs = BlockStorageDriver.get_raw_transactions_from_block(block_hashes=latest_hash)
 
@@ -461,4 +475,28 @@ class TestBlockStorageDriver(TestCase):
         for tx in raw_transactions1 + raw_transactions2:
             self.assertTrue(tx in added_txs)
 
-    # TODO get_raw_transactions with multiple tx hashes
+    def test_get_child_block_hashes_nonexisting_hash(self):
+        h = BlockStorageDriver.get_child_block_hashes('ABCD' * 16)
+        self.assertTrue(h is None)
+
+    def test_get_child_block_hashes(self):
+        mn_sk = Constants.Testnet.Masternodes[0]['sk']
+        timestamp = random.randint(0, pow(2, 32))
+        raw_transactions1 = [build_test_transaction().serialize() for _ in range(4)]
+        raw_transactions2 = [build_test_transaction().serialize() for _ in range(4)]
+        new_hashes = []
+
+        starting_hash = BlockStorageDriver.get_latest_block_hash()
+
+        # Store 2 blocks
+        for raw_txs in (raw_transactions1, raw_transactions2):
+            tree = MerkleTree(raw_txs)
+            bc = build_test_contender(tree=tree)
+
+            h = BlockStorageDriver.store_block(block_contender=bc, raw_transactions=raw_txs, publisher_sk=mn_sk,
+                                               timestamp=timestamp)
+            new_hashes.append(h)
+
+        actual_new_hashes = BlockStorageDriver.get_child_block_hashes(starting_hash)
+        self.assertEquals(actual_new_hashes, new_hashes)
+

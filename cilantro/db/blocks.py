@@ -2,7 +2,7 @@ from cilantro.logger import get_logger
 import seneca.seneca_internal.storage.easy_db as t
 from seneca.smart_contract_user_libs.storage.tabular import and_, or_
 from cilantro.db.tables import create_table
-from cilantro.messages import BlockContender, TransactionBase
+from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.utils import is_valid_hex, Hasher
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallets import ED25519Wallet
@@ -140,7 +140,7 @@ class BlockStorageDriver:
             'timestamp': timestamp,
             'merkle_root': tree.root_as_hex,
             'merkle_leaves': tree.leaves_as_concat_hex_str,
-            'prev_block_hash': cls._get_latest_block_hash(),
+            'prev_block_hash': cls.get_latest_block_hash(),
             'masternode_signature': publisher_sig,
             'masternode_vk': publisher_vk,
         }
@@ -211,7 +211,60 @@ class BlockStorageDriver:
             assert latest, "No blocks found! There should be a genesis. Was the database properly seeded?"
             return cls._decode_block(latest[0])
 
-    # TODO refactor get_raw_transactions and get_raw_transactions_from_block to use same base function
+    @classmethod
+    def get_child_block_hashes(cls, parent_hash: str, limit=0) -> List[str] or None:
+        """
+        Retrieve a list of child block hashes from a given a parent block. In other words, this method gets the hashes
+        for all blocks created "after" the specified block with hash 'parent_hash'.
+        :param parent_hash: The hash of the parent block
+        :param limit: If specified,
+        :return: A list of hashes for the blocks that descend the parent block. These will be sorted by their order
+        in the block chain, such that the first element is the block immediately after parent_hash, and the last element
+        is the latest block in the block chain. Returns None if parent_hash is already the latest block, or if no
+        block with 'parent_hash' can be found.
+        """
+        assert is_valid_hex(parent_hash, 64), "parent_hash {} is not valid 64 char hex str".format(parent_hash)
+        assert limit >= 0, "Limit must be >= 0 (not {})".format(limit)
+
+        # TODO implement functionality for limits
+        if limit:
+            raise NotImplementedError("Limiting logic not implemented")
+
+        # TODO optimize this once we get more functionality in EasyDB ...
+        # we would like to select all rows where the number >= the number associated with 'parent_hash', ordered
+        # ascending by number. For now, we must do this in 2 queries
+        with DB() as db:
+            blocks = db.tables.blocks
+
+            # Get block index number associated with 'parent_hash'
+            row = blocks.select().where(blocks.hash == parent_hash).run(db.ex)
+            if not row:
+                log.warning("No block with hash {} could be found!".format(parent_hash))
+                return None
+            parent_number = row[0]['number']
+
+            rows = blocks.select('hash').where(blocks.number > parent_number).order_by('number', desc=False).run(db.ex)
+            if not rows:
+                return None
+            return [row['hash'] for row in rows]
+
+    @classmethod
+    def get_latest_block_hash(cls) -> str:
+        """
+        Looks into the DB, and returns the latest block's hash. If the latest block_hash is for whatever reason invalid,
+        (ie. not valid 64 char hex string), then this method will raise an assertion.
+        :return: A string, representing the latest (most recent) block's hash
+        :raises: An assertion if the latest block hash is not vaild 64 character hex. If this happens, something was
+        seriously messed up in the block storage process.
+        """
+        with DB() as db:
+            row = db.tables.blocks.select('hash').order_by('number', desc=True).limit(1).run(db.ex)[0]
+            last_hash = row['hash']
+
+            assert is_valid_hex(last_hash, length=64), "Latest block hash is invalid 64 char hex! Got {}".format(last_hash)
+
+            return last_hash
+
     @classmethod
     def get_raw_transactions(cls, tx_hashes: str or list) -> bytes or None:
         """
@@ -392,23 +445,6 @@ class BlockStorageDriver:
             expected_hash = cls.compute_block_hash(block)
             if expected_hash != block_hash:
                 raise InvalidBlockHashException("hash(block_data) != block_hash for block number {}!".format(block_num))
-
-    @classmethod
-    def _get_latest_block_hash(cls) -> str:
-        """
-        Looks into the DB, and returns the latest block's hash. If the latest block_hash is for whatever reason invalid,
-        (ie. not valid 64 char hex string), then this method will raise an assertion.
-        :return: A string, representing the latest (most recent) block's hash
-        :raises: An assertion if the latest block hash is not vaild 64 character hex. If this happens, something was
-        seriously messed up in the block storage process.
-        """
-        with DB() as db:
-            row = db.tables.blocks.select().order_by('number', desc=True).limit(1).run(db.ex)[0]
-            last_hash = row['hash']
-
-            assert is_valid_hex(last_hash, length=64), "Latest block hash is invalid 64 char hex! Got {}".format(last_hash)
-
-            return last_hash
 
     @classmethod
     def _decode_block(cls, block_data: dict) -> dict:
