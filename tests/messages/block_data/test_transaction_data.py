@@ -92,14 +92,47 @@ class TestTransactionReply(TestCase):
         ]
         tx_binaries = [c.serialize() for c in contracts]
 
-
-
         tx_hashes = [Hasher.hash(cs+b'bbb') for cs in tx_binaries]
         bdr_req = TransactionRequest.create(tx_hashes)
 
         bdr_rep = TransactionReply.create(tx_binaries)
-        assert not bdr_rep.validate_matches_request(bdr_req), 'No match'
+        assert not bdr_rep.validate_matches_request(bdr_req)
 
+    def test_validate_matches_request_wrong_length(self):
+        """
+        Tests that a created block data reply has the expected properties
+        """
+        sk = ED25519Wallet.new()[0]
+        code_strs = ['some random binary', 'some deterministic binary', 'While True: self.eatAss()']
+        contracts = [
+            ContractTransactionBuilder.create_contract_tx(sk, code_str) \
+            for code_str in code_strs
+        ]
+        tx_binaries = [c.serialize() for c in contracts]
+
+        tx_hashes = [Hasher.hash(cs+b'bbb') for cs in tx_binaries][:1]
+        bdr_req = TransactionRequest.create(tx_hashes)
+
+        bdr_rep = TransactionReply.create(tx_binaries)
+        assert not bdr_rep.validate_matches_request(bdr_req)
+
+    def test_serialization(self):
+        """
+        Tests that a message successfully serializes and deserializes. The deserialized object should have the same
+        properties as the original one before it was serialized.
+        """
+        sk = ED25519Wallet.new()[0]
+        code_strs = ['some random binary', 'some deterministic binary', 'While True: self.eatAss()']
+        contracts = [
+            ContractTransactionBuilder.create_contract_tx(sk, code_str) \
+            for code_str in code_strs
+        ]
+        tx_binaries = [c.serialize() for c in contracts]
+        original = TransactionReply.create(tx_binaries)
+        original_binary = original.serialize()
+        clone = TransactionReply.from_bytes(original_binary)  # deserialize byte object
+
+        self.assertEqual(original.transactions, clone.transactions)
 
 if __name__ == '__main__':
     unittest.main()

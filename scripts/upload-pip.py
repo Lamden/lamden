@@ -17,5 +17,6 @@ with open(file, 'w') as f:
     module_name = re.findall(p, file_content)[0]
     f.write(file_content)
 
+os.system('rm -r build')
 os.system('python{} setup.py bdist_wheel'.format(sys.version_info.major))
 os.system('twine upload dist/{}-{}-py3-none-any.whl'.format(module_name, new_version))
