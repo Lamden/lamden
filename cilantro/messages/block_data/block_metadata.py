@@ -47,7 +47,7 @@ class BlockMetaData(MessageBase):
         BlockStorageDriver.validate_block_data(block_data)
         block_hash = BlockStorageDriver.compute_block_hash(block_data)
         assert block_hash == self.block_hash, "Block hash is incorrect"
-        
+
     @classmethod
     def _deserialize_data(cls, data: bytes):
         return blockdata_capnp.BlockMetaData.from_bytes_packed(data)
@@ -160,9 +160,9 @@ class BlockMetaDataReply(MessageBase):
         if block_metas:
             metas_list = struct.blocks.init('data', len(block_metas))
             for i, block_meta in enumerate(block_metas):
-                metas_list[i] = block_meta.serialize()
+                metas_list[i] = block_meta._data
         else:
-            struct.blocks.unset = None
+            struct.blocks.isLatest = None
 
         return cls.from_data(struct)
 
@@ -175,4 +175,4 @@ class BlockMetaDataReply(MessageBase):
         if self._data.blocks.which() == 'isLatest':
             return None
         else:
-            return [BlockMetaData.from_bytes(block_meta) for block_meta in self._data.blocks.data]
+            return [BlockMetaData.from_data(block_meta) for block_meta in self._data.blocks.data]

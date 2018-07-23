@@ -1,51 +1,97 @@
-from cilantro.messages import BlockMetaData
-from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro.messages.consensus.block_contender import build_test_contender, BlockContender
-from cilantro.messages.transaction.base import build_test_transaction
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.messages import BlockMetaDataRequest, BlockMetaDataReply, BlockMetaData
 from cilantro.db import BlockStorageDriver
-from cilantro import Constants
+from utils import build_valid_block_data
 from unittest import TestCase
 import unittest
 
+class TestBlockMetaDataRequest(TestCase):
+
+    def test_create(self):
+        b_hash = 'A' * 64
+        req = BlockMetaDataRequest.create(current_block_hash=b_hash)
+
+        self.assertEqual(req.current_block_hash, b_hash)
+
+    def test_serialize_deserialize(self):
+        req = BlockMetaDataRequest.create(current_block_hash='A' * 64)
+        clone = BlockMetaDataRequest.from_bytes(req.serialize())
+
+        self.assertEqual(clone, req)
+
+    def test_create_with_bad_hash(self):
+        bad_hash = 'lol this is fersure not a valid 64 hex char hash'
+        self.assertRaises(Exception, BlockMetaDataRequest.create, bad_hash)
+
+
+class TestBlockMetaDataReply(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.block_metas = []
+        for i in range(5):
+            block_data = build_valid_block_data()
+            hash = BlockStorageDriver.compute_block_hash(block_data)
+            bmd = BlockMetaData.create(
+                hash=hash,
+                merkle_root=block_data['merkle_root'],
+                merkle_leaves=block_data['merkle_leaves'],
+                prev_block_hash=block_data['prev_block_hash'],
+                timestamp=block_data['timestamp'],
+                masternode_sig=block_data['masternode_signature'],
+                masternode_vk=block_data['masternode_vk'],
+                block_contender=block_data['block_contender']
+            )
+            cls.block_metas.append(bmd)
+
+    def _bad_block(self):
+        block_data = build_valid_block_data()
+        hash = BlockStorageDriver.compute_block_hash(block_data)
+        bmd = BlockMetaData.create(
+            hash=hash,
+            merkle_root=block_data['merkle_root'],
+            merkle_leaves=block_data['merkle_leaves'],
+            prev_block_hash=block_data['prev_block_hash'],
+            timestamp=block_data['timestamp'],
+            masternode_sig=block_data['masternode_signature'],
+            masternode_vk=block_data['masternode_vk'],
+            block_contender=block_data['block_contender']
+        )
+        return bmd
+
+    def test_create_fails_with_invalid_blockmetas(self):
+        """
+        Tests that an assertion is raised if BlockMetaDataReply.create(...) is called with a list that contains a
+        non BlockMetaData instance
+        """
+        with self.assertRaises(Exception) as e:
+            reply = BlockMetaDataReply.create(block_metas=[b'ack'])
+
+    def test_create_with_no_blocks(self):
+        reply = BlockMetaDataReply.create(block_metas=[])
+        self.assertFalse(reply.block_metas)
+
+    def test_create_with_blocks(self):
+        reply = BlockMetaDataReply.create(block_metas=self.block_metas)
+        for expected, actual in zip(reply.block_metas, self.block_metas):
+            self.assertEqual(expected, actual)
+
+    def test_create_with_invalid_blocks(self):
+        self.block_metas.append(self._bad_block())
+        reply = BlockMetaDataReply.create(block_metas=self.block_metas)
+        for expected, actual in zip(reply.block_metas, self.block_metas):
+            self.assertEqual(expected, actual)
+
+    def test_serialize_deserialize(self):
+        reply = BlockMetaDataReply.create(block_metas=self.block_metas)
+        clone = BlockMetaDataReply.from_bytes(reply.serialize())
+        self.assertEqual(clone, reply)
+
+
 class TestBlockMetaData(TestCase):
-
-    def _build_valid_block_data(self, num_transactions=4) -> dict:
-        """
-        Utility method to build a dictionary with all the params needed to invoke store_block
-        :param num_transactions:
-        :return:
-        """
-        mn_sk = Constants.Testnet.Masternodes[0]['sk']
-        mn_vk = ED25519Wallet.get_vk(mn_sk)
-        timestamp = 9000
-
-        raw_transactions = [build_test_transaction().serialize() for _ in range(num_transactions)]
-
-        tree = MerkleTree(raw_transactions)
-        merkle_leaves = tree.leaves_as_concat_hex_str
-        merkle_root = tree.root_as_hex
-
-        bc = build_test_contender(tree=tree)
-
-        prev_block_hash = '0' * 64
-
-        mn_sig = ED25519Wallet.sign(mn_sk, tree.root)
-
-        return {
-            'prev_block_hash': prev_block_hash,
-            'block_contender': bc,
-            'merkle_leaves': merkle_leaves,
-            'merkle_root': merkle_root,
-            'masternode_signature': mn_sig,
-            'masternode_vk': mn_vk,
-            'timestamp': timestamp
-        }
-
     def _wrap_create():
         def _create(fn, *args, **kwargs):
             def test_fn(self):
-                block_data = self._build_valid_block_data()
+                block_data = build_valid_block_data()
                 hash = BlockStorageDriver.compute_block_hash(block_data)
                 return fn(self, block_data, hash)
             return test_fn
@@ -179,7 +225,7 @@ class TestBlockMetaData(TestCase):
 
     @_wrap_create()
     def test_validate_block_contender_fail(self, block_data, hash):
-        new_block = self._build_valid_block_data()
+        new_block = build_valid_block_data()
         with self.assertRaises(Exception) as e:
             bmd = BlockMetaData.create(
                 hash=hash,
@@ -193,7 +239,7 @@ class TestBlockMetaData(TestCase):
             )
 
     def test_serialize_deserialize(self):
-        block_data = self._build_valid_block_data()
+        block_data = build_valid_block_data()
         hash = BlockStorageDriver.compute_block_hash(block_data)
         req = BlockMetaData.create(
             hash=hash,

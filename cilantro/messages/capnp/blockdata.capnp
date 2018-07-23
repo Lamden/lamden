@@ -19,8 +19,7 @@ struct BlockMetaData {
 struct BlockMetaDataReply {
     blocks :union {
         isLatest @0 :Void;
-        isInvalid @1 :Void;
-        data @2 :List(BlockMetaData);
+        data @1 :List(BlockMetaData);
     }
 }
 
