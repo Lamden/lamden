@@ -9,6 +9,7 @@ from cilantro.messages import *
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
 DelegateConsensusState = "DelegateConsensusState"
+DelegateCatchupState = "DelegateInterpretState"
 
 
 @Delegate.register_state

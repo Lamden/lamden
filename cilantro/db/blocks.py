@@ -1,7 +1,7 @@
 from cilantro.logger import get_logger
 import seneca.seneca_internal.storage.easy_db as t
 from cilantro.db.tables import create_table
-from cilantro.messages import BlockContender, TransactionBase
+from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.utils import is_valid_hex, Hasher
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallets import ED25519Wallet
@@ -62,7 +62,7 @@ def seed_blocks(ex, blocks_table):
 
 
 """
-Utility Functions to encode/decode block data for serialization 
+Utility Functions to encode/decode block data for serialization
 
 TODO -- a lot of this encoding can be completely omitted or at least improved once we get blob types in EasyDB
 """
@@ -81,7 +81,7 @@ def _deserialize_contender(block_contender: str) -> BlockContender:
 
 
 """
-Custom Exceptions for block storage operations 
+Custom Exceptions for block storage operations
 """
 class BlockStorageException(Exception): pass
 class BlockStorageValidationException(BlockStorageException): pass
@@ -146,10 +146,10 @@ class BlockStorageDriver:
             'masternode_signature': publisher_sig,
             'masternode_vk': publisher_vk,
         }
-        cls._validate_block_data(block_data)
+        cls.validate_block_data(block_data)
 
         # Compute block hash
-        block_hash = cls._compute_block_hash(block_data)
+        block_hash = cls.compute_block_hash(block_data)
 
         # Encode block data for serialization and finally persist the data
         log.info("Attempting to persist new block with hash {}".format(block_hash))
@@ -271,38 +271,7 @@ class BlockStorageDriver:
         log.info("Blockchain validation completed successfully in {} seconds.".format(round(time.time() - start, 2)))
 
     @classmethod
-    def _validate_block_link(cls, parent: dict, child: dict):
-        """
-        Validates the cryptographic integrity of the link between a connected parent and child block, as well as the
-        integrity of each block individually.
-        :param parent: The predecesor of the block 'child' in the blockchain.
-        :param child: The child's previous_block_hash should point to the parent's hash
-        :raises: An exception if validation fails
-        """
-        assert parent['number'] + 1 == child['number'], "Attempted to validate non-adjacent blocks\nparent={}\nchild={}"\
-                                                        .format(parent, child)
-
-        # Ensure child links to parent
-        if child['prev_block_hash'] != parent['hash']:
-            raise InvalidBlockLinkException("Child block's previous hash does not point to parent!\nparent={}\nchild={}"
-                                            .format(parent, child))
-
-        for block in (parent, child):
-            # We remove the 'hash'/'number' cols so we can reuse _validate_block_data, which doesnt expect header cols
-            block_hash = block.pop('hash')
-            block_num = block.pop('number')
-
-            # Only validate block data if it is not the genesis block
-            if block_num != 1:
-                cls._validate_block_data(block)
-
-            # Ensure block data hashes to block hash
-            expected_hash = cls._compute_block_hash(block)
-            if expected_hash != block_hash:
-                raise InvalidBlockHashException("hash(block_data) != block_hash for block number {}!".format(block_num))
-
-    @classmethod
-    def _validate_block_data(cls, block_data: dict):
+    def validate_block_data(cls, block_data: dict):
         """
         Validates the block_data dictionary. 'block_data' should be a strict subset of the 'block' dictionary, keys for all
         columns in the block table EXCEPT 'number' and 'hash'. If any validation fails, an exception is raised.
@@ -363,7 +332,7 @@ class BlockStorageDriver:
             raise InvalidBlockSignatureException("Could not validate Masternode's signature on block data")
 
     @classmethod
-    def _compute_block_hash(cls, block_data: dict) -> str:
+    def compute_block_hash(cls, block_data: dict) -> str:
         """
         Computes the block's hash as a function of the block data. The process for computing the block hash follows:
         - Binarize all block_data values
@@ -377,6 +346,37 @@ class BlockStorageDriver:
         """
         ordered_values = [block_data[key] for key in sorted(block_data.keys())]
         return Hasher.hash_iterable(ordered_values)
+
+    @classmethod
+    def _validate_block_link(cls, parent: dict, child: dict):
+        """
+        Validates the cryptographic integrity of the link between a connected parent and child block, as well as the
+        integrity of each block individually.
+        :param parent: The predecesor of the block 'child' in the blockchain.
+        :param child: The child's previous_block_hash should point to the parent's hash
+        :raises: An exception if validation fails
+        """
+        assert parent['number'] + 1 == child['number'], "Attempted to validate non-adjacent blocks\nparent={}\nchild={}" \
+            .format(parent, child)
+
+        # Ensure child links to parent
+        if child['prev_block_hash'] != parent['hash']:
+            raise InvalidBlockLinkException("Child block's previous hash does not point to parent!\nparent={}\nchild={}"
+                                            .format(parent, child))
+
+        for block in (parent, child):
+            # We remove the 'hash'/'number' cols so we can reuse validate_block_data, which doesnt expect header cols
+            block_hash = block.pop('hash')
+            block_num = block.pop('number')
+
+            # Only validate block data if it is not the genesis block
+            if block_num != 1:
+                cls.validate_block_data(block)
+
+            # Ensure block data hashes to block hash
+            expected_hash = cls.compute_block_hash(block)
+            if expected_hash != block_hash:
+                raise InvalidBlockHashException("hash(block_data) != block_hash for block number {}!".format(block_num))
 
     @classmethod
     def _get_latest_block_hash(cls) -> str:
@@ -426,4 +426,4 @@ class BlockStorageDriver:
 
 # This needs to be declared below BlockStorageDriver class definition, as it uses a class function on BlockStorageDriver
 # TODO put this in another file so hes not just chillin down here
-GENESIS_HASH = BlockStorageDriver._compute_block_hash(GENESIS_BLOCK_DATA)
+GENESIS_HASH = BlockStorageDriver.compute_block_hash(GENESIS_BLOCK_DATA)

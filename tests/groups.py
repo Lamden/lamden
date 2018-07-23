@@ -28,7 +28,8 @@ MESSAGE_TESTS = [
     'tests.messages.consensus',
     'tests.messages.envelope',
     'tests.messages.reactor',
-    'tests.messages.transactions'
+    'tests.messages.transactions',
+    'tests.messages.block_data',
 ]
 
 CONSTANTS_TESTS = [

@@ -2,6 +2,7 @@ from cilantro.messages import StateUpdateRequest
 from unittest import TestCase
 
 
+# TODO delete this once we remove it from MN
 class StateRequestTest(TestCase):
 
     def test_serialization(self):
