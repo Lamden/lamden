@@ -9,7 +9,7 @@ def publisher():
     from cilantro import Constants
     from cilantro.utils.test import MPComposer
     from cilantro.messages import StandardTransactionBuilder
-    import time
+    import time, os
 
     log = get_logger("Publisher")
     sub_info = Constants.Testnet.Delegates[1]
@@ -34,7 +34,7 @@ def subscriber():
     from cilantro import Constants
     from cilantro.utils.test import MPComposer
     from cilantro.messages import StandardTransactionBuilder
-    import time
+    import time, os
 
     d_info = Constants.Testnet.Delegates[1]
     d_info['ip'] = os.getenv('HOST_IP')
