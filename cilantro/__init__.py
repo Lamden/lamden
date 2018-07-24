@@ -3,6 +3,9 @@ import os
 from decimal import getcontext
 import sys
 import hashlib
+from os.path import dirname, abspath
+
+os.environ['LOCAL_PATH'] = abspath(dirname(dirname(dirname(__file__))))
 
 def snake_to_pascal(s):
     s = s.split('-')
