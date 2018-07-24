@@ -258,17 +258,24 @@ class ScratchCloningVisitor(CloningVisitor):
         return replacement_traverse(obj, self.__traverse_options__, replace)
 
 
+# def reset_db():
+#     def clear_instances():
+#         for instance in DBSingletonMeta._instances.values():
+#             instance.ex.cur.close()
+#             instance.ex.conn.close()
+#         DBSingletonMeta._instances.clear()
+#
+#     clear_instances()
+#     with DB(should_reset=True) as db:
+#         log.info("Database reset")
+#     clear_instances()
 def reset_db():
-    def clear_instances():
-        for instance in DBSingletonMeta._instances.values():
-            instance.ex.cur.close()
-            instance.ex.conn.close()
-        DBSingletonMeta._instances.clear()
-
-    clear_instances()
     with DB(should_reset=True) as db:
-        log.info("Database reset")
-    clear_instances()
+        log.debug("-")
+    for instance in DBSingletonMeta._instances.values():
+        instance.ex.cur.close()
+        instance.ex.conn.close()
+    DBSingletonMeta._instances.clear()
 
 
 class DBSingletonMeta(type):
@@ -327,37 +334,39 @@ class VKBook:
 
     @staticmethod
     def _destu_ify(data: str):
-        assert len(data) % 64 == 0, "Length of data should be divisible by 64, but len={}! Logic error!".format(len(data))
-        return [data[i:i+64] for i in range(0, len(data), 64)]
+        pass
+        # assert len(data) % 64 == 0, "Length of data should be divisible by 64, but len={}! Logic error!".format(len(data))
+        # return [data[i:i+64] for i in range(0, len(data), 64)]
 
     @staticmethod
     def _get_vks(policy=None):
-        condition = "where policy='{}'".format(policy) if policy else ''
-        print("select value from constants {}".format(condition))
-        with DB() as db:
-            q = db.execute("select value from constants {}".format(condition))
-            rows = q.fetchall()
-
-            val = rows[0][0]
-
-            return VKBook._destu_ify(val)
+        pass
+        # condition = "where policy='{}'".format(policy) if policy else ''
+        # print("select value from constants {}".format(condition))
+        # with DB() as db:
+        #     q = db.execute("select value from constants {}".format(condition))
+        #     rows = q.fetchall()
+        #
+        #     val = rows[0][0]
+        #
+        #     return VKBook._destu_ify(val)
 
     @staticmethod
     def get_all():
         return VKBook.MASTERNODES + VKBook.DELEGATES + VKBook.WITNESSES
-        return VKBook._get_vks()
+        # return VKBook._get_vks()
 
     @staticmethod
     def get_masternodes():
         return VKBook.MASTERNODES
-        return VKBook._get_vks('masternodes')
+        # return VKBook._get_vks('masternodes')
 
     @staticmethod
     def get_delegates():
         return VKBook.DELEGATES
-        return VKBook._get_vks('delegates')
+        # return VKBook._get_vks('delegates')
 
     @staticmethod
     def get_witnesses():
         return VKBook.WITNESSES
-        return VKBook._get_vks('witnesses')
+        # return VKBook._get_vks('witnesses')

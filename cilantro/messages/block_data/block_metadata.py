@@ -1,6 +1,7 @@
 from cilantro.messages import MessageBase, BlockContender
 from cilantro.messages.utils import validate_hex
 from cilantro.utils import lazy_property
+from cilantro.db import BlockStorageDriver
 from typing import List
 
 import capnp
@@ -17,14 +18,14 @@ class BlockMetaData(MessageBase):
     """
 
     def validate(self):
-        self.block_contender  # Will raise exception if block_contender cannot be deserialized
-
-        # TODO validate all 'hash' properties are valid hex of appropriate length
-        # merkle_leaves shoudl be list of 64 char hex
-        # masternode_signature shoudl be 128 char hex
-        # ect ect
-        # all properties on struct shoudl be set (no Nones!)
-        pass
+        assert validate_hex(self._data.hash, 64), 'Invalid hash'
+        assert validate_hex(self._data.prevBlockHash, 64), 'Invalid previous block hash'
+        assert validate_hex(self._data.merkleRoot, 64), 'Invalid merkle root'
+        assert len(self._data.merkleLeaves) % 64 == 0, 'Invalid merkle leaves'
+        assert validate_hex(self._data.masternodeSignature, 128), 'Invalid masternode signature'
+        assert validate_hex(self._data.masternodeVk, 64), 'Invalid masternode vk'
+        assert type(self._data.timestamp) == int, 'Invalid timestamp'
+        self.validate_block_data()
 
     def validate_block_data(self):
         """
@@ -33,26 +34,43 @@ class BlockMetaData(MessageBase):
         :return: None
         :raises: An exception if validation fails
         """
-        pass
-        # TODO implement
-        # package all this classes properties into an appropriate dict, and reuse BlockStorageDriver.validate_block_data
-
-        # then, compute the block hash using BlockStorageDriver.compute_block_hash raise Exception if
-        # this does not equals self.block_hash (see line 377 in BlockStorageDriver._validate_block_link for example)
+        prev_block_hash = self.prev_block_hash
+        block_data = {
+            'block_contender': self.block_contender,
+            'timestamp': self.timestamp,
+            'merkle_root': self.merkle_root,
+            'merkle_leaves': self._data.merkleLeaves.decode(),
+            'prev_block_hash': self.prev_block_hash,
+            'masternode_signature': self.masternode_signature,
+            'masternode_vk': self.masternode_vk,
+        }
+        BlockStorageDriver.validate_block_data(block_data)
+        block_hash = BlockStorageDriver.compute_block_hash(block_data)
+        assert block_hash == self.block_hash, "Block hash is incorrect"
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
         return blockdata_capnp.BlockMetaData.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, hash: str, merkle_root: str, merkle_leaves: List[str], prev_block_hash: str, timestamp: int,
+    def create(cls, hash: str, merkle_root: str, merkle_leaves: str, prev_block_hash: str, timestamp: int,
                masternode_sig: str, masternode_vk: str, block_contender: BlockContender):
         struct = blockdata_capnp.BlockMetaData.new_message()
-
-        # TODO set all fields on struct
-        # - will have to 'init' the merkleLeaves field cause its a list, for example see BlockMetaDataReply.create
-
+        struct.hash = hash
+        struct.merkleRoot = merkle_root
+        struct.merkleLeaves = merkle_leaves
+        struct.prevBlockHash = prev_block_hash
+        struct.timestamp = timestamp
+        struct.masternodeSignature = masternode_sig
+        struct.masternodeVk = masternode_vk
+        assert type(block_contender) == BlockContender, 'Not a block contender'
+        struct.blockContender = block_contender.serialize()
         return cls.from_data(struct)
+
+    @classmethod
+    def _chunks(cls, l, n=64):
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
 
     @property
     def block_hash(self) -> str:
@@ -64,7 +82,7 @@ class BlockMetaData(MessageBase):
 
     @lazy_property
     def merkle_leaves(self) -> List[str]:
-        return [leaf.decode() for leaf in self._data.merkleLeaves]
+        return [leaf.decode() for leaf in BlockMetaData._chunks(self._data.merkleLeaves)]
 
     @property
     def prev_block_hash(self) -> str:
@@ -146,9 +164,9 @@ class BlockMetaDataReply(MessageBase):
         if block_metas:
             metas_list = struct.blocks.init('data', len(block_metas))
             for i, block_meta in enumerate(block_metas):
-                metas_list[i] = block_meta.serialize()
+                metas_list[i] = block_meta._data
         else:
-            struct.blocks.unset = None
+            struct.blocks.isLatest = None
 
         return cls.from_data(struct)
 
@@ -158,7 +176,7 @@ class BlockMetaDataReply(MessageBase):
         # TODO docstring
         :return:
         """
-        if self._data.blocks.which() == 'unset':
+        if self._data.blocks.which() == 'isLatest':
             return None
         else:
-            return [BlockMetaData.from_bytes(block_meta) for block_meta in self._data.blocks.data]
+            return [BlockMetaData.from_data(block_meta) for block_meta in self._data.blocks.data]

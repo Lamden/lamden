@@ -55,7 +55,7 @@ def initiate_transfer(participant_id, hash, amount, coin_address, duration=None)
 @export
 def redeem_transfer(secret):
     sender_id = rt.global_run_data.author
-    hash = std.ripemd160(secret)
+    hash = std.sha256(secret)
     agreement = t_agreement.select().where(
         t_agreement.hash == hash and \
         t_agreement.participant_id == sender_id

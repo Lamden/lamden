@@ -59,7 +59,7 @@ def seed_blocks(ex, blocks_table):
 
 
 """
-Utility Functions to encode/decode block data for serialization 
+Utility Functions to encode/decode block data for serialization
 
 TODO -- a lot of this encoding can be completely omitted or at least improved once we get blob types in EasyDB
 """
@@ -78,7 +78,7 @@ def _deserialize_contender(block_contender: str) -> BlockContender:
 
 
 """
-Custom Exceptions for block storage operations 
+Custom Exceptions for block storage operations
 """
 class BlockStorageException(Exception): pass
 class BlockStorageValidationException(BlockStorageException): pass

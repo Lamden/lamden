@@ -27,12 +27,11 @@ class ContractTransaction(TransactionBase):
         return self._data.payload.code
 
 
-"""
-Utility methods to construct ContractTransactions. We use this exclusively for testing, as IRL this should be done by
-users via some JS library or something. 
-"""
 class ContractTransactionBuilder:
-
+    """
+    Utility methods to construct ContractTransactions. We use this exclusively for testing, as IRL this should be done by
+    users via some JS library or something.
+    """
     @staticmethod
     def create_contract_tx(sender_sk: str, code_str: str):
         validate_hex(sender_sk, 64, 'sender signing key')
@@ -55,3 +54,7 @@ class ContractTransactionBuilder:
         code_str = ContractTemplate.interpolate_template('currency', amount=amount, receiver=receiver_vk)
         return ContractTransactionBuilder.create_contract_tx(sender_sk, code_str)
 
+    @staticmethod
+    def create_dummy_tx(sender_sk: str, receiver_vk: str, fail: bool):
+        code_str = ContractTemplate.interpolate_template('dummy', fail=fail)
+        return ContractTransactionBuilder.create_contract_tx(sender_sk, code_str)

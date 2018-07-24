@@ -22,6 +22,7 @@ def contract(*contract_ids):
     return decorator
 
 class SmartContractTestCase(TestCase):
+
     def setUp(self):
         super().setUp()
         self.ex = Executer('root', '', '', '127.0.0.1')

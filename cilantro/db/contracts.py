@@ -63,29 +63,9 @@ def module_loader_fn(ex, contract_table):
     return _module_loader_fn
 
 
-# def run_contract(executor, contract_table, contract_id: str='', user_id=GENESIS_AUTHOR, code_str: str=''):
-#     assert bool(contract_id) ^ bool(code_str), "Either contract_id or code_str must be passed in (XOR, one or the other)"
-#     log.debug("[inside _execute_contract] Executing contract with id {} and user_id {}".format(contract_id, user_id))
-#
-#     if code_str:
-#         author = user_id
-#         exec_dt = None  # todo make this current datetime
-#     else:
-#         author, exec_dt, code_str = _lookup_contract_info(executor, contract_table, contract_id)
-#
-#     global_run_data = {'caller_user_id': user_id, 'execution_datetime': exec_dt, 'caller_contract_id': contract_id}
-#     this_contract_run_data = {'author': author, 'execution_datetime': exec_dt, 'contract_id': contract_id}
-#
-#     result = execute_contract(global_run_data, this_contract_run_data, code_str, is_main=True,
-#                               module_loader=module_loader_fn(executor, contract_table), db_executer=executor)
-#
-#     log.debug("\n result of executor contract with id {}: \n {} \n\n".format(contract_id, result))
-#
-#     return result
-
 def _ex_contract(executor, contract_table, contract_id: str='', user_id=GENESIS_AUTHOR, code_str: str='', get_contract=False):
         assert bool(contract_id) ^ bool(code_str), "Either contract_id or code_str must be passed in (XOR, one or the other)"
-        log.debug("[inside _execute_contract] Executing contract with id {} and user_id {}".format(contract_id, user_id))
+        # log.debug("[inside _execute_contract] Executing contract with id {} and user_id {}".format(contract_id, user_id))
 
         if code_str:
             author = user_id
@@ -143,7 +123,7 @@ def _read_contract_files() -> list:
 
     for filename in sorted(os.listdir(CONTRACTS_DIR)):
         _validate_filename(filename)
-        log.info("[inside _read_contract_files] Loading contract code for file {}".format(filename))
+        # log.debug("[inside _read_contract_files] Loading contract code for file {}".format(filename))
 
         with open('{}/{}'.format(CONTRACTS_DIR, filename), 'r') as f:
             code_str = f.read()
