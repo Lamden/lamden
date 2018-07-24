@@ -77,7 +77,7 @@ class MNNewBlockState(MNBaseState):
 
         # Notify delegates of new block
         self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {} ".format(block_hash))
-        notif = NewBlockNotification.create(new_block_hash=block_hash)
+        notif = NewBlockNotification.create(**BlockStorageDriver.get_latest_block())
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
 
     @input_request(BlockContender)
@@ -97,16 +97,6 @@ class MNNewBlockState(MNBaseState):
                 return False
         return True
 
-    def _prove_merkle(self, block):
-        hash_of_nodes = MerkleTree.hash_nodes(block.merkle_leaves)
-        tx_hashes = block.merkle_leaves[len(block.merkle_leaves) // 2:]
-
-        if not MerkleTree.verify_tree(tx_hashes, hash_of_nodes):
-            self.log.error("COULD NOT VERIFY MERKLE TREE FOR BLOCK CONTENDER {}".format(block))
-            return False
-
-        return True
-
     def validate_block_contender(self, block: BlockContender) -> bool:
         """
         Helper method to validate a block contender. For a block contender to be valid it must:
@@ -124,7 +114,7 @@ class MNNewBlockState(MNBaseState):
         # TODO validate the sigs are actually from the top N delegates
         # TODO -- ensure that this block contender's previous block is this Masternode's current block...
 
-        return self._validate_sigs(block) and self._prove_merkle(block)
+        return block.validate_signatures()
 
 
 @Masternode.register_state

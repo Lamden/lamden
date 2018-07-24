@@ -87,6 +87,10 @@ class BlockMetaData(MessageBase):
         return BlockContender.from_bytes(self._data.blockContender)
 
 
+class NewBlockNotification(BlockMetaData):
+    pass
+
+
 class BlockMetaDataRequest(MessageBase):
     """
     This class represents a request message, likely targeted at a Masternode, to retrieve a list of BlockMetadata
@@ -136,7 +140,7 @@ class BlockMetaDataReply(MessageBase):
         """
         for b in block_metas:
             assert isinstance(b, BlockMetaData), "create must be called with a list of BlockMetaData instances, but " \
-                                                 "found a inconsistent element {} in block_metas arg".format(b)
+                                                 "found an inconsistent element {} in block_metas arg".format(b)
         struct = blockdata_capnp.BlockMetaDataReply.new_message()
 
         if block_metas:

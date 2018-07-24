@@ -63,9 +63,9 @@ class DelegateBaseState(State):
 
     @input(NewBlockNotification)
     def handle_new_block_notif(self, notif: NewBlockNotification):
-        self.log.warning("got new block notification, but logic to handle it is not implement in subclass")
-        raise NotImplementedError
-        # TODO -- if we are in anything but consensus state, we need to go to update state
+        self.log.critical("Delegate got new block notification with hash {}\nprev_hash {}]\nand our current hash = {}"
+                          .format(notif.block_hash, notif.prev_block_hash, self.parent.current_hash))
+        self.parent.transition(DelegateCatchupState)
 
 
 @Delegate.register_init_state
