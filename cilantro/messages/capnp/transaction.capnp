@@ -5,6 +5,13 @@ struct TransactionContainer {
     payload @1 :Data;
 }
 
+struct OrderingContainer {
+    type @0 :UInt32;
+    payload @1 :Data;
+    masternodeVk @2 :Data;
+    utcTime @3 :UInt64;
+}
+
 struct MetaData {
     proof @0 :Data;
     signature @1 :Data;

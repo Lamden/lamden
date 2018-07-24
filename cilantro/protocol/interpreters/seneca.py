@@ -5,6 +5,7 @@ from seneca.seneca_internal.storage.mysql_spits_executer import Executer
 from cilantro.db.tables import DB_NAME
 from cilantro.db import DB
 from typing import List
+from cilantro.messages import OrderingContainer
 
 
 class SenecaInterpreter(BaseInterpreter):
@@ -35,8 +36,9 @@ class SenecaInterpreter(BaseInterpreter):
 
         self.queue.clear()
 
-    def interpret(self, contract: ContractTransaction):
+    def interpret(self, contract: OrderingContainer):
         assert isinstance(contract, ContractTransaction), "Seneca Interpreter can only interpret use_contracts transactions"
+        
         res = self._run_contract(contract)
         if not res:
             self.log.error("Error executing use_contracts from user {} with code:\n{}".format(contract.sender, contract.code))

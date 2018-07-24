@@ -13,7 +13,6 @@ from cilantro.messages import *
 from aiohttp import web
 from cilantro.db import *
 
-
 MNNewBlockState = 'MNNewBlockState'
 
 
@@ -42,8 +41,9 @@ class Masternode(NodeBase):
 class MNBaseState(State):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
-        self.log.debug("mn about to pub for tx {}".format(tx))  # debug line
-        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=tx)
+        oc = OrderingContainer.create(tx=tx, masternode_vk=self.parent.verifying_key)
+        self.log.debug("mn about to pub for tx {}".format(oc))  # debug line
+        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=oc)
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
