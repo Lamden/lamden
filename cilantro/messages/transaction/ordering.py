@@ -1,10 +1,13 @@
-from cilantro.messages import MessageBase, TransactionBase
+from cilantro.messages.base.base import MessageBase
+from cilantro.messages.transaction.base import TransactionBase
 from cilantro.db import VKBook
 
 import capnp
 import transaction_capnp
 import time
 
+from cilantro.logger import get_logger
+log = get_logger(__name__)
 
 class OrderingContainer(MessageBase):
     """
@@ -23,18 +26,25 @@ class OrderingContainer(MessageBase):
     def create(cls, tx: TransactionBase, masternode_vk: str):
         container = transaction_capnp.OrderingContainer.new_message()
         container.type = MessageBase.registry[type(tx)]
-        container.payload = tx.serialize()
+        container.transaction = tx.serialize()
         container.masternodeVk = masternode_vk
-        container.utcTime = int(time.time()*1000)
+        container.utcTimeMs = int(time.time()*1000)
         return cls(container)
 
     @property
-    def masternode_vk() -> str:
+    def masternode_vk(self) -> str:
         return self._data.masternodeVk.decode()
 
     @property
-    def utc_time(mode='ms'):
+    def utc_time(self, mode='ms'):
         if mode == 'ms':
-            return self._data.utcTime
+            return self._data.utcTimeMs
         elif mode == 's':
-            return self._data.utcTime/1000.0
+            return self._data.utcTimeMs/1000.0
+
+    @property
+    def transaction(self):
+        assert self._data.type in MessageBase.registry, "Type {} not found in registry {}"\
+            .format(self._data.type, MessageBase.registry)
+
+        return MessageBase.registry[self._data.type].from_bytes(self._data.transaction)
