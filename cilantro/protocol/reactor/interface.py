@@ -28,7 +28,7 @@ class ReactorInterface:
 
         # Start reactor sub process
         self.proc = LProcess(target=self._start_daemon, args=(self.url, signing_key, name))
-        self.proc.daemon = True
+        # self.proc.daemon = True
         self.proc.start()
 
         # Register signal handler to teardown
