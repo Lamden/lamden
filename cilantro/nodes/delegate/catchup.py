@@ -47,6 +47,7 @@ class DelegateCatchupState(DelegateBaseState):
             return
 
         self.new_blocks += reply.block_metas
+        self._update_next_block()
 
     @input(TransactionReply)
     def handle_tx_reply(self, reply: TransactionReply, envelope: Envelope):
@@ -93,11 +94,12 @@ class DelegateCatchupState(DelegateBaseState):
         """
         Pops a block meta off the queue (if we do not have a current one set), and requests that data for it
         """
-        if self.current_block:  # If we are already working on a block meta, do nothing
+        # If we are already working on a block meta, do nothing
+        if self.current_block:
             return
 
         # If block queue is empty, request another update
-        if not self.new_blocks:
+        if len(self.new_blocks) == 0:
             self._request_update()
             return
 
