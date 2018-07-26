@@ -12,6 +12,7 @@ class BaseInterpreter:
     def __init__(self):
         self.log = get_logger(self.__class__.__name__)
         self.queue = deque()
+        self.heap = []
 
     def flush(self, update_state=True):
         """
