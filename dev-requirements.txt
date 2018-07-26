@@ -6,3 +6,6 @@ numpy
 scipy
 sphinx
 sphinx-autodoc-typehints
+
+pympler
+memory_profiler
