@@ -2,20 +2,13 @@ from cilantro.logger import get_logger
 import traceback
 from pympler import muppy, summary
 from multiprocessing import Process
+from threading import Thread
 import sys
+import asyncio
 from io import StringIO
 import os
-
-
-def mup_dat(filename):
-    oo = muppy.get_objects()
-    s = summary.summarize(oo)
-
-    # Intercept stdout
-    old_stdout = sys.stdout
-    
-    summary.print_(s)
-
+import time
+import csv
 
 def get_filename(proc_name):
     prefix = os.getenv('HOSTNAME', '')
@@ -31,14 +24,42 @@ OUTER_DELIM = '!'
 INNER_DELIM = '-'
 
 
+# async def profile_process(interval):
+#     while True:
+#         await asyncio.sleep(interval)
+#         mup_dat()
+
+def profile_process(interval, name):
+    while True:
+        log = get_logger(name)
+        o = muppy.get_objects()
+        size = muppy.get_size(o)
+        log.critical("---> {} : USING {} BYTES --->".format(name, size))
+        header = ['unix_time', 'size']
+
+        filename = name + '.csv'
+
+        file_exists = os.path.isfile(filename)
+
+        with open(filename, 'a') as csvfile:
+            writer = csv.DictWriter(csvfile, delimiter=',', lineterminator='\n', fieldnames=header)
+
+            if not file_exists:
+                writer.writeheader()  # file doesn't exist yet, write a header
+
+            writer.writerow({'unix_time': time.time(), 'size': size})
+
+        time.sleep(interval)
+
+
 class LProcess(Process):
     def run(self):
         log = get_logger(self.name)
         log.info("---> {} Starting --->".format(self.name))
-
         try:
-            log.critical("\nMup dat before running process {}\n".format(self.name))
-            mup_dat()
+            f = get_filename(self.name)
+            t = Thread(target=profile_process, args=(1, f))
+            t.start()
             super().run()
         except Exception as e:
             err_msg = '\n' + OUTER_DELIM * DELIM_LEN
@@ -50,6 +71,4 @@ class LProcess(Process):
             log.error(err_msg)
         finally:
             log.info("<--- {} Terminating <---".format(self.name))
-            log.critical("\nMup dat after teardown of {}\n".format(self.name))
-            mup_dat()
             # TODO -- signal to parent to call .join() on this process and clean up nicely
