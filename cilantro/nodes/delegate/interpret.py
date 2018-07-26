@@ -43,11 +43,11 @@ class DelegateInterpretState(DelegateBaseState):
     def exit_to_consensus(self):
         pass
 
-    @input(TransactionBase)
-    def handle_tx(self, tx: TransactionBase):
+    @input(OrderingContainer)
+    def handle_tx(self, tx: OrderingContainer):
         self.interpret_tx(tx=tx)
 
-    def interpret_tx(self, tx: TransactionBase):
+    def interpret_tx(self, tx: OrderingContainer):
         self.parent.interpreter.interpret(tx)
 
         self.log.debug("Size of queue: {}".format(len(self.parent.interpreter.queue)))
