@@ -57,7 +57,7 @@ I think OVERLAY_TESTS arent working on CI b/c dat boi falcon is trying to open u
 ... so I think we need to run those tests as integration tests inside a docker container
 """
 UNIT_TESTS = [
-    OVERLAY_TESTS,  # TODO see note above
+    # OVERLAY_TESTS,  # TODO see note above
     PROTOCOL_TESTS,
     MESSAGE_TESTS,
     CONSTANTS_TESTS,
@@ -74,7 +74,8 @@ UNIT_TESTS = [
 """
 
 NODE_INTEGRATION_TESTS = [
-    'tests.nodes.integration'
+    'tests.nodes.integration',
+    'tests.protocol.transport'
 ]
 
 # All integration tests
