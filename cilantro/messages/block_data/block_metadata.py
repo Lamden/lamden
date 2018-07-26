@@ -1,7 +1,7 @@
-from cilantro.messages import MessageBase, BlockContender
+from cilantro.messages import MessageBase
+from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.utils import validate_hex
 from cilantro.utils import lazy_property
-from cilantro.db import BlockStorageDriver
 from typing import List
 
 import capnp
@@ -34,6 +34,8 @@ class BlockMetaData(MessageBase):
         :return: None
         :raises: An exception if validation fails
         """
+        from cilantro.db.blocks import BlockStorageDriver  # imported here to avoid cyclic import (im so sorry --davis)
+
         prev_block_hash = self.prev_block_hash
         block_data = {
             'block_contender': self.block_contender,

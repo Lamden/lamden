@@ -1,6 +1,6 @@
 from cilantro.logger import get_logger
 import seneca.seneca_internal.storage.easy_db as t
-from seneca.smart_contract_user_libs.storage.tabular import and_, or_
+from seneca.seneca_internal.storage.easy_db import and_, or_
 from cilantro.db.tables import create_table
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.utils import is_valid_hex, Hasher
@@ -10,6 +10,9 @@ from cilantro.db import DB
 from cilantro.db.transactions import encode_tx, decode_tx
 from typing import List
 import time
+
+from cilantro.messages.block_data.block_metadata import BlockMetaData
+# import cilantro.messages.block_data.block_metadata.BlockMetaData
 
 
 log = get_logger("BlocksStorage")
@@ -175,6 +178,18 @@ class BlockStorageDriver:
                 log.error("Error inserting raw transactions! Got None from insert query. Result={}".format(res))
 
             return block_hash
+
+
+    @classmethod
+    def store_block_from_meta(cls, block_meta: BlockMetaData):
+        """
+        Stores a block from a BlockMetaData object. This block must be the child of the current lastest block.
+        :param block_meta: The BlockMetaData object containing all of the block's data (excluding the raw transactions)
+        :return: None
+        :raises: A BlockStorageException (or specific subclass) if any validation or storage fails
+        """
+        # TODO implement
+        pass
 
     @classmethod
     def get_block(cls, number: int=0, hash: str='') -> dict or None:

@@ -12,10 +12,9 @@ from cilantro.messages.transaction.ordering import OrderingContainer
 
 from cilantro.messages.consensus import MerkleSignature, BlockContender
 
-from cilantro.messages.block_data import TransactionRequest, TransactionReply
+from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 from cilantro.messages.block_data import StateUpdateRequest, StateUpdateReply
-from cilantro.messages.block_data import BlockMetaData, BlockMetaDataReply, BlockMetaDataRequest
-from cilantro.messages.block_data import NewBlockNotification
+from cilantro.messages.block_data.block_metadata import BlockMetaData, BlockMetaDataReply, BlockMetaDataRequest, NewBlockNotification
 
 from cilantro.messages.transaction.standard import StandardTransaction, StandardTransactionBuilder
 from cilantro.messages.transaction.standard import StandardTransaction, StandardTransactionBuilder

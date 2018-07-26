@@ -1,10 +1,8 @@
 from cilantro import Constants
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
 from cilantro.protocol.statemachine import *
-from cilantro.protocol.interpreters import VanillaInterpreter
 from cilantro.db import *
 from cilantro.messages import *
-from collections import defaultdict
 
 
 DelegateBootState = "DelegateBootState"
@@ -31,9 +29,7 @@ class DelegateCatchupState(DelegateBaseState):
 
     def reset_attrs(self):
         self.new_blocks = []
-
         self.current_block = None
-        self.awaited_txs = {}
 
     @enter_from_any
     def enter_any(self, prev_state):
@@ -54,13 +50,33 @@ class DelegateCatchupState(DelegateBaseState):
 
     @input(TransactionReply)
     def handle_tx_reply(self, reply: TransactionReply, envelope: Envelope):
-        self.log.debug("Delegate got tx reply {} with og env {}".format(reply, envelope))
+        request = envelope.message
+        self.log.debug("Delegate got tx reply {} with og env {}".format(reply, request))
 
         # Verify that the transactions blobs in the reply match the requested hashes in the request
-        
+        if not reply.validate_matches_request(request):
+            self.log.error("Could not verify transactions with:\nrequest: {}\nreply: {}".format(request, reply))
+            return
 
         # Verify that the transactions match the merkle leaves in the block meta
+        if request.tx_hashes() != self.current_block.merkle_leaves:
+            self.log.error("Requested TX hashes\n{}\ndoes not match current block's merkle leaves\n{}"
+                           .format(request.tx_hashes, self.current_block))
+            return
 
+        # Interpret the transactions
+        for contract_blob in reply.transactions:
+            self.parent.interpreter.interpret(ContractTransaction.from_bytes(contract_blob), async=False)
+
+        # Finally, store this new block and update our current block hash. reset self.current_block, update the next
+        BlockStorageDriver.store_block_from_meta(self.current_block)
+        self.current_block = None
+        self._update_next_block()
+
+    @input_timeout(BlockMetaDataRequest)
+    def timeout_block_meta_request(self, request: BlockMetaDataRequest):
+        self.log.error("BlockMetaDataRequest timed out!!!\nRequest={}".format(request))
+        # TODO resend reply, or try another Masternode
 
     def _request_update(self):
         """
@@ -71,7 +87,7 @@ class DelegateCatchupState(DelegateBaseState):
 
         self.log.info("Requesting updates from Masternode with current block hash {}".format(self.parent.current_hash))
         request = BlockMetaDataRequest.create(current_block_hash=self.parent.current_hash)
-        self.parent.composer.send_request_msg(message=request, vk=VKBook.get_masternodes()[0])
+        self.parent.composer.send_request_msg(message=request, vk=VKBook.get_masternodes()[0], timeout=2)
 
     def _update_next_block(self):
         """

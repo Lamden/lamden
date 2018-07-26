@@ -2,7 +2,6 @@ from cilantro import Constants
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.utils import validate_hex
 from cilantro.protocol.wallets import ED25519Wallet
-from cilantro.db import ContractTemplate, VKBook
 
 import capnp
 import transaction_capnp
@@ -49,11 +48,15 @@ class ContractTransactionBuilder:
 
     @staticmethod
     def create_currency_tx(sender_sk: str, receiver_vk: str, amount: int):
+        from cilantro.db.templating import ContractTemplate
+
         validate_hex(receiver_vk, 64, 'receiver verifying key')
         code_str = ContractTemplate.interpolate_template('currency', amount=amount, receiver=receiver_vk)
         return ContractTransactionBuilder.create_contract_tx(sender_sk, code_str)
 
     @staticmethod
     def create_dummy_tx(sender_sk: str, receiver_vk: str, fail: bool):
+        from cilantro.db.templating import ContractTemplate
+
         code_str = ContractTemplate.interpolate_template('dummy', fail=fail)
         return ContractTransactionBuilder.create_contract_tx(sender_sk, code_str)
