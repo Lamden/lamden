@@ -37,6 +37,11 @@ class DelegateCatchupState(DelegateBaseState):
         self.reset_attrs()
         self._request_update()
 
+    @exit_to_any
+    def exit_any(self, next_state):
+        self.parent.current_hash = BlockStorageDriver.get_latest_block_hash()
+        self.log.debug("CatchupState exiting. Current block hash set to {}".format(self.parent.current_hash))
+
     @input(BlockMetaDataReply)
     def handle_blockmeta_reply(self, reply: BlockMetaDataReply):
         self.log.debug("Delegate got BlockMetaDataReply: {}".format(reply))
