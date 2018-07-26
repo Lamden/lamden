@@ -36,19 +36,12 @@ class BlockMetaData(MessageBase):
         """
         from cilantro.db.blocks import BlockStorageDriver  # imported here to avoid cyclic import (im so sorry --davis)
 
-        prev_block_hash = self.prev_block_hash
-        block_data = {
-            'block_contender': self.block_contender,
-            'timestamp': self.timestamp,
-            'merkle_root': self.merkle_root,
-            'merkle_leaves': self._data.merkleLeaves.decode(),
-            'prev_block_hash': self.prev_block_hash,
-            'masternode_signature': self.masternode_signature,
-            'masternode_vk': self.masternode_vk,
-        }
+        block_data = self.block_dict()
+        actual_hash = block_data.pop('hash')
+
         BlockStorageDriver.validate_block_data(block_data)
-        block_hash = BlockStorageDriver.compute_block_hash(block_data)
-        assert block_hash == self.block_hash, "Block hash is incorrect"
+        assert actual_hash == self.block_hash, "Computed block hash {} does not match self.block_hash {}"\
+                                               .format(actual_hash, self.block_hash)
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
@@ -73,6 +66,29 @@ class BlockMetaData(MessageBase):
     def _chunks(cls, l, n=64):
         for i in range(0, len(l), n):
             yield l[i:i + n]
+
+    def block_dict(self):
+        """
+        A utility property for building a dictionary with keys for each column in the 'blocks' table. This is used to
+        facilitate interaction with BlockStorageDriver
+        :param include_hash: True if the 'hash' key should be included in the block dictionary.
+        :return: A dictionary, containing a key for each column in the blocks table. The 'hash' column can be omitted
+        by passing include_hash=False
+        """
+        from cilantro.db.blocks import BlockStorageDriver  # imported here to avoid cyclic import (im so sorry --davis)
+
+        block_data = {
+            'block_contender': self.block_contender,
+            'timestamp': self.timestamp,
+            'merkle_root': self.merkle_root,
+            'merkle_leaves': self._data.merkleLeaves.decode(),
+            'prev_block_hash': self.prev_block_hash,
+            'masternode_signature': self.masternode_signature,
+            'masternode_vk': self.masternode_vk,
+        }
+        block_data['hash'] = BlockStorageDriver.compute_block_hash(block_data)
+
+        return block_data
 
     @property
     def block_hash(self) -> str:

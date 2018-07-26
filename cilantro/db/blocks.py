@@ -85,6 +85,7 @@ Custom Exceptions for block storage operations
 """
 class BlockStorageException(Exception): pass
 class BlockStorageValidationException(BlockStorageException): pass
+class BlockStorageDatabaseException(BlockStorageException): pass
 
 class InvalidBlockContenderException(BlockStorageValidationException): pass
 class InvalidMerkleTreeException(BlockStorageValidationException): pass
@@ -162,8 +163,8 @@ class BlockStorageDriver:
             if res:
                 log.info("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block_hash))
             else:
-                log.error("Error inserting block! Got None/False result back from insert query. Result={}".format(res))
-                return
+                raise BlockStorageDatabaseException("Error inserting block! Got None/False result back "
+                                                    "from insert query. Result={}".format(res))
 
             # Store raw transactions
             log.info("Attempting to store {} raw transactions associated with block hash {}"
@@ -179,17 +180,31 @@ class BlockStorageDriver:
 
             return block_hash
 
-
     @classmethod
-    def store_block_from_meta(cls, block_meta: BlockMetaData):
+    def store_block_from_meta(cls, block_meta: BlockMetaData) -> str:
         """
         Stores a block from a BlockMetaData object. This block must be the child of the current lastest block.
         :param block_meta: The BlockMetaData object containing all of the block's data (excluding the raw transactions)
-        :return: None
+        :return: The hash of the stored block (as a string)
         :raises: A BlockStorageException (or specific subclass) if any validation or storage fails
         """
-        # TODO implement
-        pass
+        # Ensure this block's previous hash matches the latest block hash in the DB
+        if block_meta.prev_block_hash != cls.get_latest_block_hash():
+            raise InvalidBlockLinkException("Attempted to store a block with previous_hash {} that does not match the "
+                                            "database latest block hash {}".format(block_meta.prev_block_hash,
+                                                                                      cls.get_latest_block_hash()))
+
+        with DB() as db:
+            encoded_block_data = cls._encode_block(block_meta.block_dict())
+            res = db.tables.blocks.insert([encoded_block_data]).run(db.ex)
+            if res:
+                log.info("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block_meta.block_hash))
+            else:
+                raise BlockStorageDatabaseException("Error inserting block! Got None/False result back "
+                                                    "from insert query. Result={}".format(res))
+
+            return block_meta.block_hash
+
 
     @classmethod
     def get_block(cls, number: int=0, hash: str='') -> dict or None:
@@ -271,6 +286,8 @@ class BlockStorageDriver:
         :return: A string, representing the latest (most recent) block's hash
         :raises: An assertion if the latest block hash is not vaild 64 character hex. If this happens, something was
         seriously messed up in the block storage process.
+
+        # TODO this can perhaps be made more efficient by memoizing the new block_hash each time we store it
         """
         with DB() as db:
             row = db.tables.blocks.select('hash').order_by('number', desc=True).limit(1).run(db.ex)[0]

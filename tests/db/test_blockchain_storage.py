@@ -525,10 +525,16 @@ class TestBlockStorageDriver(TestCase):
         self.assertEquals(actual_new_hashes, new_hashes)
 
     def test_store_block_from_meta(self):
-        # TODO implement
-        pass
+        block_meta = self._build_block_meta(ref_prev_block=True)
+
+        BlockStorageDriver.store_block_from_meta(block_meta)
+
+        latest_block = BlockStorageDriver.get_latest_block()
+        del latest_block['number']  # Remove the auto increment 'number' col before comparing
+
+        self.assertEquals(latest_block, block_meta.block_dict())
 
     def test_store_block_from_meta_invalid_link(self):
-        # TODO try to store a block that does not link the latest.
-        pass
+        block_meta = self._build_block_meta(ref_prev_block=False)
+        self.assertRaises(InvalidBlockLinkException, BlockStorageDriver.store_block_from_meta, block_meta)
 
