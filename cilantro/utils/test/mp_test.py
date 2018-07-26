@@ -78,6 +78,9 @@ class MPTesterProcess:
         self.gathered_tasks = None
         self.log = get_logger("TesterProc-{}".format(name))
 
+        # Speculation: New processes has to start with a new event loop
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
         self.tester_obj, self.loop, self.tasks = self._build_components(build_fn)
 
         # Connect to parent process over ipc PAIR self.socket
