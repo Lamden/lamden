@@ -15,10 +15,12 @@ import time
 
 class TestBlockStorageDriver(TestCase):
 
-    def _build_valid_block_data(self, num_transactions=4) -> dict:
+    def _build_block_data(self, num_transactions=4, ref_prev_block=False) -> dict:
         """
         Utility method to build a dictionary with all the params needed to invoke store_block
-        :param num_transactions:
+        :param num_transactions: Number of raw transactions in the block
+        :param ref_prev_block: True if the block data's prev_block_hash should reference the previous block.
+        Otherwise, prev_block_hash is set to default 000000...
         :return:
         """
         mn_sk = Constants.Testnet.Masternodes[0]['sk']
@@ -33,7 +35,10 @@ class TestBlockStorageDriver(TestCase):
 
         bc = build_test_contender(tree=tree)
 
-        prev_block_hash = '0' * 64
+        if ref_prev_block:
+            prev_block_hash = BlockStorageDriver.get_latest_block_hash()
+        else:
+            prev_block_hash = '0' * 64
 
         mn_sig = ED25519Wallet.sign(mn_sk, tree.root)
 
@@ -47,17 +52,36 @@ class TestBlockStorageDriver(TestCase):
             'timestamp': timestamp
         }
 
+    def _build_block_data_with_hash(self, *args, **kwargs) -> dict:
+        b_data = self._build_block_data(*args, **kwargs)
+        b_data['hash'] = BlockStorageDriver.compute_block_hash(b_data)
+        return b_data
+
+    def _build_block_meta(self, *args, **kwargs):
+        b_data = self._build_block_data_with_hash(*args, **kwargs)
+        return BlockMetaData.create(**b_data)
+
     def test_cant_init(self):
         self.assertRaises(NotImplementedError, BlockStorageDriver)
 
     def test_build_valid_block_data_params(self):
         """
-        Since _build_valid_block_data relies on lot of other API, we make include this isolated test to make it clear
-        if something blows up in _build_valid_block_data
+        Since _build_block_data relies on lot of other API, we make include this isolated test to make it clear
+        if something blows up in _build_block_data
         """
         # We just want to know if any of these calls blows up (i.e. raises any exceptions)
-        data = self._build_valid_block_data()
-        data2 = self._build_valid_block_data(num_transactions=5)  # try with an odd # of transactions
+        data = self._build_block_data()
+        data2 = self._build_block_data(num_transactions=5)  # try with an odd # of transactions
+
+    def test_build_block_meta(self):
+        """
+        Similar to test_build_valid_block_data_params, we wish to isolate the building of a BlockMetaData code, which
+        is used by various test functions. Properly, one would mock the BlockMetaData class, but aint nobody got time
+        for that
+        """
+        # None of these lines should blow up
+        b = self._build_block_meta(ref_prev_block=False)
+        b = self._build_block_meta(ref_prev_block=True)
 
     def test_store_block_data_invalid_sk(self):
         raw_txs = [secrets.token_bytes(16) for _ in range(16)]
@@ -79,7 +103,7 @@ class TestBlockStorageDriver(TestCase):
         self.assertEqual(first_hash, GENESIS_HASH)
 
     def test_validate_block_data_valid(self):
-        block_data = self._build_valid_block_data()
+        block_data = self._build_block_data()
         BlockStorageDriver.validate_block_data(block_data)  # This should not raise any Exceptions
 
     def test_validate_block_data_missing_keys(self):
@@ -132,7 +156,7 @@ class TestBlockStorageDriver(TestCase):
         self.assertRaises(InvalidMerkleTreeException, BlockStorageDriver.validate_block_data, block_data)
 
     def test_validate_block_data_invalid_contender_signatures(self):
-        block_data = self._build_valid_block_data()
+        block_data = self._build_block_data()
 
         bad_contender = MagicMock(spec=BlockContender)
         bad_contender.validate_signatures = MagicMock(return_value=False)
@@ -142,7 +166,7 @@ class TestBlockStorageDriver(TestCase):
         self.assertRaises(InvalidBlockContenderException, BlockStorageDriver.validate_block_data, block_data)
 
     def test_validate_block_data_invalid_contender_leaves_length(self):
-        bd = self._build_valid_block_data()
+        bd = self._build_block_data()
 
         # Create a sketch block contender with the incorrect number of merkle leaves
         bc = bd['block_contender']
@@ -153,7 +177,7 @@ class TestBlockStorageDriver(TestCase):
         self.assertRaises(InvalidBlockContenderException, BlockStorageDriver.validate_block_data, bd)
 
     def test_validate_block_data_invalid_contender_leaves_mismatch(self):
-        bd = self._build_valid_block_data(4)
+        bd = self._build_block_data(4)
 
         # Create a sketch block contender with leaves that are different from the merkle leaves in the block_data
         raw_transactions = [build_test_transaction().serialize() for _ in range(4)]
@@ -165,14 +189,14 @@ class TestBlockStorageDriver(TestCase):
         self.assertRaises(InvalidBlockContenderException, BlockStorageDriver.validate_block_data, bd)
 
     def test_validate_block_data_invalid_signature(self):
-        block_data = self._build_valid_block_data()
+        block_data = self._build_block_data()
         block_data['masternode_signature'] = 'A' * 128
 
         self.assertRaises(InvalidBlockSignatureException, BlockStorageDriver.validate_block_data, block_data)
 
     def test_compute_block_hash(self):
         # NOTE -- this implicitly tests Hasher.hash_iterable
-        bd = self._build_valid_block_data()
+        bd = self._build_block_data()
 
         # Correct order of keys should be:
         # ['block_contender',
@@ -310,7 +334,7 @@ class TestBlockStorageDriver(TestCase):
         self.assertEquals(latest['block_contender'], bc)
 
     def test_encode_decode_block(self):
-        block_data = self._build_valid_block_data()
+        block_data = self._build_block_data()
         clone = BlockStorageDriver._decode_block(BlockStorageDriver._encode_block(block_data))
         self.assertEquals(block_data, clone)
 
@@ -319,11 +343,11 @@ class TestBlockStorageDriver(TestCase):
         pass
 
     def test_validate_block_link_invalid_block_data(self):
-        bd1 = self._build_valid_block_data()
+        bd1 = self._build_block_data()
         bd1['hash'] = BlockStorageDriver.compute_block_hash(bd1)
         bd1['number'] = 2
 
-        bd2 = self._build_valid_block_data()
+        bd2 = self._build_block_data()
         bd2['prev_block_hash'] = bd1['hash']
         bd2['hash'] = BlockStorageDriver.compute_block_hash(bd2)
         bd2['number'] = 3
@@ -335,11 +359,11 @@ class TestBlockStorageDriver(TestCase):
         self.assertRaises(InvalidMerkleTreeException, BlockStorageDriver._validate_block_link, bd1, bd2)
 
     def test_validate_block_link_invalid_block_hash(self):
-        bd1 = self._build_valid_block_data()
+        bd1 = self._build_block_data()
         bd1['hash'] = BlockStorageDriver.compute_block_hash(bd1)
         bd1['number'] = 2
 
-        bd2 = self._build_valid_block_data()
+        bd2 = self._build_block_data()
         bd2['prev_block_hash'] = bd1['hash']
         bd2['hash'] = 'A' * 64  # intentionally not BlockStorageDriver.compute_block_hash(bd2)
         bd2['number'] = 3
@@ -347,11 +371,11 @@ class TestBlockStorageDriver(TestCase):
         self.assertRaises(InvalidBlockHashException, BlockStorageDriver._validate_block_link, bd1, bd2)
 
     def test_validate_block_link_invalid_block_linkage(self):
-        bd1 = self._build_valid_block_data()
+        bd1 = self._build_block_data()
         bd1['hash'] = BlockStorageDriver.compute_block_hash(bd1)
         bd1['number'] = 2
 
-        bd2 = self._build_valid_block_data()
+        bd2 = self._build_block_data()
         bd2['prev_block_hash'] = 'A' * 64  # something that obviously not the parent block's hash
         bd2['hash'] = BlockStorageDriver.compute_block_hash(bd2)
         bd2['number'] = 3
@@ -392,7 +416,7 @@ class TestBlockStorageDriver(TestCase):
                                            timestamp=timestamp)
 
         # Stuff a sketch block in that doesn't link to the last
-        sketch_block = self._build_valid_block_data()  # by default this has prev_block_hash = 'AAAAA...'
+        sketch_block = self._build_block_data()  # by default this has prev_block_hash = 'AAAAA...'
         sketch_block['hash'] = BlockStorageDriver.compute_block_hash(sketch_block)
         with DB() as db:
             db.tables.blocks.insert([BlockStorageDriver._encode_block(sketch_block)]).run(db.ex)
@@ -499,4 +523,12 @@ class TestBlockStorageDriver(TestCase):
 
         actual_new_hashes = BlockStorageDriver.get_child_block_hashes(starting_hash)
         self.assertEquals(actual_new_hashes, new_hashes)
+
+    def test_store_block_from_meta(self):
+        # TODO implement
+        pass
+
+    def test_store_block_from_meta_invalid_link(self):
+        # TODO try to store a block that does not link the latest.
+        pass
 

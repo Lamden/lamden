@@ -37,7 +37,7 @@ class TestBlockMetaDataReply(TestCase):
                 merkle_leaves=block_data['merkle_leaves'],
                 prev_block_hash=block_data['prev_block_hash'],
                 timestamp=block_data['timestamp'],
-                masternode_sig=block_data['masternode_signature'],
+                masternode_signature=block_data['masternode_signature'],
                 masternode_vk=block_data['masternode_vk'],
                 block_contender=block_data['block_contender']
             )
@@ -52,7 +52,7 @@ class TestBlockMetaDataReply(TestCase):
             merkle_leaves=block_data['merkle_leaves'],
             prev_block_hash=block_data['prev_block_hash'],
             timestamp=block_data['timestamp'],
-            masternode_sig=block_data['masternode_signature'],
+            masternode_signature=block_data['masternode_signature'],
             masternode_vk=block_data['masternode_vk'],
             block_contender=block_data['block_contender']
         )
@@ -113,7 +113,7 @@ class TestBlockMetaData(TestCase):
             merkle_leaves=block_data['merkle_leaves'],
             prev_block_hash=block_data['prev_block_hash'],
             timestamp=block_data['timestamp'],
-            masternode_sig=block_data['masternode_signature'],
+            masternode_signature=block_data['masternode_signature'],
             masternode_vk=block_data['masternode_vk'],
             block_contender=block_data['block_contender']
         )
@@ -134,7 +134,7 @@ class TestBlockMetaData(TestCase):
             merkle_leaves=block_data['merkle_leaves'],
             prev_block_hash=block_data['prev_block_hash'],
             timestamp=block_data['timestamp'],
-            masternode_sig=block_data['masternode_signature'],
+            masternode_signature=block_data['masternode_signature'],
             masternode_vk=block_data['masternode_vk'],
             block_contender=block_data['block_contender']
         )
@@ -148,7 +148,7 @@ class TestBlockMetaData(TestCase):
             merkle_leaves=block_data['merkle_leaves'],
             prev_block_hash=b'346345',
             timestamp=block_data['timestamp'],
-            masternode_sig=block_data['masternode_signature'],
+            masternode_signature=block_data['masternode_signature'],
             masternode_vk=block_data['masternode_vk'],
             block_contender=block_data['block_contender']
         )
@@ -162,7 +162,7 @@ class TestBlockMetaData(TestCase):
             merkle_leaves=block_data['merkle_leaves'],
             prev_block_hash=block_data['prev_block_hash'],
             timestamp=block_data['timestamp'],
-            masternode_sig=block_data['masternode_signature'],
+            masternode_signature=block_data['masternode_signature'],
             masternode_vk=block_data['masternode_vk'],
             block_contender=block_data['block_contender']
         )
@@ -176,7 +176,7 @@ class TestBlockMetaData(TestCase):
             merkle_leaves=b'22222',
             prev_block_hash=block_data['prev_block_hash'],
             timestamp=block_data['timestamp'],
-            masternode_sig=block_data['masternode_signature'],
+            masternode_signature=block_data['masternode_signature'],
             masternode_vk=block_data['masternode_vk'],
             block_contender=block_data['block_contender']
         )
@@ -190,7 +190,7 @@ class TestBlockMetaData(TestCase):
             merkle_leaves=block_data['merkle_leaves'],
             prev_block_hash=block_data['prev_block_hash'],
             timestamp=block_data['timestamp'],
-            masternode_sig=b'1234',
+            masternode_signature=b'1234',
             masternode_vk=block_data['masternode_vk'],
             block_contender=block_data['block_contender']
         )
@@ -204,7 +204,7 @@ class TestBlockMetaData(TestCase):
             merkle_leaves=block_data['merkle_leaves'],
             prev_block_hash=block_data['prev_block_hash'],
             timestamp=block_data['timestamp'],
-            masternode_sig=block_data['masternode_signature'],
+            masternode_signature=block_data['masternode_signature'],
             masternode_vk=b'1234',
             block_contender=block_data['block_contender']
         )
@@ -218,7 +218,7 @@ class TestBlockMetaData(TestCase):
             merkle_leaves=block_data['merkle_leaves'],
             prev_block_hash=block_data['prev_block_hash'],
             timestamp=1234,
-            masternode_sig=block_data['masternode_signature'],
+            masternode_signature=block_data['masternode_signature'],
             masternode_vk=block_data['masternode_vk'],
             block_contender=block_data['block_contender']
         )
@@ -233,7 +233,7 @@ class TestBlockMetaData(TestCase):
                 merkle_leaves=block_data['merkle_leaves'],
                 prev_block_hash=block_data['prev_block_hash'],
                 timestamp=block_data['timestamp'],
-                masternode_sig=block_data['masternode_signature'],
+                masternode_signature=block_data['masternode_signature'],
                 masternode_vk=block_data['masternode_vk'],
                 block_contender=new_block['block_contender']
             )
@@ -247,7 +247,7 @@ class TestBlockMetaData(TestCase):
             merkle_leaves=block_data['merkle_leaves'],
             prev_block_hash=block_data['prev_block_hash'],
             timestamp=block_data['timestamp'],
-            masternode_sig=block_data['masternode_signature'],
+            masternode_signature=block_data['masternode_signature'],
             masternode_vk=block_data['masternode_vk'],
             block_contender=block_data['block_contender']
         )
