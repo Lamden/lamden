@@ -19,19 +19,23 @@ class TestSenecaInterpreter(TestCase):
     def setUp(self):
         reset_db()
 
+    def tearDown(self):
+        self.interpreter.ex.cur.close()
+        self.interpreter.ex.conn.close()
+
     def ordered_tx(self, contract):
         return OrderingContainer.create(contract, MN_VK)
 
     def test_init(self):
-        interpreter = SenecaInterpreter()  # this should not blow up
-        self.assertTrue(interpreter.ex is not None)
-        self.assertTrue(interpreter.contracts_table is not None)
+        self.interpreter = SenecaInterpreter()  # this should not blow up
+        self.assertTrue(self.interpreter.ex is not None)
+        self.assertTrue(self.interpreter.contracts_table is not None)
 
     def test_interpret_invalid_type(self):
-        interpreter = SenecaInterpreter()
+        self.interpreter = SenecaInterpreter()
         not_a_contract = 'sup bro im a string'
 
-        self.assertRaises(AssertionError, interpreter.interpret, not_a_contract)
+        self.assertRaises(AssertionError, self.interpreter.interpret, not_a_contract)
 
     def test_interpret_currency(self):
         amount = 1260
@@ -39,21 +43,21 @@ class TestSenecaInterpreter(TestCase):
         sender = ALICE_VK
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=amount))
 
-        interpreter = SenecaInterpreter()
-        currency_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='currency')
+        self.interpreter = SenecaInterpreter()
+        currency_contract = get_contract_exports(self.interpreter.ex, self.interpreter.contracts_table, contract_id='currency')
 
         sender_initial_balance = currency_contract.get_balance(sender)
         receiver_initial_balance = currency_contract.get_balance(receiver)
 
-        interpreter.interpret(contract_tx)
+        self.interpreter.interpret(contract_tx)
 
         # Assert the contract ran and updated the expected rows
         self.assertEqual(currency_contract.get_balance(sender), sender_initial_balance - amount)
         self.assertEqual(currency_contract.get_balance(receiver), receiver_initial_balance + amount)
 
         # Assert the contract was added to the queue
-        self.assertEqual(interpreter.queue_size, 1)
-        self.assertEqual(interpreter.queue[0], contract_tx.transaction)
+        self.assertEqual(self.interpreter.queue_size, 1)
+        self.assertEqual(self.interpreter.queue[0], contract_tx.transaction)
 
     def test_run_bad_contract_reverts_to_last_successful_contract(self):
         """
@@ -62,22 +66,22 @@ class TestSenecaInterpreter(TestCase):
         receiver = BOB_VK
         sender = ALICE_VK
 
-        interpreter = SenecaInterpreter()
-        currency_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='currency')
+        self.interpreter = SenecaInterpreter()
+        currency_contract = get_contract_exports(self.interpreter.ex, self.interpreter.contracts_table, contract_id='currency')
 
         sender_initial_balance = currency_contract.get_balance(sender)
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=1000))
-        interpreter.interpret(contract_tx)
+        self.interpreter.interpret(contract_tx)
         self.assertEqual(currency_contract.get_balance(sender), sender_initial_balance - 1000)
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=200))
-        interpreter.interpret(contract_tx)
+        self.interpreter.interpret(contract_tx)
         self.assertEqual(currency_contract.get_balance(sender), sender_initial_balance - 1200)
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=60))
-        interpreter.interpret(contract_tx)
+        self.interpreter.interpret(contract_tx)
         self.assertEqual(currency_contract.get_balance(sender), sender_initial_balance - 1260)
 
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_currency_tx(sender_sk=ALICE_SK, receiver_vk=receiver, amount=3696947))
-        interpreter.interpret(contract_tx)
+        self.interpreter.interpret(contract_tx)
         self.assertEqual(currency_contract.get_balance(sender), sender_initial_balance - 1260)
 
     def test_run_bad_contract_reverts_to_last_successful_contract_remove_partial(self):
@@ -87,63 +91,63 @@ class TestSenecaInterpreter(TestCase):
         sender = ALICE_VK
         receiver = BOB_VK
 
-        interpreter = SenecaInterpreter()
-        dummy_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='dummy')
+        self.interpreter = SenecaInterpreter()
+        dummy_contract = get_contract_exports(self.interpreter.ex, self.interpreter.contracts_table, contract_id='dummy')
 
         sender_initial_balance = dummy_contract.get_balance(sender)
         self.assertEqual(dummy_contract.get_balance(sender), sender_initial_balance)
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False))
-        interpreter.interpret(contract_tx)
+        self.interpreter.interpret(contract_tx)
         self.assertEqual(dummy_contract.get_balance(sender), sender_initial_balance + 500)
         # NOTE it attempts to update the balance to 123 and add the same user again
         #   Updating should work and adding already added user
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=True))
-        interpreter.interpret(contract_tx)
+        self.interpreter.interpret(contract_tx)
         self.assertEqual(dummy_contract.get_balance(sender), sender_initial_balance + 500)
 
     def test_flushes_with_update(self):
         """
-        Tests that calling .flush on an interpreter with update_state=True after interpreting several transactions
+        Tests that calling .flush on an self.interpreter with update_state=True after interpreting several transactions
         successfully commits the changes to the database
         """
         sender = ALICE_VK
         receiver = BOB_VK
 
-        interpreter = SenecaInterpreter()
-        dummy_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='dummy')
+        self.interpreter = SenecaInterpreter()
+        dummy_contract = get_contract_exports(self.interpreter.ex, self.interpreter.contracts_table, contract_id='dummy')
 
         sender_initial_balance = dummy_contract.get_balance(sender)
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False))
-        interpreter.interpret(contract_tx)
+        self.interpreter.interpret(contract_tx)
         self.assertEqual(dummy_contract.get_balance(sender), sender_initial_balance + 500)
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False))
-        interpreter.interpret(contract_tx)
-        interpreter.flush(update_state=True)
+        self.interpreter.interpret(contract_tx)
+        self.interpreter.flush(update_state=True)
         self.assertEqual(dummy_contract.get_balance(sender), sender_initial_balance + 1000)
 
     def test_flushes_without_update(self):
         """
-        Tests that calling .flush on an interpreter with update_state=False after interpreting several transactions
+        Tests that calling .flush on an self.interpreter with update_state=False after interpreting several transactions
         successfully rolls back
         """
         sender = ALICE_VK
         receiver = BOB_VK
 
-        interpreter = SenecaInterpreter()
-        dummy_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='dummy')
+        self.interpreter = SenecaInterpreter()
+        dummy_contract = get_contract_exports(self.interpreter.ex, self.interpreter.contracts_table, contract_id='dummy')
 
         sender_initial_balance = dummy_contract.get_balance(sender)
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False))
-        interpreter.interpret(contract_tx)
+        self.interpreter.interpret(contract_tx)
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False))
-        interpreter.interpret(contract_tx)
-        interpreter.flush(update_state=True)
+        self.interpreter.interpret(contract_tx)
+        self.interpreter.flush(update_state=True)
         self.assertEqual(dummy_contract.get_balance(sender), sender_initial_balance + 1000)
 
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False))
-        interpreter.interpret(contract_tx)
+        self.interpreter.interpret(contract_tx)
         self.assertEqual(dummy_contract.get_balance(sender), sender_initial_balance + 1500)
-        interpreter.flush(update_state=False)
+        self.interpreter.flush(update_state=False)
         self.assertEqual(dummy_contract.get_balance(sender), sender_initial_balance + 1000)
 
     def test_queue_binary(self):
@@ -153,16 +157,16 @@ class TestSenecaInterpreter(TestCase):
         sender = ALICE_VK
         receiver = BOB_VK
 
-        interpreter = SenecaInterpreter()
-        dummy_contract = get_contract_exports(interpreter.ex, interpreter.contracts_table, contract_id='dummy')
+        self.interpreter = SenecaInterpreter()
+        dummy_contract = get_contract_exports(self.interpreter.ex, self.interpreter.contracts_table, contract_id='dummy')
 
         contracts = []
         for i in range(5):
             contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False))
-            interpreter.interpret(contract_tx)
+            self.interpreter.interpret(contract_tx)
             contracts.append(contract_tx.transaction)
 
-        for actual, expected in zip([c.serialize() for c in contracts], interpreter.queue_binary):
+        for actual, expected in zip([c.serialize() for c in contracts], self.interpreter.queue_binary):
             self.assertEqual(actual, expected)
 
     def test_check_contract_correct_order(self):
@@ -170,7 +174,7 @@ class TestSenecaInterpreter(TestCase):
         receiver = BOB_VK
         now = int(time.time()*1000)
 
-        interpreter = SenecaInterpreter()
+        self.interpreter = SenecaInterpreter()
         contracts = [
             self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)) \
             for i in range(5)
@@ -182,16 +186,16 @@ class TestSenecaInterpreter(TestCase):
         contracts[4]._data.utcTimeMs = now + 2000
 
         for c in contracts:
-            interpreter.interpret(c, async=True)
+            self.interpreter.interpret(c, async=True)
 
-        self.assertEqual(contracts, [heappop(interpreter.heap)[1] for i in range(5)])
+        self.assertEqual(contracts, [heappop(self.interpreter.heap)[1] for i in range(5)])
 
     def test_check_contract_correct_order_shuffled(self):
         sender = ALICE_VK
         receiver = BOB_VK
         now = int(time.time()*1000)
 
-        interpreter = SenecaInterpreter()
+        self.interpreter = SenecaInterpreter()
         contracts = [
             self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)) \
             for i in range(5)
@@ -203,29 +207,28 @@ class TestSenecaInterpreter(TestCase):
         contracts[4]._data.utcTimeMs = now - 3000
 
         for c in contracts:
-            interpreter.interpret(c, async=True)
+            self.interpreter.interpret(c, async=True)
 
-        self.assertEqual(contracts[4], heappop(interpreter.heap)[1])
-        self.assertEqual(contracts[0], heappop(interpreter.heap)[1])
-        self.assertEqual(contracts[1], heappop(interpreter.heap)[1])
-        self.assertEqual(contracts[3], heappop(interpreter.heap)[1])
-        self.assertEqual(contracts[2], heappop(interpreter.heap)[1])
+        self.assertEqual(contracts[4], heappop(self.interpreter.heap)[1])
+        self.assertEqual(contracts[0], heappop(self.interpreter.heap)[1])
+        self.assertEqual(contracts[1], heappop(self.interpreter.heap)[1])
+        self.assertEqual(contracts[3], heappop(self.interpreter.heap)[1])
+        self.assertEqual(contracts[2], heappop(self.interpreter.heap)[1])
 
-    @async_run_for(4)
+    @async_run_for(3)
     def test_check_contract_async_shuffled_adhoc_checks(self, loop):
 
         def assertCondition():
-            self.assertEqual(contracts[0].transaction, interpreter.queue[0])
-            self.assertEqual(contracts[2].transaction, interpreter.queue[1])
-            self.assertEqual(contracts[1].transaction, interpreter.queue[2])
-            self.assertEqual(contracts[3].transaction, interpreter.queue[3])
-            self.assertEqual(contracts[4].transaction, interpreter.queue[4])
+            self.assertEqual(contracts[0].transaction, self.interpreter.queue[0])
+            self.assertEqual(contracts[2].transaction, self.interpreter.queue[1])
+            self.assertEqual(contracts[1].transaction, self.interpreter.queue[2])
+            self.assertEqual(len(self.interpreter.queue), 3)
 
         sender = ALICE_VK
         receiver = BOB_VK
         now = int(time.time()*1000)
 
-        interpreter = SenecaInterpreter(loop)
+        self.interpreter = SenecaInterpreter(loop)
         contracts = [
             self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)) \
             for i in range(5)
@@ -233,16 +236,14 @@ class TestSenecaInterpreter(TestCase):
         contracts[0]._data.utcTimeMs = now - 2000
         contracts[1]._data.utcTimeMs = now
         contracts[2]._data.utcTimeMs = now - 1000
-        contracts[3]._data.utcTimeMs = now + 1000
-        contracts[4]._data.utcTimeMs = now + 2000
+        contracts[3]._data.utcTimeMs = now + 5000
+        contracts[4]._data.utcTimeMs = now + 6000
 
         for c in contracts:
-            interpreter.interpret(c, async=True)
+            self.interpreter.interpret(c, async=True)
 
-        t = Timer(4, assertCondition)
+        t = Timer(3, assertCondition)
         t.start()
-
-
 
 
 if __name__ == '__main__':
