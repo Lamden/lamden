@@ -7,11 +7,11 @@ from cilantro.db.tables import DB_NAME
 from cilantro.db import DB
 from typing import List
 from heapq import heappush, heappop
-import time, asyncio
+import time, asyncio, os
 
 class SenecaInterpreter(BaseInterpreter):
 
-    def __init__(self, loop=None):
+    def __init__(self):
         super().__init__()
 
         self.max_delay_ms = 1000
@@ -21,10 +21,8 @@ class SenecaInterpreter(BaseInterpreter):
         with DB() as db:
             self.contracts_table = db.tables.contracts
 
-        # Check to see if there are valid contracts to be run
-        if not loop: loop = asyncio.get_event_loop()
-        asyncio.set_event_loop(loop)
-        self.check_contract_future = asyncio.ensure_future(self.check_contract())
+        self.loop = asyncio.get_event_loop()
+        self.start()
 
         # Ensure contracts table was seeded properly
         assert self.contracts_table.select().run(self.ex), "Expected contracts table to be seeded with at least one row"
@@ -56,14 +54,17 @@ class SenecaInterpreter(BaseInterpreter):
     async def check_contract(self):
         self.log.debug('Checking for runnable contracts...')
         while True:
-            while len(self.heap) > 0:
-                timestamp = int(self.heap[0][0][:11], 16) # 11 is the number of digits representing the time, 16 is the base for hex
-                if timestamp + self.max_delay_ms < time.time()*1000:
-                    self._run_contract(self.heap[0][1].transaction)
-                    heappop(self.heap)
-                else:
-                    break
-            await asyncio.sleep(0.05)
+            try:
+                while len(self.heap) > 0:
+                    timestamp = int(self.heap[0][0][:11], 16) # 11 is the number of digits representing the time, 16 is the base for hex
+                    if timestamp + self.max_delay_ms < time.time()*1000:
+                        self._run_contract(self.heap[0][1].transaction)
+                        heappop(self.heap)
+                    else:
+                        break
+                await asyncio.sleep(0.05)
+            except asyncio.CancelledError:
+                break
 
     def _rerun_contracts(self):
         self.ex.rollback()
@@ -91,5 +92,9 @@ class SenecaInterpreter(BaseInterpreter):
     def queue_binary(self) -> List[bytes]:
         return [contract.serialize() for contract in self.queue]
 
-    def tearDown(self):
+    def start(self):
+        # Check to see if there are valid contracts to be run
+        self.check_contract_future = asyncio.ensure_future(self.check_contract())
+
+    def stop(self):
         self.check_contract_future.cancel()
