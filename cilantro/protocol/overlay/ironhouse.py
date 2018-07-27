@@ -127,9 +127,10 @@ class Ironhouse:
         if async:
             ctx = zmq.asyncio.Context()
             auth = AsyncioAuthenticator(ctx)
+            auth.log = log # The constructor doesn't have "log" like its synchronous counter-part
         else:
             ctx = zmq.Context()
-            auth = ThreadAuthenticator(ctx)
+            auth = ThreadAuthenticator(ctx, log=log)
         auth.start()
         self.reconfigure_curve(auth)
 

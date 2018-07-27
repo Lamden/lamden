@@ -294,7 +294,7 @@ class Network(object):
             'neighbors': self.bootstrappableNeighbors()
         }
         if len(data['neighbors']) == 0:
-            log.warning("No known neighbors, so not writing to cache.")
+            log.info("No known neighbors, so not writing to cache.")
             return False
         with open(fname, 'wb+') as f:
             pickle.dump(data, f)
