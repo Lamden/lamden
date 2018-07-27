@@ -48,7 +48,7 @@ class DelegateInterpretState(DelegateBaseState):
         self.log.debug("Size of queue: {}".format(len(self.parent.interpreter.queue)))
 
         if self.parent.interpreter.queue_size >= Constants.Nodes.MaxQueueSize:
-            self.log.info("Consensus time!")
+            self.log.info("Consensus time! Delegate has {} tx in queue.".format(self.parent.interpreter.queue_size))
             self.parent.transition(DelegateConsensusState)
         else:
             self.log.debug("Not consensus time yet, queue is only size {}/{}"

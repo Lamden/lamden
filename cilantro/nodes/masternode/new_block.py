@@ -45,7 +45,6 @@ class MNNewBlockState(MNBaseState):
         if success:
             assert retrieved_txs and len(retrieved_txs) > 0, "Success is true but retrieved_txs {} is None/empty"
             self.log.info("FetchNewBlockState finished successfully. Storing new block.")
-            raw_txs = [tx.serialize() for tx in retrieved_txs.values()]
             self._new_block_procedure(block=self.current_block, txs=retrieved_txs)
 
             self.log.info("Done storing new block. Transitioning back to run state with success=True")
@@ -66,7 +65,7 @@ class MNNewBlockState(MNBaseState):
 
     def _new_block_procedure(self, block: BlockContender, txs: List[bytes]):
         self.log.critical("DONE COLLECTING BLOCK DATA FROM LEAVES. Storing new "
-                       "block with...\ncontender={}\nraw txs={}".format(block, txs))
+                          "block with...\ncontender={}\nraw txs={}".format(block, txs))
 
         # Attempt to store block
         try:
@@ -78,7 +77,7 @@ class MNNewBlockState(MNBaseState):
 
         # Notify delegates of new block
         self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {} ".format(block_hash))
-        notif = NewBlockNotification.create(**BlockStorageDriver.get_latest_block())
+        notif = NewBlockNotification.create(**BlockStorageDriver.get_latest_block(include_number=False))
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
 
     @input_request(BlockContender)
@@ -103,6 +102,7 @@ class MNNewBlockState(MNBaseState):
         Helper method to validate a block contender. For a block contender to be valid it must:
         1) Have a provable merkle tree, ie. all nodes must be hash of (left child + right child)
         2) Be signed by at least 2/3 of the top 32 delegates
+        3) Have the correct number of transactions
         :param block_contender: The BlockContender to validate
         :return: True if the BlockContender is valid, false otherwise
         """
@@ -111,6 +111,10 @@ class MNNewBlockState(MNBaseState):
         assert len(block.signatures) >= Constants.Testnet.Majority, \
             "Received a block contender with only {} signatures (which is less than a majority of {}"\
             .format(len(block.signatures), Constants.Testnet.Majority)
+
+        assert len(block.merkle_leaves) == Constants.Nodes.MaxQueueSize, \
+            "Block contender has {} merkle leaves, but MaxQueueSize is {}!!!\nmerkle_leaves={}"\
+            .format(len(block.merkle_leaves), Constants.Nodes.MaxQueueSize,block.merkle_leaves)
 
         # TODO validate the sigs are actually from the top N delegates
         # TODO -- ensure that this block contender's previous block is this Masternode's current block...
@@ -204,7 +208,7 @@ class MNFetchNewBlockState(MNNewBlockState):
     def handle_tx_request(self, reply: TransactionReply):
         self.log.debug("Masternode got block data reply: {}".format(reply))
 
-        for tx in reply.transactions:
+        for tx in reply.raw_transactions:
             tx_hash = Hasher.hash(tx)
             if tx_hash in self.tx_hashes:
                 self.retrieved_txs[tx_hash] = tx
@@ -214,11 +218,18 @@ class MNFetchNewBlockState(MNNewBlockState):
 
         if len(self.retrieved_txs) == len(self.tx_hashes):
             self.log.debug("Done collecting block data. Transitioning back to NewBlockState.")
-            self.parent.transition(MNNewBlockState, success=True, retrieved_txs=self.retrieved_txs,
+            self.parent.transition(MNNewBlockState, success=True, retrieved_txs=self._get_ordered_raw_txs(),
                                    pending_blocks=self.pending_blocks)
         else:
             self.log.debug("Still {} transactions yet to request until we can build the block"
                            .format(len(self.tx_hashes) - len(self.retrieved_txs)))
+
+    def _get_ordered_raw_txs(self) -> List[bytes]:
+        assert len(self.retrieved_txs) == len(self.tx_hashes), \
+            "Cannot order transactions when length of retreived txs {} != length of tx hashes {}"\
+            .format(len(self.retrieved_txs), len(self.tx))
+
+        return [self.retrieved_txs[tx_hash] for tx_hash in self.tx_hashes]
 
     @input_timeout(TransactionRequest)
     def handle_tx_request_timeout(self, request: TransactionRequest, envelope: Envelope):

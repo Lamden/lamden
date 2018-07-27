@@ -42,8 +42,6 @@ class Masternode(NodeBase):
 class MNBaseState(State):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
-        self.log.critical("masternode has vk: {}".format(self.parent.verifying_key))
-        self.log.critical("vk book masternodes: {}".format(VKBook.get_masternodes()))
         oc = OrderingContainer.create(tx=tx, masternode_vk=self.parent.verifying_key)
         self.log.debug("mn about to pub for tx {}".format(oc))  # debug line
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=oc)

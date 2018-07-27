@@ -10,7 +10,7 @@ from cilantro.db import *
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
 DelegateConsensusState = "DelegateConsensusState"
-DelegateCatchupState = "DelegateInterpretState"
+DelegateCatchupState = "DelegateCatchupState"
 
 
 @Delegate.register_state
@@ -119,16 +119,20 @@ class DelegateConsensusState(DelegateBaseState):
     def handle_new_block_notif(self, notif: NewBlockNotification):
         self.log.info("Delegate got new block notification: {}".format(notif))
 
+        # DEBUG line -- TODO remove
+        if not self.in_consensus:
+            self.log.critical("Received a new block notification, but delegate not in consensus!")
+
         # If the new block hash is the same as our 'scratch block', then just copy scratch to state
-        if notif.prev_block_hash == self.parent.current_hash:
-            assert self.in_consensus, "Got a new block notification that matches our hash, but self.in_consensus false"
-            self.log.critical("Prev block hash matches ours. We were in consensus!")
+        if notif.prev_block_hash == self.parent.current_hash and self.in_consensus:
+            self.log.critical("Prev block hash matches ours. We in consensus!")
 
             self.parent.interpreter.flush(update_state=True)
+            BlockStorageDriver.store_block_from_meta(NewBlockNotification)
             self.parent.transition(DelegateInterpretState)
 
-        # Otherwise, our block is out of consensus and we must request the latest from a Masternode
+        # Otherwise, our block is out of consensus and we must request the latest from a Masternode!
         else:
-            self.log.warning("New block hash {} does not match out own merkle_hash {}"
-                             .format(notif.block_hash, self.merkle_hash))
+            self.log.critical("New block has prev hash {} that does not match our current block hash {} ... :( :("
+                             .format(notif.prev_block_hash, self.parent.current_hash))
             self.parent.transition(DelegateCatchupState)

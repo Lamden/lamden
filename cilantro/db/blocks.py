@@ -11,7 +11,7 @@ from cilantro.db.transactions import encode_tx, decode_tx
 from typing import List
 import time
 
-from cilantro.messages.block_data.block_metadata import BlockMetaData
+from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
 # import cilantro.messages.block_data.block_metadata.BlockMetaData
 
 
@@ -181,29 +181,29 @@ class BlockStorageDriver:
             return block_hash
 
     @classmethod
-    def store_block_from_meta(cls, block_meta: BlockMetaData) -> str:
+    def store_block_from_meta(cls, block: BlockMetaData or NewBlockNotification) -> str:
         """
         Stores a block from a BlockMetaData object. This block must be the child of the current lastest block.
-        :param block_meta: The BlockMetaData object containing all of the block's data (excluding the raw transactions)
+        :param block: The BlockMetaData object containing all of the block's data (excluding the raw transactions)
         :return: The hash of the stored block (as a string)
         :raises: A BlockStorageException (or specific subclass) if any validation or storage fails
         """
         # Ensure this block's previous hash matches the latest block hash in the DB
-        if block_meta.prev_block_hash != cls.get_latest_block_hash():
+        if block.prev_block_hash != cls.get_latest_block_hash():
             raise InvalidBlockLinkException("Attempted to store a block with previous_hash {} that does not match the "
-                                            "database latest block hash {}".format(block_meta.prev_block_hash,
-                                                                                      cls.get_latest_block_hash()))
+                                            "database latest block hash {}".format(block.prev_block_hash,
+                                                                                   cls.get_latest_block_hash()))
 
         with DB() as db:
-            encoded_block_data = cls._encode_block(block_meta.block_dict())
+            encoded_block_data = cls._encode_block(block.block_dict())
             res = db.tables.blocks.insert([encoded_block_data]).run(db.ex)
             if res:
-                log.info("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block_meta.block_hash))
+                log.info("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block.block_hash))
             else:
                 raise BlockStorageDatabaseException("Error inserting block! Got None/False result back "
                                                     "from insert query. Result={}".format(res))
 
-            return block_meta.block_hash
+            return block.block_hash
 
 
     @classmethod
@@ -231,7 +231,7 @@ class BlockStorageDriver:
                 return cls._decode_block(block[0]) if block else None
 
     @classmethod
-    def get_latest_block(cls) -> dict:
+    def get_latest_block(cls, include_number=True) -> dict:
         """
         Retrieves the latest block published in the chain.
         :return: A dictionary representing the latest block, containing a key for each column in the blocks table.
@@ -239,7 +239,12 @@ class BlockStorageDriver:
         with DB() as db:
             latest = db.tables.blocks.select().order_by('number', desc=True).limit(1).run(db.ex)
             assert latest, "No blocks found! There should be a genesis. Was the database properly seeded?"
-            return cls._decode_block(latest[0])
+
+            # TODO unit tests around include_number functionality
+            block = cls._decode_block(latest[0])
+            if not include_number:
+                del block['number']
+            return block
 
     @classmethod
     def get_child_block_hashes(cls, parent_hash: str, limit=0) -> List[str] or None:

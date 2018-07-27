@@ -5,6 +5,7 @@ from cilantro.db.blocks import *
 from cilantro.db import reset_db
 from cilantro.messages.consensus.block_contender import build_test_contender
 from cilantro.messages.transaction.base import build_test_transaction
+from cilantro.messages import BlockMetaData, NewBlockNotification
 from cilantro.utils import Hasher, int_to_bytes
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.protocol.wallets import ED25519Wallet
@@ -534,7 +535,19 @@ class TestBlockStorageDriver(TestCase):
 
         self.assertEquals(latest_block, block_meta.block_dict())
 
+    def test_store_block_from_notification(self):
+        b_data = self._build_block_data_with_hash(ref_prev_block=True)
+        block_notif = NewBlockNotification.create(**b_data)
+
+        BlockStorageDriver.store_block_from_meta(block_notif)
+
+        latest_block = BlockStorageDriver.get_latest_block()
+        del latest_block['number']  # Remove the auto increment 'number' col before comparing
+
+        self.assertEquals(latest_block, block_notif.block_dict())
+
     def test_store_block_from_meta_invalid_link(self):
         block_meta = self._build_block_meta(ref_prev_block=False)
+        BlockStorageDriver.store_block_from_meta(block_meta)
         self.assertRaises(InvalidBlockLinkException, BlockStorageDriver.store_block_from_meta, block_meta)
 
