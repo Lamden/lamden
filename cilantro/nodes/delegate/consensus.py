@@ -87,6 +87,9 @@ class DelegateConsensusState(DelegateBaseState):
             self.log.info("Delegate in consensus!")
             self.in_consensus = True
 
+            # DEBUG LINE remove later
+            self.log.critical("Delegate creating contender with merk leaves {}".format(self.merkle.leaves_as_hex))
+
             # Create BlockContender and send it to all Masternode(s)
             bc = BlockContender.create(signatures=self.signatures, merkle_leaves=self.merkle.leaves_as_hex)
             for mn_vk in VKBook.get_masternodes():
@@ -99,7 +102,8 @@ class DelegateConsensusState(DelegateBaseState):
             self.check_majority()
 
     @input_request(TransactionRequest)
-    def handle_blockdata_req(self, request: TransactionRequest):
+    def handle_tx_request(self, request: TransactionRequest):
+        self.log.debug("delegate got tx request: {}".format(request))
         tx_blobs = []
         for tx_hash in request.tx_hashes:
             if tx_hash not in self.merkle.leaves_as_hex:
@@ -108,6 +112,7 @@ class DelegateConsensusState(DelegateBaseState):
             tx_blobs.append(self.merkle.data_for_hash(tx_hash))
 
         reply = TransactionReply.create(raw_transactions=tx_blobs)
+        self.log.debug("delegate replying to request with {}".format(reply))
         return reply
 
     @input(NewBlockNotification)
@@ -127,4 +132,3 @@ class DelegateConsensusState(DelegateBaseState):
             self.log.warning("New block hash {} does not match out own merkle_hash {}"
                              .format(notif.block_hash, self.merkle_hash))
             self.parent.transition(DelegateCatchupState)
-

@@ -78,7 +78,8 @@ def _ex_contract(executor, contract_table, contract_id: str='', user_id=GENESIS_
 
         _ex_func = get_exports if get_contract else execute_contract
         result = _ex_func(global_run_data, this_contract_run_data, code_str,
-                                  module_loader=module_loader_fn(executor, contract_table), db_executer=executor)
+                          module_loader=module_loader_fn(executor, contract_table),
+                          db_executer=executor)
 
         return result
 

@@ -42,6 +42,8 @@ class Masternode(NodeBase):
 class MNBaseState(State):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
+        self.log.critical("masternode has vk: {}".format(self.parent.verifying_key))
+        self.log.critical("vk book masternodes: {}".format(VKBook.get_masternodes()))
         oc = OrderingContainer.create(tx=tx, masternode_vk=self.parent.verifying_key)
         self.log.debug("mn about to pub for tx {}".format(oc))  # debug line
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=oc)
@@ -62,6 +64,10 @@ class MNBaseState(State):
         tx_blobs = BlockStorageDriver.get_raw_transactions(request.tx_hashes)
         reply = TransactionReply.create(raw_transactions=tx_blobs)
         return reply
+
+    @input_timeout(TransactionRequest)
+    def handle_tx_request_timeout(self, request: TransactionRequest, envelope: Envelope):
+        self.log.warning("Current state {} not configured to handle tx request timeout".format(self))
 
     @input(BlockMetaDataRequest)
     def handle_blockmeta_request(self, request: BlockMetaDataRequest):

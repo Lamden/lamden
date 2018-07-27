@@ -246,6 +246,10 @@ if __name__ == '__main__':
             "amount": 3696947
         },
         {
+            "wallet": "FALCON",
+            "amount": 0 # :(
+        },
+        {
             "wallet": "0c998fa1b2675d76372897a7d9b18d4c1fbe285dc0cc795a50e4aad613709baf",
             "amount": 3696947
         },
@@ -268,12 +272,26 @@ if __name__ == '__main__':
         {
             "wallet": "ab59a17868980051cc846804e49c154829511380c119926549595bf4b48e2f85",
             "amount": 3696947
-        },
-        {
-            "wallet": "FALCON",
-            "amount": 0 # :(
         }
     ]
+
+    STU = ('db929395f15937f023b4682995634b9dc19b1a2b32799f1f67d6f080b742cdb1',
+     '324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502')
+    DAVIS = ('21fee38471799f8c2989dd81c6d46f6c2e2db6caf63efa98a093fcba064a4b62',
+     'a103715914a7aae8dd8fddba945ab63a169dfe6e37f79b4a58bcf85bfd681694')
+    DENTON = ('9decc7f7f0b5a4fc87ab5ce700e2d6c5d51b7565923d50ea13cbf78031bb3acf',
+     '20da05fdba92449732b3871cc542a058075446fedb41430ee882e99f9091cc4d')
+    FALCON = ('bac886e7c6e4a9fae572e170adb333b27b590157409e62d88cc0c7bc9a7b3631',
+     'ed19061921c593a9d16875ca660b57aa5e45c811c8cf7af0cfcbd23faa52cbcd')
+    CARL = ('cf67a180f9578afa5fd704cea39b450c1542755d73614f6a4f41b627190b83bb',
+     'cb9bfd4b57b243248796e9eb90bc4f0053d78f06ce68573e0fdca422f54bb0d2')
+    RAGHU = ('b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668',
+     'c1f845ad8967b93092d59e4ef56aef3eba49c33079119b9c856a5354e9ccdf84')
+
+    ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL, RAGHU]
+    [GENESIS_WALLETS.append({'wallet': w[1], 'amount': 3696947}) for w in ALL_WALLETS]
+
+    print("got genesis wallt {}".format(GENESIS_WALLETS))
 
     # Seed genesis wallets
     list(map(lambda x: add_coins(x['wallet'], x['amount']), GENESIS_WALLETS))

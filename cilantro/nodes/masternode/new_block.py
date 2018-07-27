@@ -45,7 +45,7 @@ class MNNewBlockState(MNBaseState):
         if success:
             assert retrieved_txs and len(retrieved_txs) > 0, "Success is true but retrieved_txs {} is None/empty"
             self.log.info("FetchNewBlockState finished successfully. Storing new block.")
-
+            raw_txs = [tx.serialize() for tx in retrieved_txs.values()]
             self._new_block_procedure(block=self.current_block, txs=retrieved_txs)
 
             self.log.info("Done storing new block. Transitioning back to run state with success=True")
@@ -65,7 +65,8 @@ class MNNewBlockState(MNBaseState):
             self.parent.transition(MNRunState, success=False)
 
     def _new_block_procedure(self, block: BlockContender, txs: List[bytes]):
-        self.log.debug("DONE COLLECTING BLOCK DATA FROM LEAVES. Storing new block.")
+        self.log.critical("DONE COLLECTING BLOCK DATA FROM LEAVES. Storing new "
+                       "block with...\ncontender={}\nraw txs={}".format(block, txs))
 
         # Attempt to store block
         try:
@@ -143,7 +144,7 @@ class MNFetchNewBlockState(MNNewBlockState):
         self.log.debug("Fetching block data for contender {}".format(block_contender))
 
         self.block_contender = block_contender
-        self.tx_hashes = block_contender.merkle_leaves[len(block_contender.merkle_leaves) // 2:]
+        self.tx_hashes = block_contender.merkle_leaves
 
         # Populate self.node_states delegates who signed this block
         for sig in block_contender.signatures:
@@ -200,7 +201,7 @@ class MNFetchNewBlockState(MNNewBlockState):
         return awaiting_node  # this will intentionally be None if no NODE_AWAITING nodes are found
 
     @input(TransactionReply)
-    def recv_blockdata_reply(self, reply: TransactionReply):
+    def handle_tx_request(self, reply: TransactionReply):
         self.log.debug("Masternode got block data reply: {}".format(reply))
 
         for tx in reply.transactions:
@@ -220,7 +221,7 @@ class MNFetchNewBlockState(MNNewBlockState):
                            .format(len(self.tx_hashes) - len(self.retrieved_txs)))
 
     @input_timeout(TransactionRequest)
-    def timeout_block_req(self, request: TransactionRequest, envelope: Envelope):
+    def handle_tx_request_timeout(self, request: TransactionRequest, envelope: Envelope):
         self.log.warning("TransactionRequest timed out for envelope with request data")
         self.log.debug("Envelope Data: {}".format(envelope))
 

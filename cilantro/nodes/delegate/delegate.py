@@ -49,8 +49,8 @@ class DelegateBaseState(State):
     def reset_attrs(self):
         pass
 
-    @input(TransactionBase)
-    def handle_tx(self, tx: TransactionBase):
+    @input(OrderingContainer)
+    def handle_tx(self, tx: OrderingContainer):
         self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
         self.parent.pending_txs.append(tx)
         self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
@@ -66,6 +66,21 @@ class DelegateBaseState(State):
         self.log.critical("Delegate got new block notification with hash {}\nprev_hash {}]\nand our current hash = {}"
                           .format(notif.block_hash, notif.prev_block_hash, self.parent.current_hash))
         self.parent.transition(DelegateCatchupState)
+
+    @input(TransactionReply)
+    def handle_tx_reply(self, reply: TransactionReply, envelope: Envelope):
+        self.log.debug("Delegate current state {} not configured to handle"
+                        "transaction replies".format(self))
+
+    @input(TransactionRequest)
+    def handle_tx_request(self, request: TransactionRequest, envelope: Envelope):
+        self.log.debug("Delegate current state {} not configured to handle"
+                        "transaction requests".format(self))
+
+    @input(BlockMetaDataReply)
+    def handle_blockmeta_reply(self, reply: BlockMetaDataReply):
+        self.log.debug("Delegate current state {} not configured to handle block"
+                       "meta replies".format(self))
 
 
 @Delegate.register_init_state

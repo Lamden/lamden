@@ -26,12 +26,7 @@ class DelegateInterpretState(DelegateBaseState):
         for tx in self.parent.pending_txs:
             self.interpret_tx(tx)
         self.parent.pending_txs = []
-
-        # (for debugging) TODO remove
-        with DB() as db:
-            r = db.execute('select * from state_meta')
-            results = r.fetchall()
-            self.log.critical("LATEST STATE INFO: {}".format(results))
+        self.parent.current_block_hash = BlockStorageDriver.get_latest_block_hash()
 
     @exit_to_any
     def exit_any(self, next_state):

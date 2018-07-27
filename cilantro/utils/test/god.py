@@ -1,4 +1,5 @@
 from cilantro.messages import *
+from cilantro.messages.transaction.contract import *
 import asyncio
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.transport import Composer
@@ -78,10 +79,22 @@ class God:
         return StandardTransactionBuilder.create_tx(sender[0], sender[1], receiver, amount)
 
     @classmethod
+    def create_currency_tx(cls, sender: tuple, receiver: tuple, amount: int):
+        if type(receiver) is tuple:
+            receiver = receiver[1]
+
+        return ContractTransactionBuilder.create_currency_tx(sender[0], receiver, amount)
+
+    @classmethod
     def send_std_tx(cls, sender: tuple, receiver: tuple, amount: int):
         tx = cls.create_std_tx(sender, receiver, amount)
         cls.send_tx(tx)
-    #
+
+    @classmethod
+    def send_currency_contract(cls, sender: tuple, receiver: tuple, amount:int):
+        tx = cls.create_currency_tx(sender, receiver, amount)
+        cls.send_tx(tx)
+
     # @classmethod
     # def send_contract_submission(cls, sender_id, contract_code):
     #     contract_submission = ContractSubmission.user_create(user_id=sender_id, contract_code=contract_code)
@@ -102,7 +115,7 @@ class God:
         :return:
         """
         if not gen_func:
-            gen_func = cls.random_std_tx
+            gen_func = cls.random_contract_tx
 
         if use_poisson:
             from scipy.stats import poisson, expon
@@ -133,6 +146,13 @@ class God:
         amount = random.randint(1, 1260)
 
         return cls.create_std_tx(sender=sender, receiver=receiver, amount=amount)
+
+    @classmethod
+    def random_contract_tx(cls):
+        sender, receiver = random.sample(ALL_WALLETS, 2)
+        amount = random.randint(1, 1260)
+
+        return cls.create_currency_tx(sender=sender, receiver=receiver, amount=amount)
 
     def send_block_contender(self, url, bc):
         pass
