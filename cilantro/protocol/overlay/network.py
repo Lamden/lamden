@@ -182,7 +182,9 @@ class Network(object):
             except: log.debug('Already unregistered')
             conn.close()
             log.debug('Closed a previously opened connection')
+
         self.ironhouse.cleanup()
+
         try: self.poll.unregister(self.stethoscope_sock.fileno())
         except: log.debug('Stehoscope is already unregistered')
         self.stethoscope_sock.close()

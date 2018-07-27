@@ -9,8 +9,7 @@ from os import listdir
 from os.path import exists
 from threading import Timer
 import asyncio, shutil
-try: from utils import genkeys
-except: from .utils import genkeys
+from cilantro.utils.test.overlay import *
 
 def auth_validate(vk):
     print('Test: Received on validation: {}'.format(vk))
@@ -72,7 +71,8 @@ class TestIronhouse(TestCase):
         ctx, auth = self.ironhouse.secure_context(async=True)
         self.assertIsInstance(ctx, zmq.asyncio.Context, 'asynchronous context created incorrectly')
         self.assertIsInstance(auth, AsyncioAuthenticator, 'synchronous auth object created incorrectly')
-        auth.stop()
+        if not auth._AsyncioAuthenticator__task.done():
+            auth._AsyncioAuthenticator__task.set_result('done')
 
     def test_secure_context_sync(self):
         ctx, auth = self.ironhouse.secure_context(async=False)
@@ -114,6 +114,7 @@ class TestIronhouse(TestCase):
         sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=self.curve_public_key)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure SUB socket')
         sec_sock.close()
+
         auth.stop()
 
     def test_secure_socket_async(self):
@@ -151,7 +152,8 @@ class TestIronhouse(TestCase):
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure SUB socket')
 
         sec_sock.close()
-        auth.stop()
+        if not auth._AsyncioAuthenticator__task.done():
+            auth._AsyncioAuthenticator__task.set_result('done')
 
     def test_reconfigure_curve(self):
         ctx, auth = self.ironhouse.secure_context(async=True)
@@ -159,7 +161,8 @@ class TestIronhouse(TestCase):
         sec_sock = self.ironhouse.secure_socket(sock)
         self.assertIn(self.curve_public_key, auth.certs['*'].keys(), 'cannot find cert in auth')
         sec_sock.close()
-        auth.stop()
+        if not auth._AsyncioAuthenticator__task.done():
+            auth._AsyncioAuthenticator__task.set_result('done')
 
     def test_secure_server(self):
         async def send_async_sec():

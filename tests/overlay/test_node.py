@@ -7,8 +7,7 @@ import unittest
 import random
 import hashlib
 
-
-from .utils import mknode
+from cilantro.utils.test.overlay import *
 
 
 class NodeTest(unittest.TestCase):

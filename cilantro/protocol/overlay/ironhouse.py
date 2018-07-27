@@ -192,7 +192,8 @@ class Ironhouse:
         self.server = asyncio.ensure_future(self.secure_server())
 
     def cleanup(self):
-        self.auth.stop()
+        if not self.auth._AsyncioAuthenticator__task.done():
+            self.auth.stop()
         self.server.cancel()
         self.sec_sock.close()
         log.info('Ironhouse cleaned up properly.')
