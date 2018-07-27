@@ -8,8 +8,8 @@ In practice this would be done by hand or some out-of-band process.
 Author: Chris Laws
 """
 
-import os, shutil, hashlib, datetime
-import asyncio, zmq, uuid, cilantro
+import os, shutil, datetime
+import asyncio, zmq
 import zmq.auth, zmq.asyncio
 from os.path import basename, splitext
 from zmq.auth.thread import ThreadAuthenticator

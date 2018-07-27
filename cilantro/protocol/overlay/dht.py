@@ -1,10 +1,7 @@
 from cilantro.protocol.overlay.discovery import Discovery
 from cilantro.protocol.overlay.network import Network
-from cilantro.protocol.overlay.utils import digest
 from cilantro.logger import get_logger
-from queue import Queue
-import os, sys, uuid, time, threading, uuid, asyncio, random, warnings, logging, time
-from multiprocessing import Process
+import os, asyncio, time
 from cilantro.db import VKBook
 from cilantro.utils import ErrorWithArgs
 

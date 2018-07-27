@@ -1,10 +1,5 @@
-from cilantro.messages import TransactionBase
-from cilantro.logger import get_logger
 from collections import deque
-from cilantro.db import ScratchCloningVisitor, DB
-from sqlalchemy.sql import Update
 from cilantro.protocol.interpreters.queries import *
-import itertools
 
 
 class BaseInterpreter:

@@ -2,21 +2,18 @@
 Package for interacting on the network at a high level.
 """
 
-import random
 import pickle
 import asyncio
-import logging
-import os, zmq
+import os
 
-import socket, select, struct
+import socket, select
 
-from nacl.signing import VerifyKey
 from cilantro.logger import get_logger
 from cilantro.protocol.structures import Bidict
 from cilantro.protocol.overlay.protocol import KademliaProtocol
 from cilantro.protocol.overlay.utils import digest
 from cilantro.protocol.overlay.node import Node
-from cilantro.protocol.overlay.crawling import ValueSpiderCrawl, NodeSpiderCrawl
+from cilantro.protocol.overlay.crawling import NodeSpiderCrawl
 from cilantro.protocol.overlay.ironhouse import Ironhouse
 
 try: poll = select.epoll
