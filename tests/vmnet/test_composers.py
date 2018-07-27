@@ -74,9 +74,9 @@ class TestNetworkPerformance(BaseNetworkTestCase):
         self.execute_python('node_1', publisher, async=True)
         self.execute_python('node_2', subscriber, async=True)
 
-        #time.sleep(10)
-        #exit
-        input("Press any key to end test")
+        time.sleep(10)
+        #input("Press any key to end test")
+        exit
 
 
 if __name__ == '__main__':

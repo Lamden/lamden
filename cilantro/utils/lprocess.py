@@ -9,6 +9,7 @@ from io import StringIO
 import os
 import time
 import csv
+import cProfile
 
 
 def get_filename(proc_name):
@@ -48,14 +49,25 @@ INNER_DELIM = '-'
 
 
 class LProcess(Process):
+    def regRun(self):
+        super().run()
+
+    def profRun(self, filename):
+        cProfile.runctx('self.regRun()', globals(), locals(), filename)
+
     def run(self):
         log = get_logger(self.name)
         log.info("---> {} Starting --->".format(self.name))
         try:
-            # f = get_filename(self.name)
+            f = get_filename(self.name)
             # t = Thread(target=profile_process, args=(1, f))
             # t.start()
             super().run()
+            gen_profile = os.getenv('LAMDEN_PERF_PROFILE', '1')
+            if gen_profile != '0':
+                self.profRun(f)
+            else:
+                self.regRun()
         except Exception as e:
             err_msg = '\n' + OUTER_DELIM * DELIM_LEN
             err_msg += '\nException caught on ' + self.name + ':\n' + str(e)
