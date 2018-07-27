@@ -33,6 +33,13 @@ def wrap_func(func, *args, **kwargs):
         return func(*args, **kwargs)
     return _func
 
+def get_filename(proc_name):
+    import os
+    prefix = os.getenv('HOSTNAME', '')
+    if prefix:
+        proc_name = prefix + '_' + proc_name
+    return "{}_{}".format(proc_name, os.getpid())
+
 def mp_testable(test_cls):
     """
     Decorator to copy all the public API for object type test_cls to the decorated class. The decorated
@@ -288,8 +295,6 @@ class MPTesterBase:
             assert MPTEST_PORT in MPTestCase.ports[name], "MPTEST_PORT {} not found in docker node {}'s ports {}"\
                                                           .format(MPTEST_PORT, name, MPTestCase.ports[name])
 
-            self.log.warning("rag1 Executing tester on container {} with ip {}".format(name, ip))
-
             url = MPTestCase.ports[name][MPTEST_PORT]  # URL the orchestration node should connect to
             url = url.replace('localhost', '127.0.0.1') # Adjust localhost to 127.0.0.1
             url = "tcp://{}".format(url)
@@ -306,7 +311,6 @@ class MPTesterBase:
 
         # Create Tester object in a Subprocess
         else:
-            self.log.warning("rag2 Creating Tester object in a subprocess")
             self.url = _gen_url(self.name)
 
             self.test_proc = LProcess(target=self.__run_test_proc, args=(self._run_test_proc, self.name, self.url, build_fn,
@@ -322,18 +326,18 @@ class MPTesterBase:
     @staticmethod
     def __run_test_proc(func_nm, name, url, build_fn, config_fn, assert_fn):
         import os
-        # plog = '/Users/lamden/lamden/cilantro/logs/prof%s.prof' %url;
-        # log.debug("raghu profiler running MPTesterProcess named {}...".format(plog))
-        # path = os.path.abspath('./')
-        nodename = os.getenv('HOSTNAME')
-        cProfile.runctx('func_nm(name, url, build_fn, config_fn, assert_fn)', globals(), locals(), 'raghu'+nodename)
+        gen_profile = os.getenv('LAMDEN_PERF_PROFILE', '1')
+        if gen_profile != '0':
+            f = get_filename(name)
+            cProfile.runctx('func_nm(name, url, build_fn, config_fn, assert_fn)', globals(), locals(), f)
+        else:
+            func_nm(name, url, build_fn, config_fn, assert_fn)
 
     @staticmethod
     def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
         log = get_logger("TestObjectRunner[{}]".format(name))
 
         # TODO create socket outside of loop and pass it in for
-        log.debug("prasad Creating MPTesterProcess named {}...".format(name))
         tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
         log.debug("MPTesterProcess named {} created".format(name))
         tester_socket = tester.socket
