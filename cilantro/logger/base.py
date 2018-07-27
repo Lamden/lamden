@@ -32,9 +32,9 @@ Custom Log Levels
 CUSTOM_LEVELS = {
     'SPAM': 1,
     'DEBUGV': 5,
-    'NOTICE': 25,
+    'NOTICE': 24,
     'SUCCESS': 26,
-    'IMPORTANT': 55,
+    'IMPORTANT': 56,
     'FATAL': 9000,
     }
 
@@ -52,18 +52,18 @@ Custom Styling
 """
 
 coloredlogs.DEFAULT_LEVEL_STYLES = {
-    'critical':{ 'color':'white', 'bold':True, 'background': 'yellow'},
-    'fatal':{ 'color':'white', 'bold':True, 'background': 'red', 'underline': True},
-    'debug':{ 'color':'green' },
-    'error':{ 'color':'red' },
-    'info':{ 'color':'white' },
-    'notice':{ 'color':'magenta' },
+    'critical':{'color':'white', 'bold':True, 'background': 'yellow'},
+    'fatal':{'color':'white', 'bold':True, 'background': 'red', 'underline': True},
+    'debug':{'color':'green' },
+    'error':{'color':'red' },
+    'info':{'color':'white' },
+    'notice':{'color':'magenta' },
     'important':{ 'color':'cyan', 'bold': True, 'background': 'magenta'},
-    'spam':{ 'color':'green', 'faint':True },
-    'success':{ 'color':'green', 'bold': True, 'background': 'white' },
-    'verbose':{ 'color':'blue' },
-    'warning':{ 'color':'yellow' },
-    'debugv':{ 'color':'blue', 'faint':True }
+    'spam':{ 'color':'white', 'faint':True },
+    'success':{'color':'white', 'bold': True, 'background': 'green'},
+    'verbose':{'color':'blue' },
+    'warning':{'color':'yellow' },
+    'debugv':{'color':'blue', 'faint':True }
 }
 coloredlogs.DEFAULT_FIELD_STYLES = {
     'asctime': {'color': 'green'},

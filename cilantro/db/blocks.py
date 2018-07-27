@@ -161,7 +161,7 @@ class BlockStorageDriver:
             # Store block
             res = db.tables.blocks.insert([{'hash': block_hash, **block_data}]).run(db.ex)
             if res:
-                log.info("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block_hash))
+                log.success("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block_hash))
             else:
                 raise BlockStorageDatabaseException("Error inserting block! Got None/False result back "
                                                     "from insert query. Result={}".format(res))
@@ -190,11 +190,6 @@ class BlockStorageDriver:
         """
         assert issubclass(type(block), BlockMetaData), "Can only store BlockMetaData objects or subclasses"
 
-        # DEBUG line -- TODO remove
-        log.critical("storing block {}".format(block))
-        log.critical("block has prev hash {} and current hash {}".format(block.prev_block_hash, block.block_hash))
-        # END DEBUG
-
         # Ensure this block's previous hash matches the latest block hash in the DB
         if block.prev_block_hash != cls.get_latest_block_hash():
             raise InvalidBlockLinkException("Attempted to store a block with previous_hash {} that does not match the "
@@ -205,7 +200,7 @@ class BlockStorageDriver:
             encoded_block_data = cls._encode_block(block.block_dict())
             res = db.tables.blocks.insert([encoded_block_data]).run(db.ex)
             if res:
-                log.info("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block.block_hash))
+                log.success("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block.block_hash))
             else:
                 raise BlockStorageDatabaseException("Error inserting block! Got None/False result back "
                                                     "from insert query. Result={}".format(res))
@@ -214,7 +209,7 @@ class BlockStorageDriver:
 
 
     @classmethod
-    def get_block(cls, number: int=0, hash: str='') -> dict or None:
+    def get_block(cls, number: int=0, hash: str='', include_number=True) -> dict or None:
         """
         Retrieves a block by its hash, or autoincrement number. Returns a dictionary with a key for each column in the
         blocks table. Returns None if no block with the specified hash/number is found.
@@ -235,7 +230,14 @@ class BlockStorageDriver:
             elif hash:
                 assert is_valid_hex(hash, length=64), "Invalid block hash {}".format(hash)
                 block = blocks.select().where(blocks.hash == hash).run(db.ex)
-                return cls._decode_block(block[0]) if block else None
+
+                if block:
+                    b = cls._decode_block(block[0])
+                    if not include_number:
+                        del b['number']
+                    return b
+                else:
+                    return None
 
     @classmethod
     def get_latest_block(cls, include_number=True) -> dict:

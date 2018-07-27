@@ -85,8 +85,8 @@ class MNBaseState(State):
         # Build a BlockMetaData object for each descendant block
         block_metas = []
         for block_hash in child_hashes:
-            block_data = BlockStorageDriver.get_block(hash=block_hash)
-            meta = BlockMetaData.create(**block_data)  # TODO make sure all the kwargs match up with the create API
+            block_data = BlockStorageDriver.get_block(hash=block_hash, include_number=False)
+            meta = BlockMetaData.create(**block_data)
             block_metas.append(meta)
 
         reply = BlockMetaDataReply.create(block_metas=block_metas)
@@ -149,7 +149,7 @@ class MNRunState(MNBaseState):
     def enter_from_newblock(self, success=False):
         if not success:
             # this should really just be a warning, but for dev we log it as an error
-            self.log.error("\n\nNewBlockState transitioned back with failure!!!\n\n")
+            self.log.fatal("\n\nNewBlockState transitioned back with failure!!!\n\n")
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):

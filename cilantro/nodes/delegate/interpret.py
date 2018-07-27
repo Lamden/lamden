@@ -22,13 +22,13 @@ class DelegateInterpretState(DelegateBaseState):
 
     @enter_from_any
     def enter_from_any(self, prev_state):
-        self.log.debug("Flushing pending tx queue of {} txs".format(len(self.parent.pending_txs)))
+        self.log.info("Flushing pending tx queue of {} txs".format(len(self.parent.pending_txs)))
         for tx in self.parent.pending_txs:
             self.interpret_tx(tx)
         self.parent.pending_txs = []
-        self.parent.current_block_hash = BlockStorageDriver.get_latest_block_hash()
+        self.parent.current_hash = BlockStorageDriver.get_latest_block_hash()
 
-        self.log.critical("Delegate entering interpret state with blah")
+        self.log.important("Delegate entering interpret state with current block hash {}".format(self.parent.current_hash))
 
     @exit_to_any
     def exit_any(self, next_state):
@@ -50,7 +50,7 @@ class DelegateInterpretState(DelegateBaseState):
         self.log.debug("Size of queue: {}".format(len(self.parent.interpreter.queue)))
 
         if self.parent.interpreter.queue_size >= Constants.Nodes.MaxQueueSize:
-            self.log.info("Consensus time! Delegate has {} tx in queue.".format(self.parent.interpreter.queue_size))
+            self.log.success("Consensus time! Delegate has {} tx in queue.".format(self.parent.interpreter.queue_size))
             self.parent.transition(DelegateConsensusState)
         else:
             self.log.debug("Not consensus time yet, queue is only size {}/{}"
