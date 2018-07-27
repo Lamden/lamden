@@ -2,11 +2,16 @@ from cilantro.protocol.interpreters import SenecaInterpreter
 from cilantro.db import reset_db, DB, ContractTemplate
 from cilantro.db.contracts import get_contract_exports
 from cilantro.messages import ContractTransaction, ContractTransactionBuilder, OrderingContainer
-import unittest, time
+import unittest, time, asyncio, zmq
 from heapq import heappush, heappop
 from unittest import TestCase, mock
 from cilantro.utils.test.async_utils import async_run_for
 from threading import Timer
+from unittest import mock
+
+from cilantro.logger import get_logger
+
+log = get_logger(__name__)
 
 # These VKs are seeded in the currency.seneca contract
 MN_VK = "82540bb5a9c84162214c5540d6e43be49bbfe19cf49685660cab608998a65144"
@@ -22,6 +27,7 @@ class TestSenecaInterpreter(TestCase):
     def tearDown(self):
         self.interpreter.ex.cur.close()
         self.interpreter.ex.conn.close()
+        self.interpreter.stop()
 
     def ordered_tx(self, contract):
         return OrderingContainer.create(contract, MN_VK)
@@ -216,7 +222,7 @@ class TestSenecaInterpreter(TestCase):
         self.assertEqual(contracts[2], heappop(self.interpreter.heap)[1])
 
     @async_run_for(3)
-    def test_check_contract_async_shuffled_adhoc_checks(self, loop):
+    def test_check_contract_async_shuffled_adhoc_checks(self):
 
         def assertCondition():
             self.assertEqual(contracts[0].transaction, self.interpreter.queue[0])
@@ -229,7 +235,7 @@ class TestSenecaInterpreter(TestCase):
         receiver = BOB_VK
         now = int(time.time()*1000)
 
-        self.interpreter = SenecaInterpreter(loop)
+        self.interpreter = SenecaInterpreter()
         contracts = [
             self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False)) \
             for i in range(5)
@@ -248,7 +254,11 @@ class TestSenecaInterpreter(TestCase):
 
     def test_rerun_fail(self):
         orig = SenecaInterpreter._run_contract
+<<<<<<< HEAD
         def mocked_rerun(*args, **kwargs):
+=======
+        def run_contract(*args, **kwargs):
+>>>>>>> 920ddb625d12af75ce434e8391f17b67bc99b183
             if kwargs.get('rerun'):
                 return None
             return orig(*args, **kwargs)
@@ -263,6 +273,7 @@ class TestSenecaInterpreter(TestCase):
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False))
         self.interpreter.interpret(contract_tx)
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=True))
+<<<<<<< HEAD
         with mock.patch('cilantro.protocol.interpreters.SenecaInterpreter._run_contract', side_effect=mocked_rerun, autospec=True) as mock_some_method:
             with self.assertRaises(Exception) as context:
                 self.interpreter.interpret(contract_tx)
@@ -279,6 +290,12 @@ class TestSenecaInterpreter(TestCase):
         sender_initial_balance = dummy_contract.get_balance(sender)
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=True))
         self.interpreter.interpret(contract_tx)
+=======
+        with mock.patch('cilantro.protocol.interpreters.SenecaInterpreter._run_contract', side_effect=run_contract, autospec=True) as m:
+            with self.assertRaises(Exception) as e:
+                self.interpreter.interpret(contract_tx)
+            assert m.called
+>>>>>>> 920ddb625d12af75ce434e8391f17b67bc99b183
 
 if __name__ == '__main__':
     unittest.main()
