@@ -1,14 +1,7 @@
 from cilantro.logger import get_logger
 import traceback
-from pympler import muppy, summary
 from multiprocessing import Process
-from threading import Thread
-import sys
-import asyncio
-from io import StringIO
 import os
-import time
-import csv
 import cProfile
 
 
@@ -25,29 +18,6 @@ OUTER_DELIM = '!'
 INNER_DELIM = '-'
 
 
-# def profile_process(interval, name):
-#     while True:
-#         log = get_logger(name)
-#         o = muppy.get_objects()
-#         size = muppy.get_size(o)
-#         log.critical("---> {} : USING {} BYTES --->".format(name, size))
-#         header = ['unix_time', 'size']
-#
-#         filename = name + '.csv'
-#
-#         file_exists = os.path.isfile(filename)
-#
-#         with open(filename, 'a') as csvfile:
-#             writer = csv.DictWriter(csvfile, delimiter=',', lineterminator='\n', fieldnames=header)
-#
-#             if not file_exists:
-#                 writer.writeheader()  # file doesn't exist yet, write a header
-#
-#             writer.writerow({'unix_time': time.time(), 'size': size})
-#
-#         time.sleep(interval)
-
-
 class LProcess(Process):
     def regRun(self):
         super().run()
@@ -60,9 +30,6 @@ class LProcess(Process):
         log.info("---> {} Starting --->".format(self.name))
         try:
             f = get_filename(self.name)
-            # t = Thread(target=profile_process, args=(1, f))
-            # t.start()
-            super().run()
             gen_profile = os.getenv('LAMDEN_PERF_PROFILE', '1')
             if gen_profile != '0':
                 self.profRun(f)
