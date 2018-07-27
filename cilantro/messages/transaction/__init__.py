@@ -6,3 +6,5 @@ from cilantro.messages.transaction.swap import SwapTransaction, SwapTransactionB
 from cilantro.messages.transaction.vote import VoteTransaction, VoteTransactionBuilder
 from cilantro.messages.transaction.stamp import StampTransaction, StampTransactionBuilder
 from cilantro.messages.transaction.election import ElectionTransaction, ElectionTransactionBuilder
+
+from .base import build_test_transaction

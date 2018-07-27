@@ -85,6 +85,10 @@ class TransactionReply(MessageBase):
                 return False
         return True
 
+    @property
+    def raw_transactions(self) -> List[bytes]:
+        return [t for t in self._data.transactions]
+
     @lazy_property
     def transactions(self) -> List[ContractTransaction]:
-        return [ContractTransaction.from_bytes(t) for t in self._data.transactions]
+        return [ContractTransaction.from_bytes(t) for t in self.raw_transactions]

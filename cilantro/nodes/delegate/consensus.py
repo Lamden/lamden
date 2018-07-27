@@ -87,7 +87,7 @@ class DelegateConsensusState(DelegateBaseState):
             self.log.info("Delegate in consensus!")
             self.in_consensus = True
 
-            # DEBUG LINE remove later
+            # DEBUG LINE TODO remove later
             self.log.critical("Delegate creating contender with merk leaves {}".format(self.merkle.leaves_as_hex))
 
             # Create BlockContender and send it to all Masternode(s)

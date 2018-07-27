@@ -73,7 +73,7 @@ class DelegateBaseState(State):
                         "transaction replies".format(self))
 
     @input(TransactionRequest)
-    def handle_tx_request(self, request: TransactionRequest, envelope: Envelope):
+    def handle_tx_request(self, request: TransactionRequest):
         self.log.debug("Delegate current state {} not configured to handle"
                         "transaction requests".format(self))
 
