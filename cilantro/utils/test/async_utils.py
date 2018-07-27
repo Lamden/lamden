@@ -3,7 +3,7 @@ from threading import Timer
 
 def async_run_for(delay):
     def _run(fn, *arg, **kwargs):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         def _stop():
             loop.call_soon_threadsafe(loop.stop)

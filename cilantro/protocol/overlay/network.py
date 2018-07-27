@@ -170,6 +170,9 @@ class Network(object):
         if self.transport is not None:
             self.transport.close()
 
+        if not self.refresh_future.done():
+            self.refresh_future.set_result('done')
+
         if self.refresh_loop:
             self.refresh_loop.cancel()
 
@@ -212,7 +215,8 @@ class Network(object):
 
     def refresh_table(self):
         self.refresh_loop = self.loop.call_later(3600, self.refresh_table)
-        return asyncio.ensure_future(self._refresh_table())
+        self.refresh_future = asyncio.ensure_future(self._refresh_table())
+        return self.refresh_future
 
     async def _refresh_table(self):
         """

@@ -212,7 +212,6 @@ class Ironhouse:
                     self.create_from_public_key(public_key)
                     log.debug('sending secure reply: {}'.format(self.vk))
                     self.sec_sock.send(self.vk.encode())
-
         finally:
             self.cleanup()
 
