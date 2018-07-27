@@ -14,9 +14,7 @@ class TestDiscovery(TestCase):
 
     def test_listener(self):
         def get_discovered():
-            self.discovery.udp_sock_server.close()
-            self.discovery.udp_sock.close()
-            self.discovery.server.cancel()
+            self.discovery.stop_discovery()
             self.loop.call_soon_threadsafe(self.loop.stop)
 
         self.discovery.listen_for_crawlers()
@@ -31,16 +29,12 @@ class TestDiscovery(TestCase):
         self.discovery.max_wait = 0.25
         self.discovery.listen_for_crawlers()
 
-        try:
-            result = self.loop.run_until_complete(
-                asyncio.ensure_future(self.discovery.discover('test'))
-            )
-        finally:
-            self.assertEqual(list(result.keys()), ['127.0.0.1'])
-            self.discovery.server.cancel()
-            self.loop.call_soon_threadsafe(self.loop.stop)
-            self.discovery.udp_sock_server.close()
-            self.discovery.udp_sock.close()
+        fut = asyncio.ensure_future(self.discovery.discover('test'))
+        result = self.loop.run_until_complete(fut)
+        self.assertEqual(list(result.keys()), ['127.0.0.1'])
+        self.discovery.stop_discovery()
+        self.loop.call_soon_threadsafe(self.loop.stop)
+
 
 
     def test_neighbor(self):
@@ -50,25 +44,19 @@ class TestDiscovery(TestCase):
         self.discovery.min_bootstrap_nodes = 1
         self.discovery.listen_for_crawlers()
 
-        try:
-            result = self.loop.run_until_complete(
-                asyncio.ensure_future(self.discovery.discover('neighborhood'))
-            )
-        finally:
-            self.assertEqual(list(result.keys()), ['127.0.0.1'])
-            self.discovery.server.cancel()
-            self.loop.call_soon_threadsafe(self.loop.stop)
-            self.discovery.udp_sock_server.close()
-            self.discovery.udp_sock.close()
+        fut = asyncio.ensure_future(self.discovery.discover('neighborhood'))
+        result = self.loop.run_until_complete(fut)
+        self.assertEqual(list(result.keys()), ['127.0.0.1'])
+        self.discovery.stop_discovery()
+        self.loop.call_soon_threadsafe(self.loop.stop)
 
     def test_stop_discovery(self):
         def run():
-            self.assertEqual(self.discovery.udp_sock_server.fileno(), -1)
-            self.assertTrue(self.discovery.server.cancelled())
+            self.discovery.stop_discovery()
+            self.assertTrue(self.discovery.server.done())
             self.loop.call_soon_threadsafe(self.loop.stop)
 
         self.discovery.listen_for_crawlers()
-        self.discovery.stop_discovery()
 
         t = Timer(0.01, run)
         t.start()
