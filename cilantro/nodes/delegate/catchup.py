@@ -74,7 +74,7 @@ class DelegateCatchupState(DelegateBaseState):
         for contract_blob in reply.transactions:
             self.parent.interpreter.interpret(ContractTransaction.from_bytes(contract_blob), async=False)
 
-        # Finally, store this new block and update our current block hash. reset self.current_block, update the next
+        # Finally, store this new block and update our current block hash. Reset self.current_block, update next block
         BlockStorageDriver.store_block_from_meta(self.current_block)
         self.current_block = None
         self._update_next_block()
