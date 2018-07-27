@@ -64,7 +64,7 @@ class SenecaInterpreter(BaseInterpreter):
                     else:
                         break
                 await asyncio.sleep(0.05)
-            except asyncio.CancelledError:
+            except:
                 break
 
     def _rerun_contracts(self):
