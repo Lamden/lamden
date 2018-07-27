@@ -95,12 +95,6 @@ class God:
         tx = cls.create_currency_tx(sender, receiver, amount)
         cls.send_tx(tx)
 
-    # @classmethod
-    # def send_contract_submission(cls, sender_id, contract_code):
-    #     contract_submission = ContractSubmission.user_create(user_id=sender_id, contract_code=contract_code)
-    #     r = requests.post(MN_URL, data=TransactionContainer.create(contract_submission).serialize())
-    #     cls.log.info("POST contract submission request to MN at url {} got status code {}".format(MN_URL, r.status_code))
-
     @classmethod
     def send_tx(cls, tx: TransactionBase):
         r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
