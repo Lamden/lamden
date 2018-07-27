@@ -28,6 +28,8 @@ class DelegateInterpretState(DelegateBaseState):
         self.parent.pending_txs = []
         self.parent.current_block_hash = BlockStorageDriver.get_latest_block_hash()
 
+        self.log.critical("Delegate entering interpret state with blah")
+
     @exit_to_any
     def exit_any(self, next_state):
         # Flush queue if we are not leaving interpreting for consensus

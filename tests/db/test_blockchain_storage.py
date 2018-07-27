@@ -548,6 +548,11 @@ class TestBlockStorageDriver(TestCase):
 
     def test_store_block_from_meta_invalid_link(self):
         block_meta = self._build_block_meta(ref_prev_block=False)
-        BlockStorageDriver.store_block_from_meta(block_meta)
         self.assertRaises(InvalidBlockLinkException, BlockStorageDriver.store_block_from_meta, block_meta)
 
+    # TODO remove this
+    # def test_blow_tf_up(self):
+    #     b_data = self._build_block_data_with_hash(ref_prev_block=False)
+    #     block_notif = NewBlockNotification.create(**b_data)
+    #
+    #     BlockStorageDriver.store_block_from_meta(block_notif)

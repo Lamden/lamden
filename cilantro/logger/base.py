@@ -25,16 +25,45 @@ def get_main_log_path():
 
 format = '%(asctime)s.%(msecs)03d %(name)s[%(process)d][%(processName)s] %(levelname)-2s %(message)s'
 
+"""
+Custom Log Levels
+"""
+
+CUSTOM_LEVELS = {
+    'SPAM': 1,
+    'DEBUGV': 5,
+    'NOTICE': 25,
+    'SUCCESS': 26,
+    'IMPORTANT': 55,
+    'FATAL': 9000,
+    }
+
+for log_name, log_level in CUSTOM_LEVELS.items():
+    logging.addLevelName(log_level, log_name)
+
+def apply_custom_level(log, name: str, level: int):
+    def _lvl_func(message, *args, **kws):
+        log._log(level, message, args, **kws)
+
+    setattr(log, name.lower(), _lvl_func)
+
+"""
+Custom Styling
+"""
+
 coloredlogs.DEFAULT_LEVEL_STYLES = {
-    'critical':{ 'color':'white', 'bold':True, 'background': 'red' },
+    'critical':{ 'color':'white', 'bold':True, 'background': 'yellow'},
+    'fatal':{ 'color':'white', 'bold':True, 'background': 'red', 'underline': True},
     'debug':{ 'color':'green' },
     'error':{ 'color':'red' },
     'info':{ 'color':'white' },
     'notice':{ 'color':'magenta' },
+    'important':{ 'color':'cyan', 'bold': True, 'background': 'magenta'},
     'spam':{ 'color':'green', 'faint':True },
-    'success':{ 'color':'green', 'bold':True },
+    'success':{ 'color':'green', 'bold': True, 'background': 'white' },
     'verbose':{ 'color':'blue' },
-    'warning':{ 'color':'yellow' }
+    'warning':{ 'color':'yellow' },
+    'debugv':{ 'color':'blue', 'faint':True }
 }
 coloredlogs.DEFAULT_FIELD_STYLES = {
     'asctime': {'color': 'green'},
@@ -90,6 +119,9 @@ def get_logger(name=''):
 
     sys.stdout = LoggerWriter(log.debug)
     sys.stderr = LoggerWriter(log.error)
+
+    for log_name, log_level in CUSTOM_LEVELS.items():
+        apply_custom_level(log, log_name, log_level)
 
     return log
 

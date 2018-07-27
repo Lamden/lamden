@@ -128,7 +128,14 @@ class DelegateConsensusState(DelegateBaseState):
             self.log.critical("Prev block hash matches ours. We in consensus!")
 
             self.parent.interpreter.flush(update_state=True)
-            BlockStorageDriver.store_block_from_meta(NewBlockNotification)
+
+            # DEBUG LINES TODO remove
+            self.log.critical("delegate current block hash: {}".format(self.parent.current_hash))
+            self.log.critical("database latest block hash: {}".format(BlockStorageDriver.get_latest_block_hash()))
+            self.log.critical("about to store block with prev hash {} and current hash {}".format(notif.prev_block_hash, notif.block_hash))
+            # END DEBUG
+
+            BlockStorageDriver.store_block_from_meta(notif)
             self.parent.transition(DelegateInterpretState)
 
         # Otherwise, our block is out of consensus and we must request the latest from a Masternode!

@@ -188,6 +188,13 @@ class BlockStorageDriver:
         :return: The hash of the stored block (as a string)
         :raises: A BlockStorageException (or specific subclass) if any validation or storage fails
         """
+        assert issubclass(type(block), BlockMetaData), "Can only store BlockMetaData objects or subclasses"
+
+        # DEBUG line -- TODO remove
+        log.critical("storing block {}".format(block))
+        log.critical("block has prev hash {} and current hash {}".format(block.prev_block_hash, block.block_hash))
+        # END DEBUG
+
         # Ensure this block's previous hash matches the latest block hash in the DB
         if block.prev_block_hash != cls.get_latest_block_hash():
             raise InvalidBlockLinkException("Attempted to store a block with previous_hash {} that does not match the "
