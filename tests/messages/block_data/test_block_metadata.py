@@ -70,6 +70,10 @@ class TestBlockMetaDataReply(TestCase):
         reply = BlockMetaDataReply.create(block_metas=[])
         self.assertFalse(reply.block_metas)
 
+    def test_create_with_block_metas_none(self):
+        reply = BlockMetaDataReply.create(block_metas=None)
+        self.assertFalse(reply.block_metas)
+
     def test_create_with_blocks(self):
         reply = BlockMetaDataReply.create(block_metas=self.block_metas)
         for expected, actual in zip(reply.block_metas, self.block_metas):

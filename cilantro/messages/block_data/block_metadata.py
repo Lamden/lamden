@@ -174,12 +174,13 @@ class BlockMetaDataReply(MessageBase):
         :param block_metas:
         :return:
         """
-        for b in block_metas:
-            assert isinstance(b, BlockMetaData), "create must be called with a list of BlockMetaData instances, but " \
-                                                 "found an inconsistent element {} in block_metas arg".format(b)
         struct = blockdata_capnp.BlockMetaDataReply.new_message()
 
         if block_metas:
+            for b in block_metas:
+                assert isinstance(b, BlockMetaData), "create must be called with a list of BlockMetaData instances, but " \
+                                                     "found an inconsistent element {} in block_metas arg".format(b)
+
             metas_list = struct.blocks.init('data', len(block_metas))
             for i, block_meta in enumerate(block_metas):
                 metas_list[i] = block_meta._data
