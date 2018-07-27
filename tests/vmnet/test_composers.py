@@ -9,7 +9,7 @@ def publisher():
     from cilantro import Constants
     from cilantro.utils.test import MPComposer
     from cilantro.messages import StandardTransactionBuilder
-    import time, os
+    import time, os, sys
 
     log = get_logger("Publisher")
     sub_info = Constants.Testnet.Delegates[1]
@@ -23,11 +23,15 @@ def publisher():
     # Publish on this node's own IP
     pub.add_pub(os.getenv('HOST_IP'))
 
-    while True:
+    for i in range(100):
         log.critical("Sending pub")
         msg = StandardTransactionBuilder.random_tx()
-        # time.sleep(1.0)
+        time.sleep(0.1)
         pub.send_pub_msg(filter='0', message=msg)
+
+    log.critical("Pub Done")
+    sys.exit(0)
+    exit
 
 
 def subscriber():
@@ -35,7 +39,9 @@ def subscriber():
     from cilantro import Constants
     from cilantro.utils.test import MPComposer
     from cilantro.messages import StandardTransactionBuilder
-    import time, os
+    import time, os, sys
+
+    log = get_logger("Sub")
 
     d_info = Constants.Testnet.Delegates[1]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -45,6 +51,13 @@ def subscriber():
 
     sub = MPComposer(sk=d_info['sk'])
     sub.add_sub(filter='0', vk=pub_info['vk'])
+
+    log.critical("Sub sleeping")
+    time.sleep(26)
+    log.critical("Sub done. Exiting.")
+
+    sys.exit(0)
+    exit
 
 
 class TestNetworkPerformance(BaseNetworkTestCase):

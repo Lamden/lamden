@@ -10,6 +10,7 @@ import os
 import time
 import csv
 
+
 def get_filename(proc_name):
     prefix = os.getenv('HOSTNAME', '')
     if prefix:
@@ -18,38 +19,32 @@ def get_filename(proc_name):
         return proc_name
 
 
-
 DELIM_LEN = 60
 OUTER_DELIM = '!'
 INNER_DELIM = '-'
 
 
-# async def profile_process(interval):
+# def profile_process(interval, name):
 #     while True:
-#         await asyncio.sleep(interval)
-#         mup_dat()
-
-def profile_process(interval, name):
-    while True:
-        log = get_logger(name)
-        o = muppy.get_objects()
-        size = muppy.get_size(o)
-        log.critical("---> {} : USING {} BYTES --->".format(name, size))
-        header = ['unix_time', 'size']
-
-        filename = name + '.csv'
-
-        file_exists = os.path.isfile(filename)
-
-        with open(filename, 'a') as csvfile:
-            writer = csv.DictWriter(csvfile, delimiter=',', lineterminator='\n', fieldnames=header)
-
-            if not file_exists:
-                writer.writeheader()  # file doesn't exist yet, write a header
-
-            writer.writerow({'unix_time': time.time(), 'size': size})
-
-        time.sleep(interval)
+#         log = get_logger(name)
+#         o = muppy.get_objects()
+#         size = muppy.get_size(o)
+#         log.critical("---> {} : USING {} BYTES --->".format(name, size))
+#         header = ['unix_time', 'size']
+#
+#         filename = name + '.csv'
+#
+#         file_exists = os.path.isfile(filename)
+#
+#         with open(filename, 'a') as csvfile:
+#             writer = csv.DictWriter(csvfile, delimiter=',', lineterminator='\n', fieldnames=header)
+#
+#             if not file_exists:
+#                 writer.writeheader()  # file doesn't exist yet, write a header
+#
+#             writer.writerow({'unix_time': time.time(), 'size': size})
+#
+#         time.sleep(interval)
 
 
 class LProcess(Process):
@@ -57,9 +52,9 @@ class LProcess(Process):
         log = get_logger(self.name)
         log.info("---> {} Starting --->".format(self.name))
         try:
-            f = get_filename(self.name)
-            t = Thread(target=profile_process, args=(1, f))
-            t.start()
+            # f = get_filename(self.name)
+            # t = Thread(target=profile_process, args=(1, f))
+            # t.start()
             super().run()
         except Exception as e:
             err_msg = '\n' + OUTER_DELIM * DELIM_LEN

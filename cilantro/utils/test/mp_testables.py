@@ -8,28 +8,6 @@ from cilantro.protocol.statemachine import StateMachine
 from cilantro.nodes import Masternode, Delegate, Witness, NodeFactory
 import asyncio
 import os
-from pympler import muppy, summary
-import sys
-
-def mup_dat(filename=''):
-    from cilantro.logger import get_logger
-    lg = get_logger("mup")
-    lg.critical('mup alert!')
-    oo = muppy.get_objects()
-    s = summary.summarize(oo)
-
-    # Intercept stdout
-    old_stdout = sys.stdout
-
-    summary.print_(s)
-
-
-async def profile_process(interval):
-    while True:
-        await asyncio.sleep(interval)
-        mup_dat()
-
-
 
 
 @mp_testable(Composer)
@@ -46,7 +24,7 @@ class MPComposer(MPTesterBase):
         reactor = ReactorInterface(router=router, loop=loop, signing_key=sk)
         composer = Composer(interface=reactor, signing_key=sk)
 
-        return composer, loop, [profile_process(1), reactor._recv_messages()]
+        return composer, loop, [reactor._recv_messages()]
 
 
 @mp_testable(StateMachine)
