@@ -57,7 +57,7 @@ class DelegateCatchupState(DelegateBaseState):
     @input(TransactionReply)
     def handle_tx_reply(self, reply: TransactionReply, envelope: Envelope):
         request = envelope.message
-        self.log.debug("Delegate got tx reply {} with og env {}".format(reply, request))
+        self.log.debug("Delegate got tx reply {} with original env {}".format(reply, request))
 
         # Verify that the transactions blobs in the reply match the requested hashes in the request
         if not reply.validate_matches_request(request):

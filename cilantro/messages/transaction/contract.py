@@ -5,7 +5,9 @@ from cilantro.protocol.wallets import ED25519Wallet
 
 import capnp
 import transaction_capnp
-import time
+
+import random
+
 
 class ContractTransaction(TransactionBase):
     """
@@ -24,6 +26,7 @@ class ContractTransaction(TransactionBase):
     @property
     def code(self):
         return self._data.payload.code
+
 
 class ContractTransactionBuilder:
     """
@@ -53,6 +56,12 @@ class ContractTransactionBuilder:
         validate_hex(receiver_vk, 64, 'receiver verifying key')
         code_str = ContractTemplate.interpolate_template('currency', amount=amount, receiver=receiver_vk)
         return ContractTransactionBuilder.create_contract_tx(sender_sk, code_str)
+
+    @staticmethod
+    def random_currency_tx():
+        sender, receiver = ED25519Wallet.new(), ED25519Wallet.new()
+        amount = random.randint(1, 2 ** 16)
+        return ContractTransactionBuilder.create_currency_tx(sender[0], receiver[1], amount)
 
     @staticmethod
     def create_dummy_tx(sender_sk: str, receiver_vk: str, fail: bool):
