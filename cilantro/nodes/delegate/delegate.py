@@ -28,7 +28,7 @@ from cilantro.messages import *
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
 DelegateConsensusState = "DelegateConsensusState"
-DelegateCatchupState = "DelegateInterpretState"
+DelegateCatchupState = "DelegateCatchupState"
 
 
 class Delegate(NodeBase):
@@ -115,8 +115,8 @@ class DelegateBootState(DelegateBaseState):
             self.parent.composer.add_dealer(vk=mn_vk)
             self.parent.composer.add_sub(vk=mn_vk, filter=Constants.ZmqFilters.MasternodeDelegate)
 
-        # Once done with boot state, transition to interpret
-        self.parent.transition(DelegateInterpretState)
+        # Once done with boot state, transition to catchup
+        self.parent.transition(DelegateCatchupState)
 
 
 ## TESTING

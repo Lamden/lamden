@@ -81,7 +81,7 @@ class TestPump(BaseNetworkTestCase):
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
-        # PUMP IT
+        # PUMP IT BOYS
         time.sleep(15)
         self.execute_python('mgmt', wrap_func(pump_it, self.EXPECTED_TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
 

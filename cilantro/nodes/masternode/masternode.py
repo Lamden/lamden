@@ -56,7 +56,7 @@ class MNBaseState(State):
         self.log.warning("Current state not configured to handle transaction reply")
         self.log.debug('Reply: {}'.format(reply))
 
-    @input(TransactionRequest)
+    @input_request(TransactionRequest)
     def handle_tx_request(self, request: TransactionRequest):
         self.log.debug("Masternode received TransactionRequest request: {}".format(request))
         tx_blobs = BlockStorageDriver.get_raw_transactions(request.tx_hashes)
@@ -67,7 +67,7 @@ class MNBaseState(State):
     def handle_tx_request_timeout(self, request: TransactionRequest, envelope: Envelope):
         self.log.warning("Current state {} not configured to handle tx request timeout".format(self))
 
-    @input(BlockMetaDataRequest)
+    @input_request(BlockMetaDataRequest)
     def handle_blockmeta_request(self, request: BlockMetaDataRequest):
         self.log.debug("Masternode received BlockMetaDataRequest: {}".format(request))
 
@@ -127,7 +127,7 @@ class MNBootState(MNBaseState):
     def handle_tx_request(self, request: TransactionRequest):
         self.log.warning("MN BootState not ready to handle TransactionRequests")
 
-    @input(BlockMetaDataRequest)
+    @input_request(BlockMetaDataRequest)
     def handle_blockmeta_request(self, request: BlockMetaDataRequest):
         self.log.warning("MN BootState not ready to handle BlockMetaDataRequest")
 
