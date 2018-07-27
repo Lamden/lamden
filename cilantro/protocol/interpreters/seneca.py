@@ -1,3 +1,4 @@
+from cilantro import Constants
 from cilantro.protocol.interpreters.base import BaseInterpreter
 from cilantro.db.contracts import run_contract
 from cilantro.messages import ContractTransaction
@@ -14,7 +15,7 @@ class SenecaInterpreter(BaseInterpreter):
     def __init__(self):
         super().__init__()
 
-        self.max_delay_ms = 1000
+        self.max_delay_ms = Constants.Protocol.MaxQueueDelayMs
         self.ex = Executer('root', '', DB_NAME, '127.0.0.1')
 
         # Grab a reference to contracts table from DB singleton
@@ -63,7 +64,7 @@ class SenecaInterpreter(BaseInterpreter):
                     else:
                         break
                 await asyncio.sleep(0.05)
-            except asyncio.CancelledError:
+            except:
                 break
 
     def _rerun_contracts(self):
