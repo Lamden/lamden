@@ -35,6 +35,7 @@ CUSTOM_LEVELS = {
     'NOTICE': 24,
     'SUCCESS': 26,
     'IMPORTANT': 56,
+    'IMPORTANT2': 57,
     'FATAL': 9000,
     }
 
@@ -60,6 +61,7 @@ coloredlogs.DEFAULT_LEVEL_STYLES = {
     'info':{'color':'white' },
     'notice':{'color':'magenta' },
     'important':{ 'color':'cyan', 'bold': True, 'background': 'magenta'},
+    'important2':{ 'color':'magenta', 'bold': True, 'background': 'cyan'},
     'spam':{ 'color':'white', 'faint':True },
     'success':{'color':'white', 'bold': True, 'background': 'green'},
     'verbose':{'color':'blue' },

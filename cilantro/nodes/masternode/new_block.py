@@ -71,8 +71,8 @@ class MNNewBlockState(MNBaseState):
         # Attempt to store block
         try:
             block_hash = BlockStorageDriver.store_block(block_contender=block, raw_transactions=txs, publisher_sk=self.parent.signing_key)
-            self.log.critical("Masternode successfully stored new block with {} total transactiosn and block hash {}"
-                               .format(len(txs), block_hash))
+            self.log.important2("Masternode successfully stored new block with {} total transactiosn and block hash {}"
+                                .format(len(txs), block_hash))
         except BlockStorageException as e:
             self.log.error("Error storing block!\nError = {}".format(e))
             self._try_next_block()
