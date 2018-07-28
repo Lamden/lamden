@@ -68,7 +68,7 @@ def dump_it(volume):
 
 class TestPump(BaseNetworkTestCase):
 
-    VOLUME = 1024  # Number of transactions to dump
+    VOLUME = 2048  # Number of transactions to dump
 
     testname = 'dump_it'
     setuptime = 5

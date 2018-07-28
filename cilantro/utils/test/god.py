@@ -156,7 +156,7 @@ class God:
         cls.log.info("Done generating transactions.")
 
         start = time.time()
-        cls.log.important("Dumping {} transactions...")
+        cls.log.important("Dumping {} transactions...".format(len(txs)))
         for tx in txs:
             cls.send_tx(tx)
         cls.log.important("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
