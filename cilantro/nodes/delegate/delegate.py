@@ -23,6 +23,7 @@ from cilantro.protocol.statemachine import *
 from cilantro.protocol.interpreters import SenecaInterpreter
 from cilantro.db import *
 from cilantro.messages import *
+from collections import deque
 
 
 DelegateBootState = "DelegateBootState"
@@ -39,7 +40,7 @@ class Delegate(NodeBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Properties shared among all states (ie via self.parent.some_prop)
-        self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
+        self.pending_sigs, self.pending_txs = deque(), deque()
         self.interpreter = SenecaInterpreter()
         self.current_hash = BlockStorageDriver.get_latest_block_hash()
 
@@ -116,7 +117,7 @@ class DelegateBootState(DelegateBaseState):
             self.parent.composer.add_sub(vk=mn_vk, filter=Constants.ZmqFilters.MasternodeDelegate)
 
         # Sleep for a bit while the daemon sets up these sockets TODO find a more reactive solution
-        time.sleep(4)
+        time.sleep(12)
 
         # Once done with boot state, transition to catchup
         self.parent.transition(DelegateCatchupState)

@@ -41,10 +41,11 @@ class DelegateInterpretState(DelegateBaseState):
     def enter_from_consensus(self):
         self._general_entry()
 
-        self.log.notice("Flushing {} txs from total {} pending txs".format(Constants.Nodes.MaxQueueSize, len(self.parent.pending_txs)))
-        for tx in self.parent.pending_txs[:Constants.Nodes.MaxQueueSize]:
-            self.interpret_tx(tx)
-        self.parent.pending_txs = []
+        # If we just entered from Consensus, interpret all pending transactions up to MaxQueueSize
+        num_to_pop = min(len(self.parent.pending_txs), Constants.Nodes.MaxQueueSize)
+        self.log.notice("Flushing {} txs from total {} pending txs".format(num_to_pop, len(self.parent.pending_txs)))
+        for _ in range(num_to_pop):
+            self.interpret_tx(self.parent.pending_txs.popleft())
 
     @exit_to_any
     def exit_any(self, next_state):

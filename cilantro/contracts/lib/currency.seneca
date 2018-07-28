@@ -291,7 +291,5 @@ if __name__ == '__main__':
     ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL, RAGHU]
     [GENESIS_WALLETS.append({'wallet': w[1], 'amount': 3696947}) for w in ALL_WALLETS]
 
-    print("got genesis wallt {}".format(GENESIS_WALLETS))
-
     # Seed genesis wallets
     list(map(lambda x: add_coins(x['wallet'], x['amount']), GENESIS_WALLETS))

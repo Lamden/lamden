@@ -43,7 +43,8 @@ for log_name, log_level in CUSTOM_LEVELS.items():
 
 def apply_custom_level(log, name: str, level: int):
     def _lvl_func(message, *args, **kws):
-        log._log(level, message, args, **kws)
+        if level >= log.getEffectiveLevel():
+            log._log(level, message, args, **kws)
 
     setattr(log, name.lower(), _lvl_func)
 

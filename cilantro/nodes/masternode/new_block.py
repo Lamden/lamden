@@ -65,13 +65,13 @@ class MNNewBlockState(MNBaseState):
 
     def _new_block_procedure(self, block: BlockContender, txs: List[bytes]):
         self.log.notice("Masternode attempting to store a new block")
-        self.log.debugv("DONE COLLECTING BLOCK DATA FROM LEAVES. Storing new "
-                        "block with...\ncontender={}\nraw txs={}".format(block, txs))
+        # self.log.debugv("DONE COLLECTING BLOCK DATA FROM LEAVES. Storing new "
+        #                 "block with...\ncontender={}\nraw txs={}".format(block, txs))
 
         # Attempt to store block
         try:
             block_hash = BlockStorageDriver.store_block(block_contender=block, raw_transactions=txs, publisher_sk=self.parent.signing_key)
-            self.log.important("Masternode successfully stored new block with {} total transactiosn and block hash {}"
+            self.log.critical("Masternode successfully stored new block with {} total transactiosn and block hash {}"
                                .format(len(txs), block_hash))
         except BlockStorageException as e:
             self.log.error("Error storing block!\nError = {}".format(e))

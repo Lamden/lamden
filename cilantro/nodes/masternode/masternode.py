@@ -74,7 +74,7 @@ class MNBaseState(State):
         # Get a list of block hashes up until this most recent block
         # TODO get_child_block_hashes return an error/assertion/something if block cannot be found
         child_hashes = BlockStorageDriver.get_child_block_hashes(request.current_block_hash)
-        self.log.debug("Got descended block hashes {} for block hash {}".format(child_hashes, request.current_block_hash))
+        self.log.debugv("Got descended block hashes {} for block hash {}".format(child_hashes, request.current_block_hash))
 
         # If this hash could not be found or if it was the latest hash, no need to lookup any blocks
         if not child_hashes:

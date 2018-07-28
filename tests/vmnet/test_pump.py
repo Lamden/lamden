@@ -18,7 +18,7 @@ def run_mn():
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(15)
+    overwrite_logger_level(21)
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
     sk = Constants.Testnet.Masternodes[0]['sk']
@@ -49,7 +49,7 @@ def run_delegate(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(15)
+    overwrite_logger_level(21)
 
     d_info = Constants.Testnet.Delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -68,7 +68,7 @@ def pump_it(lamd, use_poisson):
 class TestPump(BaseNetworkTestCase):
 
     # TRANSACTION_RATE = 0.1  # Avg transaction/second. lambda parameter in Poission distribution
-    TRANSACTION_RATE = 8  # Avg transaction/second. lambda parameter in Poission distribution
+    TRANSACTION_RATE = 10  # Avg transaction/second. lambda parameter in Poission distribution
     MODEL_AS_POISSON = False
 
     testname = 'pump_it'
@@ -90,7 +90,7 @@ class TestPump(BaseNetworkTestCase):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
         # PUMP IT BOYS
-        time.sleep(15)
+        time.sleep(26)
         self.execute_python('mgmt', wrap_func(pump_it, self.TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
 
         input("Enter any key to terminate")
