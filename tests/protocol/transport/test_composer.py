@@ -9,22 +9,22 @@ from cilantro.protocol.reactor import ReactorInterface
 W = Constants.Protocol.Wallets
 TESTER_RETURN_VAL = b'yo'
 
-class TestComposer(TestCase):
-
-    def test_init(self):
-        """
-        Tests init creates an object with the expected properties
-        """
-        sk, vk = W.new()
-        interface = MagicMock(spec=ReactorInterface)
-        sender_id = 'yuh_boi'
-
-        comp = Composer(interface=interface, signing_key=sk)
-
-        self.assertEqual(comp.interface, interface)
-        # self.assertEqual(comp.sender_id, sender_id)
-        self.assertEqual(comp.signing_key, sk)
-        self.assertEqual(comp.verifying_key, vk)
+# class TestComposer(TestCase):
+#
+#     def test_init(self):
+#         """
+#         Tests init creates an object with the expected properties
+#         """
+#         sk, vk = W.new()
+#         interface = MagicMock(spec=ReactorInterface)
+#         sender_id = 'yuh_boi'
+#
+#         comp = Composer(interface=interface, signing_key=sk)
+#
+#         self.assertEqual(comp.interface, interface)
+#         # self.assertEqual(comp.sender_id, sender_id)
+#         self.assertEqual(comp.signing_key, sk)
+#         self.assertEqual(comp.verifying_key, vk)
 
     # TODO test _package_msg
 
@@ -67,7 +67,3 @@ class TestComposer(TestCase):
     #
     #     # mock_env_class.create_from_message.assert_called()
     #     self.assertEqual(output, return_data)
-
-
-
-

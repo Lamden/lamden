@@ -10,10 +10,7 @@ from cilantro.protocol.overlay.utils import digest
 from cilantro.db import VKBook
 from os.path import exists, dirname
 from threading import Timer
-from asyncio.selector_events import _SelectorDatagramTransport
-
-try: from utils import genkeys
-except: from .utils import genkeys
+from cilantro.utils.test.overlay import *
 
 def stop(self):
     self.a_net.stop()
@@ -48,7 +45,7 @@ class TestNetwork(TestCase):
     def test_attributes(self):
         def run(self):
             stop(self)
-            
+
         self.assertIsInstance(self.a_net.stethoscope_sock, socket.socket)
         self.assertIsInstance(self.a_net.ironhouse, Ironhouse)
         self.assertIsInstance(self.a_net.node, Node)
@@ -142,7 +139,7 @@ class TestNetwork(TestCase):
     def test_listen(self):
         def run(self):
             stop(self)
-        self.assertIsInstance(self.a_net.transport, _SelectorDatagramTransport)
+
         self.assertIsInstance(self.a_net.protocol, KademliaProtocol)
         t = Timer(0.01, run, [self])
         t.start()
@@ -200,7 +197,6 @@ class TestNetwork(TestCase):
         )
 
         self.a_net.refresh_table()
-        self.assertIsInstance(self.a_net.refresh_loop, asyncio.TimerHandle)
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()

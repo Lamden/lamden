@@ -124,7 +124,7 @@ def _read_contract_files() -> list:
 
     for filename in sorted(os.listdir(CONTRACTS_DIR)):
         _validate_filename(filename)
-        # log.debug("[inside _read_contract_files] Loading contract code for file {}".format(filename))
+        # log.info("[inside _read_contract_files] Loading contract code for file {}".format(filename))
 
         with open('{}/{}'.format(CONTRACTS_DIR, filename), 'r') as f:
             code_str = f.read()
