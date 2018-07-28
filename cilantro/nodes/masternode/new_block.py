@@ -159,13 +159,20 @@ class MNFetchNewBlockState(MNNewBlockState):
 
         repliers = list(self.node_states.keys())
 
-        # Request individual block data from delegates
-        for i in range(len(self.tx_hashes)):
-            tx_hash = self.tx_hashes[i]
-            vk = repliers[i % len(repliers)]
-            self._request_from_delegate(tx_hash, vk)
+        # Compute batch size. We take max incase the block size is smaller than the # of delegates.
+        batch_size = max(1, len(self.tx_hashes) // len(self.node_states))
 
-    def _request_from_delegate(self, tx_hash: str, delegate_vk: str=''):
+        # Request individual block data from delegates
+        for i in range(len(self.node_states)):
+            start_idx = i * batch_size
+            end_idx = (i+1) * batch_size
+
+            req_hashes = self.tx_hashes[start_idx:end_idx]
+            vk = repliers[i % len(repliers)]
+
+            self._request_from_delegate(req_hashes, vk)
+
+    def _request_from_delegate(self, tx_hashes: List[str], delegate_vk: str=''):
         """
         Helper method to request a transaction from a delegate via the transactions hash.
         :param tx_hash:  The hash of the transaction to request
@@ -177,10 +184,10 @@ class MNFetchNewBlockState(MNNewBlockState):
         else:
             delegate_vk = self._first_available_node()
 
-        self.log.debug("Requesting tx hash {} from VK {}".format(tx_hash, delegate_vk))
+        self.log.debug("Requesting {} tx hashes from VK {}".format(len(tx_hashes), delegate_vk))
 
         # TODO make this more optimal by requesting hashes in batch
-        req = TransactionRequest.create([tx_hash])
+        req = TransactionRequest.create(tx_hashes)
         self.parent.composer.send_request_msg(message=req, timeout=5, vk=delegate_vk)
 
         self.node_states[delegate_vk] = self.NODE_AWAITING

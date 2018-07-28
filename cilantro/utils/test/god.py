@@ -123,7 +123,7 @@ class God:
 
         assert callable(gen_func), "Expected a callable for 'gen_func' but got {}".format(gen_func)
 
-        cls.log.info("Starting to pump transactions at an average of {} transactions per second".format(rate))
+        cls.log.important("Starting to pump transactions at an average of {} transactions per second".format(rate))
         cls.log.info("Using generator func {}, with use_possion={}".format(gen_func, use_poisson))
 
         while True:
@@ -156,7 +156,7 @@ class God:
         cls.log.info("Done generating transactions.")
 
         start = time.time()
-        cls.log.notice("Dumping {} transactions...")
+        cls.log.important("Dumping {} transactions...")
         for tx in txs:
             cls.send_tx(tx)
         cls.log.important("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))

@@ -117,7 +117,7 @@ class DelegateBootState(DelegateBaseState):
             self.parent.composer.add_sub(vk=mn_vk, filter=Constants.ZmqFilters.MasternodeDelegate)
 
         # Sleep for a bit while the daemon sets up these sockets TODO find a more reactive solution
-        time.sleep(10)
+        time.sleep(16)
 
         # Once done with boot state, transition to catchup
         self.parent.transition(DelegateCatchupState)
