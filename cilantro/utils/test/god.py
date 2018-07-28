@@ -66,6 +66,10 @@ class God:
             return c
 
     @classmethod
+    def _default_gen_func(cls):
+        return cls.random_contract_tx
+
+    @classmethod
     def set_mn_url(cls, ip='localhost', port=8080):
         url = "http://{}:{}".format(ip, port)
         cls.log.info("Setting masternode URL to {}".format(url))
@@ -98,7 +102,7 @@ class God:
     @classmethod
     def send_tx(cls, tx: TransactionBase):
         r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
-        cls.log.info("POST request to MN at URL {} has status code: {}".format(cls.mn_url, r.status_code))
+        cls.log.debug("POST request to MN at URL {} has status code: {}".format(cls.mn_url, r.status_code))
 
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
@@ -109,7 +113,7 @@ class God:
         :return:
         """
         if not gen_func:
-            gen_func = cls.random_contract_tx
+            gen_func = cls._default_gen_func()
 
         if use_poisson:
             from scipy.stats import poisson, expon
@@ -125,14 +129,37 @@ class God:
         while True:
             wait = rvs_func()
 
-            cls.log.debug("Sending next transaction in {} seconds".format(wait))
+            cls.log.debugv("Sending next transaction in {} seconds".format(wait))
             time.sleep(wait)
 
             tx = gen_func()
 
-            cls.log.debug("sending transaction {}".format(tx))
-            r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
-            cls.log.debug("POST request got status code {}".format(r.status_code))
+            cls.log.debugv("sending transaction {}".format(tx))
+            cls.send_tx(tx)
+            # r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
+            # cls.log.debugv("POST request got status code {}".format(r.status_code))
+
+    @classmethod
+    def dump_it(cls, volume: int, gen_func=None):
+        """
+        Dump it fast
+        :param volume:
+        :return:
+        """
+        assert volume > 0, "You must dump at least 1 transaction silly"
+
+        if not gen_func:
+            gen_func = cls._default_gen_func()
+
+        cls.log.info("Generating {} transactions to dump...".format(volume))
+        txs = [gen_func() for _ in range(volume)]
+        cls.log.info("Done generating transactions.")
+
+        start = time.time()
+        cls.log.notice("Dumping {} transactions...")
+        for tx in txs:
+            cls.send_tx(tx)
+        cls.log.important("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
 
     @classmethod
     def random_std_tx(cls):

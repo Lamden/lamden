@@ -181,7 +181,7 @@ class MNFetchNewBlockState(MNNewBlockState):
 
         # TODO make this more optimal by requesting hashes in batch
         req = TransactionRequest.create([tx_hash])
-        self.parent.composer.send_request_msg(message=req, timeout=1, vk=delegate_vk)
+        self.parent.composer.send_request_msg(message=req, timeout=5, vk=delegate_vk)
 
         self.node_states[delegate_vk] = self.NODE_AWAITING
 

@@ -11,7 +11,7 @@
   },
   "nodes": {
     "max-request-length": 100000,
-    "max-queue-size": 20,
+    "max-queue-size": 256,
     "queue-auto-flush-time": 1.0,
     "ntp-url": "pool.ntp.org",
     "faucet-percent": 0.001,
