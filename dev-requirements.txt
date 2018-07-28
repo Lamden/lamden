@@ -6,3 +6,4 @@ numpy
 scipy
 sphinx
 sphinx-autodoc-typehints
+vprof
