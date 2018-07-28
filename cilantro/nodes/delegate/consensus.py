@@ -88,7 +88,7 @@ class DelegateConsensusState(DelegateBaseState):
             self.in_consensus = True
 
             # DEBUG LINE -- todo remove later
-            self.log.notice("Delegate creating contender with merk leaves {}".format(self.merkle.leaves_as_hex))
+            # self.log.notice("Delegate creating contender with merk leaves {}".format(self.merkle.leaves_as_hex))
 
             # Create BlockContender and send it to all Masternode(s)
             bc = BlockContender.create(signatures=self.signatures, merkle_leaves=self.merkle.leaves_as_hex)
@@ -127,8 +127,6 @@ class DelegateConsensusState(DelegateBaseState):
         if notif.prev_block_hash == self.parent.current_hash and self.in_consensus:
             self.log.success("Prev block hash matches ours. We in consensus!")
 
-            self.parent.interpreter.flush(update_state=True)
-
             # DEBUG LINES TODO remove
             # self.log.critical("delegate current block hash: {}".format(self.parent.current_hash))
             # self.log.critical("database latest block hash: {}".format(BlockStorageDriver.get_latest_block_hash()))
@@ -136,10 +134,13 @@ class DelegateConsensusState(DelegateBaseState):
             # END DEBUG
 
             BlockStorageDriver.store_block_from_meta(notif)
+            self.parent.interpreter.flush(update_state=True)
             self.parent.transition(DelegateInterpretState)
+            return
 
         # Otherwise, our block is out of consensus and we must request the latest from a Masternode!
         else:
             self.log.critical("New block has prev hash {} that does not match our current block hash {} ... :( :("
                              .format(notif.prev_block_hash, self.parent.current_hash))
             self.parent.transition(DelegateCatchupState)
+            return

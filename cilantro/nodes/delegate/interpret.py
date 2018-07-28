@@ -20,21 +20,36 @@ class DelegateInterpretState(DelegateBaseState):
     delegate moves into consensus state
     """
 
+    def _general_entry(self):
+        self.parent.current_hash = BlockStorageDriver.get_latest_block_hash()
+        self.log.notice("Delegate entering interpret state with current block hash {}".format(self.parent.current_hash))
+
+    def _reset_queue(self):
+        self.log.notice("Emptying transaction queue of {} items".format(len(self.parent.pending_txs)))
+        self.parent.pending_txs.clear()
+
+        self.log.notice("Flushing interpreting without updating")
+        self.parent.interpreter.flush(update_state=False)
+
     @enter_from_any
-    def enter_from_any(self, prev_state):
-        self.log.info("Flushing pending tx queue of {} txs".format(len(self.parent.pending_txs)))
-        for tx in self.parent.pending_txs:
+    def enter_any(self, prev_state):
+        self._general_entry()
+        self._reset_queue()
+
+
+    @enter_from(DelegateConsensusState)
+    def enter_from_consensus(self):
+        self._general_entry()
+
+        self.log.notice("Flushing {} txs from total {} pending txs".format(Constants.Nodes.MaxQueueSize, len(self.parent.pending_txs)))
+        for tx in self.parent.pending_txs[:Constants.Nodes.MaxQueueSize]:
             self.interpret_tx(tx)
         self.parent.pending_txs = []
-        self.parent.current_hash = BlockStorageDriver.get_latest_block_hash()
-
-        self.log.important("Delegate entering interpret state with current block hash {}".format(self.parent.current_hash))
 
     @exit_to_any
     def exit_any(self, next_state):
         # Flush queue if we are not leaving interpreting for consensus
-        self.log.warning("Delegate exiting interpreting for state {}, flushing queue".format(next_state))
-        self.parent.interpreter.flush(update_state=False)
+        self._reset_queue()
 
     @exit_to(DelegateConsensusState)
     def exit_to_consensus(self):
@@ -46,12 +61,17 @@ class DelegateInterpretState(DelegateBaseState):
 
     def interpret_tx(self, tx: OrderingContainer):
         self.parent.interpreter.interpret(tx)
+        self.log.debugv("Current size of transaction queue: {}".format(len(self.parent.interpreter.queue)))
 
-        self.log.debug("Size of queue: {}".format(len(self.parent.interpreter.queue)))
-
-        if self.parent.interpreter.queue_size >= Constants.Nodes.MaxQueueSize:
+        if self.parent.interpreter.queue_size == Constants.Nodes.MaxQueueSize:
             self.log.success("Consensus time! Delegate has {} tx in queue.".format(self.parent.interpreter.queue_size))
             self.parent.transition(DelegateConsensusState)
+            return
+
+        elif self.parent.interpreter.queue_size > Constants.Nodes.MaxQueueSize:
+            self.log.fatal("Delegate exceeded max queue size! How did this happen!!!")
+            raise Exception("Delegate exceeded max queue size! How did this happen!!!")
+
         else:
             self.log.debug("Not consensus time yet, queue is only size {}/{}"
                            .format(self.parent.interpreter.queue_size, Constants.Nodes.MaxQueueSize))

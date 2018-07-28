@@ -39,15 +39,17 @@ class DelegateCatchupState(DelegateBaseState):
 
     @exit_to_any
     def exit_any(self, next_state):
+        assert self.parent.interpreter.queue_size == 0, 'Delegate exiting catchup state with nonempty interpreter queue'
+
         self.parent.current_hash = BlockStorageDriver.get_latest_block_hash()
-        self.log.debug("CatchupState exiting. Current block hash set to {}".format(self.parent.current_hash))
+        self.log.info("CatchupState exiting. Current block hash set to {}".format(self.parent.current_hash))
 
     @input(BlockMetaDataReply)
     def handle_blockmeta_reply(self, reply: BlockMetaDataReply):
         self.log.debug("Delegate got BlockMetaDataReply: {}".format(reply))
 
         if not reply.block_metas:
-            self.log.critical("Delegate done updated state to latest block hash {}".format(self.parent.current_hash))
+            self.log.success("Delegate done updated state to latest block hash {}".format(self.parent.current_hash))
             self.parent.transition(DelegateInterpretState)
             return
 
@@ -73,6 +75,7 @@ class DelegateCatchupState(DelegateBaseState):
         # Interpret the transactions
         for contract_blob in reply.transactions:
             self.parent.interpreter.interpret(ContractTransaction.from_bytes(contract_blob), async=False)
+        self.parent.interpret.flush(update_state=True)
 
         # Finally, store this new block and update our current block hash. Reset self.current_block, update next block
         BlockStorageDriver.store_block_from_meta(self.current_block)

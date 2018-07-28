@@ -59,11 +59,16 @@ def run_delegate(slot_num):
 
 def pump_it(lamd, use_poisson):
     from cilantro.utils.test import God
+    from cilantro.logger import get_logger, overwrite_logger_level
+    import logging
+
+    overwrite_logger_level(logging.WARNING)
     God.pump_it(rate=lamd, use_poisson=use_poisson)
 
 class TestPump(BaseNetworkTestCase):
 
-    EXPECTED_TRANSACTION_RATE = 0.1  # Avg transaction/second. lambda parameter in Poission distribution
+    # TRANSACTION_RATE = 0.1  # Avg transaction/second. lambda parameter in Poission distribution
+    TRANSACTION_RATE = 8  # Avg transaction/second. lambda parameter in Poission distribution
     MODEL_AS_POISSON = False
 
     testname = 'pump_it'
@@ -86,7 +91,7 @@ class TestPump(BaseNetworkTestCase):
 
         # PUMP IT BOYS
         time.sleep(15)
-        self.execute_python('mgmt', wrap_func(pump_it, self.EXPECTED_TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
+        self.execute_python('mgmt', wrap_func(pump_it, self.TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
 
         input("Enter any key to terminate")
 
