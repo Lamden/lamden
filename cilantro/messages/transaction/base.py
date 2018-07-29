@@ -1,10 +1,11 @@
-from cilantro import Constants
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
 from cilantro.db import contract
 from cilantro.utils import lazy_property
 import capnp
 
+from cilantro.protocol.wallets.wallet import Wallet
+from cilantro.protocol.proofs.pow.sha import SHA3POW
 
 class TransactionBase(MessageBase):
     """
@@ -13,8 +14,8 @@ class TransactionBase(MessageBase):
 
     def __init__(self, data):
         super().__init__(data)
-        self.pow = Constants.Protocol.Proofs
-        self.wallet = Constants.Protocol.Wallets
+        self.pow = SHA3POW
+        self.wallet = Wallet
 
     def interpret(self, *args, **kwargs):
         """
