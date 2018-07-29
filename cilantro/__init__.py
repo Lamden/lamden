@@ -80,9 +80,6 @@ def config_testnet(testnet: dict) -> dict:
     testnet['all-nodes'] = all_nodes
     return testnet
 
-    # Add masternode wallet and url to all_nodes
-    # mn_url = testnet['masternode']['internal-url']
-
 
 
 path = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -121,23 +118,7 @@ class Constants:
     def __str__(cls):
         return str(cls.json)
 
-# Constants.load_to_env(config)
 Constants.build_from_json(config)
-# print(os.environ)
 Constants.json = config
 
-# c = __import__('cilantro.protocol.proofs', fromlist=[Constants.Protocol.Proofs])
-# Constants.Protocol.Proofs = getattr(c, Constants.Protocol.Proofs)
-
-# c = __import__('cilantro.protocol.wallets', fromlist=[Constants.Protocol.Wallets])
-# Constants.Protocol.Wallets = getattr(c, Constants.Protocol.Wallets)
-
-# c = __import__('cilantro.protocol.interpreters', fromlist=[Constants.Protocol.Interpreters])
-# Constants.Protocol.Interpreters = getattr(c, Constants.Protocol.Interpreters)
-
-# Config fixed point decimals
 getcontext().prec = Constants.Protocol.SignificantDigits
-
-# Load all messages classes. We need Python to interpret all of the class definitions, so the metaprogramming hooks
-# are executed properly and the MessageBase registry is created (the MessageBase.registry)
-# from cilantro.messages import *

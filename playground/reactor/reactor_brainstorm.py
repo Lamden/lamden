@@ -227,6 +227,7 @@ class Command(metaclass=CommandMeta):
 
     @classmethod
     def execute(cls, ):
+        pass
 
 
 class AddSubCommand(Command):
