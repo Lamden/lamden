@@ -1,7 +1,7 @@
 from cilantro import Constants
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.utils import validate_hex
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallets.wallet import Wallet
 from cilantro.db import ContractTemplate
 
 import capnp
@@ -45,7 +45,7 @@ class ContractTransactionBuilder:
         payload_binary = struct.payload.copy().to_bytes()
 
         struct.metadata.proof = Constants.Protocol.Proofs.find(payload_binary)[0]
-        struct.metadata.signature = ED25519Wallet.sign(sender_sk, payload_binary)
+        struct.metadata.signature = Wallet.sign(sender_sk, payload_binary)
 
         return ContractTransaction.from_data(struct)
 

@@ -1,6 +1,4 @@
 from collections import deque
-from cilantro.protocol.interpreters.queries import *
-
 
 class BaseInterpreter:
 
