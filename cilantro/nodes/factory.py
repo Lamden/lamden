@@ -1,4 +1,3 @@
-from cilantro import Constants
 from cilantro.nodes import Masternode, Witness, Delegate, NodeBase
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.transport import Router, Composer

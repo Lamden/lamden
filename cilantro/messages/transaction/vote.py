@@ -1,5 +1,4 @@
 from cilantro.messages.transaction.base import TransactionBase
-from cilantro import Constants
 from cilantro.protocol.wallet import Wallet
 from cilantro.protocol.pow import SHA3POW
 import capnp

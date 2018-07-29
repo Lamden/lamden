@@ -1,4 +1,3 @@
-from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.protocol.transport import Composer
 from cilantro.protocol.statemachine import StateMachine

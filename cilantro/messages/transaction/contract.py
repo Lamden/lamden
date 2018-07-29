@@ -1,4 +1,3 @@
-from cilantro import Constants
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.utils import validate_hex
 from cilantro.protocol.wallet import Wallet

@@ -8,6 +8,7 @@ Available classes:
 import hashlib
 import secrets
 
+
 class SHA3POW:
     @staticmethod
     def find(o: bytes):

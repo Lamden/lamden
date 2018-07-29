@@ -4,6 +4,7 @@ from decimal import getcontext
 import sys
 import hashlib
 from os.path import dirname, abspath
+from cilantro.constants.protocol import sig_figs
 
 os.environ['LOCAL_PATH'] = abspath(dirname(dirname(dirname(__file__))))
 
@@ -121,4 +122,4 @@ class Constants:
 Constants.build_from_json(config)
 Constants.json = config
 
-getcontext().prec = Constants.Protocol.SignificantDigits
+getcontext().prec = sig_figs
