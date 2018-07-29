@@ -1,4 +1,5 @@
 from collections import deque
+from cilantro.logger import get_logger
 
 class BaseInterpreter:
 
