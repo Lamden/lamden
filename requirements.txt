@@ -23,3 +23,4 @@ uvloop==0.9.1
 yarl==1.1.0
 wheel
 
+-e git://github.com/Lamden/seneca.git#egg=seneca
