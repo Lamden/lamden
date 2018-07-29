@@ -126,8 +126,8 @@ Constants.build_from_json(config)
 # print(os.environ)
 Constants.json = config
 
-c = __import__('cilantro.protocol.proofs', fromlist=[Constants.Protocol.Proofs])
-Constants.Protocol.Proofs = getattr(c, Constants.Protocol.Proofs)
+# c = __import__('cilantro.protocol.proofs', fromlist=[Constants.Protocol.Proofs])
+# Constants.Protocol.Proofs = getattr(c, Constants.Protocol.Proofs)
 
 # c = __import__('cilantro.protocol.wallets', fromlist=[Constants.Protocol.Wallets])
 # Constants.Protocol.Wallets = getattr(c, Constants.Protocol.Wallets)

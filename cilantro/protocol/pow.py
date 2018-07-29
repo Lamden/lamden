@@ -5,11 +5,10 @@ Available classes:
 -SHA3POW: This class implements find and check static methods which generate viable POW solutions"""
 
 
-from cilantro.protocol.proofs import POW
 import hashlib
 import secrets
 
-class SHA3POW(POW):
+class SHA3POW:
     @staticmethod
     def find(o: bytes):
         while True:

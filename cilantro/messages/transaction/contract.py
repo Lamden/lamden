@@ -3,7 +3,7 @@ from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.utils import validate_hex
 from cilantro.protocol.wallet import Wallet
 from cilantro.db import ContractTemplate
-
+from cilantro.protocol.pow import SHA3POW
 import transaction_capnp
 
 
@@ -43,7 +43,7 @@ class ContractTransactionBuilder:
 
         payload_binary = struct.payload.copy().to_bytes()
 
-        struct.metadata.proof = Constants.Protocol.Proofs.find(payload_binary)[0]
+        struct.metadata.proof = SHA3POW.find(payload_binary)[0]
         struct.metadata.signature = Wallet.sign(sender_sk, payload_binary)
 
         return ContractTransaction.from_data(struct)

@@ -4,7 +4,7 @@ from cilantro.db import contract
 from cilantro.utils import lazy_property
 
 from cilantro.protocol.wallet import Wallet
-from cilantro.protocol.proofs.pow.sha import SHA3POW
+from cilantro.protocol.pow import SHA3POW
 
 class TransactionBase(MessageBase):
     """

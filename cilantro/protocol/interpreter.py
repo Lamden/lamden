@@ -1,4 +1,3 @@
-from cilantro.protocol.interpreters.base import BaseInterpreter
 from cilantro.db.contracts import run_contract
 from cilantro.messages import ContractTransaction
 from seneca.seneca_internal.storage.mysql_spits_executer import Executer
@@ -7,7 +6,7 @@ from cilantro.db import DB
 from typing import List
 
 
-class SenecaInterpreter(BaseInterpreter):
+class SenecaInterpreter:
 
     def __init__(self):
         super().__init__()
