@@ -1,7 +1,7 @@
 from cilantro.messages import MessageBase
 from cilantro.messages.utils import validate_hex
 import json
-from cilantro.protocol.wallets.wallet import Wallet
+from cilantro.protocol.wallet import Wallet
 
 class MerkleSignature(MessageBase):
     """

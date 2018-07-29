@@ -2,7 +2,7 @@ from cilantro.messages import MerkleTree
 import secrets
 import zmq
 import asyncio
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallet import Wallet
 import random
 
 # generate random transactions
@@ -17,7 +17,7 @@ t = [m.data_for_hash(h) for h in m.leaves]
 print(txs == t)
 
 # generate the delegates with new wallets
-delegates = [ED25519Wallet.new() for i in range(64)]
+delegates = [Wallet.new() for i in range(64)]
 
 connection_list = ['inproc://{}'.format(k[1]) for k in delegates]
 

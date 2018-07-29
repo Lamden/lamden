@@ -1,4 +1,3 @@
-from cilantro.protocol.statemachine import *
 from unittest import TestCase
 from .stumachine import *
 

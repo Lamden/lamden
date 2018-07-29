@@ -3,7 +3,7 @@ from cilantro.messages import MerkleSignature, BlockContender
 from cilantro.messages.consensus.block_contender import build_test_contender
 from cilantro.messages.consensus.merkle_signature import build_test_merkle_sig
 from cilantro.protocol.structures import MerkleTree
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallet import Wallet
 import secrets
 import json
 
@@ -19,8 +19,8 @@ class BlockContenderTest(TestCase):
         """
         assert type(msg) == bytes, "Must pass in bytes"
 
-        sk, vk = ED25519Wallet.new()
-        signature = ED25519Wallet.sign(sk, msg)
+        sk, vk = Wallet.new()
+        signature = Wallet.sign(sk, msg)
         ms = MerkleSignature.create(sig_hex=signature, timestamp=TIMESTAMP, sender=vk)
 
         return ms, sk, vk

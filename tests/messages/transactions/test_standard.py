@@ -3,7 +3,7 @@ from unittest import TestCase
 from cilantro.messages import StandardTransaction
 from cilantro.messages.transaction.standard import StandardTransactionBuilder
 from cilantro.messages.utils import int_to_decimal
-
+from cilantro.protocol.wallet import Wallet
 
 class TestStandardTransaction(TestCase):
 
@@ -13,8 +13,8 @@ class TestStandardTransaction(TestCase):
         Helper method to create and return a valid transaction struct with a random sender/receiever and
         the specified amount
         """
-        s = Constants.Protocol.Wallets.new()
-        r = Constants.Protocol.Wallets.new()
+        s = Wallet.new()
+        r = Wallet.new()
         return StandardTransactionBuilder.create_tx_struct(s[0], s[1], r[1], amount)
 
     def __assert_struct_equal_object(self, tx_struct: object, tx_object: StandardTransaction):

@@ -3,8 +3,9 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 from cilantro.messages import Envelope, MessageMeta, Seal, MessageBase, StandardTransactionBuilder
 from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.wallet import Wallet
 
-W = Constants.Protocol.Wallets
+W = Wallet
 
 
 class TestEnvelopefromObjects(TestCase):

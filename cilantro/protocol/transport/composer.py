@@ -1,9 +1,9 @@
-from cilantro import Constants
-from cilantro.messages import MessageBase, ReactorCommand, Envelope
+from cilantro.messages import MessageBase
 from cilantro.protocol.reactor.interface import ReactorInterface
 from cilantro.protocol.reactor.executor import *
 from cilantro.logger import get_logger
 from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.wallet import Wallet
 
 """
 The Composer class serves as a high level API for a StateMachine (application layer) to execute networking commands on
@@ -17,7 +17,7 @@ class Composer:
         self.log = get_logger("{}.Composer".format(name))
         self.interface = interface
         self.signing_key = signing_key
-        self.verifying_key = Constants.Protocol.Wallets.get_vk(self.signing_key)
+        self.verifying_key = Wallet.get_vk(self.signing_key)
 
     def _package_msg(self, msg: MessageBase) -> Envelope:
         """

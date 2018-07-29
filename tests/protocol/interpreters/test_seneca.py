@@ -1,4 +1,4 @@
-from cilantro.protocol.interpreters import SenecaInterpreter
+from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.db import reset_db, DB, ContractTemplate
 from cilantro.db.contracts import get_contract_exports
 from cilantro.messages import ContractTransaction, ContractTransactionBuilder

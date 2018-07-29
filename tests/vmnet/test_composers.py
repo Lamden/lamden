@@ -1,11 +1,9 @@
 from vmnet.test.base import *
-from cilantro import Constants
-from cilantro.utils.test import MPComposer
-import unittest, time, random
+import unittest, time
 
 
 def publisher():
-    from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro.logger import get_logger
     from cilantro import Constants
     from cilantro.utils.test import MPComposer
     from cilantro.messages import StandardTransactionBuilder

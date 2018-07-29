@@ -1,17 +1,13 @@
-from cilantro import Constants
 from cilantro.utils.test import MPTesterBase, MPTestCase, mp_testable, MPComposer, vmnet_test
 from cilantro.protocol.transport import Router, Composer
-from cilantro.protocol.reactor import ReactorInterface
 from cilantro.messages import *
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallet import Wallet
 from cilantro.protocol.reactor.executor import *
-from cilantro.db import VKBook
-import asyncio
 import unittest
 import time
 
 
-W = Constants.Protocol.Wallets
+W = Wallet
 sk1, vk1 = Constants.Testnet.Masternodes[0]['sk'], Constants.Testnet.Masternodes[0]['vk']
 sk2, vk2 = Constants.Testnet.Delegates[0]['sk'], Constants.Testnet.Delegates[0]['vk']
 sk3, vk3 = Constants.Testnet.Delegates[1]['sk'], Constants.Testnet.Delegates[1]['vk']
@@ -28,7 +24,7 @@ def random_msg():
     return StandardTransactionBuilder.random_tx()
 
 def random_envelope(sk=None, tx=None):
-    sk = sk or ED25519Wallet.new()[0]
+    sk = sk or Wallet.new()[0]
     tx = tx or random_msg()
     return Envelope.create_from_message(message=tx, signing_key=sk)
 

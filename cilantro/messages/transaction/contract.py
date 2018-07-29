@@ -1,10 +1,9 @@
 from cilantro import Constants
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.utils import validate_hex
-from cilantro.protocol.wallets.wallet import Wallet
+from cilantro.protocol.wallet import Wallet
 from cilantro.db import ContractTemplate
 
-import capnp
 import transaction_capnp
 
 
@@ -39,7 +38,7 @@ class ContractTransactionBuilder:
 
         struct = transaction_capnp.ContractTransaction.new_message()
 
-        struct.payload.sender = ED25519Wallet.get_vk(sender_sk)
+        struct.payload.sender = Wallet.get_vk(sender_sk)
         struct.payload.code = code_str
 
         payload_binary = struct.payload.copy().to_bytes()

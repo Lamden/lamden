@@ -4,10 +4,9 @@ from cilantro.protocol.structures import EnvelopeAuth
 from cilantro.utils import Hasher  # Just for debugging (used in __repr__)
 import time
 
-import capnp
 import envelope_capnp
 
-from cilantro.protocol.wallets.wallet import Wallet
+from cilantro.protocol.wallet import Wallet
 
 
 class Envelope(MessageBase):

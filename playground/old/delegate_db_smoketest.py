@@ -2,7 +2,7 @@ import redis
 from cilantro.nodes.delegate import Delegate
 from cilantro.utils.constants import *
 import json
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallet import Wallet
 from cilantro.protocol.proofs import SHA3POW
 from cilantro.protocol.serialization.json_serializer import JSONSerializer
 
@@ -63,8 +63,8 @@ def create_std_tx(sender: tuple, recipient: tuple, amount: float):
     # TestNetTransaction.TX, sender, to, amount
     tx = {'payload': ('t', sender[1], recipient[1], str(amount)), 'metadata':{}}
     tx["metadata"]["proof"] = SHA3POW.find(JSONSerializer.serialize(tx["payload"]))[0]
-    # tx["metadata"]["signature"] = ED25519Wallet.sign(sender[0], json.dumps(tx["payload"]).encode())
-    tx["metadata"]["signature"] = ED25519Wallet.sign(sender[0], JSONSerializer.serialize(tx['payload']))
+    # tx["metadata"]["signature"] = Wallet.sign(sender[0], json.dumps(tx["payload"]).encode())
+    tx["metadata"]["signature"] = Wallet.sign(sender[0], JSONSerializer.serialize(tx['payload']))
     return tx
 
 

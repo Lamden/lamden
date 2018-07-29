@@ -1,6 +1,6 @@
 from cilantro import Constants
 from cilantro.protocol.structures import MerkleTree
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallet import Wallet
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
 from cilantro.protocol.statemachine import *
 from cilantro.messages import *
@@ -42,7 +42,7 @@ class DelegateConsensusState(DelegateBaseState):
         self.merkle = MerkleTree(all_tx)
         self.merkle_hash = self.merkle.hash_of_nodes()
         self.log.info("Delegate got merkle hash {}".format(self.merkle_hash))
-        self.signature = ED25519Wallet.sign(self.parent.signing_key, self.merkle_hash)
+        self.signature = Wallet.sign(self.parent.signing_key, self.merkle_hash)
 
         # Create merkle signature message and publish it
         merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now',

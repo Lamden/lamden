@@ -1,5 +1,5 @@
 from cilantro.nodes import Delegate
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallet import Wallet
 from multiprocessing import Process
 from cilantro.logger import get_logger
 import signal
@@ -19,7 +19,7 @@ log.info("MAIN THREAD")
 
 # Delegates and wallets
 for n in range(NUM_DELEGATES):
-    sk, vk = ED25519Wallet.new()
+    sk, vk = Wallet.new()
     port = PORT_START + n
     url = "{}:{}".format(URL_BASE, port)
     # delegates.append({'url': 'ipc://127.0.0.1', 'verifying_key': vk, 'signing_key': sk, 'port': port})

@@ -2,9 +2,8 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
 from cilantro.db import contract
 from cilantro.utils import lazy_property
-import capnp
 
-from cilantro.protocol.wallets.wallet import Wallet
+from cilantro.protocol.wallet import Wallet
 from cilantro.protocol.proofs.pow.sha import SHA3POW
 
 class TransactionBase(MessageBase):

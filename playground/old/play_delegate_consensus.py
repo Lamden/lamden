@@ -11,7 +11,7 @@
 from cilantro.protocol.transactions import TestNetTransaction
 from cilantro.protocol.proofs import POW
 from cilantro.protocol.interpreters import TestNetInterpreter
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallet import Wallet
 
 '''
     Steps:
@@ -25,7 +25,7 @@ import random
 import redis
 
 NUM_WALLETS = 100
-wallets = [ED25519Wallet.new() for x in range(NUM_WALLETS)]
+wallets = [Wallet.new() for x in range(NUM_WALLETS)]
 
 txs = []
 
@@ -39,7 +39,7 @@ def generate_random_std_transaction():
 
     tx = TestNetTransaction.standard_tx(from_wallet[1], to_wallet[1], amount)
 
-    transaction_builder = TestNetTransaction(ED25519Wallet, POW)
+    transaction_builder = TestNetTransaction(Wallet, POW)
     transaction_builder.build(tx, from_wallet[0], complete=True, use_stamp=False)
 
     try:
@@ -56,7 +56,7 @@ def generate_random_stamp_transaction():
 
     tx = TestNetTransaction.stamp_tx(from_wallet[1], amount)
 
-    transaction_builder = TestNetTransaction(ED25519Wallet, POW)
+    transaction_builder = TestNetTransaction(Wallet, POW)
     transaction_builder.build(tx, from_wallet[0], complete=True, use_stamp=False)
 
     location = BALANCES
@@ -78,7 +78,7 @@ def generate_random_vote_transaction():
 
     tx = TestNetTransaction.vote_tx(from_wallet[1], to_wallet[1])
 
-    transaction_builder = TestNetTransaction(ED25519Wallet, POW)
+    transaction_builder = TestNetTransaction(Wallet, POW)
     transaction_builder.build(tx, from_wallet[0], complete=True, use_stamp=False)
 
     txs.append(transaction_builder)

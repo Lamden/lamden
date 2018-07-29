@@ -1,6 +1,6 @@
 from vmnet.test.base import *
 import unittest, time, random
-
+from cilantro.protocol.wallet import Wallet
 import vmnet
 
 def wrap_func(fn, *args, **kwargs):
@@ -54,15 +54,12 @@ def run_delegate(slot_num):
 def run_mgmt():
     from cilantro.logger import get_logger
     from cilantro import Constants
-    from cilantro.db import DB, DB_NAME
     from cilantro.utils.test import MPComposer
-    from cilantro.protocol.wallets import ED25519Wallet
-    import os, time, asyncio
 
     log = get_logger(__name__)
     sk = Constants.Testnet.Masternodes[0]['sk']
-    vk = Constants.Protocol.Wallets.get_vk(sk)
-    s,v = ED25519Wallet.new()
+    vk = Wallet.get_vk(sk)
+    s,v = Wallet.new()
     mpc = MPComposer(name='mgmt', sk=s)
     mpc.add_sub(filter='a', vk=vk)
 

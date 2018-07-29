@@ -9,7 +9,7 @@ appears that this is the only place that happens. Must have something to do with
 not being 'built' properly by the time this is accessed
 """
 
-from cilantro.protocol.wallets.wallet import Wallet
+from cilantro.protocol.wallet import Wallet
 W = Wallet  # hack until we fix above
 
 UUID_SIZE = int(math.log2(Constants.Protocol.MaxUuid))  # size of UUID field on messagemeta struct as number of bits

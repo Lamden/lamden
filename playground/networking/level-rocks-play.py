@@ -1,4 +1,3 @@
-from cilantro.protocol.wallets import ED25519Wallet
 from cilantro.utils.constants import BALANCE_KEY
 import plyvel
 

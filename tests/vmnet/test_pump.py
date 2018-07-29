@@ -1,9 +1,5 @@
 from vmnet.test.base import *
-import unittest, time, random
-
-
-import vmnet
-
+import unittest, time
 
 def wrap_func(fn, *args, **kwargs):
     def wrapper():

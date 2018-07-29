@@ -4,9 +4,10 @@ from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.transport import Router, Composer
 import asyncio
 from unittest.mock import MagicMock
+from cilantro.protocol.wallet import Wallet
 
 
-W = Constants.Protocol.Wallets
+W = Wallet
 
 
 class NodeFactory:

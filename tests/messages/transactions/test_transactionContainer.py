@@ -2,16 +2,16 @@ from unittest import TestCase
 
 from cilantro.messages import TransactionContainer, TransactionBase, MessageBase
 from cilantro.messages import StandardTransactionBuilder
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallet import Wallet
 
 
 class TransactionContainerTest(TestCase):
     def _convenience_build_standard_transaction(self):
         """These transactions get POSTed directly to masternodes by TAU wallet software"""
-        STU = (ED25519Wallet.new())
-        DAVIS = (ED25519Wallet.new())
-        DENTON = (ED25519Wallet.new())
-        FALCON = (ED25519Wallet.new())
+        STU = (Wallet.new())
+        DAVIS = (Wallet.new())
+        DENTON = (Wallet.new())
+        FALCON = (Wallet.new())
         KNOWN_ADRS = (STU, DAVIS, DENTON, FALCON)
         amount = 10
 

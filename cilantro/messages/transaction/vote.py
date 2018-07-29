@@ -1,6 +1,6 @@
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro import Constants
-
+from cilantro.protocol.wallet import Wallet
 import capnp
 import transaction_capnp
 
@@ -43,7 +43,7 @@ class VoteTransactionBuilder:
         payload_binary = tx.payload.copy().to_bytes()
 
         tx.metadata.proof = Constants.Protocol.Proofs.find(payload_binary)[0]
-        tx.metadata.signature = Constants.Protocol.Wallets.sign(sender_s, payload_binary)
+        tx.metadata.signature = Wallet.sign(sender_s, payload_binary)
 
         return tx
 
@@ -56,5 +56,5 @@ class VoteTransactionBuilder:
     def random_tx():
         import secrets
 
-        s = Constants.Protocol.Wallets.new()
+        s = Wallet.new()
         return VoteTransactionBuilder.create_tx(s[0], s[1], secrets.token_hex(8), secrets.token_hex(8))

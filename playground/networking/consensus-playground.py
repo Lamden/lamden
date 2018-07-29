@@ -1,6 +1,6 @@
 import secrets
 from cilantro.messages import MerkleTree
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallet import Wallet
 import hashlib
 from cilantro.nodes import Subprocess, BIND, CONNECT
 
@@ -32,7 +32,7 @@ fake_txs = [secrets.token_bytes(64) for i in range(100)]
 n = MerkleTree(fake_txs)
 
 # generate the delegates with new wallets
-delegates = [ED25519Wallet.new() for i in range(64)]
+delegates = [Wallet.new() for i in range(64)]
 
 connection_list = ['inproc://{}'.format(k[1]) for k in delegates]
 
@@ -49,7 +49,7 @@ def print_stuff():
     [print(mm.hex()) for mm in m.merkle_leaves]
 
     print('\n===SIGNATURE OF MERKLE HASH===')
-    [print(ED25519Wallet.sign(k[0], h.digest())) for k in delegates]
+    [print(Wallet.sign(k[0], h.digest())) for k in delegates]
 
 
 signature_list = []
@@ -145,7 +145,7 @@ class ConsensusProcess(Subprocess):
 
             def verify_signature(future):
                 signature, verifying_key = future.result()
-                if ED25519Wallet.verify(verifying_key, self.merkle, signature):
+                if Wallet.verify(verifying_key, self.merkle, signature):
                     self.signatures.append(future.result())
 
             futures = [asyncio.Future() for _ in range(len(self.delegates))]

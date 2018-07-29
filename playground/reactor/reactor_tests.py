@@ -10,7 +10,7 @@ from cilantro.messages import ReactorCommand
 from unittest import TestCase
 from cilantro.logger import get_logger
 
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallet import Wallet
 from cilantro.messages import *
 
 URL = 'tcp://127.0.0.1:9988'
@@ -106,7 +106,7 @@ class TestableReactor:
 
 
 def random_envelope():
-    sk, vk = ED25519Wallet.new()
+    sk, vk = Wallet.new()
     tx = StandardTransactionBuilder.random_tx()
     sender = 'me'
     return Envelope.create_from_message(message=tx, signing_key=sk, sender_id=sender)
