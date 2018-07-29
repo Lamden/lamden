@@ -1,4 +1,3 @@
-from cilantro import Constants
 from cilantro.utils import lazy_property, set_lazy_property
 from cilantro.messages import MessageMeta, MessageBase, Seal
 from cilantro.protocol.structures import EnvelopeAuth
@@ -7,6 +6,8 @@ import time
 
 import capnp
 import envelope_capnp
+
+from cilantro.protocol.wallets.wallet import Wallet
 
 
 class Envelope(MessageBase):
@@ -65,7 +66,7 @@ class Envelope(MessageBase):
 
         # Create Seal
         if not verifying_key:
-            verifying_key = Constants.Protocol.Wallets.get_vk(signing_key)
+            verifying_key = Wallet.get_vk(signing_key)
         seal_sig = EnvelopeAuth.seal(signing_key=signing_key, meta=meta, message=message)
         seal = Seal.create(signature=seal_sig, verifying_key=verifying_key)
 
