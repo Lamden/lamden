@@ -66,3 +66,7 @@ class SenecaInterpreter:
     @property
     def queue_binary(self) -> List[bytes]:
         return [contract.serialize() for contract in self.queue]
+
+    @property
+    def queue_size(self):
+        return len(self.queue)
