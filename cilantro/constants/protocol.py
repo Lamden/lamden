@@ -1,5 +1,5 @@
 sig_figs = 19
 decimal_precision = 4
-max_uuid = None
-dupe_table_size = None
-request_table_size = None
+max_uuid = 4294967295
+dupe_table_size = 10000
+request_table_size = 10000

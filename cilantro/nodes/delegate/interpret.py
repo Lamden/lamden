@@ -1,10 +1,8 @@
-from cilantro import Constants
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
 from cilantro.protocol.statemachine import *
-from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.db import *
 from cilantro.messages import *
-
+from cilantro.constants.nodes import max_queue_size
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
@@ -51,9 +49,9 @@ class DelegateInterpretState(DelegateBaseState):
 
         self.log.debug("Size of queue: {}".format(len(self.parent.interpreter.queue)))
 
-        if self.parent.interpreter.queue_size >= Constants.Nodes.MaxQueueSize:
+        if self.parent.interpreter.queue_size >= max_queue_size:
             self.log.info("Consensus time!")
             self.parent.transition(DelegateConsensusState)
         else:
             self.log.debug("Not consensus time yet, queue is only size {}/{}"
-                           .format(self.parent.interpreter.queue_size, Constants.Nodes.MaxQueueSize))
+                           .format(self.parent.interpreter.queue_size, max_queue_size))

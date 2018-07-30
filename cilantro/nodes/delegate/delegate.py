@@ -17,12 +17,12 @@
         another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
 """
 
-from cilantro import Constants
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import *
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.db import *
 from cilantro.messages import *
+from cilantro.constants.zmq_filters import delegate_delegate, witness_delegate, masternode_delegate
 
 
 DelegateBootState = "DelegateBootState"
@@ -81,11 +81,11 @@ class DelegateBootState(DelegateBaseState):
             if delegate_vk == self.parent.verifying_key:
                 continue
 
-            self.parent.composer.add_sub(vk=delegate_vk, filter=Constants.ZmqFilters.DelegateDelegate)
+            self.parent.composer.add_sub(vk=delegate_vk, filter=delegate_delegate)
 
         # Sub to witnesses
         for witness_vk in VKBook.get_witnesses():
-            self.parent.composer.add_sub(vk=witness_vk, filter=Constants.ZmqFilters.WitnessDelegate)
+            self.parent.composer.add_sub(vk=witness_vk, filter=witness_delegate)
 
         # Pub on our own url
         self.parent.composer.add_pub(ip=self.parent.ip)
@@ -96,7 +96,7 @@ class DelegateBootState(DelegateBaseState):
         # Add dealer and sub socket for Masternodes
         for mn_vk in VKBook.get_masternodes():
             self.parent.composer.add_dealer(vk=mn_vk)
-            self.parent.composer.add_sub(vk=mn_vk, filter=Constants.ZmqFilters.MasternodeDelegate)
+            self.parent.composer.add_sub(vk=mn_vk, filter=masternode_delegate)
 
         # Once done with boot state, transition to interpret
         self.parent.transition(DelegateInterpretState)

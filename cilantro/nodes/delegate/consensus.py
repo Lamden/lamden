@@ -5,7 +5,8 @@ from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
 from cilantro.protocol.statemachine import *
 from cilantro.messages import *
 from cilantro.db import *
-
+from cilantro.constants.zmq_filters import delegate_delegate
+from cilantro.constants.testnet import majority
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
@@ -48,7 +49,7 @@ class DelegateConsensusState(DelegateBaseState):
         merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now',
                                             sender=self.parent.verifying_key)
         self.log.info("Broadcasting signature {}".format(self.signature))
-        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.DelegateDelegate, message=merkle_sig)
+        self.parent.composer.send_pub_msg(filter=delegate_delegate, message=merkle_sig)
 
         # Now that we've computed/composed the merkle tree hash, validate all our pending signatures
         for sig in [s for s in self.parent.pending_sigs if self.validate_sig(s)]:
@@ -85,7 +86,7 @@ class DelegateConsensusState(DelegateBaseState):
         self.log.debug("delegate has {} signatures out of {} total delegates"
                        .format(len(self.signatures), self.NUM_DELEGATES))
 
-        if len(self.signatures) >= Constants.Testnet.Majority:
+        if len(self.signatures) >= majority:
             self.log.info("Delegate in consensus!")
             self.in_consensus = True
 
