@@ -1,15 +1,18 @@
 from cilantro.db.contracts import run_contract
 from cilantro.messages import ContractTransaction
+from cilantro.logger import get_logger
+from collections import deque
 from seneca.seneca_internal.storage.mysql_spits_executer import Executer
 from cilantro.db.tables import DB_NAME
 from cilantro.db import DB
 from typing import List
 
-
 class SenecaInterpreter:
 
     def __init__(self):
-        super().__init__()
+        self.log = get_logger(self.__class__.__name__)
+        self.queue = deque()
+        self.heap = []
 
         self.ex = Executer('root', '', DB_NAME, '127.0.0.1')
 
