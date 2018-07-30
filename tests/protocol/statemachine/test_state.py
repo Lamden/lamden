@@ -1,7 +1,8 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 from .trafficlight import *
-
+from cilantro.protocol.statemachine.decorators import StateTimeout, StateTransition, StateInput
+from cilantro.protocol.statemachine.state import EmptyState
 
 class StateTest(TestCase):
 
