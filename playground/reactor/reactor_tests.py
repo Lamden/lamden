@@ -6,12 +6,10 @@ from cilantro.utils import LProcess
 from unittest.mock import MagicMock, call, patch
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.reactor.executor import *
-from cilantro.messages import ReactorCommand
-from unittest import TestCase
 from cilantro.logger import get_logger
 
 from cilantro.protocol.wallet import Wallet
-from cilantro.messages import *
+from cilantro.messages.transaction.standard import StandardTransactionBuilder
 
 URL = 'tcp://127.0.0.1:9988'
 FILTER = 'TEST_FILTER'

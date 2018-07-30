@@ -1,7 +1,7 @@
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
 from cilantro.protocol.statemachine import *
 from cilantro.db.db import DB
-from cilantro.messages import *
+from cilantro.messages.transaction.base import TransactionBase
 from cilantro.constants.nodes import max_queue_size
 
 DelegateBootState = "DelegateBootState"

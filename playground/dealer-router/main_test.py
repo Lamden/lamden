@@ -1,6 +1,7 @@
 from cilantro.protocol.statemachine import State, input, input_request, input_timeout
 from cilantro.nodes import NodeBase
-from cilantro.messages import Envelope, MessageBase
+from cilantro.messages.envelope.envelope import Envelope
+from cilantro.messages.base.base import MessageBase
 import time
 
 URL = 'tcp://127.0.0.1:3530'

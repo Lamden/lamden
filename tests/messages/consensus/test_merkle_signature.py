@@ -1,7 +1,6 @@
 from unittest import TestCase
-from cilantro.messages import MerkleSignature
 from cilantro.protocol.wallet import Wallet
-from cilantro.messages.consensus.merkle_signature import build_test_merkle_sig
+from cilantro.messages.consensus.merkle_signature import build_test_merkle_sig, MerkleSignature
 import json
 
 

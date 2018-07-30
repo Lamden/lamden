@@ -9,7 +9,12 @@
 from cilantro.constants.zmq_filters import witness_masternode
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import *
-from cilantro.messages import *
+
+from cilantro.messages.transaction.container import TransactionContainer, TransactionBase
+from cilantro.messages.consensus.block_contender import BlockContender
+from cilantro.messages.block_data.state_update import StateUpdateRequest
+from cilantro.messages.block_data.transaction_data import TransactionReply
+
 from aiohttp import web
 from cilantro.db.db import VKBook
 

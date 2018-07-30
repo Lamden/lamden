@@ -4,7 +4,7 @@ from cilantro.messages.transaction import StandardTransactionBuilder
 from cilantro.protocol.wallet import Wallet
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.reactor.executor import *
-from cilantro.messages import ReactorCommand
+from cilantro.messages.reactor.reactor_command import ReactorCommand
 from cilantro.utils.test import MPTesterBase, MPTestCase, mp_testable
 import time
 

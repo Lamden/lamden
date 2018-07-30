@@ -1,4 +1,4 @@
-from cilantro.messages import MessageBase
+from cilantro.messages.base.base import MessageBase
 from cilantro.constants.protocol import max_uuid
 import capnp
 import envelope_capnp

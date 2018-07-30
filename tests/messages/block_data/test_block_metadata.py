@@ -1,4 +1,4 @@
-from cilantro.messages import BlockMetaDataRequest, BlockMetaDataReply, BlockMetaData
+from cilantro.messages.block_data.block_metadata import BlockMetaDataRequest, BlockMetaDataReply, BlockMetaData
 from cilantro.db.blocks import BlockStorageDriver
 from cilantro.utils.test.block_metas import build_valid_block_data
 from unittest import TestCase

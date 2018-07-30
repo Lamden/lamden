@@ -1,7 +1,8 @@
 from unittest import TestCase
 
-from cilantro.messages import TransactionContainer, TransactionBase, MessageBase
-from cilantro.messages import StandardTransactionBuilder
+from cilantro.messages.transaction.base import MessageBase
+from cilantro.messages.transaction.standard import StandardTransactionBuilder, TransactionBase
+from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.protocol.wallet import Wallet
 
 

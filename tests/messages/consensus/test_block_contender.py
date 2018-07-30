@@ -1,7 +1,6 @@
 from unittest import TestCase
-from cilantro.messages import MerkleSignature, BlockContender
-from cilantro.messages.consensus.block_contender import build_test_contender
-from cilantro.messages.consensus.merkle_signature import build_test_merkle_sig
+from cilantro.messages.consensus.block_contender import build_test_contender, BlockContender
+from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallet import Wallet
 import secrets

@@ -1,5 +1,7 @@
 from cilantro.utils import lazy_property, set_lazy_property
-from cilantro.messages import MessageMeta, MessageBase, Seal
+from cilantro.messages.base.base import MessageBase
+from cilantro.messages.envelope.message_meta import MessageMeta
+from cilantro.messages.envelope.seal import Seal
 from cilantro.protocol.structures import EnvelopeAuth
 from cilantro.utils import Hasher  # Just for debugging (used in __repr__)
 import time

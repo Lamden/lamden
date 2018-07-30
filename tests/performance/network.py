@@ -1,7 +1,7 @@
 from cilantro.utils.test import MPTestCase, MPComposer, vmnet_test
 from cilantro.protocol.transport import Composer
-from cilantro.messages import *
 from cilantro.protocol.wallet import Wallet
+from cilantro.messages.transaction.standard import StandardTransactionBuilder
 from cilantro.protocol.reactor.executor import *
 import unittest
 import time
@@ -42,7 +42,7 @@ class TestTransportIntegration(MPTestCase):
             return composer
 
         def assert_sub(composer: Composer):
-            from cilantro.messages import ReactorCommand, Envelope
+            from cilantro.messages.reactor.reactor_command import ReactorCommand
             from cilantro.protocol.statemachine.decorators import StateInput
             cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
             composer.interface.router.route_callback.assert_called_once_with(cb)

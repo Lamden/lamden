@@ -1,4 +1,5 @@
-from cilantro.messages import MessageBase, BlockContender
+from cilantro.messages.base.base_json import MessageBase
+from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.utils import validate_hex
 from cilantro.utils import lazy_property
 from cilantro.db.blocks import BlockStorageDriver

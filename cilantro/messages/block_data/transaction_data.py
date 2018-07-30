@@ -1,4 +1,4 @@
-from cilantro.messages import MessageBase
+from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.utils import lazy_property, Hasher
 from cilantro.messages.utils import validate_hex

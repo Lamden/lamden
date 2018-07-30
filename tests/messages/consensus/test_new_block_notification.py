@@ -1,4 +1,4 @@
-from cilantro.messages import NewBlockNotification
+from cilantro.messages.consensus.new_block_notification import NewBlockNotification
 from unittest import TestCase
 
 

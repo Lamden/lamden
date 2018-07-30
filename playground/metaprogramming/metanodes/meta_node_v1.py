@@ -6,7 +6,8 @@ This version is NOT configured to work with StateMachine
 
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor import ReactorInterface
-from cilantro.messages import Envelope, MessageBase
+from cilantro.messages.envelope.envelope import Envelope
+from cilantro.messages.base.base import MessageBase
 from cilantro.protocol.statemachine import StateMachine, State
 
 class Poke(MessageBase):

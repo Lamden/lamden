@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.messages import SwapTransaction, SwapTransactionBuilder
+from cilantro.messages.transaction.swap import SwapTransaction, SwapTransactionBuilder
 import secrets
 import time
 from cilantro.protocol.wallet import Wallet

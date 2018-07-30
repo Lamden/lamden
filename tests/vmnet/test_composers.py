@@ -4,9 +4,8 @@ from cilantro.constants.testnet import delegates
 
 def publisher():
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.utils.test import MPComposer
-    from cilantro.messages import StandardTransactionBuilder
+    from cilantro.messages.transaction.standard import StandardTransactionBuilder
     import time, os, sys
 
     log = get_logger("Publisher")

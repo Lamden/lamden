@@ -1,4 +1,4 @@
-from cilantro.messages import MessageBase
+from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
 import json
 from cilantro.protocol.wallet import Wallet

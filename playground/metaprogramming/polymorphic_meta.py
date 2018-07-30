@@ -1,6 +1,7 @@
 from cilantro.protocol.statemachine import State, input
-from cilantro.messages import StandardTransaction, VoteTransaction, SwapTransaction, TransactionBase
-
+from cilantro.messages.transaction.standard import StandardTransaction
+from cilantro.messages.transaction.vote import VoteTransaction
+from cilantro.messages.transaction.base import TransactionBase
 
 class BaseState(State):
 

@@ -1,4 +1,3 @@
-from cilantro.messages import MerkleTree
 import secrets
 import zmq
 import asyncio

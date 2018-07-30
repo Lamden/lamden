@@ -1,5 +1,5 @@
 from cilantro.db.contracts import run_contract
-from cilantro.messages import ContractTransaction
+from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.logger import get_logger
 from collections import deque
 from seneca.seneca_internal.storage.mysql_spits_executer import Executer

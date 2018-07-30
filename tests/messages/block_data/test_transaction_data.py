@@ -1,8 +1,8 @@
 import unittest
 from unittest import TestCase
-from cilantro.messages import TransactionReply, TransactionRequest, ContractTransactionBuilder
+from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
+from cilantro.messages.transaction.contract import ContractTransactionBuilder
 from cilantro.protocol.wallet import Wallet
-from cilantro.protocol.structures import MerkleTree
 from cilantro.utils import Hasher
 
 

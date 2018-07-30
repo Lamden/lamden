@@ -1,5 +1,5 @@
 from cilantro.logger import get_logger
-from cilantro.messages import MessageBase
+from cilantro.messages.base.base import MessageBase
 from cilantro.protocol.statemachine.decorators import StateInput, StateTimeout, StateTransition, exit_to_any
 import inspect
 import asyncio

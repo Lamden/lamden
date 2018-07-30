@@ -1,5 +1,4 @@
-from cilantro.messages import MessageBaseJson
-
+from cilantro.messages.base.base_json import MessageBaseJson
 
 class NewBlockNotification(MessageBaseJson):
     """

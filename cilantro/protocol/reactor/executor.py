@@ -1,5 +1,6 @@
 from cilantro.logger import get_logger
-from cilantro.messages import ReactorCommand, Envelope
+from cilantro.messages.reactor.reactor_command import ReactorCommand
+from cilantro.messages.envelope.envelope import Envelope
 from collections import defaultdict
 from cilantro.protocol.structures import CappedSet
 import traceback, os

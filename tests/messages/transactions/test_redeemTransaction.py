@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.messages import RedeemTransaction, RedeemTransactionBuilder
+from cilantro.messages.transaction.redeem import RedeemTransaction, RedeemTransactionBuilder
 import secrets
 from cilantro.protocol.wallet import Wallet
 

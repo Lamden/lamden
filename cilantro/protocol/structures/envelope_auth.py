@@ -1,5 +1,9 @@
 from cilantro.utils import Hasher
-from cilantro.messages import MessageBase, Seal, MessageMeta
+
+from cilantro.messages.envelope.seal import Seal
+from cilantro.messages.envelope.message_meta import MessageMeta
+from cilantro.messages.base.base import MessageBase
+
 import math
 from cilantro.constants.protocol import max_uuid
 

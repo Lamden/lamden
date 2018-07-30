@@ -1,4 +1,6 @@
-from cilantro.messages import *
+from cilantro.messages.transaction.base import TransactionBase
+from cilantro.messages.transaction.standard import StandardTransaction, StandardTransactionBuilder
+from cilantro.messages.transaction.container import TransactionContainer
 import asyncio
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.transport import Composer

@@ -1,6 +1,7 @@
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State
-from cilantro.messages import TransactionBase, Envelope
+from cilantro.messages.transaction.base import TransactionBase
+from cilantro.messages.envelope.envelope import Envelope
 from cilantro.protocol.statemachine.decorators import *
 from cilantro.db.db import VKBook
 from cilantro.constants.zmq_filters import witness_masternode, witness_delegate

@@ -103,6 +103,6 @@ def build_test_transaction() -> TransactionBase:
     unit/integration tests.
     :return: An instance of a subclass of TransactionBase
     """
-    from cilantro.messages import StandardTransactionBuilder
+    from cilantro.messages.transaction.standard import StandardTransactionBuilder
     return StandardTransactionBuilder.random_tx()
 

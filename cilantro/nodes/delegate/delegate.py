@@ -21,7 +21,11 @@ from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import *
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.db.db import VKBook
-from cilantro.messages import *
+
+from cilantro.messages.transaction.base import TransactionBase
+from cilantro.messages.consensus.merkle_signature import MerkleSignature
+from cilantro.messages.consensus.new_block_notification import NewBlockNotification
+
 from cilantro.constants.zmq_filters import delegate_delegate, witness_delegate, masternode_delegate
 
 

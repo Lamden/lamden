@@ -4,7 +4,8 @@ Extends upon V1 to support state machine
 
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor import ReactorInterface
-from cilantro.messages import Envelope, MessageBase
+from cilantro.messages.envelope.envelope import Envelope
+from cilantro.messages.base.base import MessageBase
 from cilantro.protocol.statemachine import StateMachine, State, EmptyState, input
 
 URL = "tcp://127.0.0.1:5566"

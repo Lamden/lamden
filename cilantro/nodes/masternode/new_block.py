@@ -3,7 +3,13 @@ from cilantro.constants.zmq_filters import masternode_delegate
 from cilantro.constants.testnet import majority
 from cilantro.nodes.masternode import MNBaseState, Masternode
 from cilantro.db.db import DB, insert
-from cilantro.messages import *
+
+from cilantro.messages.consensus.block_contender import BlockContender
+from cilantro.messages.consensus.new_block_notification import NewBlockNotification
+from cilantro.messages.block_data.transaction_data import TransactionRequest, TransactionReply
+from cilantro.messages.envelope.envelope import Envelope
+
+# from cilantro.messages import *
 from cilantro.protocol.structures import MerkleTree
 from collections import deque
 import random
