@@ -41,7 +41,8 @@ RUN apt-get update \
         gsl-bin zlib1g-dev libboost-all-dev \
         autoconf automake \
     && apt autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/bin/python3.6 /usr/bin/python3
 
 CMD mysqld \
     --skip-grant-tables \
