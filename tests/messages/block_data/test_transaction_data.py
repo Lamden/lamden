@@ -1,7 +1,7 @@
 import unittest
 from unittest import TestCase
 from cilantro.messages import TransactionReply, TransactionRequest, ContractTransactionBuilder
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallet import Wallet
 from cilantro.protocol.structures import MerkleTree
 from cilantro.utils import Hasher
 
@@ -42,7 +42,7 @@ class TestTransactionReply(TestCase):
         """
         Tests that a created block data reply has the expected properties
         """
-        sk = ED25519Wallet.new()[0]
+        sk = Wallet.new()[0]
         contracts = [
             ContractTransactionBuilder.create_contract_tx(sk, code_str) \
             for code_str in ['some random binary', 'some deterministic binary', 'While True: self.eatAss()']
@@ -64,7 +64,7 @@ class TestTransactionReply(TestCase):
         """
         Tests that a created block data reply has the expected properties
         """
-        sk = ED25519Wallet.new()[0]
+        sk = Wallet.new()[0]
         code_strs = ['some random binary', 'some deterministic binary', 'While True: self.eatAss()']
         contracts = [
             ContractTransactionBuilder.create_contract_tx(sk, code_str) \
@@ -84,7 +84,7 @@ class TestTransactionReply(TestCase):
         """
         Tests that a created block data reply has the expected properties
         """
-        sk = ED25519Wallet.new()[0]
+        sk = Wallet.new()[0]
         code_strs = ['some random binary', 'some deterministic binary', 'While True: self.eatAss()']
         contracts = [
             ContractTransactionBuilder.create_contract_tx(sk, code_str) \
@@ -102,7 +102,7 @@ class TestTransactionReply(TestCase):
         """
         Tests that a created block data reply has the expected properties
         """
-        sk = ED25519Wallet.new()[0]
+        sk = Wallet.new()[0]
         code_strs = ['some random binary', 'some deterministic binary', 'While True: self.eatAss()']
         contracts = [
             ContractTransactionBuilder.create_contract_tx(sk, code_str) \
@@ -121,7 +121,7 @@ class TestTransactionReply(TestCase):
         Tests that a message successfully serializes and deserializes. The deserialized object should have the same
         properties as the original one before it was serialized.
         """
-        sk = ED25519Wallet.new()[0]
+        sk = Wallet.new()[0]
         code_strs = ['some random binary', 'some deterministic binary', 'While True: self.eatAss()']
         contracts = [
             ContractTransactionBuilder.create_contract_tx(sk, code_str) \

@@ -2,7 +2,6 @@ from cilantro.logger import get_logger
 import seneca.seneca_internal.storage.easy_db as t
 from cilantro.db.tables import create_table
 from cilantro.messages.consensus.block_contender import BlockContender
-from cilantro.messages import BlockContender
 from cilantro.utils import is_valid_hex, Hasher
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallet import Wallet
