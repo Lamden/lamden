@@ -1,4 +1,5 @@
-from cilantro.protocol.statemachine import State, input
+from cilantro.protocol.statemachine.state import State
+from cilantro.protocol.statemachine.decorators import input
 from cilantro.messages.transaction.standard import StandardTransaction
 from cilantro.messages.transaction.vote import VoteTransaction
 from cilantro.messages.transaction.base import TransactionBase

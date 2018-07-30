@@ -1,4 +1,5 @@
-from cilantro.protocol.statemachine import StateMachine, State
+from cilantro.protocol.statemachine.state import State
+from cilantro.protocol.statemachine.statemachine import StateMachine
 
 
 class Node(StateMachine):

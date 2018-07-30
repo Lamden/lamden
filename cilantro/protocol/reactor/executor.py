@@ -4,7 +4,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from collections import defaultdict
 from cilantro.protocol.structures import CappedSet
 import traceback, os
-from cilantro.protocol.statemachine import StateInput
+from cilantro.protocol.statemachine.state import StateInput
 from cilantro.constants.protocol import dupe_table_size
 import asyncio, time
 import zmq.asyncio

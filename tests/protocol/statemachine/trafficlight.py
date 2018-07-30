@@ -1,5 +1,6 @@
-from cilantro.protocol.statemachine import *
-
+from cilantro.protocol.statemachine.state import State
+from cilantro.protocol.statemachine.decorators import exit_to, exit_to_any, enter_from_any, timeout_after, enter_from, \
+    input_request, input
 
 YELLOW_TIMEOUT_DUR = 1.0
 

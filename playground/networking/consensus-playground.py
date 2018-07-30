@@ -122,9 +122,9 @@ class ConsensusProcess(Subprocess):
         self.socket.send(self.merkle)
 
     def pipe_callback(self, msg):
-        '''
+        """
         switch statement between merkle tree message and trigger message
-        '''
+        """
         if len(msg) == 0:
             loop = asyncio.get_event_loop()
             context = zmq.Context()

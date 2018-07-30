@@ -1,7 +1,8 @@
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallet import Wallet
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
-from cilantro.protocol.statemachine import *
+
+from cilantro.protocol.statemachine.decorators import input, enter_from_any, enter_from, exit_to_any, input_request
 
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.block_contender import BlockContender

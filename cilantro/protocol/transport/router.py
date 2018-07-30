@@ -1,5 +1,6 @@
 import inspect
-from cilantro.protocol.statemachine import StateMachine, StateInput, State
+from cilantro.protocol.statemachine.statemachine import StateMachine
+from cilantro.protocol.statemachine.state import StateInput
 from cilantro.messages.reactor.reactor_command import ReactorCommand
 from cilantro.messages.base.base import MessageBase
 from cilantro.logger import get_logger

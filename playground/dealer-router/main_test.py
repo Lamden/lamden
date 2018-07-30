@@ -1,4 +1,5 @@
-from cilantro.protocol.statemachine import State, input, input_request, input_timeout
+from cilantro.protocol.statemachine.state import State
+from cilantro.protocol.statemachine.decorators import input, input_request, input_timeout
 from cilantro.nodes import NodeBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.base.base import MessageBase

@@ -55,9 +55,9 @@ class NotifyMessage(MessageBase): pass
 
 
 def debug(func):
-    '''
+    """
     A simple debugging decorator
-    '''
+    """
     msg = func.__qualname__
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -66,9 +66,9 @@ def debug(func):
     return wrapper
 
 def debugargs(prefix=''):
-    '''
+    """
     A debugging decorator that takes arguments
-    '''
+    """
     def decorate(func):
         msg = prefix + func.__qualname__
         @wraps(func)

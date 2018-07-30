@@ -6,7 +6,9 @@ from cilantro.logger import get_logger
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.base.base import MessageBase
-from cilantro.protocol.statemachine import StateMachine, State, EmptyState, input
+from cilantro.protocol.statemachine.statemachine import StateMachine
+from cilantro.protocol.statemachine.state import State, EmptyState
+from cilantro.protocol.statemachine.decorators import input
 
 URL = "tcp://127.0.0.1:5566"
 URL2 = "tcp://127.0.0.1:5577"

@@ -1,5 +1,5 @@
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import State
+from cilantro.protocol.statemachine.state import State
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.protocol.statemachine.decorators import *
