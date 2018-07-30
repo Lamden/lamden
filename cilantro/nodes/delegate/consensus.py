@@ -6,7 +6,7 @@ from cilantro.protocol.statemachine import *
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.consensus.new_block_notification import NewBlockNotification
-from cilantro.messages.block_data import TransactionReply, TransactionRequest
+from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 
 from cilantro.constants.zmq_filters import delegate_delegate
 from cilantro.constants.testnet import majority, delegates
