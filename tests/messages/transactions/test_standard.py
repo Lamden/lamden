@@ -1,8 +1,6 @@
-from cilantro import Constants
 from unittest import TestCase
 from cilantro.messages import StandardTransaction
 from cilantro.messages.transaction.standard import StandardTransactionBuilder
-from cilantro.messages.utils import int_to_decimal
 from cilantro.protocol.wallet import Wallet
 
 class TestStandardTransaction(TestCase):

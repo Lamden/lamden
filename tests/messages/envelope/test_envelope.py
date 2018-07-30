@@ -1,4 +1,3 @@
-from cilantro import Constants
 from unittest import TestCase
 from unittest.mock import MagicMock
 from cilantro.messages import Envelope, MessageMeta, Seal, MessageBase, StandardTransactionBuilder

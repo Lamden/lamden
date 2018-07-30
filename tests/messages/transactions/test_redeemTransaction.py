@@ -1,7 +1,5 @@
-from cilantro import Constants
 from unittest import TestCase
 from cilantro.messages import RedeemTransaction, RedeemTransactionBuilder
-from cilantro.messages.utils import int_to_decimal
 import secrets
 from cilantro.protocol.wallet import Wallet
 

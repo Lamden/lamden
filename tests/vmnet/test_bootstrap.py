@@ -2,6 +2,7 @@ from vmnet.test.base import *
 import unittest, time, random
 import vmnet, cilantro
 from os.path import dirname
+from cilantro.constants.testnet import masternodes, witnesses, delegates
 
 cilantro_path = dirname(dirname(cilantro.__path__[0]))
 # cilantro_path = cilantro.__path__[0]
@@ -15,26 +16,24 @@ def wrap_func(fn, *args, **kwargs):
 
 def run_mn():
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     import os
     log = get_logger("MASTERNODE FACTORY")
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
-    sk = Constants.Testnet.Masternodes[0]['sk']
+    sk = masternodes[0]['sk']
 
     NodeFactory.run_masternode(ip=ip, signing_key=sk)
 
 
 def run_witness(slot_num):
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     import os
 
     log = get_logger("WITNESS FACTORY")
 
-    w_info = Constants.Testnet.Witnesses[slot_num]
+    w_info = witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'])
@@ -42,13 +41,12 @@ def run_witness(slot_num):
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     import os
 
     log = get_logger("DELEGATE FACTORY")
 
-    d_info = Constants.Testnet.Delegates[slot_num]
+    d_info = delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
     log.critical("Building delegate on slot {} with info {}".format(slot_num, d_info))

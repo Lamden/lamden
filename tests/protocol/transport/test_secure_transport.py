@@ -1,17 +1,18 @@
-from cilantro.utils.test import MPTesterBase, MPTestCase, mp_testable, MPComposer, vmnet_test
-from cilantro.protocol.transport import Router, Composer
+from cilantro.utils.test import MPTestCase, MPComposer, vmnet_test
+from cilantro.protocol.transport import Composer
 from cilantro.messages import *
 from cilantro.protocol.wallet import Wallet
 from cilantro.protocol.reactor.executor import *
 import unittest
 import time
 
+from cilantro.constants.testnet import masternodes, delegates
 
 W = Wallet
-sk1, vk1 = Constants.Testnet.Masternodes[0]['sk'], Constants.Testnet.Masternodes[0]['vk']
-sk2, vk2 = Constants.Testnet.Delegates[0]['sk'], Constants.Testnet.Delegates[0]['vk']
-sk3, vk3 = Constants.Testnet.Delegates[1]['sk'], Constants.Testnet.Delegates[1]['vk']
-sk4, vk4 = Constants.Testnet.Delegates[2]['sk'], Constants.Testnet.Delegates[2]['vk']
+sk1, vk1 = masternodes[0]['sk'], masternodes[0]['vk']
+sk2, vk2 = delegates[0]['sk'], delegates[0]['vk']
+sk3, vk3 = delegates[1]['sk'], delegates[1]['vk']
+sk4, vk4 = delegates[2]['sk'], delegates[2]['vk']
 
 # sk_sketch, vk_sketch = W.new()
 sk_sketch, vk_sketch = "968017ed7931bca83dba52d80c1d759b794bad71d5679fbbafd5d4f16d4dc396", \

@@ -1,5 +1,6 @@
-from cilantro import Constants
 from cilantro.protocol.statemachine import *
+from cilantro.constants.zmq_filters import masternode_delegate
+from cilantro.constants.testnet import majority
 from cilantro.nodes.masternode import MNBaseState, Masternode
 from cilantro.db import *
 from cilantro.messages import *
@@ -92,7 +93,7 @@ class MNNewBlockState(MNBaseState):
         self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {} and block num {}"
                       .format(hash_of_nodes, block_num))
         notif = NewBlockNotification.create(new_block_hash=hash_of_nodes.hex(), new_block_num=block_num)
-        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
+        self.parent.composer.send_pub_msg(filter=masternode_delegate, message=notif)
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
@@ -131,9 +132,9 @@ class MNNewBlockState(MNBaseState):
         """
         # Development sanity checks (these should be removed in production)
         assert len(block.merkle_leaves) >= 1, "Masternode got block contender with no nodes! {}".format(block)
-        assert len(block.signatures) >= Constants.Testnet.Majority, \
+        assert len(block.signatures) >= majority, \
             "Received a block contender with only {} signatures (which is less than a majority of {}"\
-            .format(len(block.signatures), Constants.Testnet.Majority)
+            .format(len(block.signatures), majority)
 
         # TODO validate the sigs are actually from the top N delegates
         # TODO -- ensure that this block contender's previous block is this Masternode's current block...

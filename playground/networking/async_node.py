@@ -1,5 +1,4 @@
 from zmq.asyncio import Context
-from cilantro import Constants
 import zmq
 import multiprocessing
 from multiprocessing import Process, Array

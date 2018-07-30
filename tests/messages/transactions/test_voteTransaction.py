@@ -1,6 +1,5 @@
 from unittest import TestCase
 from cilantro.messages import VoteTransaction, VoteTransactionBuilder
-from cilantro import Constants
 import secrets
 from cilantro.protocol.wallet import Wallet
 

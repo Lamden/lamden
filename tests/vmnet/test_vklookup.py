@@ -1,6 +1,8 @@
 from vmnet.test.base import *
 import unittest, time, random
 from cilantro.protocol.wallet import Wallet
+from cilantro.constants.testnet import masternodes, witnesses, delegates
+
 import vmnet
 
 def wrap_func(fn, *args, **kwargs):
@@ -10,28 +12,25 @@ def wrap_func(fn, *args, **kwargs):
 
 def run_mn():
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     from cilantro.db import DB, DB_NAME
     import os, time
 
     log = get_logger(__name__)
 
-    m_info = Constants.Testnet.Masternodes[0]
+    m_info = masternodes[0]
     m_info['ip'] = os.getenv('HOST_IP')
 
     mn = NodeFactory.run_masternode(ip=m_info['ip'], signing_key=m_info['sk'])
 
 def run_witness(slot_num):
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
 
     log = get_logger(__name__)
 
-    w_info = Constants.Testnet.Witnesses[slot_num]
+    w_info = witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'])
@@ -39,25 +38,22 @@ def run_witness(slot_num):
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
 
     log = get_logger("DELEGATE FACTORY")
 
-    d_info = Constants.Testnet.Delegates[slot_num]
+    d_info = delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
 
 def run_mgmt():
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.utils.test import MPComposer
 
     log = get_logger(__name__)
-    sk = Constants.Testnet.Masternodes[0]['sk']
+    sk = masternodes[0]['sk']
     vk = Wallet.get_vk(sk)
     s,v = Wallet.new()
     mpc = MPComposer(name='mgmt', sk=s)

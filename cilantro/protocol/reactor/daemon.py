@@ -3,13 +3,13 @@ import zmq.asyncio
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages import ReactorCommand
-from cilantro import Constants
 from cilantro.protocol.overlay.dht import DHT
 from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
 import signal, sys
 from cilantro.protocol.statemachine import *
+from cilantro.constants.overlay_network import alpha, ksize, max_peers
 import inspect
 
 import uvloop
@@ -40,8 +40,8 @@ class ReactorDaemon:
         # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
-                       alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
-                       max_peers=Constants.Overlay.MaxPeers, block=False, cmd_cli=False, wipe_certs=True)
+                       alpha=alpha, ksize=ksize,
+                       max_peers=max_peers, block=False, cmd_cli=False, wipe_certs=True)
 
         self.context, auth = self.dht.network.ironhouse.secure_context(async=True)
         self.socket = self.context.socket(zmq.PAIR)  # For communication with main process

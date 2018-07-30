@@ -1,10 +1,8 @@
 from cilantro.logger import get_logger
-from functools import wraps
-from cilantro.messages import MessageBase, Envelope
+from cilantro.messages import MessageBase
 from cilantro.protocol.statemachine.decorators import StateInput, StateTimeout, StateTransition, exit_to_any
 import inspect
 import asyncio
-from collections import defaultdict
 from unittest.mock import MagicMock
 
 

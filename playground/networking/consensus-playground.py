@@ -4,11 +4,8 @@ from cilantro.protocol.wallet import Wallet
 import hashlib
 from cilantro.nodes import Subprocess, BIND, CONNECT
 
-from multiprocessing import Process
 import zmq
-from cilantro import Constants
 import asyncio
-from aioprocessing import AioPipe
 from pprint import pprint
 
 '''

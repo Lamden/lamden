@@ -1,9 +1,9 @@
-from cilantro import Constants
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State
 from cilantro.messages import TransactionBase, Envelope
 from cilantro.protocol.statemachine.decorators import *
 from cilantro.db.db import VKBook
+from cilantro.constants.zmq_filters import witness_masternode, witness_delegate
 
 
 """
@@ -41,7 +41,7 @@ class WitnessBootState(WitnessBaseState):
         # Sub to Masternodes
         for mn_vk in VKBook.get_masternodes():
             self.log.debug("Subscribes to MN with vk: {}".format(mn_vk))
-            self.parent.composer.add_sub(filter=Constants.ZmqFilters.WitnessMasternode, vk=mn_vk)
+            self.parent.composer.add_sub(filter=witness_masternode, vk=mn_vk)
 
         # Create publisher socket
         self.parent.composer.add_pub(ip=self.parent.ip)
@@ -65,6 +65,6 @@ class WitnessRunState(WitnessBaseState):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase, envelope: Envelope):
         self.log.debug("witness got tx: {}, with env {}".format(tx, envelope))  # debug line, remove later
-        self.parent.composer.send_pub_env(envelope=envelope, filter=Constants.ZmqFilters.WitnessDelegate)
+        self.parent.composer.send_pub_env(envelope=envelope, filter=witness_delegate)
         self.log.debug("witness published tx")  # debug line, remove later
 

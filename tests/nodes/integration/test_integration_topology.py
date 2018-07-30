@@ -1,11 +1,9 @@
 import unittest
-from cilantro import Constants
-from cilantro.utils.test import MPGod, MPMasternode, MPWitness, MPTestCase, vmnet_test
-from unittest.mock import patch, call, MagicMock
+from cilantro.utils.test import MPMasternode, MPTestCase, vmnet_test
+from cilantro.constants.testnet import masternodes
+from unittest.mock import call
 from cilantro.utils.test.god import *
-from cilantro.nodes import Masternode, Witness, Delegate
 from cilantro.nodes.masternode.masternode import *
-from cilantro.protocol.statemachine.decorators import StateInput
 import time
 from cilantro.protocol.wallet import Wallet
 
@@ -44,7 +42,7 @@ class TopologyIntegrationTest(MPTestCase):
             run_state = mn.states[MNRunState]
             run_state.recv_tx.assert_has_calls([call(tx1), call(tx2)], any_order=True)
 
-        mn_sk = Constants.Testnet.Masternodes[0]['sk']
+        mn_sk = masternodes[0]['sk']
 
         tx1 = God.create_std_tx(FALCON, DAVIS, 210)
         tx2 = God.create_std_tx(STU, FALCON, 150)
