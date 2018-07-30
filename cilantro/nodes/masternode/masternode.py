@@ -11,8 +11,7 @@ from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import *
 from cilantro.messages import *
 from aiohttp import web
-from cilantro.db import *
-
+from cilantro.db.db import VKBook
 
 MNNewBlockState = 'MNNewBlockState'
 

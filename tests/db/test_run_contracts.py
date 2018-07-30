@@ -1,4 +1,5 @@
-from cilantro.db import *
+from cilantro.db.contracts import run_contract
+from cilantro.db.tables import build_tables
 from unittest import TestCase
 import unittest
 from datetime import datetime

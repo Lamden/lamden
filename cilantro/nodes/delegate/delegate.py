@@ -20,7 +20,7 @@
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import *
 from cilantro.protocol.interpreter import SenecaInterpreter
-from cilantro.db import *
+from cilantro.db.db import VKBook
 from cilantro.messages import *
 from cilantro.constants.zmq_filters import delegate_delegate, witness_delegate, masternode_delegate
 

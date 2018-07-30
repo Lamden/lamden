@@ -3,9 +3,10 @@ from cilantro.protocol.wallet import Wallet
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
 from cilantro.protocol.statemachine import *
 from cilantro.messages import *
-from cilantro.db import *
 from cilantro.constants.zmq_filters import delegate_delegate
 from cilantro.constants.testnet import majority, delegates
+from cilantro.db.db import VKBook, DB, insert
+
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
