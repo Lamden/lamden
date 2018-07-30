@@ -13,7 +13,6 @@ def wrap_func(fn, *args, **kwargs):
 def run_mn():
     from cilantro.logger import get_logger
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os, time
 
     log = get_logger(__name__)

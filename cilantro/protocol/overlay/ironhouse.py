@@ -18,7 +18,7 @@ from zmq.utils.z85 import decode, encode
 from nacl.public import PrivateKey, PublicKey
 from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
-from cilantro.db import VKBook
+from cilantro.db.db import VKBook
 
 from cilantro.logger import get_logger
 

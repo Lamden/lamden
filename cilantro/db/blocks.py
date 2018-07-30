@@ -5,7 +5,7 @@ from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.utils import is_valid_hex, Hasher
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallet import Wallet
-from cilantro.db import DB
+from cilantro.db.db import DB
 from cilantro.db.transactions import encode_tx, decode_tx
 from typing import List
 import time
