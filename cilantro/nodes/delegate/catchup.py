@@ -112,6 +112,7 @@ class DelegateCatchupState(DelegateBaseState):
             return
 
         self.current_block = self.new_blocks.pop()
+        self._fetch_tx_for_current_block()
 
     def _fetch_tx_for_current_block(self):
         """

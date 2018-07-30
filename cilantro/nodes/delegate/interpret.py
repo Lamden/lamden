@@ -36,7 +36,6 @@ class DelegateInterpretState(DelegateBaseState):
         self._general_entry()
         self._reset_queue()
 
-
     @enter_from(DelegateConsensusState)
     def enter_from_consensus(self):
         self._general_entry()
