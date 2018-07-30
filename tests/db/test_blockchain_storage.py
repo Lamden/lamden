@@ -1,8 +1,8 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
 from cilantro.constants.testnet import masternodes
-from cilantro.db.blocks import *
-from cilantro.db.db import reset_db
+from cilantro.db.blocks import * # Generally, * imports are bad, but this test imports pretty much every class from it
+from cilantro.db.db import reset_db, DB
 from cilantro.messages.consensus.block_contender import build_test_contender
 from cilantro.messages.transaction.base import build_test_transaction
 from cilantro.utils import Hasher, int_to_bytes
