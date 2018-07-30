@@ -36,13 +36,13 @@ class TopologyIntegrationTest(MPTestCase):
             assert mn.state == MNRunState, "wtf current state is {}".format(mn.state)
 
             run_state = mn.states[MNRunState]
-            run_state.recv_tx = MagicMock()
+            run_state.handle_tx = MagicMock()
 
             return mn
 
         def assert_mn(mn: Masternode):
             run_state = mn.states[MNRunState]
-            run_state.recv_tx.assert_has_calls([call(tx1), call(tx2)], any_order=True)
+            run_state.handle_tx.assert_has_calls([call(tx1), call(tx2)], any_order=True)
 
         mn_sk = Constants.Testnet.Masternodes[0]['sk']
 

@@ -10,7 +10,7 @@ from cilantro.db import *
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
 DelegateConsensusState = "DelegateConsensusState"
-DelegateCatchupState = "DelegateInterpretState"
+DelegateCatchupState = "DelegateCatchupState"
 
 
 @Delegate.register_state
@@ -25,7 +25,6 @@ class DelegateConsensusState(DelegateBaseState):
         self.signatures = []
         self.signature = None
         self.merkle = None
-        self.merkle_hash = None
         self.in_consensus = False
 
     @enter_from_any
@@ -39,16 +38,15 @@ class DelegateConsensusState(DelegateBaseState):
 
         # Merkle-ize transaction queue and create signed merkle hash
         all_tx = self.parent.interpreter.queue_binary
-        self.log.info("Delegate got tx from interpreter queue: {}".format(all_tx))
-        self.merkle = MerkleTree(all_tx)
-        self.merkle_hash = self.merkle.hash_of_nodes()
-        self.log.info("Delegate got merkle hash {}".format(self.merkle_hash))
-        self.signature = ED25519Wallet.sign(self.parent.signing_key, self.merkle_hash)
+        self.log.debugv("Delegate got tx from interpreter queue: {}".format(all_tx))
+        self.merkle = MerkleTree.from_raw_transactions(all_tx)
+        self.log.debugv("Delegate got merkle hash {}".format(self.merkle.root_as_hex))
+        self.signature = ED25519Wallet.sign(self.parent.signing_key, self.merkle.root)
 
         # Create merkle signature message and publish it
         merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now',
                                             sender=self.parent.verifying_key)
-        self.log.info("Broadcasting signature {}".format(self.signature))
+        self.log.debugv("Broadcasting signature {}".format(self.signature))
         self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.DelegateDelegate, message=merkle_sig)
 
         # Now that we've computed/composed the merkle tree hash, validate all our pending signatures
@@ -62,36 +60,38 @@ class DelegateConsensusState(DelegateBaseState):
         self.reset_attrs()
 
     def validate_sig(self, sig: MerkleSignature) -> bool:
-        assert self.merkle_hash is not None, "Cannot validate signature without our merkle hash set"
-        self.log.debug("Validating signature: {}".format(sig))
+        assert self.merkle is not None, "Cannot validate signature without our merkle set"
+        self.log.debugv("Validating signature: {}".format(sig))
 
         # Verify sender's vk exists in the state
         if sig.sender not in VKBook.get_delegates():
-            self.log.debug("Received merkle sig from sender {} who was not registered nodes {}"
-                              .format(sig.sender, VKBook.get_delegates()))
+            self.log.warning("Received merkle sig from sender {} who was not registered nodes {}"
+                           .format(sig.sender, VKBook.get_delegates()))
             return False
-        # Verify we havne't received this signature already
+        # Verify we haven't received this signature already
         if sig in self.signatures:
-            self.log.debug("Already received a signature from sender {}".format(sig.sender))
+            self.log.warning("Already received a signature from sender {}".format(sig.sender))
             return False
 
         # Below is just for debugging, so we can see if a signature cannot be verified
-        if not sig.verify(self.merkle_hash):
-            self.log.warning("Delegate could not verify signature")
-            self.log.debug("Signature: {}".format(sig))
+        if not sig.verify(self.merkle.root):
+            self.log.warning("Delegate could not verify signature {}".format(sig))
 
-        return sig.verify(self.merkle_hash)
+        return sig.verify(self.merkle.root)
 
     def check_majority(self):
         self.log.debug("delegate has {} signatures out of {} total delegates"
                        .format(len(self.signatures), self.NUM_DELEGATES))
 
         if len(self.signatures) >= Constants.Testnet.Majority:
-            self.log.info("Delegate in consensus!")
+            self.log.important("Delegate in consensus!")
             self.in_consensus = True
 
+            # DEBUG LINE -- todo remove later
+            # self.log.notice("Delegate creating contender with merk leaves {}".format(self.merkle.leaves_as_hex))
+
             # Create BlockContender and send it to all Masternode(s)
-            bc = BlockContender.create(signatures=self.signatures, merkle_leaves=self.merkle.nodes)
+            bc = BlockContender.create(signatures=self.signatures, merkle_leaves=self.merkle.leaves_as_hex)
             for mn_vk in VKBook.get_masternodes():
                 self.parent.composer.send_request_msg(message=bc, vk=mn_vk)
 
@@ -102,37 +102,45 @@ class DelegateConsensusState(DelegateBaseState):
             self.check_majority()
 
     @input_request(TransactionRequest)
-    def handle_blockdata_req(self, block_data: TransactionRequest):
-        # Development check -- should be removed in production
-        assert block_data.tx_hash in self.merkle.leaves, "Block hash {} not found in leaves {}"\
-            .format(block_data.tx_hash, self.merkle.leaves)
+    def handle_tx_request(self, request: TransactionRequest):
+        self.log.debug("delegate got tx request: {}".format(request))
+        tx_blobs = []
+        for tx_hash in request.tx_hashes:
+            if tx_hash not in self.merkle.leaves_as_hex:
+                self.log.error("Masternode requested tx hash {} that was not one of our merkle leaves!".format(tx_hash))
+                continue
+            tx_blobs.append(self.merkle.data_for_hash(tx_hash))
 
-        tx_binary = self.merkle.data_for_hash(block_data.tx_hash)
-        self.log.info("Replying to tx hash request {} with tx binary: {}".format(block_data.tx_hash, tx_binary))
-        reply = TransactionReply.create(tx_binary)
+        reply = TransactionReply.create(raw_transactions=tx_blobs)
+        self.log.debugv("delegate replying to request with {}".format(reply))
         return reply
 
     @input(NewBlockNotification)
     def handle_new_block_notif(self, notif: NewBlockNotification):
         self.log.info("Delegate got new block notification: {}".format(notif))
 
+        # DEBUG line -- TODO remove
+        if not self.in_consensus:
+            self.log.fatal("Received a new block notification, but delegate not in consensus!")
+
         # If the new block hash is the same as our 'scratch block', then just copy scratch to state
-        if bytes.fromhex(notif.block_hash) == self.merkle_hash:
-            self.log.debug("New block hash is the same as ours!!!")
-            self.update_from_scratch(new_block_hash=notif.block_hash, new_block_num=notif.block_num)
+        if notif.prev_block_hash == self.parent.current_hash and self.in_consensus:
+            self.log.success("Prev block hash matches ours. We in consensus!")
+
+            # DEBUG LINES TODO remove
+            # self.log.critical("delegate current block hash: {}".format(self.parent.current_hash))
+            # self.log.critical("database latest block hash: {}".format(BlockStorageDriver.get_latest_block_hash()))
+            # self.log.critical("about to store block with prev hash {} and current hash {}".format(notif.prev_block_hash, notif.block_hash))
+            # END DEBUG
+
+            BlockStorageDriver.store_block_from_meta(notif)
+            self.parent.interpreter.flush(update_state=True)
             self.parent.transition(DelegateInterpretState)
-        # Otherwise, our block is out of consensus and we must request the latest from a Masternode
+            return
+
+        # Otherwise, our block is out of consensus and we must request the latest from a Masternode!
         else:
-            self.log.warning("New block hash {} does not match out own merkle_hash {}"
-                              .format(notif.block_hash, self.merkle_hash))
-            # self.parent.transition(DelegateOutConsensusUpdateState)
-
-    def update_from_scratch(self, new_block_hash, new_block_num):
-        self.log.info("Copying Scratch to State")
-        self.parent.interpreter.flush(update_state=True)
-
-        self.log.info("Updating state_meta with new hash {} and block num {}".format(new_block_hash, new_block_num))
-        with DB() as db:
-            db.execute('delete from state_meta')
-            q = insert(db.tables.state_meta).values(number=new_block_num, hash=new_block_hash)
-            db.execute(q)
+            self.log.critical("New block has prev hash {} that does not match our current block hash {} ... :( :("
+                             .format(notif.prev_block_hash, self.parent.current_hash))
+            self.parent.transition(DelegateCatchupState)
+            return

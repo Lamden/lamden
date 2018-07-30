@@ -44,7 +44,7 @@ class SenecaInterpreter(BaseInterpreter):
 
     def interpret(self, contract, async=False):
         assert isinstance(contract, OrderingContainer), \
-            "Seneca Interpreter can only interpret use_contracts transactions"
+            "Seneca Interpreter can only interpret OrderingContainer instances"
         if async:
             time_hash = '%11x' % (contract.utc_time)
             contract_hash = '{}{}'.format(time_hash, contract.masternode_vk)
@@ -82,7 +82,7 @@ class SenecaInterpreter(BaseInterpreter):
         self.log.debug("Executing use_contracts from user {}".format(contract.sender))
         res = run_contract(self.ex, self.contracts_table, contract_id=None, user_id=contract.sender, code_str=contract.code)
         if not res:
-            self.log.error("Error executing use_contracts from user {} with code:\n{}".format(contract.sender, contract.code))
+            self.log.error("Error executing use_contracts from user {} with code:\n{}\nres:{}".format(contract.sender, contract.code, res))
             self._rerun_contracts()
         else:
             self.log.debug("Successfully executing use_contracts from sender {}".format(contract.sender))

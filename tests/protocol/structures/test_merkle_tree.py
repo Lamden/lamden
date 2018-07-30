@@ -1,4 +1,5 @@
 from unittest import TestCase
+from cilantro.utils import Hasher
 from cilantro.protocol.structures import MerkleTree
 import secrets
 
@@ -166,6 +167,23 @@ class TestMerkleTree(TestCase):
         m_from_hex_str = MerkleTree.from_leaves_hex_str(m_from_init.leaves_as_concat_hex_str)
 
         self.assertEqual(m_from_hex_str.root, m_from_init.root)
+
+    def test_data_for_hash(self):
+        leaves = [b'1', b'2', b'3']
+        hashed_leaves = list(map(Hasher.hash, leaves))
+
+        m = MerkleTree.from_raw_transactions(leaves)
+
+        for i in range(len(leaves)):
+            self.assertEquals(m.data_for_hash(hashed_leaves[i]), leaves[i])
+
+    def test_data_for_hash_doesnt_exist(self):
+        leaves = [b'1', b'2', b'3']
+        hashed_leaves = list(map(Hasher.hash, leaves))
+
+        m = MerkleTree.from_raw_transactions(leaves)
+
+        self.assertRaises(AssertionError, m.data_for_hash, '0' * 64)
 
     # TODO test from raw leaves
 

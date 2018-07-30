@@ -57,21 +57,20 @@ def run_delegate(slot_num):
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'], should_reset=True)
 
 
-def pump_it(lamd, use_poisson):
+def dump_it(volume):
     from cilantro.utils.test import God
     from cilantro.logger import get_logger, overwrite_logger_level
     import logging
 
     overwrite_logger_level(logging.WARNING)
-    God.pump_it(rate=lamd, use_poisson=use_poisson)
+    God.dump_it(volume=volume)
+
 
 class TestPump(BaseNetworkTestCase):
 
-    # TRANSACTION_RATE = 0.1  # Avg transaction/second. lambda parameter in Poission distribution
-    TRANSACTION_RATE = 10  # Avg transaction/second. lambda parameter in Poission distribution
-    MODEL_AS_POISSON = False
+    VOLUME = 2048  # Number of transactions to dump
 
-    testname = 'pump_it'
+    testname = 'dump_it'
     setuptime = 5
     compose_file = 'cilantro-bootstrap.yml'
 
@@ -89,9 +88,9 @@ class TestPump(BaseNetworkTestCase):
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
-        # PUMP IT BOYS
-        time.sleep(26)
-        self.execute_python('mgmt', wrap_func(pump_it, self.TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
+        # DUMP IT BOYS
+        time.sleep(30)
+        self.execute_python('mgmt', wrap_func(dump_it, self.VOLUME), async=True)
 
         input("Enter any key to terminate")
 
