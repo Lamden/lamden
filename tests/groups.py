@@ -14,7 +14,7 @@ TODO -- better documentation on whats going on here
 PROTOCOL_TESTS = [
     'tests.protocol.interpreters',
     'tests.protocol.structures',
-    'tests.protocol.statemachine',
+    'tests.protocol.states',
     'tests.protocol.wallets',
     'tests.nodes.masternode',
 

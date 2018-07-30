@@ -1,6 +1,6 @@
 from cilantro.logger import get_logger
 from cilantro.messages.base.base import MessageBase
-from cilantro.protocol.statemachine.decorators import StateInput, StateTimeout, StateTransition, exit_to_any
+from cilantro.protocol.states.decorators import StateInput, StateTimeout, StateTransition, exit_to_any
 import inspect
 import asyncio
 from unittest.mock import MagicMock

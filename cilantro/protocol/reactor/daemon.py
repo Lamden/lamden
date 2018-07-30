@@ -8,7 +8,7 @@ from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
 import signal, sys
-from cilantro.protocol.statemachine.state import StateInput
+from cilantro.protocol.states.state import StateInput
 from cilantro.constants.overlay_network import alpha, ksize, max_peers
 import inspect
 

@@ -1,6 +1,6 @@
-from cilantro.protocol.statemachine.state import State
-from cilantro.protocol.statemachine.statemachine import StateMachine
-from cilantro.protocol.statemachine.decorators import enter_from_any, exit_to_any, enter_from, exit_to, timeout_after, input
+from cilantro.protocol.states.state import State
+from cilantro.protocol.states.statemachine import StateMachine
+from cilantro.protocol.states.decorators import enter_from_any, exit_to_any, enter_from, exit_to, timeout_after, input
 
 """
 This stuff is a little tricky to test. In interest of optimizing utility per unit of time, we just create a toy example 

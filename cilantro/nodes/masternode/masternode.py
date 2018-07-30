@@ -9,8 +9,8 @@
 from cilantro.constants.zmq_filters import witness_masternode
 from cilantro.nodes import NodeBase
 
-from cilantro.protocol.statemachine.decorators import input_request, input, enter_from_any, exit_to_any, enter_from
-from cilantro.protocol.statemachine.state import State, StateInput
+from cilantro.protocol.states.decorators import input_request, input, enter_from_any, exit_to_any, enter_from
+from cilantro.protocol.states.state import State, StateInput
 
 from cilantro.messages.transaction.container import TransactionContainer, TransactionBase
 from cilantro.messages.consensus.block_contender import BlockContender

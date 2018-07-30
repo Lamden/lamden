@@ -44,7 +44,7 @@ class TestTransportIntegration(MPTestCase):
 
         def assert_sub(composer: Composer):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
-            from cilantro.protocol.statemachine.decorators import StateInput
+            from cilantro.protocol.states.decorators import StateInput
             cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
             composer.interface.router.route_callback.assert_called_once_with(cb)
 
@@ -75,7 +75,7 @@ class TestTransportIntegration(MPTestCase):
 
         def assert_sub(composer: Composer):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
-            from cilantro.protocol.statemachine.decorators import StateInput
+            from cilantro.protocol.states.decorators import StateInput
             from unittest.mock import call
 
             expected_calls = []
@@ -125,7 +125,7 @@ class TestTransportIntegration(MPTestCase):
 
         def assert_sub(composer: Composer):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
-            from cilantro.protocol.statemachine.decorators import StateInput
+            from cilantro.protocol.states.decorators import StateInput
             from unittest.mock import call
 
             callback1 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env1)
@@ -179,7 +179,7 @@ class TestTransportIntegration(MPTestCase):
 
         def run_assertions(composer: Composer):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
-            from cilantro.protocol.statemachine.decorators import StateInput
+            from cilantro.protocol.states.decorators import StateInput
             from unittest.mock import call
 
             cb1 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env1)
@@ -238,7 +238,7 @@ class TestTransportIntegration(MPTestCase):
             assert callback_cmd.envelope.message == reply_msg, "Callback's envelope's message should be the reply_msg"
 
         def assert_router(composer: Composer):
-            from cilantro.protocol.statemachine.decorators import StateInput
+            from cilantro.protocol.states.decorators import StateInput
             from cilantro.messages.reactor.reactor_command import ReactorCommand
             cb = ReactorCommand.create_callback(callback=StateInput.REQUEST, envelope=request_env, header=dealer_id)
             composer.interface.router.route_callback.assert_called_once_with(cb)

@@ -21,8 +21,8 @@ from cilantro.nodes import NodeBase
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.storage.db import VKBook
 
-from cilantro.protocol.statemachine.decorators import input, enter_from_any
-from cilantro.protocol.statemachine.state import State
+from cilantro.protocol.states.decorators import input, enter_from_any
+from cilantro.protocol.states.state import State
 
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.consensus.merkle_signature import MerkleSignature

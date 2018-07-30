@@ -3,7 +3,7 @@ from cilantro.utils.test import MPTesterBase, mp_testable, God, MPTestCase
 from unittest.mock import MagicMock
 from cilantro.protocol.transport import Composer
 from cilantro.protocol.reactor import ReactorInterface
-from cilantro.protocol.statemachine.statemachine import StateMachine
+from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.nodes import Masternode, Witness, NodeFactory
 import asyncio
 import os

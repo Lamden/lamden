@@ -1,8 +1,8 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 from .trafficlight import *
-from cilantro.protocol.statemachine.decorators import StateTimeout, StateTransition, StateInput
-from cilantro.protocol.statemachine.state import EmptyState
+from cilantro.protocol.states.decorators import StateTimeout, StateTransition, StateInput
+from cilantro.protocol.states.state import EmptyState
 
 class StateTest(TestCase):
 
@@ -329,7 +329,7 @@ class StateTest(TestCase):
         mock_enter_func = MagicMock()
         state.enter_any = mock_enter_func
 
-        with patch('cilantro.protocol.statemachine.state.asyncio') as mock_asyncio:
+        with patch('cilantro.protocol.states.state.asyncio') as mock_asyncio:
             mock_loop = MagicMock()
             mock_loop.is_running = MagicMock(return_value=True)
             mock_asyncio.get_event_loop = MagicMock(return_value=mock_loop)

@@ -3,7 +3,7 @@ from cilantro.constants.testnet import majority
 from cilantro.nodes.masternode import MNBaseState, Masternode
 from cilantro.storage.db import DB, insert
 
-from cilantro.protocol.statemachine.decorators import enter_from_any, enter_from, input_request, input_timeout, input
+from cilantro.protocol.states.decorators import enter_from_any, enter_from, input_request, input_timeout, input
 
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.consensus.new_block_notification import NewBlockNotification
