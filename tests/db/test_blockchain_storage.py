@@ -82,7 +82,7 @@ class TestBlockStorageDriver(TestCase):
 
     def test_validate_block_data_valid(self):
         block_data = self._build_valid_block_data()
-        BlockStorageDriver._validate_block_data(block_data)  # This should not raise any Exceptions
+        BlockStorageDriver.validate_block_data(block_data)  # This should not raise any Exceptions
 
     def test_validate_block_data_missing_keys(self):
         block_data = {
@@ -94,7 +94,7 @@ class TestBlockStorageDriver(TestCase):
             'masternode_signature': None,
             # 'masternode_vk': None,  # This key is missing
         }
-        self.assertRaises(BlockStorageValidationException, BlockStorageDriver._validate_block_data, block_data)
+        self.assertRaises(BlockStorageValidationException, BlockStorageDriver.validate_block_data, block_data)
 
         block_data = {
             'block_contender': None,
@@ -105,7 +105,7 @@ class TestBlockStorageDriver(TestCase):
             'masternode_signature': None,
             'masternode_vk': None,
         }
-        self.assertRaises(BlockStorageValidationException, BlockStorageDriver._validate_block_data, block_data)
+        self.assertRaises(BlockStorageValidationException, BlockStorageDriver.validate_block_data, block_data)
 
     def test_validate_block_data_extra_keys(self):
         block_data = {
@@ -119,7 +119,7 @@ class TestBlockStorageDriver(TestCase):
             'AN EXTRA KEY': None,
             'ANOTHER ONE!': None,
         }
-        self.assertRaises(BlockStorageValidationException, BlockStorageDriver._validate_block_data, block_data)
+        self.assertRaises(BlockStorageValidationException, BlockStorageDriver.validate_block_data, block_data)
 
     def test_validate_block_data_invalid_merkle(self):
         block_data = {
@@ -131,7 +131,7 @@ class TestBlockStorageDriver(TestCase):
             'masternode_signature': None,
             'masternode_vk': None,
         }
-        self.assertRaises(InvalidMerkleTreeException, BlockStorageDriver._validate_block_data, block_data)
+        self.assertRaises(InvalidMerkleTreeException, BlockStorageDriver.validate_block_data, block_data)
 
     def test_validate_block_data_invalid_contender_signatures(self):
         block_data = self._build_valid_block_data()
@@ -141,7 +141,7 @@ class TestBlockStorageDriver(TestCase):
 
         block_data['block_contender'] = bad_contender
 
-        self.assertRaises(InvalidBlockContenderException, BlockStorageDriver._validate_block_data, block_data)
+        self.assertRaises(InvalidBlockContenderException, BlockStorageDriver.validate_block_data, block_data)
 
     def test_validate_block_data_invalid_contender_leaves_length(self):
         bd = self._build_valid_block_data()
@@ -152,7 +152,7 @@ class TestBlockStorageDriver(TestCase):
 
         bd['block_contender'] = sketch_bc
 
-        self.assertRaises(InvalidBlockContenderException, BlockStorageDriver._validate_block_data, bd)
+        self.assertRaises(InvalidBlockContenderException, BlockStorageDriver.validate_block_data, bd)
 
     def test_validate_block_data_invalid_contender_leaves_mismatch(self):
         bd = self._build_valid_block_data(4)
@@ -164,13 +164,13 @@ class TestBlockStorageDriver(TestCase):
 
         bd['block_contender'] = sketch_bc
 
-        self.assertRaises(InvalidBlockContenderException, BlockStorageDriver._validate_block_data, bd)
+        self.assertRaises(InvalidBlockContenderException, BlockStorageDriver.validate_block_data, bd)
 
     def test_validate_block_data_invalid_signature(self):
         block_data = self._build_valid_block_data()
         block_data['masternode_signature'] = 'A' * 128
 
-        self.assertRaises(InvalidBlockSignatureException, BlockStorageDriver._validate_block_data, block_data)
+        self.assertRaises(InvalidBlockSignatureException, BlockStorageDriver.validate_block_data, block_data)
 
     def test_compute_block_hash(self):
         # NOTE -- this implicitly tests Hasher.hash_iterable
@@ -194,7 +194,7 @@ class TestBlockStorageDriver(TestCase):
         binary_data += int_to_bytes(bd['timestamp'])
 
         expected_hash = Hasher.hash(binary_data)
-        actual_hash = BlockStorageDriver._compute_block_hash(bd)
+        actual_hash = BlockStorageDriver.compute_block_hash(bd)
 
         self.assertEqual(expected_hash, actual_hash)
 
@@ -322,15 +322,15 @@ class TestBlockStorageDriver(TestCase):
 
     def test_validate_block_link_invalid_block_data(self):
         bd1 = self._build_valid_block_data()
-        bd1['hash'] = BlockStorageDriver._compute_block_hash(bd1)
+        bd1['hash'] = BlockStorageDriver.compute_block_hash(bd1)
         bd1['number'] = 2
 
         bd2 = self._build_valid_block_data()
         bd2['prev_block_hash'] = bd1['hash']
-        bd2['hash'] = BlockStorageDriver._compute_block_hash(bd2)
+        bd2['hash'] = BlockStorageDriver.compute_block_hash(bd2)
         bd2['number'] = 3
 
-        # Muck up Merkle tree so _validate_block_data should fail
+        # Muck up Merkle tree so validate_block_data should fail
         for bd in (bd1, bd2):
             bd['merkle_root'] = 'AB' * 32
 
@@ -338,24 +338,24 @@ class TestBlockStorageDriver(TestCase):
 
     def test_validate_block_link_invalid_block_hash(self):
         bd1 = self._build_valid_block_data()
-        bd1['hash'] = BlockStorageDriver._compute_block_hash(bd1)
+        bd1['hash'] = BlockStorageDriver.compute_block_hash(bd1)
         bd1['number'] = 2
 
         bd2 = self._build_valid_block_data()
         bd2['prev_block_hash'] = bd1['hash']
-        bd2['hash'] = 'A' * 64  # intentionally not BlockStorageDriver._compute_block_hash(bd2)
+        bd2['hash'] = 'A' * 64  # intentionally not BlockStorageDriver.compute_block_hash(bd2)
         bd2['number'] = 3
 
         self.assertRaises(InvalidBlockHashException, BlockStorageDriver._validate_block_link, bd1, bd2)
 
     def test_validate_block_link_invalid_block_linkage(self):
         bd1 = self._build_valid_block_data()
-        bd1['hash'] = BlockStorageDriver._compute_block_hash(bd1)
+        bd1['hash'] = BlockStorageDriver.compute_block_hash(bd1)
         bd1['number'] = 2
 
         bd2 = self._build_valid_block_data()
         bd2['prev_block_hash'] = 'A' * 64  # something that obviously not the parent block's hash
-        bd2['hash'] = BlockStorageDriver._compute_block_hash(bd2)
+        bd2['hash'] = BlockStorageDriver.compute_block_hash(bd2)
         bd2['number'] = 3
 
         self.assertRaises(InvalidBlockLinkException, BlockStorageDriver._validate_block_link, bd1, bd2)
@@ -395,7 +395,7 @@ class TestBlockStorageDriver(TestCase):
 
         # Stuff a sketch block in that doesn't link to the last
         sketch_block = self._build_valid_block_data()  # by default this has prev_block_hash = 'AAAAA...'
-        sketch_block['hash'] = BlockStorageDriver._compute_block_hash(sketch_block)
+        sketch_block['hash'] = BlockStorageDriver.compute_block_hash(sketch_block)
         with DB() as db:
             db.tables.blocks.insert([BlockStorageDriver._encode_block(sketch_block)]).run(db.ex)
 

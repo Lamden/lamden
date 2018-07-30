@@ -10,19 +10,17 @@ from cilantro.constants.testnet import majority, delegates
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
 DelegateConsensusState = "DelegateConsensusState"
+DelegateCatchupState = "DelegateInterpretState"
 
 
 @Delegate.register_state
 class DelegateConsensusState(DelegateBaseState):
-    """Consensus state is where delegates pass around a merkelized version of their transaction queues, publish them to
-    one another, confirm the signature is valid, and then vote/tally the results"""
-    NUM_DELEGATES = len(delegates)
+    """
+    Consensus state is where delegates pass around a merkelized version of their transaction queues, publish them to
+    one another, confirm the signature is valid, and then vote/tally the results
+    """
 
-    """
-    TODO -- move this 'variable setting' logic outside of init. States should have their own constructor, which init
-    will call in the superclass. Optionally, states should be able to set a variable if they want all their properties
-    flushed each time.
-    """
+    NUM_DELEGATES = len(delegates)
 
     def reset_attrs(self):
         self.signatures = []
@@ -31,9 +29,13 @@ class DelegateConsensusState(DelegateBaseState):
         self.merkle_hash = None
         self.in_consensus = False
 
-    # TODO -- i think this should only occur when entering from Interpretting state yea?
     @enter_from_any
     def enter_any(self, prev_state):
+        # Development sanity check (TODO remove in production)
+        raise Exception("ConsensusState should only be entered from interpret state! prev_state={}".format(prev_state))
+
+    @enter_from(DelegateInterpretState)
+    def enter_from_interpret(self):
         assert self.parent.interpreter.queue_size > 0, "Entered consensus state, but interpreter queue is empty!"
 
         # Merkle-ize transaction queue and create signed merkle hash
@@ -100,20 +102,15 @@ class DelegateConsensusState(DelegateBaseState):
             self.signatures.append(sig)
             self.check_majority()
 
-    @input_request(BlockDataRequest)
-    def handle_blockdata_req(self, block_data: BlockDataRequest):
+    @input_request(TransactionRequest)
+    def handle_blockdata_req(self, block_data: TransactionRequest):
         # Development check -- should be removed in production
         assert block_data.tx_hash in self.merkle.leaves, "Block hash {} not found in leaves {}"\
             .format(block_data.tx_hash, self.merkle.leaves)
 
-        # import time
-        # self.log.debug("sleeping...")
-        # time.sleep(1.2)
-        # self.log.debug("done sleeping")
-
         tx_binary = self.merkle.data_for_hash(block_data.tx_hash)
         self.log.info("Replying to tx hash request {} with tx binary: {}".format(block_data.tx_hash, tx_binary))
-        reply = BlockDataReply.create(tx_binary)
+        reply = TransactionReply.create(tx_binary)
         return reply
 
     @input(NewBlockNotification)

@@ -9,8 +9,11 @@ from cilantro.messages.reactor.reactor_command import ReactorCommand
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.transaction.container import TransactionContainer
 
-from cilantro.messages.consensus import MerkleSignature, BlockContender, BlockDataRequest, BlockDataReply, \
-                                        NewBlockNotification, StateUpdateRequest
+from cilantro.messages.consensus import MerkleSignature, BlockContender, NewBlockNotification
+
+from cilantro.messages.block_data import TransactionRequest, TransactionReply
+from cilantro.messages.block_data import StateUpdateRequest, StateUpdateReply
+from cilantro.messages.block_data import BlockMetaData, BlockMetaDataReply, BlockMetaDataRequest
 
 from cilantro.messages.transaction.standard import StandardTransaction, StandardTransactionBuilder
 from cilantro.messages.transaction.contract import ContractTransaction, ContractTransactionBuilder

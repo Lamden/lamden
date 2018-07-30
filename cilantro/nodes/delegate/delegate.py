@@ -28,17 +28,20 @@ from cilantro.constants.zmq_filters import delegate_delegate, witness_delegate, 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
 DelegateConsensusState = "DelegateConsensusState"
+DelegateCatchupState = "DelegateInterpretState"
 
 
 class Delegate(NodeBase):
+    """
+    Here we define 'global' properties shared among all Delegate states. Within a Delegate state, 'self.parent' refers
+    to this instance.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Properties shared among all states (ie via self.parent.some_prop)
         self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
 
-        # TODO -- add this as a property of the interpreter state, and implement functionality to pass data between
-        # states on transition, i.e sm.transition(NextState, arg1='hello', arg2='let_do+it')
         self.interpreter = SenecaInterpreter()
 
 

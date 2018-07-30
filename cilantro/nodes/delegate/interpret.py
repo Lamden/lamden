@@ -7,6 +7,7 @@ from cilantro.constants.nodes import max_queue_size
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
 DelegateConsensusState = "DelegateConsensusState"
+DelegateCatchupState = "DelegateInterpretState"
 
 
 @Delegate.register_state

@@ -21,6 +21,7 @@ class TransactionBase(MessageBase):
         Interprets the transaction and returns the SQLAlchemy queries associated with the transaction's changes
         :return: SQLAlchemy query objects
         """
+        # TODO deprecate and remove this
         assert hasattr(type(self), 'contract'), "Transaction type {} has no contract defined".format(type(self))
         return contract(type(self))(type(self).contract)(self, *args, **kwargs)
 
