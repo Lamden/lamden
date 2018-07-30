@@ -1,4 +1,4 @@
-from cilantro.messages.consensus.block_contender import build_test_contender, BlockContender
+from cilantro.messages.consensus.block_contender import build_test_contender
 from cilantro.messages.transaction.base import build_test_transaction
 from cilantro.protocol.wallet import Wallet
 from cilantro.protocol.structures.merkle_tree import MerkleTree

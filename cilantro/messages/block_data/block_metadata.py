@@ -1,7 +1,7 @@
 from cilantro.messages import MessageBase, BlockContender
 from cilantro.messages.utils import validate_hex
 from cilantro.utils import lazy_property
-from cilantro.db import BlockStorageDriver
+from cilantro.db.blocks import BlockStorageDriver
 from typing import List
 
 import capnp

@@ -1,6 +1,6 @@
 import unittest
 from unittest import TestCase
-from cilantro.db import ContractTemplate
+from cilantro.db.templating import ContractTemplate
 
 
 class TestContractTemplates(TestCase):

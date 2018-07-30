@@ -1,7 +1,7 @@
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.utils import validate_hex
 from cilantro.protocol.wallet import Wallet
-from cilantro.db import ContractTemplate
+from cilantro.db.templating import ContractTemplate
 from cilantro.protocol.pow import SHA3POW
 import transaction_capnp
 
