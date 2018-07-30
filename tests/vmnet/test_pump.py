@@ -17,11 +17,12 @@ def run_mn():
     import os
     import logging
 
-    overwrite_logger_level(logging.WARNING)
+    # overwrite_logger_level(logging.WARNING)
+    overwrite_logger_level(21)
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
     sk = Constants.Testnet.Masternodes[0]['sk']
-    NodeFactory.run_masternode(ip=ip, signing_key=sk)
+    NodeFactory.run_masternode(ip=ip, signing_key=sk, should_reset=True)
 
 
 def run_witness(slot_num):
@@ -31,12 +32,13 @@ def run_witness(slot_num):
     import os
     import logging
 
-    overwrite_logger_level(logging.WARNING)
+    # overwrite_logger_level(logging.WARNING)
+    overwrite_logger_level(15)
 
     w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
-    NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'])
+    NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'], should_reset=True)
 
 
 def run_delegate(slot_num):
@@ -46,25 +48,31 @@ def run_delegate(slot_num):
     import os
     import logging
 
-    overwrite_logger_level(logging.WARNING)
+    # overwrite_logger_level(logging.WARNING)
+    overwrite_logger_level(21)
 
     d_info = Constants.Testnet.Delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
-    NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
+    NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'], should_reset=True)
 
 
 def pump_it(lamd, use_poisson):
     from cilantro.utils.test import God
-    God.pump_it(rate=lamd, gen_func=God.random_std_tx, use_poisson=use_poisson)
+    from cilantro.logger import get_logger, overwrite_logger_level
+    import logging
+
+    overwrite_logger_level(logging.WARNING)
+    God.pump_it(rate=lamd, use_poisson=use_poisson)
 
 class TestPump(BaseNetworkTestCase):
 
-    EXPECTED_TRANSACTION_RATE = 0.1  # Avg transaction/second. lambda parameter in Poission distribution
+    # TRANSACTION_RATE = 0.1  # Avg transaction/second. lambda parameter in Poission distribution
+    TRANSACTION_RATE = 10  # Avg transaction/second. lambda parameter in Poission distribution
     MODEL_AS_POISSON = False
 
     testname = 'pump_it'
-    setuptime = 10
+    setuptime = 5
     compose_file = 'cilantro-bootstrap.yml'
 
     @vmnet_test(run_webui=True)
@@ -81,9 +89,9 @@ class TestPump(BaseNetworkTestCase):
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
-        # PUMP IT
-        time.sleep(15)
-        self.execute_python('mgmt', wrap_func(pump_it, self.EXPECTED_TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
+        # PUMP IT BOYS
+        time.sleep(26)
+        self.execute_python('mgmt', wrap_func(pump_it, self.TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
 
         input("Enter any key to terminate")
 

@@ -16,7 +16,7 @@ class TestAtomicSwap(SmartContractTestCase):
     )
     def test_initatiate_transfer(self, atomic_swap, currency, davis, carl):
         tau_address = atomic_swap.find_address('tau')
-        hash = std.ripemd160('some_secret')
+        hash = std.sha256('some_secret')
         davis.initiate_transfer('CARL', hash, 696947, tau_address)
         self.assertTrue(currency.is_locked('DAVIS', 696947, '{}$_shared_'.format(hash)))
 
@@ -27,7 +27,7 @@ class TestAtomicSwap(SmartContractTestCase):
     )
     def test_initiate_fail_exists(self, atomic_swap, currency, davis):
         tau_address = atomic_swap.find_address('tau')
-        hash = std.ripemd160('some_secret')
+        hash = std.sha256('some_secret')
         davis.initiate_transfer('CARL', hash, 696947, tau_address)
         with self.assertRaises(Exception) as context:
             davis.initiate_transfer('CARL', hash, 696947, tau_address)
@@ -40,7 +40,7 @@ class TestAtomicSwap(SmartContractTestCase):
     )
     def test_redeem_transfer(self, atomic_swap, currency, davis, carl):
         tau_address = atomic_swap.find_address('tau')
-        hash = std.ripemd160('some_secret')
+        hash = std.sha256('some_secret')
         davis.initiate_transfer('CARL', hash, 696947, tau_address)
         carl.redeem_transfer('some_secret')
         self.assertFalse(currency.is_locked('DAVIS', 696947, '{}$_shared_'.format(hash)))
@@ -53,7 +53,7 @@ class TestAtomicSwap(SmartContractTestCase):
     )
     def test_redeem_transfer_non_tau(self, atomic_swap, currency, davis, carl):
         eth_address = atomic_swap.find_address('eth')
-        hash = std.ripemd160('some_secret')
+        hash = std.sha256('some_secret')
         davis.initiate_transfer('CARL', hash, 696947, eth_address)
         carl.redeem_transfer('some_secret')
         self.assertTrue(currency.is_locked('CARL', 696947, '{}$_shared_'.format(hash)))
@@ -66,7 +66,7 @@ class TestAtomicSwap(SmartContractTestCase):
     )
     def test_redeem_transfer_no_previous_agreement(self, atomic_swap, currency, davis, carl):
         tau_address = atomic_swap.find_address('tau')
-        hash = std.ripemd160('some_secret')
+        hash = std.sha256('some_secret')
         with self.assertRaises(Exception) as context:
             carl.redeem_transfer('some_secret')
 
@@ -78,7 +78,7 @@ class TestAtomicSwap(SmartContractTestCase):
     )
     def test_refund_transfer(self, atomic_swap, currency, davis, carl):
         tau_address = atomic_swap.find_address('tau')
-        hash = std.ripemd160('some_secret')
+        hash = std.sha256('some_secret')
         davis.initiate_transfer('CARL', hash, 696947, tau_address)
         davis.refund_transfer(hash, 'CARL')
         self.assertFalse(currency.is_locked('DAVIS', 696947, '{}$_shared_'.format(hash)))
@@ -91,7 +91,7 @@ class TestAtomicSwap(SmartContractTestCase):
     )
     def test_refund_transfer_non_tau(self, atomic_swap, currency, davis, carl):
         eth_address = atomic_swap.find_address('eth')
-        hash = std.ripemd160('some_secret')
+        hash = std.sha256('some_secret')
         davis.initiate_transfer('CARL', hash, 696947, eth_address)
         davis.refund_transfer(hash, 'CARL')
         self.assertTrue(currency.is_locked('CARL', 696947, '{}$_shared_'.format(hash)))

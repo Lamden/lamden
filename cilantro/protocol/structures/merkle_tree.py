@@ -126,18 +126,16 @@ class MerkleTree:
             self.nodes[(((i + 1) * 2) + 1) - 1]
         ]
 
-    def data_for_hash(self, h):
-        # gets data back for a given hash for propagating to masternode
+    def data_for_hash(self, h: str) -> bytes:
+        """
+        Returns the raw data associated with a merkle leaf
+        :param h: The hash of the merkle leaf. Must be 64 character valid hex
+        :return: The datum which was hashed into merkle leaf with hex string 'h'
+        """
         assert self.raw_leaves, "This MerkleTree was not created from raw transactions, thus it can't lookup data"
+        assert h in self.leaves_as_hex, "Hash {} not found in merkle leaves".format(h)
 
-        searchable_hashes = self.nodes[len(self.leaves) - 1:]
-        if h in searchable_hashes:
-            return self.raw_leaves[searchable_hashes.index(h)]
-        return None
-
-    def hash_of_nodes(self):
-        log.warning("HASH LEAVES API SHOULD BE DEPRECATED")
-        return MerkleTree.hash_nodes(self.nodes)
+        return self.raw_leaves[self.leaves_as_hex.index(h)]
 
     @staticmethod
     def verify_tree(leaves: list, root: bytes, hash_leaves=False) -> bool:

@@ -12,7 +12,7 @@ class Hasher:
         MD5 = 'md5'
         SHA3_256 = 'sha3_256'
         SHA1 = 'sha1'
-        RIPE = 'ripemd160'
+        RIPE = 'sha256'
         SHAKE_128 = 'shake_128'
         SHAKE_256 = 'shake_256'
 

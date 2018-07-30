@@ -1,9 +1,7 @@
 from cilantro import Constants
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
-from cilantro.db import contract
 from cilantro.utils import lazy_property
-import capnp
 
 
 class TransactionBase(MessageBase):
@@ -16,13 +14,14 @@ class TransactionBase(MessageBase):
         self.pow = Constants.Protocol.Proofs
         self.wallet = Constants.Protocol.Wallets
 
-    def interpret(self, *args, **kwargs):
-        """
-        Interprets the transaction and returns the SQLAlchemy queries associated with the transaction's changes
-        :return: SQLAlchemy query objects
-        """
-        assert hasattr(type(self), 'contract'), "Transaction type {} has no contract defined".format(type(self))
-        return contract(type(self))(type(self).contract)(self, *args, **kwargs)
+    # TODO deprecate and remove this
+    # def interpret(self, *args, **kwargs):
+    #     """
+    #     Interprets the transaction and returns the SQLAlchemy queries associated with the transaction's changes
+    #     :return: SQLAlchemy query objects
+    #     """
+    #     assert hasattr(type(self), 'contract'), "Transaction type {} has no contract defined".format(type(self))
+    #     return contract(type(self))(type(self).contract)(self, *args, **kwargs)
 
     def validate(self):
         """
@@ -102,6 +101,5 @@ def build_test_transaction() -> TransactionBase:
     unit/integration tests.
     :return: An instance of a subclass of TransactionBase
     """
-    from cilantro.messages import StandardTransactionBuilder
-    return StandardTransactionBuilder.random_tx()
-
+    from cilantro.messages.transaction.contract import ContractTransactionBuilder
+    return ContractTransactionBuilder.random_currency_tx()

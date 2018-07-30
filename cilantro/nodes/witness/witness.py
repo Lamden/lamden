@@ -1,10 +1,10 @@
 from cilantro import Constants
 from cilantro.nodes import NodeBase
 from cilantro.protocol.statemachine import State
-from cilantro.messages import TransactionBase, Envelope, ContractSubmission
+from cilantro.messages import TransactionBase, Envelope
 from cilantro.protocol.statemachine.decorators import *
 from cilantro.db.db import VKBook
-
+from cilantro.messages import OrderingContainer
 
 """
     Witness
@@ -24,6 +24,10 @@ class WitnessBaseState(State):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase, envelope: Envelope):
         self.log.error("Witness not configured to recv tx: {} with env {}".format(tx, envelope))
+
+    @input(OrderingContainer)
+    def recv_ordered_tx(self, tx: OrderingContainer, envelope: Envelope):
+        self.log.error("Witness not configured to recv ordered tx: {} with env {}".format(tx, envelope))
 
 
 @Witness.register_init_state
@@ -62,18 +66,8 @@ class WitnessRunState(WitnessBaseState):
     def reset_attrs(self):
         pass
 
-    @input(TransactionBase)
-    def recv_tx(self, tx: TransactionBase, envelope: Envelope):
+    @input(OrderingContainer)
+    def recv_ordered_tx(self, tx: OrderingContainer, envelope: Envelope):
         self.log.debug("witness got tx: {}, with env {}".format(tx, envelope))  # debug line, remove later
         self.parent.composer.send_pub_env(envelope=envelope, filter=Constants.ZmqFilters.WitnessDelegate)
         self.log.debug("witness published tx")  # debug line, remove later
-
-    @input(ContractSubmission)
-    def handle_contract_submission(self, contract: ContractSubmission, envelope: Envelope):
-        self.log.critical("WITNESS GOT CONTRACT SUBMISSION {}".format(contract))
-        self.parent.composer.send_pub_env(envelope=envelope, filter=Constants.ZmqFilters.WitnessDelegate)
-
-
-# class Witness(NodeBase):
-#     _INIT_STATE = WitnessBootState
-#     _STATES = [WitnessBootState, WitnessRunState]

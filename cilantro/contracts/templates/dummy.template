@@ -1,0 +1,2 @@
+import dummy
+dummy.bad_code({__fail__})

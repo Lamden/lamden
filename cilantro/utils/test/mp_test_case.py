@@ -16,6 +16,16 @@ TESTER_POLL_FREQ = 0.1
 CILANTRO_PATH = dirname(dirname(cilantro.__path__[0]))
 
 
+import signal
+import sys
+import os
+def signal_handler(sig, frame):
+    print("Killing docker containers...")
+    os.system("docker kill $(docker ps -q)")
+    print("Docker containers be ded")
+    sys.exit(0)
+
+
 class MPTestCase(BaseNetworkTestCase):
     compose_file = '{}/cilantro/tests/vmnet/compose_files/cilantro-nodes.yml'.format(CILANTRO_PATH)
 
@@ -53,7 +63,7 @@ class MPTestCase(BaseNetworkTestCase):
             .format(MPTestCase.testers)
 
         start_msg = '\n' + '#' * 80 + '\n' + '#' * 80
-        start_msg += '\n\t\t\t TEST STARTING\n' + '#' * 80 + '\n' + '#' * 80
+        start_msg += '\n{} STARTING\n'.format(self.id()) + '#' * 80 + '\n' + '#' * 80
         self.log.debug(start_msg)
 
     def tearDown(self):
@@ -85,14 +95,15 @@ class MPTestCase(BaseNetworkTestCase):
 
         # If there are no active testers left and none of them failed, we win
         if len(actives) + len(fails) == 0:
-            self.log.debug("\n\n{0}\n\n\t\t\tTESTERS SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
-                           .format('$' * 120, timeout))
+            self.log.debug("\n\n{0}\n\n{2} SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
+                           .format('$' * 120, round(timeout, 2), self.id()))
         else:
             fail_msg = "\n\nfail_msg:\n{0}\nASSERTIONS TIMED OUT FOR TESTERS: \n\n".format('-' * 120)
             for t in fails + actives:
                 fail_msg += "{}\n".format(t)
             fail_msg += "{0}\n".format('-' * 120)
             self.log.error(fail_msg)
+            time.sleep(0.2)  # block while this message has time to log correctly
             raise Exception()
 
     def _poll_testers(self, timeout) -> tuple:
@@ -140,3 +151,8 @@ class MPTestCase(BaseNetworkTestCase):
             time.sleep(TESTER_POLL_FREQ)
 
         return actives, passives, fails, timeout
+
+
+# TODO find him a better home
+if MPTestCase.vmnet_test_active:
+    signal.signal(signal.SIGINT, signal_handler)
