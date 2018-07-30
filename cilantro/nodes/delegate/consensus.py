@@ -1,4 +1,3 @@
-from cilantro import Constants
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallet import Wallet
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
@@ -6,7 +5,7 @@ from cilantro.protocol.statemachine import *
 from cilantro.messages import *
 from cilantro.db import *
 from cilantro.constants.zmq_filters import delegate_delegate
-from cilantro.constants.testnet import majority
+from cilantro.constants.testnet import majority, delegates
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
@@ -17,7 +16,7 @@ DelegateConsensusState = "DelegateConsensusState"
 class DelegateConsensusState(DelegateBaseState):
     """Consensus state is where delegates pass around a merkelized version of their transaction queues, publish them to
     one another, confirm the signature is valid, and then vote/tally the results"""
-    NUM_DELEGATES = len(Constants.Testnet.Delegates)
+    NUM_DELEGATES = len(delegates)
 
     """
     TODO -- move this 'variable setting' logic outside of init. States should have their own constructor, which init
