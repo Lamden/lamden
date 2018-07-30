@@ -45,7 +45,10 @@ class Discovery:
         try:
             await asyncio.wait_for(self.scan_all(list(reversed(all_ips))), timeout=self.max_wait)
         except Exception as e:
-            pass
+            try:
+                self.futures.set_result('done')
+            except:
+                self.futures.cancel()
         log.debug('{}/{} IP addresses in total a of {} subnets of {} regions are available'.format(len(self.available_ips.keys()), len(all_ips), len(self.subnets.keys()), len(ips.keys())))
         return self.available_ips
 
@@ -53,7 +56,7 @@ class Discovery:
         try:
             self.udp_sock.sendto(compose_msg(['discover', os.getenv('HOST_IP', '127.0.0.1')]), (ip, self.crawler_port))
             await asyncio.sleep(self.max_wait)
-        except Exception as e:
+        except:
             pass
 
     async def bound_fetch(self, ip):
@@ -93,4 +96,4 @@ class Discovery:
     def stop_discovery(self):
         self.udp_sock.close()
         self.udp_sock_server.close()
-        self.server.cancel()
+        self.server.set_result('done')

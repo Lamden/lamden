@@ -23,12 +23,13 @@ from cilantro.protocol.statemachine import *
 from cilantro.protocol.interpreters import SenecaInterpreter
 from cilantro.db import *
 from cilantro.messages import *
+from collections import deque
 
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
 DelegateConsensusState = "DelegateConsensusState"
-DelegateCatchupState = "DelegateInterpretState"
+DelegateCatchupState = "DelegateCatchupState"
 
 
 class Delegate(NodeBase):
@@ -38,11 +39,10 @@ class Delegate(NodeBase):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         # Properties shared among all states (ie via self.parent.some_prop)
-        self.pending_sigs, self.pending_txs = [], []  # TODO -- use real queue objects here
-
+        self.pending_sigs, self.pending_txs = deque(), deque()
         self.interpreter = SenecaInterpreter()
+        self.current_hash = BlockStorageDriver.get_latest_block_hash()
 
 
 class DelegateBaseState(State):
@@ -50,8 +50,8 @@ class DelegateBaseState(State):
     def reset_attrs(self):
         pass
 
-    @input(TransactionBase)
-    def handle_tx(self, tx: TransactionBase):
+    @input(OrderingContainer)
+    def handle_tx(self, tx: OrderingContainer):
         self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
         self.parent.pending_txs.append(tx)
         self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
@@ -64,9 +64,24 @@ class DelegateBaseState(State):
 
     @input(NewBlockNotification)
     def handle_new_block_notif(self, notif: NewBlockNotification):
-        self.log.warning("got new block notification, but logic to handle it is not implement in subclass")
-        raise NotImplementedError
-        # TODO -- if we are in anything but consensus state, we need to go to update state
+        self.log.critical("Delegate got new block notification with hash {}\nprev_hash {}]\nand our current hash = {}"
+                          .format(notif.block_hash, notif.prev_block_hash, self.parent.current_hash))
+        self.parent.transition(DelegateCatchupState)
+
+    @input(TransactionReply)
+    def handle_tx_reply(self, reply: TransactionReply, envelope: Envelope):
+        self.log.debug("Delegate current state {} not configured to handle"
+                        "transaction replies".format(self))
+
+    @input(TransactionRequest)
+    def handle_tx_request(self, request: TransactionRequest):
+        self.log.debug("Delegate current state {} not configured to handle"
+                        "transaction requests".format(self))
+
+    @input(BlockMetaDataReply)
+    def handle_blockmeta_reply(self, reply: BlockMetaDataReply):
+        self.log.debug("Delegate current state {} not configured to handle block"
+                       "meta replies".format(self))
 
 
 @Delegate.register_init_state
@@ -101,8 +116,11 @@ class DelegateBootState(DelegateBaseState):
             self.parent.composer.add_dealer(vk=mn_vk)
             self.parent.composer.add_sub(vk=mn_vk, filter=Constants.ZmqFilters.MasternodeDelegate)
 
-        # Once done with boot state, transition to interpret
-        self.parent.transition(DelegateInterpretState)
+        # Sleep for a bit while the daemon sets up these sockets TODO find a more reactive solution
+        time.sleep(16)
+
+        # Once done with boot state, transition to catchup
+        self.parent.transition(DelegateCatchupState)
 
 
 ## TESTING

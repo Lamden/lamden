@@ -9,24 +9,24 @@ from os import listdir
 from os.path import exists
 from threading import Timer
 import asyncio, shutil
-try: from utils import genkeys
-except: from .utils import genkeys
+from cilantro.utils.test.overlay import *
 
 def auth_validate(vk):
     print('Test: Received on validation: {}'.format(vk))
     return True
 
-class TestIronhouse(TestCase):
+class TestIronhouseBase(TestCase):
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         self.sk = '06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a'
         self.vk = '82540bb5a9c84162214c5540d6e43be49bbfe19cf49685660cab608998a65144'
         self.private_key = 'f0ca3d349e56e419e72f11c1fd734ae929a483f9490907d2ded554d9f794f361'
         self.public_key = '73619fa1464ce16802b480a0fd7868ffcce0f7285050a927a07ef1ffdd34c162'
         self.curve_public_key = b'B77YmmOI=O0<)GJ@DJ2Q+&5jzp/absPNMCh?88@S'
         self.ironhouse = Ironhouse(self.sk, wipe_certs=True, auth_validate=auth_validate)
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
 
+class TestConsts(TestIronhouseBase):
     def test_assert_paths(self):
         self.assertEqual(self.ironhouse.base_dir, 'certs/ironhouse', 'key folder is incorrect')
         self.assertEqual(self.ironhouse.keys_dir, 'certs/ironhouse/certificates', 'keys dir is incorrect')
@@ -68,11 +68,7 @@ class TestIronhouse(TestCase):
         self.assertTrue(listdir(self.ironhouse.public_keys_dir), 'public keys dir not created')
         self.assertTrue(exists('{}/ironhouse.key'.format(self.ironhouse.public_keys_dir)), 'public key not generated')
 
-    def test_secure_context_async(self):
-        ctx, auth = self.ironhouse.secure_context(async=True)
-        self.assertIsInstance(ctx, zmq.asyncio.Context, 'asynchronous context created incorrectly')
-        self.assertIsInstance(auth, AsyncioAuthenticator, 'synchronous auth object created incorrectly')
-        auth.stop()
+class TestAuthSync(TestIronhouseBase):
 
     def test_secure_context_sync(self):
         ctx, auth = self.ironhouse.secure_context(async=False)
@@ -114,7 +110,17 @@ class TestIronhouse(TestCase):
         sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=self.curve_public_key)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure SUB socket')
         sec_sock.close()
+
         auth.stop()
+
+class TestAuthAsync(TestIronhouseBase):
+
+    def test_secure_context_async(self):
+        ctx, auth = self.ironhouse.secure_context(async=True)
+        self.assertIsInstance(ctx, zmq.asyncio.Context, 'asynchronous context created incorrectly')
+        self.assertIsInstance(auth, AsyncioAuthenticator, 'synchronous auth object created incorrectly')
+        if not auth._AsyncioAuthenticator__task.done():
+            auth.stop()
 
     def test_secure_socket_async(self):
         ctx, auth = self.ironhouse.secure_context(async=True)
@@ -151,7 +157,8 @@ class TestIronhouse(TestCase):
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure SUB socket')
 
         sec_sock.close()
-        auth.stop()
+        if not auth._AsyncioAuthenticator__task.done():
+            auth.stop()
 
     def test_reconfigure_curve(self):
         ctx, auth = self.ironhouse.secure_context(async=True)
@@ -159,8 +166,10 @@ class TestIronhouse(TestCase):
         sec_sock = self.ironhouse.secure_socket(sock)
         self.assertIn(self.curve_public_key, auth.certs['*'].keys(), 'cannot find cert in auth')
         sec_sock.close()
-        auth.stop()
+        if not auth._AsyncioAuthenticator__task.done():
+            auth.stop()
 
+class TestServer(TestIronhouseBase):
     def test_secure_server(self):
         async def send_async_sec():
             ip = '127.0.0.1'
