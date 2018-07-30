@@ -1,5 +1,7 @@
 from unittest import TestCase
-from cilantro.messages import ReactorCommand, StandardTransactionBuilder, Envelope
+from cilantro.messages.reactor.reactor_command import ReactorCommand
+from cilantro.messages.transaction.standard import StandardTransactionBuilder
+from cilantro.messages.envelope.envelope import Envelope
 from cilantro.protocol.wallet import Wallet
 
 
