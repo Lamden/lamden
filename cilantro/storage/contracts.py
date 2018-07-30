@@ -1,6 +1,6 @@
 from cilantro.logger import get_logger
 from cilantro.utils import Hasher
-from cilantro.db.tables import create_table
+from cilantro.storage.tables import create_table
 import seneca.seneca_internal.storage.easy_db as t
 from seneca.execute_sc import execute_contract, get_read_only_contract_obj as get_exports
 import datetime

@@ -1,12 +1,12 @@
 from cilantro.logger import get_logger
 import seneca.seneca_internal.storage.easy_db as t
-from cilantro.db.tables import create_table
+from cilantro.storage.tables import create_table
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.utils import is_valid_hex, Hasher
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallet import Wallet
-from cilantro.db.db import DB
-from cilantro.db.transactions import encode_tx, decode_tx
+from cilantro.storage.db import DB
+from cilantro.storage.transactions import encode_tx, decode_tx
 from typing import List
 import time
 

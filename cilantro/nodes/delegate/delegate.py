@@ -19,7 +19,7 @@
 
 from cilantro.nodes import NodeBase
 from cilantro.protocol.interpreter import SenecaInterpreter
-from cilantro.db.db import VKBook
+from cilantro.storage.db import VKBook
 
 from cilantro.protocol.statemachine.decorators import input, enter_from_any
 from cilantro.protocol.statemachine.state import State

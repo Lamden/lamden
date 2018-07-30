@@ -3,7 +3,7 @@ from cilantro.protocol.statemachine.state import State
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.protocol.statemachine.decorators import *
-from cilantro.db.db import VKBook
+from cilantro.storage.db import VKBook
 from cilantro.constants.zmq_filters import witness_masternode, witness_delegate
 
 

@@ -11,7 +11,7 @@ from cilantro.messages.block_data.transaction_data import TransactionReply, Tran
 
 from cilantro.constants.zmq_filters import delegate_delegate
 from cilantro.constants.testnet import majority, delegates
-from cilantro.db.db import VKBook, DB, insert
+from cilantro.storage.db import VKBook, DB, insert
 
 
 DelegateBootState = "DelegateBootState"

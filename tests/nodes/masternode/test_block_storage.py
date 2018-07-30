@@ -2,7 +2,7 @@
 # from cilantro.messages import *
 # from cilantro.protocol.structures import MerkleTree
 # from cilantro.protocol.wallets import ED25519Wallet
-# from cilantro.db.delegate import DB, DB_NAME
+# from cilantro.storage.delegate import DB, DB_NAME
 #
 # """
 # 1) MN Gets a block contender containing a the leaves of the tree, and a list of signed merkle trees
@@ -61,7 +61,7 @@
 #         # - A dict of block data, that is a mapping of tx hashes --> tx binaries
 #         # - A list of signatures from the block contender
 #
-#         with DB('{}_{}'.format(DB_NAME, 0)) as db:
+#         with DB('{}_{}'.format(DB_NAME, 0)) as storage:
 #
 #             signature_text = ''
 #
@@ -73,17 +73,17 @@
 #
 #             root = merkle.root().hex()
 #
-#             t = db.tables.blocks
+#             t = storage.tables.blocks
 #
-#             db.execute(t.insert({
+#             storage.execute(t.insert({
 #                 'root': root,
 #                 'tree': merkle_text,
 #                 'signatures': signature_text
 #             }))
 #
 #             for k, v in block_txs.items():
-#                 t = db.tables.transactions
-#                 db.execute(t.insert({
+#                 t = storage.tables.transactions
+#                 storage.execute(t.insert({
 #                     'key': k.hex(),
 #                     'value': v.hex()
 #                 }))

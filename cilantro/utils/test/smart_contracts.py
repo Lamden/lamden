@@ -1,4 +1,4 @@
-from cilantro.db.contracts import run_contract, get_contract_exports
+from cilantro.storage.contracts import run_contract, get_contract_exports
 
 
 """
@@ -38,7 +38,7 @@ def test_contract(*contract_ids):
         def test_fn(self):
             assert hasattr(self, 'contracts_table'), "Use of this decorator expects 'self' to have a property " \
                                                      "'contracts_table', which references the contracts table built by " \
-                                                     "build_contracts_table in db/contracts.py"
+                                                     "build_contracts_table in storage/contracts.py"
             contracts = []
 
             for contract_id in contract_ids:

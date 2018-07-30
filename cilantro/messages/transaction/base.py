@@ -1,6 +1,6 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
-from cilantro.db.db import contract
+from cilantro.storage.db import contract
 from cilantro.utils import lazy_property
 
 from cilantro.protocol.wallet import Wallet

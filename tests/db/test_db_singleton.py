@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.db.db import DB, DBSingletonMeta
+from cilantro.storage.db import DB, DBSingletonMeta
 import os
 import multiprocessing
 

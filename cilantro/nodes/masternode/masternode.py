@@ -18,7 +18,7 @@ from cilantro.messages.block_data.state_update import StateUpdateRequest
 from cilantro.messages.block_data.transaction_data import TransactionReply
 
 from aiohttp import web
-from cilantro.db.db import VKBook
+from cilantro.storage.db import VKBook
 
 MNNewBlockState = 'MNNewBlockState'
 

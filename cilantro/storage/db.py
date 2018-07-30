@@ -1,4 +1,4 @@
-"""The db module for delegate is for bootstrapping the in-memory database for delegate nodes to store scratch and
+"""The storage module for delegate is for bootstrapping the in-memory database for delegate nodes to store scratch and
 execute smart contracts
 
 Functions include:
@@ -27,7 +27,7 @@ from sqlalchemy.sql.selectable import Select
 from sqlalchemy import select, insert, update, delete, and_
 
 
-from cilantro.db.tables import build_tables, _reset_db
+from cilantro.storage.tables import build_tables, _reset_db
 
 DB_NAME = 'cilantro'
 SCRATCH_PREFIX = 'scratch_'
@@ -64,7 +64,7 @@ def contract(tx_type):
 
         @wraps(tx_func)
         def format_query(*args, compile_deltas=True, **kwargs):
-            # Dynamically inject 'tables' into namespace of function to use this context's instance of db
+            # Dynamically inject 'tables' into namespace of function to use this context's instance of storage
             with DB() as db:
                 # print("\ndynamically injecting tables\n")
                 tx_func.__globals__['tables'] = db.tables

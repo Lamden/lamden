@@ -1,6 +1,6 @@
 from cilantro.protocol.interpreter import SenecaInterpreter
-from cilantro.db.db import reset_db, DB
-from cilantro.db.contracts import get_contract_exports
+from cilantro.storage.db import reset_db, DB
+from cilantro.storage.contracts import get_contract_exports
 from cilantro.messages.transaction.contract import ContractTransactionBuilder
 import unittest
 from unittest import TestCase

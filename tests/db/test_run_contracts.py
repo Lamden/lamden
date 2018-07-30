@@ -1,12 +1,12 @@
-from cilantro.db.contracts import run_contract
-from cilantro.db.tables import build_tables
+from cilantro.storage.contracts import run_contract
+from cilantro.storage.tables import build_tables
 from unittest import TestCase
 import unittest
 from datetime import datetime
 from cilantro.logger import get_logger
 from seneca.execute_sc import execute_contract
 from seneca.seneca_internal.storage.mysql_executer import Executer
-from cilantro.db.templating import ContractTemplate
+from cilantro.storage.templating import ContractTemplate
 
 
 log = get_logger("TestRunner")
@@ -57,7 +57,7 @@ class TestRunContracts(TestCase):
 
         run_contract(self.ex, tables.contracts, code_str=USING_CURRENCY_CODE, user_id='DAVIS')
 
-       # TODO assert that currency transfer actually happened (do raw db queries or something)
+       # TODO assert that currency transfer actually happened (do raw storage queries or something)
 
     def test_run_currency_with_template(self):
         tables = build_tables(self.ex, should_drop=True)

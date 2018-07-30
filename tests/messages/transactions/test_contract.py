@@ -1,7 +1,7 @@
 from unittest import TestCase
 from cilantro.messages.transaction.contract import ContractTransactionBuilder
 from cilantro.protocol.wallet import Wallet
-from cilantro.db.templating import ContractTemplate
+from cilantro.storage.templating import ContractTemplate
 
 
 class TestContractTransaction(TestCase):

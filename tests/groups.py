@@ -45,7 +45,7 @@ OVERLAY_TESTS = [
 ]
 
 DB_TESTS = [
-    'tests.db'
+    'tests.storage'
 ]
 
 SMART_CONTRACT_TESTS = [

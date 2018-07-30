@@ -1,10 +1,10 @@
-from cilantro.db.contracts import run_contract
+from cilantro.storage.contracts import run_contract
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.logger import get_logger
 from collections import deque
 from seneca.seneca_internal.storage.mysql_spits_executer import Executer
-from cilantro.db.tables import DB_NAME
-from cilantro.db.db import DB
+from cilantro.storage.tables import DB_NAME
+from cilantro.storage.db import DB
 from typing import List
 
 class SenecaInterpreter:

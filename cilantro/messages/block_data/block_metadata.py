@@ -2,7 +2,7 @@ from cilantro.messages.base.base_json import MessageBase
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.utils import validate_hex
 from cilantro.utils import lazy_property
-from cilantro.db.blocks import BlockStorageDriver
+from cilantro.storage.blocks import BlockStorageDriver
 from typing import List
 
 import capnp
@@ -13,7 +13,7 @@ class BlockMetaData(MessageBase):
     """
     This class acts a structure that holds all information necessary to validate and build a block. In particular, this
     means the information carried in this class provide everything an actor needs to insert a new entry into the
-    'blocks' table (see schema specified in db/blocks.py). It DOES NOT contain the actual transactions associated with
+    'blocks' table (see schema specified in storage/blocks.py). It DOES NOT contain the actual transactions associated with
     a block, but rather the Merkle leaves of the block (ie hashes of the block's transactions). After a delegate
     parses this class, it must request a TransactionRequest to get the actual raw transaction data.
     """

@@ -2,7 +2,7 @@ from cilantro.protocol.overlay.discovery import Discovery
 from cilantro.protocol.overlay.network import Network
 from cilantro.logger import get_logger
 import os, asyncio, time
-from cilantro.db.db import VKBook
+from cilantro.storage.db import VKBook
 from cilantro.utils import ErrorWithArgs
 
 log = get_logger(__name__)

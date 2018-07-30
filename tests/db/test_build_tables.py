@@ -1,10 +1,10 @@
 from unittest import TestCase
 from seneca.seneca_internal.storage.mysql_executer import Executer
-from cilantro.db.blocks import *
-from cilantro.db.contracts import *
-from cilantro.db.contracts import _read_contract_files, _contract_id_for_filename, _lookup_contract_info
-from cilantro.db.db import DBSingletonMeta
-from cilantro.db.tables import build_tables
+from cilantro.storage.blocks import *
+from cilantro.storage.contracts import *
+from cilantro.storage.contracts import _read_contract_files, _contract_id_for_filename, _lookup_contract_info
+from cilantro.storage.db import DBSingletonMeta
+from cilantro.storage.tables import build_tables
 import unittest
 import time
 
