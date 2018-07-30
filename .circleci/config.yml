@@ -18,7 +18,7 @@ jobs:
       - run:
           name: Install Cilantro Requirements
           command: |
-             pip install -r requirements.txt --no-cache-dir --upgrade
+             pip install -r requirements.txt
              sudo apt install -y mysql-client
 
 #      # This should go into custom primary image, here's only for the sake of explanation
