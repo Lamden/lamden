@@ -13,10 +13,10 @@ services:
       context: ${LOCAL_PATH}/cilantro
       dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     image: cilantro_base.dev
-    volumes:
-      - type: bind
-        source: /storage/docker/mysql-datadir
-        target: /var/lib/mysql
+    # volumes:
+    #   - type: bind
+    #     source: /storage/docker/mysql-datadir
+    #     target: /var/lib/mysql
   mgmt:
     ip: 172.29.5.0
     stdin_open: true

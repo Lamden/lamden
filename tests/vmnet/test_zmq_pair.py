@@ -17,23 +17,26 @@ def wrap_func(fn, *args, **kwargs):
 
 
 def start_client():
-    import zmq
+    import zmq, time
     from cilantro.logger import get_logger
 
     log = get_logger("ZMQ Client")
     ctx = zmq.Context()
     socket = ctx.socket(socket_type=zmq.PAIR)
-    server_addr = TestZMQPair.ports['node_1']['10200']
-    url = "tcp://{}".format(server_addr)
+    url = "tcp://172.29.5.1:10200"
 
     log.info("CLIENT CONNECTING TO {}".format(url))
     socket.connect(url)
 
-    while True:
+    t = 0
+    while t < 5:
         log.debug("waiting for msg...")
         msg = socket.recv_pyobj()
         log.info("got msg {}".format(msg))
+        time.sleep(1)
+        t += 1
 
+    socket.close()
 
 def start_server():
     import os
@@ -83,12 +86,8 @@ class TestZMQPair(BaseNetworkTestCase):
     @vmnet_test
     def test_zmq_pair(self):
         log = get_logger("TestZMQ")
-        # self.execute_python('node_2', start_client, async=True)
+        self.execute_python('node_2', start_client, async=True, profiling=True)
         self.execute_python('node_1', start_server, async=True, profiling=True)
-
-        log.debug("about to start client ")
-        start_client()
-
         input("\n\nEnter any key to terminate")
 
 
