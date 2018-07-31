@@ -26,7 +26,7 @@ class ReactorDaemon:
         self.url = url
 
         # Comment out below for more granularity in debugging
-        self.log.setLevel(logging.INFO)
+        # self.log.setLevel(logging.INFO)
 
         # TODO optimize cache
         self.ip_cache = CappedDict(max_size=64)
@@ -46,7 +46,10 @@ class ReactorDaemon:
         self.context, auth = self.dht.network.ironhouse.secure_context(async=True)
         self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
         self.socket.connect(self.url)
+        import time
+        time.sleep(16)
 
+        self.log.important(self.dht.network.bootstrappableNeighbors())
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name
 
@@ -116,6 +119,7 @@ class ReactorDaemon:
         """
         assert isinstance(cmd, ReactorCommand), "Cannot execute cmd {} that is not a ReactorCommand object".format(cmd)
 
+        self.log.debug("raghu *** Executing command {}".format(cmd))
         cmd_args = self._parse_cmd(cmd)
         if cmd_args:
             executor_name, executor_func, kwargs = cmd_args
@@ -145,6 +149,7 @@ class ReactorDaemon:
         # Remove class_name and func_name from kwargs. We just need these to lookup the function to call
         del kwargs['class_name']
         del kwargs['func_name']
+        #timer.sleep(2)
 
         # Add envelope to kwargs if its in the reactor command
         if cmd.envelope_binary:
@@ -157,6 +162,7 @@ class ReactorDaemon:
 
             # Check if URL has a VK inside
             vk = IPUtils.get_vk(url)
+            self.log.info("raghu ** _parse_cmd: exe_nm {} exe_fn {} url {} vk {}".format(executor_name, executor_func, url, vk))
             if vk:
                 if vk == self.dht.network.ironhouse.vk:
                     ip = self.dht.ip
@@ -175,6 +181,7 @@ class ReactorDaemon:
 
     async def _lookup_ip(self, cmd, url, vk, *args, **kwargs):
         ip, node = None, None
+        self.log.debug("** raghu cmd {} url {} vk {}".format(cmd, url, vk))
         try:
             node = await self.dht.network.lookup_ip(vk)
         except Exception as e:

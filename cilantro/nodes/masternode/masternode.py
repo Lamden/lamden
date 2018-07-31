@@ -69,7 +69,7 @@ class MNBaseState(State):
 
     @input_request(BlockMetaDataRequest)
     def handle_blockmeta_request(self, request: BlockMetaDataRequest):
-        self.log.debug("Masternode received BlockMetaDataRequest: {}".format(request))
+        self.log.important("Masternode received BlockMetaDataRequest: {}".format(request))
 
         # Get a list of block hashes up until this most recent block
         # TODO get_child_block_hashes return an error/assertion/something if block cannot be found
@@ -100,6 +100,7 @@ class MNBootState(MNBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
+        time.sleep(10)
         self.log.debug("MN IP: {}".format(self.parent.ip))
 
         # Add publisher socket
