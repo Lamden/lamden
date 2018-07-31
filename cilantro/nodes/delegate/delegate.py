@@ -17,14 +17,26 @@
         another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
 """
 
-from cilantro import Constants
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import *
-from cilantro.protocol.interpreters import SenecaInterpreter
-from cilantro.db import *
-from cilantro.messages import *
+from cilantro.protocol.interpreter import SenecaInterpreter
+from cilantro.storage.db import VKBook
+
+from cilantro.protocol.states.decorators import input, enter_from_any
+from cilantro.protocol.states.state import State
+
+from cilantro.messages.transaction.base import TransactionBase
+from cilantro.messages.consensus.merkle_signature import MerkleSignature
+from cilantro.messages.transaction.ordering import OrderingContainer
+from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
+from cilantro.messages.envelope.envelope import Envelope
+from cilantro.messages.block_data.block_metadata import BlockMetaDataReply, NewBlockNotification
+
+from cilantro.constants.zmq_filters import delegate_delegate, witness_delegate, masternode_delegate
+from cilantro.protocol.interpreter import SenecaInterpreter
+from cilantro.storage.blocks import BlockStorageDriver
 from collections import deque
 
+import time
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
@@ -99,11 +111,11 @@ class DelegateBootState(DelegateBaseState):
             if delegate_vk == self.parent.verifying_key:
                 continue
 
-            self.parent.composer.add_sub(vk=delegate_vk, filter=Constants.ZmqFilters.DelegateDelegate)
+            self.parent.composer.add_sub(vk=delegate_vk, filter=delegate_delegate)
 
         # Sub to witnesses
         for witness_vk in VKBook.get_witnesses():
-            self.parent.composer.add_sub(vk=witness_vk, filter=Constants.ZmqFilters.WitnessDelegate)
+            self.parent.composer.add_sub(vk=witness_vk, filter=witness_delegate)
 
         # Pub on our own url
         self.parent.composer.add_pub(ip=self.parent.ip)
@@ -114,7 +126,7 @@ class DelegateBootState(DelegateBaseState):
         # Add dealer and sub socket for Masternodes
         for mn_vk in VKBook.get_masternodes():
             self.parent.composer.add_dealer(vk=mn_vk)
-            self.parent.composer.add_sub(vk=mn_vk, filter=Constants.ZmqFilters.MasternodeDelegate)
+            self.parent.composer.add_sub(vk=mn_vk, filter=masternode_delegate)
 
         # Sleep for a bit while the daemon sets up these sockets TODO find a more reactive solution
         time.sleep(16)

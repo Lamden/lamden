@@ -1,14 +1,11 @@
-import unittest, cilantro, asyncio, socket, time, os, select
+import unittest, asyncio, socket, time, os
 from unittest import TestCase
 from unittest.mock import patch
 from cilantro.protocol.overlay.network import Network
 from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.overlay.ironhouse import Ironhouse
 from cilantro.protocol.overlay.protocol import KademliaProtocol
-from cilantro.protocol.overlay.storage import ForgetfulStorage
 from cilantro.protocol.overlay.utils import digest
-from cilantro.db import VKBook
-from os.path import exists, dirname
 from threading import Timer
 from cilantro.utils.test.overlay import *
 

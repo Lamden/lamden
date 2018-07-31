@@ -1,4 +1,5 @@
-from cilantro.messages import MessageBase
+from cilantro.messages.base.base import MessageBase
+# from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.utils import validate_hex
 from cilantro.utils import lazy_property
@@ -12,7 +13,7 @@ class BlockMetaData(MessageBase):
     """
     This class acts a structure that holds all information necessary to validate and build a block. In particular, this
     means the information carried in this class provide everything an actor needs to insert a new entry into the
-    'blocks' table (see schema specified in db/blocks.py). It DOES NOT contain the actual transactions associated with
+    'blocks' table (see schema specified in storage/blocks.py). It DOES NOT contain the actual transactions associated with
     a block, but rather the Merkle leaves of the block (ie hashes of the block's transactions). After a delegate
     parses this class, it must request a TransactionRequest to get the actual raw transaction data.
     """
@@ -34,7 +35,7 @@ class BlockMetaData(MessageBase):
         :return: None
         :raises: An exception if validation fails
         """
-        from cilantro.db.blocks import BlockStorageDriver  # imported here to avoid cyclic import (im so sorry --davis)
+        from cilantro.storage.blocks import BlockStorageDriver
 
         block_data = self.block_dict()
         actual_hash = block_data.pop('hash')
@@ -75,7 +76,8 @@ class BlockMetaData(MessageBase):
         :return: A dictionary, containing a key for each column in the blocks table. The 'hash' column can be omitted
         by passing include_hash=False
         """
-        from cilantro.db.blocks import BlockStorageDriver  # imported here to avoid cyclic import (im so sorry --davis)
+
+        from cilantro.storage.blocks import BlockStorageDriver
 
         block_data = {
             'block_contender': self.block_contender,

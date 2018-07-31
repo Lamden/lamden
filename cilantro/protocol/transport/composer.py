@@ -1,9 +1,10 @@
-from cilantro import Constants
-from cilantro.messages import MessageBase, ReactorCommand, Envelope
+from cilantro.messages.base.base import MessageBase
 from cilantro.protocol.reactor.interface import ReactorInterface
 from cilantro.protocol.reactor.executor import *
 from cilantro.logger import get_logger
 from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.wallet import Wallet
+from cilantro.constants.ports import pub_sub, router_dealer
 
 """
 The Composer class serves as a high level API for a StateMachine (application layer) to execute networking commands on
@@ -17,7 +18,7 @@ class Composer:
         self.log = get_logger("{}.Composer".format(name))
         self.interface = interface
         self.signing_key = signing_key
-        self.verifying_key = Constants.Protocol.Wallets.get_vk(self.signing_key)
+        self.verifying_key = Wallet.get_vk(self.signing_key)
 
     def _package_msg(self, msg: MessageBase) -> Envelope:
         """
@@ -61,7 +62,7 @@ class Composer:
         only one filter per CONNECT is supported.
         """
         # url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
-        url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
+        url = "tcp://{}:{}".format(ip or vk, pub_sub)
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, filter=filter, url=url, vk=vk)
         self.interface.send_cmd(cmd)
 
@@ -80,7 +81,7 @@ class Composer:
         :param url: The URL of the router that the created dealer socket should CONNECT to.
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
+        url = "tcp://{}:{}".format(ip or vk, pub_sub)
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, url=url)
         self.interface.send_cmd(cmd)
 
@@ -90,7 +91,7 @@ class Composer:
         unsubscribes to 'filter
         :param filter: A string to use as the filter frame. This filter will be unsubscribed.
         """
-        url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
+        url = "tcp://{}:{}".format(ip or vk, pub_sub)
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub_filter.__name__, url=url, filter=filter)
         self.interface.send_cmd(cmd)
 
@@ -119,7 +120,7 @@ class Composer:
         :param url: The URL to publish under.
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
+        url = "tcp://{}:{}".format(ip or vk, pub_sub)
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=url)
         self.interface.send_cmd(cmd)
 
@@ -129,7 +130,7 @@ class Composer:
         :param url: The URL of the router that the created dealer socket should CONNECT to.
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
+        url = "tcp://{}:{}".format(ip or vk, pub_sub)
         cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_pub.__name__, url=url)
         self.interface.send_cmd(cmd)
 
@@ -141,7 +142,7 @@ class Composer:
         :param url: The URL of the router that the created dealer socket should CONNECT to.
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        url = "tcp://{}:{}".format(ip or vk, Constants.Ports.RouterDealer)
+        url = "tcp://{}:{}".format(ip or vk, router_dealer)
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__,
                                         id=self.verifying_key, url=url, vk=vk)
         self.interface.send_cmd(cmd)
@@ -152,7 +153,7 @@ class Composer:
         :param url: The URL the router socket should BIND to
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        url = "tcp://{}:{}".format(ip or vk, Constants.Ports.RouterDealer)
+        url = "tcp://{}:{}".format(ip or vk, router_dealer)
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, url=url)
         self.interface.send_cmd(cmd)
 
@@ -163,7 +164,7 @@ class Composer:
         self.send_request_env(ip=ip, vk=vk, envelope=self._package_msg(message), timeout=timeout)
 
     def send_request_env(self, envelope: Envelope, timeout=0, ip: str='', vk: str=''):
-        url = "tcp://{}:{}".format(ip or vk, Constants.Ports.RouterDealer)
+        url = "tcp://{}:{}".format(ip or vk, router_dealer)
         reply_uuid = EnvelopeAuth.reply_uuid(envelope.meta.uuid)
 
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, url=url,

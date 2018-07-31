@@ -1,6 +1,6 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.base import TransactionBase
-from cilantro.db import VKBook
+from cilantro.storage.db import VKBook
 
 import capnp
 import transaction_capnp

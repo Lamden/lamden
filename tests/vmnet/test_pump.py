@@ -1,9 +1,6 @@
 from vmnet.test.base import *
-import unittest, time, random
-
-
-import vmnet
-
+import unittest, time
+from cilantro.constants.testnet import masternodes, witnesses, delegates
 
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
@@ -12,7 +9,6 @@ def wrap_func(fn, *args, **kwargs):
 
 def run_mn():
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     import os
     import logging
@@ -21,13 +17,12 @@ def run_mn():
     overwrite_logger_level(21)
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
-    sk = Constants.Testnet.Masternodes[0]['sk']
-    NodeFactory.run_masternode(ip=ip, signing_key=sk, should_reset=True)
+    sk = masternodes[0]['sk']
+    NodeFactory.run_masternode(ip=ip, signing_key=sk)
 
 
 def run_witness(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     import os
     import logging
@@ -35,7 +30,7 @@ def run_witness(slot_num):
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(15)
 
-    w_info = Constants.Testnet.Witnesses[slot_num]
+    w_info = witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'], should_reset=True)
@@ -43,7 +38,6 @@ def run_witness(slot_num):
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     import os
     import logging
@@ -51,7 +45,7 @@ def run_delegate(slot_num):
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(21)
 
-    d_info = Constants.Testnet.Delegates[slot_num]
+    d_info = delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'], should_reset=True)

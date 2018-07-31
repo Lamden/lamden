@@ -1,11 +1,9 @@
 from unittest import TestCase
 from unittest import mock
-from cilantro.db import *
-from cilantro.logger import get_logger
-from seneca.execute_sc import execute_contract
+from cilantro.storage.tables import build_tables
 from seneca.smart_contract_user_libs import stdlib as std
 from seneca.seneca_internal.storage.mysql_executer import Executer
-from cilantro.db.contracts import run_contract, get_contract_exports
+from cilantro.storage.contracts import get_contract_exports
 
 def contract(*contract_ids):
     def decorator(fn, *args, **kwargs):

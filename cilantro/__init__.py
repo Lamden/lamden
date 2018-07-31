@@ -1,9 +1,10 @@
-import json
 import os
 from decimal import getcontext
 import sys
 import hashlib
 from os.path import dirname, abspath
+from cilantro.constants.protocol import sig_figs
+
 os.environ['LOCAL_PATH'] = abspath(dirname(dirname(dirname(__file__))))
 
 def snake_to_pascal(s):
@@ -17,11 +18,10 @@ def gen_keypair(url):
     """
     Computes a wallet key pair as a deterministic function of url
     """
-    # from cilantro.protocol.wallets import ED25519Wallet
-    import cilantro.protocol.wallets.ed25519
+    from cilantro.protocol.wallet import Wallet
     h = hashlib.sha256()
     h.update(url.encode())
-    return cilantro.protocol.wallets.ed25519.ED25519Wallet.new(seed=h.digest())
+    return Wallet.new(seed=h.digest())
 
 def config_testnet(testnet: dict) -> dict:
     """
@@ -80,64 +80,45 @@ def config_testnet(testnet: dict) -> dict:
     testnet['all-nodes'] = all_nodes
     return testnet
 
-    # Add masternode wallet and url to all_nodes
-    # mn_url = testnet['masternode']['internal-url']
 
 
-
-path = os.path.join(os.path.dirname(__file__), 'config.json')
-config = json.load(open(path))
+# path = os.path.join(os.path.dirname(__file__), 'config.json')
+# config = json.load(open(path))
 
 # Add /messages/capnp to Python path. We need these loaded for capnp magic imports
 sys.path.append(os.path.dirname(__file__) + '/messages/capnp')
 
 
-class Constants:
-    classes = []
-    json = None
+# class Constants:
+#     classes = []
+#     json = None
+#
+#     @classmethod
+#     def new_class(cls, name, **kwargs):
+#         c = type(name, (cls,), kwargs)
+#         globals()[name] = c
+#         return c
+#
+#     @classmethod
+#     def add_attr(cls, name, value):
+#         setattr(cls, name, value)
+#
+#     @classmethod
+#     def build_from_json(cls, d, last_class=None):
+#         for k in d.keys():
+#             if type(d[k]) == dict:
+#                 new_class = cls.new_class(name=snake_to_pascal(k))
+#                 cls.add_attr(name=snake_to_pascal(k), value=new_class)
+#                 cls.classes.append(new_class)
+#                 cls.build_from_json(d[k], last_class=new_class)
+#             else:
+#                 setattr(last_class, snake_to_pascal(k), d[k])
+#
+#     @classmethod
+#     def __str__(cls):
+#         return str(cls.json)
+#
+# Constants.build_from_json(config)
+# Constants.json = config
 
-    @classmethod
-    def new_class(cls, name, **kwargs):
-        c = type(name, (cls,), kwargs)
-        globals()[name] = c
-        return c
-
-    @classmethod
-    def add_attr(cls, name, value):
-        setattr(cls, name, value)
-
-    @classmethod
-    def build_from_json(cls, d, last_class=None):
-        for k in d.keys():
-            if type(d[k]) == dict:
-                new_class = cls.new_class(name=snake_to_pascal(k))
-                cls.add_attr(name=snake_to_pascal(k), value=new_class)
-                cls.classes.append(new_class)
-                cls.build_from_json(d[k], last_class=new_class)
-            else:
-                setattr(last_class, snake_to_pascal(k), d[k])
-
-    @classmethod
-    def __str__(cls):
-        return str(cls.json)
-
-# Constants.load_to_env(config)
-Constants.build_from_json(config)
-# print(os.environ)
-Constants.json = config
-
-c = __import__('cilantro.protocol.proofs', fromlist=[Constants.Protocol.Proofs])
-Constants.Protocol.Proofs = getattr(c, Constants.Protocol.Proofs)
-
-c = __import__('cilantro.protocol.wallets', fromlist=[Constants.Protocol.Wallets])
-Constants.Protocol.Wallets = getattr(c, Constants.Protocol.Wallets)
-
-c = __import__('cilantro.protocol.interpreters', fromlist=[Constants.Protocol.Interpreters])
-Constants.Protocol.Interpreters = getattr(c, Constants.Protocol.Interpreters)
-
-# Config fixed point decimals
-getcontext().prec = Constants.Protocol.SignificantDigits
-
-# Load all messages classes. We need Python to interpret all of the class definitions, so the metaprogramming hooks
-# are executed properly and the MessageBase registry is created (the MessageBase.registry)
-# from cilantro.messages import *
+getcontext().prec = sig_figs

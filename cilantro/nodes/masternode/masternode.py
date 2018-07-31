@@ -6,12 +6,23 @@
     They have no say as to what is 'right,' as governance is ultimately up to the network. However, they can monitor
     the behavior of nodes and tell the network who is misbehaving.
 """
-from cilantro import Constants
+from cilantro.constants.zmq_filters import witness_masternode
 from cilantro.nodes import NodeBase
-from cilantro.protocol.statemachine import *
-from cilantro.messages import *
+
+from cilantro.protocol.states.decorators import input_request, input, enter_from_any, exit_to_any, enter_from, input_timeout
+from cilantro.protocol.states.state import State, StateInput
+
+from cilantro.messages.transaction.container import TransactionContainer
+from cilantro.messages.consensus.block_contender import BlockContender
+from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
+from cilantro.messages.block_data.block_metadata import BlockMetaDataRequest, BlockMetaDataReply
+from cilantro.messages.envelope.envelope import Envelope
+from cilantro.storage.blocks import BlockStorageDriver, BlockMetaData
+from cilantro.messages.transaction.ordering import OrderingContainer
+from cilantro.messages.transaction.base import TransactionBase
+
 from aiohttp import web
-from cilantro.db import *
+from cilantro.storage.db import VKBook
 
 
 MNNewBlockState = 'MNNewBlockState'
@@ -43,8 +54,8 @@ class MNBaseState(State):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
         oc = OrderingContainer.create(tx=tx, masternode_vk=self.parent.verifying_key)
-        self.log.debug("mn about to pub for tx {}".format(oc))  # debug line
-        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.WitnessMasternode, message=oc)
+        self.log.debug("mn about to pub for tx {}".format(tx))  # debug line
+        self.parent.composer.send_pub_msg(filter=witness_masternode, message=tx)
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):

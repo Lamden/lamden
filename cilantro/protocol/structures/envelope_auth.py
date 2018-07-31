@@ -1,19 +1,22 @@
-from cilantro import Constants
 from cilantro.utils import Hasher
-from cilantro.messages import MessageBase, Seal, MessageMeta
+
+from cilantro.messages.envelope.seal import Seal
+from cilantro.messages.envelope.message_meta import MessageMeta
+from cilantro.messages.base.base import MessageBase
+
 import math
+from cilantro.constants.protocol import max_uuid
 
 """
 TODO investigate why below is setting var 'W' to the string 'ED25519Wallet' instead of the actual object (as of 5/21)
 appears that this is the only place that happens. Must have something to do with order of imports, and Constants
 not being 'built' properly by the time this is accessed
 """
-# W = Constants.Protocol.Wallets
 
-from cilantro.protocol.wallets import ED25519Wallet
-W = ED25519Wallet  # hack until we fix above
+from cilantro.protocol.wallet import Wallet
+W = Wallet  # hack until we fix above
 
-UUID_SIZE = int(math.log2(Constants.Protocol.MaxUuid))  # size of UUID field on messagemeta struct as number of bits
+UUID_SIZE = int(math.log2(max_uuid))  # size of UUID field on messagemeta struct as number of bits
 
 
 class EnvelopeAuth:
@@ -61,7 +64,7 @@ class EnvelopeAuth:
         rep_uuid = int.from_bytes(int_binary, byteorder='little')  # capnp int fields encoded in little endian
 
         # This assertion is for debugging only. Remove for production.
-        assert rep_uuid <= Constants.Protocol.MaxUuid, "OH NO! Got reply uuid greater than MaxUUID! LOGIC ERROR!!!"
+        assert rep_uuid <= max_uuid, "OH NO! Got reply uuid greater than MaxUUID! LOGIC ERROR!!!"
 
         return rep_uuid
 

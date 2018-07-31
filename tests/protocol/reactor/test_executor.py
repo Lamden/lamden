@@ -1,5 +1,4 @@
 from unittest import TestCase
-from cilantro.protocol.reactor.executor import *
 
 
 class TestExecutor(TestCase):

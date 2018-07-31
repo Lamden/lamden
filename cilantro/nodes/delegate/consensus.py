@@ -1,11 +1,18 @@
-from cilantro import Constants
 from cilantro.protocol.structures import MerkleTree
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol.wallet import Wallet
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
-from cilantro.protocol.statemachine import *
-from cilantro.messages import *
-from cilantro.db import *
 
+from cilantro.protocol.states.decorators import input, enter_from_any, enter_from, exit_to_any, input_request
+
+from cilantro.messages.consensus.merkle_signature import MerkleSignature
+from cilantro.messages.consensus.block_contender import BlockContender
+from cilantro.messages.block_data.block_metadata import NewBlockNotification
+from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
+
+from cilantro.constants.zmq_filters import delegate_delegate
+from cilantro.constants.testnet import majority, delegates
+from cilantro.storage.db import VKBook
+from cilantro.storage.blocks import BlockStorageDriver
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
@@ -19,7 +26,8 @@ class DelegateConsensusState(DelegateBaseState):
     Consensus state is where delegates pass around a merkelized version of their transaction queues, publish them to
     one another, confirm the signature is valid, and then vote/tally the results
     """
-    NUM_DELEGATES = len(Constants.Testnet.Delegates)
+
+    NUM_DELEGATES = len(delegates)
 
     def reset_attrs(self):
         self.signatures = []
@@ -41,13 +49,13 @@ class DelegateConsensusState(DelegateBaseState):
         self.log.debugv("Delegate got tx from interpreter queue: {}".format(all_tx))
         self.merkle = MerkleTree.from_raw_transactions(all_tx)
         self.log.debugv("Delegate got merkle hash {}".format(self.merkle.root_as_hex))
-        self.signature = ED25519Wallet.sign(self.parent.signing_key, self.merkle.root)
+        self.signature = Wallet.sign(self.parent.signing_key, self.merkle.root)
 
         # Create merkle signature message and publish it
         merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now',
                                             sender=self.parent.verifying_key)
         self.log.debugv("Broadcasting signature {}".format(self.signature))
-        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.DelegateDelegate, message=merkle_sig)
+        self.parent.composer.send_pub_msg(filter=delegate_delegate, message=merkle_sig)
 
         # Now that we've computed/composed the merkle tree hash, validate all our pending signatures
         for sig in [s for s in self.parent.pending_sigs if self.validate_sig(s)]:
@@ -83,7 +91,7 @@ class DelegateConsensusState(DelegateBaseState):
         self.log.debug("delegate has {} signatures out of {} total delegates"
                        .format(len(self.signatures), self.NUM_DELEGATES))
 
-        if len(self.signatures) >= Constants.Testnet.Majority:
+        if len(self.signatures) >= majority:
             self.log.important("Delegate in consensus!")
             self.in_consensus = True
 

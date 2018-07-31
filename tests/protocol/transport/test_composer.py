@@ -1,12 +1,10 @@
-from cilantro import Constants
 from unittest import TestCase
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock
 from cilantro.protocol.transport import Composer
-from cilantro.messages import Envelope, MessageBase
 from cilantro.protocol.reactor import ReactorInterface
+from cilantro.protocol.wallet import Wallet
 
-
-W = Constants.Protocol.Wallets
+W = Wallet
 TESTER_RETURN_VAL = b'yo'
 
 # class TestComposer(TestCase):

@@ -2,14 +2,14 @@ import asyncio, os, logging
 import zmq.asyncio
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor.executor import Executor
-from cilantro.messages import ReactorCommand
-from cilantro import Constants
+from cilantro.messages.reactor.reactor_command import ReactorCommand
 from cilantro.protocol.overlay.dht import DHT
 from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
 import signal, sys
-from cilantro.protocol.statemachine import *
+from cilantro.protocol.states.state import StateInput
+from cilantro.constants.overlay_network import alpha, ksize, max_peers
 import inspect
 
 import uvloop
@@ -40,8 +40,8 @@ class ReactorDaemon:
         # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
-                       alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
-                       max_peers=Constants.Overlay.MaxPeers, block=False, cmd_cli=False, wipe_certs=True)
+                       alpha=alpha, ksize=ksize,
+                       max_peers=max_peers, block=False, cmd_cli=False, wipe_certs=True)
 
         self.context, auth = self.dht.network.ironhouse.secure_context(async=True)
         self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
@@ -99,15 +99,15 @@ class ReactorDaemon:
         """
         self.log.info("[DEAMON PROC] Tearing down Reactor Daemon process")
 
-        self.log.warning("Closing pair socket")
-        self.socket.close()
+#        self.log.warning("Closing pair socket")
+#        self.socket.close()
 
-        self.log.warning("Tearing down executors")
-        for e in self.executors.values():
-            e.teardown()
+#        self.log.warning("Tearing down executors")
+        #for e in self.executors.values():
+         #   e.teardown()
 
-        self.log.warning("Closing event loop")
-        self.loop.call_soon_threadsafe(self.loop.stop)
+#        self.log.warning("Closing event loop")
+#        self.loop.call_soon_threadsafe(self.loop.stop)
 
     def _execute_cmd(self, cmd: ReactorCommand):
         """

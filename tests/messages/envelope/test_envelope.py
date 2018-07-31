@@ -1,10 +1,14 @@
-from cilantro import Constants
 from unittest import TestCase
 from unittest.mock import MagicMock
-from cilantro.messages import Envelope, MessageMeta, Seal, MessageBase, StandardTransactionBuilder
-from cilantro.protocol.structures import EnvelopeAuth
 
-W = Constants.Protocol.Wallets
+from cilantro.messages.envelope.envelope import Envelope, MessageMeta, Seal
+from cilantro.messages.base.base import MessageBase
+from cilantro.messages.transaction.standard import StandardTransactionBuilder
+
+from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.wallet import Wallet
+
+W = Wallet
 
 
 class TestEnvelopefromObjects(TestCase):

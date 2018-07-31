@@ -1,1 +1,1 @@
-from cilantro.protocol import statemachine
+from cilantro.protocol import states

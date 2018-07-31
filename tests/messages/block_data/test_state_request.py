@@ -1,4 +1,4 @@
-from cilantro.messages import StateUpdateRequest
+from cilantro.messages.block_data.state_update import StateUpdateRequest
 from unittest import TestCase
 
 

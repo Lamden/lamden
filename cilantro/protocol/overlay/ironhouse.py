@@ -8,8 +8,8 @@ In practice this would be done by hand or some out-of-band process.
 Author: Chris Laws
 """
 
-import os, shutil, hashlib, datetime
-import asyncio, zmq, uuid, cilantro
+import os, shutil, datetime
+import asyncio, zmq
 import zmq.auth, zmq.asyncio
 from os.path import basename, splitext
 from zmq.auth.thread import ThreadAuthenticator
@@ -18,7 +18,7 @@ from zmq.utils.z85 import decode, encode
 from nacl.public import PrivateKey, PublicKey
 from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
-from cilantro.db import VKBook
+from cilantro.storage.db import VKBook
 
 from cilantro.logger import get_logger
 

@@ -1,4 +1,4 @@
-from cilantro.messages import MessageBase
+from cilantro.messages.base.base import MessageBase
 from cilantro.utils import lazy_property, set_lazy_property, is_valid_hex
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 from cilantro.protocol.structures import MerkleTree
