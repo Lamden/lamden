@@ -5,10 +5,11 @@ from cilantro.storage.blocks import * # Generally, * imports are bad, but this t
 from cilantro.storage.db import reset_db, DB
 from cilantro.messages.consensus.block_contender import build_test_contender
 from cilantro.messages.transaction.base import build_test_transaction
-from cilantro.messages import BlockMetaData, NewBlockNotification
+from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
 from cilantro.utils import Hasher, int_to_bytes
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.protocol.wallet import Wallet
+from cilantro.constants.testnet import masternodes
 import secrets
 import random
 
@@ -439,7 +440,7 @@ class TestBlockStorageDriver(TestCase):
             self.assertEquals(raw_tx, retrieved_tx)
 
     def test_get_raw_transactions_with_multiple_hashes(self):
-        mn_sk = Constants.Testnet.Masternodes[0]['sk']
+        mn_sk = masternodes[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions = [build_test_transaction().serialize() for _ in range(4)]
         hashes = list(map(Hasher.hash, raw_transactions))
@@ -480,7 +481,7 @@ class TestBlockStorageDriver(TestCase):
             self.assertTrue(tx in added_txs)
 
     def test_get_raw_transaction_from_multiple_blocks(self):
-        mn_sk = Constants.Testnet.Masternodes[0]['sk']
+        mn_sk = masternodes[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions1 = [build_test_transaction().serialize() for _ in range(4)]
         raw_transactions2 = [build_test_transaction().serialize() for _ in range(4)]
@@ -504,7 +505,7 @@ class TestBlockStorageDriver(TestCase):
         self.assertTrue(h is None)
 
     def test_get_child_block_hashes(self):
-        mn_sk = Constants.Testnet.Masternodes[0]['sk']
+        mn_sk = masternodes[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions1 = [build_test_transaction().serialize() for _ in range(4)]
         raw_transactions2 = [build_test_transaction().serialize() for _ in range(4)]

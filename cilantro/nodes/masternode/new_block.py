@@ -10,7 +10,7 @@ from cilantro.storage.blocks import List, BlockStorageDriver, BlockStorageExcept
 from cilantro.protocol.states.decorators import enter_from_any, enter_from, input_request, input_timeout, input
 
 from cilantro.messages.consensus.block_contender import BlockContender
-from cilantro.messages.consensus.new_block_notification import NewBlockNotification
+from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.block_data.transaction_data import TransactionRequest, TransactionReply
 from cilantro.messages.envelope.envelope import Envelope
 

@@ -26,11 +26,10 @@ from cilantro.protocol.states.state import State
 
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
-from cilantro.messages.consensus.new_block_notification import NewBlockNotification
 from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.block_data.block_metadata import BlockMetaDataReply
+from cilantro.messages.block_data.block_metadata import BlockMetaDataReply, NewBlockNotification
 
 from cilantro.constants.zmq_filters import delegate_delegate, witness_delegate, masternode_delegate
 from cilantro.protocol.interpreter import SenecaInterpreter

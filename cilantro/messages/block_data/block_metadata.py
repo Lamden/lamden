@@ -1,5 +1,5 @@
 from cilantro.messages.base.base import MessageBase
-from cilantro.storage.blocks import BlockStorageDriver
+# from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.utils import validate_hex
 from cilantro.utils import lazy_property
@@ -35,6 +35,8 @@ class BlockMetaData(MessageBase):
         :return: None
         :raises: An exception if validation fails
         """
+        from cilantro.storage.blocks import BlockStorageDriver
+
         block_data = self.block_dict()
         actual_hash = block_data.pop('hash')
 
@@ -74,6 +76,8 @@ class BlockMetaData(MessageBase):
         :return: A dictionary, containing a key for each column in the blocks table. The 'hash' column can be omitted
         by passing include_hash=False
         """
+
+        from cilantro.storage.blocks import BlockStorageDriver
 
         block_data = {
             'block_contender': self.block_contender,

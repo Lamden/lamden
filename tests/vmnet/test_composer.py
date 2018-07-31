@@ -1,22 +1,21 @@
 from vmnet.test.base import *
-from cilantro import Constants
 from cilantro.utils.test import MPComposer
 import unittest, time, random
+from cilantro.constants.testnet import delegates
 
 def publisher():
     SLEEP_TIME = 1
     MAX_TIME = 10
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro import Constants
     from cilantro.utils.test import MPComposer
-    from cilantro.messages import StandardTransactionBuilder
+    from cilantro.messages.transaction.standard import StandardTransactionBuilder
     import time, os
 
     log = get_logger("Publisher")
-    sub_info = Constants.Testnet.Delegates[1]
+    sub_info = delegates[1]
     sub_info['ip'] = os.getenv('HOST_IP')
 
-    d_info = Constants.Testnet.Delegates[0]
+    d_info = delegates[0]
     d_info['ip'] = os.getenv('HOST_IP')
 
     pub = MPComposer(sk=d_info['sk'])
@@ -43,17 +42,15 @@ def subscriber():
     SLEEP_TIME = 1
     MAX_TIME = 10
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro import Constants
     from cilantro.utils.test import MPComposer
-    from cilantro.messages import StandardTransactionBuilder
     import time, os
 
     log = get_logger("Subscriber")
 
-    d_info = Constants.Testnet.Delegates[1]
+    d_info = delegates[1]
     d_info['ip'] = os.getenv('HOST_IP')
 
-    pub_info = Constants.Testnet.Delegates[0]
+    pub_info = delegates[0]
     pub_info['ip'] = os.getenv('HOST_IP')
 
     sub = MPComposer(sk=d_info['sk'])

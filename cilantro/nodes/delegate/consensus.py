@@ -6,12 +6,12 @@ from cilantro.protocol.states.decorators import input, enter_from_any, enter_fro
 
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.block_contender import BlockContender
-from cilantro.messages.consensus.new_block_notification import NewBlockNotification
+from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 
 from cilantro.constants.zmq_filters import delegate_delegate
 from cilantro.constants.testnet import majority, delegates
-from cilantro.storage.db import VKBook, DB, insert
+from cilantro.storage.db import VKBook
 from cilantro.storage.blocks import BlockStorageDriver
 
 DelegateBootState = "DelegateBootState"

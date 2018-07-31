@@ -15,9 +15,7 @@ import time
 from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
 # import cilantro.messages.block_data.block_metadata.BlockMetaData
 
-
 log = get_logger("BlocksStorage")
-
 
 """
 Block Data fields
