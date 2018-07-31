@@ -167,6 +167,9 @@ class Network(object):
         if self.transport is not None:
             self.transport.close()
 
+        if not self.refresh_future.done():
+            self.refresh_future.set_result('done')
+
         if self.refresh_loop:
             self.refresh_loop.cancel()
 
@@ -179,7 +182,9 @@ class Network(object):
             except: log.debug('Already unregistered')
             conn.close()
             log.debug('Closed a previously opened connection')
+
         self.ironhouse.cleanup()
+
         try: self.poll.unregister(self.stethoscope_sock.fileno())
         except: log.debug('Stehoscope is already unregistered')
         self.stethoscope_sock.close()
@@ -207,7 +212,8 @@ class Network(object):
 
     def refresh_table(self):
         self.refresh_loop = self.loop.call_later(3600, self.refresh_table)
-        return asyncio.ensure_future(self._refresh_table())
+        self.refresh_future = asyncio.ensure_future(self._refresh_table())
+        return self.refresh_future
 
     async def _refresh_table(self):
         """
@@ -285,7 +291,7 @@ class Network(object):
             'neighbors': self.bootstrappableNeighbors()
         }
         if len(data['neighbors']) == 0:
-            log.warning("No known neighbors, so not writing to cache.")
+            log.info("No known neighbors, so not writing to cache.")
             return False
         with open(fname, 'wb+') as f:
             pickle.dump(data, f)

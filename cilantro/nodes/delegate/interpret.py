@@ -1,6 +1,6 @@
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
 from cilantro.storage.db import DB
-from cilantro.messages.transaction.base import TransactionBase
+from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.constants.nodes import max_queue_size
 from cilantro.protocol.states.decorators import input, enter_from_any, exit_to_any, exit_to
 
@@ -41,11 +41,11 @@ class DelegateInterpretState(DelegateBaseState):
     def exit_to_consensus(self):
         pass
 
-    @input(TransactionBase)
-    def handle_tx(self, tx: TransactionBase):
+    @input(OrderingContainer)
+    def handle_tx(self, tx: OrderingContainer):
         self.interpret_tx(tx=tx)
 
-    def interpret_tx(self, tx: TransactionBase):
+    def interpret_tx(self, tx: OrderingContainer):
         self.parent.interpreter.interpret(tx)
 
         self.log.debug("Size of queue: {}".format(len(self.parent.interpreter.queue)))

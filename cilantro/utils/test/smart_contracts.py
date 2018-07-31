@@ -2,7 +2,7 @@ from cilantro.storage.contracts import run_contract, get_contract_exports
 
 
 """
-Utilities for testing smart contracts and Seneca interpreters
+Utilities for testing smart contracts and Seneca interpreter
 """
 
 

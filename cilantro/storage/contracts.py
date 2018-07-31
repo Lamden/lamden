@@ -85,7 +85,7 @@ def module_loader_fn(ex, contract_table):
 
 def _ex_contract(executor, contract_table, contract_id: str='', user_id=GENESIS_AUTHOR, code_str: str='', get_contract=False):
         assert bool(contract_id) ^ bool(code_str), "Either contract_id or code_str must be passed in (XOR, one or the other)"
-        log.debug("[inside _execute_contract] Executing contract with id {} and user_id {}".format(contract_id, user_id))
+        # log.debug("[inside _execute_contract] Executing contract with id {} and user_id {}".format(contract_id, user_id))
 
         if code_str:
             author = user_id
@@ -143,7 +143,7 @@ def _read_contract_files() -> list:
 
     for filename in sorted(os.listdir(CONTRACTS_DIR)):
         _validate_filename(filename)
-        log.info("[inside _read_contract_files] Loading contract code for file {}".format(filename))
+        # log.info("[inside _read_contract_files] Loading contract code for file {}".format(filename))
 
         with open('{}/{}'.format(CONTRACTS_DIR, filename), 'r') as f:
             code_str = f.read()

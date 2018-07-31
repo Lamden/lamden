@@ -4,7 +4,7 @@ from cilantro.protocol.wallet import Wallet
 from cilantro.storage.templating import ContractTemplate
 from cilantro.protocol.pow import SHA3POW
 import transaction_capnp
-
+import time
 
 class ContractTransaction(TransactionBase):
     """
@@ -13,24 +13,23 @@ class ContractTransaction(TransactionBase):
     represents the code of the smart contract to be run, as plain text.
     """
 
+    def validate_payload(self):
+        validate_hex(self.sender, 64, 'sender')
+
     @classmethod
     def _deserialize_data(cls, data: bytes):
         return transaction_capnp.ContractTransaction.from_bytes_packed(data)
-
-    def validate_payload(self):
-        validate_hex(self.sender, 64, 'sender')
 
     @property
     def code(self):
         return self._data.payload.code
 
 
-"""
-Utility methods to construct ContractTransactions. We use this exclusively for testing, as IRL this should be done by
-users via some JS library or something.
-"""
 class ContractTransactionBuilder:
-
+    """
+    Utility methods to construct ContractTransactions. We use this exclusively for testing, as IRL this should be done by
+    users via some JS library or something.
+    """
     @staticmethod
     def create_contract_tx(sender_sk: str, code_str: str):
         validate_hex(sender_sk, 64, 'sender signing key')

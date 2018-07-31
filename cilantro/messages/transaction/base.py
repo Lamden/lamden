@@ -105,4 +105,3 @@ def build_test_transaction() -> TransactionBase:
     """
     from cilantro.messages.transaction.standard import StandardTransactionBuilder
     return StandardTransactionBuilder.random_tx()
-

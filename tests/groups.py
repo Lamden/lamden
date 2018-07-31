@@ -12,7 +12,7 @@ TODO -- better documentation on whats going on here
 """
 
 PROTOCOL_TESTS = [
-    'tests.protocol.interpreters',
+    'tests.protocol.interpreter',
     'tests.protocol.structures',
     'tests.protocol.states',
     'tests.protocol.wallets',
@@ -53,7 +53,7 @@ SMART_CONTRACT_TESTS = [
 ]
 
 """
-I think OVERLAY_TESTS arent working on CI b/c dat boi falcon is trying to open up ports and stuff on a CI container 
+I think OVERLAY_TESTS arent working on CI b/c dat boi falcon is trying to open up ports and stuff on a CI container
 ... so I think we need to run those tests as integration tests inside a docker container
 """
 UNIT_TESTS = [
@@ -74,7 +74,8 @@ UNIT_TESTS = [
 """
 
 NODE_INTEGRATION_TESTS = [
-    'tests.nodes.integration'
+    'tests.nodes.integration',
+    'tests.protocol.transport'
 ]
 
 # All integration tests
@@ -90,7 +91,7 @@ INTEGRATION_TESTS = [
 """
 
 # Tests to skip on the CI.
-CI_DISABLED_TESTS = OVERLAY_TESTS #+ DB_TESTS + SMART_CONTRACT_TESTS
+CI_DISABLED_TESTS = [] #OVERLAY_TESTS #+ DB_TESTS + SMART_CONTRACT_TESTS
 
 # Tests that are skipped if the environment variable $CILANTRO_DEBUG is set
 DEBUG_DISABLED_TESTS = [] # SMART_CONTRACT_TESTS

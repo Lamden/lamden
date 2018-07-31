@@ -127,9 +127,10 @@ class Ironhouse:
         if async:
             ctx = zmq.asyncio.Context()
             auth = AsyncioAuthenticator(ctx)
+            auth.log = log # The constructor doesn't have "log" like its synchronous counter-part
         else:
             ctx = zmq.Context()
-            auth = ThreadAuthenticator(ctx)
+            auth = ThreadAuthenticator(ctx, log=log)
         auth.start()
         self.reconfigure_curve(auth)
 
@@ -192,7 +193,8 @@ class Ironhouse:
         self.server = asyncio.ensure_future(self.secure_server())
 
     def cleanup(self):
-        self.auth.stop()
+        if not self.auth._AsyncioAuthenticator__task.done():
+            self.auth.stop()
         self.server.cancel()
         self.sec_sock.close()
         log.info('Ironhouse cleaned up properly.')
@@ -211,7 +213,6 @@ class Ironhouse:
                     self.create_from_public_key(public_key)
                     log.debug('sending secure reply: {}'.format(self.vk))
                     self.sec_sock.send(self.vk.encode())
-
         finally:
             self.cleanup()
 

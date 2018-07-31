@@ -5,7 +5,7 @@
 # from cilantro.protocol.serialization import JSONSerializer
 # from cilantro.protocol.proofs import SHA3POW
 # from cilantro.protocol.transactions import Transaction
-# from cilantro.protocol.interpreters import VanillaInterpreter
+# from cilantro.protocol.interpreter import VanillaInterpreter
 #
 #
 # class TestConstants(TestCase):

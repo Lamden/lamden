@@ -24,7 +24,6 @@ def signal_handler(sig, frame):
     os.system("docker kill $(docker ps -q)")
     print("Docker containers be ded")
     sys.exit(0)
-signal.signal(signal.SIGINT, signal_handler)
 
 
 class MPTestCase(BaseNetworkTestCase):
@@ -72,6 +71,10 @@ class MPTestCase(BaseNetworkTestCase):
 
         MPTestCase.testers.clear()
         MPTestCase.curr_tester_index = 1
+
+        self.log.important("taking a fat nap during teardown....")
+        time.sleep(8)
+        self.log.important("Ok took dat good nap hopefully things got torn down")
 
     def start(self, timeout=TEST_TIMEOUT):
         """
@@ -152,3 +155,8 @@ class MPTestCase(BaseNetworkTestCase):
             time.sleep(TESTER_POLL_FREQ)
 
         return actives, passives, fails, timeout
+
+
+# TODO find him a better home
+if MPTestCase.vmnet_test_active:
+    signal.signal(signal.SIGINT, signal_handler)

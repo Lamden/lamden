@@ -4,7 +4,8 @@
     "decimal-precision": 4,
     "max-uuid": 4294967295,
     "dupe-table-size": 10000,
-    "request-table-size": 10000
+    "request-table-size": 10000,
+    "max-queue-delay-ms": 1000
   },
   "nodes": {
     "max-request-length": 100000,

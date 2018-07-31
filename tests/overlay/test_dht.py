@@ -7,8 +7,7 @@ from os.path import exists, dirname
 from threading import Timer
 from cilantro.utils import ErrorWithArgs
 from cilantro.protocol.overlay.utils import digest
-try: from utils import genkeys
-except: from .utils import genkeys
+from cilantro.utils.test.overlay import *
 
 class TestDHT(TestCase):
     def setUp(self):

@@ -1,11 +1,14 @@
 from cilantro.nodes import NodeBase
-from cilantro.protocol.states.state import State
-from cilantro.messages.transaction.base import TransactionBase
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.protocol.states.decorators import *
-from cilantro.storage.db import VKBook
 from cilantro.constants.zmq_filters import witness_masternode, witness_delegate
 
+from cilantro.protocol.states.state import State
+from cilantro.protocol.states.decorators import input, enter_from_any
+
+from cilantro.messages.transaction.base import TransactionBase
+from cilantro.messages.envelope.envelope import Envelope
+from cilantro.messages.transaction.ordering import OrderingContainer
+
+from cilantro.storage.db import VKBook
 
 """
     Witness
@@ -25,6 +28,10 @@ class WitnessBaseState(State):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase, envelope: Envelope):
         self.log.error("Witness not configured to recv tx: {} with env {}".format(tx, envelope))
+
+    @input(OrderingContainer)
+    def recv_ordered_tx(self, tx: OrderingContainer, envelope: Envelope):
+        self.log.error("Witness not configured to recv ordered tx: {} with env {}".format(tx, envelope))
 
 
 @Witness.register_init_state
@@ -63,9 +70,8 @@ class WitnessRunState(WitnessBaseState):
     def reset_attrs(self):
         pass
 
-    @input(TransactionBase)
-    def recv_tx(self, tx: TransactionBase, envelope: Envelope):
+    @input(OrderingContainer)
+    def recv_ordered_tx(self, tx: OrderingContainer, envelope: Envelope):
         self.log.debug("witness got tx: {}, with env {}".format(tx, envelope))  # debug line, remove later
         self.parent.composer.send_pub_env(envelope=envelope, filter=witness_delegate)
         self.log.debug("witness published tx")  # debug line, remove later
-

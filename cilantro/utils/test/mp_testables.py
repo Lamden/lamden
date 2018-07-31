@@ -13,7 +13,7 @@ import os
 class MPComposer(MPTesterBase):
     @classmethod
     def build_obj(cls, sk, name='') -> tuple:
-        loop = asyncio.new_event_loop()
+        loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
 
         mock_sm = MagicMock(spec=StateMachine)
@@ -45,7 +45,7 @@ class MPStateMachine(MPTesterBase):
 class MPGod(MPTesterBase):
     @classmethod
     def build_obj(cls) -> tuple:
-        loop = asyncio.new_event_loop()
+        loop = asyncio.get_event_loop()
         god = God(loop=loop)
 
         return god, loop, [god.interface._recv_messages()]
@@ -69,7 +69,7 @@ class MPMasternode(MPTesterBase):
 
     @classmethod
     def build_obj(cls, sk, name='Masternode') -> tuple:
-        loop = asyncio.new_event_loop()
+        loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
 
         ip = os.getenv('HOST_IP', '127.0.0.1')
@@ -89,7 +89,7 @@ class MPMasternode(MPTesterBase):
 class MPWitness(MPTesterBase):
     @classmethod
     def build_obj(cls, sk, url, name='Masternode') -> tuple:
-        loop = asyncio.new_event_loop()
+        loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
 
         witness = NodeFactory._build_node(loop=loop, signing_key=sk, ip=url, node_cls=Witness, name=name)

@@ -16,6 +16,7 @@ from cilantro.messages.transaction.container import TransactionContainer, Transa
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.state_update import StateUpdateRequest
 from cilantro.messages.block_data.transaction_data import TransactionReply
+from cilantro.messages.transaction.ordering import OrderingContainer
 
 from aiohttp import web
 from cilantro.storage.db import VKBook
@@ -48,6 +49,7 @@ class Masternode(NodeBase):
 class MNBaseState(State):
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase):
+        oc = OrderingContainer.create(tx=tx, masternode_vk=self.parent.verifying_key)
         self.log.debug("mn about to pub for tx {}".format(tx))  # debug line
         self.parent.composer.send_pub_msg(filter=witness_masternode, message=tx)
 

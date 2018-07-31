@@ -11,6 +11,13 @@ struct MetaData {
     timestamp @2 :Float32;
 }
 
+struct OrderingContainer {
+    type @0 :UInt32;
+    transaction @1 :Data;
+    masternodeVk @2 :Data;
+    utcTimeMs @3 :UInt64;
+}
+
 struct ContractTransaction {
     metadata @0: MetaData;
     payload @1: Payload;
