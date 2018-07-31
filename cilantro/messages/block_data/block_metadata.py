@@ -1,8 +1,8 @@
-from cilantro.messages.base.base_json import MessageBase
+from cilantro.messages.base.base import MessageBase
+from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.utils import validate_hex
 from cilantro.utils import lazy_property
-from cilantro.storage.blocks import BlockStorageDriver
 from typing import List
 
 import capnp
@@ -35,19 +35,12 @@ class BlockMetaData(MessageBase):
         :return: None
         :raises: An exception if validation fails
         """
-        prev_block_hash = self.prev_block_hash
-        block_data = {
-            'block_contender': self.block_contender,
-            'timestamp': self.timestamp,
-            'merkle_root': self.merkle_root,
-            'merkle_leaves': self._data.merkleLeaves.decode(),
-            'prev_block_hash': self.prev_block_hash,
-            'masternode_signature': self.masternode_signature,
-            'masternode_vk': self.masternode_vk,
-        }
+        block_data = self.block_dict()
+        actual_hash = block_data.pop('hash')
+
         BlockStorageDriver.validate_block_data(block_data)
-        block_hash = BlockStorageDriver.compute_block_hash(block_data)
-        assert block_hash == self.block_hash, "Block hash is incorrect"
+        assert actual_hash == self.block_hash, "Computed block hash {} does not match self.block_hash {}"\
+                                               .format(actual_hash, self.block_hash)
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
@@ -55,14 +48,14 @@ class BlockMetaData(MessageBase):
 
     @classmethod
     def create(cls, hash: str, merkle_root: str, merkle_leaves: str, prev_block_hash: str, timestamp: int,
-               masternode_sig: str, masternode_vk: str, block_contender: BlockContender):
+               masternode_signature: str, masternode_vk: str, block_contender: BlockContender):
         struct = blockdata_capnp.BlockMetaData.new_message()
         struct.hash = hash
         struct.merkleRoot = merkle_root
         struct.merkleLeaves = merkle_leaves
         struct.prevBlockHash = prev_block_hash
         struct.timestamp = timestamp
-        struct.masternodeSignature = masternode_sig
+        struct.masternodeSignature = masternode_signature
         struct.masternodeVk = masternode_vk
         assert type(block_contender) == BlockContender, 'Not a block contender'
         struct.blockContender = block_contender.serialize()
@@ -72,6 +65,28 @@ class BlockMetaData(MessageBase):
     def _chunks(cls, l, n=64):
         for i in range(0, len(l), n):
             yield l[i:i + n]
+
+    def block_dict(self):
+        """
+        A utility property for building a dictionary with keys for each column in the 'blocks' table. This is used to
+        facilitate interaction with BlockStorageDriver
+        :param include_hash: True if the 'hash' key should be included in the block dictionary.
+        :return: A dictionary, containing a key for each column in the blocks table. The 'hash' column can be omitted
+        by passing include_hash=False
+        """
+
+        block_data = {
+            'block_contender': self.block_contender,
+            'timestamp': self.timestamp,
+            'merkle_root': self.merkle_root,
+            'merkle_leaves': self._data.merkleLeaves.decode(),
+            'prev_block_hash': self.prev_block_hash,
+            'masternode_signature': self.masternode_signature,
+            'masternode_vk': self.masternode_vk,
+        }
+        block_data['hash'] = BlockStorageDriver.compute_block_hash(block_data)
+
+        return block_data
 
     @property
     def block_hash(self) -> str:
@@ -104,6 +119,10 @@ class BlockMetaData(MessageBase):
     @lazy_property
     def block_contender(self) -> BlockContender:
         return BlockContender.from_bytes(self._data.blockContender)
+
+
+class NewBlockNotification(BlockMetaData):
+    pass
 
 
 class BlockMetaDataRequest(MessageBase):
@@ -153,12 +172,13 @@ class BlockMetaDataReply(MessageBase):
         :param block_metas:
         :return:
         """
-        for b in block_metas:
-            assert isinstance(b, BlockMetaData), "create must be called with a list of BlockMetaData instances, but " \
-                                                 "found a inconsistent element {} in block_metas arg".format(b)
         struct = blockdata_capnp.BlockMetaDataReply.new_message()
 
         if block_metas:
+            for b in block_metas:
+                assert isinstance(b, BlockMetaData), "create must be called with a list of BlockMetaData instances, but " \
+                                                     "found an inconsistent element {} in block_metas arg".format(b)
+
             metas_list = struct.blocks.init('data', len(block_metas))
             for i, block_meta in enumerate(block_metas):
                 metas_list[i] = block_meta._data

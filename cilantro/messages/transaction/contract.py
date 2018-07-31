@@ -3,8 +3,12 @@ from cilantro.messages.utils import validate_hex
 from cilantro.protocol.wallet import Wallet
 from cilantro.storage.templating import ContractTemplate
 from cilantro.protocol.pow import SHA3POW
+
+import capnp
 import transaction_capnp
-import time
+
+import random
+
 
 class ContractTransaction(TransactionBase):
     """
@@ -48,11 +52,19 @@ class ContractTransactionBuilder:
 
     @staticmethod
     def create_currency_tx(sender_sk: str, receiver_vk: str, amount: int):
+
         validate_hex(receiver_vk, 64, 'receiver verifying key')
         code_str = ContractTemplate.interpolate_template('currency', amount=amount, receiver=receiver_vk)
         return ContractTransactionBuilder.create_contract_tx(sender_sk, code_str)
 
     @staticmethod
+    def random_currency_tx():
+        sender, receiver = Wallet.new(), Wallet.new()
+        amount = random.randint(1, 2 ** 16)
+        return ContractTransactionBuilder.create_currency_tx(sender[0], receiver[1], amount)
+
+    @staticmethod
     def create_dummy_tx(sender_sk: str, receiver_vk: str, fail: bool):
+
         code_str = ContractTemplate.interpolate_template('dummy', fail=fail)
         return ContractTransactionBuilder.create_contract_tx(sender_sk, code_str)

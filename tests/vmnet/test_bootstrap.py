@@ -13,7 +13,6 @@ def wrap_func(fn, *args, **kwargs):
         return fn(*args, **kwargs)
     return wrapper
 
-
 def run_mn():
     from cilantro.logger import get_logger
     from cilantro.nodes import NodeFactory
@@ -69,15 +68,15 @@ class TestBootstrap(BaseNetworkTestCase):
     def test_bootstrap(self):
 
         # Bootstrap master
-        self.execute_python('masternode', run_mn, async=True)
+        self.execute_python('masternode', run_mn, async=True, profiling=True)
 
         # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):
-            self.execute_python(nodename, wrap_func(run_witness, i), async=True)
+            self.execute_python(nodename, wrap_func(run_witness, i), async=True, profiling=True)
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
-            self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
+            self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=True)
 
         input("\n\nEnter any key to terminate")
 

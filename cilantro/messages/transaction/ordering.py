@@ -16,7 +16,7 @@ class OrderingContainer(MessageBase):
     """
 
     def validate(self):
-        assert self._data.masternodeVk in VKBook.get_masternodes(), 'Not a masternode VK'
+        assert self.masternode_vk in VKBook.get_masternodes(), 'Not a masternode VK'
 
     @classmethod
     def _deserialize_data(cls, data: bytes):

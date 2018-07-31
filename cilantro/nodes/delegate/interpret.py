@@ -1,13 +1,13 @@
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
-from cilantro.storage.db import DB
+from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.constants.nodes import max_queue_size
-from cilantro.protocol.states.decorators import input, enter_from_any, exit_to_any, exit_to
+from cilantro.protocol.states.decorators import input, enter_from_any, exit_to_any, exit_to, enter_from
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
 DelegateConsensusState = "DelegateConsensusState"
-DelegateCatchupState = "DelegateInterpretState"
+DelegateCatchupState = "DelegateCatchupState"
 
 
 @Delegate.register_state
@@ -18,24 +18,36 @@ class DelegateInterpretState(DelegateBaseState):
     delegate moves into consensus state
     """
 
-    @enter_from_any
-    def enter_from_any(self, prev_state):
-        self.log.debug("Flushing pending tx queue of {} txs".format(len(self.parent.pending_txs)))
-        for tx in self.parent.pending_txs:
-            self.interpret_tx(tx)
-        self.parent.pending_txs = []
+    def _general_entry(self):
+        self.parent.current_hash = BlockStorageDriver.get_latest_block_hash()
+        self.log.notice("Delegate entering interpret state with current block hash {}".format(self.parent.current_hash))
 
-        # (for debugging) TODO remove
-        with DB() as db:
-            r = db.execute('select * from state_meta')
-            results = r.fetchall()
-            self.log.critical("LATEST STATE INFO: {}".format(results))
+    def _reset_queue(self):
+        self.log.notice("Emptying transaction queue of {} items".format(len(self.parent.pending_txs)))
+        self.parent.pending_txs.clear()
+
+        self.log.notice("Flushing interpreting without updating")
+        self.parent.interpreter.flush(update_state=False)
+
+    @enter_from_any
+    def enter_any(self, prev_state):
+        self._general_entry()
+        self._reset_queue()
+
+    @enter_from(DelegateConsensusState)
+    def enter_from_consensus(self):
+        self._general_entry()
+
+        # If we just entered from Consensus, interpret all pending transactions up to MaxQueueSize
+        num_to_pop = min(len(self.parent.pending_txs), max_queue_size)
+        self.log.notice("Flushing {} txs from total {} pending txs".format(num_to_pop, len(self.parent.pending_txs)))
+        for _ in range(num_to_pop):
+            self.interpret_tx(self.parent.pending_txs.popleft())
 
     @exit_to_any
     def exit_any(self, next_state):
         # Flush queue if we are not leaving interpreting for consensus
-        self.log.warning("Delegate exiting interpreting for state {}, flushing queue".format(next_state))
-        self.parent.interpreter.flush(update_state=False)
+        self._reset_queue()
 
     @exit_to(DelegateConsensusState)
     def exit_to_consensus(self):
@@ -47,12 +59,17 @@ class DelegateInterpretState(DelegateBaseState):
 
     def interpret_tx(self, tx: OrderingContainer):
         self.parent.interpreter.interpret(tx)
+        self.log.debugv("Current size of transaction queue: {}".format(len(self.parent.interpreter.queue)))
 
-        self.log.debug("Size of queue: {}".format(len(self.parent.interpreter.queue)))
-
-        if self.parent.interpreter.queue_size >= max_queue_size:
-            self.log.info("Consensus time!")
+        if self.parent.interpreter.queue_size == max_queue_size:
+            self.log.success("Consensus time! Delegate has {} tx in queue.".format(self.parent.interpreter.queue_size))
             self.parent.transition(DelegateConsensusState)
+            return
+
+        elif self.parent.interpreter.queue_size > max_queue_size:
+            self.log.fatal("Delegate exceeded max queue size! How did this happen!!!")
+            raise Exception("Delegate exceeded max queue size! How did this happen!!!")
+
         else:
             self.log.debug("Not consensus time yet, queue is only size {}/{}"
                            .format(self.parent.interpreter.queue_size, max_queue_size))

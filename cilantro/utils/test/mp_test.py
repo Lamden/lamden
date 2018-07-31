@@ -371,7 +371,8 @@ class MPTesterBase:
         self.socket.close()
 
         if self.test_proc:
-            self.log.debug("Joining tester proc {}...".format(self.name))
+            self.log.debug("Joining tester terminate {}...".format(self.name))
+            self.test_proc.terminate()
             self.test_proc.join()
             self.log.debug("Tester Proc {} joined".format(self.name))
 

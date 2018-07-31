@@ -13,19 +13,21 @@ services:
       context: ${LOCAL_PATH}/cilantro
       dockerfile: ${DOCKER_DIR}/cilantro_base.dev
     image: cilantro_base.dev
-    volumes:
-      - type: bind
-        source: /storage/docker/mysql-datadir
-        target: /var/lib/mysql
+    # volumes:
+    #   - type: bind
+    #     source: /storage/docker/mysql-datadir
+    #     target: /var/lib/mysql
   node:
     ip: 172.29.5.x
     stdin_open: true
     tty: true
     expose:
       - '10000-20000'
+      - '4319'
     ports:
       - "10200"
       - "8080"
+      - "4319"
     range:
       - 1
       - 6

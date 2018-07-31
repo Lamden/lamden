@@ -203,8 +203,8 @@ class State(metaclass=StateMeta):
                                              .format(input_type, StateInput.ALL)
         # Assert that this state, or one of its superclasses, has an appropriate receiver implemented
         assert type(message) in getattr(self, input_type), \
-            "No handler for message type {} found in handlers for input type {} which has handlers: {}"\
-            .format(type(message), input_type, getattr(self, input_type))
+            "No handler in state {} for message type {} found in handlers for input type {} which has handlers: {}"\
+            .format(self, type(message), input_type, getattr(self, input_type))
 
     def _get_transition_handler(self, trans_type, state):
         assert trans_type in (StateTransition.ENTER, StateTransition.EXIT), "trans_type arg must be _ENTER or _EXIT"

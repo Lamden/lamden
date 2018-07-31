@@ -1,6 +1,6 @@
-from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.transaction.standard import StandardTransaction, StandardTransactionBuilder
 from cilantro.messages.transaction.container import TransactionContainer
+from cilantro.messages.transaction.contract import *
 import asyncio
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.transport import Composer
@@ -24,12 +24,10 @@ FALCON = ('bac886e7c6e4a9fae572e170adb333b27b590157409e62d88cc0c7bc9a7b3631',
  'ed19061921c593a9d16875ca660b57aa5e45c811c8cf7af0cfcbd23faa52cbcd')
 CARL = ('cf67a180f9578afa5fd704cea39b450c1542755d73614f6a4f41b627190b83bb',
  'cb9bfd4b57b243248796e9eb90bc4f0053d78f06ce68573e0fdca422f54bb0d2')
-ASHLEY = ('b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668',
+RAGHU = ('b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668',
  'c1f845ad8967b93092d59e4ef56aef3eba49c33079119b9c856a5354e9ccdf84')
-ETHAN = ('209c16b81dc6bee16aed6a86b59c5bbf26d3c4852c43a7e85c63e021e3c09a8e',
- '4e7cbbd7bd458050d3f93a8c3c5018288940204709fdae7d2a898a11e885ff87')
 
-ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL, ASHLEY, ETHAN]
+ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL, RAGHU]
 
 
 class God:
@@ -69,6 +67,10 @@ class God:
             return c
 
     @classmethod
+    def _default_gen_func(cls):
+        return cls.random_contract_tx
+
+    @classmethod
     def set_mn_url(cls, ip='localhost', port=8080):
         url = "http://{}:{}".format(ip, port)
         cls.log.info("Setting masternode URL to {}".format(url))
@@ -82,20 +84,26 @@ class God:
         return StandardTransactionBuilder.create_tx(sender[0], sender[1], receiver, amount)
 
     @classmethod
+    def create_currency_tx(cls, sender: tuple, receiver: tuple, amount: int):
+        if type(receiver) is tuple:
+            receiver = receiver[1]
+
+        return ContractTransactionBuilder.create_currency_tx(sender[0], receiver, amount)
+
+    @classmethod
     def send_std_tx(cls, sender: tuple, receiver: tuple, amount: int):
         tx = cls.create_std_tx(sender, receiver, amount)
         cls.send_tx(tx)
-    #
-    # @classmethod
-    # def send_contract_submission(cls, sender_id, contract_code):
-    #     contract_submission = ContractSubmission.user_create(user_id=sender_id, contract_code=contract_code)
-    #     r = requests.post(MN_URL, data=TransactionContainer.create(contract_submission).serialize())
-    #     cls.log.info("POST contract submission request to MN at url {} got status code {}".format(MN_URL, r.status_code))
+
+    @classmethod
+    def send_currency_contract(cls, sender: tuple, receiver: tuple, amount:int):
+        tx = cls.create_currency_tx(sender, receiver, amount)
+        cls.send_tx(tx)
 
     @classmethod
     def send_tx(cls, tx: TransactionBase):
         r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
-        cls.log.info("POST request to MN at URL {} has status code: {}".format(cls.mn_url, r.status_code))
+        cls.log.debug("POST request to MN at URL {} has status code: {}".format(cls.mn_url, r.status_code))
 
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
@@ -106,7 +114,7 @@ class God:
         :return:
         """
         if not gen_func:
-            gen_func = cls.random_std_tx
+            gen_func = cls._default_gen_func()
 
         if use_poisson:
             from scipy.stats import poisson, expon
@@ -116,20 +124,43 @@ class God:
 
         assert callable(gen_func), "Expected a callable for 'gen_func' but got {}".format(gen_func)
 
-        cls.log.info("Starting to pump transactions at an average of {} transactions per second".format(rate))
+        cls.log.important("Starting to pump transactions at an average of {} transactions per second".format(rate))
         cls.log.info("Using generator func {}, with use_possion={}".format(gen_func, use_poisson))
 
         while True:
             wait = rvs_func()
 
-            cls.log.debug("Sending next transaction in {} seconds".format(wait))
+            cls.log.debugv("Sending next transaction in {} seconds".format(wait))
             time.sleep(wait)
 
             tx = gen_func()
 
-            cls.log.debug("sending transaction {}".format(tx))
-            r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
-            cls.log.debug("POST request got status code {}".format(r.status_code))
+            cls.log.debugv("sending transaction {}".format(tx))
+            cls.send_tx(tx)
+            # r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
+            # cls.log.debugv("POST request got status code {}".format(r.status_code))
+
+    @classmethod
+    def dump_it(cls, volume: int, gen_func=None):
+        """
+        Dump it fast
+        :param volume:
+        :return:
+        """
+        assert volume > 0, "You must dump at least 1 transaction silly"
+
+        if not gen_func:
+            gen_func = cls._default_gen_func()
+
+        cls.log.info("Generating {} transactions to dump...".format(volume))
+        txs = [gen_func() for _ in range(volume)]
+        cls.log.info("Done generating transactions.")
+
+        start = time.time()
+        cls.log.important("Dumping {} transactions...".format(len(txs)))
+        for tx in txs:
+            cls.send_tx(tx)
+        cls.log.important("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
 
     @classmethod
     def random_std_tx(cls):
@@ -137,6 +168,13 @@ class God:
         amount = random.randint(1, 1260)
 
         return cls.create_std_tx(sender=sender, receiver=receiver, amount=amount)
+
+    @classmethod
+    def random_contract_tx(cls):
+        sender, receiver = random.sample(ALL_WALLETS, 2)
+        amount = random.randint(1, 1260)
+
+        return cls.create_currency_tx(sender=sender, receiver=receiver, amount=amount)
 
     def send_block_contender(self, url, bc):
         pass

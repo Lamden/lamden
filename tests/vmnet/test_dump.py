@@ -1,6 +1,9 @@
 from vmnet.test.base import *
-import unittest, time
-from cilantro.constants.testnet import masternodes, witnesses, delegates
+import unittest, time, random
+
+
+import vmnet
+
 
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
@@ -9,6 +12,7 @@ def wrap_func(fn, *args, **kwargs):
 
 def run_mn():
     from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     import os
     import logging
@@ -17,12 +21,13 @@ def run_mn():
     overwrite_logger_level(21)
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
-    sk = masternodes[0]['sk']
-    NodeFactory.run_masternode(ip=ip, signing_key=sk)
+    sk = Constants.Testnet.Masternodes[0]['sk']
+    NodeFactory.run_masternode(ip=ip, signing_key=sk, should_reset=True)
 
 
 def run_witness(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     import os
     import logging
@@ -30,7 +35,7 @@ def run_witness(slot_num):
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(15)
 
-    w_info = witnesses[slot_num]
+    w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'], should_reset=True)
@@ -38,6 +43,7 @@ def run_witness(slot_num):
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     import os
     import logging
@@ -45,27 +51,26 @@ def run_delegate(slot_num):
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(21)
 
-    d_info = delegates[slot_num]
+    d_info = Constants.Testnet.Delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'], should_reset=True)
 
 
-def pump_it(lamd, use_poisson):
+def dump_it(volume):
     from cilantro.utils.test import God
     from cilantro.logger import get_logger, overwrite_logger_level
     import logging
 
     overwrite_logger_level(logging.WARNING)
-    God.pump_it(rate=lamd, use_poisson=use_poisson)
+    God.dump_it(volume=volume)
+
 
 class TestPump(BaseNetworkTestCase):
 
-    # TRANSACTION_RATE = 0.1  # Avg transaction/second. lambda parameter in Poission distribution
-    TRANSACTION_RATE = 10  # Avg transaction/second. lambda parameter in Poission distribution
-    MODEL_AS_POISSON = False
+    VOLUME = 2048  # Number of transactions to dump
 
-    testname = 'pump_it'
+    testname = 'dump_it'
     setuptime = 5
     compose_file = 'cilantro-bootstrap.yml'
 
@@ -83,9 +88,9 @@ class TestPump(BaseNetworkTestCase):
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
-        # PUMP IT BOYS
-        time.sleep(26)
-        self.execute_python('mgmt', wrap_func(pump_it, self.TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
+        # DUMP IT BOYS
+        time.sleep(30)
+        self.execute_python('mgmt', wrap_func(dump_it, self.VOLUME), async=True)
 
         input("Enter any key to terminate")
 

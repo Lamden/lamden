@@ -35,8 +35,8 @@ def publisher():
         time.sleep(SLEEP_TIME)
         elapsed_time += SLEEP_TIME
 
+    pub.teardown()
     log.critical("Done with experiment!")
-    exit
 
 
 def subscriber():
@@ -61,8 +61,9 @@ def subscriber():
 
     log.critical("Starting Subscriber, and exiting after {} seconds".format(SLEEP_TIME))
     time.sleep(MAX_TIME)
+
+    sub.teardown()
     log.critical("Done with experiment!")
-    exit
 
 
 class TestNetworkPerformance(BaseNetworkTestCase):
@@ -70,7 +71,7 @@ class TestNetworkPerformance(BaseNetworkTestCase):
     EXPECTED_TRANSACTION_RATE = 0.1  # Avg transaction/second. lambda parameter in Poission distribution
     MODEL_AS_POISSON = False
 
-    testname = 'pump_it'
+    testname = 'composer'
     setuptime = 10
     compose_file = 'cilantro-nodes.yml'
 
