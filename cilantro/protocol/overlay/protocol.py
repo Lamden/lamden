@@ -110,6 +110,7 @@ class KademliaProtocol(RPCProtocol):
         """
         if not node:
             log.warning('This node is not welcomed.')
+            # throw
             return
 
         if not self.router.isNewNode(node):

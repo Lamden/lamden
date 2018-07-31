@@ -168,14 +168,16 @@ class Ironhouse:
         authorized = False
 
         try:
-            msg = await asyncio.wait_for(client.recv(), 0.5)
+            msg = await asyncio.wait_for(client.recv(), 3)
             msg = msg.decode()
             log.debug('got secure reply {}, {}'.format(msg, target_public_key))
             received_public_key = self.vk2pk(msg)
             if self.auth_validate(msg) == True and target_public_key == received_public_key:
                 self.create_from_public_key(received_public_key)
+                self.reconfigure_curve()
                 authorized = True
         except Exception as e:
+            log.fatal('except {}'.format(e))
             log.debug('no reply from {} after waiting...'.format(server_url))
             authorized = None
 
@@ -211,6 +213,7 @@ class Ironhouse:
                 if self.auth_validate(message) == True:
                     public_key = self.vk2pk(message)
                     self.create_from_public_key(public_key)
+                    self.reconfigure_curve()
                     log.debug('sending secure reply: {}'.format(self.vk))
                     self.sec_sock.send(self.vk.encode())
         finally:
@@ -218,4 +221,5 @@ class Ironhouse:
 
     @staticmethod
     def auth_validate(vk):
+        log.debug('vk {} \n {}'.format(vk, VKBook.get_all()))
         return vk in VKBook.get_all()
