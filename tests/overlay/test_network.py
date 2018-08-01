@@ -54,107 +54,107 @@ class TestNetwork(TestCase):
     def tearDown(self):
         self.loop.close()
 
-    def test_attributes(self):
-        def run(self):
-            stop(self)
-
-        self.assertIsInstance(self.a_net.stethoscope_sock, socket.socket)
-        self.assertIsInstance(self.a_net.ironhouse, Ironhouse)
-        self.assertIsInstance(self.a_net.node, Node)
-        self.assertEqual(self.a_net.node.public_key, self.a['curve_key'])
-        self.assertEqual(self.b_net.node.public_key, self.b['curve_key'])
-        self.assertEqual(self.a_net.node.id, digest(self.a['vk']))
-        self.assertEqual(self.b_net.node.id, digest(self.b['vk']))
-
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_connection(self):
-        def run(self):
-            self.a_net.connect_to_neighbor(self.b_net.node)
-            self.assertTrue(len(self.a_net.connections.keys()) == 1)
-            stop(self)
-
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_authenticate(self):
-        def run(self):
-            stop(self)
-        self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
-            self.b_net.authenticate(self.a_net.node))))
-        self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
-            self.a_net.authenticate(self.b_net.node))))
-
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_authenticate_fail(self):
-        def run(self):
-            stop(self)
-
-        self.assertFalse(self.loop.run_until_complete(asyncio.ensure_future(
-            self.a_net.authenticate(self.evil_net.node))))
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_authenticate_timeout(self):
-        def run(self):
-            stop(self)
-
-        self.assertFalse(self.loop.run_until_complete(asyncio.ensure_future(
-            self.a_net.authenticate(self.off_node))))
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_connect_to_neighbor(self):
-        def run(self):
-            self.a_net.connect_to_neighbor(self.b_net.node)
-            time.sleep(0.1) # To allow the server side to accept connecetions
-            stop(self)
-
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_connect_to_neighbor_fail(self):
-        def run(self):
-            self.evil_net.node.ip = '127.0.0.255'
-            self.a_net.connect_to_neighbor(self.evil_net.node)
-            self.assertEqual(self.a_net.connections, {})
-            stop(self)
-
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_connect_to_neighbor_disconnect(self):
-        def run(self):
-            conn = self.a_net.connect_to_neighbor(self.b_net.node)
-            time.sleep(0.1)
-            conn.shutdown(socket.SHUT_RDWR)
-            self.b_net.stop()
-            time.sleep(0.1)
-            self.assertEqual(self.a_net.connections, {})
-            stop(self)
-
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_listen(self):
-        def run(self):
-            stop(self)
-
-        self.assertIsInstance(self.a_net.protocol, KademliaProtocol)
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
+    # def test_attributes(self):
+    #     def run(self):
+    #         stop(self)
+    #
+    #     self.assertIsInstance(self.a_net.stethoscope_sock, socket.socket)
+    #     self.assertIsInstance(self.a_net.ironhouse, Ironhouse)
+    #     self.assertIsInstance(self.a_net.node, Node)
+    #     self.assertEqual(self.a_net.node.public_key, self.a['curve_key'])
+    #     self.assertEqual(self.b_net.node.public_key, self.b['curve_key'])
+    #     self.assertEqual(self.a_net.node.id, digest(self.a['vk']))
+    #     self.assertEqual(self.b_net.node.id, digest(self.b['vk']))
+    #
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_connection(self):
+    #     def run(self):
+    #         self.a_net.connect_to_neighbor(self.b_net.node)
+    #         self.assertTrue(len(self.a_net.connections.keys()) == 1)
+    #         stop(self)
+    #
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_authenticate(self):
+    #     def run(self):
+    #         stop(self)
+    #     self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
+    #         self.b_net.authenticate(self.a_net.node))))
+    #     self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
+    #         self.a_net.authenticate(self.b_net.node))))
+    #
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_authenticate_fail(self):
+    #     def run(self):
+    #         stop(self)
+    #
+    #     self.assertFalse(self.loop.run_until_complete(asyncio.ensure_future(
+    #         self.a_net.authenticate(self.evil_net.node))))
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_authenticate_timeout(self):
+    #     def run(self):
+    #         stop(self)
+    #
+    #     self.assertFalse(self.loop.run_until_complete(asyncio.ensure_future(
+    #         self.a_net.authenticate(self.off_node))))
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_connect_to_neighbor(self):
+    #     def run(self):
+    #         self.a_net.connect_to_neighbor(self.b_net.node)
+    #         time.sleep(0.1) # To allow the server side to accept connecetions
+    #         stop(self)
+    #
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_connect_to_neighbor_fail(self):
+    #     def run(self):
+    #         self.evil_net.node.ip = '127.0.0.255'
+    #         self.a_net.connect_to_neighbor(self.evil_net.node)
+    #         self.assertEqual(self.a_net.connections, {})
+    #         stop(self)
+    #
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_connect_to_neighbor_disconnect(self):
+    #     def run(self):
+    #         conn = self.a_net.connect_to_neighbor(self.b_net.node)
+    #         time.sleep(0.1)
+    #         conn.shutdown(socket.SHUT_RDWR)
+    #         self.b_net.stop()
+    #         time.sleep(0.1)
+    #         self.assertEqual(self.a_net.connections, {})
+    #         stop(self)
+    #
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_listen(self):
+    #     def run(self):
+    #         stop(self)
+    #
+    #     self.assertIsInstance(self.a_net.protocol, KademliaProtocol)
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
 
     def test_bootstrap(self):
         def run(self):
