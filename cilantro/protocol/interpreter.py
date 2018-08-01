@@ -28,6 +28,7 @@ class SenecaInterpreter:
             self.contracts_table = db.tables.contracts
 
         self.loop = asyncio.get_event_loop()
+        self.check_contract_future = None
         self.start()
 
         # Ensure contracts table was seeded properly
