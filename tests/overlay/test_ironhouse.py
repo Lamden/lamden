@@ -28,11 +28,11 @@ class TestIronhouseBase(TestCase):
 
 class TestConsts(TestIronhouseBase):
     def test_assert_paths(self):
-        self.assertEqual(self.ironhouse.base_dir, 'certs/ironhouse', 'key folder is incorrect')
-        self.assertEqual(self.ironhouse.keys_dir, 'certs/ironhouse/certificates', 'keys dir is incorrect')
-        self.assertEqual(self.ironhouse.public_keys_dir, 'certs/ironhouse/public_keys', 'public dir is incorrect')
-        self.assertEqual(self.ironhouse.secret_keys_dir, 'certs/ironhouse/private_keys', 'secret dir is incorrect')
-        self.assertEqual(self.ironhouse.secret_file, 'certs/ironhouse/private_keys/ironhouse.key_secret', 'secret_file is incorrect')
+        self.assertEqual(self.ironhouse.base_dir, 'certs/{}'.format(self.ironhouse.keyname), 'key folder is incorrect')
+        self.assertEqual(self.ironhouse.keys_dir, 'certs/{}/certificates'.format(self.ironhouse.keyname), 'keys dir is incorrect')
+        self.assertEqual(self.ironhouse.public_keys_dir, 'certs/{}/public_keys'.format(self.ironhouse.keyname), 'public dir is incorrect')
+        self.assertEqual(self.ironhouse.secret_keys_dir, 'certs/{}/private_keys'.format(self.ironhouse.keyname), 'secret dir is incorrect')
+        self.assertEqual(self.ironhouse.secret_file, 'certs/{kn}/private_keys/{kn}.key_secret'.format(kn=self.ironhouse.keyname), 'secret_file is incorrect')
 
     def test_generate_certificates_failed(self):
         self.ironhouse.wipe_certs = False
