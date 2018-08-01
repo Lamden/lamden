@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, call, patch
 # from cilantro.messages import *
-from cilantro.messages.transaction import StandardTransactionBuilder
+from cilantro.messages.transaction.standard import StandardTransactionBuilder
 from cilantro.protocol.wallet import Wallet
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.reactor.executor import *

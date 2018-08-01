@@ -1,6 +1,5 @@
 from cilantro.logger import get_logger
 import seneca.seneca_internal.storage.easy_db as t
-from cilantro.storage.tables import create_table
 from seneca.seneca_internal.storage.easy_db import and_, or_
 from cilantro.storage.tables import create_table
 from cilantro.messages.consensus.block_contender import BlockContender
