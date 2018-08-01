@@ -1,6 +1,7 @@
 from unittest import TestCase
-from cilantro.messages import MessageMeta, MessageBase, StandardTransaction
-
+from cilantro.messages.base.base import MessageBase
+from cilantro.messages.envelope.message_meta import MessageMeta
+from cilantro.messages.transaction.standard import StandardTransaction
 
 class TestMessageMeta(TestCase):
 

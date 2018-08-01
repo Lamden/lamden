@@ -30,7 +30,7 @@ class Hasher:
         :raises: An assertion if data is a non-trivial type that could not be casted to bytes
         """
         # MessageBase imported here to fix cyclic imports...TODO -- fix dependencies
-        from cilantro.messages import MessageBase
+        from cilantro.messages.base.base import MessageBase
         from cilantro.utils import int_to_bytes
 
         t = type(data)

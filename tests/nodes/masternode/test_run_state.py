@@ -1,7 +1,7 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 from cilantro.nodes.masternode.masternode import MNBootState, MNRunState
-from cilantro.protocol.statemachine import *
+from cilantro.protocol.states.state import StateTransition, StateInput
 from cilantro.messages.consensus.block_contender import BlockContender, build_test_contender
 
 

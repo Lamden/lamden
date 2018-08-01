@@ -1,11 +1,10 @@
-from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.utils.test import MPTesterBase, mp_testable, God, MPTestCase
-from unittest.mock import patch, call, MagicMock
-from cilantro.protocol.transport import Router, Composer
+from unittest.mock import MagicMock
+from cilantro.protocol.transport import Composer
 from cilantro.protocol.reactor import ReactorInterface
-from cilantro.protocol.statemachine import StateMachine
-from cilantro.nodes import Masternode, Delegate, Witness, NodeFactory
+from cilantro.protocol.states.statemachine import StateMachine
+from cilantro.nodes import Masternode, Witness, NodeFactory
 import asyncio
 import os
 

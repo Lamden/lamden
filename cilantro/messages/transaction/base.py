@@ -1,8 +1,10 @@
-from cilantro import Constants
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
+from cilantro.storage.db import contract
 from cilantro.utils import lazy_property
 
+from cilantro.protocol.wallet import Wallet
+from cilantro.protocol.pow import SHA3POW
 
 class TransactionBase(MessageBase):
     """
@@ -11,8 +13,8 @@ class TransactionBase(MessageBase):
 
     def __init__(self, data):
         super().__init__(data)
-        self.pow = Constants.Protocol.Proofs
-        self.wallet = Constants.Protocol.Wallets
+        self.pow = SHA3POW
+        self.wallet = Wallet
 
     # TODO deprecate and remove this
     # def interpret(self, *args, **kwargs):

@@ -1,9 +1,5 @@
 import random
 import asyncio
-import select
-import socket
-import warnings
-import os
 
 from rpcudp.protocol import RPCProtocol
 from cilantro.logger import get_logger

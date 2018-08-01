@@ -1,5 +1,5 @@
-from cilantro.messages import MessageBase, TransactionBase
-
+from cilantro.messages.base.base import MessageBase
+from cilantro.messages.transaction.base import TransactionBase
 import capnp
 import transaction_capnp
 

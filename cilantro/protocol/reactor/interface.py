@@ -5,7 +5,7 @@ from cilantro.utils import LProcess
 import random
 import time
 from cilantro.logger import get_logger
-from cilantro.messages import ReactorCommand
+from cilantro.messages.reactor.reactor_command import ReactorCommand
 from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG, KILL_SIG
 import signal, sys
 
@@ -28,7 +28,7 @@ class ReactorInterface:
 
         # Start reactor sub process
         self.proc = LProcess(target=self._start_daemon, args=(self.url, signing_key, name))
-        self.proc.daemon = True
+        # self.proc.daemon = True
         self.proc.start()
 
         # Register signal handler to teardown

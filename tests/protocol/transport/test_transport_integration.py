@@ -1,21 +1,17 @@
-from cilantro import Constants
-from cilantro.utils.test import MPTesterBase, MPTestCase, mp_testable, MPComposer, vmnet_test
-from cilantro.protocol.transport import Router, Composer
-from cilantro.protocol.reactor import ReactorInterface
-from cilantro.messages import *
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.utils.test import MPTestCase, MPComposer, vmnet_test
+from cilantro.protocol.transport import Composer
+from cilantro.messages.transaction.standard import StandardTransactionBuilder
+from cilantro.protocol.wallet import Wallet
 from cilantro.protocol.reactor.executor import *
-from cilantro.db import VKBook
-import asyncio
 import unittest
 import time
 
-
-W = Constants.Protocol.Wallets
-sk1, vk1 = Constants.Testnet.Masternodes[0]['sk'], Constants.Testnet.Masternodes[0]['vk']
-sk2, vk2 = Constants.Testnet.Delegates[0]['sk'], Constants.Testnet.Delegates[0]['vk']
-sk3, vk3 = Constants.Testnet.Delegates[1]['sk'], Constants.Testnet.Delegates[1]['vk']
-sk4, vk4 = Constants.Testnet.Delegates[2]['sk'], Constants.Testnet.Delegates[2]['vk']
+from cilantro.constants.testnet import masternodes, delegates
+W = Wallet
+sk1, vk1 = masternodes[0]['sk'],masternodes[0]['vk']
+sk2, vk2 = delegates[0]['sk'], delegates[0]['vk']
+sk3, vk3 = delegates[1]['sk'], delegates[1]['vk']
+sk4, vk4 = delegates[2]['sk'], delegates[2]['vk']
 
 URL = 'tcp://127.0.0.1:9988'
 FILTER = 'TEST_FILTER'
@@ -28,7 +24,7 @@ def random_msg():
     return StandardTransactionBuilder.random_tx()
 
 def random_envelope(sk=None, tx=None):
-    sk = sk or ED25519Wallet.new()[0]
+    sk = sk or Wallet.new()[0]
     tx = tx or random_msg()
     return Envelope.create_from_message(message=tx, signing_key=sk)
 
@@ -47,8 +43,8 @@ class TestTransportIntegration(MPTestCase):
             return composer
 
         def assert_sub(composer: Composer):
-            from cilantro.messages import ReactorCommand, Envelope
-            from cilantro.protocol.statemachine.decorators import StateInput
+            from cilantro.messages.reactor.reactor_command import ReactorCommand
+            from cilantro.protocol.states.decorators import StateInput
             cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
             composer.interface.router.route_callback.assert_called_once_with(cb)
 
@@ -78,8 +74,8 @@ class TestTransportIntegration(MPTestCase):
             return composer
 
         def assert_sub(composer: Composer):
-            from cilantro.messages import ReactorCommand, Envelope
-            from cilantro.protocol.statemachine.decorators import StateInput
+            from cilantro.messages.reactor.reactor_command import ReactorCommand
+            from cilantro.protocol.states.decorators import StateInput
             from unittest.mock import call
 
             expected_calls = []
@@ -128,8 +124,8 @@ class TestTransportIntegration(MPTestCase):
             return composer
 
         def assert_sub(composer: Composer):
-            from cilantro.messages import ReactorCommand
-            from cilantro.protocol.statemachine.decorators import StateInput
+            from cilantro.messages.reactor.reactor_command import ReactorCommand
+            from cilantro.protocol.states.decorators import StateInput
             from unittest.mock import call
 
             callback1 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env1)
@@ -182,8 +178,8 @@ class TestTransportIntegration(MPTestCase):
             return composer
 
         def run_assertions(composer: Composer):
-            from cilantro.messages import ReactorCommand
-            from cilantro.protocol.statemachine.decorators import StateInput
+            from cilantro.messages.reactor.reactor_command import ReactorCommand
+            from cilantro.protocol.states.decorators import StateInput
             from unittest.mock import call
 
             cb1 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env1)
@@ -230,7 +226,7 @@ class TestTransportIntegration(MPTestCase):
             return composer
 
         def assert_dealer(composer: Composer):
-            from cilantro.messages import ReactorCommand
+            from cilantro.messages.reactor.reactor_command import ReactorCommand
 
             args = composer.interface.router.route_callback.call_args_list
             assert len(args) == 1, "dealer's route_callback should of only been called once (with the reply env)"
@@ -242,8 +238,8 @@ class TestTransportIntegration(MPTestCase):
             assert callback_cmd.envelope.message == reply_msg, "Callback's envelope's message should be the reply_msg"
 
         def assert_router(composer: Composer):
-            from cilantro.protocol.statemachine.decorators import StateInput
-            from cilantro.messages import ReactorCommand
+            from cilantro.protocol.states.decorators import StateInput
+            from cilantro.messages.reactor.reactor_command import ReactorCommand
             cb = ReactorCommand.create_callback(callback=StateInput.REQUEST, envelope=request_env, header=dealer_id)
             composer.interface.router.route_callback.assert_called_once_with(cb)
 

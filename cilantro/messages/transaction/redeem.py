@@ -1,7 +1,7 @@
-from cilantro import Constants
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.utils import validate_hex, int_to_decimal
-
+from cilantro.protocol.wallet import Wallet
+from cilantro.protocol.pow import SHA3POW
 import capnp
 import transaction_capnp
 
@@ -36,8 +36,8 @@ class RedeemTransactionBuilder:
         tx.payload.secret = secret
         payload_binary = tx.payload.copy().to_bytes()
 
-        tx.metadata.proof = Constants.Protocol.Proofs.find(payload_binary)[0]
-        tx.metadata.signature = Constants.Protocol.Wallets.sign(sender_s, payload_binary)
+        tx.metadata.proof = SHA3POW.find(payload_binary)[0]
+        tx.metadata.signature = Wallet.sign(sender_s, payload_binary)
 
         return tx
 
@@ -50,5 +50,5 @@ class RedeemTransactionBuilder:
     def random_tx():
         import secrets
 
-        s = Constants.Protocol.Wallets.new()
+        s = Wallet.new()
         return RedeemTransactionBuilder.create_tx(s[0], s[1], secrets.token_hex(32))

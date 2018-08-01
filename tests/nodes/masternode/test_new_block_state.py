@@ -1,9 +1,6 @@
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
-from cilantro.nodes.masternode.masternode import MNBootState, MNRunState
+from unittest.mock import MagicMock
 from cilantro.nodes.masternode.new_block import MNNewBlockState
-from cilantro.protocol.statemachine import *
-from cilantro.messages.consensus.block_contender import BlockContender, build_test_contender, build_test_merkle_sig
 
 
 class TestMasterNodeNewBlockState(TestCase):

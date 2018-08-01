@@ -1,12 +1,11 @@
-from cilantro import Constants
 from cilantro.logger import get_logger
-from cilantro.messages import ReactorCommand, Envelope
+from cilantro.messages.reactor.reactor_command import ReactorCommand
+from cilantro.messages.envelope.envelope import Envelope
 from collections import defaultdict
-from cilantro.protocol.structures import CappedSet, EnvelopeAuth
+from cilantro.protocol.structures import CappedSet
 import traceback, os
-from cilantro.protocol.statemachine import StateInput
-from cilantro.utils import IPUtils
-from cilantro.protocol.overlay.dht import DHT
+from cilantro.protocol.states.state import StateInput
+from cilantro.constants.protocol import dupe_table_size
 import asyncio, time
 import zmq.asyncio
 
@@ -34,7 +33,7 @@ class ExecutorMeta(type):
 
 class Executor(metaclass=ExecutorMeta):
 
-    _recently_seen = CappedSet(max_size=Constants.Protocol.DupeTableSize)
+    _recently_seen = CappedSet(max_size=dupe_table_size)
     _parent_name = 'ReactorDaemon'  # used for log names
 
     def __init__(self, loop, context, inproc_socket, ironhouse):

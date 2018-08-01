@@ -6,7 +6,7 @@
 from cilantro.protocol.overlay.ip import *
 from cilantro.protocol.overlay.msg import *
 from cilantro.logger import get_logger
-import os, json, uuid, resource, socket, select, asyncio, time
+import os, resource, socket, asyncio, time
 
 SOCKET_LIMIT = 2500
 log = get_logger(__name__)

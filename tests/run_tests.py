@@ -128,7 +128,7 @@ def main(args):
                     all_errors.append(test_result.errors[i][0])
                     log.error("Error in {}".format(test))
                     log.error('Number of errors: {}'.format(len(test_result.errors)))
-                    log.error('Error #{}: {}'.format(i+1, test_result.errors[i][0]))  # test_result.errors[i][0] = test_retrieve_block_invalid_args (tests.db.test_blockchain_storage.TestBlockStorageDriver)
+                    log.error('Error #{}: {}'.format(i+1, test_result.errors[i][0]))  # test_result.errors[i][0] = test_retrieve_block_invalid_args (tests.storage.test_blockchain_storage.TestBlockStorageDriver)
                     log.error('Error traceback: {}'.format(test_result.errors[i][1]))
                     TEST_FLAG = 'F'
 

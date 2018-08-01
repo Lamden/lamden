@@ -1,9 +1,11 @@
 from unittest.mock import MagicMock, call, patch
-from cilantro.messages import *
-from cilantro.protocol.wallets import ED25519Wallet
+# from cilantro.messages import *
+from cilantro.messages.transaction.standard import StandardTransactionBuilder
+
+from cilantro.protocol.wallet import Wallet
 from cilantro.protocol.reactor.interface import ReactorInterface
 from cilantro.protocol.reactor.executor import *
-from cilantro.messages import ReactorCommand
+from cilantro.messages.reactor.reactor_command import ReactorCommand
 from cilantro.utils.test import MPTesterBase, MPTestCase, mp_testable
 import time
 
@@ -16,7 +18,7 @@ URLS = ['tcp://127.0.0.1:' + str(i) for i in range(9000, 9999, 10)]
 
 
 def random_envelope():
-    sk, vk = ED25519Wallet.new()
+    sk, vk = Wallet.new()
     tx = StandardTransactionBuilder.random_tx()
     return Envelope.create_from_message(message=tx, signing_key=sk)
 

@@ -1,12 +1,12 @@
-from cilantro import Constants
 from cilantro.nodes import Masternode, Witness, Delegate, NodeBase
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.transport import Router, Composer
 import asyncio
-from unittest.mock import MagicMock
-from cilantro.db import DB
+from cilantro.protocol.wallet import Wallet
 
-W = Constants.Protocol.Wallets
+from cilantro.storage.db import DB
+
+W = Wallet
 
 
 class NodeFactory:

@@ -1,9 +1,7 @@
-from cilantro import Constants
-from cilantro.messages import MessageBase
+from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
 import json
-from cilantro.protocol.wallets import ED25519Wallet
-
+from cilantro.protocol.wallet import Wallet
 
 class MerkleSignature(MessageBase):
     """
@@ -47,7 +45,7 @@ class MerkleSignature(MessageBase):
         verifying_key = self.sender
 
         if validate_hex(verifying_key, length=64, raise_err=False):
-            return Constants.Protocol.Wallets.verify(verifying_key, msg, self.signature)
+            return Wallet.verify(verifying_key, msg, self.signature)
         else:
             return False
 
@@ -90,8 +88,8 @@ def build_test_merkle_sig(msg: bytes=b'some default payload', sk=None, vk=None) 
     import time
 
     if not sk:
-        sk, vk = ED25519Wallet.new()
+        sk, vk = Wallet.new()
 
-    signature = ED25519Wallet.sign(sk, msg)
+    signature = Wallet.sign(sk, msg)
 
     return MerkleSignature.create(sig_hex=signature, timestamp=str(time.time()), sender=vk)

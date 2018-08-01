@@ -1,9 +1,8 @@
 from unittest import TestCase
-from cilantro.messages import SwapTransaction, SwapTransactionBuilder
-from cilantro.messages.utils import validate_hex, int_to_decimal
-from cilantro import Constants
+from cilantro.messages.transaction.swap import SwapTransaction, SwapTransactionBuilder
 import secrets
 import time
+from cilantro.protocol.wallet import Wallet
 
 class TestSwapTransaction(TestCase):
     @staticmethod
@@ -16,8 +15,8 @@ class TestSwapTransaction(TestCase):
         hashlock = h if h is not None else secrets.token_bytes(32)
         expiration = e if e is not None else int(time.time()) + (60 * 60 * 24)
 
-        s = Constants.Protocol.Wallets.new()
-        r = Constants.Protocol.Wallets.new()
+        s = Wallet.new()
+        r = Wallet.new()
 
         return SwapTransactionBuilder.create_tx_struct(s[0], s[1], r[1], amount, hashlock, expiration)
 

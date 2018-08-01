@@ -1,8 +1,19 @@
-from cilantro import Constants
-from cilantro.protocol.statemachine import *
+from cilantro.constants.zmq_filters import masternode_delegate
+from cilantro.constants.testnet import majority
+from cilantro.constants.nodes import max_queue_size
 from cilantro.nodes.masternode import MNBaseState, Masternode
-from cilantro.db.blocks import *
-from cilantro.messages import *
+
+from cilantro.utils import Hasher
+
+from cilantro.storage.blocks import List, BlockStorageDriver, BlockStorageException
+
+from cilantro.protocol.states.decorators import enter_from_any, enter_from, input_request, input_timeout, input
+
+from cilantro.messages.consensus.block_contender import BlockContender
+from cilantro.messages.block_data.block_metadata import NewBlockNotification
+from cilantro.messages.block_data.transaction_data import TransactionRequest, TransactionReply
+from cilantro.messages.envelope.envelope import Envelope
+
 from cilantro.protocol.structures import MerkleTree
 from collections import deque
 import random
@@ -81,7 +92,7 @@ class MNNewBlockState(MNBaseState):
         # Notify delegates of new block
         self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {} ".format(block_hash))
         notif = NewBlockNotification.create(**BlockStorageDriver.get_latest_block(include_number=False))
-        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
+        self.parent.composer.send_pub_msg(filter=masternode_delegate, message=notif)
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
@@ -111,13 +122,13 @@ class MNNewBlockState(MNBaseState):
         """
         # Development sanity checks (these should be removed in production)
         assert len(block.merkle_leaves) >= 1, "Masternode got block contender with no nodes! {}".format(block)
-        assert len(block.signatures) >= Constants.Testnet.Majority, \
+        assert len(block.signatures) >= majority, \
             "Received a block contender with only {} signatures (which is less than a majority of {}"\
-            .format(len(block.signatures), Constants.Testnet.Majority)
+            .format(len(block.signatures), majority)
 
-        assert len(block.merkle_leaves) == Constants.Nodes.MaxQueueSize, \
+        assert len(block.merkle_leaves) == max_queue_size, \
             "Block contender has {} merkle leaves, but MaxQueueSize is {}!!!\nmerkle_leaves={}"\
-            .format(len(block.merkle_leaves), Constants.Nodes.MaxQueueSize,block.merkle_leaves)
+            .format(len(block.merkle_leaves), max_queue_size, block.merkle_leaves)
 
         # TODO validate the sigs are actually from the top N delegates
         # TODO -- ensure that this block contender's previous block is this Masternode's current block...

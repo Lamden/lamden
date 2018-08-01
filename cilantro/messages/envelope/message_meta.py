@@ -1,5 +1,5 @@
-from cilantro import Constants
-from cilantro.messages import MessageBase
+from cilantro.messages.base.base import MessageBase
+from cilantro.constants.protocol import max_uuid
 import capnp
 import envelope_capnp
 
@@ -38,7 +38,7 @@ class MessageMeta(MessageBase):
                                              .format(type, MessageBase.registry)
 
         if uuid == -1:
-            uuid = random.randint(0, Constants.Protocol.MaxUuid)
+            uuid = random.randint(0, max_uuid)
 
         data = envelope_capnp.MessageMeta.new_message()
         data.type = type

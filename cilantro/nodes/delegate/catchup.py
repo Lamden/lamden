@@ -1,9 +1,11 @@
-from cilantro import Constants
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
-from cilantro.protocol.statemachine import *
-from cilantro.db import *
-from cilantro.messages import *
-
+from cilantro.protocol.states.decorators import input, input_timeout, exit_to_any, enter_from_any
+from cilantro.storage.blocks import BlockStorageDriver
+from cilantro.messages.block_data.block_metadata import BlockMetaDataReply, BlockMetaDataRequest
+from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
+from cilantro.messages.envelope.envelope import Envelope
+from cilantro.messages.transaction.contract import ContractTransaction
+from cilantro.storage.db import VKBook
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
