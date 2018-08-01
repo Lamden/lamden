@@ -4,10 +4,15 @@ jobs:
     working_directory: ~/cilantro
     docker:
       - image: circleci/python:3.6.5
-      - image: circleci/mysql:5.7
+      - image: amdencalrissian/seneca-myrocks-test
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_ROOT_PASSWORD: ""
+          username: 'root'
+          password: ''
+          database: 'seneca_test'
+#      - image: circleci/mysql:5.7
+#        environment:
+#          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+#          MYSQL_ROOT_PASSWORD: ""
 
     steps:
       - checkout
