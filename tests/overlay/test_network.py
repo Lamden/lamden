@@ -81,6 +81,8 @@ class TestNetwork(TestCase):
         def run(self):
             stop(self)
 
+        print('!!!',self.a_net.node)
+        print('!!!',self.b_net.node)
         self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
             self.b_net.authenticate(self.a_net.node))))
         self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
@@ -140,7 +142,7 @@ class TestNetwork(TestCase):
             time.sleep(0.1)
             self.assertEqual(self.a_net.connections, {})
             stop(self)
-            
+
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()
