@@ -9,7 +9,9 @@ from cilantro.storage.tables import DB_NAME
 from cilantro.storage.db import DB
 from typing import List
 from heapq import heappush, heappop
-import time, asyncio
+import time
+import asyncio
+
 
 class SenecaInterpreter:
 
@@ -101,8 +103,11 @@ class SenecaInterpreter:
         return len(self.queue)
 
     def start(self):
+        assert self.check_contract_future is None, "Start should not be called twice without a .stop() in between!"
+
         # Check to see if there are valid contracts to be run
         self.check_contract_future = asyncio.ensure_future(self.check_contract())
 
     def stop(self):
         self.check_contract_future.cancel()
+        self.check_contract_future = None
