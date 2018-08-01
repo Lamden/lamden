@@ -41,15 +41,12 @@ class ReactorDaemon:
         # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
-                       alpha=alpha, ksize=ksize,
+                       alpha=alpha, ksize=ksize, daemon=self,
                        max_peers=max_peers, block=False, cmd_cli=False, wipe_certs=True)
 
         self.context, auth = self.dht.network.ironhouse.secure_context(async=True)
         self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
         self.socket.connect(self.url)
-        import time
-        time.sleep(16)
-        self.log.important([item[0] for item in self.dht.network.bootstrappableNeighbors()])
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name
 
@@ -204,7 +201,7 @@ class ReactorDaemon:
                     )
                     self.dht.network.protocol.router.addContact(n)
                     self.dht.network.connect_to_neighbor(n)
-                    
+
                 self.log.fatal([item[0] for item in self.dht.network.bootstrappableNeighbors()])
         except Exception as e:
             delim_line = '!' * 64

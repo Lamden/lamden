@@ -140,6 +140,7 @@ class Ironhouse:
 
     def reconfigure_curve(self, auth=None):
         if not auth:
+            if not hasattr(self, 'auth'): return
             self.auth.configure_curve(domain='*', location=zmq.auth.CURVE_ALLOW_ANY)
         else:
             auth.configure_curve(domain='*', location=self.public_keys_dir)

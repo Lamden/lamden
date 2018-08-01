@@ -9,7 +9,6 @@ NEIGHBOR_IP_FILE = '{}/data/neighborhood.txt'.format(path)
 POPULAR_IP_FILE = '{}/data/popular.txt'.format(path)
 
 def get_public_ip():
-    return '127.0.0.1'
     try:
         r = requests.get('http://ip.42.pl/raw')
         return r.text
