@@ -76,13 +76,13 @@ class Network(object):
             log.debug('Node {}:{} is already a neighbor'.format(node.ip, node.port))
             return True
         authorized = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
-        if authorized == True:
-            log.debug('{}:{} is authorized'.format(node.ip, node.port))
-        elif authorized == False:
-            log.warning('!UNAUTHORIZED! {}:{}'.format(node.ip, node.port))
+        log.critical('{}:{} is {}'.format(node.ip, node.port, authorized))
+        if authorized == 'authorized':
+            self.protocol.router.addContact(node)
+            self.connect_to_neighbor(node)
+            return True
         else:
-            log.debug('Ignoring {}:{}'.format(node.ip, node.port))
-        return authorized
+            return False
 
     def setup_stethoscope(self):
         socket.setdefaulttimeout(0.1)
@@ -149,7 +149,7 @@ class Network(object):
 
     async def lookup_ip(self, node_key):
         cache_node = self.lookup_ip_in_cache(node_key)
-        if cache_node: return cache_node
+        if cache_node: return cache_node, True
         node_id = digest(node_key)
         if node_id == self.node.id: return self.node
 
@@ -164,7 +164,7 @@ class Network(object):
         if res_node != None:
             self.vkcache[node_key] = res_node.ip
             pk = self.ironhouse.vk2pk(node_key)
-        return res_node
+        return res_node, False
 
     def stop(self):
         if self.transport is not None:

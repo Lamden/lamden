@@ -33,7 +33,7 @@ def run_witness(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(15)
+    # overwrite_logger_level(21)
 
     w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -88,8 +88,7 @@ class TestPump(BaseNetworkTestCase):
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
-        # DUMP IT BOYS
-        time.sleep(85)
+        time.sleep(46)
         self.execute_python('mgmt', wrap_func(dump_it, self.VOLUME), async=True)
 
         input("Enter any key to terminate")

@@ -122,6 +122,8 @@ class Ironhouse:
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)
 
+        self.reconfigure_curve()
+
 
     def secure_context(self, async=False):
         if async:
@@ -152,20 +154,20 @@ class Ironhouse:
         return sock
 
     async def authenticate(self, target_public_key, ip, port=None):
-        if target_public_key == self.public_key: return True
+        if target_public_key == self.public_key: return 'authorized'
         try:
             PublicKey(decode(target_public_key))
         except Exception as e:
             log.debug('Invalid public key')
-            return False
+            return 'invalid'
         server_url = 'tcp://{}:{}'.format(ip, port or self.auth_port)
-        log.debug('authenticating {}...'.format(server_url))
+        log.debug('authenticating with {}...'.format(server_url))
         client = self.ctx.socket(zmq.REQ)
         client.setsockopt(zmq.LINGER, 0)
         client = self.secure_socket(client, target_public_key)
         client.connect(server_url)
         client.send(self.vk.encode())
-        authorized = False
+        authorized = 'unauthorized'
 
         try:
             msg = await asyncio.wait_for(client.recv(), 3)
@@ -174,12 +176,10 @@ class Ironhouse:
             received_public_key = self.vk2pk(msg)
             if self.auth_validate(msg) == True and target_public_key == received_public_key:
                 self.create_from_public_key(received_public_key)
-                self.reconfigure_curve()
-                authorized = True
+                authorized = 'authorized'
         except Exception as e:
-            log.fatal('except {}'.format(e))
             log.debug('no reply from {} after waiting...'.format(server_url))
-            authorized = None
+            authorized = 'no_reply'
 
         client.disconnect(server_url)
         client.close()
@@ -213,7 +213,6 @@ class Ironhouse:
                 if self.auth_validate(message) == True:
                     public_key = self.vk2pk(message)
                     self.create_from_public_key(public_key)
-                    self.reconfigure_curve()
                     log.debug('sending secure reply: {}'.format(self.vk))
                     self.sec_sock.send(self.vk.encode())
         finally:
@@ -221,5 +220,4 @@ class Ironhouse:
 
     @staticmethod
     def auth_validate(vk):
-        log.debug('vk {} \n {}'.format(vk, VKBook.get_all()))
         return vk in VKBook.get_all()

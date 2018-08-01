@@ -6,6 +6,7 @@ from cilantro.messages import ReactorCommand
 from cilantro import Constants
 from cilantro.protocol.overlay.dht import DHT
 from cilantro.protocol.overlay.node import Node
+from cilantro.protocol.overlay.utils import digest
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
 import signal, sys
@@ -48,8 +49,7 @@ class ReactorDaemon:
         self.socket.connect(self.url)
         import time
         time.sleep(16)
-
-        self.log.important(self.dht.network.bootstrappableNeighbors())
+        self.log.important([item[0] for item in self.dht.network.bootstrappableNeighbors()])
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name
 
@@ -134,7 +134,10 @@ class ReactorDaemon:
             .format(executor_func, self.executors[executor_name])
 
         # Execute command
-        getattr(self.executors[executor_name], executor_func)(**kwargs)
+        try:
+            getattr(self.executors[executor_name], executor_func)(**kwargs)
+        except Exception as e:
+            self.log.fatal("Error executing command {}\n....error={}".format(cmd, e))
 
     def _parse_cmd(self, cmd: ReactorCommand):
         """
@@ -181,9 +184,28 @@ class ReactorDaemon:
 
     async def _lookup_ip(self, cmd, url, vk, *args, **kwargs):
         ip, node = None, None
-        self.log.debug("** raghu cmd {} url {} vk {}".format(cmd, url, vk))
         try:
-            node = await self.dht.network.lookup_ip(vk)
+            node, cached = await self.dht.network.lookup_ip(vk)
+            # NOTE while secure, this is a more loose connection policy
+            self.log.fatal('{} resolves for {}'.format(os.getenv('HOST_IP'), node))
+            if node and not cached:
+                ip = node.ip if type(node) == Node else node.split(':')[0]
+                public_key = self.dht.network.ironhouse.vk2pk(vk)
+                authorization = await self.dht.network.ironhouse.authenticate(public_key, ip)
+                self.log.fatal('{} -> {} is {}'.format(os.getenv('HOST_IP'), node, authorization))
+                if authorization != 'authorized':
+                    node = None
+                else:
+                    n = Node(
+                        node_id=digest(vk),
+                        public_key=public_key,
+                        ip=ip,
+                        port=self.dht.network.network_port
+                    )
+                    self.dht.network.protocol.router.addContact(n)
+                    self.dht.network.connect_to_neighbor(n)
+                    
+                self.log.fatal([item[0] for item in self.dht.network.bootstrappableNeighbors()])
         except Exception as e:
             delim_line = '!' * 64
             err_msg = '\n\n' + delim_line + '\n' + delim_line

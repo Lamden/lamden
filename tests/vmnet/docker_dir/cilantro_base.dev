@@ -35,7 +35,7 @@ RUN apt-get update \
     && pip3 install -r dev-requirements.txt \
     && rm -rf capnproto \
     && apt-get remove -y --allow-remove-essential \
-        python3-pip python3.6-dev build-essential \
+        build-essential \
         gcc g++ \
         libffi-dev libtool \
         gsl-bin zlib1g-dev libboost-all-dev \
