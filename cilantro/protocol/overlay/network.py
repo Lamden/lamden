@@ -76,7 +76,7 @@ class Network(object):
             log.debug('Node {}:{} is already a neighbor'.format(node.ip, node.port))
             return True
         authorized = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
-        log.critical('{}:{} is {}'.format(node.ip, node.port, authorized))
+        log.debug('{}:{} is {}'.format(node.ip, node.port, authorized))
         if authorized == 'authorized':
             self.protocol.router.addContact(node)
             self.connect_to_neighbor(node)
