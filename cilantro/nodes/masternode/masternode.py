@@ -111,7 +111,6 @@ class MNBootState(MNBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
-        time.sleep(10)
         self.log.debug("MN IP: {}".format(self.parent.ip))
 
         # Add publisher socket
