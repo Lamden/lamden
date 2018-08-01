@@ -4,7 +4,7 @@ jobs:
     working_directory: ~/cilantro
     docker:
       - image: circleci/python:3.6.5
-      - image: amdencalrissian/seneca-myrocks-test
+      - image: lamdencalrissian/seneca-myrocks-test
         environment:
           username: 'root'
           password: ''
