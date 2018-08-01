@@ -5,7 +5,7 @@ from cilantro.storage.tables import create_table
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.utils import is_valid_hex, Hasher
 from cilantro.protocol.structures import MerkleTree
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 from cilantro.storage.db import DB
 from cilantro.storage.transactions import encode_tx, decode_tx
 from typing import List
@@ -133,8 +133,8 @@ class BlockStorageDriver:
 
         tree = MerkleTree.from_raw_transactions(raw_transactions)
 
-        publisher_vk = Wallet.get_vk(publisher_sk)
-        publisher_sig = Wallet.sign(publisher_sk, tree.root)
+        publisher_vk = wallet.get_vk(publisher_sk)
+        publisher_sig = wallet.sign(publisher_sk, tree.root)
 
         # Build and validate block_data
         block_data = {
@@ -410,7 +410,7 @@ class BlockStorageDriver:
         if not is_valid_hex(block_data['masternode_vk'], length=64):
             raise InvalidBlockSignatureException("Invalid verifying key for field masternode_vk: {}"
                                                  .format(block_data['masternode_vk']))
-        if not Wallet.verify(block_data['masternode_vk'], bytes.fromhex(block_data['merkle_root']), block_data['masternode_signature']):
+        if not wallet.verify(block_data['masternode_vk'], bytes.fromhex(block_data['merkle_root']), block_data['masternode_signature']):
             raise InvalidBlockSignatureException("Could not validate Masternode's signature on block data")
 
     @classmethod

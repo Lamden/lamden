@@ -1,7 +1,7 @@
 # from unittest import TestCase
 # from cilantro import Constants
 #
-# from cilantro.protocol.wallets import ED25519Wallet
+# from cilantro.protocol.wallets import ED25519wallet
 # from cilantro.protocol.serialization import JSONSerializer
 # from cilantro.protocol.proofs import SHA3POW
 # from cilantro.protocol.transactions import Transaction
@@ -10,7 +10,7 @@
 #
 # class TestConstants(TestCase):
 #     def test_protocol_constants(self):
-#         self.assertTrue(Constants.Protocol.Wallets == ED25519Wallet)
+#         self.assertTrue(Constants.Protocol.wallets == ED25519wallet)
 #         self.assertTrue(Constants.Protocol.Serialization == JSONSerializer)
 #         self.assertTrue(Constants.Protocol.Proofs == SHA3POW)
 #         self.assertTrue(Constants.Protocol.Transactions == Transaction)
@@ -24,7 +24,7 @@
 #         self.assertTrue(Constants.MongoConstants.BalancesColName == 'balances')
 #         self.assertTrue(Constants.MongoConstants.GenesisKey == 'is_genesis')
 #         self.assertTrue(Constants.MongoConstants.BlocksStateColName == 'blockchain_state')
-#         self.assertTrue(Constants.MongoConstants.WalletKey == 'wallet')
+#         self.assertTrue(Constants.MongoConstants.walletKey == 'wallet')
 #         self.assertTrue(Constants.MongoConstants.BalanceKey == 'balance')
 #         self.assertTrue(Constants.MongoConstants.FaucetColName == 'faucet')
 #

@@ -1,6 +1,6 @@
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.utils import validate_hex
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 from cilantro.storage.templating import ContractTemplate
 from cilantro.protocol.pow import SHA3POW
 
@@ -40,13 +40,13 @@ class ContractTransactionBuilder:
 
         struct = transaction_capnp.ContractTransaction.new_message()
 
-        struct.payload.sender = Wallet.get_vk(sender_sk)
+        struct.payload.sender = wallet.get_vk(sender_sk)
         struct.payload.code = code_str
 
         payload_binary = struct.payload.copy().to_bytes()
 
         struct.metadata.proof = SHA3POW.find(payload_binary)[0]
-        struct.metadata.signature = Wallet.sign(sender_sk, payload_binary)
+        struct.metadata.signature = wallet.sign(sender_sk, payload_binary)
 
         return ContractTransaction.from_data(struct)
 
@@ -59,7 +59,7 @@ class ContractTransactionBuilder:
 
     @staticmethod
     def random_currency_tx():
-        sender, receiver = Wallet.new(), Wallet.new()
+        sender, receiver = wallet.new(), wallet.new()
         amount = random.randint(1, 2 ** 16)
         return ContractTransactionBuilder.create_currency_tx(sender[0], receiver[1], amount)
 

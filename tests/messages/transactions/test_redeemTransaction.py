@@ -1,7 +1,7 @@
 from unittest import TestCase
 from cilantro.messages.transaction.redeem import RedeemTransaction, RedeemTransactionBuilder
 import secrets
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 
 class TestRedeemTransaction(TestCase):
     @staticmethod
@@ -10,7 +10,7 @@ class TestRedeemTransaction(TestCase):
         Helper method to create and return a valid transaction struct with a random sender/receiever and
         the specified amount
         """
-        s = Wallet.new()
+        s = wallet.new()
         return RedeemTransactionBuilder.create_tx_struct(s[0], s[1], secrets.token_hex(32))
 
     def __assert_struct_equal_object(self, tx_struct: object, tx_object: RedeemTransaction):

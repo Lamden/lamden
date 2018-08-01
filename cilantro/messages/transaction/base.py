@@ -3,7 +3,7 @@ from cilantro.messages.utils import validate_hex
 from cilantro.storage.db import contract
 from cilantro.utils import lazy_property
 
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 from cilantro.protocol.pow import SHA3POW
 
 class TransactionBase(MessageBase):
@@ -14,7 +14,7 @@ class TransactionBase(MessageBase):
     def __init__(self, data):
         super().__init__(data)
         self.pow = SHA3POW
-        self.wallet = Wallet
+        self.wallet = wallet
 
     # TODO deprecate and remove this
     # def interpret(self, *args, **kwargs):

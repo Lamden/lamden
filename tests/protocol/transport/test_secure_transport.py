@@ -1,14 +1,14 @@
 from cilantro.utils.test import MPTestCase, MPComposer, vmnet_test
 from cilantro.protocol.transport import Composer
 from cilantro.messages.transaction.standard import StandardTransactionBuilder
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 from cilantro.protocol.reactor.executor import *
 import unittest
 import time
 
 from cilantro.constants.testnet import masternodes, delegates
 
-W = Wallet
+W = wallet
 sk1, vk1 = masternodes[0]['sk'], masternodes[0]['vk']
 sk2, vk2 = delegates[0]['sk'], delegates[0]['vk']
 sk3, vk3 = delegates[1]['sk'], delegates[1]['vk']
@@ -28,7 +28,7 @@ def random_msg():
     return StandardTransactionBuilder.random_tx()
 
 def random_envelope(sk=None, tx=None):
-    sk = sk or Wallet.new()[0]
+    sk = sk or wallet.new()[0]
     tx = tx or random_msg()
     return Envelope.create_from_message(message=tx, signing_key=sk)
 
