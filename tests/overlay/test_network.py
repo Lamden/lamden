@@ -156,190 +156,190 @@ class TestNetwork(TestCase):
     #     t.start()
     #     self.loop.run_forever()
 
-    def test_bootstrap(self):
-        def run(self):
-            stop(self)
-        result = self.loop.run_until_complete(
-            asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 13321),
-                ('127.0.0.1', 14321)
-            ]))
-        )
-        self.assertEqual([13321,14321], sorted([n.port for n in result]))
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_bootstrap_cached(self):
-        def run(self):
-            stop(self)
-        self.loop.run_until_complete(
-            asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 13321),
-                ('127.0.0.1', 14321)
-            ]))
-        )
-        result = self.loop.run_until_complete(
-            asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 13321)
-            ]))
-        )
-        self.assertEqual([13321,14321], sorted([n.port for n in result]))
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    @patch('cilantro.protocol.overlay.protocol.KademliaProtocol.getRefreshIDs')
-    def test_refresh_table(self, getRefreshIDs):
-        def run(self):
-            stop(self)
-
-        def ids():
-            return [
-                b"\xaa\xd0\xed\x91O\xa4e'\x06\xdd7\xf8\xf9\xe46p\x9f\x9a\xa1Y",
-                b'\x8e\xd4k+\xf6\x10\x9f\xe3\xcf~3@\xca\xee\xc6\x01\r^\xca\x8b'
-            ]
-
-        getRefreshIDs.side_effect = ids
-        result = self.loop.run_until_complete(
-            asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 13321),
-                ('127.0.0.1', 14321)
-            ]))
-        )
-
-        self.a_net.refresh_table()
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    @patch('cilantro.protocol.overlay.network.Network.bootstrappableNeighbors')
-    def test_save_load_state(self, bootstrappableNeighbors):
-        def run(self):
-            stop(self)
-        def fn():
-            return [('127.0.0.1', 14321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]
-
-        bootstrappableNeighbors.side_effect = fn
-
-        self.assertTrue(self.a_net.saveState('state.tmp'))
-        state = self.a_net.loadState('state.tmp')
-        os.remove('state.tmp')
-        self.assertEqual(state,{'alpha': 3,
-            'id': b"\xaa\xd0\xed\x91O\xa4e'\x06\xdd7\xf8\xf9\xe46p\x9f\x9a\xa1Y",
-            'ksize': 20,
-            'neighbors': [('127.0.0.1', 14321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]})
-
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_save_fail(self):
-        def run(self):
-            stop(self)
-        self.assertFalse(self.a_net.saveState('state.tmp'))
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-
-    def test_lookup_ip(self):
-        def run(self):
-            stop(self)
-
-        result = self.loop.run_until_complete(
-            asyncio.ensure_future(
-                self.a_net.lookup_ip(self.a['vk'])
-            ))
-
-        self.assertEqual(self.a_net.node, result)
-
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_lookup_ip_fail(self):
-        def run(self):
-            stop(self)
-
-        result = self.loop.run_until_complete(
-            asyncio.ensure_future(
-                self.a_net.lookup_ip(self.b['vk'])
-            ))
-
-        self.assertEqual(result, (None, False))
-
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_lookup_ip_with_neighbors(self):
-        def run(self):
-            stop(self)
-        # Bootstrap first
-        self.loop.run_until_complete(
-            asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 13321),
-                ('127.0.0.1', 14321)
-            ]))
-        )
-        # check for b's VK
-        result = self.loop.run_until_complete(
-            asyncio.ensure_future(
-                self.a_net.lookup_ip(self.b['vk'])
-            ))
-
-        self.assertEqual(result[0].id, self.b_net.node.id)
-
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_lookup_ip_with_neighbors_fail(self):
-        def run(self):
-            stop(self)
-        # Bootstrap first
-        self.loop.run_until_complete(
-            asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 13321),
-                ('127.0.0.1', 14321)
-            ]))
-        )
-        # check for evil's VK
-        result = self.loop.run_until_complete(
-            asyncio.ensure_future(
-                self.a_net.lookup_ip(self.evil['vk'])
-            ))
-
-        self.assertEqual(result, (None, False))
-
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
-
-    def test_lookup_ip_with_neighbors_using_cache(self):
-        def run(self):
-            stop(self)
-
-        # Bootstrap first
-        self.loop.run_until_complete(
-            asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 13321),
-                ('127.0.0.1', 14321)
-            ]))
-        )
-        # check for b's VK
-        result = self.loop.run_until_complete(
-            asyncio.ensure_future(
-                self.a_net.lookup_ip(self.b['vk'])
-            ))
-
-        self.assertEqual(result[0].id, self.b_net.node.id)
-        self.assertEqual(self.a_net.lookup_ip_in_cache(self.b['vk']), self.b_net.node.ip)
-
-        t = Timer(0.01, run, [self])
-        t.start()
-        self.loop.run_forever()
+    # def test_bootstrap(self):
+    #     def run(self):
+    #         stop(self)
+    #     result = self.loop.run_until_complete(
+    #         asyncio.ensure_future(self.a_net.bootstrap([
+    #             ('127.0.0.1', 13321),
+    #             ('127.0.0.1', 14321)
+    #         ]))
+    #     )
+    #     self.assertEqual([13321,14321], sorted([n.port for n in result]))
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_bootstrap_cached(self):
+    #     def run(self):
+    #         stop(self)
+    #     self.loop.run_until_complete(
+    #         asyncio.ensure_future(self.a_net.bootstrap([
+    #             ('127.0.0.1', 13321),
+    #             ('127.0.0.1', 14321)
+    #         ]))
+    #     )
+    #     result = self.loop.run_until_complete(
+    #         asyncio.ensure_future(self.a_net.bootstrap([
+    #             ('127.0.0.1', 13321)
+    #         ]))
+    #     )
+    #     self.assertEqual([13321,14321], sorted([n.port for n in result]))
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # @patch('cilantro.protocol.overlay.protocol.KademliaProtocol.getRefreshIDs')
+    # def test_refresh_table(self, getRefreshIDs):
+    #     def run(self):
+    #         stop(self)
+    #
+    #     def ids():
+    #         return [
+    #             b"\xaa\xd0\xed\x91O\xa4e'\x06\xdd7\xf8\xf9\xe46p\x9f\x9a\xa1Y",
+    #             b'\x8e\xd4k+\xf6\x10\x9f\xe3\xcf~3@\xca\xee\xc6\x01\r^\xca\x8b'
+    #         ]
+    #
+    #     getRefreshIDs.side_effect = ids
+    #     result = self.loop.run_until_complete(
+    #         asyncio.ensure_future(self.a_net.bootstrap([
+    #             ('127.0.0.1', 13321),
+    #             ('127.0.0.1', 14321)
+    #         ]))
+    #     )
+    #
+    #     self.a_net.refresh_table()
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # @patch('cilantro.protocol.overlay.network.Network.bootstrappableNeighbors')
+    # def test_save_load_state(self, bootstrappableNeighbors):
+    #     def run(self):
+    #         stop(self)
+    #     def fn():
+    #         return [('127.0.0.1', 14321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]
+    #
+    #     bootstrappableNeighbors.side_effect = fn
+    #
+    #     self.assertTrue(self.a_net.saveState('state.tmp'))
+    #     state = self.a_net.loadState('state.tmp')
+    #     os.remove('state.tmp')
+    #     self.assertEqual(state,{'alpha': 3,
+    #         'id': b"\xaa\xd0\xed\x91O\xa4e'\x06\xdd7\xf8\xf9\xe46p\x9f\x9a\xa1Y",
+    #         'ksize': 20,
+    #         'neighbors': [('127.0.0.1', 14321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]})
+    #
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_save_fail(self):
+    #     def run(self):
+    #         stop(self)
+    #     self.assertFalse(self.a_net.saveState('state.tmp'))
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    #
+    # def test_lookup_ip(self):
+    #     def run(self):
+    #         stop(self)
+    #
+    #     result = self.loop.run_until_complete(
+    #         asyncio.ensure_future(
+    #             self.a_net.lookup_ip(self.a['vk'])
+    #         ))
+    #
+    #     self.assertEqual(self.a_net.node, result)
+    #
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_lookup_ip_fail(self):
+    #     def run(self):
+    #         stop(self)
+    #
+    #     result = self.loop.run_until_complete(
+    #         asyncio.ensure_future(
+    #             self.a_net.lookup_ip(self.b['vk'])
+    #         ))
+    #
+    #     self.assertEqual(result, (None, False))
+    #
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_lookup_ip_with_neighbors(self):
+    #     def run(self):
+    #         stop(self)
+    #     # Bootstrap first
+    #     self.loop.run_until_complete(
+    #         asyncio.ensure_future(self.a_net.bootstrap([
+    #             ('127.0.0.1', 13321),
+    #             ('127.0.0.1', 14321)
+    #         ]))
+    #     )
+    #     # check for b's VK
+    #     result = self.loop.run_until_complete(
+    #         asyncio.ensure_future(
+    #             self.a_net.lookup_ip(self.b['vk'])
+    #         ))
+    #
+    #     self.assertEqual(result[0].id, self.b_net.node.id)
+    #
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_lookup_ip_with_neighbors_fail(self):
+    #     def run(self):
+    #         stop(self)
+    #     # Bootstrap first
+    #     self.loop.run_until_complete(
+    #         asyncio.ensure_future(self.a_net.bootstrap([
+    #             ('127.0.0.1', 13321),
+    #             ('127.0.0.1', 14321)
+    #         ]))
+    #     )
+    #     # check for evil's VK
+    #     result = self.loop.run_until_complete(
+    #         asyncio.ensure_future(
+    #             self.a_net.lookup_ip(self.evil['vk'])
+    #         ))
+    #
+    #     self.assertEqual(result, (None, False))
+    #
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
+    #
+    # def test_lookup_ip_with_neighbors_using_cache(self):
+    #     def run(self):
+    #         stop(self)
+    #
+    #     # Bootstrap first
+    #     self.loop.run_until_complete(
+    #         asyncio.ensure_future(self.a_net.bootstrap([
+    #             ('127.0.0.1', 13321),
+    #             ('127.0.0.1', 14321)
+    #         ]))
+    #     )
+    #     # check for b's VK
+    #     result = self.loop.run_until_complete(
+    #         asyncio.ensure_future(
+    #             self.a_net.lookup_ip(self.b['vk'])
+    #         ))
+    #
+    #     self.assertEqual(result[0].id, self.b_net.node.id)
+    #     self.assertEqual(self.a_net.lookup_ip_in_cache(self.b['vk']), self.b_net.node.ip)
+    #
+    #     t = Timer(0.01, run, [self])
+    #     t.start()
+    #     self.loop.run_forever()
 
 
     def test_lookup_ip_with_neighbors_using_cache_fail(self):
