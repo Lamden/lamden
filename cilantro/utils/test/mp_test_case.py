@@ -72,10 +72,6 @@ class MPTestCase(BaseNetworkTestCase):
         MPTestCase.testers.clear()
         MPTestCase.curr_tester_index = 1
 
-        self.log.important("taking a fat nap during teardown....")
-        time.sleep(8)
-        self.log.important("Ok took dat good nap hopefully things got torn down")
-
     def start(self, timeout=TEST_TIMEOUT):
         """
         Start the test orchestrator, which polls tester objects living on seperate process/machines for assertions.
