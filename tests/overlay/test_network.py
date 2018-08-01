@@ -51,6 +51,9 @@ class TestNetwork(TestCase):
             digest(self.off['vk']), ip='127.0.0.1', port=16321, public_key=self.off['curve_key']
         )
 
+    def tearDown(self):
+        self.loop.close()
+
     def test_attributes(self):
         def run(self):
             stop(self)
@@ -80,9 +83,6 @@ class TestNetwork(TestCase):
     def test_authenticate(self):
         def run(self):
             stop(self)
-
-        print('!!!',self.a_net.node)
-        print('!!!',self.b_net.node)
         self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
             self.b_net.authenticate(self.a_net.node))))
         self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
@@ -173,7 +173,7 @@ class TestNetwork(TestCase):
     def test_bootstrap_cached(self):
         def run(self):
             stop(self)
-        result = self.loop.run_until_complete(
+        self.loop.run_until_complete(
             asyncio.ensure_future(self.a_net.bootstrap([
                 ('127.0.0.1', 13321),
                 ('127.0.0.1', 14321)
@@ -184,6 +184,7 @@ class TestNetwork(TestCase):
                 ('127.0.0.1', 13321)
             ]))
         )
+        self.assertEqual([13321,14321], sorted([n.port for n in result]))
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()
@@ -398,9 +399,6 @@ class TestNetwork(TestCase):
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()
-
-    def tearDown(self):
-        self.loop.close()
 
 if __name__ == '__main__':
     unittest.main()
