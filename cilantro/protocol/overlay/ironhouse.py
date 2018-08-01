@@ -167,6 +167,7 @@ class Ironhouse:
         client.setsockopt(zmq.LINGER, 0)
         client = self.secure_socket(client, target_public_key)
         client.connect(server_url)
+        log.critical(self.vk.encode())
         client.send(self.vk.encode())
         authorized = 'unauthorized'
 
@@ -179,7 +180,7 @@ class Ironhouse:
                 self.create_from_public_key(received_public_key)
                 authorized = 'authorized'
         except Exception as e:
-            log.debug('no reply from {} after waiting...'.format(server_url))
+            log.debug('no reply from {} after waiting... with e = {}'.format(server_url, e))
             authorized = 'no_reply'
 
         client.disconnect(server_url)
@@ -216,6 +217,8 @@ class Ironhouse:
                     self.create_from_public_key(public_key)
                     log.debug('sending secure reply: {}'.format(self.vk))
                     self.sec_sock.send(self.vk.encode())
+        except Exception as e:
+            log.critical(e)
         finally:
             self.cleanup()
 
