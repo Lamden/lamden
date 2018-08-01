@@ -172,7 +172,7 @@ class Ironhouse:
         authorized = 'unauthorized'
 
         try:
-            msg = await asyncio.wait_for(client.recv(), 3)
+            msg = await asyncio.wait_for(client.recv(), 10)
             msg = msg.decode()
             log.debug('got secure reply {}, {}'.format(msg, target_public_key))
             received_public_key = self.vk2pk(msg)
@@ -180,7 +180,7 @@ class Ironhouse:
                 self.create_from_public_key(received_public_key)
                 authorized = 'authorized'
         except Exception as e:
-            log.debug('no reply from {} after waiting... with e = {}'.format(server_url, e))
+            log.debug('no reply from {} after waiting...'.format(server_url))
             authorized = 'no_reply'
 
         client.disconnect(server_url)
@@ -217,8 +217,6 @@ class Ironhouse:
                     self.create_from_public_key(public_key)
                     log.debug('sending secure reply: {}'.format(self.vk))
                     self.sec_sock.send(self.vk.encode())
-        except Exception as e:
-            log.critical(e)
         finally:
             self.cleanup()
 
