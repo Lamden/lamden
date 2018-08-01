@@ -57,7 +57,7 @@ I think OVERLAY_TESTS arent working on CI b/c dat boi falcon is trying to open u
 ... so I think we need to run those tests as integration tests inside a docker container
 """
 UNIT_TESTS = [
-    # OVERLAY_TESTS,  # TODO see note above
+    OVERLAY_TESTS,  # TODO see note above
     PROTOCOL_TESTS,
     MESSAGE_TESTS,
     CONSTANTS_TESTS,
@@ -91,7 +91,7 @@ INTEGRATION_TESTS = [
 """
 
 # Tests to skip on the CI.
-CI_DISABLED_TESTS = [] #OVERLAY_TESTS #+ DB_TESTS + SMART_CONTRACT_TESTS
+CI_DISABLED_TESTS = [OVERLAY_TESTS] #+ DB_TESTS + SMART_CONTRACT_TESTS
 
 # Tests that are skipped if the environment variable $CILANTRO_DEBUG is set
 DEBUG_DISABLED_TESTS = [] # SMART_CONTRACT_TESTS

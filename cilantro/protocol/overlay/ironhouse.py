@@ -122,6 +122,8 @@ class Ironhouse:
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)
 
+        self.reconfigure_curve()
+
 
     def secure_context(self, async=False):
         if async:
@@ -138,6 +140,7 @@ class Ironhouse:
 
     def reconfigure_curve(self, auth=None):
         if not auth:
+            if not hasattr(self, 'auth'): return
             self.auth.configure_curve(domain='*', location=zmq.auth.CURVE_ALLOW_ANY)
         else:
             auth.configure_curve(domain='*', location=self.public_keys_dir)
@@ -152,32 +155,32 @@ class Ironhouse:
         return sock
 
     async def authenticate(self, target_public_key, ip, port=None):
-        if target_public_key == self.public_key: return True
+        if target_public_key == self.public_key: return 'authorized'
         try:
             PublicKey(decode(target_public_key))
         except Exception as e:
             log.debug('Invalid public key')
-            return False
+            return 'invalid'
         server_url = 'tcp://{}:{}'.format(ip, port or self.auth_port)
-        log.debug('authenticating {}...'.format(server_url))
+        log.debug('authenticating with {}...'.format(server_url))
         client = self.ctx.socket(zmq.REQ)
         client.setsockopt(zmq.LINGER, 0)
         client = self.secure_socket(client, target_public_key)
         client.connect(server_url)
         client.send(self.vk.encode())
-        authorized = False
+        authorized = 'unauthorized'
 
         try:
-            msg = await asyncio.wait_for(client.recv(), 0.5)
+            msg = await asyncio.wait_for(client.recv(), 3)
             msg = msg.decode()
             log.debug('got secure reply {}, {}'.format(msg, target_public_key))
             received_public_key = self.vk2pk(msg)
             if self.auth_validate(msg) == True and target_public_key == received_public_key:
                 self.create_from_public_key(received_public_key)
-                authorized = True
+                authorized = 'authorized'
         except Exception as e:
             log.debug('no reply from {} after waiting...'.format(server_url))
-            authorized = None
+            authorized = 'no_reply'
 
         client.disconnect(server_url)
         client.close()

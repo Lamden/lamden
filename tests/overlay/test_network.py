@@ -1,5 +1,6 @@
 import unittest, asyncio, socket, time, os
 from unittest import TestCase
+from unittest.mock import Mock
 from unittest.mock import patch
 from cilantro.protocol.overlay.network import Network
 from cilantro.protocol.overlay.node import Node
@@ -15,6 +16,14 @@ def stop(self):
     self.evil_net.stop()
     self.loop.call_soon_threadsafe(self.loop.stop)
 
+class DaemonMock(Mock):
+    @property
+    def socket():
+        class SocketMock(Mock):
+            def send(self):
+                pass
+        return SocketMock
+
 class TestNetwork(TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -26,15 +35,18 @@ class TestNetwork(TestCase):
         self.a_net = Network(sk=self.a['sk'],
                             network_port=3321,
                             keyname='a', wipe_certs=True,
-                            loop=self.loop)
+                            loop=self.loop,
+                            daemon=DaemonMock())
         self.b_net = Network(sk=self.b['sk'],
                             network_port=4321,
                             keyname='b', wipe_certs=True,
-                            loop=self.loop)
+                            loop=self.loop,
+                            daemon=DaemonMock())
         self.evil_net = Network(sk=self.evil['sk'],
                             network_port=5321,
                             keyname='evil', wipe_certs=True,
-                            loop=self.loop)
+                            loop=self.loop,
+                            daemon=DaemonMock())
         self.off_node = Node(
             digest(self.off['vk']), ip='127.0.0.1', port=6321, public_key=self.off['curve_key']
         )
@@ -128,7 +140,7 @@ class TestNetwork(TestCase):
             time.sleep(0.1)
             self.assertEqual(self.a_net.connections, {})
             stop(self)
-
+            
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()
@@ -252,7 +264,7 @@ class TestNetwork(TestCase):
                 self.a_net.lookup_ip(self.b['vk'])
             ))
 
-        self.assertIsNone(result)
+        self.assertEqual(result, (None, False))
 
         t = Timer(0.01, run, [self])
         t.start()
@@ -274,7 +286,7 @@ class TestNetwork(TestCase):
                 self.a_net.lookup_ip(self.b['vk'])
             ))
 
-        self.assertEqual(result.id, self.b_net.node.id)
+        self.assertEqual(result[0].id, self.b_net.node.id)
 
         t = Timer(0.01, run, [self])
         t.start()
@@ -296,7 +308,7 @@ class TestNetwork(TestCase):
                 self.a_net.lookup_ip(self.evil['vk'])
             ))
 
-        self.assertIsNone(result)
+        self.assertEqual(result, (None, False))
 
         t = Timer(0.01, run, [self])
         t.start()
@@ -319,7 +331,7 @@ class TestNetwork(TestCase):
                 self.a_net.lookup_ip(self.b['vk'])
             ))
 
-        self.assertEqual(result.id, self.b_net.node.id)
+        self.assertEqual(result[0].id, self.b_net.node.id)
         self.assertEqual(self.a_net.lookup_ip_in_cache(self.b['vk']), self.b_net.node.ip)
 
         t = Timer(0.01, run, [self])

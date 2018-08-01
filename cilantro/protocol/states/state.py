@@ -17,6 +17,9 @@ class StateMeta(type):
         # Configure receivers, repliers, and request timeouts
         StateMeta._config_input_handlers(clsobj)
 
+        # Configure status notification handlers
+        StateMeta._config_status_handlers(clsobj)
+
         # Configure entry and exit handlers
         StateMeta._config_transitions(clsobj)
 
@@ -55,7 +58,6 @@ class StateMeta(type):
                         any_attr_val = getattr(clsobj, StateTransition.get_any_attr(trans_attr))
                         # If we already set this value to the same func before, then ignore
                         if any_attr_val == func:
-                            # print("\n\n any recevier already set; skipping it\n\n")
                             continue
 
                         # Sanity check to make sure this class doesnt have a any transition decorator already applied
@@ -75,7 +77,7 @@ class StateMeta(type):
 
     @staticmethod
     def _config_input_handlers(clsobj):
-        for input_type in StateInput.ALL:
+        for input_type in StateInput.MESSAGE_INPUTS:
             setattr(clsobj, input_type, {})
 
             # Populate receivers s.t. all subclass receivers are inherited unless this class implements its own version
@@ -90,6 +92,17 @@ class StateMeta(type):
 
                     for sub in filter(lambda k: k not in registry, StateMeta._get_subclasses(func_input_type)):
                         registry[sub] = func
+
+    @staticmethod
+    def _config_status_handlers(clsobj):
+        for input_type in StateInput.STATUS_INPUTS:
+            setattr(clsobj, input_type, None)
+
+            for r in dir(clsobj):
+                func = getattr(clsobj, r)
+
+                if hasattr(func, input_type):
+                    setattr(clsobj, input_type, func)
 
     @staticmethod
     def _config_state_timeout(clsobj):
@@ -135,6 +148,12 @@ class State(metaclass=StateMeta):
             output = handler_func(message)
 
         return output
+
+    def call_input_handler_with_kwargs(input_type: str, *args, **kwargs):
+        assert hasattr(self, input_type), "Input type {} not recognized".format(input_type)
+        registry = getattr(self, input_type)
+
+        # what is registry
 
     def call_transition_handler(self, trans_type, state, *args, **kwargs):
         trans_func = self._get_transition_handler(trans_type, state)
@@ -199,8 +218,8 @@ class State(metaclass=StateMeta):
 
     def _assert_has_input_handler(self, message: MessageBase, input_type: str):
         # Assert that input_type is actually a recognized input_type
-        assert input_type in StateInput.ALL, "Input type {} not found in StateInputs {}"\
-                                             .format(input_type, StateInput.ALL)
+        assert input_type in StateInput.MESSAGE_INPUTS, "Input type {} not found in StateInputs {}"\
+                                             .format(input_type, StateInput.MESSAGE_INPUTS)
         # Assert that this state, or one of its superclasses, has an appropriate receiver implemented
         assert type(message) in getattr(self, input_type), \
             "No handler in state {} for message type {} found in handlers for input type {} which has handlers: {}"\
