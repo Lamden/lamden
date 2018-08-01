@@ -87,6 +87,10 @@ class DelegateCatchupState(DelegateBaseState):
     @input_timeout(BlockMetaDataRequest)
     def timeout_block_meta_request(self, request: BlockMetaDataRequest):
         self.log.error("BlockMetaDataRequest timed out!!!\nRequest={}".format(request))
+        time.sleep(1)
+        self._request_update()
+     
+      
         # TODO resend reply, or try another Masternode
 
     def _request_update(self):
@@ -98,7 +102,7 @@ class DelegateCatchupState(DelegateBaseState):
 
         self.log.notice("Requesting updates from Masternode with current block hash {}".format(self.parent.current_hash))
         request = BlockMetaDataRequest.create(current_block_hash=self.parent.current_hash)
-        self.parent.composer.send_request_msg(message=request, vk=VKBook.get_masternodes()[0], timeout=4)
+        self.parent.composer.send_request_msg(message=request, vk=VKBook.get_masternodes()[0], timeout=5)
 
     def _update_next_block(self):
         """

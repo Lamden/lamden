@@ -5,6 +5,7 @@ from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages.reactor.reactor_command import ReactorCommand
 from cilantro.protocol.overlay.dht import DHT
 from cilantro.protocol.overlay.node import Node
+from cilantro.protocol.overlay.utils import digest
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
 import signal, sys
@@ -26,7 +27,7 @@ class ReactorDaemon:
         self.url = url
 
         # Comment out below for more granularity in debugging
-        self.log.setLevel(logging.INFO)
+        # self.log.setLevel(logging.INFO)
 
         # TODO optimize cache
         self.ip_cache = CappedDict(max_size=64)
@@ -40,13 +41,12 @@ class ReactorDaemon:
         # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
-                       alpha=alpha, ksize=ksize,
+                       alpha=alpha, ksize=ksize, daemon=self,
                        max_peers=max_peers, block=False, cmd_cli=False, wipe_certs=True)
 
         self.context, auth = self.dht.network.ironhouse.secure_context(async=True)
         self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
         self.socket.connect(self.url)
-
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name
 
@@ -116,6 +116,7 @@ class ReactorDaemon:
         """
         assert isinstance(cmd, ReactorCommand), "Cannot execute cmd {} that is not a ReactorCommand object".format(cmd)
 
+        self.log.debug("raghu *** Executing command {}".format(cmd))
         cmd_args = self._parse_cmd(cmd)
         if cmd_args:
             executor_name, executor_func, kwargs = cmd_args
@@ -130,7 +131,10 @@ class ReactorDaemon:
             .format(executor_func, self.executors[executor_name])
 
         # Execute command
-        getattr(self.executors[executor_name], executor_func)(**kwargs)
+        try:
+            getattr(self.executors[executor_name], executor_func)(**kwargs)
+        except Exception as e:
+            self.log.fatal("Error executing command {}\n....error={}".format(cmd, e))
 
     def _parse_cmd(self, cmd: ReactorCommand):
         """
@@ -145,6 +149,7 @@ class ReactorDaemon:
         # Remove class_name and func_name from kwargs. We just need these to lookup the function to call
         del kwargs['class_name']
         del kwargs['func_name']
+        #timer.sleep(2)
 
         # Add envelope to kwargs if its in the reactor command
         if cmd.envelope_binary:
@@ -157,6 +162,7 @@ class ReactorDaemon:
 
             # Check if URL has a VK inside
             vk = IPUtils.get_vk(url)
+            self.log.info("raghu ** _parse_cmd: exe_nm {} exe_fn {} url {} vk {}".format(executor_name, executor_func, url, vk))
             if vk:
                 if vk == self.dht.network.ironhouse.vk:
                     ip = self.dht.ip
@@ -176,7 +182,27 @@ class ReactorDaemon:
     async def _lookup_ip(self, cmd, url, vk, *args, **kwargs):
         ip, node = None, None
         try:
-            node = await self.dht.network.lookup_ip(vk)
+            node, cached = await self.dht.network.lookup_ip(vk)
+            # NOTE while secure, this is a more loose connection policy
+            self.log.fatal('{} resolves for {}'.format(os.getenv('HOST_IP'), node))
+            if node and not cached:
+                ip = node.ip if type(node) == Node else node.split(':')[0]
+                public_key = self.dht.network.ironhouse.vk2pk(vk)
+                authorization = await self.dht.network.ironhouse.authenticate(public_key, ip)
+                self.log.fatal('{} -> {} is {}'.format(os.getenv('HOST_IP'), node, authorization))
+                if authorization != 'authorized':
+                    node = None
+                else:
+                    n = Node(
+                        node_id=digest(vk),
+                        public_key=public_key,
+                        ip=ip,
+                        port=self.dht.network.network_port
+                    )
+                    self.dht.network.protocol.router.addContact(n)
+                    self.dht.network.connect_to_neighbor(n)
+
+                self.log.fatal([item[0] for item in self.dht.network.bootstrappableNeighbors()])
         except Exception as e:
             delim_line = '!' * 64
             err_msg = '\n\n' + delim_line + '\n' + delim_line

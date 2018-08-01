@@ -105,6 +105,9 @@ class DelegateBootState(DelegateBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
+        time.sleep(10)
+
+        self.log.notice("Delegate connecting to other nodes ..")
         # Sub to other delegates
         for delegate_vk in VKBook.get_delegates():
             # Do not sub to ourself
@@ -129,7 +132,7 @@ class DelegateBootState(DelegateBaseState):
             self.parent.composer.add_sub(vk=mn_vk, filter=masternode_delegate)
 
         # Sleep for a bit while the daemon sets up these sockets TODO find a more reactive solution
-        time.sleep(16)
+        time.sleep(20)
 
         # Once done with boot state, transition to catchup
         self.parent.transition(DelegateCatchupState)
