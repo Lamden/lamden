@@ -66,7 +66,7 @@ class TestConsts(TestIronhouseBase):
     def test_generate_from_public_key(self):
         self.ironhouse.create_from_public_key(encode(self.public_key.encode()))
         self.assertTrue(listdir(self.ironhouse.public_keys_dir), 'public keys dir not created')
-        self.assertTrue(exists('{}/ironhouse.key'.format(self.ironhouse.public_keys_dir)), 'public key not generated')
+        self.assertTrue(exists('{}/{}.key'.format(self.ironhouse.public_keys_dir, self.ironhouse.keyname)), 'public key not generated')
 
 class TestAuthSync(TestIronhouseBase):
 
