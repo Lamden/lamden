@@ -109,6 +109,7 @@ class Network(object):
                             log.debug('reconnecting {} - {}'.format(self.network_port, addr))
                             conn.connect(addr)
                         except Exception as e:
+                            log.debug(e)
                             if e.args[0] in [
                                 54, # reset by peer
                             ]:
