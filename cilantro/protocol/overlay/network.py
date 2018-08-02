@@ -117,6 +117,7 @@ class Network(object):
                                     del self.vkcache[node.ip]
                                 self.protocol.router.removeContact(node)
                                 self.poll.unregister(fileno)
+                                conn.shutdown(socket.SHUT_RDWR)
                                 conn.close()
                                 self.connection_drop()
                 await asyncio.sleep(0.1)

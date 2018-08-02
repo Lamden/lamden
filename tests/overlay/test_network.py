@@ -137,9 +137,8 @@ class TestNetwork(TestCase):
         def run(self):
             conn = self.a_net.connect_to_neighbor(self.b_net.node)
             time.sleep(0.1)
-            conn.shutdown(socket.SHUT_RDWR)
             self.b_net.stop()
-            time.sleep(1.5)
+            time.sleep(0.1)
             self.assertEqual(self.a_net.connections, {})
             stop(self)
 
