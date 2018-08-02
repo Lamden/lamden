@@ -115,7 +115,6 @@ class ReactorDaemon:
         """
         assert isinstance(cmd, ReactorCommand), "Cannot execute cmd {} that is not a ReactorCommand object".format(cmd)
 
-        self.log.debug("raghu *** Executing command {}".format(cmd))
         cmd_args = self._parse_cmd(cmd)
         if cmd_args:
             executor_name, executor_func, kwargs = cmd_args
@@ -139,7 +138,8 @@ class ReactorDaemon:
         """
         Parses a cmd for execution, by extracting/preparing the necessary kwargs for execution.
         :param cmd: an instance of ReactorCommand
-        :return: A tuple of 3 elements (executor_name, executor_func, kwargs)
+        :return: A tuple of 3 elements (executor_name, executor_func, kwargs). Returns None if the command specifies
+        a URL with a VK instead of a IP address.
         """
         executor_name = cmd.class_name
         executor_func = cmd.func_name
@@ -160,7 +160,6 @@ class ReactorDaemon:
 
             # Check if URL has a VK inside
             vk = IPUtils.get_vk(url)
-            self.log.info("raghu ** _parse_cmd: exe_nm {} exe_fn {} url {} vk {}".format(executor_name, executor_func, url, vk))
             if vk:
                 if vk == self.dht.network.ironhouse.vk:
                     ip = self.dht.ip
@@ -182,7 +181,6 @@ class ReactorDaemon:
         try:
             node, cached = await self.dht.network.lookup_ip(vk)
             # NOTE while secure, this is a more loose connection policy
-            self.log.fatal('{} resolves for {}'.format(os.getenv('HOST_IP'), node))
             if node and not cached:
                 ip = node.ip if type(node) == Node else node.split(':')[0]
                 public_key = self.dht.network.ironhouse.vk2pk(vk)
@@ -201,6 +199,7 @@ class ReactorDaemon:
                     self.dht.network.connect_to_neighbor(n)
 
                 self.log.fatal([item[0] for item in self.dht.network.bootstrappableNeighbors()])
+
         except Exception as e:
             delim_line = '!' * 64
             err_msg = '\n\n' + delim_line + '\n' + delim_line
