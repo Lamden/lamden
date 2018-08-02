@@ -19,7 +19,7 @@ from nacl.public import PrivateKey, PublicKey
 from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 from cilantro.storage.db import VKBook
-
+from cilantro.constants.overlay_network import auth_timeout
 from cilantro.logger import get_logger
 
 log = get_logger(__name__)
@@ -27,7 +27,7 @@ log = get_logger(__name__)
 class Ironhouse:
     def __init__(self, sk=None, auth_validate=None, wipe_certs=False, auth_port=None, keyname=None, *args, **kwargs):
         self.auth_port = auth_port or os.getenv('AUTH_PORT', 4523)
-        self.keyname = keyname or os.getenv('HOSTNAME', basename(splitext(__file__)[0]))
+        self.keyname = keyname or os.getenv('HOSTNAME', 'ironhouse')
         self.base_dir = 'certs/{}'.format(self.keyname)
         self.keys_dir = os.path.join(self.base_dir, 'certificates')
         self.public_keys_dir = os.path.join(self.base_dir, 'public_keys')
@@ -48,16 +48,6 @@ class Ironhouse:
     def generate_certificates(self, sk_hex):
         sk = SigningKey(seed=bytes.fromhex(sk_hex))
         self.vk = sk.verify_key.encode().hex()
-        """
-            #this debug line
-            # DEBUG TEST CODE
-            if os.getenv('HOST_IP').endswith('3'):
-                from cilantro import Constants
-                fake_vk = Constants.Testnet.Delegates[2]['vk']
-                log.critical("Overriding original vk {} to fake vk {}".format(self.vk, fake_vk))
-                self.vk = fake_vk
-            # DEBUG END TEST CODE
-        """
         self.public_key = self.vk2pk(self.vk)
         private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key).hex()
 
@@ -171,7 +161,7 @@ class Ironhouse:
         authorized = 'unauthorized'
 
         try:
-            msg = await asyncio.wait_for(client.recv(), 3)
+            msg = await asyncio.wait_for(client.recv(), auth_timeout)
             msg = msg.decode()
             log.debug('got secure reply {}, {}'.format(msg, target_public_key))
             received_public_key = self.vk2pk(msg)
