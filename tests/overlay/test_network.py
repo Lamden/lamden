@@ -1,5 +1,5 @@
 import unittest, asyncio, socket, time, os
-from unittest import TestCase
+from unittest import TestCase, mock
 from unittest.mock import Mock
 from unittest.mock import patch
 from cilantro.protocol.overlay.network import Network
@@ -138,9 +138,8 @@ class TestNetwork(TestCase):
             conn = self.a_net.connect_to_neighbor(self.b_net.node)
             time.sleep(0.1)
             conn.shutdown(socket.SHUT_RDWR)
-            time.sleep(0.5)
             self.b_net.stop()
-            time.sleep(0.1)
+            time.sleep(1.5)
             self.assertEqual(self.a_net.connections, {})
             stop(self)
 
