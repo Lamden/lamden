@@ -376,7 +376,7 @@ class StateTest(TestCase):
 
     def test_input_socket_added_registers_doesnt_exist(self):
         mock_sm = MagicMock()
-        state = TrafficLightYellowState(mock_sm)
+        state = TrafficLightGreenState(mock_sm)
 
         expected_fn = None
         actual_fn = state._get_status_input_handler(StateInput.SOCKET_ADDED)
