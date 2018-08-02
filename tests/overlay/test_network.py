@@ -138,10 +138,13 @@ class TestNetwork(TestCase):
             conn = self.a_net.connect_to_neighbor(self.b_net.node)
             time.sleep(0.1)
             self.b_net.stop()
-            stop(self)
             time.sleep(0.1)
-            self.assertEqual(self.a_net.connections, {})
-
+            if self.a_net.connections != {}:
+                for c in self.a_net.connections.values():
+                    self.assertTrue(c.fileno(), -1)
+            else:
+                self.assertEqual(self.a_net.connections, {})
+            stop(self)
 
         t = Timer(0.01, run, [self])
         t.start()
