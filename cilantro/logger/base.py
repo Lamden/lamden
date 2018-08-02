@@ -5,9 +5,12 @@ Functions:
 import logging, coloredlogs
 import os, sys
 VALID_LVLS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-_LOG_LVL = os.getenv('LOG_LEVEL', 'DEBUG')
-assert _LOG_LVL in VALID_LVLS, "Log level {} not in valid levels {}".format(_LOG_LVL, VALID_LVLS)
-_LOG_LVL = getattr(logging, _LOG_LVL)
+_LOG_LVL = os.getenv('LOG_LEVEL', None)
+if _LOG_LVL:
+    assert _LOG_LVL in VALID_LVLS, "Log level {} not in valid levels {}".format(_LOG_LVL, VALID_LVLS)
+    _LOG_LVL = getattr(logging, _LOG_LVL)
+else:
+    _LOG_LVL = 1
 
 def get_main_log_path():
     from cilantro import logger
@@ -35,7 +38,8 @@ CUSTOM_LEVELS = {
     'SUCCESS': 26,
     'IMPORTANT': 56,
     'IMPORTANT2': 57,
-    'FATAL': 9000,
+    'IMPORTANT3': 58,
+    'FATAL': 9001,
     }
 
 for log_name, log_level in CUSTOM_LEVELS.items():
@@ -61,6 +65,7 @@ coloredlogs.DEFAULT_LEVEL_STYLES = {
     'notice':{'color':'magenta' },
     'important':{ 'color':'cyan', 'bold': True, 'background': 'magenta'},
     'important2':{ 'color':'magenta', 'bold': True, 'background': 'cyan'},
+    'important3':{ 'color':'blue', 'bold': True, 'background': 'yellow'},
     'spam':{ 'color':'white', 'faint':True },
     'success':{'color':'white', 'bold': True, 'background': 'green'},
     'verbose':{'color':'blue' },

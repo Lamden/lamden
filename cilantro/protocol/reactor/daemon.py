@@ -38,7 +38,6 @@ class ReactorDaemon:
         # Register signal handler to teardown
         signal.signal(signal.SIGTERM, self._signal_teardown)
 
-        # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
                        alpha=alpha, ksize=ksize, daemon=self,
@@ -149,7 +148,6 @@ class ReactorDaemon:
         # Remove class_name and func_name from kwargs. We just need these to lookup the function to call
         del kwargs['class_name']
         del kwargs['func_name']
-        #timer.sleep(2)
 
         # Add envelope to kwargs if its in the reactor command
         if cmd.envelope_binary:
@@ -206,15 +204,14 @@ class ReactorDaemon:
         except Exception as e:
             delim_line = '!' * 64
             err_msg = '\n\n' + delim_line + '\n' + delim_line
-            err_msg += '\n ERROR CAUGHT IN LOOKUP FUNCTION {}\ncalled \w args={}\nand kwargs={}\n'\
-                        .format(args, kwargs)
+            err_msg += '\n ERROR CAUGHT IN LOOKUP FOR VK {}\ncalled \w args={}\nand kwargs={}\n'\
+                       .format(vk, args, kwargs)
             err_msg += '\nError Message: '
             err_msg += '\n\n{}'.format(traceback.format_exc())
             err_msg += '\n' + delim_line + '\n' + delim_line
             self.log.error(err_msg)
 
         if node is None:
-
             kwargs = cmd.kwargs
             callback = ReactorCommand.create_callback(callback=StateInput.LOOKUP_FAILED, **kwargs)
             self.log.debug("Sending callback failure to mainthread {}".format(callback))

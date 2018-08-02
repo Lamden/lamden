@@ -63,8 +63,14 @@ def input_socket_added(func):
     setattr(func, StateInput.SOCKET_ADDED, True)
     return func
 
+
 def input_connection_dropped(func):
     setattr(func, StateInput.CONN_DROPPED, True)
+    return func
+
+
+def input_lookup_failed(func):
+    setattr(func, StateInput.LOOKUP_FAILED, True)
     return func
 
 
