@@ -15,6 +15,8 @@ from cilantro.protocol.overlay.utils import digest
 from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.overlay.crawling import NodeSpiderCrawl
 from cilantro.protocol.overlay.ironhouse import Ironhouse
+from cilantro.messages.reactor.reactor_command import ReactorCommand
+from cilantro.protocol.states.state import StateInput
 
 try: poll = select.epoll
 except: poll = select.poll
@@ -56,6 +58,7 @@ class Network(object):
         self.max_peers = max_peers
         self.network_port = network_port
         self.heartbeat_port = self.network_port+HEARTBEAT_PORT_OFFSET
+        self.daemon = kwargs.get('daemon')
         self.ironhouse = Ironhouse(auth_port=self.network_port+AUTH_PORT_OFFSET, *args, **kwargs)
         self.node = Node(
             node_id=digest(self.ironhouse.vk),
@@ -73,13 +76,13 @@ class Network(object):
             log.debug('Node {}:{} is already a neighbor'.format(node.ip, node.port))
             return True
         authorized = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
-        if authorized == True:
-            log.debug('{}:{} is authorized'.format(node.ip, node.port))
-        elif authorized == False:
-            log.warning('!UNAUTHORIZED! {}:{}'.format(node.ip, node.port))
+        log.debug('{}:{} is {}'.format(node.ip, node.port, authorized))
+        if authorized == 'authorized':
+            self.protocol.router.addContact(node)
+            self.connect_to_neighbor(node)
+            return True
         else:
-            log.debug('Ignoring {}:{}'.format(node.ip, node.port))
-        return authorized
+            return False
 
     def setup_stethoscope(self):
         socket.setdefaulttimeout(0.1)
@@ -106,9 +109,8 @@ class Network(object):
                             log.debug('reconnecting {} - {}'.format(self.network_port, addr))
                             conn.connect(addr)
                         except Exception as e:
-                            if e.args[0] in [
-                                54, # reset by peer
-                            ]:
+                            log.debug(e.args)
+                            if e.args[1] == 'Connection reset by peer':
                                 log.info("Client ({}, {}) disconnected from {}".format(*addr, self.node))
                                 del self.connections[fileno]
                                 if self.vkcache.get(node.ip):
@@ -116,9 +118,20 @@ class Network(object):
                                 self.protocol.router.removeContact(node)
                                 self.poll.unregister(fileno)
                                 conn.close()
+                                self.connection_drop()
                 await asyncio.sleep(0.1)
         except asyncio.CancelledError:
             log.info('Network shutting down gracefully.')
+
+    def connection_drop(self):
+        if self.daemon:
+            callback = ReactorCommand.create_callback(
+                callback=StateInput.CONN_DROPPED,
+                vk=self.ironhouse.vk,
+                ip=self.node.ip
+            )
+            log.debug("Sending callback failure to mainthread {}".format(callback))
+            self.daemon.socket.send(callback.serialize())
 
     def connect_to_neighbor(self, node):
         if self.node.id == node.id: return
@@ -146,7 +159,7 @@ class Network(object):
 
     async def lookup_ip(self, node_key):
         cache_node = self.lookup_ip_in_cache(node_key)
-        if cache_node: return cache_node
+        if cache_node: return cache_node, True
         node_id = digest(node_key)
         if node_id == self.node.id: return self.node
 
@@ -161,7 +174,7 @@ class Network(object):
         if res_node != None:
             self.vkcache[node_key] = res_node.ip
             pk = self.ironhouse.vk2pk(node_key)
-        return res_node
+        return res_node, False
 
     def stop(self):
         if self.transport is not None:

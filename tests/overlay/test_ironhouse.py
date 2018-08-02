@@ -28,11 +28,11 @@ class TestIronhouseBase(TestCase):
 
 class TestConsts(TestIronhouseBase):
     def test_assert_paths(self):
-        self.assertEqual(self.ironhouse.base_dir, 'certs/ironhouse', 'key folder is incorrect')
-        self.assertEqual(self.ironhouse.keys_dir, 'certs/ironhouse/certificates', 'keys dir is incorrect')
-        self.assertEqual(self.ironhouse.public_keys_dir, 'certs/ironhouse/public_keys', 'public dir is incorrect')
-        self.assertEqual(self.ironhouse.secret_keys_dir, 'certs/ironhouse/private_keys', 'secret dir is incorrect')
-        self.assertEqual(self.ironhouse.secret_file, 'certs/ironhouse/private_keys/ironhouse.key_secret', 'secret_file is incorrect')
+        self.assertEqual(self.ironhouse.base_dir, 'certs/{}'.format(self.ironhouse.keyname), 'key folder is incorrect')
+        self.assertEqual(self.ironhouse.keys_dir, 'certs/{}/certificates'.format(self.ironhouse.keyname), 'keys dir is incorrect')
+        self.assertEqual(self.ironhouse.public_keys_dir, 'certs/{}/public_keys'.format(self.ironhouse.keyname), 'public dir is incorrect')
+        self.assertEqual(self.ironhouse.secret_keys_dir, 'certs/{}/private_keys'.format(self.ironhouse.keyname), 'secret dir is incorrect')
+        self.assertEqual(self.ironhouse.secret_file, 'certs/{kn}/private_keys/{kn}.key_secret'.format(kn=self.ironhouse.keyname), 'secret_file is incorrect')
 
     def test_generate_certificates_failed(self):
         self.ironhouse.wipe_certs = False
@@ -66,7 +66,7 @@ class TestConsts(TestIronhouseBase):
     def test_generate_from_public_key(self):
         self.ironhouse.create_from_public_key(encode(self.public_key.encode()))
         self.assertTrue(listdir(self.ironhouse.public_keys_dir), 'public keys dir not created')
-        self.assertTrue(exists('{}/ironhouse.key'.format(self.ironhouse.public_keys_dir)), 'public key not generated')
+        self.assertTrue(exists('{}/{}.key'.format(self.ironhouse.public_keys_dir, self.ironhouse.keyname)), 'public key not generated')
 
 class TestAuthSync(TestIronhouseBase):
 
@@ -235,7 +235,7 @@ class TestServer(TestIronhouseBase):
     def test_authenticate_fail(self):
         async def send_async_sec():
             authorized = await self.ironhouse.authenticate(b'A/c=Kn2)aHRI*>fK-{v*r^YCyXJ//3.CGQQC@A9J', '127.0.0.1')
-            self.assertFalse(authorized)
+            self.assertEqual(authorized, 'no_reply')
             self.ironhouse.cleanup()
             self.loop.stop()
 
@@ -268,12 +268,13 @@ class TestServer(TestIronhouseBase):
 
         self.fake = genkeys('7ae3fcfd3a9047adbec6ad11e5a58036df9934dc0746431d80b49d25584d7e78')
         self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
+        self.fake_ironhouse.setup_secure_server()
         self.fake_ironhouse.create_from_public_key(self.curve_public_key)
         self.fake_ironhouse.auth_validate = auth_validate_fake
-        self.fake_ironhouse.setup_secure_server()
+        self.ironhouse.setup_secure_server()
         self.ironhouse.create_from_public_key(self.fake['curve_key'])
         self.ironhouse.auth_validate = auth_validate
-        self.ironhouse.setup_secure_server()
+
 
         self.loop.run_until_complete(
             asyncio.ensure_future(
@@ -292,12 +293,12 @@ class TestServer(TestIronhouseBase):
 
         self.a = genkeys('5664ec7306cc22e56820ae988b983bdc8ebec8246cdd771cfee9671299e98e3c')
         self.aih = Ironhouse(self.a['sk'], wipe_certs=True, auth_port=port, keyname='a')
-        self.aih.create_from_public_key(self.curve_public_key)
         self.aih.setup_secure_server()
+        self.aih.create_from_public_key(self.curve_public_key)
 
         self.dih = Ironhouse(self.sk, wipe_certs=True)
-        self.dih.create_from_public_key(self.a['curve_key'])
         self.dih.setup_secure_server()
+        self.dih.create_from_public_key(self.a['curve_key'])
 
         self.loop.run_until_complete(
             asyncio.ensure_future(
@@ -308,7 +309,7 @@ class TestServer(TestIronhouseBase):
     def test_auth_invalid_public_key(self):
         async def send_async_sec():
             authorized = await self.ironhouse.authenticate(b'ack', '127.0.0.1', 1234)
-            self.assertFalse(authorized)
+            self.assertEqual(authorized, 'invalid')
             self.ironhouse.cleanup()
             self.loop.stop()
 
@@ -325,7 +326,7 @@ class TestServer(TestIronhouseBase):
         self.validated = False
         async def send_async_sec():
             authorized = await self.ironhouse.authenticate(self.fake['curve_key'], '127.0.0.1', port)
-            self.assertFalse(authorized)
+            self.assertEqual(authorized, 'unauthorized')
             self.assertTrue(self.validated)
             self.ironhouse.cleanup()
             self.fake_ironhouse.cleanup()
@@ -340,12 +341,12 @@ class TestServer(TestIronhouseBase):
 
         self.fake = genkeys('7ae3fcfd3a9047adbec6ad11e5a58036df9934dc0746431d80b49d25584d7e78')
         self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
+        self.fake_ironhouse.setup_secure_server()
         self.fake_ironhouse.create_from_public_key(self.curve_public_key)
         self.fake_ironhouse.auth_validate = auth_validate_fake
-        self.fake_ironhouse.setup_secure_server()
+        self.ironhouse.setup_secure_server()
         self.ironhouse.create_from_public_key(self.fake['curve_key'])
         self.ironhouse.auth_validate = auth_validate
-        self.ironhouse.setup_secure_server()
 
         self.loop.run_until_complete(
             asyncio.ensure_future(
@@ -358,7 +359,7 @@ class TestServer(TestIronhouseBase):
         self.validated = False
         async def send_async_sec():
             authorized = await self.ironhouse.authenticate(self.fake['curve_key'], '127.0.0.1', port)
-            self.assertFalse(authorized)
+            self.assertEqual(authorized, 'no_reply')
             self.assertTrue(self.validated)
             self.ironhouse.cleanup()
             self.fake_ironhouse.cleanup()
@@ -373,12 +374,13 @@ class TestServer(TestIronhouseBase):
 
         self.fake = genkeys('7ae3fcfd3a9047adbec6ad11e5a58036df9934dc0746431d80b49d25584d7e78')
         self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
+        self.fake_ironhouse.setup_secure_server()
         self.fake_ironhouse.create_from_public_key(self.curve_public_key)
         self.fake_ironhouse.auth_validate = auth_validate_fake
-        self.fake_ironhouse.setup_secure_server()
+        self.ironhouse.setup_secure_server()
         self.ironhouse.create_from_public_key(self.fake['curve_key'])
         self.ironhouse.auth_validate = auth_validate
-        self.ironhouse.setup_secure_server()
+
 
         self.loop.run_until_complete(
             asyncio.ensure_future(

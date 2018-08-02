@@ -98,7 +98,7 @@ class ReactorInterface:
         This ensures that we do not try to send commands to the ReactorDaemon process before it is ready.
         """
         self.log.debug("Waiting for ready sig from child proc...")
-        msg = await asyncio.wait_for(self.socket.recv(), 18)
+        msg = await asyncio.wait_for(self.socket.recv(), 40)
         assert msg == CHILD_RDY_SIG, "Got unexpected rdy sig from child proc (got '{}', but expected '{}')" \
             .format(msg, CHILD_RDY_SIG)
         self.log.debug("Got ready sig from child proc: {}".format(msg))

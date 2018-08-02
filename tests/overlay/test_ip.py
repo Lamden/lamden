@@ -14,7 +14,8 @@ class TestIP(TestCase):
             raise Exception()
 
         requests_get.side_effect = mock_req
-        self.assertRaises(Exception, get_public_ip)
+        with self.assertRaises(Exception) as context:
+            get_public_ip()
 
     def test_get_public_ip(self):
         self.assertIsNotNone(get_public_ip(), 'cannot find public ip, make sure you have internet')

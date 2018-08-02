@@ -40,7 +40,10 @@
     "witnesses":
             [
               {"sk": "91f7021a9e8c65ca873747ae24de08e0a7acf58159a8aa6548910fe152dab3d8", "vk": "0e669c219a29f54c8ba4293a5a3df4371f5694b761a0a50a26bf5b50d5a76974", "ip":"72.29.2.1", "testnet-url": "tcp://127.0.0.1:21100"},
-              {"sk": "f9489f880ef1a8b2ccdecfcad073e630ede1dd190c3b436421f665f767704c55", "vk": "50869c7ee2536d65c0e4ef058b50682cac4ba8a5aff36718beac517805e9c2c0", "ip":"72.29.2.2", "testnet-url": "tcp://127.0.0.1:21200"}
+              {"sk": "f9489f880ef1a8b2ccdecfcad073e630ede1dd190c3b436421f665f767704c55", "vk": "50869c7ee2536d65c0e4ef058b50682cac4ba8a5aff36718beac517805e9c2c0", "ip":"72.29.2.2", "testnet-url": "tcp://127.0.0.1:21200"},
+              {"sk": "dcb0ee5535678412efb6385b004c0226a4573b57d61c359ad6f4324ccf63351d", "vk": "d2bf672139c73b70e7b81668c3f7f596679203828d0034908c41c8a8e43444ed", "ip":"72.29.2.3", "testnet-url": "tcp://127.0.0.1:21300"},
+              {"sk": "c2b138ad8c1392d4fe55a09c308d3002a04cd88d3fc6773fc6f4b9174accf21b", "vk": "ca0355e4b1e68751b09f47281f077e4dac32948a78341958efef964840e299f2", "ip":"72.29.2.4", "testnet-url": "tcp://127.0.0.1:21400"},
+              {"sk": "f7dea3fa0321c08fd9b8d8d67f6d3ba0eba091b5487c60d3b8db5ff941a4b972", "vk": "c9da4d9862bc9ef140989456c36f83af4c3e218b6a0d2c56f97128d3db0db9d3", "ip":"72.29.2.5", "testnet-url": "tcp://127.0.0.1:21500"}
             ],
     "delegates":
             [

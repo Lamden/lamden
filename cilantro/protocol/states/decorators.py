@@ -3,7 +3,7 @@ from cilantro.logger import get_logger
 import inspect
 
 """
-This file implements and describes the various decorators used by States and StateMachines.  
+This file implements and describes the various decorators used by States and StateMachines.
 """
 
 
@@ -29,9 +29,13 @@ class StateInput:
     INPUT = '_route_input'
     REQUEST = '_route_request'
     TIMEOUT = '_route_timeout'
-    LOOKUP_FAILED = '_lookup_failed'
 
-    ALL = [INPUT, REQUEST, TIMEOUT, LOOKUP_FAILED]
+    LOOKUP_FAILED = '_lookup_failed'
+    SOCKET_ADDED = '_socket_added'
+    CONN_DROPPED = '_connection_dropped'
+
+    MESSAGE_INPUTS = [INPUT, REQUEST, TIMEOUT]
+    STATUS_INPUTS = [LOOKUP_FAILED, SOCKET_ADDED, CONN_DROPPED]
 
 
 def input(msg_type):
@@ -55,6 +59,15 @@ def input_timeout(msg_type):
     return decorate
 
 
+def input_socket_added(func):
+    setattr(func, StateInput.SOCKET_ADDED, True)
+    return func
+
+def input_connection_dropped(func):
+    setattr(func, StateInput.CONN_DROPPED, True)
+    return func
+
+
 """
 ----------------------------------------
 State Timeout Decorator
@@ -65,7 +78,7 @@ State Timeout Decorator
 
 A State instance method may be decorated with @timeout_after(duration) to trigger this method to be called after the
 specified time. It is assumed that the timeout trigger will then transition the StateMachine into another state.
-If the state is exited before the specified timeout duration, the future is canceled and the function is not triggered. 
+If the state is exited before the specified timeout duration, the future is canceled and the function is not triggered.
 """
 
 class StateTimeout:

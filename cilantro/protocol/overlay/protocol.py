@@ -7,13 +7,14 @@ from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.overlay.routing import RoutingTable
 from cilantro.protocol.overlay.utils import digest
 from cilantro.protocol.overlay.storage import ForgetfulStorage
+from cilantro.constants.overlay_network import rpc_timeout
 
 log = get_logger(__name__)
 
 
 class KademliaProtocol(RPCProtocol):
     def __init__(self, sourceNode, ksize, network, storage={}):
-        RPCProtocol.__init__(self, waitTimeout=3)
+        RPCProtocol.__init__(self, waitTimeout=rpc_timeout)
         self.router = RoutingTable(self, ksize, sourceNode)
         self.storage = ForgetfulStorage()
         self.sourceNode = sourceNode
@@ -133,9 +134,9 @@ class KademliaProtocol(RPCProtocol):
         we get no response, make sure it's removed from the routing table.
         """
         if not result[0]:
-            if node:
-                log.warning("no response from %s, removing from router", node)
-                self.router.removeContact(node)
+            # if node:
+            #     log.warning("no response from %s, removing from router", node)
+            #     self.router.removeContact(node)
             return result
 
         log.info("got successful response from %s", node)
