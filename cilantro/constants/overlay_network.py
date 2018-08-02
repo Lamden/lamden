@@ -1,3 +1,3 @@
-alpha = 3
-ksize = 20
-max_peers = 64
+ALPHA = 3
+KSIZE = 20
+MAX_PEERS = 64

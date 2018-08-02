@@ -74,8 +74,9 @@ class DelegateConsensusState(DelegateBaseState):
         # Verify sender's vk exists in the state
         if sig.sender not in VKBook.get_delegates():
             self.log.warning("Received merkle sig from sender {} who was not registered nodes {}"
-                           .format(sig.sender, VKBook.get_delegates()))
+                             .format(sig.sender, VKBook.get_delegates()))
             return False
+
         # Verify we haven't received this signature already
         if sig in self.signatures:
             self.log.warning("Already received a signature from sender {}".format(sig.sender))

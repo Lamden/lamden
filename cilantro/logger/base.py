@@ -57,7 +57,7 @@ Custom Styling
 """
 
 coloredlogs.DEFAULT_LEVEL_STYLES = {
-    'critical':{'color':'white', 'bold':True, 'background': 'yellow'},
+    'critical':{'color':'white', 'bold':True, 'background': 'red'},
     'fatal':{'color':'white', 'bold':True, 'background': 'red', 'underline': True},
     'debug':{'color':'green' },
     'error':{'color':'red' },

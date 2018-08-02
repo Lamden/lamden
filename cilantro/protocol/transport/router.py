@@ -70,7 +70,7 @@ class Router:
         reply = self.sm.state.call_input_handler(cmd.envelope.message, cmd.callback, envelope=cmd.envelope)
 
         if not reply:
-            self.log.warning("No reply returned for request msg of type {}".format(type(cmd.envelope.message)))
+            self.log.debug("Warning -- No reply returned for request msg of type {}".format(type(cmd.envelope.message)))
             return
 
         assert isinstance(reply, MessageBase), "whatever is returned from @input_request function must be a " \

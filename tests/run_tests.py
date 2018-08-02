@@ -114,7 +114,7 @@ def main(args):
             if not args.verbosity:
                 overwrite_logger_level(logging.WARNING)  # Set log level to warning to suppress most output from tests
             test_result = runner.run(suite)
-            overwrite_logger_level(logging.DEBUG)  # Change logging level back
+            overwrite_logger_level(1)  # Change logging level back
 
             run_time = round(time.time() - start, 3)
             tests_total = suite.countTestCases()

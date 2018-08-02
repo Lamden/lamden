@@ -13,8 +13,8 @@ Classes include:
 from seneca.seneca_internal.storage.mysql_executer import Executer
 
 from multiprocessing import Lock
-import os, json
-from datetime import datetime
+import os
+import math
 from cilantro.logger import get_logger
 from functools import wraps
 
@@ -363,3 +363,7 @@ class VKBook:
     def get_witnesses():
         return VKBook.WITNESSES
         return VKBook._get_vks('witnesses')
+
+    @staticmethod
+    def get_delegate_majority():
+        return math.ceil(len(VKBook.get_delegates()) * 2/3)

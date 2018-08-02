@@ -1,5 +1,6 @@
 from cilantro.constants.zmq_filters import masternode_delegate
 from cilantro.constants.testnet import majority
+from cilantro.constants.masternode import NEW_BLOCK_TIMEOUT, FETCH_BLOCK_TIMEOUT
 from cilantro.constants.nodes import max_queue_size
 from cilantro.nodes.masternode import MNBaseState, Masternode
 
@@ -7,7 +8,7 @@ from cilantro.utils import Hasher
 
 from cilantro.storage.blocks import List, BlockStorageDriver, BlockStorageException
 
-from cilantro.protocol.states.decorators import enter_from_any, enter_from, input_request, input_timeout, input
+from cilantro.protocol.states.decorators import enter_from_any, enter_from, input_request, input_timeout, input, timeout_after
 
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
@@ -30,6 +31,13 @@ class MNNewBlockState(MNBaseState):
     def reset_attrs(self):
         self.pending_blocks = deque()
         self.current_block = None
+
+    @timeout_after(NEW_BLOCK_TIMEOUT)
+    def timeout(self):
+        # TODO i think this timeout is essentially useless b/c all the fetching/processing is done in
+        # MNFetchNewBlockState. This state just orchestrates things
+        self.log.critical("MN failed to publish a new block in less than {} seconds!".format(NEW_BLOCK_TIMEOUT))
+        self.parent.transition(MNRunState, success=False)
 
     # Development sanity check (remove in production)
     @enter_from_any
@@ -76,8 +84,6 @@ class MNNewBlockState(MNBaseState):
 
     def _new_block_procedure(self, block: BlockContender, txs: List[bytes]):
         self.log.notice("Masternode attempting to store a new block")
-        # self.log.debugv("DONE COLLECTING BLOCK DATA FROM LEAVES. Storing new "
-        #                 "block with...\ncontender={}\nraw txs={}".format(block, txs))
 
         # Attempt to store block
         try:
@@ -151,6 +157,12 @@ class MNFetchNewBlockState(MNNewBlockState):
         self.tx_hashes = []
         self.retrieved_txs = {}
 
+    @timeout_after(FETCH_BLOCK_TIMEOUT)
+    def timeout(self):
+        self.log.critical("MN failed to fetch block data in less than {} seconds!\nBlock Contender = {}"
+                          .format(NEW_BLOCK_TIMEOUT, self.block_contender))
+        self.parent.transition(MNNewBlockState, success=False, pending_blocks=self.pending_blocks)
+
     # Development sanity check (remove in production)
     @enter_from_any
     def enter_any(self, prev_state):
@@ -195,9 +207,8 @@ class MNFetchNewBlockState(MNNewBlockState):
         else:
             delegate_vk = self._first_available_node()
 
-        self.log.debug("Requesting {} tx hashes from VK {}".format(len(tx_hashes), delegate_vk))
+        self.log.debugv("Requesting {} tx hashes from VK {}".format(len(tx_hashes), delegate_vk))
 
-        # TODO make this more optimal by requesting hashes in batch
         req = TransactionRequest.create(tx_hashes)
         self.parent.composer.send_request_msg(message=req, timeout=5, vk=delegate_vk)
 
@@ -241,6 +252,7 @@ class MNFetchNewBlockState(MNNewBlockState):
             self.log.debug("Done collecting block data. Transitioning back to NewBlockState.")
             self.parent.transition(MNNewBlockState, success=True, retrieved_txs=self._get_ordered_raw_txs(),
                                    pending_blocks=self.pending_blocks)
+            return
         else:
             self.log.debug("Still {} transactions yet to request until we can build the block"
                            .format(len(self.tx_hashes) - len(self.retrieved_txs)))

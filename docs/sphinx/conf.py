@@ -25,7 +25,7 @@ author = 'team@lamden.io'
 
 # The short X.Y version
 version = ''
-# The full version, including alpha/beta/rc tags
+# The full version, including ALPHA/beta/rc tags
 release = '9000 BC'
 
 

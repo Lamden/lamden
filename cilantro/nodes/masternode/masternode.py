@@ -7,6 +7,7 @@
     the behavior of nodes and tell the network who is misbehaving.
 """
 from cilantro.constants.zmq_filters import witness_masternode
+from cilantro.constants.masternode import STAGING_TIMEOUT
 from cilantro.nodes import NodeBase
 
 from cilantro.protocol.states.decorators import input_request, input, enter_from_any, exit_to_any, enter_from, input_timeout
@@ -22,26 +23,32 @@ from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.messages.transaction.base import TransactionBase
 
 from aiohttp import web
+import traceback
 from cilantro.storage.db import VKBook
+from collections import deque
 
 
 MNNewBlockState = 'MNNewBlockState'
+MNStagingState = 'MNStagingState'
+MNBootState = 'MNBootState'
 
 
 class Masternode(NodeBase):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Define 'global' properties, shared among all states
+        self.tx_queue = deque()  # A queue of transactions sent by users to the Masternode via a REST endpoint
+
     async def route_http(self, request):
-        # self.log.debug("Got request {}".format(request))
         raw_data = await request.content.read()
 
-        # self.log.debug("Got raw_data: {}".format(raw_data))
         container = TransactionContainer.from_bytes(raw_data)
 
-        # self.log.debug("Got container: {}".format(container))
         tx = container.open()
         self.log.debug("Masternode got tx: {}".format(tx))
 
-        import traceback
         try:
             self.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
             return web.Response(text="Successfully published transaction: {}".format(tx))
@@ -52,9 +59,9 @@ class Masternode(NodeBase):
 
 class MNBaseState(State):
     @input(TransactionBase)
-    def recv_tx(self, tx: TransactionBase):
+    def handle_tx(self, tx: TransactionBase):
         oc = OrderingContainer.create(tx=tx, masternode_vk=self.parent.verifying_key)
-        self.log.debug("mn about to pub for tx {}".format(tx))  # debug line
+        self.log.spam("mn about to pub for tx {}".format(tx))  # debug line
         self.parent.composer.send_pub_msg(filter=witness_masternode, message=tx)
 
     @input_request(BlockContender)
@@ -79,13 +86,15 @@ class MNBaseState(State):
         self.log.warning("Current state {} not configured to handle tx request timeout".format(self))
 
     @input_request(BlockMetaDataRequest)
-    def handle_blockmeta_request(self, request: BlockMetaDataRequest):
-        self.log.important("Masternode received BlockMetaDataRequest: {}".format(request))
+    def handle_blockmeta_request(self, request: BlockMetaDataRequest, envelope: Envelope):
+        vk = envelope.seal.verifying_key
+        assert vk in VKBook.get_delegates(), "Got BlockMetaDataRequest from VK {} not in delegate VKBook!".format(vk)
+        self.log.notice("Masternode received BlockMetaDataRequest from delegate {}\n...request={}".format(vk, request))
 
         # Get a list of block hashes up until this most recent block
         # TODO get_child_block_hashes return an error/assertion/something if block cannot be found
         child_hashes = BlockStorageDriver.get_child_block_hashes(request.current_block_hash)
-        self.log.debugv("Got descended block hashes {} for block hash {}".format(child_hashes, request.current_block_hash))
+        self.log.debugv("Got descendant block hashes {} for block hash {}".format(child_hashes, request.current_block_hash))
 
         # If this hash could not be found or if it was the latest hash, no need to lookup any blocks
         if not child_hashes:
@@ -109,6 +118,14 @@ class MNBootState(MNBaseState):
     def reset_attrs(self):
         pass
 
+    @enter_from(MNBootState)
+    def enter_from_boot(self, prev_state):
+        # Create web server
+        self.log.debug("Creating web server")
+        server = web.Server(self.parent.route_http)
+        server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
+        self.parent.tasks.append(server_future)
+
     @enter_from_any
     def enter_any(self, prev_state):
         self.log.debug("MN IP: {}".format(self.parent.ip))
@@ -123,8 +140,14 @@ class MNBootState(MNBaseState):
         for vk in VKBook.get_delegates():
             self.parent.composer.add_dealer(vk=vk)
 
-        # Once done booting, transition to run
-        self.parent.transition(MNRunState)
+        # Create web server
+        self.log.debug("Creating REST server on port 8080")
+        server = web.Server(self.parent.route_http)
+        server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
+        self.parent.tasks.append(server_future)
+
+        # Once done booting, transition to staging
+        self.parent.transition(MNStagingState)
 
     @exit_to_any
     def exit_any(self, next_state):
@@ -139,8 +162,55 @@ class MNBootState(MNBaseState):
         self.log.warning("MN BootState not ready to handle TransactionRequests")
 
     @input_request(BlockMetaDataRequest)
-    def handle_blockmeta_request(self, request: BlockMetaDataRequest):
+    def handle_blockmeta_request(self, request: BlockMetaDataRequest, envelope: Envelope):
         self.log.warning("MN BootState not ready to handle BlockMetaDataRequest")
+
+
+@Masternode.register_state
+class MNStagingState(MNBaseState):
+    """
+    Staging State allows the Masternode to defer publishing transactions to the network until is ready.
+    The network is considered 'ready' when 2/3 of the delegates have the latest blockchain state.
+    """
+
+    def reset_attrs(self):
+        self.ready_delegates = set()
+
+    @enter_from_any
+    def enter_any(self):
+        self.reset_attrs()
+
+    @input(TransactionBase)
+    def handle_tx(self, tx: TransactionBase):
+        self.log.spam("Delegate received tx but still in staging state. Adding it to queue.")
+        self.parent.tx_queue.append(tx)
+
+    @input_request(BlockMetaDataRequest)
+    def handle_blockmeta_request(self, request: BlockMetaDataRequest, envelope: Envelope):
+        reply = super().handle_blockmeta_request(request)
+        self.parent.composer.send_reply(message=reply, request_envelope=envelope)
+
+        if not reply.block_metas:
+            vk = envelope.seal.verifying_key
+            self.log.notice("Delegate with vk {} has the latest blockchain state!".format(vk))
+            self.ready_delegates.add(vk)
+            self._check_ready()
+
+    def _check_ready(self):
+        """
+        Checks if the system is 'ready' (as described in the MNStagingState docstring). If all conditions are met,
+        this function will transition to MNRunState.
+        """
+        majority = VKBook.get_delegate_majority()
+        num_ready = len(self.ready_delegates)
+
+        if num_ready >= majority:
+            self.log.important("2/3 Delegates are at the latest blockchain state! MN exiting StatingState."
+                               "\n(Ready Delegates = {})".format(self.ready_delegates))
+            self.parent.transition(MNRunState)
+            return
+        else:
+            self.log.notice("Only {} of {} required majority delegates ready. MN remaining in StagingState".format(num_ready, majority))
 
 
 @Masternode.register_state
@@ -148,13 +218,15 @@ class MNRunState(MNBaseState):
     def reset_attrs(self):
         pass
 
-    @enter_from(MNBootState)
-    def enter_from_boot(self, prev_state):
-        # Create web server
-        self.log.debug("Creating web server")
-        server = web.Server(self.parent.route_http)
-        server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
-        self.parent.tasks.append(server_future)
+    @enter_from_any
+    def enter_any(self):
+        if not self.parent.tx_queue:
+            return
+
+        self.log.notice("Flushing queue of {} transactions".format(len(self.parent.tx_queue)))
+        for tx in self.parent.tx_queue:
+            self.handle_tx(tx)
+        self.parent.tx_queue.clear()
 
     @enter_from(MNNewBlockState)
     def enter_from_newblock(self, success=False):

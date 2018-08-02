@@ -1,6 +1,6 @@
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
-from cilantro.nodes.masternode.masternode import MNBootState, MNRunState
+from cilantro.nodes.masternode.masternode import MNBootState, MNRunState, MNStagingState
 from cilantro.protocol.states.statemachine import StateTransition
 from cilantro.protocol.states.state import EmptyState
 
@@ -38,13 +38,28 @@ class TestMasterNodeBootState(TestCase):
 
         mock_composer.add_router.assert_called_with(ip=ip)
 
-    def test_entry_transitions_to_run(self):
+    def test_entry_transitions_to_staging(self):
         """
-        Tests that boot state transitions to run state once setup has been done
+        Tests that boot state transitions to staging state once setup has been done
         """
         mock_sm = MagicMock()
         state = MNBootState(state_machine=mock_sm)
 
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
 
-        mock_sm.transition.assert_called_with(MNRunState)
+        mock_sm.transition.assert_called_with(MNStagingState)
+
+    def test_entry_adds_server_task(self):
+        """
+        Tests that BootState adds a server future to that state machine's tasks
+        """
+        tasks = []
+
+        mock_sm = MagicMock(tasks=tasks)
+        state = MNBootState(state_machine=mock_sm)
+
+        num_tasks_before = len(tasks)
+        state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
+        num_tasks_after = len(tasks)
+
+        self.assertTrue(num_tasks_after - num_tasks_before == 1)

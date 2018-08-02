@@ -5,22 +5,7 @@ from cilantro.protocol.states.state import StateTransition, StateInput
 from cilantro.messages.consensus.block_contender import BlockContender, build_test_contender
 
 
-class TestMasterNodeBootState(TestCase):
-
-    def test_entry_from_boot_adds_server_task(self):
-        """
-        Tests that transitioning into RunState from BootState adds a server future to that state machine's tasks
-        """
-        tasks = []
-        mock_sm = MagicMock(tasks=tasks)
-
-        state = MNRunState(state_machine=mock_sm)
-
-        num_tasks_before = len(tasks)
-        state.call_transition_handler(trans_type=StateTransition.ENTER, state=MNBootState)
-        num_tasks_after = len(tasks)
-
-        self.assertTrue(num_tasks_after - num_tasks_before == 1)
+class TestMasterNodeRunState(TestCase):
 
     def test_input_block_contender(self):
         """

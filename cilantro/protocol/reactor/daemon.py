@@ -10,7 +10,7 @@ from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
 import signal, sys
 from cilantro.protocol.states.state import StateInput
-from cilantro.constants.overlay_network import alpha, ksize, max_peers
+from cilantro.constants.overlay_network import ALPHA, KSIZE, MAX_PEERS
 import inspect
 
 import uvloop
@@ -40,8 +40,8 @@ class ReactorDaemon:
 
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
-                       alpha=alpha, ksize=ksize, daemon=self,
-                       max_peers=max_peers, block=False, cmd_cli=False, wipe_certs=True)
+                       alpha=ALPHA, ksize=KSIZE, daemon=self,
+                       max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
 
         self.context, auth = self.dht.network.ironhouse.secure_context(async=True)
         self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
