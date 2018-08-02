@@ -1,7 +1,7 @@
 from unittest import TestCase
 from cilantro.messages.transaction.vote import VoteTransaction, VoteTransactionBuilder
 import secrets
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 
 class TestVoteTransaction(TestCase):
 
@@ -11,7 +11,7 @@ class TestVoteTransaction(TestCase):
         Helper method to create and return a valid transaction struct with a random sender/receiever and
         the specified amount
         """
-        s = Wallet.new()
+        s = wallet.new()
 
         return VoteTransactionBuilder.create_tx_struct(s[0], s[1], secrets.token_hex(8), secrets.token_hex(8))
 

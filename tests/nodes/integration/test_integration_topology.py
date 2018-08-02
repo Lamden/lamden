@@ -5,18 +5,17 @@ from unittest.mock import call
 from cilantro.utils.test.god import *
 from cilantro.nodes.masternode.masternode import *
 import time
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 
 """
 Here we do integration tests on our network topology. We spin up nodes on the VM, and ensure that they can talk
 to each other how we expect them to.
 """
 
-W = Wallet
-sk1, vk1 = W.new()
-sk2, vk2 = W.new()
-sk3, vk3 = W.new()
-sk4, vk4 = W.new()
+sk1, vk1 = wallet.new()
+sk2, vk2 = wallet.new()
+sk3, vk3 = wallet.new()
+sk4, vk4 = wallet.new()
 FILTERS = ['FILTER_' + str(i) for i in range(100)]
 URLS = ['tcp://127.0.0.1:' + str(i) for i in range(9000, 9999, 10)]
 

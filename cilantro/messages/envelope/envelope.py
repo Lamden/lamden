@@ -8,7 +8,7 @@ import time
 
 import envelope_capnp
 
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 
 
 class Envelope(MessageBase):
@@ -67,7 +67,7 @@ class Envelope(MessageBase):
 
         # Create Seal
         if not verifying_key:
-            verifying_key = Wallet.get_vk(signing_key)
+            verifying_key = wallet.get_vk(signing_key)
         seal_sig = EnvelopeAuth.seal(signing_key=signing_key, meta=meta, message=message)
         seal = Seal.create(signature=seal_sig, verifying_key=verifying_key)
 

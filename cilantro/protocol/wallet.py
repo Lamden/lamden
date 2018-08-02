@@ -3,61 +3,52 @@ import nacl.encoding
 import nacl.signing
 
 
-class Wallet:
-    def __init__(self, s=None):
-        if s is None:
-            self.s, self.v = Wallet.new()
-        else:
-            self.s, self.v = Wallet.format_to_keys(s)
-            self.s, self.v = Wallet.keys_to_format(self.s, self.v)
+def generate_keys(seed=None):
+    if seed is not None:
+        s = nacl.signing.SigningKey(seed=seed)
+    else:
+        s = nacl.signing.SigningKey.generate()
+    v = s.verify_key
+    return s, v
 
-    @classmethod
-    def generate_keys(cls, seed=None):
-        if seed is not None:
-            s = nacl.signing.SigningKey(seed=seed)
-        else:
-            s = nacl.signing.SigningKey.generate()
-        v = s.verify_key
-        return s, v
 
-    @classmethod
-    def get_vk(cls, s):
-        s, v = Wallet.format_to_keys(s)
-        s, v = Wallet.keys_to_format(s, v)
-        return v
+def get_vk(s):
+    s, v = format_to_keys(s)
+    s, v = keys_to_format(s, v)
+    return v
 
-    @classmethod
-    def keys_to_format(cls, s, v):
-        s = s.encode()
-        v = v.encode()
-        return s.hex(), v.hex()
 
-    @classmethod
-    def format_to_keys(cls, s):
-        s = bytes.fromhex(s)
-        s = nacl.signing.SigningKey(s)
-        return s, s.verify_key
+def keys_to_format(s, v):
+    s = s.encode()
+    v = v.encode()
+    return s.hex(), v.hex()
 
-    @classmethod
-    def new(cls, seed=None):
-        s, v = cls.generate_keys(seed=seed)
-        return cls.keys_to_format(s, v)
 
-    @classmethod
-    def sign(cls, s: str, msg: bytes):
-        assert type(msg).__name__ == 'bytes', 'Message argument must be a byte string.'
-        (s, v) = cls.format_to_keys(s)
-        return s.sign(msg).signature.hex()
+def format_to_keys(s):
+    s = bytes.fromhex(s)
+    s = nacl.signing.SigningKey(s)
+    return s, s.verify_key
 
-    @classmethod
-    def verify(cls, v: str, msg, sig):
-        v = bytes.fromhex(v)
-        sig = bytes.fromhex(sig)
-        v = nacl.signing.VerifyKey(v)
-        try:
-            v.verify(msg, sig)
-        except nacl.exceptions.BadSignatureError:
-            return False
-        except Exception:
-            return False
-        return True
+
+def new(seed=None):
+    s, v = generate_keys(seed=seed)
+    return keys_to_format(s, v)
+
+
+def sign(s: str, msg: bytes):
+    assert type(msg).__name__ == 'bytes', 'Message argument must be a byte string.'
+    (s, v) = format_to_keys(s)
+    return s.sign(msg).signature.hex()
+
+
+def verify(v: str, msg, sig):
+    v = bytes.fromhex(v)
+    sig = bytes.fromhex(sig)
+    v = nacl.signing.VerifyKey(v)
+    try:
+        v.verify(msg, sig)
+    except nacl.exceptions.BadSignatureError:
+        return False
+    except Exception:
+        return False
+    return True
