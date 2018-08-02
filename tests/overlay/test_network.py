@@ -124,7 +124,7 @@ class TestNetwork(TestCase):
 
     def test_connect_to_neighbor_fail(self):
         def run(self):
-            self.evil_net.node.ip = '127.0.0.255'
+            self.evil_net.node.ip = '255.0.0.255'
             self.a_net.connect_to_neighbor(self.evil_net.node)
             self.assertEqual(self.a_net.connections, {})
             stop(self)
