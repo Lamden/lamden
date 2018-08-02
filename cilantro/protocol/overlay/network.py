@@ -109,10 +109,7 @@ class Network(object):
                             log.debug('reconnecting {} - {}'.format(self.network_port, addr))
                             conn.connect(addr)
                         except Exception as e:
-                            log.debug(e)
-                            if e.args[0] in [
-                                54, 104 # reset by peer
-                            ]:
+                            if e.args[1] == 'Connection reset by peer':
                                 log.info("Client ({}, {}) disconnected from {}".format(*addr, self.node))
                                 del self.connections[fileno]
                                 if self.vkcache.get(node.ip):
