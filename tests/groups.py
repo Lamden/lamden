@@ -91,7 +91,7 @@ INTEGRATION_TESTS = [
 """
 
 # Tests to skip on the CI.
-CI_DISABLED_TESTS = [] #+ DB_TESTS + SMART_CONTRACT_TESTS
+CI_DISABLED_TESTS = [OVERLAY_TESTS] #+ DB_TESTS + SMART_CONTRACT_TESTS
 
 # Tests that are skipped if the environment variable $CILANTRO_DEBUG is set
 DEBUG_DISABLED_TESTS = [] # SMART_CONTRACT_TESTS
