@@ -111,7 +111,7 @@ class Network(object):
                         except Exception as e:
                             log.debug(e)
                             if e.args[0] in [
-                                54, # reset by peer
+                                54, 104 # reset by peer
                             ]:
                                 log.info("Client ({}, {}) disconnected from {}".format(*addr, self.node))
                                 del self.connections[fileno]
