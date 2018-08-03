@@ -56,6 +56,7 @@ class Masternode(NodeBase):
 
 
 class MNBaseState(State):
+
     @input(TransactionBase)
     def handle_tx(self, tx: TransactionBase):
         oc = OrderingContainer.create(tx=tx, masternode_vk=self.parent.verifying_key)
@@ -113,16 +114,9 @@ class MNBaseState(State):
 
 @Masternode.register_init_state
 class MNBootState(MNBaseState):
+
     def reset_attrs(self):
         pass
-
-    @enter_from(MNBootState)
-    def enter_from_boot(self, prev_state):
-        # Create web server
-        self.log.debug("Creating web server")
-        server = web.Server(self.parent.route_http)
-        server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
-        self.parent.tasks.append(server_future)
 
     @enter_from_any
     def enter_any(self, prev_state):
