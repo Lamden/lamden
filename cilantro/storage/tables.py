@@ -67,7 +67,7 @@ def create_table(ex, table, should_drop):
 
 def _clean_tmp_file():
     try:
-        # os.remove(KILL_FILE_TMP)
+        os.remove(KILL_FILE_TMP)
         os.system("rm {}".format(KILL_FILE_TMP))
     except Exception as e:
         log.error("got dat err tryna clean file..\n{}".format(e))
