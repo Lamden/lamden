@@ -122,7 +122,6 @@ def main(args):
             test_failures = len(test_result.errors) + len(test_result.failures)
             tests_passed = tests_total - test_failures
 
-            _l = log.critical
             if test_result.errors:
                 for i in range(len(test_result.errors)):
                     all_errors.append(test_result.errors[i][0])
@@ -142,9 +141,10 @@ def main(args):
                     TEST_FLAG = 'F'
 
             if not test_result.errors and not test_result.failures:
-                _l = log.info
-                log.info("No errors in {}".format(test))
+                _l = log.success
                 num_success += 1
+            else:
+                _l = log.fatal
 
             _l('\n\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
                .format(test, run_time, tests_passed, tests_total) + delim + '\n')
