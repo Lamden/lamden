@@ -99,15 +99,18 @@ class ReactorDaemon:
         """
         self.log.info("[DEAMON PROC] Tearing down Reactor Daemon process")
 
-#        self.log.warning("Closing pair socket")
-#        self.socket.close()
+        self.log.warning("Closing pair socket")
+        self.socket.close()
 
-#        self.log.warning("Tearing down executors")
-        #for e in self.executors.values():
-         #   e.teardown()
+        self.log.warning("Tearing down executors")
+        for e in self.executors.values():
+            e.teardown()
 
-#        self.log.warning("Closing event loop")
-#        self.loop.call_soon_threadsafe(self.loop.stop)
+        self.dht.cleanup()
+
+        self.log.warning("Closing event loop")
+        self.loop.call_soon_threadsafe(self.loop.stop)
+
 
     def _execute_cmd(self, cmd: ReactorCommand):
         """

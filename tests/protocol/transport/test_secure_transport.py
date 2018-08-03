@@ -50,8 +50,30 @@ class TestSecureTransport(MPTestCase):
         def assert_sub(composer: Composer):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
             from cilantro.protocol.states.decorators import StateInput
-            cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
-            composer.interface.router.route_callback.assert_called_once_with(cb)
+            from unittest.mock import call
+            # cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
+            # composer.interface.router.route_callback.assert_called_once_with(cb)
+
+            expected_cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
+            unexpected_cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=evil_env)
+
+            call_args = composer.interface.router.route_callback.call_args_list
+
+            # DEBUG STUFF
+            from cilantro.logger.base import get_logger
+            l = get_logger("assert sub")
+            l.important2("got dat call args: {}".format(call_args))
+            # END DEBUG STUFF
+
+            l.critical(expected_cb)
+            l.critical(unexpected_cb)
+
+            assert expected_cb in call_args, "Expected callback {} to be in call_args {}".format(expected_cb, call_args)
+            assert unexpected_cb not in call_args, "Did not expect callback {} to be in call_args {}".format(unexpected_cb, call_args)
+
+            # assert len(call_args) == 2, "route_callback should be called exactly twice, not {} times with {}"\
+            #                             .format(len(call_args), call_args)
+            # composer.interface.router.route_callback.assert_has_calls(calls, any_order=True)
 
         env = random_envelope()
         evil_env = random_envelope()

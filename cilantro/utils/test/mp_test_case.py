@@ -72,6 +72,8 @@ class MPTestCase(BaseNetworkTestCase):
         MPTestCase.testers.clear()
         MPTestCase.curr_tester_index = 1
 
+        self._reset_containers()
+
     def start(self, timeout=TEST_TIMEOUT):
         """
         Start the test orchestrator, which polls tester objects living on seperate process/machines for assertions.
