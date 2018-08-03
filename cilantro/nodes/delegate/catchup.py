@@ -1,11 +1,12 @@
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
-from cilantro.protocol.states.decorators import input, input_timeout, exit_to_any, enter_from_any
+from cilantro.protocol.states.decorators import input, input_timeout, exit_to_any, enter_from_any, timeout_after
 from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.block_data.block_metadata import BlockMetaDataReply, BlockMetaDataRequest
 from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.storage.db import VKBook
+from cilantro.constants.delegate import CATCHUP_TIMEOUT
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
@@ -30,8 +31,16 @@ block.
 class DelegateCatchupState(DelegateBaseState):
 
     def reset_attrs(self):
-        self.new_blocks = []
-        self.current_block = None
+        self.new_blocks = []  # A queue of blocks to fetch
+        self.current_block = None  # The current block being fetched
+
+    @timeout_after(CATCHUP_TIMEOUT)
+    def timeout(self):
+        self.log.fatal("CatchUp state exceeded timeout of {} seconds!".format(CATCHUP_TIMEOUT))
+        self.log.fatal("current block hash: {}\ncurrent_block: {}\npending blocks: {}\n"
+                       .format(self.parent.current_hash, self.current_block, self.new_blocks))
+        self.log.fatal("System exiting.")
+        exit()
 
     @enter_from_any
     def enter_any(self, prev_state):
@@ -124,6 +133,7 @@ class DelegateCatchupState(DelegateBaseState):
 
         request = TransactionRequest.create(self.current_block.merkle_leaves)
         self.parent.composer.send_request_msg(msg=request, vk=VKBook.get_masternodes()[0])
+        # TODO implement request timeout functionality for TrnasactionRequest
 
 
 
