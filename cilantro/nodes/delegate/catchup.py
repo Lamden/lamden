@@ -44,7 +44,6 @@ class DelegateCatchupState(DelegateBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
-        self.log.debug("CatchupState entered from previous state {}".format(prev_state))
         self.reset_attrs()
         self._request_update()
 
@@ -54,6 +53,8 @@ class DelegateCatchupState(DelegateBaseState):
 
         self.parent.current_hash = BlockStorageDriver.get_latest_block_hash()
         self.log.info("CatchupState exiting. Current block hash set to {}".format(self.parent.current_hash))
+
+    # TODO put incoming transactions into a queue. remove them if we see their hash in one of the blocks we are updating.
 
     @input(BlockMetaDataReply)
     def handle_blockmeta_reply(self, reply: BlockMetaDataReply):
