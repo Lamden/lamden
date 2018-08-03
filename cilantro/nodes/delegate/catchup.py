@@ -6,7 +6,7 @@ from cilantro.messages.block_data.transaction_data import TransactionReply, Tran
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.storage.db import VKBook
-from cilantro.constants.delegate import CATCHUP_TIMEOUT
+from cilantro.constants.delegate import CATCHUP_TIMEOUT, BLOCK_REQ_TIMEOUT, TX_REQ_TIMEOUT
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
@@ -14,14 +14,15 @@ DelegateConsensusState = "DelegateConsensusState"
 
 
 """
-TODO optimize this
+TODO optimize catchup procedure. Move away from this sluggish sequential block requesting. 
 
-We are currently fetching transactions blobs block by block (ie "give me all the TXs for block 1...ok done with that,
-now give me all TXs for block 2...and so on)
+We are currently fetching transactions blobs block by block. We wait to interpret all of a block transactions before 
+requesting the transactions for the next block.
+(ie "give me all the TXs for block 1...ok now process those, ok next give me all TXs for block 2"...and so on)
 
-This can be made more efficient to request ALL transactions from ALL blocks async, and piecing together as we go.
-This requires a more efficient data structure that can store all transactions across all blocks, access these in
-O(1), but also check if all transactions from a given block have been achieved in O(1). Naively, using a hash table
+This can be made more efficient to request up to N txs from up to B pending blocks async, and piecing together as we go.
+This requires a more efficient data structure that can store all transactions across all blocks, access these by hash in
+O(1), but also check if all transactions from a given block hash have been fetched in O(1).. Naively, using a hash table
 of tx_hash-->tx_blob satisfies requirement 1, but takes O(n) to check if all transactions have been fetched for a given
 block. 
 """
@@ -108,7 +109,7 @@ class DelegateCatchupState(DelegateBaseState):
 
         self.log.notice("Requesting updates from Masternode with current block hash {}".format(self.parent.current_hash))
         request = BlockMetaDataRequest.create(current_block_hash=self.parent.current_hash)
-        self.parent.composer.send_request_msg(message=request, vk=VKBook.get_masternodes()[0], timeout=5)
+        self.parent.composer.send_request_msg(message=request, vk=VKBook.get_masternodes()[0], timeout=BLOCK_REQ_TIMEOUT)
 
     def _update_next_block(self):
         """
@@ -134,7 +135,7 @@ class DelegateCatchupState(DelegateBaseState):
 
         request = TransactionRequest.create(self.current_block.merkle_leaves)
         self.parent.composer.send_request_msg(msg=request, vk=VKBook.get_masternodes()[0])
-        # TODO implement request timeout functionality for TrnasactionRequest
+        # TODO implement request timeout functionality for TrnasactionRequest /w TX_REQ_TIMEOUT
 
 
 
