@@ -1,7 +1,7 @@
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
 from cilantro.protocol.states.decorators import input, input_timeout, exit_to_any, enter_from_any, timeout_after
 from cilantro.storage.blocks import BlockStorageDriver
-from cilantro.messages.block_data.block_metadata import BlockMetaDataReply, BlockMetaDataRequest
+from cilantro.messages.block_data.block_metadata import BlockMetaDataReply, BlockMetaDataRequest, NewBlockNotification
 from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.transaction.contract import ContractTransaction
@@ -94,6 +94,11 @@ class DelegateCatchupState(DelegateBaseState):
         BlockStorageDriver.store_block_from_meta(self.current_block)
         self.current_block = None
         self._update_next_block()
+
+    @input(NewBlockNotification)
+    def handle_new_block_notif(self, notif: NewBlockNotification):
+        self.log.notice("Delegate got new block notification with hash {}\nprev_hash {}]\nand our current hash = {}"
+                        .format(notif.block_hash, notif.prev_block_hash, self.parent.current_hash))
 
     @input_timeout(BlockMetaDataRequest)
     def timeout_block_meta_request(self, request: BlockMetaDataRequest):
