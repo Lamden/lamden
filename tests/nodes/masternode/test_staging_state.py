@@ -5,9 +5,15 @@ from cilantro.protocol.states.statemachine import StateTransition
 from cilantro.protocol.states.state import EmptyState
 from cilantro.messages.transaction.base import TransactionBase
 from collections import deque
+import asyncio
 
 
 class TestMasterNodeStagingState(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        # Create a new event loop for this test suite
+        asyncio.set_event_loop(asyncio.new_event_loop())
 
     def test_handle_tx_adds_to_queue(self):
         mock_queue = MagicMock(spec=deque)
