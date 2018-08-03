@@ -94,7 +94,7 @@ def main(args):
         for test in group:
 
             if _should_skip_module(test, skip_module_names):
-                log.info("Skipping test module {}".format(test))
+                log.notice("Skipping test module {}".format(test))
                 continue
 
             suite = loader.discover(test)  # finds all unit tests in the testgroup directory
