@@ -96,6 +96,7 @@ def main(args):
             if _should_skip_module(test, skip_module_names):
                 log.notice("Skipping test module {}".format(test))
                 continue
+            log.notice("Starting tests for module {}...".format(test))
 
             suite = loader.discover(test)  # finds all unit tests in the testgroup directory
 
@@ -128,7 +129,7 @@ def main(args):
                     log.error("Error in {}".format(test))
                     log.error('Number of errors: {}'.format(len(test_result.errors)))
                     log.error('Error #{}: {}'.format(i+1, test_result.errors[i][0]))  # test_result.errors[i][0] = test_retrieve_block_invalid_args (tests.storage.test_blockchain_storage.TestBlockStorageDriver)
-                    log.error('Error traceback: {}'.format(test_result.errors[i][1]))
+                    log.error('Error traceback: \n{}'.format(test_result.errors[i][1]))
                     TEST_FLAG = 'F'
 
             if test_result.failures:
@@ -174,9 +175,6 @@ def main(args):
         log.fatal('\n\nSome tests have finished running and there are errors - check log\n')
         overwrite_logger_level(9000)
         sys.exit(1)
-
-    # Overwrite logger level to surpress asyncio's whining
-    # overwrite_logger_level(9000)
 
 
 if __name__ == '__main__':
