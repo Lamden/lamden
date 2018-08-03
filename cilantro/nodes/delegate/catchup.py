@@ -41,6 +41,7 @@ class DelegateCatchupState(DelegateBaseState):
         self.log.fatal("current block hash: {}\ncurrent_block: {}\npending blocks: {}\n"
                        .format(self.parent.current_hash, self.current_block, self.new_blocks))
         self.log.fatal("System exiting.")
+        # TODO should we tear things down? Or will signal handlers take care of that upon calling exit()? Need to investigate
         exit()
 
     @enter_from_any
@@ -55,8 +56,7 @@ class DelegateCatchupState(DelegateBaseState):
         self.parent.current_hash = BlockStorageDriver.get_latest_block_hash()
         self.log.info("CatchupState exiting. Current block hash set to {}".format(self.parent.current_hash))
 
-    # TODO put incoming transactions into a queue. remove them if we see their hash in one of the blocks we are updating.
-
+    # TODO -- prune the transaction queue of transactions we get from requested blocks
     @input(BlockMetaDataReply)
     def handle_blockmeta_reply(self, reply: BlockMetaDataReply):
         self.log.debug("Delegate got BlockMetaDataReply: {}".format(reply))
