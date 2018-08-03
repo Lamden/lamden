@@ -2,9 +2,9 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 from cilantro.protocol.transport import Composer
 from cilantro.protocol.reactor import ReactorInterface
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 
-W = Wallet
+W = wallet
 TESTER_RETURN_VAL = b'yo'
 
 # class TestComposer(TestCase):

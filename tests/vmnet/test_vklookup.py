@@ -1,6 +1,6 @@
 from vmnet.test.base import *
 import unittest, time, random
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 
 import vmnet
@@ -53,8 +53,8 @@ def run_mgmt():
 
     log = get_logger(__name__)
     sk = TESTNET_MASTERNODES[0]['sk']
-    vk = Wallet.get_vk(sk)
-    s,v = Wallet.new()
+    vk = wallet.get_vk(sk)
+    s,v = wallet.new()
     mpc = MPComposer(name='mgmt', sk=s)
     mpc.add_sub(filter='a', vk=vk)
 
@@ -72,11 +72,11 @@ class TestVKLookup(BaseNetworkTestCase):
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
 
-        # Bootstrap TESTNET_WITNESSES
+        # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):
             self.execute_python('witness_{}'.format(i+1+1), wrap_func(run_witness, i), async=True)
 
-        # Bootstrap TESTNET_DELEGATES
+        # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python('delegate_{}'.format(i+1+3), wrap_func(run_delegate, i), async=True)
 

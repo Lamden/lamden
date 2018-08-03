@@ -8,7 +8,7 @@ from cilantro.messages.transaction.base import build_test_transaction
 from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
 from cilantro.utils import Hasher, int_to_bytes
 from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 from cilantro.constants.testnet import TESTNET_MASTERNODES
 import secrets
 import random
@@ -25,7 +25,7 @@ class TestBlockStorageDriver(TestCase):
         :return:
         """
         mn_sk = TESTNET_MASTERNODES[0]['sk']
-        mn_vk = Wallet.get_vk(mn_sk)
+        mn_vk = wallet.get_vk(mn_sk)
         timestamp = 9000
 
         raw_transactions = [build_test_transaction().serialize() for _ in range(num_transactions)]
@@ -41,7 +41,7 @@ class TestBlockStorageDriver(TestCase):
         else:
             prev_block_hash = '0' * 64
 
-        mn_sig = Wallet.sign(mn_sk, tree.root)
+        mn_sig = wallet.sign(mn_sk, tree.root)
 
         return {
             'prev_block_hash': prev_block_hash,

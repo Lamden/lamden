@@ -1,5 +1,5 @@
 from cilantro.messages.transaction.base import TransactionBase
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 from cilantro.protocol.pow import SHA3POW
 import capnp
 import transaction_capnp
@@ -42,7 +42,7 @@ class ElectionTransactionBuilder:
         payload_binary = tx.payload.copy().to_bytes()
 
         tx.metadata.proof = SHA3POW.find(payload_binary)[0]
-        tx.metadata.signature = Wallet.sign(sender_s, payload_binary)
+        tx.metadata.signature = wallet.sign(sender_s, payload_binary)
 
         return tx
 
@@ -58,5 +58,5 @@ class ElectionTransactionBuilder:
 
         method = 0 if random.random() > 0.5 else 1
 
-        s = Wallet.new()
+        s = wallet.new()
         return ElectionTransactionBuilder.create_tx(s[0], s[1], secrets.token_hex(8), method)

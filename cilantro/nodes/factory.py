@@ -2,11 +2,8 @@ from cilantro.nodes import Masternode, Witness, Delegate, NodeBase
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.transport import Router, Composer
 import asyncio
-from cilantro.protocol.wallet import Wallet
 
 from cilantro.storage.db import DB
-
-W = Wallet
 
 
 class NodeFactory:

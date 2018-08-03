@@ -76,7 +76,7 @@ class Network(object):
             log.debug('Node {}:{} is already a neighbor'.format(node.ip, node.port))
             return True
         authorized = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
-        log.critical('{}:{} is {}'.format(node.ip, node.port, authorized))
+        log.debug('{}:{} is {}'.format(node.ip, node.port, authorized))
         if authorized == 'authorized':
             self.protocol.router.addContact(node)
             self.connect_to_neighbor(node)
@@ -109,9 +109,8 @@ class Network(object):
                             log.debug('reconnecting {} - {}'.format(self.network_port, addr))
                             conn.connect(addr)
                         except Exception as e:
-                            if e.args[0] in [
-                                54, # reset by peer
-                            ]:
+                            log.debug(e.args)
+                            if e.args[1] == 'Connection reset by peer':
                                 log.info("Client ({}, {}) disconnected from {}".format(*addr, self.node))
                                 del self.connections[fileno]
                                 if self.vkcache.get(node.ip):
