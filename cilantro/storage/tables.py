@@ -1,11 +1,15 @@
 from cilantro.logger import get_logger
 import json, os
+from seneca.seneca_internal.storage.mysql_executer import Executer
+
 
 
 log = get_logger("DB Creator")
 
 GENESIS_HASH = '0' * 64
 DB_NAME = 'seneca_test'
+
+KILL_FILE_TMP = '/tmp/kill_all_die_death_terminate_go_away_stop_holding_locks.txt'
 
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
@@ -57,9 +61,33 @@ def create_table(ex, table, should_drop):
     return table
 
 
+def _clean_tmp_file():
+    try:
+        os.remove(KILL_FILE_TMP)
+    except:
+        pass
+
+
 def _reset_db(ex):
     log.info("Dropping database named {}".format(DB_NAME))
-    ex.raw('UNLOCK TABLES;')
+
+    _clean_tmp_file()
+    build_kill_file = "select concat('KILL ',id,';') from information_schema.processlist where user='root' and " \
+                      "command='Sleep' into outfile '{}';".format(KILL_FILE_TMP)
+    ex.raw(build_kill_file)
+
+    # Nuke all sql processes so none of them hold a lock ... kill them delete them destroy them get them out of here
+    with open(KILL_FILE_TMP, 'r') as f:
+        lines = f.readlines()
+        for cmd in lines:
+            # log.important3("executing command {}".format(cmd))
+            try:
+                ex.raw(cmd)
+            except:
+                pass
+
     ex.raw('DROP DATABASE IF EXISTS {};'.format(DB_NAME))
     ex.raw('CREATE DATABASE IF NOT EXISTS {};'.format(DB_NAME))
     ex.raw('USE {};'.format(DB_NAME))
+
+    _clean_tmp_file()

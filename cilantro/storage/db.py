@@ -259,15 +259,23 @@ class ScratchCloningVisitor(CloningVisitor):
 
 def reset_db():
     def clear_instances():
+        log.info("Clearing {} db instances...".format(len(DBSingletonMeta._instances)))
         for instance in DBSingletonMeta._instances.values():
             instance.ex.cur.close()
             instance.ex.conn.close()
         DBSingletonMeta._instances.clear()
+        log.info("DB instances cleared.")
 
     clear_instances()
-    with DB(should_reset=True) as db:
-        log.info("Database reset")
-    clear_instances()
+
+    ex = Executer('root', '', '', '127.0.0.1')
+    _reset_db(ex)
+
+    ex.cur.close()
+    ex.conn.close()
+    # with DB(should_reset=True) as db:
+    #     log.info("Database reset")
+    # clear_instances()
 
 
 class DBSingletonMeta(type):
