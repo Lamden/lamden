@@ -96,7 +96,7 @@ def main(args):
             if _should_skip_module(test, skip_module_names):
                 log.notice("Skipping test module {}".format(test))
                 continue
-            log.notice("Starting tests for module {}...".format(test))
+            log.info("Starting tests for module {}...".format(test))
 
             suite = loader.discover(test)  # finds all unit tests in the testgroup directory
 
@@ -147,7 +147,7 @@ def main(args):
             else:
                 _l = log.fatal
 
-            _l('\n\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
+            _l('\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
                .format(test, run_time, tests_passed, tests_total) + delim + '\n')
 
     total_time = round(time.time() - abs_start, 3)
