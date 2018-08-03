@@ -67,8 +67,8 @@ def create_table(ex, table, should_drop):
 
 def _clean_tmp_file():
     try:
+        os.system("rm -f {}".format(KILL_FILE_TMP))
         os.remove(KILL_FILE_TMP)
-        os.system("rm {}".format(KILL_FILE_TMP))
     except Exception as e:
         log.error("got dat err tryna clean file..\n{}".format(e))
         pass
@@ -87,14 +87,17 @@ def _reset_db(ex):
     ex.raw(build_kill_file)
 
     # Nuke all sql processes so none of them hold a lock ... kill them delete them destroy them get them out of here
-    with open(KILL_FILE_TMP, 'r') as f:
-        lines = f.readlines()
-        for cmd in lines:
-            log.important3("executing command {}".format(cmd))
-            try:
-                ex.raw(cmd)
-            except:
-                pass
+    try:
+        with open(KILL_FILE_TMP, 'r') as f:
+            lines = f.readlines()
+            for cmd in lines:
+                log.important3("executing command {}".format(cmd))
+                try:
+                    ex.raw(cmd)
+                except:
+                    pass
+    except Exception as e:
+        log.fatal("got err opening file {}...\nerr = {}".format(KILL_FILE_TMP, e))
 
     # ex = Executer('root', '', '', '127.0.0.1')
     ex.raw('DROP DATABASE IF EXISTS {};'.format(DB_NAME))
