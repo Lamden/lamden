@@ -112,7 +112,7 @@ def main(args):
 
             # Suppress all log output below logging.WARNING if -v is specified
             if not args.verbosity:
-                overwrite_logger_level(logging.WARNING)  # Set log level to warning to suppress most output from tests
+                overwrite_logger_level(9000)  # Set log level to 9000  to suppress most output from tests
             test_result = runner.run(suite)
             overwrite_logger_level(1)  # Change logging level back
 
@@ -167,11 +167,11 @@ def main(args):
     _l(result_msg)
 
     if TEST_FLAG == 'S':
-        log.info('\n\nAll tests have finished running and passed - testing complete!\n')
+        log.success('\n\nAll tests have finished running and passed - testing complete!\n')
         overwrite_logger_level(9000)
         sys.exit(0)
     elif TEST_FLAG == 'F':
-        log.critical('\n\nSome tests have finished running and there are errors - check log\n')
+        log.fatal('\n\nSome tests have finished running and there are errors - check log\n')
         overwrite_logger_level(9000)
         sys.exit(1)
 
