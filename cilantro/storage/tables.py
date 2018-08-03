@@ -9,7 +9,7 @@ log = get_logger("DB Creator")
 GENESIS_HASH = '0' * 64
 DB_NAME = 'seneca_test'
 
-KILL_FILE_TMP = '/tmp/kill_all_die_death_terminate_go_away_stop_holding_locks.txt'
+KILL_FILE_TMP = os.getenv('LOCAL_PATH', '/tmp') + '/kill_all_die_death_terminate_go_away_stop_holding_locks.txt'
 
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
@@ -63,14 +63,20 @@ def create_table(ex, table, should_drop):
 
 def _clean_tmp_file():
     try:
-        os.remove(KILL_FILE_TMP)
-    except:
+        # os.remove(KILL_FILE_TMP)
+        os.system("rm {}".format(KILL_FILE_TMP))
+    except Exception as e:
+        log.error("got dat err tryna clean file..\n{}".format(e))
         pass
 
 
 def _reset_db(ex):
     log.info("Dropping database named {}".format(DB_NAME))
 
+    # try:
+    #     ex.raw("kill USER root;")
+    # except:
+    #     pass
     _clean_tmp_file()
     build_kill_file = "select concat('KILL ',id,';') from information_schema.processlist where user='root' and " \
                       "command='Sleep' into outfile '{}';".format(KILL_FILE_TMP)
@@ -80,12 +86,13 @@ def _reset_db(ex):
     with open(KILL_FILE_TMP, 'r') as f:
         lines = f.readlines()
         for cmd in lines:
-            # log.important3("executing command {}".format(cmd))
+            log.important3("executing command {}".format(cmd))
             try:
                 ex.raw(cmd)
             except:
                 pass
 
+    # ex = Executer('root', '', '', '127.0.0.1')
     ex.raw('DROP DATABASE IF EXISTS {};'.format(DB_NAME))
     ex.raw('CREATE DATABASE IF NOT EXISTS {};'.format(DB_NAME))
     ex.raw('USE {};'.format(DB_NAME))
