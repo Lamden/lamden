@@ -141,7 +141,7 @@ def main(args):
                     TEST_FLAG = 'F'
 
             if not test_result.errors and not test_result.failures:
-                _l = log.success
+                _l = log.info
                 num_success += 1
             else:
                 _l = log.fatal
