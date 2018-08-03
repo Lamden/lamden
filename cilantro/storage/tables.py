@@ -10,7 +10,7 @@ GENESIS_HASH = '0' * 64
 DB_NAME = 'seneca_test'
 
 FILE_NAME = '~/cilantro/'
-KILL_FILE_TMP = '/etc/mysql' + '/NUKE_kill_all_die_death_terminate_go_away_stop_holding_locks.txt'
+KILL_FILE_TMP = '/var/lib/mysql-files' + '/NUKE_kill_all_die_death_terminate_go_away_stop_holding_locks.txt'
 
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
