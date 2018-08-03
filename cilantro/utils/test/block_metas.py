@@ -2,7 +2,7 @@ from cilantro.messages.consensus.block_contender import build_test_contender
 from cilantro.messages.transaction.base import build_test_transaction
 from cilantro.protocol.wallet import Wallet
 from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro.constants.testnet import masternodes
+from cilantro.constants.testnet import TESTNET_MASTERNODES
 
 def build_valid_block_data(num_transactions=4) -> dict:
     """
@@ -10,7 +10,7 @@ def build_valid_block_data(num_transactions=4) -> dict:
     :param num_transactions:
     :return:
     """
-    mn_sk = masternodes[0]['sk']
+    mn_sk = TESTNET_MASTERNODES[0]['sk']
     mn_vk = Wallet.get_vk(mn_sk)
     timestamp = 9000
 

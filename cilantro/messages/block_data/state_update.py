@@ -4,7 +4,7 @@ from typing import List
 
 class StateUpdateRequest(MessageBaseJson):
     """
-    State Requests are sent from delegates to masternodes. Delegates use this to get the latest state of the block chain.
+    State Requests are sent from TESTNET_DELEGATES to TESTNET_MASTERNODES. Delegates use this to get the latest state of the block chain.
     A delegate may need to do this if it is:
      1) out of consensus
      2) bootstrapping their application

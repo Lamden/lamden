@@ -91,14 +91,19 @@ class Executor(metaclass=ExecutorMeta):
                 continue
 
             Executor._recently_seen.add(env.meta.uuid)
-
             callback_fn(header=header, envelope=env)
 
     def call_on_mp(self, callback: str, header: str=None, envelope_binary: bytes=None, **kwargs):
         if header:
             kwargs['header'] = header
+        if envelope_binary:
+            kwargs['envelope_binary'] = envelope_binary
 
-        cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary, **kwargs)
+        cmd = ReactorCommand.create_callback(callback=callback, **kwargs)
+        self.inproc_socket.send(cmd.serialize())
+
+    def notify_mp_socket_connected(self, socket_type: int, vk: str, url: str):
+        cmd = ReactorCommand.create_callback(callback=StateInput.SOCKET_CONNECTED, socket_type=socket_type, vk=vk, url=url)
         self.inproc_socket.send(cmd.serialize())
 
     def _validate_envelope(self, envelope_binary: bytes, header: str) -> Union[None, Envelope]:
@@ -177,12 +182,12 @@ class SubPubExecutor(Executor):
             self.log.notice("Creating subscriber socket to {}".format(url))
 
             curve_serverkey = self.ironhouse.vk2pk(vk)
-            # self.subs[url]['socket'] = socket = self.context.socket(socket_type=zmq.SUB)
             self.subs[url]['socket'] = socket = self.ironhouse.secure_socket(
                 self.context.socket(socket_type=zmq.SUB),
                 curve_serverkey=curve_serverkey)
-            socket.connect(url)
             self.subs[url]['filters'] = []
+
+            socket.connect(url)
 
         if filter not in self.subs[url]['filters']:
             self.log.debugv("Adding filter {} to sub socket at url {}".format(filter, url))
@@ -195,6 +200,7 @@ class SubPubExecutor(Executor):
                                                  socket=self.subs[url]['socket'],
                                                  callback_fn=self._recv_pub_env,
                                                  ignore_first_frame=True)
+            self.notify_mp_socket_connected(socket_type=zmq.SUB, vk=vk, url=url)
 
     def remove_sub(self, url: str):
         assert url in self.subs, "Attempted to remove a sub that was not registered in self.subs"
@@ -279,7 +285,6 @@ class DealerRouterExecutor(Executor):
         if url in self.dealers:
             self.log.warning("Attempted to add dealer {} that is already in self.dealers".format(url))
             return
-        # assert url not in self.dealers, "Url {} already in self.dealers {}".format(url, self.dealers)
 
         assert isinstance(id, str), "'id' arg must be a string"
         self.log.notice("Creating dealer socket for url {} with id {}".format(url, id))
@@ -296,6 +301,8 @@ class DealerRouterExecutor(Executor):
 
         self.dealers[url][_SOCKET] = socket
         self.dealers[url][_HANDLER] = future
+
+        self.notify_mp_socket_connected(socket_type=zmq.DEALER, vk=vk, url=url)
 
     # TODO pass in the intended replier's vk so we can be sure the reply we get is actually from him
     def request(self, url: str, reply_uuid: str, envelope: bytes, timeout=0):

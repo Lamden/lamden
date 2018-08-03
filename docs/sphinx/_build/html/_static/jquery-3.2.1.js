@@ -5072,7 +5072,7 @@ jQuery.event = {
 				}
 			}
 
-			// Add to the element's handler list, delegates in front
+			// Add to the element's handler list, TESTNET_DELEGATES in front
 			if ( selector ) {
 				handlers.splice( handlers.delegateCount++, 0, handleObj );
 			} else {
@@ -5186,7 +5186,7 @@ jQuery.event = {
 		// Determine handlers
 		handlerQueue = jQuery.event.handlers.call( this, event, handlers );
 
-		// Run delegates first; they may want to stop propagation beneath us
+		// Run TESTNET_DELEGATES first; they may want to stop propagation beneath us
 		i = 0;
 		while ( ( matched = handlerQueue[ i++ ] ) && !event.isPropagationStopped() ) {
 			event.currentTarget = matched.elem;

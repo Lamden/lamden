@@ -1,4 +1,4 @@
-masternodes = [
+TESTNET_MASTERNODES = [
     {
         "sk": "06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a",
         "vk": "82540bb5a9c84162214c5540d6e43be49bbfe19cf49685660cab608998a65144",
@@ -7,7 +7,7 @@ masternodes = [
     }
 ]
 
-witnesses = [
+TESTNET_WITNESSES = [
     {
         "sk": "91f7021a9e8c65ca873747ae24de08e0a7acf58159a8aa6548910fe152dab3d8",
         "vk": "0e669c219a29f54c8ba4293a5a3df4371f5694b761a0a50a26bf5b50d5a76974",
@@ -22,7 +22,7 @@ witnesses = [
     }
 ]
 
-delegates = [
+TESTNET_DELEGATES = [
     {
         "sk": "8ddaf072b9108444e189773e2ddcb4cbd2a76bbf3db448e55d0bfc131409a197",
         "vk": "3dd5291906dca320ab4032683d97f5aa285b6491e59bba25c958fc4b0de2efc8",
@@ -43,4 +43,4 @@ delegates = [
     }
 ]
 
-majority = 2
+MAJORITY = 2

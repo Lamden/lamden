@@ -22,7 +22,7 @@ def run_mn():
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
     sk = Constants.Testnet.Masternodes[0]['sk']
-    NodeFactory.run_masternode(ip=ip, signing_key=sk, should_reset=True)
+    NodeFactory.run_masternode(ip=ip, signing_key=sk, reset_db=True)
 
 
 def run_witness(slot_num):
@@ -38,7 +38,7 @@ def run_witness(slot_num):
     w_info = Constants.Testnet.Witnesses[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
-    NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'], should_reset=True)
+    NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'], reset_db=True)
 
 
 def run_delegate(slot_num):
@@ -54,7 +54,7 @@ def run_delegate(slot_num):
     d_info = Constants.Testnet.Delegates[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
-    NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'], should_reset=True)
+    NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'], reset_db=True)
 
 
 def dump_it(volume):
@@ -80,11 +80,11 @@ class TestPump(BaseNetworkTestCase):
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
 
-        # Bootstrap witnesses
+        # Bootstrap TESTNET_WITNESSES
         for i, nodename in enumerate(self.groups['witness']):
             self.execute_python(nodename, wrap_func(run_witness, i), async=True)
 
-        # Bootstrap delegates
+        # Bootstrap TESTNET_DELEGATES
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 

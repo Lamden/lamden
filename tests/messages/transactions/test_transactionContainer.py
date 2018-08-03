@@ -8,7 +8,7 @@ from cilantro.protocol.wallet import Wallet
 
 class TransactionContainerTest(TestCase):
     def _convenience_build_standard_transaction(self):
-        """These transactions get POSTed directly to masternodes by TAU wallet software"""
+        """These transactions get POSTed directly to TESTNET_MASTERNODES by TAU wallet software"""
         STU = (Wallet.new())
         DAVIS = (Wallet.new())
         DENTON = (Wallet.new())

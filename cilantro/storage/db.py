@@ -201,25 +201,25 @@ def create_db(name, should_reset=False):
         delegates = []
         witnesses = []
 
-        # add state for tables that are not masternodes and delegates as those get treated differently
+        # add state for tables that are not TESTNET_MASTERNODES and TESTNET_DELEGATES as those get treated differently
         for k in constitution_json.keys():
             for item in constitution_json[k]:
-                if k != 'masternodes' and k != 'delegates' and k != 'witnesses':
+                if k != 'TESTNET_MASTERNODES' and k != 'TESTNET_DELEGATES' and k != 'TESTNET_WITNESSES':
                     t = getattr(tables, k)
                     db.execute(t.insert(item))
-                elif k == 'masternodes':
+                elif k == 'TESTNET_MASTERNODES':
                     masternodes.append(item)
-                elif k == 'delegates':
+                elif k == 'TESTNET_DELEGATES':
                     delegates.append(item)
-                elif k == 'witnesses':
+                elif k == 'TESTNET_WITNESSES':
                     witnesses.append(item)
 
-        # add the masternodes and delegates to the policy table. this is so that users can easily add wallets to the
+        # add the TESTNET_MASTERNODES and TESTNET_DELEGATES to the policy table. this is so that users can easily add wallets to the
         # constitution and
         t = getattr(tables, 'constants')
-        db.execute(t.insert(get_policy_for_node_list(masternodes, 'masternodes')))
-        db.execute(t.insert(get_policy_for_node_list(delegates, 'delegates')))
-        db.execute(t.insert(get_policy_for_node_list(witnesses, 'witnesses')))
+        db.execute(t.insert(get_policy_for_node_list(masternodes, 'TESTNET_MASTERNODES')))
+        db.execute(t.insert(get_policy_for_node_list(delegates, 'TESTNET_DELEGATES')))
+        db.execute(t.insert(get_policy_for_node_list(witnesses, 'TESTNET_WITNESSES')))
 
     # log.debug("\n\n got dbs: \n{}\n\n".format(dbs.fetchall()))
     return db, tables
@@ -322,9 +322,9 @@ class VKBook:
     WITNESSES = [
       "0e669c219a29f54c8ba4293a5a3df4371f5694b761a0a50a26bf5b50d5a76974",
       "50869c7ee2536d65c0e4ef058b50682cac4ba8a5aff36718beac517805e9c2c0",
-      "d2bf672139c73b70e7b81668c3f7f596679203828d0034908c41c8a8e43444ed",
-      "ca0355e4b1e68751b09f47281f077e4dac32948a78341958efef964840e299f2",
-      "c9da4d9862bc9ef140989456c36f83af4c3e218b6a0d2c56f97128d3db0db9d3"
+      # "d2bf672139c73b70e7b81668c3f7f596679203828d0034908c41c8a8e43444ed",
+      # "ca0355e4b1e68751b09f47281f077e4dac32948a78341958efef964840e299f2",
+      # "c9da4d9862bc9ef140989456c36f83af4c3e218b6a0d2c56f97128d3db0db9d3"
     ]
 
     @staticmethod
@@ -352,17 +352,17 @@ class VKBook:
     @staticmethod
     def get_masternodes():
         return VKBook.MASTERNODES
-        return VKBook._get_vks('masternodes')
+        return VKBook._get_vks('TESTNET_MASTERNODES')
 
     @staticmethod
     def get_delegates():
         return VKBook.DELEGATES
-        return VKBook._get_vks('delegates')
+        return VKBook._get_vks('TESTNET_DELEGATES')
 
     @staticmethod
     def get_witnesses():
         return VKBook.WITNESSES
-        return VKBook._get_vks('witnesses')
+        return VKBook._get_vks('TESTNET_WITNESSES')
 
     @staticmethod
     def get_delegate_majority():

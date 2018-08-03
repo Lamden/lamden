@@ -87,11 +87,7 @@ class DelegateCatchupState(DelegateBaseState):
     @input_timeout(BlockMetaDataRequest)
     def timeout_block_meta_request(self, request: BlockMetaDataRequest):
         self.log.error("BlockMetaDataRequest timed out!!!\nRequest={}".format(request))
-        time.sleep(1)
         self._request_update()
-     
-      
-        # TODO resend reply, or try another Masternode
 
     def _request_update(self):
         """

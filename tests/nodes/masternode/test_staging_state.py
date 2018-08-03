@@ -31,7 +31,7 @@ class TestMasterNodeStagingState(TestCase):
 
     def test_staging_correctly_exits(self):
         """
-        Tests that staging state correctly exists when enough delegates are ready
+        Tests that staging state correctly exists when enough TESTNET_DELEGATES are ready
         """
         # TODO implement
         pass

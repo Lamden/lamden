@@ -64,17 +64,17 @@ class ReactorDaemon:
     async def _recv_messages(self):
         try:
             # Notify parent proc that this proc is ready
-            self.log.debug("reactorcore notifying main proc of ready")
+            self.log.notice("Daemon notifying main proc of ready")
             self.socket.send(CHILD_RDY_SIG)
 
             self.log.info("-- Daemon proc listening to main proc on PAIR Socket at {} --".format(self.url))
             while True:
-                self.log.debug("ReactorDaemon awaiting for command from main thread...")
+                self.log.spam("ReactorDaemon awaiting for command from main thread...")
                 cmd_bin = await self.socket.recv()
-                self.log.debug("Got cmd from queue: {}".format(cmd_bin))
+                self.log.spam("Got cmd from queue: {}".format(cmd_bin))
 
                 if cmd_bin == KILL_SIG:
-                    self.log.debug("Daemon Process got kill signal from main proc")
+                    self.log.important("Daemon Process got kill signal from main proc")
                     self._teardown()
                     return
 
@@ -89,7 +89,7 @@ class ReactorDaemon:
             self.log.warning("Daemon _recv_messages task canceled externally")
 
     def _signal_teardown(self, signal, frame):
-        self.log.debug("Daemon process got kill signal!")
+        self.log.important("Daemon process got kill signal!")
         self._teardown()
 
     def _teardown(self):
@@ -119,7 +119,7 @@ class ReactorDaemon:
         if cmd_args:
             executor_name, executor_func, kwargs = cmd_args
         else:
-            self.log.debug('Command requires VK lookup. Short circuiting from _execute_cmd.')
+            self.log.debugv('Command requires VK lookup. Short circuiting from _execute_cmd.')
             return
 
         # Sanity checks (for catching bugs mostly)

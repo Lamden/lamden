@@ -1,7 +1,7 @@
 from cilantro.constants.zmq_filters import masternode_delegate
-from cilantro.constants.testnet import majority
+from cilantro.constants.testnet import MAJORITY
 from cilantro.constants.masternode import NEW_BLOCK_TIMEOUT, FETCH_BLOCK_TIMEOUT
-from cilantro.constants.nodes import max_queue_size
+from cilantro.constants.nodes import BLOCK_SIZE
 from cilantro.nodes.masternode import MNBaseState, Masternode
 
 from cilantro.utils import Hasher
@@ -95,8 +95,8 @@ class MNNewBlockState(MNBaseState):
             self._try_next_block()
             return
 
-        # Notify delegates of new block
-        self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {} ".format(block_hash))
+        # Notify TESTNET_DELEGATES of new block
+        self.log.info("Masternode sending NewBlockNotification to TESTNET_DELEGATES with new block hash {} ".format(block_hash))
         notif = NewBlockNotification.create(**BlockStorageDriver.get_latest_block(include_number=False))
         self.parent.composer.send_pub_msg(filter=masternode_delegate, message=notif)
 
@@ -121,22 +121,22 @@ class MNNewBlockState(MNBaseState):
         """
         Helper method to validate a block contender. For a block contender to be valid it must:
         1) Have a provable merkle tree, ie. all nodes must be hash of (left child + right child)
-        2) Be signed by at least 2/3 of the top 32 delegates
+        2) Be signed by at least 2/3 of the top 32 TESTNET_DELEGATES
         3) Have the correct number of transactions
         :param block_contender: The BlockContender to validate
         :return: True if the BlockContender is valid, false otherwise
         """
         # Development sanity checks (these should be removed in production)
         assert len(block.merkle_leaves) >= 1, "Masternode got block contender with no nodes! {}".format(block)
-        assert len(block.signatures) >= majority, \
-            "Received a block contender with only {} signatures (which is less than a majority of {}"\
-            .format(len(block.signatures), majority)
+        assert len(block.signatures) >= MAJORITY, \
+            "Received a block contender with only {} signatures (which is less than a MAJORITY of {}"\
+            .format(len(block.signatures), MAJORITY)
 
-        assert len(block.merkle_leaves) == max_queue_size, \
-            "Block contender has {} merkle leaves, but MaxQueueSize is {}!!!\nmerkle_leaves={}"\
-            .format(len(block.merkle_leaves), max_queue_size, block.merkle_leaves)
+        assert len(block.merkle_leaves) == BLOCK_SIZE, \
+            "Block contender has {} merkle leaves, but block size is {}!!!\nmerkle_leaves={}"\
+            .format(len(block.merkle_leaves), BLOCK_SIZE, block.merkle_leaves)
 
-        # TODO validate the sigs are actually from the top N delegates
+        # TODO validate the sigs are actually from the top N TESTNET_DELEGATES
         # TODO -- ensure that this block contender's previous block is this Masternode's current block...
 
         return block.validate_signatures()
@@ -145,7 +145,7 @@ class MNNewBlockState(MNBaseState):
 @Masternode.register_state
 class MNFetchNewBlockState(MNNewBlockState):
 
-    # Enum to describe delegates we are requesting block data from. A delegate who has no pending requests is in
+    # Enum to describe TESTNET_DELEGATES we are requesting block data from. A delegate who has no pending requests is in
     # NODE_AVAILABLE state. Once a request is sent to a delegate we set it to NODE_AWAITING. If the request times out,
     # we set the timed out node to NODE_TIMEOUT
     NODE_AVAILABLE, NODE_AWAITING, NODE_TIMEOUT = range(3)
@@ -176,16 +176,16 @@ class MNFetchNewBlockState(MNNewBlockState):
         self.block_contender = block_contender
         self.tx_hashes = block_contender.merkle_leaves
 
-        # Populate self.node_states delegates who signed this block
+        # Populate self.node_states TESTNET_DELEGATES who signed this block
         for sig in block_contender.signatures:
             self.node_states[sig.sender] = self.NODE_AVAILABLE
 
         repliers = list(self.node_states.keys())
 
-        # Compute batch size. We take max incase the block size is smaller than the # of delegates.
+        # Compute batch size. We take max incase the block size is smaller than the # of TESTNET_DELEGATES.
         batch_size = max(1, len(self.tx_hashes) // len(self.node_states))
 
-        # Request individual block data from delegates
+        # Request individual block data from TESTNET_DELEGATES
         for i in range(len(self.node_states)):
             start_idx = i * batch_size
             end_idx = (i+1) * batch_size

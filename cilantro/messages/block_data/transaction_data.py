@@ -45,7 +45,7 @@ class TransactionRequest(MessageBase):
 
 class TransactionReply(MessageBase):
     """
-    TransactionReply acts as a holder for an individual transaction. They are requested from delegates by Masternodes when
+    TransactionReply acts as a holder for an individual transaction. They are requested from TESTNET_DELEGATES by Masternodes when
     a Masternode needs to retrieve the block data associated with a BlockContender
     """
 

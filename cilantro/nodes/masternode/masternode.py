@@ -10,7 +10,7 @@ from cilantro.constants.zmq_filters import witness_masternode
 from cilantro.constants.masternode import STAGING_TIMEOUT
 from cilantro.nodes import NodeBase
 
-from cilantro.protocol.states.decorators import input_request, input, enter_from_any, exit_to_any, enter_from, input_timeout
+from cilantro.protocol.states.decorators import input_request, input, enter_from_any, exit_to_any, enter_from, input_timeout, timeout_after
 from cilantro.protocol.states.state import State, StateInput
 
 from cilantro.messages.transaction.container import TransactionContainer
@@ -43,18 +43,16 @@ class Masternode(NodeBase):
 
     async def route_http(self, request):
         raw_data = await request.content.read()
-
         container = TransactionContainer.from_bytes(raw_data)
-
         tx = container.open()
-        self.log.debug("Masternode got tx: {}".format(tx))
+        # self.log.debug("Masternode got tx: {}".format(tx))
 
         try:
             self.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
             return web.Response(text="Successfully published transaction: {}".format(tx))
         except Exception as e:
             self.log.error("\n Error publishing HTTP request...err = {}".format(traceback.format_exc()))
-            return web.Response(text="fukt up processing request with err: {}".format(e))
+            return web.Response(text="problem processing request with err: {}".format(e))
 
 
 class MNBaseState(State):
@@ -62,7 +60,7 @@ class MNBaseState(State):
     def handle_tx(self, tx: TransactionBase):
         oc = OrderingContainer.create(tx=tx, masternode_vk=self.parent.verifying_key)
         self.log.spam("mn about to pub for tx {}".format(tx))  # debug line
-        self.parent.composer.send_pub_msg(filter=witness_masternode, message=tx)
+        self.parent.composer.send_pub_msg(filter=witness_masternode, message=oc)
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
@@ -136,7 +134,7 @@ class MNBootState(MNBaseState):
         # Add router socket
         self.parent.composer.add_router(ip=self.parent.ip)
 
-        # Add dealer sockets to delegates, for purposes of requesting block data
+        # Add dealer sockets to TESTNET_DELEGATES, for purposes of requesting block data
         for vk in VKBook.get_delegates():
             self.parent.composer.add_dealer(vk=vk)
 
@@ -170,11 +168,17 @@ class MNBootState(MNBaseState):
 class MNStagingState(MNBaseState):
     """
     Staging State allows the Masternode to defer publishing transactions to the network until is ready.
-    The network is considered 'ready' when 2/3 of the delegates have the latest blockchain state.
+    The network is considered 'ready' when 2/3 of the TESTNET_DELEGATES have the latest blockchain state.
     """
 
     def reset_attrs(self):
         self.ready_delegates = set()
+
+    @timeout_after(STAGING_TIMEOUT)
+    def timeout(self):
+        self.log.fatal("Masternode failed to exit StagingState before timeout of {}!!! Exiting system.")
+        self.log.fatal("Ready delegates: {}".format(self.ready_delegates))
+        exit()
 
     @enter_from_any
     def enter_any(self):
@@ -187,7 +191,7 @@ class MNStagingState(MNBaseState):
 
     @input_request(BlockMetaDataRequest)
     def handle_blockmeta_request(self, request: BlockMetaDataRequest, envelope: Envelope):
-        reply = super().handle_blockmeta_request(request)
+        reply = super().handle_blockmeta_request(request, envelope)
         self.parent.composer.send_reply(message=reply, request_envelope=envelope)
 
         if not reply.block_metas:
@@ -201,16 +205,19 @@ class MNStagingState(MNBaseState):
         Checks if the system is 'ready' (as described in the MNStagingState docstring). If all conditions are met,
         this function will transition to MNRunState.
         """
-        majority = VKBook.get_delegate_majority()
+        # TODO for dev we require all delegates online. IRL a 2/3 majority should suffice
+        # majority = VKBook.get_delegate_majority()
+        majority = len(VKBook.get_delegates())
+
         num_ready = len(self.ready_delegates)
 
         if num_ready >= majority:
-            self.log.important("2/3 Delegates are at the latest blockchain state! MN exiting StatingState."
+            self.log.important("2/3 Delegates are at the latest blockchain state! MN exiting StagingState."
                                "\n(Ready Delegates = {})".format(self.ready_delegates))
             self.parent.transition(MNRunState)
             return
         else:
-            self.log.notice("Only {} of {} required majority delegates ready. MN remaining in StagingState".format(num_ready, majority))
+            self.log.notice("Only {} of {} required delegate majority ready. MN remaining in StagingState".format(num_ready, majority))
 
 
 @Masternode.register_state

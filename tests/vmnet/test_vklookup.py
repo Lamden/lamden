@@ -1,7 +1,7 @@
 from vmnet.test.base import *
 import unittest, time, random
 from cilantro.protocol.wallet import Wallet
-from cilantro.constants.testnet import masternodes, witnesses, delegates
+from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 
 import vmnet
 
@@ -17,7 +17,7 @@ def run_mn():
 
     log = get_logger(__name__)
 
-    m_info = masternodes[0]
+    m_info = TESTNET_MASTERNODES[0]
     m_info['ip'] = os.getenv('HOST_IP')
 
     mn = NodeFactory.run_masternode(ip=m_info['ip'], signing_key=m_info['sk'])
@@ -29,7 +29,7 @@ def run_witness(slot_num):
 
     log = get_logger(__name__)
 
-    w_info = witnesses[slot_num]
+    w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'])
@@ -42,7 +42,7 @@ def run_delegate(slot_num):
 
     log = get_logger("DELEGATE FACTORY")
 
-    d_info = delegates[slot_num]
+    d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
@@ -52,7 +52,7 @@ def run_mgmt():
     from cilantro.utils.test import MPComposer
 
     log = get_logger(__name__)
-    sk = masternodes[0]['sk']
+    sk = TESTNET_MASTERNODES[0]['sk']
     vk = Wallet.get_vk(sk)
     s,v = Wallet.new()
     mpc = MPComposer(name='mgmt', sk=s)
@@ -72,11 +72,11 @@ class TestVKLookup(BaseNetworkTestCase):
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
 
-        # Bootstrap witnesses
+        # Bootstrap TESTNET_WITNESSES
         for i, nodename in enumerate(self.groups['witness']):
             self.execute_python('witness_{}'.format(i+1+1), wrap_func(run_witness, i), async=True)
 
-        # Bootstrap delegates
+        # Bootstrap TESTNET_DELEGATES
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python('delegate_{}'.format(i+1+3), wrap_func(run_delegate, i), async=True)
 

@@ -1,6 +1,6 @@
 import unittest
 from cilantro.utils.test import MPMasternode, MPTestCase, vmnet_test
-from cilantro.constants.testnet import masternodes
+from cilantro.constants.testnet import TESTNET_MASTERNODES
 from unittest.mock import call
 from cilantro.utils.test.god import *
 from cilantro.nodes.masternode.masternode import *
@@ -42,7 +42,7 @@ class TopologyIntegrationTest(MPTestCase):
             run_state = mn.states[MNRunState]
             run_state.handle_tx.assert_has_calls([call(tx1), call(tx2)], any_order=True)
 
-        mn_sk = masternodes[0]['sk']
+        mn_sk = TESTNET_MASTERNODES[0]['sk']
 
         tx1 = God.create_std_tx(FALCON, DAVIS, 210)
         tx2 = God.create_std_tx(STU, FALCON, 150)
@@ -61,7 +61,7 @@ class TopologyIntegrationTest(MPTestCase):
 
     # def test_masternode_witness_pubsub(self):
     #     """
-    #     Tests that a Masternode publishes transactions to the witnesses
+    #     Tests that a Masternode publishes transactions to the TESTNET_WITNESSES
     #     """
     #     pass
 

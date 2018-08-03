@@ -1,6 +1,6 @@
 from cilantro.protocol.states.state import State
 from cilantro.protocol.states.decorators import exit_to, exit_to_any, enter_from_any, timeout_after, enter_from, \
-    input_request, input, input_connection_dropped, input_socket_added, input_lookup_failed
+    input_request, input, input_connection_dropped, input_socket_connected, input_lookup_failed
 
 YELLOW_TIMEOUT_DUR = 1.0
 
@@ -110,7 +110,7 @@ class TrafficLightYellowState(TrafficLightBaseState):
     def enter_any(self, prev_state):
         self.log.debug("entering from any from prev state {}".format(prev_state))
 
-    @input_socket_added
+    @input_socket_connected
     def socket_added(self, *args, **kwargs):
         self.log.debug("Socket added with args {} and kwargs {}".format(args, kwargs))
 

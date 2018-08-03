@@ -379,7 +379,7 @@ class StateTest(TestCase):
         state = TrafficLightGreenState(mock_sm)
 
         expected_fn = None
-        actual_fn = state._get_status_input_handler(StateInput.SOCKET_ADDED)
+        actual_fn = state._get_status_input_handler(StateInput.SOCKET_CONNECTED)
 
         self.assertEquals(expected_fn, actual_fn)
 
@@ -397,7 +397,7 @@ class StateTest(TestCase):
         state = TrafficLightYellowState(mock_sm)
 
         expected_fn = state.socket_added
-        actual_fn = state._get_status_input_handler(StateInput.SOCKET_ADDED)
+        actual_fn = state._get_status_input_handler(StateInput.SOCKET_CONNECTED)
 
         self.assertEquals(expected_fn, actual_fn)
 

@@ -1,6 +1,6 @@
 from vmnet.test.base import *
 import unittest, time
-from cilantro.constants.testnet import delegates
+from cilantro.constants.testnet import TESTNET_DELEGATES
 
 def publisher():
     from cilantro.logger import get_logger
@@ -9,10 +9,10 @@ def publisher():
     import time, os, sys
 
     log = get_logger("Publisher")
-    sub_info = delegates[1]
+    sub_info = TESTNET_DELEGATES[1]
     sub_info['ip'] = os.getenv('HOST_IP')
 
-    d_info = delegates[0]
+    d_info = TESTNET_DELEGATES[0]
     d_info['ip'] = os.getenv('HOST_IP')
 
     pub = MPComposer(sk=d_info['sk'])
@@ -38,10 +38,10 @@ def subscriber():
 
     log = get_logger("Sub")
 
-    d_info = delegates[1]
+    d_info = TESTNET_DELEGATES[1]
     d_info['ip'] = os.getenv('HOST_IP')
 
-    pub_info = delegates[0]
+    pub_info = TESTNET_DELEGATES[0]
     pub_info['ip'] = os.getenv('HOST_IP')
 
     sub = MPComposer(sk=d_info['sk'])

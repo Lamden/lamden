@@ -10,7 +10,7 @@ from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 
 from cilantro.constants.zmq_filters import delegate_delegate
-from cilantro.constants.testnet import majority, delegates
+from cilantro.constants.testnet import MAJORITY, TESTNET_DELEGATES
 from cilantro.storage.db import VKBook
 from cilantro.storage.blocks import BlockStorageDriver
 
@@ -23,11 +23,11 @@ DelegateCatchupState = "DelegateCatchupState"
 @Delegate.register_state
 class DelegateConsensusState(DelegateBaseState):
     """
-    Consensus state is where delegates pass around a merkelized version of their transaction queues, publish them to
+    Consensus state is where TESTNET_DELEGATES pass around a merkelized version of their transaction queues, publish them to
     one another, confirm the signature is valid, and then vote/tally the results
     """
 
-    NUM_DELEGATES = len(delegates)
+    NUM_DELEGATES = len(TESTNET_DELEGATES)
 
     def reset_attrs(self):
         self.signatures = []
@@ -89,10 +89,10 @@ class DelegateConsensusState(DelegateBaseState):
         return sig.verify(self.merkle.root)
 
     def check_majority(self):
-        self.log.debug("delegate has {} signatures out of {} total delegates"
+        self.log.debug("delegate has {} signatures out of {} total TESTNET_DELEGATES"
                        .format(len(self.signatures), self.NUM_DELEGATES))
 
-        if len(self.signatures) >= majority:
+        if len(self.signatures) >= MAJORITY:
             self.log.important("Delegate in consensus!")
             self.in_consensus = True
 

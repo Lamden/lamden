@@ -13,9 +13,9 @@ from cilantro.storage.db import VKBook
 """
     Witness
 
-    Witnesses exist primarily to check the validity of proofs of transactions sent out by masternodes.
-    They subscribe to masternodes on the network, confirm the hashcash style proof provided by the sender is valid, and
-    then go ahead and pass the transaction along to delegates to include in a block. They will also facilitate
+    Witnesses exist primarily to check the validity of proofs of transactions sent out by TESTNET_MASTERNODES.
+    They subscribe to TESTNET_MASTERNODES on the network, confirm the hashcash style proof provided by the sender is valid, and
+    then go ahead and pass the transaction along to TESTNET_DELEGATES to include in a block. They will also facilitate
     transactions that include stake reserves being spent by users staking on the network.
 """
 
@@ -72,6 +72,5 @@ class WitnessRunState(WitnessBaseState):
 
     @input(OrderingContainer)
     def recv_ordered_tx(self, tx: OrderingContainer, envelope: Envelope):
-        self.log.debug("witness got tx: {}, with env {}".format(tx, envelope))  # debug line, remove later
+        self.log.spam("witness got tx: {}, with env {}".format(tx, envelope))  # debug line, remove later
         self.parent.composer.send_pub_env(envelope=envelope, filter=witness_delegate)
-        self.log.debug("witness published tx")  # debug line, remove later

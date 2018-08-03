@@ -48,7 +48,7 @@ class BlockContender(MessageBase):
     @classmethod
     def create(cls, signatures: List[MerkleSignature], merkle_leaves: List[str]):
         """
-        Creates a new block contender. Created by delegates to propose a block to Masternodes.
+        Creates a new block contender. Created by TESTNET_DELEGATES to propose a block to Masternodes.
         :param signatures: A list of MerkleSignature objects
         :param merkle_leaves: A list merkle leaves contained within this proposed block. Each leaf is a byte string
         :return: A BlockContender object
@@ -74,7 +74,7 @@ class BlockContender(MessageBase):
     @lazy_property
     def signatures(self) -> List[MerkleSignature]:
         """
-        A list of MerkleSignatures, signed by delegates who were in consensus with this Contender's sender
+        A list of MerkleSignatures, signed by TESTNET_DELEGATES who were in consensus with this Contender's sender
         """
         # Deserialize signatures
         return [MerkleSignature.from_bytes(self._data[BlockContender.SIGS][i])

@@ -161,7 +161,7 @@ class State(metaclass=StateMeta):
                 assert timeout_dur > 0, "Timeout function is present, but timeout duration is not greater than 0"
 
                 loop = asyncio.get_event_loop()
-                assert loop.is_running(), "Event loop must be running for timeout functionality!"
+                # assert loop.is_running(), "Event loop must be running for timeout functionality!"
 
                 self.log.debug("Scheduling timeout trigger {} after {} seconds".format(timeout_func, timeout_dur))
                 self.timeout_handler = loop.call_later(timeout_dur, timeout_func)
