@@ -14,7 +14,7 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-01-{{ checksum "requirements.txt" }}
+          key: cilantro-{{ checksum "requirements.txt" }}
       - run:
           name: Install Cilantro Requirements
           command: |
@@ -41,7 +41,7 @@ jobs:
 #      - setup_remote_docker
 
       - save_cache:
-          key: cilantro-01-{{ checksum "requirements.txt" }}
+          key: cilantro-{{ checksum "requirements.txt" }}
           paths:
             - "/usr/local/bin"
             - "/usr/local/lib/python3.6/site-packages"
@@ -56,7 +56,7 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            python3.6 ~/cilantro/tests/run_tests.py --integration 0
+            python3.6 ~/cilantro/tests/run_tests.py --integration 0 -v
 
       - store_artifacts:
           path: test-results
