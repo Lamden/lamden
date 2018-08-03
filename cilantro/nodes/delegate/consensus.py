@@ -9,7 +9,7 @@ from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 
-from cilantro.constants.zmq_filters import delegate_delegate
+from cilantro.constants.zmq_filters import DELEGATE_DELEGATE_FILTER
 from cilantro.constants.testnet import MAJORITY, TESTNET_DELEGATES
 from cilantro.constants.nodes import BLOCK_SIZE
 from cilantro.constants.delegate import CONSENSUS_TIMEOUT
@@ -66,7 +66,7 @@ class DelegateConsensusState(DelegateBaseState):
         merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now',
                                             sender=self.parent.verifying_key)
         self.log.debugv("Broadcasting signature {}".format(self.signature))
-        self.parent.composer.send_pub_msg(filter=delegate_delegate, message=merkle_sig)
+        self.parent.composer.send_pub_msg(filter=DELEGATE_DELEGATE_FILTER, message=merkle_sig)
 
         # Now that we've computed/composed the merkle tree hash, validate all our pending signatures
         for sig in [s for s in self.parent.pending_sigs if self.validate_sig(s)]:

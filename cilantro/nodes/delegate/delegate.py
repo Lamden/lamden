@@ -32,7 +32,7 @@ from cilantro.messages.block_data.transaction_data import TransactionReply, Tran
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.block_data.block_metadata import BlockMetaDataReply, NewBlockNotification
 
-from cilantro.constants.zmq_filters import delegate_delegate, witness_delegate, masternode_delegate
+from cilantro.constants.zmq_filters import DELEGATE_DELEGATE_FILTER, WITNESS_DELEGATE_FILTER, MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.delegate import BOOT_TIMEOUT, BOOT_REQUIRED_MASTERNODES, BOOT_REQUIRED_WITNESSES
 
 from collections import deque
@@ -142,11 +142,11 @@ class DelegateBootState(DelegateBaseState):
             if delegate_vk == self.parent.verifying_key:
                 continue
 
-            self.parent.composer.add_sub(vk=delegate_vk, filter=delegate_delegate)
+            self.parent.composer.add_sub(vk=delegate_vk, filter=DELEGATE_DELEGATE_FILTER)
 
         # Sub to TESTNET_WITNESSES
         for witness_vk in VKBook.get_witnesses():
-            self.parent.composer.add_sub(vk=witness_vk, filter=witness_delegate)
+            self.parent.composer.add_sub(vk=witness_vk, filter=WITNESS_DELEGATE_FILTER)
 
         # Pub on our own url
         self.parent.composer.add_pub(ip=self.parent.ip)
@@ -157,7 +157,7 @@ class DelegateBootState(DelegateBaseState):
         # Add dealer and sub socket for Masternodes
         for mn_vk in VKBook.get_masternodes():
             self.parent.composer.add_dealer(vk=mn_vk)
-            self.parent.composer.add_sub(vk=mn_vk, filter=masternode_delegate)
+            self.parent.composer.add_sub(vk=mn_vk, filter=MASTERNODE_DELEGATE_FILTER)
 
     def _check_ready(self):
         """

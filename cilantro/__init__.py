@@ -3,7 +3,7 @@ from decimal import getcontext
 import sys
 import hashlib
 from os.path import dirname, abspath
-from cilantro.constants.protocol import sig_figs
+from cilantro.constants.protocol import SIG_FLAGS
 
 os.environ['LOCAL_PATH'] = abspath(dirname(dirname(dirname(__file__))))
 
@@ -121,4 +121,4 @@ sys.path.append(os.path.dirname(__file__) + '/messages/capnp')
 # Constants.build_from_json(config)
 # Constants.json = config
 
-getcontext().prec = sig_figs
+getcontext().prec = SIG_FLAGS

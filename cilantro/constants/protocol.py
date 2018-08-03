@@ -1,6 +1,6 @@
-sig_figs = 19
-decimal_precision = 4
-max_uuid = 4294967295
-dupe_table_size = 10000
-request_table_size = 10000
-max_queue_delay_ms = 1000
+SIG_FLAGS = 19
+DECIMAL_PRECISION = 4
+MAX_UUID = 4294967295
+DUPE_TABLE_SIZE = 10000
+REQUEST_TABLE_SIZE = 10000
+MAX_QUEUE_DELAY_MS = 1000

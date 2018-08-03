@@ -1,4 +1,4 @@
-from cilantro.constants.zmq_filters import masternode_delegate
+from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.testnet import MAJORITY
 from cilantro.constants.masternode import NEW_BLOCK_TIMEOUT, FETCH_BLOCK_TIMEOUT
 from cilantro.constants.nodes import BLOCK_SIZE
@@ -98,7 +98,7 @@ class MNNewBlockState(MNBaseState):
         # Notify TESTNET_DELEGATES of new block
         self.log.info("Masternode sending NewBlockNotification to TESTNET_DELEGATES with new block hash {} ".format(block_hash))
         notif = NewBlockNotification.create(**BlockStorageDriver.get_latest_block(include_number=False))
-        self.parent.composer.send_pub_msg(filter=masternode_delegate, message=notif)
+        self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, message=notif)
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):

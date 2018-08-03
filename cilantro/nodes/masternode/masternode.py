@@ -6,7 +6,7 @@
     They have no say as to what is 'right,' as governance is ultimately up to the network. However, they can monitor
     the behavior of nodes and tell the network who is misbehaving.
 """
-from cilantro.constants.zmq_filters import witness_masternode
+from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
 from cilantro.constants.masternode import STAGING_TIMEOUT
 from cilantro.nodes import NodeBase
 
@@ -61,7 +61,7 @@ class MNBaseState(State):
     def handle_tx(self, tx: TransactionBase):
         oc = OrderingContainer.create(tx=tx, masternode_vk=self.parent.verifying_key)
         self.log.spam("mn about to pub for tx {}".format(tx))  # debug line
-        self.parent.composer.send_pub_msg(filter=witness_masternode, message=oc)
+        self.parent.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc)
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):

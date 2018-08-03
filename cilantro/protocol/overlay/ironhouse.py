@@ -19,7 +19,7 @@ from nacl.public import PrivateKey, PublicKey
 from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 from cilantro.storage.db import VKBook
-from cilantro.constants.overlay_network import auth_timeout
+from cilantro.constants.overlay_network import AUTH_TIMEOUT
 from cilantro.logger import get_logger
 
 log = get_logger(__name__)
@@ -161,7 +161,7 @@ class Ironhouse:
         authorized = 'unauthorized'
 
         try:
-            msg = await asyncio.wait_for(client.recv(), auth_timeout)
+            msg = await asyncio.wait_for(client.recv(), AUTH_TIMEOUT)
             msg = msg.decode()
             log.debug('got secure reply {}, {}'.format(msg, target_public_key))
             received_public_key = self.vk2pk(msg)
