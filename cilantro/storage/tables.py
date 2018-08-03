@@ -59,6 +59,7 @@ def create_table(ex, table, should_drop):
 
 def _reset_db(ex):
     log.info("Dropping database named {}".format(DB_NAME))
+    ex.raw('UNLOCK TABLES;')
     ex.raw('DROP DATABASE IF EXISTS {};'.format(DB_NAME))
     ex.raw('CREATE DATABASE IF NOT EXISTS {};'.format(DB_NAME))
     ex.raw('USE {};'.format(DB_NAME))
