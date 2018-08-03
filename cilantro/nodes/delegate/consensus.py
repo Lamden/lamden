@@ -2,7 +2,7 @@ from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.wallet import Wallet
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
 
-from cilantro.protocol.states.decorators import input, enter_from_any, enter_from, exit_to_any, input_request
+from cilantro.protocol.states.decorators import input, enter_from_any, enter_from, exit_to_any, input_request, timeout_after
 
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.block_contender import BlockContender
@@ -11,6 +11,8 @@ from cilantro.messages.block_data.transaction_data import TransactionReply, Tran
 
 from cilantro.constants.zmq_filters import delegate_delegate
 from cilantro.constants.testnet import MAJORITY, TESTNET_DELEGATES
+from cilantro.constants.delegate import CONSENSUS_TIMEOUT
+
 from cilantro.storage.db import VKBook
 from cilantro.storage.blocks import BlockStorageDriver
 
@@ -35,6 +37,11 @@ class DelegateConsensusState(DelegateBaseState):
         self.merkle = None
         self.in_consensus = False
 
+    @timeout_after(CONSENSUS_TIMEOUT)
+    def timeout(self):
+        self.log.fatal("Consensus state exceeded timeout duration of {} seconds! Transitioning to CatchUpState")
+        self.parent.transition(DelegateCatchupState)
+
     @enter_from_any
     def enter_any(self, prev_state):
         # Development sanity check (TODO remove in production)
@@ -46,7 +53,7 @@ class DelegateConsensusState(DelegateBaseState):
 
         # Merkle-ize transaction queue and create signed merkle hash
         all_tx = self.parent.interpreter.queue_binary
-        self.log.debugv("Delegate got tx from interpreter queue: {}".format(all_tx))
+        # self.log.debugv("Delegate got tx from interpreter queue: {}".format(all_tx))
         self.merkle = MerkleTree.from_raw_transactions(all_tx)
         self.log.debugv("Delegate got merkle hash {}".format(self.merkle.root_as_hex))
         self.signature = Wallet.sign(self.parent.signing_key, self.merkle.root)
@@ -96,9 +103,6 @@ class DelegateConsensusState(DelegateBaseState):
             self.log.important("Delegate in consensus!")
             self.in_consensus = True
 
-            # DEBUG LINE -- todo remove later
-            # self.log.notice("Delegate creating contender with merk leaves {}".format(self.merkle.leaves_as_hex))
-
             # Create BlockContender and send it to all Masternode(s)
             bc = BlockContender.create(signatures=self.signatures, merkle_leaves=self.merkle.leaves_as_hex)
             for mn_vk in VKBook.get_masternodes():
@@ -112,7 +116,7 @@ class DelegateConsensusState(DelegateBaseState):
 
     @input_request(TransactionRequest)
     def handle_tx_request(self, request: TransactionRequest):
-        self.log.debug("delegate got tx request: {}".format(request))
+        self.log.debugv("delegate got tx request: {}".format(request))
         tx_blobs = []
         for tx_hash in request.tx_hashes:
             if tx_hash not in self.merkle.leaves_as_hex:
@@ -128,28 +132,25 @@ class DelegateConsensusState(DelegateBaseState):
     def handle_new_block_notif(self, notif: NewBlockNotification):
         self.log.info("Delegate got new block notification: {}".format(notif))
 
-        # DEBUG line -- TODO remove
-        if not self.in_consensus:
-            self.log.fatal("Received a new block notification, but delegate not in consensus!")
-
         # If the new block hash is the same as our 'scratch block', then just copy scratch to state
         if notif.prev_block_hash == self.parent.current_hash and self.in_consensus:
-            self.log.success("Prev block hash matches ours. We in consensus!")
-
-            # DEBUG LINES TODO remove
-            # self.log.critical("delegate current block hash: {}".format(self.parent.current_hash))
-            # self.log.critical("database latest block hash: {}".format(BlockStorageDriver.get_latest_block_hash()))
-            # self.log.critical("about to store block with prev hash {} and current hash {}".format(notif.prev_block_hash, notif.block_hash))
-            # END DEBUG
+            self.log.success("Prev block hash matches ours. Delegate in consensus!")
 
             BlockStorageDriver.store_block_from_meta(notif)
             self.parent.interpreter.flush(update_state=True)
             self.parent.transition(DelegateInterpretState)
             return
 
-        # Otherwise, our block is out of consensus and we must request the latest from a Masternode!
+        # Otherwise, our block is out of consensus and we must request the latest from a Masternode
         else:
-            self.log.critical("New block has prev hash {} that does not match our current block hash {} ... :( :("
-                             .format(notif.prev_block_hash, self.parent.current_hash))
+            # NOTE: the 2 'if' statements below are purely for debugging
+            if self.in_consensus:  # TODO should this be an assertion?
+                self.log.fatal("Delegate in consensus according to local state, but received new block notification "
+                               "that does not match our previous block hash! ")
+            if notif.prev_block_hash != self.parent.current_hash:
+                self.log.critical("New block has prev hash {} that does not match our current block hash {}"
+                                  .format(notif.prev_block_hash, self.parent.current_hash))
+
+            self.log.notice("Delegate transitioning to CatchUpState")
             self.parent.transition(DelegateCatchupState)
             return
