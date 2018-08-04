@@ -10,7 +10,7 @@ GENESIS_HASH = '0' * 64
 DB_NAME = 'seneca_test'
 
 FILE_NAME = '~/cilantro/'
-KILL_FILE_TMP = '/var/lib/mysql-files' + '/NUKE_kill_all_die_death_terminate_go_away_stop_holding_locks.txt'
+KILL_FILE_TMP = '/var/lib/mysql-files' + '/NUKE_SQL_CURSORS_kill_all_die_death_terminate_go_away_stop_holding_locks'
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
 
@@ -77,7 +77,7 @@ def _clean_tmp_file(f_name=KILL_FILE_TMP):
 def _reset_db(ex):
     log.info("Dropping database named {}".format(DB_NAME))
 
-    tmp_file_name = KILL_FILE_TMP + '_' + str(uuid.uuid1())
+    tmp_file_name = KILL_FILE_TMP + '_' + str(uuid.uuid1()) + '.txt'
     # try:
     #     ex.raw("kill USER root;")
     # except:
