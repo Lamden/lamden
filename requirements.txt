@@ -23,4 +23,4 @@ yarl==1.1.0
 wheel
 
 -e git://github.com/Lamden/vmnet.git#egg=vmnet
--e git://github.com/Lamden/seneca.git#egg=seneca
+-e git://github.com/Lamden/seneca.git@b3685bb68da8ae30ae326072bc9cba973c0b364a#egg=seneca

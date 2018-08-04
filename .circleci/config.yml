@@ -21,6 +21,10 @@ jobs:
           name: Install Cilantro Requirements
           command: |
              pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
+
+      - run:
+          name: Install Mysql Client and Make Directory /var/lib/mysql-files
+          command: |
              sudo apt install -y mysql-client
              sudo mkdir /var/lib/mysql-files
 

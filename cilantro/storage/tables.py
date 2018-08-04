@@ -10,7 +10,7 @@ GENESIS_HASH = '0' * 64
 DB_NAME = 'seneca_test'
 
 TMP_SQL_DIR = '/var/lib/mysql-files'
-KILL_FILE_TMP = TMP_SQL_DIR + '/NUKE_SQL_CURSORS_kill_all_die_death_terminate_go_away_stop_holding_locks'
+NUKE_FILE_BASE = TMP_SQL_DIR + '/NUKE_SQL_CURSORS_kill_all_die_death_terminate_go_away_stop_holding_locks'
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
 
@@ -69,7 +69,7 @@ def create_table(ex, table, should_drop):
     return table
 
 
-def _clean_tmp_file(f_name=KILL_FILE_TMP):
+def _clean_tmp_file(f_name=NUKE_FILE_BASE):
     try:
         os.remove(f_name)
         os.system("rm -f {}".format(f_name))
@@ -81,28 +81,28 @@ def _clean_tmp_file(f_name=KILL_FILE_TMP):
 def _reset_db(ex):
     log.info("Dropping database named {}".format(DB_NAME))
 
-    tmp_file_name = KILL_FILE_TMP + '_' + str(uuid.uuid1()) + '.txt'
+    nuke_file_name = NUKE_FILE_BASE + '_' + str(uuid.uuid1()) + '.txt'
     # try:
     #     ex.raw("kill USER root;")
     # except:
     #     pass
-    _clean_tmp_file(tmp_file_name)
-    build_kill_file = "select concat('KILL ',id,';') from information_schema.processlist where user='root' and " \
-                      "command='Sleep' into outfile '{}';".format(tmp_file_name)
-    ex.raw(build_kill_file)
+    _clean_tmp_file(nuke_file_name)
+    build_nuke = "select concat('KILL ',id,';') from information_schema.processlist where user='root' and " \
+           "command='Sleep' into outfile '{}';".format(nuke_file_name)
+    ex.raw(build_nuke)
 
     # Nuke all sql processes so none of them hold a lock ... kill them delete them destroy them get them out of here
     try:
-        with open(tmp_file_name, 'r') as f:
+        with open(nuke_file_name, 'r') as f:
             lines = f.readlines()
-            for cmd in lines:
-                log.important3("executing command {}".format(cmd))
+            for nuke in lines:
+                log.important3("executing command {}".format(nuke))
                 try:
-                    ex.raw(cmd)
+                    ex.raw(nuke)
                 except:
                     pass
     except Exception as e:
-        log.fatal("got err opening file {}...\nerr = {}".format(tmp_file_name, e))
+        log.fatal("got err opening file {}...\nerr = {}".format(nuke_file_name, e))
 
     # ex = Executer('root', '', '', '127.0.0.1')
     ex.raw('DROP DATABASE IF EXISTS {};'.format(DB_NAME))
