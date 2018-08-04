@@ -9,13 +9,16 @@ log = get_logger("DB Creator")
 GENESIS_HASH = '0' * 64
 DB_NAME = 'seneca_test'
 
-FILE_NAME = '~/cilantro/'
-KILL_FILE_TMP = '/var/lib/mysql-files' + '/NUKE_SQL_CURSORS_kill_all_die_death_terminate_go_away_stop_holding_locks'
+TMP_SQL_DIR = '/var/lib/mysql-files'
+KILL_FILE_TMP = TMP_SQL_DIR + '/NUKE_SQL_CURSORS_kill_all_die_death_terminate_go_away_stop_holding_locks'
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
 
-# Ensure tmp file exists...
-
+# Ensure tmp dir exists...
+try:
+    os.system("mkdir {}".format(TMP_SQL_DIR))
+except Exception as e:
+    log.fatal("Error creating dir at {}...\nerr={}".format(TMP_SQL_DIR, e))
 
 
 def build_tables(ex, should_drop=True):
