@@ -22,6 +22,7 @@ jobs:
           command: |
              pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
              sudo apt install -y mysql-client
+             sudo mkdir /var/lib/mysql-files
 
 #      # This should go into custom primary image, here's only for the sake of explanation
 #      - run:

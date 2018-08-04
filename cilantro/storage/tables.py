@@ -17,6 +17,7 @@ constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'cons
 # Ensure tmp dir exists...
 try:
     os.system("mkdir {}".format(TMP_SQL_DIR))
+    log.important3("made dir {}".format(TMP_SQL_DIR))
 except Exception as e:
     log.fatal("Error creating dir at {}...\nerr={}".format(TMP_SQL_DIR, e))
 
