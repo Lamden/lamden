@@ -1,5 +1,5 @@
 from cilantro.logger import get_logger
-import json, os
+import json, os, uuid
 from seneca.seneca_internal.storage.mysql_executer import Executer
 
 
@@ -65,10 +65,10 @@ def create_table(ex, table, should_drop):
     return table
 
 
-def _clean_tmp_file():
+def _clean_tmp_file(f_name=KILL_FILE_TMP):
     try:
-        os.remove(KILL_FILE_TMP)
-        os.system("rm -f {}".format(KILL_FILE_TMP))
+        os.remove(f_name)
+        os.system("rm -f {}".format(f_name))
     except Exception as e:
         log.error("got dat err tryna clean file..\n{}".format(e))
         pass
@@ -77,18 +77,19 @@ def _clean_tmp_file():
 def _reset_db(ex):
     log.info("Dropping database named {}".format(DB_NAME))
 
+    tmp_file_name = KILL_FILE_TMP + '_' + str(uuid.uuid1())
     # try:
     #     ex.raw("kill USER root;")
     # except:
     #     pass
-    _clean_tmp_file()
+    _clean_tmp_file(tmp_file_name)
     build_kill_file = "select concat('KILL ',id,';') from information_schema.processlist where user='root' and " \
-                      "command='Sleep' into outfile '{}';".format(KILL_FILE_TMP)
+                      "command='Sleep' into outfile '{}';".format(tmp_file_name)
     ex.raw(build_kill_file)
 
     # Nuke all sql processes so none of them hold a lock ... kill them delete them destroy them get them out of here
     try:
-        with open(KILL_FILE_TMP, 'r') as f:
+        with open(tmp_file_name, 'r') as f:
             lines = f.readlines()
             for cmd in lines:
                 log.important3("executing command {}".format(cmd))
@@ -97,7 +98,7 @@ def _reset_db(ex):
                 except:
                     pass
     except Exception as e:
-        log.fatal("got err opening file {}...\nerr = {}".format(KILL_FILE_TMP, e))
+        log.fatal("got err opening file {}...\nerr = {}".format(tmp_file_name, e))
 
     # ex = Executer('root', '', '', '127.0.0.1')
     ex.raw('DROP DATABASE IF EXISTS {};'.format(DB_NAME))
