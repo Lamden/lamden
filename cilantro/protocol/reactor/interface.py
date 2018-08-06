@@ -55,14 +55,14 @@ class ReactorInterface:
         except Exception as e:
             self.log.error("Exception in main event loop: {}".format(traceback.format_exc()))
             self.log.info("Tearing down from runtime loop exception")
-            self._teardown()
+            self.teardown()
 
     def _signal_teardown(self, signal, frame):
         print("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
-        self._teardown()
+        self.teardown()
         sys.exit(0)
 
-    def _teardown(self):
+    def teardown(self):
         """
         Close sockets. Close Event Loop. Teardown. Bless up.
         """
@@ -73,11 +73,15 @@ class ReactorInterface:
         # self.recv_fut.cancel()
         # self.loop.call_soon_threadsafe(self.recv_fut.cancel)
 
+        # Signal teardown to daemon
+        self.log.important2("ReactorInterface signaling teardown to daemon")
+        self.socket.send(KILL_SIG)
+
         self.log.debug("Closing pair socket")
         self.socket.close()
 
-        # self.log.debug("Closing event loop")
-        # self.loop.call_soon_threadsafe(self.loop.stop)
+        self.log.debug("Closing event loop")
+        self.loop.call_soon_threadsafe(self.loop.stop)
 
     def _start_daemon(self, url, sk, name):
         """
@@ -121,7 +125,7 @@ class ReactorInterface:
             self.log.debug("_recv_messages future canceled!")
 
     def notify_resume(self):
-        self.log.info("NOTIFIY READY")
+        self.log.info("NOTIFY READY")
         # TODO -- implement (add queue of tx, flush on notify ready, pause on notify_pause
 
     def notify_pause(self):

@@ -186,3 +186,11 @@ class Composer:
         cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.reply.__name__,
                                         id=requester_id, envelope=reply_env)
         self.interface.send_cmd(cmd)
+
+    def teardown(self):
+        """
+        Teardown the entire application stack
+        """
+        self.log.important("Composer tearing down application!")
+        self.interface.teardown()
+

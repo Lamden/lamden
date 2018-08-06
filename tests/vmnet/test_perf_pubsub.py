@@ -1,12 +1,16 @@
 from vmnet.test.base import *
-import unittest, time
+from cilantro.utils.test import MPComposer
+import unittest, time, random
 from cilantro.constants.testnet import delegates
 
+
 def publisher():
-    from cilantro.logger import get_logger
+    SLEEP_TIME = 1
+    MAX_TIME = 10
+    from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.utils.test import MPComposer
     from cilantro.messages.transaction.standard import StandardTransactionBuilder
-    import time, os, sys
+    import time, os
 
     log = get_logger("Publisher")
     sub_info = delegates[1]
@@ -20,23 +24,29 @@ def publisher():
     # Publish on this node's own IP
     pub.add_pub(os.getenv('HOST_IP'))
 
-    for i in range(100):
-        log.critical("Sending pub")
+    log.important("Starting experiment, sending messages every {} seconds for a total of {} seconds".format(SLEEP_TIME, MAX_TIME))
+    elapsed_time = 0
+
+    while elapsed_time < MAX_TIME:
+        log.notice("Sending pub")
         msg = StandardTransactionBuilder.random_tx()
-        time.sleep(0.1)
         pub.send_pub_msg(filter='0', message=msg)
 
-    log.critical("Pub Done")
-    sys.exit(0)
-    exit
+        time.sleep(SLEEP_TIME)
+        elapsed_time += SLEEP_TIME
+
+    pub.teardown()
+    log.important("Done with experiment!")
 
 
 def subscriber():
-    from cilantro.logger import get_logger
+    SLEEP_TIME = 1
+    MAX_TIME = 10
+    from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.utils.test import MPComposer
-    import time, os, sys
+    import time, os
 
-    log = get_logger("Sub")
+    log = get_logger("Subscriber")
 
     d_info = delegates[1]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -47,31 +57,25 @@ def subscriber():
     sub = MPComposer(sk=d_info['sk'])
     sub.add_sub(filter='0', vk=pub_info['vk'])
 
-    log.critical("Sub sleeping")
-    time.sleep(26)
-    log.critical("Sub done. Exiting.")
+    log.important2("Starting Subscriber, and exiting after {} seconds".format(SLEEP_TIME))
+    time.sleep(MAX_TIME)
 
-    sys.exit(0)
-    exit
+    sub.teardown()
+    log.important2("Done with experiment!")
 
 
 class TestNetworkPerformance(BaseNetworkTestCase):
 
-    EXPECTED_TRANSACTION_RATE = 0.1  # Avg transaction/second. lambda parameter in Poission distribution
-    MODEL_AS_POISSON = False
-
-    testname = 'pump_it'
+    testname = 'composer'
     setuptime = 10
     compose_file = 'cilantro-nodes.yml'
 
     @vmnet_test(run_webui=True)
     def test_network(self):
-        self.execute_python('node_1', publisher, async=True)
-        self.execute_python('node_2', subscriber, async=True)
+        self.execute_python('node_1', publisher, async=True, profiling=True)
+        self.execute_python('node_2', subscriber, async=True, profiling=True)
 
-        time.sleep(10)
-        #input("Press any key to end test")
-        exit
+        input("Press any key to end test")
 
 
 if __name__ == '__main__':
