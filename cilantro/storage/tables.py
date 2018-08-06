@@ -14,14 +14,6 @@ NUKE_FILE_BASE = TMP_SQL_DIR + '/NUKE_SQL_CURSORS_kill_all_die_death_terminate_g
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
 
-# Ensure tmp dir exists...
-try:
-    os.system("mkdir {}".format(TMP_SQL_DIR))
-    log.important3("made dir {}".format(TMP_SQL_DIR))
-except Exception as e:
-    log.fatal("Error creating dir at {}...\nerr={}".format(TMP_SQL_DIR, e))
-
-
 def build_tables(ex, should_drop=True):
     from cilantro.storage.contracts import build_contracts_table, seed_contracts
     from cilantro.storage.blocks import build_blocks_table, seed_blocks
@@ -82,13 +74,10 @@ def _reset_db(ex):
     log.info("Dropping database named {}".format(DB_NAME))
 
     nuke_file_name = NUKE_FILE_BASE + '_' + str(uuid.uuid1()) + '.txt'
-    # try:
-    #     ex.raw("kill USER root;")
-    # except:
-    #     pass
     _clean_tmp_file(nuke_file_name)
+
     build_nuke = "select concat('KILL ',id,';') from information_schema.processlist where user='root' and " \
-           "command='Sleep' into outfile '{}';".format(nuke_file_name)
+                 "command='Sleep' into outfile '{}';".format(nuke_file_name)
     ex.raw(build_nuke)
 
     # Nuke all sql processes so none of them hold a lock ... kill them delete them destroy them get them out of here
