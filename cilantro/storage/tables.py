@@ -9,7 +9,8 @@ log = get_logger("DB Creator")
 GENESIS_HASH = '0' * 64
 DB_NAME = 'seneca_test'
 
-TMP_SQL_DIR = '/var/lib/mysql-files'
+TMP_SQL_DIR = '/var/mysql-files'
+# TMP_SQL_DIR = '/var/lib/mysql-files'
 NUKE_FILE_BASE = TMP_SQL_DIR + '/NUKE_SQL_CURSORS_kill_all_die_death_terminate_go_away_stop_holding_locks'
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
