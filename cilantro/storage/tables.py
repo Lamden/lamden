@@ -74,7 +74,8 @@ def _reset_db(ex):
     log.info("Dropping database named {}".format(DB_NAME))
 
     nuke_file_name = NUKE_FILE_BASE + '_' + str(uuid.uuid1()) + '.txt'
-    _clean_tmp_file(nuke_file_name)
+    # _clean_tmp_file(nuke_file_name)
+    log.important3("Using tmp file {}".format(nuke_file_name))
 
     build_nuke = "select concat('KILL ',id,';') from information_schema.processlist where user='root' and " \
                  "command='Sleep' into outfile '{}';".format(nuke_file_name)
