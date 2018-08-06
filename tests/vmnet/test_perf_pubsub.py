@@ -1,7 +1,5 @@
 from vmnet.test.base import *
-from cilantro.utils.test import MPComposer
-import unittest, time, random
-from cilantro.constants.testnet import delegates
+import unittest
 
 
 def publisher():
@@ -9,7 +7,8 @@ def publisher():
     MAX_TIME = 10
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.utils.test import MPComposer
-    from cilantro.messages.transaction.standard import StandardTransactionBuilder
+    from cilantro.messages.transaction.contract import ContractTransactionBuilder
+    from cilantro.constants.testnet import delegates
     import time, os
 
     log = get_logger("Publisher")
@@ -29,7 +28,7 @@ def publisher():
 
     while elapsed_time < MAX_TIME:
         log.notice("Sending pub")
-        msg = StandardTransactionBuilder.random_tx()
+        msg = ContractTransactionBuilder.random_currency_tx()
         pub.send_pub_msg(filter='0', message=msg)
 
         time.sleep(SLEEP_TIME)
@@ -44,6 +43,7 @@ def subscriber():
     MAX_TIME = 10
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.utils.test import MPComposer
+    from cilantro.constants.testnet import delegates
     import time, os
 
     log = get_logger("Subscriber")
@@ -64,10 +64,10 @@ def subscriber():
     log.important2("Done with experiment!")
 
 
-class TestNetworkPerformance(BaseNetworkTestCase):
+class TestPerformancePubSub(BaseNetworkTestCase):
 
     testname = 'composer'
-    setuptime = 10
+    setuptime = 6
     compose_file = 'cilantro-nodes.yml'
 
     @vmnet_test(run_webui=True)
