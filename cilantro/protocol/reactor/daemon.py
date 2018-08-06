@@ -187,12 +187,12 @@ class ReactorDaemon:
         try:
             node, cached = await self.dht.network.lookup_ip(vk)
             # NOTE while secure, this is a more loose connection policy
-            self.log.fatal('{} resolves for {}'.format(os.getenv('HOST_IP'), node))
+            self.log.fatal('(Node /w IP {}) Vk {} resolved to IP {}'.format(os.getenv('HOST_IP'), vk, node))
             if node and not cached:
                 ip = node.ip if type(node) == Node else node.split(':')[0]
                 public_key = self.dht.network.ironhouse.vk2pk(vk)
                 authorization = await self.dht.network.ironhouse.authenticate(public_key, ip)
-                self.log.fatal('{} -> {} is {}'.format(os.getenv('HOST_IP'), node, authorization))
+                self.log.notice('IP {} authentication with IP {} results in {}'.format(os.getenv('HOST_IP'), node, authorization))
                 if authorization != 'authorized':
                     node = None
                 else:

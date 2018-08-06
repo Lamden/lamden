@@ -1,7 +1,7 @@
 from vmnet.test.base import *
 from cilantro.utils.test import MPComposer
 import unittest, time, random
-from cilantro.constants.testnet import delegates
+
 
 def publisher():
     SLEEP_TIME = 1
@@ -9,6 +9,7 @@ def publisher():
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.utils.test import MPComposer
     from cilantro.messages.transaction.standard import StandardTransactionBuilder
+    from cilantro.constants.testnet import delegates
     import time, os
 
     log = get_logger("Publisher")
@@ -43,6 +44,7 @@ def subscriber():
     MAX_TIME = 10
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.utils.test import MPComposer
+    from cilantro.constants.testnet import delegates
     import time, os
 
     log = get_logger("Subscriber")
