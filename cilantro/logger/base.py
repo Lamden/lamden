@@ -65,7 +65,7 @@ coloredlogs.DEFAULT_LEVEL_STYLES = {
     'notice':{'color':'magenta' },
     'important':{ 'color':'cyan', 'bold': True, 'background': 'magenta'},
     'important2':{ 'color':'magenta', 'bold': True, 'background': 'cyan'},
-    'important3':{ 'color':'blue', 'bold': True, 'background': 'yellow'},
+    'important3':{ 'color':'black', 'bold': True, 'background': 'yellow'},
     'spam':{ 'color':'white', 'faint':True },
     'success':{'color':'white', 'bold': True, 'background': 'green'},
     'verbose':{'color':'blue' },
