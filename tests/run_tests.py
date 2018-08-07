@@ -204,7 +204,7 @@ if __name__ == '__main__':
     args.add_argument("--integration", type=int, default=1, help="Flag to run integration tests. Default is True")
 
     """
-    --skip_tests TestEd25199Wallet.test_something_hella_long, SomeOtherModule.some_other_test, ...
+    --skip_tests TestEd25199wallet.test_something_hella_long, SomeOtherModule.some_other_test, ...
     
     Skip individual test case functions by specifying TestClassName.test_func_name, separated by commas
     """
