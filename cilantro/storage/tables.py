@@ -9,8 +9,7 @@ log = get_logger("DB Creator")
 GENESIS_HASH = '0' * 64
 DB_NAME = 'seneca_test'
 
-TMP_SQL_DIR = '/var/mysql-files'
-# TMP_SQL_DIR = '/var/lib/mysql-files'
+TMP_SQL_DIR = '/var/lib/mysql-files'
 NUKE_FILE_BASE = TMP_SQL_DIR + '/NUKE_SQL_CURSORS_kill_all_die_death_terminate_go_away_stop_holding_locks'
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
@@ -76,7 +75,7 @@ def _reset_db(ex):
 
     nuke_file_name = NUKE_FILE_BASE + '_' + str(uuid.uuid1()) + '.txt'
     # _clean_tmp_file(nuke_file_name)
-    log.important3("Using tmp file {}".format(nuke_file_name))
+    log.important("Using tmp file {}".format(nuke_file_name))
 
     build_nuke = "select concat('KILL ',id,';') from information_schema.processlist where user='root' and " \
                  "command='Sleep' into outfile '{}';".format(nuke_file_name)
