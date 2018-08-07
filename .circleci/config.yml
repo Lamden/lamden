@@ -4,13 +4,11 @@ jobs:
     working_directory: ~/cilantro
     docker:
       - image: circleci/python:3.6.5
-      - image: circleci/mysql:5.7
+      - image: lamden/cilantro-db
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_ROOT_PASSWORD: ""
-          secure_file_priv: ""
-          SECURE_FILE_PRIV: ""
-
+          username: cilantro_user
+          password: buttcoins
+          database: cilantro_dev
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
@@ -23,11 +21,11 @@ jobs:
              pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
 
       - run:
-          name: Install Mysql Client and Make Directory /var/lib/mysql-files
+          name: Install Mysql Client
           command: |
              sudo apt install -y mysql-client
-             sudo mkdir /var/lib/mysql-files
-             sudo chmod 777 /var/lib/mysql-files
+#             sudo mkdir /var/lib/mysql-files
+#             sudo chmod 777 /var/lib/mysql-files
 
 #      # This should go into custom primary image, here's only for the sake of explanation
 #      - run:
@@ -47,6 +45,11 @@ jobs:
 #            sudo mv ~/docker-compose /usr/local/bin/docker-compose
 #
 #      - setup_remote_docker
+
+      - run:
+          name: set temp credentials file (aka db config stuff)
+          command: |
+             ./scripts/make_test_config.py --password buttcoins --username cilantro_user --database cilantro_dev --hostname 127.0.0.1
 
       - save_cache:
           key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}
