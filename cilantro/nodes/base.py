@@ -3,7 +3,7 @@ from cilantro.protocol.transport import Composer
 from cilantro.protocol.states.statemachine import StateMachine
 import asyncio
 # from cilantro.protocol.reactor.executor import *
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 
 class NodeBase(StateMachine):
 
@@ -15,7 +15,7 @@ class NodeBase(StateMachine):
         self.name = name
 
         self.signing_key = signing_key
-        self.verifying_key = Wallet.get_vk(self.signing_key)
+        self.verifying_key = wallet.get_vk(self.signing_key)
 
         self.loop = loop
         asyncio.set_event_loop(loop)

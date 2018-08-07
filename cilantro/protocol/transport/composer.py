@@ -1,9 +1,10 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.protocol.reactor.interface import ReactorInterface
-from cilantro.protocol.reactor.executor import *
+from cilantro.protocol.reactor.executor import ReactorCommand, SubPubExecutor, DealerRouterExecutor
+from cilantro.messages.envelope.envelope import Envelope
 from cilantro.logger import get_logger
 from cilantro.protocol.structures import EnvelopeAuth
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 from cilantro.constants.ports import pub_sub, router_dealer
 
 """
@@ -18,7 +19,7 @@ class Composer:
         self.log = get_logger("{}.Composer".format(name))
         self.interface = interface
         self.signing_key = signing_key
-        self.verifying_key = Wallet.get_vk(self.signing_key)
+        self.verifying_key = wallet.get_vk(self.signing_key)
 
     def _package_msg(self, msg: MessageBase) -> Envelope:
         """
@@ -114,7 +115,7 @@ class Composer:
                                         envelope=envelope)
         self.interface.send_cmd(cmd)
 
-    def add_pub(self, ip: str=''):
+    def add_pub(self, ip: str='', vk: str=''):
         """
         Create a publisher socket that BINDS to 'url'
         :param url: The URL to publish under.

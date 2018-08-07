@@ -1,6 +1,6 @@
 from vmnet.test.base import *
 import unittest, time, random
-from cilantro.protocol.wallet import Wallet
+from cilantro.protocol import wallet
 from cilantro.constants.testnet import masternodes, witnesses, delegates
 
 import vmnet
@@ -53,8 +53,8 @@ def run_mgmt():
 
     log = get_logger(__name__)
     sk = masternodes[0]['sk']
-    vk = Wallet.get_vk(sk)
-    s,v = Wallet.new()
+    vk = wallet.get_vk(sk)
+    s,v = wallet.new()
     mpc = MPComposer(name='mgmt', sk=s)
     mpc.add_sub(filter='a', vk=vk)
 

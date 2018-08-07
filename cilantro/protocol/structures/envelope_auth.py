@@ -8,13 +8,13 @@ import math
 from cilantro.constants.protocol import max_uuid
 
 """
-TODO investigate why below is setting var 'W' to the string 'ED25519Wallet' instead of the actual object (as of 5/21)
+TODO investigate why below is setting var 'W' to the string 'ED25519wallet' instead of the actual object (as of 5/21)
 appears that this is the only place that happens. Must have something to do with order of imports, and Constants
 not being 'built' properly by the time this is accessed
 """
 
-from cilantro.protocol.wallet import Wallet
-W = Wallet  # hack until we fix above
+from cilantro.protocol import wallet
+W = wallet  # hack until we fix above
 
 UUID_SIZE = int(math.log2(max_uuid))  # size of UUID field on messagemeta struct as number of bits
 
