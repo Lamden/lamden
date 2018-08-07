@@ -33,16 +33,12 @@ class Ironhouse:
         self.base_dir = 'certs/{}'.format(self.keyname)
         self.keys_dir = os.path.join(self.base_dir, 'certificates')
         self.authorized_keys_dir = os.path.join(self.base_dir, 'authorized_keys')
-        self.secret_keys_dir = os.path.join(self.base_dir, 'private_keys')
-        self.secret_file = os.path.join(self.secret_keys_dir, "{}.key_secret".format(self.keyname))
         if auth_validate:
             self.auth_validate = auth_validate
         else:
             self.auth_validate = Ironhouse.auth_validate
         self.wipe_certs = wipe_certs
-        if sk:
-            self.generate_certificates(sk)
-        self.public_key, self.secret = zmq.auth.load_certificate(self.secret_file)
+        self.generate_certificates(sk)
 
     def vk2pk(self, vk):
         return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
@@ -53,7 +49,7 @@ class Ironhouse:
         self.public_key = self.vk2pk(self.vk)
         private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key).hex()
 
-        for d in [self.keys_dir, self.authorized_keys_dir, self.secret_keys_dir]:
+        for d in [self.keys_dir, self.authorized_keys_dir]:
             if self.wipe_certs and os.path.exists(d):
                 shutil.rmtree(d)
             os.makedirs(d, exist_ok=True)
@@ -65,9 +61,6 @@ class Ironhouse:
                 if key_file.endswith(".key"):
                     shutil.move(os.path.join(self.keys_dir, key_file),
                                 os.path.join(self.authorized_keys_dir, '.'))
-                elif key_file.endswith(".key_secret"):
-                    shutil.move(os.path.join(self.keys_dir, key_file),
-                                os.path.join(self.secret_keys_dir, '.'))
 
             if os.path.exists(self.keys_dir):
                 shutil.rmtree(self.keys_dir)
@@ -78,21 +71,15 @@ class Ironhouse:
         priv = PrivateKey(bytes.fromhex(private_key))
         publ = priv.public_key
         self.public_key = public_key = encode(publ._public_key)
-        secret_key = encode(priv._private_key)
+        self.secret = secret_key = encode(priv._private_key)
 
         base_filename = os.path.join(self.keys_dir, self.keyname)
-        secret_key_file = "{0}.key_secret".format(base_filename)
         public_key_file = "{0}.key".format(base_filename)
         now = datetime.datetime.now()
 
         zmq.auth.certs._write_key_file(public_key_file,
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)
-
-        zmq.auth.certs._write_key_file(secret_key_file,
-                        zmq.auth.certs._cert_secret_banner.format(now),
-                        public_key,
-                        secret_key=secret_key)
 
     def create_from_public_key(self, public_key):
         if self.public_key == public_key:

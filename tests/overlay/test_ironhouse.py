@@ -30,21 +30,16 @@ class TestConsts(TestIronhouseBase):
     def test_assert_paths(self):
         self.assertEqual(self.ironhouse.base_dir, 'certs/{}'.format(self.ironhouse.keyname), 'key folder is incorrect')
         self.assertEqual(self.ironhouse.authorized_keys_dir, 'certs/{}/authorized_keys'.format(self.ironhouse.keyname), 'public dir is incorrect')
-        self.assertEqual(self.ironhouse.secret_keys_dir, 'certs/{}/private_keys'.format(self.ironhouse.keyname), 'secret dir is incorrect')
-        self.assertEqual(self.ironhouse.secret_file, 'certs/{kn}/private_keys/{kn}.key_secret'.format(kn=self.ironhouse.keyname), 'secret_file is incorrect')
 
     def test_generate_certificates_failed(self):
         self.ironhouse.wipe_certs = False
         shutil.rmtree(self.ironhouse.base_dir)
         self.ironhouse.generate_certificates(self.sk)
         self.assertFalse(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir should not be created')
-        self.assertFalse(listdir(self.ironhouse.secret_keys_dir), 'secret keys dir should not be created')
 
     def test_generate_certificates(self):
         self.ironhouse.generate_certificates(self.sk)
         self.assertTrue(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir not created')
-        self.assertTrue(listdir(self.ironhouse.secret_keys_dir), 'secret keys dir not created')
-        self.assertTrue(exists(self.ironhouse.secret_file), 'secret keys not created')
         self.assertEqual(self.private_key, decode(self.ironhouse.secret).hex(), 'secret key generation is incorrect')
         self.assertEqual(self.public_key, decode(self.ironhouse.public_key).hex(), 'public key generation is incorrect')
 
@@ -55,8 +50,6 @@ class TestConsts(TestIronhouseBase):
         makedirs(self.ironhouse.keys_dir, exist_ok=True)
         self.ironhouse.create_from_private_key(self.private_key)
         self.assertTrue(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir not created')
-        self.assertTrue(listdir(self.ironhouse.secret_keys_dir), 'secret keys dir not created')
-        self.assertTrue(exists(self.ironhouse.secret_file), 'secret keys not created')
         self.assertEqual(self.private_key, decode(self.ironhouse.secret).hex(), 'secret key generation is incorrect')
         self.assertEqual(self.public_key, decode(self.ironhouse.public_key).hex(), 'public key generation is incorrect')
 

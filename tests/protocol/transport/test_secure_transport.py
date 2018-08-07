@@ -69,10 +69,10 @@ class TestSecureTransport(MPTestCase):
             # l.important2("got dat call args: {}".format(call_args))
             # # END DEBUG STUFF
 
-            composer.interface.router.route_callback.assert_has_calls([expected_cb], any_order=True)
+            # composer.interface.router.route_callback.assert_has_calls([expected_cb], any_order=True)
 
-            # assert expected_cb in call_args, "Expected callback {} to be in call_args {}".format(expected_cb, call_args)
-            # assert unexpected_cb not in call_args, "Did not expect callback {} to be in call_args {}".format(unexpected_cb, call_args)
+            assert expected_cb in call_args, "Expected callback {} to be in call_args {}".format(expected_cb, call_args)
+            assert unexpected_cb not in call_args, "Did not expect callback {} to be in call_args {}".format(unexpected_cb, call_args)
 
             # assert len(call_args) == 2, "route_callback should be called exactly twice, not {} times with {}"\
             #                             .format(len(call_args), call_args)
