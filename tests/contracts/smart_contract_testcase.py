@@ -4,6 +4,8 @@ from cilantro.storage.tables import build_tables
 from seneca.smart_contract_user_libs import stdlib as std
 from seneca.seneca_internal.storage.mysql_executer import Executer
 from cilantro.storage.contracts import get_contract_exports
+from cilantro.constants.db import DB_SETTINGS
+
 
 def contract(*contract_ids):
     def decorator(fn, *args, **kwargs):
@@ -23,7 +25,7 @@ class SmartContractTestCase(TestCase):
 
     def setUp(self):
         super().setUp()
-        self.ex = Executer('root', '', '', '127.0.0.1')
+        self.ex = Executer(**DB_SETTINGS)
         self.tables = build_tables(self.ex, should_drop=True)
 
     def tearDown(self):

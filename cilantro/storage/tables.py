@@ -1,17 +1,22 @@
 from cilantro.logger import get_logger
 import json, os, uuid
 from seneca.seneca_internal.storage.mysql_executer import Executer
+from cilantro.constants.db import DB_SETTINGS
 
 
 
 log = get_logger("DB Creator")
 
+DB_NAME = DB_SETTINGS['db']
 GENESIS_HASH = '0' * 64
-DB_NAME = 'seneca_test'
 
-TMP_SQL_DIR = '/var/lib/mysql-files'
-NUKE_FILE_BASE = TMP_SQL_DIR + '/NUKE_SQL_CURSORS_kill_all_die_death_terminate_go_away_stop_holding_locks'
+# TMP_SQL_DIR = '/var/lib/mysql-files'
+# TMP_SQL_DIR = '/tmp'
+# NUKE_FILE_BASE = TMP_SQL_DIR + '/nuke_cursors'
+NUKE_FILE_BASE = 'NUKE_SQL_CURSORS'
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
+
+NUM_NUKES = 4
 
 
 def build_tables(ex, should_drop=True):
@@ -73,30 +78,41 @@ def _clean_tmp_file(f_name=NUKE_FILE_BASE):
 def _reset_db(ex):
     log.info("Dropping database named {}".format(DB_NAME))
 
-    nuke_file_name = NUKE_FILE_BASE + '_' + str(uuid.uuid1()) + '.txt'
-    # _clean_tmp_file(nuke_file_name)
-    log.important("Using tmp file {}".format(nuke_file_name))
+    for _ in range(NUM_NUKES):
+        log.notice("FIRING SNIPE #{}".format(_))
 
-    build_nuke = "select concat('KILL ',id,';') from information_schema.processlist where user='root' and " \
-                 "command='Sleep' into outfile '{}';".format(nuke_file_name)
-    ex.raw(build_nuke)
+        try:
+            ex.raw("SET @kill_id := (select id from information_schema.processlist where command='Sleep' limit 1);")
+            ex.raw("KILL (SELECT @kill_id);")
+        except Exception as e:
+            log.critical("ERROR EXECUTING QUERY....\nerr={}".format(e))
+
+    # nuke_file_name = NUKE_FILE_BASE + '_' + str(uuid.uuid1()) + '.txt'
+    # _clean_tmp_file(nuke_file_name)
+    # log.important("Using tmp file {}".format(nuke_file_name))
+    #
+    # build_nuke = "select concat('KILL ',id,';') from information_schema.processlist where " \
+    #              "command='Sleep' into outfile '{}';".format(nuke_file_name)
+    # ex.raw(build_nuke)
+    # ex.raw('SOURCE {};'.format(nuke_file_name))
 
     # Nuke all sql processes so none of them hold a lock ... kill them delete them destroy them get them out of here
-    try:
-        with open(nuke_file_name, 'r') as f:
-            lines = f.readlines()
-            for nuke in lines:
-                log.important3("executing command {}".format(nuke))
-                try:
-                    ex.raw(nuke)
-                except:
-                    pass
-    except Exception as e:
-        log.fatal("got err opening file {}...\nerr = {}".format(nuke_file_name, e))
+    # try:
+    #     with open(nuke_file_name, 'r') as f:
+    #         lines = f.readlines()
+    #         for nuke in lines:
+    #             log.important3("executing command {}".format(nuke))
+    #             try:
+    #                 ex.raw(nuke)
+    #             except:
+    #                 pass
+    # except Exception as e:
+    #     log.fatal("got err opening file {}...\nerr = {}".format(nuke_file_name, e))
 
-    # ex = Executer('root', '', '', '127.0.0.1')
+    # _clean_tmp_file(nuke_file_name)
+    # os.system("rm -r ./{}".format(DB_NAME))
+
     ex.raw('DROP DATABASE IF EXISTS {};'.format(DB_NAME))
     ex.raw('CREATE DATABASE IF NOT EXISTS {};'.format(DB_NAME))
     ex.raw('USE {};'.format(DB_NAME))
 
-    _clean_tmp_file()

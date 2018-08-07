@@ -1,6 +1,17 @@
-DB_NAME = 'cilantro_dev'
-DB_USERNAME = 'cilantro_user'
-DB_PASSWORD = 'tau'
-DB_HOST = '127.0.0.1'
+import os
+import configparser
 
-EXECUTOR_ARGS = (DB_USERNAME, DB_PASSWORD, DB_NAME, DB_HOST)
+
+settings = configparser.ConfigParser()
+settings._interpolation = configparser.ExtendedInterpolation()
+this_dir = os.path.dirname(__file__)
+db_conf_path = os.path.join(this_dir, '../../db_conf.ini')
+
+settings.read(db_conf_path)
+
+DB_SETTINGS = { 'username': settings.get('DB', 'username'),
+  'password': settings.get('DB', 'password'),
+  'db': settings.get('DB', 'database'),
+  'host': settings.get('DB', 'hostname')
+}
+

@@ -11,6 +11,7 @@ from typing import List
 from heapq import heappush, heappop
 import time
 import asyncio
+from cilantro.constants.db import DB_SETTINGS
 
 
 class SenecaInterpreter:
@@ -21,7 +22,7 @@ class SenecaInterpreter:
         self.heap = []
 
         self.max_delay_ms = MAX_QUEUE_DELAY_MS
-        self.ex = Executer('root', '', DB_NAME, '127.0.0.1')
+        self.ex = Executer(**DB_SETTINGS)
 
         # Grab a reference to contracts table from DB singleton
         with DB() as db:

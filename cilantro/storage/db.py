@@ -28,6 +28,7 @@ from sqlalchemy import select, insert, update, delete, and_
 
 
 from cilantro.storage.tables import build_tables, _reset_db
+from cilantro.constants.db import DB_SETTINGS
 
 DB_NAME = 'cilantro'
 SCRATCH_PREFIX = 'scratch_'
@@ -268,14 +269,11 @@ def reset_db():
 
     clear_instances()
 
-    ex = Executer('root', '', '', '127.0.0.1')
+    ex = Executer(**DB_SETTINGS)
     _reset_db(ex)
 
     ex.cur.close()
     ex.conn.close()
-    # with DB(should_reset=True) as db:
-    #     log.info("Database reset")
-    # clear_instances()
 
 
 class DBSingletonMeta(type):
@@ -289,7 +287,6 @@ class DBSingletonMeta(type):
         is lazily created.
         :return: A DB instance
         """
-        # with DBSingletonMeta._lock:
         pid = os.getpid()
 
         # Instantiate an instance of DB for this process if it does not exist
@@ -306,7 +303,7 @@ class DB(metaclass=DBSingletonMeta):
 
         self.lock = Lock()
 
-        self.ex = Executer('root', '', '', '127.0.0.1')
+        self.ex = Executer(**DB_SETTINGS)
         self.tables = build_tables(self.ex, should_drop=should_reset)
 
     def __enter__(self):
