@@ -47,8 +47,7 @@ class Network(object):
         """
         self.loop = loop if loop else asyncio.get_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.vkcache = Bidict()
-        self.authorized_node = {}
+        self.vkcache = {}
         self.ksize = ksize
         self.alpha = alpha
         self.transport = None
@@ -72,17 +71,21 @@ class Network(object):
         self.saveStateRegularly('state.tmp')
 
     async def authenticate(self, node):
-        if len([n for n in self.bootstrappableNeighbors() if n == (node.ip, node.port, node.public_key)]) == 1:
-            log.debug('Node {}:{} is already a neighbor'.format(node.ip, node.port))
-            return True
-        authorized = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
-        log.debug('{}:{} is {}'.format(node.ip, node.port, authorized))
-        if authorized == 'authorized':
+        authorization = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
+        log.debug('{}:{}\'s authorization is {}'.format(node.ip, node.port, authorization))
+        if authorization == 'authorized':
             self.protocol.router.addContact(node)
             self.connect_to_neighbor(node)
-            return True
-        else:
-            return False
+            self.vkcache[node.id] = node
+            self.ironhouse.authorized_nodes[node.id] = node.ip
+        elif authorization == 'unauthorized':
+            try: self.protocol.router.removeContact(node)
+            except: pass
+            self.ironhouse.authorized_nodes[node.id] = False
+        # log.critical('the cache says this: {}'.format([self.vkcache[k].ip for k in self.vkcache]))
+        # log.critical('the auth list says this: {}'.format([self.ironhouse.authorized_nodes[k] for k in self.ironhouse.authorized_nodes]))
+        log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP'), [self.vkcache.get(k).ip for k in self.ironhouse.authorized_nodes if self.ironhouse.authorized_nodes[k]]))
+        return authorization == 'authorized'
 
     def setup_stethoscope(self):
         socket.setdefaulttimeout(0.1)
@@ -113,8 +116,6 @@ class Network(object):
                             if e.args[1] == 'Connection reset by peer':
                                 log.info("Client ({}, {}) disconnected from {}".format(*addr, self.node))
                                 del self.connections[fileno]
-                                if self.vkcache.get(node.ip):
-                                    del self.vkcache[node.ip]
                                 self.protocol.router.removeContact(node)
                                 self.poll.unregister(fileno)
                                 conn.close()
@@ -136,9 +137,6 @@ class Network(object):
     def connect_to_neighbor(self, node):
         if self.node.id == node.id: return
 
-        self.ironhouse.create_from_public_key(node.public_key)
-        self.ironhouse.reconfigure_curve()
-
         addr = (node.ip, node.port+HEARTBEAT_PORT_OFFSET)
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connections[conn.fileno()] = (conn, node)
@@ -151,16 +149,16 @@ class Network(object):
             del self.connections[conn.fileno()]
             conn.close()
 
-    def lookup_ip_in_cache(self, vk):
-        ip = self.vkcache.get(vk)
-        if ip:
-            log.debug('Found ip {} in cache'.format(ip))
-        return ip
+    def lookup_ip_in_cache(self, id):
+        node = self.vkcache.get(id)
+        if node:
+            log.debug('Found ip {} in cache'.format(node.ip))
+        return node
 
     async def lookup_ip(self, node_key):
-        cache_node = self.lookup_ip_in_cache(node_key)
-        if cache_node: return cache_node, True
         node_id = digest(node_key)
+        cache_node = self.lookup_ip_in_cache(node_id)
+        if cache_node: return cache_node, True
         if node_id == self.node.id: return self.node
 
         nearest = self.protocol.router.findNeighbors(self.node)
@@ -170,9 +168,9 @@ class Network(object):
         res_node = await spider.find(node_id=node_id)
 
         if type(res_node) == list: res_node = None
-        log.debug('{} resolves to {}'.format(node_key, res_node))
+        log.debug('VK {} resolves to {}'.format(node_key, res_node))
         if res_node != None:
-            self.vkcache[node_key] = res_node.ip
+            self.vkcache[node_id] = res_node
             pk = self.ironhouse.vk2pk(node_key)
         return res_node, False
 

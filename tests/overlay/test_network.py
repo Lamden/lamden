@@ -309,12 +309,12 @@ class TestNetwork(TestCase):
             ]))
         )
         # check for evil's VK
-        result = self.loop.run_until_complete(
+        node, cached = self.loop.run_until_complete(
             asyncio.ensure_future(
                 self.a_net.lookup_ip(self.evil['vk'])
             ))
 
-        self.assertEqual(result, (None, False))
+        self.assertEqual((node, cached), (None, False))
 
         t = Timer(0.01, run, [self])
         t.start()
@@ -332,13 +332,13 @@ class TestNetwork(TestCase):
             ]))
         )
         # check for b's VK
-        result = self.loop.run_until_complete(
+        node, cached = self.loop.run_until_complete(
             asyncio.ensure_future(
                 self.a_net.lookup_ip(self.b['vk'])
             ))
 
-        self.assertEqual(result[0].id, self.b_net.node.id)
-        self.assertEqual(self.a_net.lookup_ip_in_cache(self.b['vk']), self.b_net.node.ip)
+        self.assertEqual(node.id, self.b_net.node.id)
+        self.assertEqual(self.a_net.lookup_ip_in_cache(self.b_net.node.id).ip, self.b_net.node.ip)
 
         t = Timer(0.01, run, [self])
         t.start()
@@ -347,7 +347,7 @@ class TestNetwork(TestCase):
 
     def test_lookup_ip_with_neighbors_using_cache_fail(self):
         def run(self):
-            self.assertEqual(self.b_net.vkcache, {})
+            self.assertNotEqual(self.b_net.vkcache, {})
             stop(self)
 
         # Bootstrap first

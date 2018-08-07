@@ -27,6 +27,22 @@ SIG_FAIL = b'BADSUCC'
 SIG_ABORT = b'NOSUCC'
 SIG_START = b'STARTSUCC'
 
+def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
+    log = get_logger("TestObjectRunner[{}]".format(name))
+
+    # TODO create socket outside of loop and pass it in for
+    tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
+    log.debug("MPTesterProcess named {} created".format(name))
+    tester_socket = tester.socket
+
+    try:
+        tester.start_test()
+    except Exception as e:
+        log.error("\n\n TesterProcess encountered exception outside of internal loop! Error:\n {}\n\n"
+                       .format(traceback.format_exc()))
+        tester_socket.send_pyobj(SIG_FAIL)
+        tester._teardown()
+
 
 def wrap_func(func, *args, **kwargs):
     def _func():
@@ -307,7 +323,7 @@ class MPTesterBase:
             self.url = url
             self.ip = ip
 
-            runner_func = wrap_func(self._run_test_proc, self.name, remote_url, build_fn, self.config_fn, self.assert_fn)
+            runner_func = wrap_func(_run_test_proc, self.name, remote_url, build_fn, self.config_fn, self.assert_fn)
 
             # TODO -- will i need a ton of imports and stuff to make this run smoothly...?
             MPTestCase.execute_python(name, runner_func, async=True)
@@ -316,7 +332,7 @@ class MPTesterBase:
         else:
             self.url = _gen_url(self.name)
 
-            self.test_proc = LProcess(target=self.__run_test_proc, args=(self._run_test_proc, self.name, self.url, build_fn,
+            self.test_proc = LProcess(target=_run_test_proc, args=(self.name, self.url, build_fn,
                                                                         self.config_fn, self.assert_fn,))
             self.test_proc.start()
 
@@ -326,32 +342,15 @@ class MPTesterBase:
         assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
         self.log.info("GOT RDY SIG: {}".format(msg))
 
-    @staticmethod
-    def __run_test_proc(func_nm, name, url, build_fn, config_fn, assert_fn):
-        import os
-        gen_profile = os.getenv('LAMDEN_PERF_PROFILE', '1')
-        if gen_profile != '0':
-            f = get_filename(name)
-            cProfile.runctx('func_nm(name, url, build_fn, config_fn, assert_fn)', globals(), locals(), f)
-        else:
-            func_nm(name, url, build_fn, config_fn, assert_fn)
-
-    @staticmethod
-    def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
-        log = get_logger("TestObjectRunner[{}]".format(name))
-
-        # TODO create socket outside of loop and pass it in for
-        tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
-        log.debug("MPTesterProcess named {} created".format(name))
-        tester_socket = tester.socket
-
-        try:
-            tester.start_test()
-        except Exception as e:
-            log.error("\n\n TesterProcess encountered exception outside of internal loop! Error:\n {}\n\n"
-                           .format(traceback.format_exc()))
-            tester_socket.send_pyobj(SIG_FAIL)
-            tester._teardown()
+    # @staticmethod
+    # def __run_test_proc(func_nm, name, url, build_fn, config_fn, assert_fn):
+    #     import os
+    #     gen_profile = os.getenv('LAMDEN_PERF_PROFILE', '1')
+    #     if gen_profile != '0':
+    #         f = get_filename(name)
+    #         cProfile.runctx('func_nm(name, url, build_fn, config_fn, assert_fn)', globals(), locals(), f)
+    #     else:
+    #         func_nm(name, url, build_fn, config_fn, assert_fn)
 
     @classmethod
     def build_obj(cls, *args, **kwargs) -> tuple:

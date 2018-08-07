@@ -5,7 +5,7 @@ from zmq.auth.thread import ThreadAuthenticator
 from zmq.auth.asyncio import AsyncioAuthenticator
 from cilantro.protocol.overlay.ironhouse import Ironhouse
 from zmq.utils.z85 import decode, encode
-from os import listdir
+from os import listdir, makedirs
 from os.path import exists
 from threading import Timer
 import asyncio, shutil
@@ -29,25 +29,17 @@ class TestIronhouseBase(TestCase):
 class TestConsts(TestIronhouseBase):
     def test_assert_paths(self):
         self.assertEqual(self.ironhouse.base_dir, 'certs/{}'.format(self.ironhouse.keyname), 'key folder is incorrect')
-        self.assertEqual(self.ironhouse.keys_dir, 'certs/{}/certificates'.format(self.ironhouse.keyname), 'keys dir is incorrect')
-        self.assertEqual(self.ironhouse.public_keys_dir, 'certs/{}/public_keys'.format(self.ironhouse.keyname), 'public dir is incorrect')
-        self.assertEqual(self.ironhouse.secret_keys_dir, 'certs/{}/private_keys'.format(self.ironhouse.keyname), 'secret dir is incorrect')
-        self.assertEqual(self.ironhouse.secret_file, 'certs/{kn}/private_keys/{kn}.key_secret'.format(kn=self.ironhouse.keyname), 'secret_file is incorrect')
+        self.assertEqual(self.ironhouse.authorized_keys_dir, 'certs/{}/authorized_keys'.format(self.ironhouse.keyname), 'public dir is incorrect')
 
     def test_generate_certificates_failed(self):
         self.ironhouse.wipe_certs = False
         shutil.rmtree(self.ironhouse.base_dir)
         self.ironhouse.generate_certificates(self.sk)
-        self.assertFalse(listdir(self.ironhouse.public_keys_dir), 'public keys dir should not be created')
-        self.assertFalse(listdir(self.ironhouse.secret_keys_dir), 'secret keys dir should not be created')
-        self.assertTrue(listdir(self.ironhouse.keys_dir)==[], 'certificate keys dir should not be created')
+        self.assertFalse(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir should not be created')
 
     def test_generate_certificates(self):
         self.ironhouse.generate_certificates(self.sk)
-        self.assertTrue(listdir(self.ironhouse.public_keys_dir), 'public keys dir not created')
-        self.assertTrue(listdir(self.ironhouse.secret_keys_dir), 'secret keys dir not created')
-        self.assertTrue(listdir(self.ironhouse.keys_dir)==[], 'certificate keys is not empty')
-        self.assertTrue(exists(self.ironhouse.secret_file), 'secret keys not created')
+        self.assertTrue(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir not created')
         self.assertEqual(self.private_key, decode(self.ironhouse.secret).hex(), 'secret key generation is incorrect')
         self.assertEqual(self.public_key, decode(self.ironhouse.public_key).hex(), 'public key generation is incorrect')
 
@@ -55,18 +47,18 @@ class TestConsts(TestIronhouseBase):
         self.assertEqual(decode(self.ironhouse.vk2pk(self.vk)).hex(), self.public_key, 'conversion of vk to pk failed')
 
     def test_generate_from_private_key(self):
+        makedirs(self.ironhouse.keys_dir, exist_ok=True)
         self.ironhouse.create_from_private_key(self.private_key)
-        self.assertTrue(listdir(self.ironhouse.public_keys_dir), 'public keys dir not created')
-        self.assertTrue(listdir(self.ironhouse.secret_keys_dir), 'secret keys dir not created')
-        self.assertTrue(listdir(self.ironhouse.keys_dir), 'certificate keys dir not created')
-        self.assertTrue(exists(self.ironhouse.secret_file), 'secret keys not created')
+        self.assertTrue(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir not created')
         self.assertEqual(self.private_key, decode(self.ironhouse.secret).hex(), 'secret key generation is incorrect')
         self.assertEqual(self.public_key, decode(self.ironhouse.public_key).hex(), 'public key generation is incorrect')
 
     def test_generate_from_public_key(self):
+        self.ironhouse.daemon_context, self.ironhouse.daemon_auth = self.ironhouse.secure_context(async=True)
         self.ironhouse.create_from_public_key(encode(self.public_key.encode()))
-        self.assertTrue(listdir(self.ironhouse.public_keys_dir), 'public keys dir not created')
-        self.assertTrue(exists('{}/{}.key'.format(self.ironhouse.public_keys_dir, self.ironhouse.keyname)), 'public key not generated')
+        self.assertTrue(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir not created')
+        self.assertTrue(exists('{}/{}.key'.format(self.ironhouse.authorized_keys_dir, self.ironhouse.keyname)), 'public key not generated')
+        self.ironhouse.daemon_auth.stop()
 
 class TestAuthSync(TestIronhouseBase):
 
@@ -164,6 +156,7 @@ class TestAuthAsync(TestIronhouseBase):
         ctx, auth = self.ironhouse.secure_context(async=True)
         sock = ctx.socket(zmq.REP)
         sec_sock = self.ironhouse.secure_socket(sock)
+        auth.configure_curve(domain='*', location=self.ironhouse.authorized_keys_dir)
         self.assertIn(self.curve_public_key, auth.certs['*'].keys(), 'cannot find cert in auth')
         sec_sock.close()
         if not auth._AsyncioAuthenticator__task.done():
@@ -206,10 +199,10 @@ class TestServer(TestIronhouseBase):
 
         self.fake = genkeys('91f7021a9e8c65ca873747ae24de08e0a7acf58159a8aa6548910fe152dab3d8')
         self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
-        self.fake_ironhouse.create_from_public_key(self.curve_public_key)
         self.fake_ironhouse.setup_secure_server()
-        self.ironhouse.create_from_public_key(self.fake['curve_key'])
+        self.fake_ironhouse.create_from_public_key(self.curve_public_key)
         self.ironhouse.setup_secure_server()
+        self.ironhouse.create_from_public_key(self.fake['curve_key'])
 
         self.loop.run_until_complete(
             asyncio.ensure_future(

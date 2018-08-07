@@ -6,17 +6,15 @@ from cilantro.logger import get_logger
 from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.overlay.routing import RoutingTable
 from cilantro.protocol.overlay.utils import digest
-from cilantro.protocol.overlay.storage import ForgetfulStorage
 from cilantro.constants.overlay_network import RPC_TIMEOUT
 
 log = get_logger(__name__)
 
 
 class KademliaProtocol(RPCProtocol):
-    def __init__(self, sourceNode, ksize, network, storage={}):
+    def __init__(self, sourceNode, ksize, network):
         RPCProtocol.__init__(self, waitTimeout=RPC_TIMEOUT)
         self.router = RoutingTable(self, ksize, sourceNode)
-        self.storage = ForgetfulStorage()
         self.sourceNode = sourceNode
         self.network = network
 
@@ -36,14 +34,6 @@ class KademliaProtocol(RPCProtocol):
         self.welcomeIfNewNode(source)
         return self.sourceNode.id, self.sourceNode.public_key
 
-    def rpc_store(self, sender, public_key, nodeid, key, value):
-        source = Node(nodeid, sender[0], sender[1], public_key=public_key)
-        self.welcomeIfNewNode(source)
-        log.debug("got a store request from %s, storing '%s'='%s'",
-                  sender, key.hex(), value)
-        self.storage[key] = value
-        return True
-
     def rpc_find_node(self, sender, public_key, nodeid, key):
         log.info("finding neighbors of %i in local table",
                  int(nodeid.hex(), 16))
@@ -53,42 +43,19 @@ class KademliaProtocol(RPCProtocol):
         neighbors = self.router.findNeighbors(node, exclude=source)
         return list(map(tuple, neighbors))
 
-    def rpc_find_value(self, sender, public_key, nodeid, key):
-        source = Node(nodeid, sender[0], sender[1], public_key=public_key)
-        self.welcomeIfNewNode(source)
-        value = self.storage.get(key, None)
-        if value is None:
-            return self.rpc_find_node(sender, public_key, nodeid, key)
-        return {'value': value}
-
     async def callFindNode(self, nodeToAsk, nodeToFind):
         address = (nodeToAsk.ip, nodeToAsk.port)
         result = await self.find_node(address, self.sourceNode.public_key, self.sourceNode.id,
                                       nodeToFind.id)
-        if not await self.network.authenticate(nodeToAsk):
-            nodeToAsk = None
-        return self.handleCallResponse(result, nodeToAsk)
-
-    async def callFindValue(self, nodeToAsk, nodeToFind):
-        address = (nodeToAsk.ip, nodeToAsk.port)
-        result = await self.find_value(address, self.sourceNode.public_key, self.sourceNode.id,
-                                       nodeToFind.id)
-        if not await self.network.authenticate(nodeToAsk):
-            nodeToAsk = None
+        # if not await self.network.authenticate(nodeToAsk):
+        #     nodeToAsk = None
         return self.handleCallResponse(result, nodeToAsk)
 
     async def callPing(self, nodeToAsk):
         address = (nodeToAsk.ip, nodeToAsk.port)
         result = await self.ping(address, self.sourceNode.public_key, self.sourceNode.id)
-        if not await self.network.authenticate(nodeToAsk):
-            nodeToAsk = None
-        return self.handleCallResponse(result, nodeToAsk)
-
-    async def callStore(self, nodeToAsk, key, value):
-        address = (nodeToAsk.ip, nodeToAsk.port)
-        result = await self.store(address, self.sourceNode.public_key, self.sourceNode.id, key, value)
-        if not await self.network.authenticate(nodeToAsk):
-            nodeToAsk = None
+        # if not await self.network.authenticate(nodeToAsk):
+        #     nodeToAsk = None
         return self.handleCallResponse(result, nodeToAsk)
 
     def welcomeIfNewNode(self, node):
@@ -114,16 +81,6 @@ class KademliaProtocol(RPCProtocol):
             return
 
         log.info("never seen %s before, adding to router", node)
-        for key, value in self.storage.items():
-            keynode = Node(digest(key))
-            neighbors = self.router.findNeighbors(keynode)
-            if len(neighbors) > 0:
-                last = neighbors[-1].distanceTo(keynode)
-                newNodeClose = node.distanceTo(keynode) < last
-                first = neighbors[0].distanceTo(keynode)
-                thisNodeClosest = self.sourceNode.distanceTo(keynode) < first
-            if len(neighbors) == 0 or (newNodeClose and thisNodeClosest):
-                asyncio.ensure_future(self.callStore(node, key, value))
 
         self.router.addContact(node)
         self.network.connect_to_neighbor(node)
