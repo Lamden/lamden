@@ -8,15 +8,9 @@ from cilantro.constants.db import DB_SETTINGS
 log = get_logger("DB Creator")
 
 DB_NAME = DB_SETTINGS['db']
-GENESIS_HASH = '0' * 64
+NUM_SNIPES = 8  # Number of times to attempt to kill a single sleeping DB cursor when resetting db
 
-# TMP_SQL_DIR = '/var/lib/mysql-files'
-# TMP_SQL_DIR = '/tmp'
-# NUKE_FILE_BASE = TMP_SQL_DIR + '/nuke_cursors'
-NUKE_FILE_BASE = 'NUKE_SQL_CURSORS'
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
-
-NUM_NUKES = 4
 
 
 def build_tables(ex, should_drop=True):
@@ -66,51 +60,22 @@ def create_table(ex, table, should_drop):
     return table
 
 
-def _clean_tmp_file(f_name=NUKE_FILE_BASE):
-    try:
-        os.remove(f_name)
-        os.system("rm -f {}".format(f_name))
-    except Exception as e:
-        log.error("got dat err tryna clean file..\n{}".format(e))
-        pass
+def _assassinate_sleeping_db_cursors(ex):
+    """
+    Find sleeping DB cursors. Slay them, without mercy or remorse. Leave no survivors.
+    """
+    for _ in range(NUM_SNIPES):
+        try:
+            ex.raw("SET @kill_id := (select id from information_schema.processlist where command='Sleep' limit 1);")
+            ex.raw("KILL (SELECT @kill_id);")
+        except Exception as e:
+            pass
 
 
 def _reset_db(ex):
     log.info("Dropping database named {}".format(DB_NAME))
 
-    for _ in range(NUM_NUKES):
-        log.notice("FIRING SNIPE #{}".format(_))
-
-        try:
-            ex.raw("SET @kill_id := (select id from information_schema.processlist where command='Sleep' limit 1);")
-            ex.raw("KILL (SELECT @kill_id);")
-        except Exception as e:
-            log.critical("ERROR EXECUTING QUERY....\nerr={}".format(e))
-
-    # nuke_file_name = NUKE_FILE_BASE + '_' + str(uuid.uuid1()) + '.txt'
-    # _clean_tmp_file(nuke_file_name)
-    # log.important("Using tmp file {}".format(nuke_file_name))
-    #
-    # build_nuke = "select concat('KILL ',id,';') from information_schema.processlist where " \
-    #              "command='Sleep' into outfile '{}';".format(nuke_file_name)
-    # ex.raw(build_nuke)
-    # ex.raw('SOURCE {};'.format(nuke_file_name))
-
-    # Nuke all sql processes so none of them hold a lock ... kill them delete them destroy them get them out of here
-    # try:
-    #     with open(nuke_file_name, 'r') as f:
-    #         lines = f.readlines()
-    #         for nuke in lines:
-    #             log.important3("executing command {}".format(nuke))
-    #             try:
-    #                 ex.raw(nuke)
-    #             except:
-    #                 pass
-    # except Exception as e:
-    #     log.fatal("got err opening file {}...\nerr = {}".format(nuke_file_name, e))
-
-    # _clean_tmp_file(nuke_file_name)
-    # os.system("rm -r ./{}".format(DB_NAME))
+    _assassinate_sleeping_db_cursors(ex)
 
     ex.raw('DROP DATABASE IF EXISTS {};'.format(DB_NAME))
     ex.raw('CREATE DATABASE IF NOT EXISTS {};'.format(DB_NAME))
