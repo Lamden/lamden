@@ -72,7 +72,8 @@ class MPTestCase(BaseNetworkTestCase):
         MPTestCase.testers.clear()
         MPTestCase.curr_tester_index = 1
 
-        self._reset_containers()
+        if MPTestCase.vmnet_test_active:
+            self._reset_containers()
 
     def start(self, timeout=TEST_TIMEOUT):
         """
