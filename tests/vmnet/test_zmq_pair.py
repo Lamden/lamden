@@ -6,10 +6,6 @@ import time
 
 cilantro_path = dirname(dirname(cilantro.__path__[0]))
 
-
-# cilantro_path = cilantro.__path__[0]
-
-
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
         return fn(*args, **kwargs)
@@ -29,18 +25,19 @@ def start_client():
     socket.connect(url)
 
     t = 0
-    while t < 5:
+    while t < 4:
         log.debug("waiting for msg...")
         msg = socket.recv_pyobj()
         log.info("got msg {}".format(msg))
         time.sleep(1)
         t += 1
 
+    log.info('end!')
+
     socket.close()
 
-def start_server():
+def start_server(xx=None):
     import os
-    # assert os.getenv('HOST_IP') == '127.29.5.1', "Unexpected host IP {}".format(os.getenv('HOST_IP'))
     import asyncio
     import zmq.asyncio
     import time
@@ -50,6 +47,7 @@ def start_server():
     asyncio.set_event_loop(loop)
 
     log = get_logger("ZMQ Server")
+    log.critical(xx)
     log.info("server host ip is {}".format(os.getenv('HOST_IP')))
     assert os.getenv('HOST_IP') == '172.29.5.1', "what the heck host IP is not what we expected for node_1"
     ctx = zmq.asyncio.Context()
@@ -73,7 +71,7 @@ def start_server():
     socket.close()
 
 class TestZMQPair(BaseNetworkTestCase):
-    testname = 'bootstrap'
+    testname = 'zmq_pair'
     setuptime = 6
     compose_file = '{}/cilantro/tests/vmnet/compose_files/cilantro-nodes.yml'.format(cilantro_path)
     local_path = cilantro_path
@@ -87,7 +85,7 @@ class TestZMQPair(BaseNetworkTestCase):
     def test_zmq_pair(self):
         log = get_logger("TestZMQ")
         self.execute_python('node_2', start_client, async=True, profiling=True)
-        self.execute_python('node_1', start_server, async=True, profiling=True)
+        self.execute_python('node_1', wrap_func(start_server, 1234), async=True, profiling=True)
         input("\n\nEnter any key to terminate")
 
 

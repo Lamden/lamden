@@ -57,7 +57,7 @@ class TestTransportIntegration(MPTestCase):
         sub.add_sub(vk=vk2, filter=FILTER)
         pub.add_pub(ip=pub_ip)
 
-        time.sleep(3.0)
+        time.sleep(5.0)
 
         pub.send_pub_env(filter=FILTER, envelope=env)
 
@@ -101,7 +101,7 @@ class TestTransportIntegration(MPTestCase):
         pub1.add_pub(ip=pub1.ip)
         pub2.add_pub(ip=pub2.ip)
 
-        time.sleep(3.0)
+        time.sleep(5.0)
 
         pub1.send_pub_env(filter=FILTER, envelope=envs[0])
         pub1.send_pub_env(filter=FILTER, envelope=envs[1])
@@ -152,7 +152,7 @@ class TestTransportIntegration(MPTestCase):
         pub1.add_pub(ip=pub1.ip)  # Pub on its own URL
         pub2.add_pub(ip=pub2.ip)  # Pub on its own URL
 
-        time.sleep(3.0)
+        time.sleep(5.0)
 
         pub1.send_pub_env(filter=FILTER, envelope=env1)
         pub2.send_pub_env(filter=FILTER, envelope=env2)
@@ -163,7 +163,7 @@ class TestTransportIntegration(MPTestCase):
 
         pub2.send_pub_env(filter=FILTER, envelope=env3)  # this should not be recv by sub, as he removed this guy's url
 
-        time.sleep(3.0)  # allow messages to go through before we start checking assertions
+        time.sleep(5.0)  # allow messages to go through before we start checking assertions
 
         self.start()
 
@@ -198,7 +198,7 @@ class TestTransportIntegration(MPTestCase):
         sub.add_sub(vk=vk2, filter=filter1)
         pub.add_pub(ip=pub.ip)
 
-        time.sleep(3.0)  # allow time for VK lookups before we start sending things
+        time.sleep(5.0)  # allow time for VK lookups before we start sending things
 
         # Send 2 envelopes on 2 different filters
         pub.send_pub_env(filter=filter1, envelope=env1)
@@ -257,7 +257,7 @@ class TestTransportIntegration(MPTestCase):
         dealer.add_dealer(vk=router_vk)
         router.add_router(vk=router_vk)
 
-        time.sleep(3.0)
+        time.sleep(5.0)
 
         dealer.send_request_env(vk=router_vk, envelope=request_env)
 
