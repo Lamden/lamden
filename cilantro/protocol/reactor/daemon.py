@@ -44,13 +44,13 @@ class ReactorDaemon:
                        alpha=alpha, ksize=ksize, daemon=self,
                        max_peers=max_peers, block=False, cmd_cli=False, wipe_certs=True)
 
-        self.context, auth = self.dht.network.ironhouse.secure_context(async=True)
+        self.context = zmq.asyncio.Context()
         self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
         self.socket.connect(self.url)
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name
 
-        self.executors = {name: executor(self.loop, self.context, self.socket, self.dht.network.ironhouse)
+        self.executors = {name: executor(self.loop, self.socket, self.dht.network.ironhouse)
                           for name, executor in Executor.registry.items()}
 
         try:
@@ -187,25 +187,16 @@ class ReactorDaemon:
         try:
             node, cached = await self.dht.network.lookup_ip(vk)
             # NOTE while secure, this is a more loose connection policy
-            self.log.fatal('{} resolves for {}'.format(os.getenv('HOST_IP'), node))
-            if node and not cached:
-                ip = node.ip if type(node) == Node else node.split(':')[0]
-                public_key = self.dht.network.ironhouse.vk2pk(vk)
-                authorization = await self.dht.network.ironhouse.authenticate(public_key, ip)
-                self.log.fatal('{} -> {} is {}'.format(os.getenv('HOST_IP'), node, authorization))
-                if authorization != 'authorized':
-                    node = None
-                else:
-                    n = Node(
-                        node_id=digest(vk),
-                        public_key=public_key,
-                        ip=ip,
-                        port=self.dht.network.network_port
-                    )
-                    self.dht.network.protocol.router.addContact(n)
-                    self.dht.network.connect_to_neighbor(n)
+            self.log.important2('IP {} resolves {} into {}'.format(os.getenv('HOST_IP'), vk, node))
+            self.log.important2('... but is {} authorized? Until next episode!'.format(node))
+            if node:
+                if not self.dht.network.ironhouse.authorized_nodes.get(node.id):
+                    authorization = await self.dht.network.authenticate(node)
+                    if not authorization:
+                        node = None
+            else:
+                node = None
 
-                self.log.fatal([item[0] for item in self.dht.network.bootstrappableNeighbors()])
         except Exception as e:
             delim_line = '!' * 64
             err_msg = '\n\n' + delim_line + '\n' + delim_line

@@ -36,10 +36,10 @@ class Executor(metaclass=ExecutorMeta):
     _recently_seen = CappedSet(max_size=dupe_table_size)
     _parent_name = 'ReactorDaemon'  # used for log names
 
-    def __init__(self, loop, context, inproc_socket, ironhouse):
+    def __init__(self, loop, inproc_socket, ironhouse):
         self.loop = loop
         asyncio.set_event_loop(self.loop)
-        self.context = context
+        self.context = ironhouse.daemon_context
         self.inproc_socket = inproc_socket
         self.ironhouse = ironhouse
         self.log = get_logger("{}.{}".format(Executor._parent_name, type(self).__name__))
@@ -144,8 +144,8 @@ class Executor(metaclass=ExecutorMeta):
 
 
 class SubPubExecutor(Executor):
-    def __init__(self, loop, context, inproc_socket, *args, **kwargs):
-        super().__init__(loop, context, inproc_socket, *args, **kwargs)
+    def __init__(self, loop, inproc_socket, *args, **kwargs):
+        super().__init__(loop, inproc_socket, *args, **kwargs)
         self.subs = defaultdict(dict)  # Subscriber socket
         self.pubs = {}  # Key is url, value is Publisher socket
 
@@ -231,8 +231,8 @@ class SubPubExecutor(Executor):
 
 
 class DealerRouterExecutor(Executor):
-    def __init__(self, loop, context, inproc_socket, *args, **kwargs):
-        super().__init__(loop, context, inproc_socket, *args, **kwargs)
+    def __init__(self, loop, inproc_socket, *args, **kwargs):
+        super().__init__(loop, inproc_socket, *args, **kwargs)
 
         # 'dealers' is a simple nested dict for holding sockets by URL as well as their associated recv handlers
         # key for 'dealers' is socket URL, and value is another dict with keys 'socket' (value is Socket instance)
