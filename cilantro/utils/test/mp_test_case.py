@@ -72,7 +72,6 @@ class MPTestCase(BaseNetworkTestCase):
         MPTestCase.testers.clear()
         MPTestCase.curr_tester_index = 1
 
-        self.log.info("Resetting docker containers...")
         self._reset_containers()
 
     def start(self, timeout=TEST_TIMEOUT):

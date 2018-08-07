@@ -76,8 +76,8 @@ class ReactorInterface:
         self.log.debug("Closing pair socket")
         self.socket.close()
 
-        self.log.debug("Closing event loop")
-        self.loop.call_soon_threadsafe(self.loop.stop)
+        # self.log.debug("Closing event loop")
+        # self.loop.call_soon_threadsafe(self.loop.stop)
 
     def _start_daemon(self, url, sk, name):
         """

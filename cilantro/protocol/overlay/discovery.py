@@ -96,7 +96,4 @@ class Discovery:
     def stop_discovery(self):
         self.udp_sock.close()
         self.udp_sock_server.close()
-        try:
-            self.server.set_result('done')
-        except:
-            self.server.cancel()
+        self.server.set_result('done')

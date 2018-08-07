@@ -134,8 +134,8 @@ class MPTesterProcess:
         except Exception as e:
             # If the tasks were canceled internally, then do not run _teardown() again
             if type(e) is asyncio.CancelledError:
-                # self.log.debug("Task(s) cancel detected. Closing event loop.")
-                # self.loop.close()
+                self.log.debug("Task(s) cancel detected. Closing event loop.")
+                self.loop.close()
                 return
 
             self.log.error("\n\nException in main TesterProc loop: {}\n\n".format(traceback.format_exc()))
