@@ -2,7 +2,7 @@ import seneca.storage.tabular as st
 import seneca.storage.kv as kv
 import seneca.crypto as crypto
 import seneca.runtime as rt
-import seneca.stdlib as std
+import seneca.types as std
 from seneca.modulelib import export, make_exports
 import currency
 import masternode_stake_amount

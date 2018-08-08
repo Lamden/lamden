@@ -2,7 +2,7 @@ import unittest
 from unittest import TestCase
 from cilantro.logger import get_logger
 from tests.contracts.smart_contract_testcase import *
-import seneca.smart_contract_user_libs.stdlib as std
+import seneca.libs.types as std
 from seneca.execute import execute_contract
 
 log = get_logger("Testelection")
