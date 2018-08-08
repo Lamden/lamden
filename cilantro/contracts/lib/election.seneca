@@ -44,7 +44,7 @@ def create_election(term, value_type):
     assert value_type in std.supported_db_types, 'value type {} not supported!'.format(value_type)
     assert type(term) == std.timedelta, 'election term must be of type {}'.format(std.timedelta)
     policy_maker_id = rt.sender
-    policy_name = rt.caller_contract_id
+    policy_name = rt.this_contract.upstream().address
     now = std.datetime.now()
 
     policy_election = t_election.select().where(
@@ -81,7 +81,7 @@ def create_election(term, value_type):
 @export
 def cast_vote(election_id, value, allow_update=False):
     voter_id = rt.sender
-    policy_name = rt.caller_contract_id
+    policy_name = rt.this_contract.upstream().address
     policy_table = st.get_table('t_{}'.format(policy_name))
     res = t_election.select().where(
         t_election.id==election_id
@@ -104,7 +104,7 @@ def cast_vote(election_id, value, allow_update=False):
 
 @export
 def tally_votes(election_id, processor):
-    policy_name = rt.caller_contract_id
+    policy_name = rt.this_contract.upstream().address
     policy_table = st.get_table('t_{}'.format(policy_name))
     policy_kv = kv.get_kv('kv_{}'.format(policy_name))
     results = [r['value'] for r in policy_table.select().where(
@@ -116,7 +116,7 @@ def tally_votes(election_id, processor):
 
 @export
 def get_voter_votes(election_id, voter_id):
-    policy_name = rt.caller_contract_id
+    policy_name = rt.this_contract.upstream().address
     policy_table = st.get_table('t_{}'.format(policy_name))
     return policy_table.select().where(
         policy_table.election_id == election_id and \
@@ -149,7 +149,7 @@ def close_election(election_id, status):
 
 @export
 def get(value_name=None):
-    policy_name = rt.caller_contract_id
+    policy_name = rt.this_contract.upstream().address
     if not value_name: value_name = policy_name
     policy_kv = kv.get_kv('kv_{}'.format(policy_name))
     return policy_kv.get(value_name).run()

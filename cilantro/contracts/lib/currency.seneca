@@ -150,7 +150,7 @@ def strict_transfer_coins_from(owner_id, amount):
 def is_locked(wallet_id, amount=None, lock_name='default'):
     if not wallet_id:
         wallet_id = rt.sender
-    lock_id = '$'.join([rt.caller_contract_id, lock_name])
+    lock_id = '$'.join([rt.this_contract.upstream().address, lock_name])
     if lock_id.endswith('$_shared_'):
         return safe.select().where(
             safe.wallet_id != wallet_id and \
@@ -176,7 +176,7 @@ def lock_coins(amount, duration=None, lock_name='default'):
     if not duration:
         duration = std.timedelta(seconds=0)
     wallet_id = rt.sender
-    contract_id = rt.caller_contract_id
+    contract_id = rt.this_contract.upstream().address
     lock_id = '$'.join([contract_id, lock_name])
     assert amount > 0, 'Cannot lock negative amounts'
     assert not is_locked(wallet_id, lock_name=lock_name), \
@@ -191,7 +191,7 @@ def lock_coins(amount, duration=None, lock_name='default'):
     }]).run()
 
 def _set_lock_amount(wallet_id, new_amount, lock_name='default'):
-    lock_id = '$'.join([rt.caller_contract_id, lock_name])
+    lock_id = '$'.join([rt.this_contract.upstream().address, lock_name])
     safe.update({
         'amount': new_amount,
         'locked_until': std.datetime.now() + LOCKED_DURATION
@@ -200,11 +200,11 @@ def _set_lock_amount(wallet_id, new_amount, lock_name='default'):
 @export
 def unlock_coins(lock_name='default'):
     wallet_id = rt.sender
-    contract_id = rt.caller_contract_id
+    contract_id = rt.this_contract.upstream().address
     _unlock_coins(wallet_id, lock_name)
 
 def _unlock_coins(wallet_id, lock_name):
-    lock_id = '$'.join([rt.caller_contract_id, lock_name])
+    lock_id = '$'.join([rt.this_contract.upstream().address, lock_name])
     locked_obj = is_locked(wallet_id, lock_name=lock_name)
     if lock_name.endswith('$_shared_'):
         res = safe.delete().where(
