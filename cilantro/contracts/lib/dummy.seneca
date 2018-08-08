@@ -14,16 +14,16 @@ dummy = st.create_table('dummy', [
 
 def add_user(wallet_id, amount=0):
     if not wallet_id:
-        wallet_id = rt.global_run_data.author
+        wallet_id = rt.sender
     dummy.insert([{'wallet_id': wallet_id, 'balance': amount}]).run()
 
 @export
 def bad_code(fail=False):
     if fail:
-        free_money(rt.global_run_data.author, 123)
+        free_money(rt.sender, 123)
         add_user()
     else:
-        free_money(rt.global_run_data.author, 500)
+        free_money(rt.sender, 500)
 
 @export
 def free_money(wallet_id, amount):
@@ -34,7 +34,7 @@ def free_money(wallet_id, amount):
 @export
 def get_balance(wallet_id=None):
     if not wallet_id:
-        wallet_id = rt.global_run_data.author
+        wallet_id = rt.sender
     return dummy.select('balance').where(dummy.wallet_id == wallet_id).run()[0]['balance']
 
 exports = make_exports()

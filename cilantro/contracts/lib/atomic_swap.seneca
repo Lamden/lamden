@@ -31,7 +31,7 @@ def is_tau(coin_address):
 
 @export
 def initiate_transfer(participant_id, hash, amount, coin_address, duration=None):
-    sender_id = rt.global_run_data.author
+    sender_id = rt.sender
     if not duration: duration = std.timedelta(hours=24) # NOTE must clear transaction by this time
     assert type(duration) == std.timedelta, 'Must use type {} for duration'.format(std.timedelta)
     expire_on = std.datetime.now() + duration # NOTE asserts expire < now
@@ -54,7 +54,7 @@ def initiate_transfer(participant_id, hash, amount, coin_address, duration=None)
 
 @export
 def redeem_transfer(secret):
-    sender_id = rt.global_run_data.author
+    sender_id = rt.sender
     hash = std.sha256(secret)
     agreement = t_agreement.select().where(
         t_agreement.hash == hash and \
@@ -77,7 +77,7 @@ def redeem_transfer(secret):
 
 @export
 def refund_transfer(hash, participant_id):
-    sender_id = rt.global_run_data.author
+    sender_id = rt.sender
     agreement = t_agreement.select().where(
         t_agreement.hash == hash and \
         t_agreement.initiator_id == sender_id and \

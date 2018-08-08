@@ -22,14 +22,14 @@ operators = st.create_table('operators', [
 @export
 def create_vault(amount):
     # make sure they don't already have a vault
-    sender_vault = vaults.select().where(vaults.owner == rt.global_run_data.author).run()
+    sender_vault = vaults.select().where(vaults.owner == rt.sender).run()
     assert not sender_vault
 
     # transfer tokens from them to the new vault
-    token.transfer_from(rt.global_run_data.author, this, amount)
+    token.transfer_from(rt.sender, this, amount)
 
     vaults.insert([{
-        'owner': rt.global_run_data.author,
+        'owner': rt.sender,
         'amount': amount
     }]).run()
 
@@ -38,4 +38,4 @@ def add_to_vault(owner, amount):
     owner_vault = vaults.select().where(vaults.owner == owner).run()
     assert owner_vault
 
-    token.transfer_from(rt.global_run_data.author, this, amount)
+    token.transfer_from(rt.sender, this, amount)
