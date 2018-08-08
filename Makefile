@@ -17,5 +17,8 @@ stop: stop-db
 test:
 	./tests/run_tests.py --integration 0
 
+install:
+	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir
+
 help:
 	echo '\n\n'; cat Makefile; echo '\n\n'

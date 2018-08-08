@@ -46,7 +46,7 @@ class TestTransportIntegration(MPTestCase):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
             from cilantro.protocol.states.decorators import StateInput
             cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
-            composer.interface.router.route_callback.assert_called_once_with(cb)
+            composer.interface.router.route_callback.assert_called_with(cb)
 
         env = random_envelope()
 
@@ -241,7 +241,7 @@ class TestTransportIntegration(MPTestCase):
             from cilantro.protocol.states.decorators import StateInput
             from cilantro.messages.reactor.reactor_command import ReactorCommand
             cb = ReactorCommand.create_callback(callback=StateInput.REQUEST, envelope=request_env, header=dealer_id)
-            composer.interface.router.route_callback.assert_called_once_with(cb)
+            composer.interface.router.route_callback.assert_called_with(cb)
 
         dealer_id = vk1
         dealer_sk = sk1
