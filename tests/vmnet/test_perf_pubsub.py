@@ -1,7 +1,6 @@
 from vmnet.test.base import *
-from cilantro.utils.test import MPComposer
-import unittest, time, random
-from cilantro.constants.testnet import TESTNET_DELEGATES
+import unittest
+
 
 def publisher():
     SLEEP_TIME = 1
@@ -24,18 +23,19 @@ def publisher():
     # Publish on this node's own IP
     pub.add_pub(os.getenv('HOST_IP'))
 
-    log.critical("Starting experiment, sending messages every {} seconds for a total of {} seconds".format(SLEEP_TIME, MAX_TIME))
+    log.important("Starting experiment, sending messages every {} seconds for a total of {} seconds".format(SLEEP_TIME, MAX_TIME))
     elapsed_time = 0
 
     while elapsed_time < MAX_TIME:
-        log.info("Sending pub")
+        log.notice("Sending pub")
         msg = ContractTransactionBuilder.random_currency_tx()
         pub.send_pub_msg(filter='0', message=msg)
 
         time.sleep(SLEEP_TIME)
         elapsed_time += SLEEP_TIME
 
-    log.critical("Done with experiment!")
+    pub.teardown()
+    log.important("Done with experiment!")
 
 
 def subscriber():
@@ -57,19 +57,17 @@ def subscriber():
     sub = MPComposer(sk=d_info['sk'])
     sub.add_sub(filter='0', vk=pub_info['vk'])
 
-    log.critical("Starting Subscriber, and exiting after {} seconds".format(SLEEP_TIME))
+    log.important2("Starting Subscriber, and exiting after {} seconds".format(MAX_TIME))
     time.sleep(MAX_TIME)
 
-    log.critical("Done with experiment!")
+    sub.teardown()
+    log.important2("Done with experiment!")
 
 
-class TestNetworkPerformance(BaseNetworkTestCase):
-
-    EXPECTED_TRANSACTION_RATE = 0.1  # Avg transaction/second. lambda parameter in Poission distribution
-    MODEL_AS_POISSON = False
+class TestPerformancePubSub(BaseNetworkTestCase):
 
     testname = 'composer'
-    setuptime = 10
+    setuptime = 6
     compose_file = 'cilantro-nodes.yml'
 
     @vmnet_test(run_webui=True)
