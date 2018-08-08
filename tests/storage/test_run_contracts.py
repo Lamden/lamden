@@ -4,8 +4,8 @@ from unittest import TestCase
 import unittest
 from datetime import datetime
 from cilantro.logger import get_logger
-from seneca.execute_sc import execute_contract
-from seneca.seneca_internal.storage.mysql_executer import Executer
+from seneca.execute import execute_contract
+from seneca.engine.storage.mysql_executer import Executer
 from cilantro.storage.templating import ContractTemplate
 from cilantro.constants.db import DB_SETTINGS
 

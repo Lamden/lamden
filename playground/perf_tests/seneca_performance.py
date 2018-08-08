@@ -5,7 +5,7 @@ from cilantro.storage.db import DB
 from cilantro.storage.tables import DB_NAME
 from cilantro.storage.templating import ContractTemplate
 from cilantro.protocol.interpreter import SenecaInterpreter
-from seneca.seneca_internal.storage.mysql_spits_executer import Executer
+from seneca.engine.storage.mysql_spits_executer import Executer
 from cilantro.constants.db import DB_SETTINGS
 import time
 
