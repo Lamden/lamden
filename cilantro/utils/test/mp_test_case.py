@@ -72,8 +72,13 @@ class MPTestCase(BaseNetworkTestCase):
         MPTestCase.testers.clear()
         MPTestCase.curr_tester_index = 1
 
-        if MPTestCase.vmnet_test_active:
-            self._reset_containers()
+        # if MPTestCase.vmnet_test_active:
+        #     self.log.important3("ayyyy im clearing the containers good sir")
+        #     self._reset_containers()
+        # else:
+        #     self.log.fatal("VMNET TEST NOT ACTIVE! NOT CLEARING ANYTHING!")
+
+        MPTestCase.vmnet_test_active = False
 
     def start(self, timeout=TEST_TIMEOUT):
         """

@@ -21,8 +21,8 @@ class NodeFactory:
         return node
 
     @staticmethod
-    def run_masternode(signing_key, ip, name='Masternode', should_reset=False):
-        with DB(should_reset=should_reset) as db:
+    def run_masternode(signing_key, ip, name='Masternode', reset_db=False):
+        with DB(should_reset=reset_db) as db:
             pass
 
         loop = asyncio.new_event_loop()
@@ -32,8 +32,8 @@ class NodeFactory:
         mn.start()
 
     @staticmethod
-    def run_witness(signing_key, ip, name='Witness', should_reset=False):
-        with DB(should_reset=should_reset) as db:
+    def run_witness(signing_key, ip, name='Witness', reset_db=False):
+        with DB(should_reset=reset_db) as db:
             pass
         loop = asyncio.new_event_loop()
 
@@ -42,8 +42,8 @@ class NodeFactory:
         w.start()
 
     @staticmethod
-    def run_delegate(signing_key, ip, name='Delegate', should_reset=False):
-        with DB(should_reset=should_reset) as db:
+    def run_delegate(signing_key, ip, name='Delegate', reset_db=False):
+        with DB(should_reset=reset_db) as db:
             pass
 
         loop = asyncio.new_event_loop()

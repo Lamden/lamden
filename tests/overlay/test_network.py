@@ -228,9 +228,9 @@ class TestNetwork(TestCase):
         self.assertTrue(self.a_net.saveState('state.tmp'))
         state = self.a_net.loadState('state.tmp')
         os.remove('state.tmp')
-        self.assertEqual(state,{'alpha': 3,
+        self.assertEqual(state,{'ALPHA': 3,
             'id': b"\xaa\xd0\xed\x91O\xa4e'\x06\xdd7\xf8\xf9\xe46p\x9f\x9a\xa1Y",
-            'ksize': 20,
+            'KSIZE': 20,
             'neighbors': [('127.0.0.1', 14321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]})
 
         t = Timer(0.01, run, [self])

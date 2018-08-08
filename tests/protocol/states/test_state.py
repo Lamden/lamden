@@ -365,3 +365,62 @@ class StateTest(TestCase):
 
         mock_func.assert_called_with(msg, mock_env)
 
+    def test_input_lookup_failed_registers(self):
+        mock_sm = MagicMock()
+        state = TrafficLightRedState(mock_sm)
+
+        expected_fn = state.lookup_failed
+        actual_fn = state._get_status_input_handler(StateInput.LOOKUP_FAILED)
+
+        self.assertEquals(expected_fn, actual_fn)
+
+    def test_input_socket_added_registers_doesnt_exist(self):
+        mock_sm = MagicMock()
+        state = TrafficLightGreenState(mock_sm)
+
+        expected_fn = None
+        actual_fn = state._get_status_input_handler(StateInput.SOCKET_CONNECTED)
+
+        self.assertEquals(expected_fn, actual_fn)
+
+    def test_input_lookup_failed_registers_with_inheritence(self):
+        mock_sm = MagicMock()
+        state = TrafficLightGreenState(mock_sm)
+
+        expected_fn = state.lookup_failed
+        actual_fn = state._get_status_input_handler(StateInput.LOOKUP_FAILED)
+
+        self.assertEquals(expected_fn, actual_fn)
+
+    def test_input_socket_added_registers(self):
+        mock_sm = MagicMock()
+        state = TrafficLightYellowState(mock_sm)
+
+        expected_fn = state.socket_added
+        actual_fn = state._get_status_input_handler(StateInput.SOCKET_CONNECTED)
+
+        self.assertEquals(expected_fn, actual_fn)
+
+    def test_input_connection_dropped_registers(self):
+        mock_sm = MagicMock()
+        state = TrafficLightRedState(mock_sm)
+
+        expected_fn = state.conn_dropped
+        actual_fn = state._get_status_input_handler(StateInput.CONN_DROPPED)
+
+        self.assertEquals(expected_fn, actual_fn)
+
+    def test_call_status_input_handler(self):
+        mock_sm = MagicMock()
+        state = TrafficLightRedState(mock_sm)
+
+        args = ['im an arg', 10, 'im also an arg']
+        kwargs = {'dat_key': 'dat_value', 'my_fav_num': 1260}
+
+        mock_func = MagicMock(spec=state.conn_dropped)
+        state.conn_dropped = mock_func
+
+        state.call_status_input_handler(StateInput.CONN_DROPPED, *args, **kwargs)
+
+        mock_func.assert_called_with(*args, **kwargs)
+

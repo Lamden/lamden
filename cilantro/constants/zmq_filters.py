@@ -1,4 +1,4 @@
-witness_masternode = 0
-delegate_delegate = 1
-masternode_delegate = 2
-witness_delegate = 3
+WITNESS_MASTERNODE_FILTER = 0
+DELEGATE_DELEGATE_FILTER = 1
+MASTERNODE_DELEGATE_FILTER = 2
+WITNESS_DELEGATE_FILTER = 3

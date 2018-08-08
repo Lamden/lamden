@@ -12,8 +12,8 @@ def wrap_func(fn, *args, **kwargs):
 
 def run_mn():
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
+    from cilantro.constants.testnet import TESTNET_MASTERNODES
     import os
     import logging
 
@@ -21,40 +21,40 @@ def run_mn():
     overwrite_logger_level(21)
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
-    sk = Constants.Testnet.Masternodes[0]['sk']
-    NodeFactory.run_masternode(ip=ip, signing_key=sk, should_reset=True)
+    sk = TESTNET_MASTERNODES[0]['sk']
+    NodeFactory.run_masternode(ip=ip, signing_key=sk, reset_db=True)
 
 
 def run_witness(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
+    from cilantro.constants.testnet import TESTNET_WITNESSES
     import os
     import logging
 
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(15)
 
-    w_info = Constants.Testnet.Witnesses[slot_num]
+    w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
-    NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'], should_reset=True)
+    NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'], reset_db=True)
 
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
+    from cilantro.constants.testnet import TESTNET_DELEGATES
     import os
     import logging
 
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(21)
 
-    d_info = Constants.Testnet.Delegates[slot_num]
+    d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
-    NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'], should_reset=True)
+    NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'], reset_db=True)
 
 
 def dump_it(volume):
@@ -75,16 +75,16 @@ class TestPump(BaseNetworkTestCase):
     compose_file = 'cilantro-bootstrap.yml'
 
     @vmnet_test(run_webui=True)
-    def test_bootstrap(self):
+    def test_pump(self):
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
 
-        # Bootstrap witnesses
+        # Bootstrap TESTNET_WITNESSES
         for i, nodename in enumerate(self.groups['witness']):
             self.execute_python(nodename, wrap_func(run_witness, i), async=True)
 
-        # Bootstrap delegates
+        # Bootstrap TESTNET_DELEGATES
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 

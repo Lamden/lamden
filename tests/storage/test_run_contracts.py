@@ -7,6 +7,7 @@ from cilantro.logger import get_logger
 from seneca.execute_sc import execute_contract
 from seneca.seneca_internal.storage.mysql_executer import Executer
 from cilantro.storage.templating import ContractTemplate
+from cilantro.constants.db import DB_SETTINGS
 
 
 log = get_logger("TestRunner")
@@ -37,7 +38,7 @@ class TestRunContracts(TestCase):
     def setUp(self):
         super().setUp()
 
-        self.ex = Executer('root', '', '', '127.0.0.1')
+        self.ex = Executer(**DB_SETTINGS)
 
     def tearDown(self):
         super().tearDown()

@@ -402,9 +402,9 @@ class BlockStorageDriver:
         if not bc.validate_signatures():
             raise InvalidBlockContenderException("BlockContender signatures could not be validated! BC = {}".format(bc))
 
-        # TODO validate MerkleSignatures are infact signed by valid delegates
-        # this is tricky b/c we would need to know who the delegates were at the time of the block, not necessarily the
-        # current delegates
+        # TODO validate MerkleSignatures are infact signed by valid TESTNET_DELEGATES
+        # this is tricky b/c we would need to know who the TESTNET_DELEGATES were at the time of the block, not necessarily the
+        # current TESTNET_DELEGATES
 
         # Validate Masternode Signature
         if not is_valid_hex(block_data['masternode_vk'], length=64):

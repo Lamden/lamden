@@ -2,7 +2,7 @@ from vmnet.test.base import *
 import unittest, time, random
 import vmnet, cilantro
 from os.path import dirname
-from cilantro.constants.testnet import masternodes, witnesses, delegates
+from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 
 cilantro_path = dirname(dirname(cilantro.__path__[0]))
 # cilantro_path = cilantro.__path__[0]
@@ -20,7 +20,7 @@ def run_mn():
     log = get_logger("MASTERNODE FACTORY")
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
-    sk = masternodes[0]['sk']
+    sk = TESTNET_MASTERNODES[0]['sk']
 
     NodeFactory.run_masternode(ip=ip, signing_key=sk)
 
@@ -32,7 +32,7 @@ def run_witness(slot_num):
 
     log = get_logger("WITNESS FACTORY")
 
-    w_info = witnesses[slot_num]
+    w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'])
@@ -45,7 +45,7 @@ def run_delegate(slot_num):
 
     log = get_logger("DELEGATE FACTORY")
 
-    d_info = delegates[slot_num]
+    d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
     log.critical("Building delegate on slot {} with info {}".format(slot_num, d_info))
@@ -70,11 +70,11 @@ class TestBootstrap(BaseNetworkTestCase):
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True, profiling=True)
 
-        # Bootstrap witnesses
+        # Bootstrap TESTNET_WITNESSES
         for i, nodename in enumerate(self.groups['witness']):
             self.execute_python(nodename, wrap_func(run_witness, i), async=True, profiling=True)
 
-        # Bootstrap delegates
+        # Bootstrap TESTNET_DELEGATES
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=True)
 

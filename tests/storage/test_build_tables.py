@@ -7,6 +7,7 @@ from cilantro.storage.db import DBSingletonMeta
 from cilantro.storage.tables import build_tables
 import unittest
 import time
+from cilantro.constants.db import DB_SETTINGS
 
 
 CONTRACT_FILENAME = 'currency.seneca'
@@ -22,7 +23,7 @@ class TestBuildTables(TestCase):
     def setUp(self):
         super().setUp()
 
-        self.ex = Executer('root', '', '', '127.0.0.1')
+        self.ex = Executer(**DB_SETTINGS)
 
     def tearDown(self):
         super().tearDown()

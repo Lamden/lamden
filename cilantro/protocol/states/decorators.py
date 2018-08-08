@@ -31,11 +31,11 @@ class StateInput:
     TIMEOUT = '_route_timeout'
 
     LOOKUP_FAILED = '_lookup_failed'
-    SOCKET_ADDED = '_socket_added'
+    SOCKET_CONNECTED = '_socket_connected'
     CONN_DROPPED = '_connection_dropped'
 
     MESSAGE_INPUTS = [INPUT, REQUEST, TIMEOUT]
-    STATUS_INPUTS = [LOOKUP_FAILED, SOCKET_ADDED, CONN_DROPPED]
+    STATUS_INPUTS = [LOOKUP_FAILED, SOCKET_CONNECTED, CONN_DROPPED]
 
 
 def input(msg_type):
@@ -59,12 +59,18 @@ def input_timeout(msg_type):
     return decorate
 
 
-def input_socket_added(func):
-    setattr(func, StateInput.SOCKET_ADDED, True)
+def input_socket_connected(func):
+    setattr(func, StateInput.SOCKET_CONNECTED, True)
     return func
+
 
 def input_connection_dropped(func):
     setattr(func, StateInput.CONN_DROPPED, True)
+    return func
+
+
+def input_lookup_failed(func):
+    setattr(func, StateInput.LOOKUP_FAILED, True)
     return func
 
 

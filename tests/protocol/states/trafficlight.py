@@ -1,6 +1,6 @@
 from cilantro.protocol.states.state import State
 from cilantro.protocol.states.decorators import exit_to, exit_to_any, enter_from_any, timeout_after, enter_from, \
-    input_request, input
+    input_request, input, input_connection_dropped, input_socket_connected, input_lookup_failed
 
 YELLOW_TIMEOUT_DUR = 1.0
 
@@ -35,6 +35,10 @@ class TrafficLightBaseState(State):
     def enter_general(self, prev_state):
         pass
 
+    @input_lookup_failed
+    def lookup_failed(self, vk, *args, **kwargs):
+        self.log.debug("lookup failed for vk {} with args {} and kwargs {}".format(vk, args, kwargs))
+
     def reset_attrs(self):
         pass
 
@@ -54,6 +58,10 @@ class TrafficLightRedState(TrafficLightBaseState):
     def enter_general(self, prev_state):
         pass
 
+    @input_lookup_failed
+    def lookup_failed(self, vk, *args, **kwargs):
+        self.log.debug("lookup failed for vk {} with args {} and kwargs {}".format(vk, args, kwargs))
+
     # Uncomment this and confirm it raises an assertion when any tests are run
     # @enter_from_any
     # def enter_general_dupe(self, prev_state):
@@ -62,6 +70,10 @@ class TrafficLightRedState(TrafficLightBaseState):
     @exit_to_any
     def exit_general(self, next_state):
         pass
+
+    @input_connection_dropped
+    def conn_dropped(self, *args, **kwargs):
+        self.log.debug("Connection dropped with args {} and kwargs {}".format(args, kwargs))
 
     # @exit_to(TrafficLightBrokenState, TrafficLightFixingState)
     @exit_to("TrafficLightBrokenState", "TrafficLightFixingState")
@@ -97,6 +109,10 @@ class TrafficLightYellowState(TrafficLightBaseState):
     @enter_from_any
     def enter_any(self, prev_state):
         self.log.debug("entering from any from prev state {}".format(prev_state))
+
+    @input_socket_connected
+    def socket_added(self, *args, **kwargs):
+        self.log.debug("Socket added with args {} and kwargs {}".format(args, kwargs))
 
     # UNCOMMENT THIS AND VERIFY AN ASSERTION IS THROWN WHEN ANY TEST IS RUN
     # @enter_from(TrafficLightBrokenState)

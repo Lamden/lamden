@@ -1,7 +1,7 @@
 from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
 from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.transaction.ordering import OrderingContainer
-from cilantro.constants.nodes import max_queue_size
+from cilantro.constants.nodes import BLOCK_SIZE
 from cilantro.protocol.states.decorators import input, enter_from_any, exit_to_any, exit_to, enter_from
 
 DelegateBootState = "DelegateBootState"
@@ -39,7 +39,7 @@ class DelegateInterpretState(DelegateBaseState):
         self._general_entry()
 
         # If we just entered from Consensus, interpret all pending transactions up to MaxQueueSize
-        num_to_pop = min(len(self.parent.pending_txs), max_queue_size)
+        num_to_pop = min(len(self.parent.pending_txs), BLOCK_SIZE)
         self.log.notice("Flushing {} txs from total {} pending txs".format(num_to_pop, len(self.parent.pending_txs)))
         for _ in range(num_to_pop):
             self.interpret_tx(self.parent.pending_txs.popleft())
@@ -61,15 +61,15 @@ class DelegateInterpretState(DelegateBaseState):
         self.parent.interpreter.interpret(tx)
         self.log.debugv("Current size of transaction queue: {}".format(len(self.parent.interpreter.queue)))
 
-        if self.parent.interpreter.queue_size == max_queue_size:
+        if self.parent.interpreter.queue_size == BLOCK_SIZE:
             self.log.success("Consensus time! Delegate has {} tx in queue.".format(self.parent.interpreter.queue_size))
             self.parent.transition(DelegateConsensusState)
             return
 
-        elif self.parent.interpreter.queue_size > max_queue_size:
+        elif self.parent.interpreter.queue_size > BLOCK_SIZE:
             self.log.fatal("Delegate exceeded max queue size! How did this happen!!!")
             raise Exception("Delegate exceeded max queue size! How did this happen!!!")
 
         else:
             self.log.debug("Not consensus time yet, queue is only size {}/{}"
-                           .format(self.parent.interpreter.queue_size, max_queue_size))
+                           .format(self.parent.interpreter.queue_size, BLOCK_SIZE))

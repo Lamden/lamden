@@ -1,6 +1,6 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
-from cilantro.constants.testnet import masternodes
+from cilantro.constants.testnet import TESTNET_MASTERNODES
 from cilantro.storage.blocks import * # Generally, * imports are bad, but this test imports pretty much every class from it
 from cilantro.storage.db import reset_db, DB
 from cilantro.messages.consensus.block_contender import build_test_contender
@@ -9,7 +9,7 @@ from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockN
 from cilantro.utils import Hasher, int_to_bytes
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.protocol import wallet
-from cilantro.constants.testnet import masternodes
+from cilantro.constants.testnet import TESTNET_MASTERNODES
 import secrets
 import random
 
@@ -24,7 +24,7 @@ class TestBlockStorageDriver(TestCase):
         Otherwise, prev_block_hash is set to default 000000...
         :return:
         """
-        mn_sk = masternodes[0]['sk']
+        mn_sk = TESTNET_MASTERNODES[0]['sk']
         mn_vk = wallet.get_vk(mn_sk)
         timestamp = 9000
 
@@ -225,7 +225,7 @@ class TestBlockStorageDriver(TestCase):
         with DB() as db:
             initial_num_blocks = len(db.tables.blocks.select().run(db.ex))
 
-        mn_sk = masternodes[0]['sk']
+        mn_sk = TESTNET_MASTERNODES[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions = [build_test_transaction().serialize() for _ in range(19)]
 
@@ -240,7 +240,7 @@ class TestBlockStorageDriver(TestCase):
             self.assertEquals(blocks[-1]['timestamp'], timestamp)
 
     def test_store_block_contender_raw_tx_mismatch(self):
-        mn_sk = masternodes[0]['sk']
+        mn_sk = TESTNET_MASTERNODES[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions = [build_test_transaction().serialize() for _ in range(8)]
 
@@ -259,7 +259,7 @@ class TestBlockStorageDriver(TestCase):
         with DB() as db:
             initial_txs = len(db.tables.transactions.select().run(db.ex))
 
-        mn_sk = masternodes[0]['sk']
+        mn_sk = TESTNET_MASTERNODES[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions = [build_test_transaction().serialize() for _ in range(num_txs)]
 
@@ -319,7 +319,7 @@ class TestBlockStorageDriver(TestCase):
         self.assertFalse(block)
 
     def test_get_latest_inserted(self):
-        mn_sk = masternodes[0]['sk']
+        mn_sk = TESTNET_MASTERNODES[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions = [build_test_transaction().serialize() for _ in range(19)]
 
@@ -388,7 +388,7 @@ class TestBlockStorageDriver(TestCase):
 
         # Stuff a bunch of blocks in
         for _ in range(4):
-            mn_sk = masternodes[0]['sk']
+            mn_sk = TESTNET_MASTERNODES[0]['sk']
             timestamp = random.randint(0, pow(2, 32))
             raw_transactions = [build_test_transaction().serialize() for _ in range(19)]
 
@@ -406,7 +406,7 @@ class TestBlockStorageDriver(TestCase):
 
         # Stuff a bunch of valid blocks in
         for _ in range(4):
-            mn_sk = masternodes[0]['sk']
+            mn_sk = TESTNET_MASTERNODES[0]['sk']
             timestamp = random.randint(0, pow(2, 32))
             raw_transactions = [build_test_transaction().serialize() for _ in range(19)]
 
@@ -425,7 +425,7 @@ class TestBlockStorageDriver(TestCase):
         self.assertRaises(InvalidBlockLinkException, BlockStorageDriver.validate_blockchain)
 
     def test_get_raw_transaction(self):
-        mn_sk = masternodes[0]['sk']
+        mn_sk = TESTNET_MASTERNODES[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions = [build_test_transaction().serialize() for _ in range(4)]
 
@@ -440,7 +440,7 @@ class TestBlockStorageDriver(TestCase):
             self.assertEquals(raw_tx, retrieved_tx)
 
     def test_get_raw_transactions_with_multiple_hashes(self):
-        mn_sk = masternodes[0]['sk']
+        mn_sk = TESTNET_MASTERNODES[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions = [build_test_transaction().serialize() for _ in range(4)]
         hashes = list(map(Hasher.hash, raw_transactions))
@@ -465,7 +465,7 @@ class TestBlockStorageDriver(TestCase):
         self.assertTrue(tx is None)
 
     def test_get_raw_transaction_from_block(self):
-        mn_sk = masternodes[0]['sk']
+        mn_sk = TESTNET_MASTERNODES[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions = [build_test_transaction().serialize() for _ in range(4)]
 
@@ -481,7 +481,7 @@ class TestBlockStorageDriver(TestCase):
             self.assertTrue(tx in added_txs)
 
     def test_get_raw_transaction_from_multiple_blocks(self):
-        mn_sk = masternodes[0]['sk']
+        mn_sk = TESTNET_MASTERNODES[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions1 = [build_test_transaction().serialize() for _ in range(4)]
         raw_transactions2 = [build_test_transaction().serialize() for _ in range(4)]
@@ -505,7 +505,7 @@ class TestBlockStorageDriver(TestCase):
         self.assertTrue(h is None)
 
     def test_get_child_block_hashes(self):
-        mn_sk = masternodes[0]['sk']
+        mn_sk = TESTNET_MASTERNODES[0]['sk']
         timestamp = random.randint(0, pow(2, 32))
         raw_transactions1 = [build_test_transaction().serialize() for _ in range(4)]
         raw_transactions2 = [build_test_transaction().serialize() for _ in range(4)]

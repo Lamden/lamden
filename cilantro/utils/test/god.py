@@ -102,8 +102,11 @@ class God:
 
     @classmethod
     def send_tx(cls, tx: TransactionBase):
-        r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
-        cls.log.debug("POST request to MN at URL {} has status code: {}".format(cls.mn_url, r.status_code))
+        try:
+            r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
+            cls.log.spam("POST request to MN at URL {} has status code: {}".format(cls.mn_url, r.status_code))
+        except Exception as e:
+            cls.log.warning("Error attempt to send transaction to Masternode at URL {}\nerror={}".format(cls.mn_url, e))
 
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
@@ -118,7 +121,7 @@ class God:
 
         if use_poisson:
             from scipy.stats import poisson, expon
-            rvs_func = lambda: expon.rvs(rate) - rate
+            rvs_func = lambda: expon.rvs(rate)/rate - 1
         else:
             rvs_func = lambda: 1/rate
 
@@ -130,15 +133,14 @@ class God:
         while True:
             wait = rvs_func()
 
-            cls.log.debugv("Sending next transaction in {} seconds".format(wait))
+            cls.log.spam("Sending next transaction in {} seconds".format(wait))
+            cls.log.important2("Sending next transaction in {} seconds".format(wait))
             time.sleep(wait)
 
             tx = gen_func()
 
-            cls.log.debugv("sending transaction {}".format(tx))
+            cls.log.spam("sending transaction {}".format(tx))
             cls.send_tx(tx)
-            # r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
-            # cls.log.debugv("POST request got status code {}".format(r.status_code))
 
     @classmethod
     def dump_it(cls, volume: int, gen_func=None):

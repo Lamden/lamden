@@ -1,2 +1,2 @@
-pub_sub = 9999
-router_dealer = 9998
+PUB_SUB_PORT = 9999
+ROUTER_DEALER_PORT = 9998

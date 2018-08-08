@@ -149,12 +149,6 @@ class State(metaclass=StateMeta):
 
         return output
 
-    def call_input_handler_with_kwargs(input_type: str, *args, **kwargs):
-        assert hasattr(self, input_type), "Input type {} not recognized".format(input_type)
-        registry = getattr(self, input_type)
-
-        # what is registry
-
     def call_transition_handler(self, trans_type, state, *args, **kwargs):
         trans_func = self._get_transition_handler(trans_type, state)
 
@@ -167,11 +161,9 @@ class State(metaclass=StateMeta):
                 assert timeout_dur > 0, "Timeout function is present, but timeout duration is not greater than 0"
 
                 loop = asyncio.get_event_loop()
-                # self.log.debug("got event loop {}".format(loop))
-                assert loop.is_running(), "Event loop must be running for timeout functionality!"
+                # assert loop.is_running(), "Event loop must be running for timeout functionality!"
 
                 self.log.debug("Scheduling timeout trigger {} after {} seconds".format(timeout_func, timeout_dur))
-
                 self.timeout_handler = loop.call_later(timeout_dur, timeout_func)
 
             if trans_func:
@@ -190,6 +182,15 @@ class State(metaclass=StateMeta):
             if trans_func:
                 trans_func(**self._prune_kwargs(trans_func, next_state=state, **kwargs))
 
+    def call_status_input_handler(self, input_type: str, *args, **kwargs):
+        func = self._get_status_input_handler(input_type)
+        if not func:
+            self.log.debug("Warning -- no input handler found for input type {} in state {}".format(input_type, self))
+            return
+
+        func = getattr(self, func.__name__)
+        func(*args, **kwargs)
+
     def _get_input_handler(self, message, input_type: str):
         registry = getattr(self, input_type)
         assert isinstance(registry, dict), "Expected registry to be a dictionary!"
@@ -199,8 +200,15 @@ class State(metaclass=StateMeta):
         assert hasattr(self, func.__name__), "STATE META LOGIC ERROR! Input handler for message type {} found to be" \
                                              " func {}, but no such attr name found on self {}"\
                                              .format(type(message), func, dir(self))
-
         return getattr(self, func.__name__)
+
+    def _get_status_input_handler(self, input_type: str):
+        assert input_type in StateInput.STATUS_INPUTS, "Input type {} not found in STATUS_INPUTS {}"\
+                                                       .format(input_type, StateInput.STATUS_INPUTS)
+        if not hasattr(self, input_type):
+            return None
+        else:
+            return getattr(self, input_type)
 
     @classmethod
     def _has_envelope_arg(cls, func):
@@ -255,7 +263,7 @@ class State(metaclass=StateMeta):
         # At this point, no handler could be found. Warn the user and return None
         # self.log.warning("\nNo {} transition handler found for state {}. Any_handler = {} ... Transition "
         #                  "Registry = {}".format(trans_type, state, any_handler, trans_registry))
-        self.log.warning("No {} transition handler found for transitioning from state {} to {}".format(trans_type, self, state))
+        self.log.debug("No {} transition handler found for transitioning from state {} to {}".format(trans_type, self, state))
         return None
 
     def __eq__(self, other):
@@ -276,10 +284,10 @@ class State(metaclass=StateMeta):
         elif type(other) is str:
             return self.__name__ == other
 
-        # Otherwise, this is an invalid comparison ('other' and 'self' are incomparable)
+        # Otherwise, this is an invalid comparison
         else:
             raise ValueError("Invalid comparison -- RHS (right hand side of equation) must be either a State instance "
-                             "instance or String or State Class (not {})".format(other))
+                             "or String or State Class (not {})".format(other))
 
     def __repr__(self):
         return type(self).__name__

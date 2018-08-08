@@ -42,7 +42,7 @@ class Network(object):
 
         Args:
             ksize (int): The k parameter from the paper
-            alpha (int): The alpha parameter from the paper
+            alpha (int): The ALPHA parameter from the paper
             node_id: The id for this node on the network.
         """
         self.loop = loop if loop else asyncio.get_event_loop()
@@ -291,13 +291,13 @@ class Network(object):
 
     def saveState(self, fname):
         """
-        Save the state of this node (the alpha/ksize/id/immediate neighbors)
+        Save the state of this node (the ALPHA/KSIZE/id/immediate neighbors)
         to a cache file with the given fname.
         """
         log.info("Saving state to %s", fname)
         data = {
-            'ksize': self.ksize,
-            'alpha': self.alpha,
+            'KSIZE': self.ksize,
+            'ALPHA': self.alpha,
             'id': self.node.id,
             'neighbors': self.bootstrappableNeighbors()
         }
@@ -311,7 +311,7 @@ class Network(object):
     @classmethod
     def loadState(self, fname):
         """
-        Load the state of this node (the alpha/ksize/id/immediate neighbors)
+        Load the state of this node (the ALPHA/KSIZE/id/immediate neighbors)
         from a cache file with the given fname.
         """
         log.info("Loading state from %s", fname)

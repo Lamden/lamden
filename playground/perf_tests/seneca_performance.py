@@ -6,6 +6,7 @@ from cilantro.storage.tables import DB_NAME
 from cilantro.storage.templating import ContractTemplate
 from cilantro.protocol.interpreter import SenecaInterpreter
 from seneca.seneca_internal.storage.mysql_spits_executer import Executer
+from cilantro.constants.db import DB_SETTINGS
 import time
 
 
@@ -56,7 +57,7 @@ def run_contracts_in_interpreter(num_contracts=100):
 
 
 def run_contracts_standalone(num_contracts=100):
-    ex = Executer('root', '', DB_NAME, '127.0.0.1')
+    ex = Executer(**DB_SETTINGS)
     with DB() as db:
         contracts_table = db.tables.contracts
 

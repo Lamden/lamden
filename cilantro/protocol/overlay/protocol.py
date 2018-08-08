@@ -6,14 +6,14 @@ from cilantro.logger import get_logger
 from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.overlay.routing import RoutingTable
 from cilantro.protocol.overlay.utils import digest
-from cilantro.constants.overlay_network import rpc_timeout
+from cilantro.constants.overlay_network import RPC_TIMEOUT
 
 log = get_logger(__name__)
 
 
 class KademliaProtocol(RPCProtocol):
     def __init__(self, sourceNode, ksize, network):
-        RPCProtocol.__init__(self, waitTimeout=rpc_timeout)
+        RPCProtocol.__init__(self, waitTimeout=RPC_TIMEOUT)
         self.router = RoutingTable(self, ksize, sourceNode)
         self.sourceNode = sourceNode
         self.network = network

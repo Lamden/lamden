@@ -1,11 +1,14 @@
 from cilantro.logger import get_logger
-import json, os
+import json, os, uuid
+from seneca.seneca_internal.storage.mysql_executer import Executer
+from cilantro.constants.db import DB_SETTINGS
+
 
 
 log = get_logger("DB Creator")
 
-GENESIS_HASH = '0' * 64
-DB_NAME = 'seneca_test'
+DB_NAME = DB_SETTINGS['db']
+NUM_SNIPES = 8  # Number of times to attempt to kill a single sleeping DB cursor when resetting db
 
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
@@ -57,8 +60,24 @@ def create_table(ex, table, should_drop):
     return table
 
 
+def _assassinate_sleeping_db_cursors(ex):
+    """
+    Find sleeping DB cursors. Slay them one by one, without mercy or remorse. Leave no survivors.
+    """
+    for _ in range(NUM_SNIPES):
+        try:
+            ex.raw("SET @kill_id := (select id from information_schema.processlist where command='Sleep' limit 1);")
+            ex.raw("KILL (SELECT @kill_id);")
+        except Exception as e:
+            pass
+
+
 def _reset_db(ex):
     log.info("Dropping database named {}".format(DB_NAME))
+
+    _assassinate_sleeping_db_cursors(ex)
+
     ex.raw('DROP DATABASE IF EXISTS {};'.format(DB_NAME))
     ex.raw('CREATE DATABASE IF NOT EXISTS {};'.format(DB_NAME))
     ex.raw('USE {};'.format(DB_NAME))
+

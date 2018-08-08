@@ -5,7 +5,7 @@ from collections import defaultdict
 from cilantro.protocol.structures import CappedSet
 import traceback, os
 from cilantro.protocol.states.state import StateInput
-from cilantro.constants.protocol import dupe_table_size
+from cilantro.constants.protocol import DUPE_TABLE_SIZE
 import asyncio, time
 import zmq.asyncio
 
@@ -33,7 +33,7 @@ class ExecutorMeta(type):
 
 class Executor(metaclass=ExecutorMeta):
 
-    _recently_seen = CappedSet(max_size=dupe_table_size)
+    _recently_seen = CappedSet(max_size=DUPE_TABLE_SIZE)
     _parent_name = 'ReactorDaemon'  # used for log names
 
     def __init__(self, loop, inproc_socket, ironhouse):
@@ -65,9 +65,9 @@ class Executor(metaclass=ExecutorMeta):
             self.log.error(err_msg)
 
     async def recv_multipart(self, socket, callback_fn: types.MethodType, ignore_first_frame=False):
-        self.log.warning("--- Starting recv on socket {} with callback_fn {} ---".format(socket, callback_fn))
+        self.log.notice("--- Starting recv on socket {} with callback_fn {} ---".format(socket, callback_fn))
         while True:
-            self.log.debug("waiting for multipart msg...")
+            self.log.spam("waiting for multipart msg...")
 
             try:
                 msg = await socket.recv_multipart()
@@ -76,7 +76,7 @@ class Executor(metaclass=ExecutorMeta):
                 socket.close()
                 break
 
-            self.log.debug("Got multipart msg: {}".format(msg))
+            self.log.spam("Got multipart msg: {}".format(msg))
 
             if ignore_first_frame:
                 header = None
@@ -91,20 +91,20 @@ class Executor(metaclass=ExecutorMeta):
                 continue
 
             Executor._recently_seen.add(env.meta.uuid)
-
             callback_fn(header=header, envelope=env)
 
     def call_on_mp(self, callback: str, header: str=None, envelope_binary: bytes=None, **kwargs):
         if header:
             kwargs['header'] = header
+        if envelope_binary:
+            kwargs['envelope_binary'] = envelope_binary
 
-        cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary, **kwargs)
-
-        # self.log.critical("\ncalling callback cmd to reactor interface: {}".format(cmd))  # DEBUG line remove this
-
+        cmd = ReactorCommand.create_callback(callback=callback, **kwargs)
         self.inproc_socket.send(cmd.serialize())
 
-        # self.log.critical("command sent: {}".format(cmd))  # DEBUG line, remove this later
+    def notify_mp_socket_connected(self, socket_type: int, vk: str, url: str):
+        cmd = ReactorCommand.create_callback(callback=StateInput.SOCKET_CONNECTED, socket_type=socket_type, vk=vk, url=url)
+        self.inproc_socket.send(cmd.serialize())
 
     def _validate_envelope(self, envelope_binary: bytes, header: str) -> Union[None, Envelope]:
         # TODO return/raise custom exceptions in this instead of just logging stuff and returning none
@@ -150,7 +150,7 @@ class SubPubExecutor(Executor):
         self.pubs = {}  # Key is url, value is Publisher socket
 
     def _recv_pub_env(self, header: str, envelope: Envelope):
-        self.log.debug("Recv'd pub envelope with header {} and env {}".format(header, envelope))
+        self.log.spam("Recv'd pub envelope with header {} and env {}".format(header, envelope))
         self.call_on_mp(callback=StateInput.INPUT, envelope_binary=envelope.serialize())
 
     # TODO -- is looping over all pubs ok?
@@ -160,14 +160,14 @@ class SubPubExecutor(Executor):
         assert len(self.pubs) > 0, "Attempted to publish data but publisher socket(s) is not configured"
 
         for url in self.pubs:
-            self.log.debug("Publishing to URL {} with envelope: {}".format(url, Envelope.from_bytes(envelope)))
+            self.log.spam("Publishing to URL {} with envelope: {}".format(url, Envelope.from_bytes(envelope)))
             # self.log.info("Publishing to... {}".format(url))
             self.pubs[url].send_multipart([filter.encode(), envelope])
 
     def add_pub(self, url: str):
         assert url not in self.pubs, "Attempted to add pub on url that is already in self.pubs"
 
-        self.log.info("Creating publisher socket on url {}".format(url))
+        self.log.notice("Creating publisher socket on url {}".format(url))
         self.pubs[url] = self.ironhouse.secure_socket(
             self.context.socket(socket_type=zmq.PUB))
         # self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
@@ -179,27 +179,28 @@ class SubPubExecutor(Executor):
         assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
 
         if url not in self.subs:
-            self.log.info("Creating subscriber socket to {}".format(url))
+            self.log.notice("Creating subscriber socket to {}".format(url))
 
             curve_serverkey = self.ironhouse.vk2pk(vk)
-            # self.subs[url]['socket'] = socket = self.context.socket(socket_type=zmq.SUB)
             self.subs[url]['socket'] = socket = self.ironhouse.secure_socket(
                 self.context.socket(socket_type=zmq.SUB),
                 curve_serverkey=curve_serverkey)
-            socket.connect(url)
             self.subs[url]['filters'] = []
 
+            socket.connect(url)
+
         if filter not in self.subs[url]['filters']:
-            self.log.debug("Adding filter {} to sub socket at url {}".format(filter, url))
+            self.log.debugv("Adding filter {} to sub socket at url {}".format(filter, url))
             self.subs[url]['filters'].append(filter)
             self.subs[url]['socket'].setsockopt(zmq.SUBSCRIBE, filter.encode())
 
         if not self.subs[url].get('future'):
-            self.log.debug("Starting listener event for subscriber socket at url {}".format(url))
+            self.log.debugv("Starting listener event for subscriber socket at url {}".format(url))
             self.subs[url]['future'] = self.add_listener(self.recv_multipart,
                                                  socket=self.subs[url]['socket'],
                                                  callback_fn=self._recv_pub_env,
                                                  ignore_first_frame=True)
+            self.notify_mp_socket_connected(socket_type=zmq.SUB, vk=vk, url=url)
 
     def remove_sub(self, url: str):
         assert url in self.subs, "Attempted to remove a sub that was not registered in self.subs"
@@ -246,11 +247,11 @@ class DealerRouterExecutor(Executor):
         self.router_handler = None
 
     def _recv_request_env(self, header: str, envelope: Envelope):
-        self.log.debug("Recv REQUEST envelope with header {} and envelope {}".format(header, envelope))
+        self.log.spam("Recv REQUEST envelope with header {} and envelope {}".format(header, envelope))
         self.call_on_mp(callback=StateInput.REQUEST, header=header, envelope_binary=envelope.serialize())
 
     def _recv_reply_env(self, header: str, envelope: Envelope):
-        self.log.debug("Recv REPLY envelope with header {} and envelope {}".format(header, envelope))
+        self.log.spam("Recv REPLY envelope with header {} and envelope {}".format(header, envelope))
 
         reply_uuid = envelope.meta.uuid
         if reply_uuid in self.expected_replies:
@@ -262,8 +263,7 @@ class DealerRouterExecutor(Executor):
 
     def _timeout(self, url: str, request_envelope: bytes, reply_uuid: int):
         assert reply_uuid in self.expected_replies, "Timeout triggered but reply_uuid was not in expected_replies"
-        self.log.info("Request to url {} timed out! reply uuid {}".format(url, reply_uuid))
-        self.log.debug("Request envelope: {}".format(request_envelope))
+        self.log.debug("Request to url {} timed out! reply uuid {}".format(url, reply_uuid))
 
         del(self.expected_replies[reply_uuid])
         self.call_on_mp(callback=StateInput.TIMEOUT, envelope_binary=request_envelope)
@@ -271,7 +271,7 @@ class DealerRouterExecutor(Executor):
     def add_router(self, url: str):
         assert self.router is None, "Attempted to add router on url {} but socket already configured".format(url)
 
-        self.log.info("Creating router socket on url {}".format(url))
+        self.log.notice("Creating router socket on url {}".format(url))
         # self.router = self.context.socket(socket_type=zmq.ROUTER)
         self.router = self.ironhouse.secure_socket(
             self.context.socket(socket_type=zmq.ROUTER))
@@ -285,21 +285,15 @@ class DealerRouterExecutor(Executor):
         if url in self.dealers:
             self.log.warning("Attempted to add dealer {} that is already in self.dealers".format(url))
             return
-        # assert url not in self.dealers, "Url {} already in self.dealers {}".format(url, self.dealers)
 
         assert isinstance(id, str), "'id' arg must be a string"
-        self.log.info("Creating dealer socket for url {} with id {}".format(url, id))
+        self.log.notice("Creating dealer socket for url {} with id {}".format(url, id))
 
         curve_serverkey = self.ironhouse.vk2pk(vk)
-        self.log.debug('{}: add_dealer for url: {}'.format(os.getenv('HOST_IP'), url))
-        # socket = self.context.socket(socket_type=zmq.DEALER)
-        socket = self.ironhouse.secure_socket(
-            self.context.socket(socket_type=zmq.DEALER),
-            curve_serverkey=curve_serverkey)
-
+        socket = self.ironhouse.secure_socket(self.context.socket(socket_type=zmq.DEALER), curve_serverkey=curve_serverkey)
         socket.identity = id.encode('ascii')
 
-        self.log.info("Dealer socket connecting to url {}".format(url))
+        self.log.debugv("Dealer socket connecting to url {}".format(url))
         socket.connect(url)
 
         future = self.add_listener(self.recv_multipart, socket=socket, callback_fn=self._recv_reply_env,
@@ -308,9 +302,11 @@ class DealerRouterExecutor(Executor):
         self.dealers[url][_SOCKET] = socket
         self.dealers[url][_HANDLER] = future
 
+        self.notify_mp_socket_connected(socket_type=zmq.DEALER, vk=vk, url=url)
+
     # TODO pass in the intended replier's vk so we can be sure the reply we get is actually from him
     def request(self, url: str, reply_uuid: str, envelope: bytes, timeout=0):
-        self.log.debug("requesting /w reply uuid {} and env {}".format(reply_uuid, envelope))
+        self.log.spam("requesting /w reply uuid {} and env {}".format(reply_uuid, envelope))
         assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
             .format(url, self.dealers)
         assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
@@ -318,11 +314,11 @@ class DealerRouterExecutor(Executor):
         reply_uuid = int(reply_uuid)
         timeout = float(timeout)
 
-        self.log.debug("Composing request to url {}\ntimeout: {}\nenvelope: {}".format(url, timeout, envelope))
+        self.log.spam("Composing request to url {}\ntimeout: {}\nenvelope: {}".format(url, timeout, envelope))
 
         if timeout > 0:
             assert reply_uuid not in self.expected_replies, "Reply UUID is already in expected replies"
-            self.log.debug("Adding timeout of {} for reply uuid {}".format(timeout, reply_uuid))
+            self.log.spam("Adding timeout of {} for reply uuid {}".format(timeout, reply_uuid))
             self.expected_replies[reply_uuid] = self.loop.call_later(timeout, self._timeout, url, envelope, reply_uuid)
 
         self.dealers[url][_SOCKET].send_multipart([envelope])
@@ -344,7 +340,7 @@ class DealerRouterExecutor(Executor):
         assert url in self.dealers, "Attempted to remove dealer url {} that is not in list of dealers {}"\
             .format(url, self.dealers)
 
-        self.log.info("Removing dealer at url {} with id {}".format(url, id))
+        self.log.notice("Removing dealer at url {} with id {}".format(url, id))
 
         socket = self.dealers[url][_SOCKET]
         future = self.dealers[url][_HANDLER]

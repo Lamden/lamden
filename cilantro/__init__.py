@@ -3,7 +3,7 @@ from decimal import getcontext
 import sys
 import hashlib
 from os.path import dirname, abspath
-from cilantro.constants.protocol import sig_figs
+from cilantro.constants.protocol import SIG_FLAGS
 
 os.environ['LOCAL_PATH'] = abspath(dirname(dirname(dirname(__file__))))
 
@@ -48,7 +48,7 @@ def config_testnet(testnet: dict) -> dict:
         testnet['masternode']['vk'] = mn_vk
         testnet['masternode']['sk'] = mn_sk
 
-        node_ips = {'delegates': delegates, 'witnesses': witnesses}
+        node_ips = {'TESTNET_DELEGATES': delegates, 'TESTNET_WITNESSES': witnesses}
 
         for key, node_list in node_ips.items():
             nodes = []
@@ -65,7 +65,7 @@ def config_testnet(testnet: dict) -> dict:
         testnet['masternode']['sk'] = mn_sk
         all_nodes[mn_url] = mn_vk
 
-        for node_type in ('delegates', 'witnesses'):
+        for node_type in ('TESTNET_DELEGATES', 'TESTNET_WITNESSES'):
             nodes = []
             base_url, num, port_start = testnet[node_type]['host'], testnet[node_type]['num'], \
                                         int(testnet[node_type]['port_start'])
@@ -121,4 +121,4 @@ sys.path.append(os.path.dirname(__file__) + '/messages/capnp')
 # Constants.build_from_json(config)
 # Constants.json = config
 
-getcontext().prec = sig_figs
+getcontext().prec = SIG_FLAGS

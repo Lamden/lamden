@@ -1,6 +1,6 @@
 from cilantro.nodes.delegate import DelegateConsensusState
 from cilantro.utils.hasher import Hasher
-from cilantro.messages import *
+from cilantro.messages.block_data.transaction_data import TransactionRequest
 from cilantro.messages.transaction import build_test_transaction
 from cilantro.protocol.structures import MerkleTree
 from unittest import TestCase

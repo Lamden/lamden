@@ -19,16 +19,17 @@ class Router:
         self.routes = {StateInput.INPUT: self._route,
                        StateInput.REQUEST: self._route_request,
                        StateInput.TIMEOUT: self._route,
-                       StateInput.LOOKUP_FAILED: self._lookup_failed}
+                       StateInput.LOOKUP_FAILED: self._lookup_failed,
+                       StateInput.SOCKET_CONNECTED: self._socket_connected}
 
     def route_callback(self, cmd: ReactorCommand):
         """
         Takes in a callback from a ReactorInterface, and invokes the appropriate receiver on the state machine
         """
-        self.log.debug("ROUTING CALLBACK:\n{}".format(cmd))
+        self.log.spam("ROUTING CALLBACK:\n{}".format(cmd))
         assert isinstance(cmd, ReactorCommand), "route_callback must take a ReactorCommand instance as input"
-        assert cmd.callback, "ReactorCommand {} does not have 'callback' in kwargs"
-        assert cmd.callback in self.routes, "Unrecognized callback name"
+        assert cmd.callback, "ReactorCommand {} does not have 'callback' in kwargs".format(cmd)
+        assert cmd.callback in self.routes, "Unrecognized callback {}".format(cmd.callback)
 
         # TODO remove below (this is just debug checking)
         # Super extra sanity check to make sure id frame from requests matches seal's vk (this is also done in Daemon)
@@ -49,6 +50,7 @@ class Router:
                 msg = envelope.message
             except Exception as e:
                 self.log.error("\n\n!!!!!\nError unpacking cmd envelope {}\nCmd:\n{}\n!!!!\n".format(e, cmd))
+                return
 
         # Route command to subroutine based on callback
         self.routes[cmd.callback](cmd)
@@ -70,22 +72,27 @@ class Router:
         reply = self.sm.state.call_input_handler(cmd.envelope.message, cmd.callback, envelope=cmd.envelope)
 
         if not reply:
-            self.log.warning("No reply returned for request msg of type {}".format(type(cmd.envelope.message)))
+            self.log.debug("Warning -- No reply returned for request msg of type {}".format(type(cmd.envelope.message)))
             return
 
         assert isinstance(reply, MessageBase), "whatever is returned from @input_request function must be a " \
                                                "MessageBase subclass instance"
 
-        self.log.debug("Sending reply message {}".format(reply))
+        self.log.spam("Sending reply message {}".format(reply))
         self.sm.composer.send_reply(message=reply, request_envelope=cmd.envelope)
 
     def _lookup_failed(self, cmd: ReactorCommand):
+        # TODO set a max num retries, and propogate failure to SM handler if num retries is exceeded
 
         kwargs = cmd.kwargs
+        self.log.warning("Lookup failed for reactor command with vk {}. Retrying.".format(kwargs['vk']))
+
         del(kwargs['callback'])
         new_cmd = ReactorCommand.create_cmd(envelope=cmd.envelope, **kwargs)
-
-        import time
-        time.sleep(0.5)
-
         self.sm.composer.interface.send_cmd(new_cmd)
+
+    def _socket_connected(self, cmd: ReactorCommand):
+        self.log.important3("Socket Connected! Router got cmd {}".format(cmd))  # TODO remove this (debug line)
+        kwargs = cmd.kwargs
+        del(kwargs['callback'])
+        self.sm.state.call_status_input_handler(input_type=StateInput.SOCKET_CONNECTED, **kwargs)

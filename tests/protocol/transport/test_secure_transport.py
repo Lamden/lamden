@@ -6,13 +6,13 @@ from cilantro.protocol.reactor.executor import *
 import unittest
 import time
 
-from cilantro.constants.testnet import masternodes, delegates
+from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
 
 W = wallet
-sk1, vk1 = masternodes[0]['sk'], masternodes[0]['vk']
-sk2, vk2 = delegates[0]['sk'], delegates[0]['vk']
-sk3, vk3 = delegates[1]['sk'], delegates[1]['vk']
-sk4, vk4 = delegates[2]['sk'], delegates[2]['vk']
+sk1, vk1 = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
+sk2, vk2 = TESTNET_DELEGATES[0]['sk'], TESTNET_DELEGATES[0]['vk']
+sk3, vk3 = TESTNET_DELEGATES[1]['sk'], TESTNET_DELEGATES[1]['vk']
+sk4, vk4 = TESTNET_DELEGATES[2]['sk'], TESTNET_DELEGATES[2]['vk']
 
 # sk_sketch, vk_sketch = W.new()
 sk_sketch, vk_sketch = "968017ed7931bca83dba52d80c1d759b794bad71d5679fbbafd5d4f16d4dc396", \

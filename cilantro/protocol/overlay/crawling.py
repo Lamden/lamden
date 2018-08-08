@@ -21,7 +21,7 @@ class SpiderCrawl(object):
             peers: A list of :class:`~cilantro.protocol.overlay.node.Node` instances that
                    provide the entry point for the network
             ksize: The value for k based on the paper
-            alpha: The value for alpha based on the paper
+            alpha: The value for ALPHA based on the paper
         """
         self.protocol = protocol
         self.ksize = ksize

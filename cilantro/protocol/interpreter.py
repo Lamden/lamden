@@ -4,13 +4,14 @@ from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.logger import get_logger
 from collections import deque
 from seneca.seneca_internal.storage.mysql_spits_executer import Executer
-from cilantro.constants.protocol import max_queue_delay_ms
+from cilantro.constants.protocol import MAX_QUEUE_DELAY_MS
 from cilantro.storage.tables import DB_NAME
 from cilantro.storage.db import DB
 from typing import List
 from heapq import heappush, heappop
 import time
 import asyncio
+from cilantro.constants.db import DB_SETTINGS
 
 
 class SenecaInterpreter:
@@ -20,8 +21,8 @@ class SenecaInterpreter:
         self.queue = deque()
         self.heap = []
 
-        self.max_delay_ms = max_queue_delay_ms
-        self.ex = Executer('root', '', DB_NAME, '127.0.0.1')
+        self.max_delay_ms = MAX_QUEUE_DELAY_MS
+        self.ex = Executer(**DB_SETTINGS)
 
         # Grab a reference to contracts table from DB singleton
         with DB() as db:

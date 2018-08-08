@@ -1,5 +1,1 @@
-max_request_size = 100000
-max_queue_size = 2
-queue_auto_flush_time = 1.0
-ntp_url = "pool.ntp.org"
-faucet_percentage = 0.001
+BLOCK_SIZE = 100  # Number of transactions in each block ... TODO move this to 'protocol' constants
