@@ -120,8 +120,9 @@ class DelegateBootState(DelegateBaseState):
     def socket_connected(self, socket_type: int, vk: str, url: str):
         assert vk in VKBook.get_all(), "Connected to vk {} that is not present in VKBook.get_all()!!!".format(vk)
         key = vk + '_' + str(socket_type)
-        self.log.important3("Delegate connected to vk {} with sock type {}".format(vk, socket_type))  # TODO remove this (debug line)
+        self.log.spam("Delegate connected to vk {} with sock type {}".format(vk, socket_type))  # TODO remove this (debug line)
 
+        # TODO make less ugly pls
         if vk in VKBook.get_delegates():
             self.connected_delegates.add(key)
         elif vk in VKBook.get_masternodes():
@@ -138,8 +139,7 @@ class DelegateBootState(DelegateBaseState):
         self.log.notice("Delegate connecting to other nodes ..")
         # Sub to other TESTNET_DELEGATES
         for delegate_vk in VKBook.get_delegates():
-            # Do not sub to ourself
-            if delegate_vk == self.parent.verifying_key:
+            if delegate_vk == self.parent.verifying_key:  # Do not sub to yourself
                 continue
 
             self.parent.composer.add_sub(vk=delegate_vk, filter=DELEGATE_DELEGATE_FILTER)
