@@ -14,7 +14,7 @@ settings.read(db_conf_path)
 if os.getenv('HOST_IP'):
     DB_SETTINGS = {'username': 'root',
                    'password': '',
-                   'db': '',
+                   'db': 'cilantro_dev',
                    'host': '127.0.0.1'
                    }
 # Otherwise, this code is being run locally for unit test or on CI. In this case, we use our DB config file
