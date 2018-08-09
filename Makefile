@@ -20,5 +20,22 @@ test:
 install:
 	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir
 
+clean-logs:
+	./scripts/clean-logs.sh
+
+clean-temps:
+	./scripts/clean-temp-files.sh
+
+clean: clean-logs clean-temps
+
+pump:
+	python3 ./tests/vmnet/test_pump.py
+
+dump:
+	python3 ./tests/vmnet/test_dump.py
+
+kill-docker:
+	docker kill $(docker ps -q)
+
 help:
 	echo '\n\n'; cat Makefile; echo '\n\n'
