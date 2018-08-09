@@ -3,7 +3,7 @@ import unittest
 
 
 def publisher():
-    SLEEP_TIME = 1
+    SLEEP_TIME = 0.05
     MAX_TIME = 10
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.utils.test import MPComposer
@@ -39,8 +39,7 @@ def publisher():
 
 
 def subscriber():
-    SLEEP_TIME = 1
-    MAX_TIME = 20
+    MAX_TIME = 90
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.utils.test import MPComposer
     from cilantro.constants.testnet import TESTNET_DELEGATES

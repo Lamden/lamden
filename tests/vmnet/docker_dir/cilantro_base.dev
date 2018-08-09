@@ -6,9 +6,10 @@ COPY . /app
 WORKDIR /app
 
 ENV MARIADB_MAJOR 10.0
+ENV DOCKERIZE_VERSION v0.6.1
 
 RUN apt-get update \
-    && apt-get install -y software-properties-common \
+    && apt-get install -y software-properties-common wget \
     && apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 \
     && add-apt-repository 'deb [arch=amd64,i386,ppc64el] http://mirrors.accretive-networks.net/mariadb/repo/10.3/ubuntu bionic main' \
     && apt-get remove -y software-properties-common \
@@ -20,6 +21,10 @@ RUN apt-get update \
     } | debconf-set-selections \
     && apt-get install -y libmysqlclient-dev mariadb-server mariadb-plugin-rocksdb \
     && rm -rf /var/lib/apt/lists/*
+
+RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
 # Install Python requirements
 RUN apt-get update \
@@ -43,11 +48,11 @@ RUN apt-get update \
     && apt autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
-CMD mysqld \
-    --skip-grant-tables \
-    --skip-innodb \
-    --collation-server latin1_bin \
-    --default-storage-engine ROCKSDB \
-    --default-tmp-storage-engine MyISAM \
-    --binlog_format ROW \
-    --user=mysql
+CMD sh /app/scripts/start_mysql.sh & mysqld \
+        --skip-grant-tables \
+        --skip-innodb \
+        --collation-server latin1_bin \
+        --default-storage-engine ROCKSDB \
+        --default-tmp-storage-engine MyISAM \
+        --binlog_format ROW \
+        --user=root
