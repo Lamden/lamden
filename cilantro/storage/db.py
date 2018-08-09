@@ -10,7 +10,7 @@ Classes include:
 -DB (which inherits from DBSingletonMeta)
 """
 
-from seneca.seneca_internal.storage.mysql_executer import Executer
+from seneca.engine.storage.mysql_executer import Executer
 
 from multiprocessing import Lock
 import os

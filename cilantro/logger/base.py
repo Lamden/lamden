@@ -3,7 +3,7 @@ Functions:
 -get_logger"""
 
 import logging, coloredlogs
-import os, sys
+import os, sys, requests
 VALID_LVLS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 _LOG_LVL = os.getenv('LOG_LEVEL', None)
 if _LOG_LVL:
@@ -11,6 +11,10 @@ if _LOG_LVL:
     _LOG_LVL = getattr(logging, _LOG_LVL)
 else:
     _LOG_LVL = 1
+
+req_log = logging.getLogger('urllib3')
+req_log.setLevel(logging.WARNING)
+req_log.propagate = True
 
 def get_main_log_path():
     from cilantro import logger

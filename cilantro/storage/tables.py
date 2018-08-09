@@ -1,6 +1,6 @@
 from cilantro.logger import get_logger
 import json, os, uuid
-from seneca.seneca_internal.storage.mysql_executer import Executer
+from seneca.engine.storage.mysql_executer import Executer
 from cilantro.constants.db import DB_SETTINGS
 
 

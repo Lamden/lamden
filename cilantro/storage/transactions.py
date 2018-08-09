@@ -1,5 +1,5 @@
 from cilantro.logger import get_logger
-import seneca.seneca_internal.storage.easy_db as t
+import seneca.engine.storage.easy_db as t
 from cilantro.storage.tables import create_table
 
 

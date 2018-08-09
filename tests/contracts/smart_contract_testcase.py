@@ -1,8 +1,8 @@
 from unittest import TestCase
 from unittest import mock
 from cilantro.storage.tables import build_tables
-from seneca.smart_contract_user_libs import stdlib as std
-from seneca.seneca_internal.storage.mysql_executer import Executer
+from seneca.libs import types as std
+from seneca.engine.storage.mysql_executer import Executer
 from cilantro.storage.contracts import get_contract_exports
 from cilantro.constants.db import DB_SETTINGS
 

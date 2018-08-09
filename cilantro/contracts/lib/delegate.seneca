@@ -2,7 +2,7 @@ import seneca.storage.tabular as st
 import seneca.storage.kv as kv
 import seneca.crypto as crypto
 import seneca.runtime as rt
-import seneca.stdlib as std
+import seneca.types as std
 from seneca.modulelib import export, make_exports
 import currency
 import delegate_stake_amount
@@ -15,7 +15,7 @@ kv_policy = kv.create_kv('constants')
 
 @export
 def stake():
-    sender_id = rt.global_run_data.author
+    sender_id = rt.sender
     stake_amount = delegate_stake_amount.get()
     currency.lock_coins(stake_amount, STAKE_DURATION)
     t_delegatees.insert([
@@ -24,13 +24,13 @@ def stake():
 
 @export
 def unstake():
-    sender_id = rt.global_run_data.author
+    sender_id = rt.sender
     currency.unlock_coins()
 
 @export
 def is_delegate(wallet_id=None):
     if not wallet_id:
-        wallet_id = rt.global_run_data.author
+        wallet_id = rt.sender
     return t_delegatees.select().where(t_delegatees.delegate_id == wallet_id).run()
 
 @export
