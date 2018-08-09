@@ -24,6 +24,7 @@ from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.protocol.states.decorators import input, enter_from_any, input_socket_connected, timeout_after
 from cilantro.protocol.states.state import State
 from cilantro.protocol.interpreter import SenecaInterpreter
+from cilantro.utils.hasher import Hasher
 
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
@@ -66,7 +67,7 @@ class DelegateBaseState(State):
     @input(OrderingContainer)
     def handle_tx(self, tx: OrderingContainer):
         self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
-        self.parent.pending_txs.append(tx)
+        self.parent.pending_txs.append(Hasher.hash(tx.transaction), tx)
         self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
 
     @input(MerkleSignature)

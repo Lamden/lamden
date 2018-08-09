@@ -54,7 +54,6 @@ class TestLinkedHashTable(TestCase):
         self.assertEquals(lht._last, None)
         self.assertEquals(lht._first, None)
 
-
     def test_pop_empty(self):
         lht = LinkedHashTable()
         self.assertEquals(None, lht.pop())
