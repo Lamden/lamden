@@ -98,4 +98,8 @@ def refund_transfer(hash, participant_id):
     # TODO
     # rt.clove.refund_transfer(sender_id, participant_id, hash);
 
+@export
+def is_reserved(wallet_id, amount, hash):
+    return currency.is_locked(wallet_id, amount, '{}$_shared_'.format(hash))
+
 exports = make_exports()

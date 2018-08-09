@@ -96,8 +96,8 @@ class TestCurrency(SmartContractTestCase):
         with self.assertRaises(Exception) as context:
             falcon.transfer_coins_from('DAVIS', 1)
 
-    @contract(('DAVIS', 'currency'))
-    def test_approve_transfer_not_enough_approval(self, davis):
+    @contract(('DAVIS', 'currency'), ('FALCON', 'currency'))
+    def test_approve_transfer_not_enough_approval(self, davis, falcon):
         davis.approve('FALCON', 123)
         with self.assertRaises(Exception) as context:
             falcon.transfer_coins_from('DAVIS', 10000)
@@ -132,7 +132,6 @@ class TestCurrency(SmartContractTestCase):
     def test_lock_coins_not_enough(self, davis):
         with self.assertRaises(Exception) as context:
             davis.lock_coins(3696950, std.timedelta(seconds=1))
-
 
     @contract(('DAVIS','currency'))
     def test_unlock_coins(self, davis):
