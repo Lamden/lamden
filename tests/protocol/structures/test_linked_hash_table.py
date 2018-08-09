@@ -36,6 +36,25 @@ class TestLinkedHashTable(TestCase):
         self.assertEquals(lht._last.previous.value, v3)
         self.assertEquals(len(lht), 4)
 
+    def test_clear(self):
+        lht = LinkedHashTable()
+
+        k, v = 'some key', b'a thicc value'
+        k2, v2 = 'another key', b'a thiccer value'
+        k3, v3 = 'anotha one!', b'a thiccest value'
+        k4, v4 = 'yet another one', b'a thiccerest value'
+        lht.append(k, v)
+        lht.append(k2, v2)
+        lht.append(k3, v3)
+        lht.append(k4, v4)
+
+        lht.clear()
+
+        self.assertEquals(len(lht), 0)
+        self.assertEquals(lht._last, None)
+        self.assertEquals(lht._first, None)
+
+
     def test_pop_empty(self):
         lht = LinkedHashTable()
         self.assertEquals(None, lht.pop())
