@@ -1,8 +1,8 @@
 
 
 class Node:
-    def __init__(self, next, previous, value):
-        self.next, self.previous, self.value = next, previous, value
+    def __init__(self, next, previous, key, value):
+        self.next, self.previous, self.key, self.value = next, previous, key, value
 
 
 class LinkedHashTable:
@@ -17,65 +17,75 @@ class LinkedHashTable:
     """
 
     def __init__(self):
-        self.first, self.last = None, None
-        self.table = dict()
+        self._first, self._last = None, None
+        self._table = dict()
 
     def __contains__(self, item):
-        return item in self.table
+        return item in self._table
+
+    def __len__(self):
+        return len(self._table)
+
+    def clear(self):
+        self._table.clear()
+        self._first, self._last = None, None
 
     def append(self, key, value):
-        assert key not in self.table, "Attempted to insert key {} that is already in hash table keys {}".format(key, self.table)
+        assert key not in self._table, "Attempted to insert key {} that is already in hash table keys {}".format(key, self._table)
 
-        node = Node(next=None, previous=self.last, value=value)
-        self.table[key] = node
+        node = Node(next=None, previous=self._last, key=key, value=value)
+        self._table[key] = node
 
-        if self.last:
-            self.last.next = node
-        self.last = node
+        if self._last:
+            self._last.next = node
+        self._last = node
 
-        if not self.first:
-            self.first = node
+        if not self._first:
+            self._first = node
 
     def popleft(self):
-        if not self.first:
+        if not self._first:
             return None
 
-        item = self.first
+        item = self._first
         if item.next:
             item.next.previous = None
-        self.first = item.next
+        self._first = item.next
 
+        self._table.pop(item.key)
         return item.value
 
     def pop(self):
-        if not self.last:
+        if not self._last:
             return None
 
-        item = self.last
+        item = self._last
         if item.previous:
             item.previous.next = None
-        self.last = item.previous
+        self._last = item.previous
 
+        self._table.pop(item.key)
         return item.value
 
     def remove(self, key):
-        if key not in self.table:
+        if key not in self._table:
             return
 
-        item = self.table.pop(key)
+        item = self._table[key]
 
         if item.previous:
             item.previous.next = item.next
         else:
-            assert item is self.first, "Key {} maps to item with no previous that is not self.first! item={}".format(key, item)
+            assert item is self._first, "Key {} maps to item with no previous that is not self.first! item={}".format(key, item)
             return self.popleft()
 
         if item.next:
             item.next.previous = item.previous
         else:
-            assert item is self.last, "Key {} maps to item with no next that is not self.last! item={}".format(key, item)
+            assert item is self._last, "Key {} maps to item with no next that is not self.last! item={}".format(key, item)
             return self.pop()
 
+        self._table.pop(key)
         return item.value
 
 

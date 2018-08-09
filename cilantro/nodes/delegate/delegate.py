@@ -36,6 +36,7 @@ from cilantro.constants.zmq_filters import DELEGATE_DELEGATE_FILTER, WITNESS_DEL
 from cilantro.constants.delegate import BOOT_TIMEOUT, BOOT_REQUIRED_MASTERNODES, BOOT_REQUIRED_WITNESSES
 
 from collections import deque
+from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
 import time
 
 DelegateBootState = "DelegateBootState"
@@ -52,7 +53,7 @@ class Delegate(NodeBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Properties shared among all states (ie via self.parent.some_prop)
-        self.pending_sigs, self.pending_txs = deque(), deque()
+        self.pending_sigs, self.pending_txs = deque(), LinkedHashTable()
         self.interpreter = SenecaInterpreter()
         self.current_hash = BlockStorageDriver.get_latest_block_hash()
 

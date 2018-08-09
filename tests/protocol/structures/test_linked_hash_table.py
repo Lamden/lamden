@@ -11,8 +11,9 @@ class TestLinkedHashTable(TestCase):
         lht.append(k, v)
 
         self.assertTrue(k in lht)
-        self.assertEquals(lht.last.value, v)
-        self.assertEquals(lht.first.value, v)
+        self.assertEquals(lht._last.value, v)
+        self.assertEquals(lht._first.value, v)
+        self.assertEquals(len(lht), 1)
 
     def test_nonempty_append(self):
         lht = LinkedHashTable()
@@ -29,10 +30,11 @@ class TestLinkedHashTable(TestCase):
         for _k in (k, k2, k3):
             self.assertTrue(_k in lht)
 
-        self.assertEquals(lht.first.value, v)
-        self.assertEquals(lht.last.value, v4)
-        self.assertEquals(lht.first.next.value, v2)
-        self.assertEquals(lht.last.previous.value, v3)
+        self.assertEquals(lht._first.value, v)
+        self.assertEquals(lht._last.value, v4)
+        self.assertEquals(lht._first.next.value, v2)
+        self.assertEquals(lht._last.previous.value, v3)
+        self.assertEquals(len(lht), 4)
 
     def test_pop_empty(self):
         lht = LinkedHashTable()
@@ -57,8 +59,9 @@ class TestLinkedHashTable(TestCase):
         item = lht.pop()
 
         self.assertEquals(item, v4)
-        self.assertEquals(lht.last.value, v3)
-        self.assertEquals(lht.first.value, v)
+        self.assertEquals(lht._last.value, v3)
+        self.assertEquals(lht._first.value, v)
+        self.assertEquals(len(lht), 3)
 
     def test_popleft(self):
         lht = LinkedHashTable()
@@ -75,8 +78,9 @@ class TestLinkedHashTable(TestCase):
         item = lht.popleft()
 
         self.assertEquals(item, v)
-        self.assertEquals(lht.first.value, v2)
-        self.assertEquals(lht.last.value, v4)
+        self.assertEquals(lht._first.value, v2)
+        self.assertEquals(lht._last.value, v4)
+        self.assertEquals(len(lht), 3)
 
     def test_remove_leftmost(self):
         lht = LinkedHashTable()
@@ -93,8 +97,9 @@ class TestLinkedHashTable(TestCase):
         item = lht.remove(k)
 
         self.assertEquals(item, v)
-        self.assertEquals(lht.first.value, v2)
-        self.assertEquals(lht.last.value, v4)
+        self.assertEquals(lht._first.value, v2)
+        self.assertEquals(lht._last.value, v4)
+        self.assertEquals(len(lht), 3)
 
     def test_remove_rightmost(self):
         lht = LinkedHashTable()
@@ -111,8 +116,9 @@ class TestLinkedHashTable(TestCase):
         item = lht.remove(k4)
 
         self.assertEquals(item, v4)
-        self.assertEquals(lht.last.value, v3)
-        self.assertEquals(lht.first.value, v)
+        self.assertEquals(lht._last.value, v3)
+        self.assertEquals(lht._first.value, v)
+        self.assertEquals(len(lht), 3)
 
     def test_remove_inner(self):
         lht = LinkedHashTable()
@@ -130,10 +136,11 @@ class TestLinkedHashTable(TestCase):
 
         self.assertEquals(item, v2)
 
-        self.assertEquals(lht.last.value, v4)
-        self.assertEquals(lht.first.value, v)
+        self.assertEquals(lht._last.value, v4)
+        self.assertEquals(lht._first.value, v)
 
-        self.assertEquals(lht.first.next.value, v3)
-        self.assertEquals(lht.last.previous.value, v3)
-        self.assertEquals(lht.last.previous.previous.value, v)
+        self.assertEquals(lht._first.next.value, v3)
+        self.assertEquals(lht._last.previous.value, v3)
+        self.assertEquals(lht._last.previous.previous.value, v)
+        self.assertEquals(len(lht), 3)
 
