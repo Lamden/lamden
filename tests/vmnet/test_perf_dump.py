@@ -8,97 +8,107 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def run_mn():
+    TEST_DUR = 90
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes import NodeFactory
     from cilantro.utils.test.mp_testables import MPMasternode
     from cilantro.constants.testnet import TESTNET_MASTERNODES
-    import os
+    import os, time
     import logging
 
+    log = get_logger("MasternodeRunner")
+    log.important3("Test starting")
+
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(logging.DEBUG)
-    # overwrite_logger_level(21)
+    # overwrite_logger_level(logging.DEBUG)
+    overwrite_logger_level(21)
 
     sk = TESTNET_MASTERNODES[0]['sk']
     mn = MPMasternode(signing_key=sk)
 
+    log.important3("Sleeping for {} seconds before tearing down".format(TEST_DUR))
+    time.sleep(TEST_DUR)
+    mn.teardown()
+
 
 def run_witness(slot_num):
+    TEST_DUR = 90
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes import NodeFactory
     from cilantro.constants.testnet import TESTNET_WITNESSES
     from cilantro.utils.test.mp_testables import MPWitness
-    import os
+    import os, time
     import logging
 
+    log = get_logger("WitnessRunner")
+    log.important3("Test starting")
+
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(15)
+    overwrite_logger_level(21)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
     witness = MPWitness(signing_key=w_info['sk'])
 
+    log.important3("Sleeping for {} seconds before tearing down".format(TEST_DUR))
+    time.sleep(TEST_DUR)
+    witness.teardown()
+
 
 def run_delegate(slot_num):
+    TEST_DUR = 90
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes import NodeFactory
     from cilantro.constants.testnet import TESTNET_DELEGATES
     from cilantro.utils.test.mp_testables import MPDelegate
-    import os
+    import os, time
     import logging
 
+    log = get_logger("DelegateRunner")
+    log.important3("Test starting")
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(21)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
-    witness = MPDelegate(signing_key=d_info['sk'])
+    delegate = MPDelegate(signing_key=d_info['sk'])
+
+    log.important3("Sleeping for {} seconds before tearing down".format(TEST_DUR))
+    time.sleep(TEST_DUR)
+    delegate.teardown()
 
 
-def pump_it(lamd, use_poisson):
+def dump_it(volume, delay=30):
     from cilantro.utils.test import God
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.constants.nodes import BLOCK_SIZE
     import logging
 
     overwrite_logger_level(logging.WARNING)
-
-    log = get_logger("Mr. Pump")
-    log.important("Starting the pump at an average rate of {} tx/second, with block size of {}".format(lamd, BLOCK_SIZE))
-
-    God.pump_it(rate=lamd, use_poisson=use_poisson)
+    God.dump_it(volume=volume, delay=delay)
 
 
-class TestPump(BaseNetworkTestCase):
+class TestPerformanceDump(BaseNetworkTestCase):
 
-    TRANSACTION_RATE = 10  # Avg transaction/second. lambda parameter in Poission distribution
-    MODEL_AS_POISSON = True
+    VOLUME = 200  # Number of transactions to dump
 
-    testname = 'test_performance_dump'
+    testname = 'dump_it'
     setuptime = 5
     compose_file = 'cilantro-bootstrap.yml'
 
     @vmnet_test(run_webui=True)
-    def test_bootstrap(self):
-
-        cilantro.constants.nodes.BLOCK_SIZE = 3
+    def test_dump(self):
 
         # Bootstrap master
-        self.execute_python('masternode', run_mn, async=True)
+        self.execute_python('masternode', run_mn, async=True, profiling='c')
 
-        # Bootstrap TESTNET_WITNESSES
+        # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):
-            self.execute_python(nodename, wrap_func(run_witness, i), async=True)
+            self.execute_python(nodename, wrap_func(run_witness, i), async=True, profiling='c')
 
-        # Bootstrap TESTNET_DELEGATES
+        # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
-            self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
+            self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling='c')
 
-        # PUMP IT
-        time.sleep(10)  # Wait for masternode to come online
-        self.execute_python('mgmt', wrap_func(pump_it, self.TRANSACTION_RATE, self.MODEL_AS_POISSON), async=True)
+        self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME, delay=20), async=True, profiling='c')
 
         input("Enter any key to terminate")
 

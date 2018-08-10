@@ -57,25 +57,25 @@ def run_delegate(slot_num):
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'], reset_db=True)
 
 
-def dump_it(volume):
+def dump_it(volume, delay=30):
     from cilantro.utils.test import God
     from cilantro.logger import get_logger, overwrite_logger_level
     import logging
 
     overwrite_logger_level(logging.WARNING)
-    God.dump_it(volume=volume)
+    God.dump_it(volume=volume, delay=delay)
 
 
-class TestPump(BaseNetworkTestCase):
+class TestDump(BaseNetworkTestCase):
 
-    VOLUME = 2048  # Number of transactions to dump
+    VOLUME = 1000  # Number of transactions to dump
 
     testname = 'dump_it'
     setuptime = 5
     compose_file = 'cilantro-bootstrap.yml'
 
     @vmnet_test(run_webui=True)
-    def test_pump(self):
+    def test_dump(self):
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)
@@ -88,8 +88,7 @@ class TestPump(BaseNetworkTestCase):
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
-        time.sleep(10)
-        self.execute_python('mgmt', wrap_func(dump_it, self.VOLUME), async=True)
+        self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME, delay=16), async=True)
 
         input("Enter any key to terminate")
 

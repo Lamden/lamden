@@ -23,9 +23,9 @@ def _build_node(signing_key, name='', node_cls=None) -> tuple:
     ip = os.getenv('HOST_IP', '127.0.0.1')
 
     node = NodeFactory._build_node(loop=loop, signing_key=signing_key, ip=ip, node_cls=node_cls, name=name)
-    node.start()
+    node.start(start_loop=False)
     
-    tasks = [node.tasks + node.composer.interface._recv_messages()]
+    tasks = node.tasks + [node.composer.interface._recv_messages()]
 
     return node, loop, tasks
 
