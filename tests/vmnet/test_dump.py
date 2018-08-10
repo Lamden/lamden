@@ -88,8 +88,7 @@ class TestPump(BaseNetworkTestCase):
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
 
-        # DUMP IT BOYS
-        time.sleep(15)
+        time.sleep(10)
         self.execute_python('mgmt', wrap_func(dump_it, self.VOLUME), async=True)
 
         input("Enter any key to terminate")
