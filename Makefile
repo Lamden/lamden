@@ -16,7 +16,7 @@ stop: stop-db
 
 restart-db: stop-db start-db
 
-test:
+test: restart-db
 	./tests/run_tests.py --integration 0
 
 install:
