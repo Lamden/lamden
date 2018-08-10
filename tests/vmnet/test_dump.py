@@ -18,7 +18,7 @@ def run_mn():
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
     sk = TESTNET_MASTERNODES[0]['sk']
@@ -33,7 +33,7 @@ def run_witness(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(15)
+    # overwrite_logger_level(15)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -49,7 +49,7 @@ def run_delegate(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -66,9 +66,9 @@ def dump_it(volume):
     God.dump_it(volume=volume)
 
 
-class TestPump(BaseNetworkTestCase):
+class TestDump(BaseNetworkTestCase):
 
-    VOLUME = 2048  # Number of transactions to dump
+    VOLUME = 1024  # Number of transactions to dump
 
     testname = 'dump_it'
     setuptime = 5
@@ -78,18 +78,17 @@ class TestPump(BaseNetworkTestCase):
     def test_pump(self):
 
         # Bootstrap master
-        self.execute_python('masternode', run_mn, async=True)
+        self.execute_python('masternode', run_mn, async=True, profiling='c')
 
         # Bootstrap TESTNET_WITNESSES
         for i, nodename in enumerate(self.groups['witness']):
-            self.execute_python(nodename, wrap_func(run_witness, i), async=True)
+            self.execute_python(nodename, wrap_func(run_witness, i), async=True, profiling='c')
 
         # Bootstrap TESTNET_DELEGATES
         for i, nodename in enumerate(self.groups['delegate']):
-            self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
+            self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling='c')
 
-        # DUMP IT BOYS
-        time.sleep(15)
+        time.sleep(60)
         self.execute_python('mgmt', wrap_func(dump_it, self.VOLUME), async=True)
 
         input("Enter any key to terminate")

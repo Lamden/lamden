@@ -21,7 +21,7 @@ from cilantro.nodes import NodeBase
 from cilantro.storage.db import VKBook
 from cilantro.storage.blocks import BlockStorageDriver
 
-from cilantro.protocol.states.decorators import input, enter_from_any, input_socket_connected, timeout_after
+from cilantro.protocol.states.decorators import input, enter_from_any, input_socket_connected, timeout_after, input_connection_dropped
 from cilantro.protocol.states.state import State
 from cilantro.protocol.interpreter import SenecaInterpreter
 
@@ -60,6 +60,11 @@ class Delegate(NodeBase):
 class DelegateBaseState(State):
 
     def reset_attrs(self):
+        pass
+
+    @input_connection_dropped
+    def conn_dropped(self, vk, ip):
+        self.log.important2('({}:{}) has dropped'.format(vk, ip))
         pass
 
     @input(OrderingContainer)
