@@ -7,6 +7,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.storage.db import VKBook
 from cilantro.constants.delegate import CATCHUP_TIMEOUT, BLOCK_REQ_TIMEOUT, TX_REQ_TIMEOUT
+from cilantro.utils.hasher import Hasher
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
@@ -88,6 +89,7 @@ class DelegateCatchupState(DelegateBaseState):
         # Interpret the transactions
         for contract_blob in reply.transactions:
             self.parent.interpreter.interpret(ContractTransaction.from_bytes(contract_blob), async=False)
+            self.parent.pending_txs.remove(Hasher.hash(contract_blob))
         self.parent.interpret.flush(update_state=True)
 
         # Finally, store this new block and update our current block hash. Reset self.current_block, update next block
