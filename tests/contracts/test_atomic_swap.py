@@ -2,8 +2,8 @@ import unittest
 from unittest import TestCase
 from cilantro.logger import get_logger
 from tests.contracts.smart_contract_testcase import *
-import seneca.smart_contract_user_libs.stdlib as std
-from seneca.execute_sc import execute_contract
+import seneca.libs.types as std
+from seneca.execute import execute_contract
 
 log = get_logger("Testelection")
 
@@ -18,7 +18,7 @@ class TestAtomicSwap(SmartContractTestCase):
         tau_address = atomic_swap.find_address('tau')
         hash = std.sha256('some_secret')
         davis.initiate_transfer('CARL', hash, 696947, tau_address)
-        self.assertTrue(currency.is_locked('DAVIS', 696947, '{}$_shared_'.format(hash)))
+        self.assertTrue(davis.is_reserved('DAVIS', 696947, hash))
 
     @contract(
         'atomic_swap',
@@ -43,7 +43,7 @@ class TestAtomicSwap(SmartContractTestCase):
         hash = std.sha256('some_secret')
         davis.initiate_transfer('CARL', hash, 696947, tau_address)
         carl.redeem_transfer('some_secret')
-        self.assertFalse(currency.is_locked('DAVIS', 696947, '{}$_shared_'.format(hash)))
+        self.assertFalse(carl.is_reserved('DAVIS', 696947, hash))
 
     @contract(
         'atomic_swap',
@@ -56,7 +56,7 @@ class TestAtomicSwap(SmartContractTestCase):
         hash = std.sha256('some_secret')
         davis.initiate_transfer('CARL', hash, 696947, eth_address)
         carl.redeem_transfer('some_secret')
-        self.assertTrue(currency.is_locked('CARL', 696947, '{}$_shared_'.format(hash)))
+        self.assertTrue(carl.is_reserved('CARL', 696947, hash))
 
     @contract(
         'atomic_swap',
@@ -81,7 +81,7 @@ class TestAtomicSwap(SmartContractTestCase):
         hash = std.sha256('some_secret')
         davis.initiate_transfer('CARL', hash, 696947, tau_address)
         davis.refund_transfer(hash, 'CARL')
-        self.assertFalse(currency.is_locked('DAVIS', 696947, '{}$_shared_'.format(hash)))
+        self.assertFalse(carl.is_reserved('DAVIS', 696947, hash))
 
     @contract(
         'atomic_swap',
@@ -94,7 +94,7 @@ class TestAtomicSwap(SmartContractTestCase):
         hash = std.sha256('some_secret')
         davis.initiate_transfer('CARL', hash, 696947, eth_address)
         davis.refund_transfer(hash, 'CARL')
-        self.assertTrue(currency.is_locked('CARL', 696947, '{}$_shared_'.format(hash)))
+        self.assertTrue(davis.is_reserved('CARL', 696947, hash))
 
 
 if __name__ == '__main__':

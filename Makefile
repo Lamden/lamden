@@ -7,18 +7,37 @@ start-db: test_db_conf.ini
 start: start-db
 
 console-db:
-	./scripts/connect_mysql_client.sh
+	./scripts/connect-mysql-client.sh
 
 stop-db:
-	docker kill `docker ps --format "table {{.Names}}" --filter "ancestor=cilantro-db"| tail -n +2` || true; sleep 2
+	docker kill `docker ps --format "table {{.Names}}" --filter "ancestor=lamden/cilantro-db"| tail -n +2` || true; sleep 2
 
 stop: stop-db
 
-test:
+restart-db: stop-db start-db
+
+test: restart-db
 	./tests/run_tests.py --integration 0
 
 install:
 	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir
+
+clean-logs:
+	./scripts/clean-logs.sh
+
+clean-temps:
+	./scripts/clean-temp-files.sh
+
+clean: clean-logs clean-temps
+
+pump:
+	python3 ./tests/vmnet/test_pump.py
+
+dump:
+	python3 ./tests/vmnet/test_dump.py
+
+kill-docker:
+	docker kill $(docker ps -q)
 
 help:
 	echo '\n\n'; cat Makefile; echo '\n\n'

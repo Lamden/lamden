@@ -3,8 +3,8 @@ from unittest import TestCase
 from unittest.mock import patch, Mock
 from cilantro.logger import get_logger
 from tests.contracts.smart_contract_testcase import *
-from seneca.execute_sc import execute_contract
-import seneca.smart_contract_user_libs.stdlib as std
+from seneca.execute import execute_contract
+import seneca.libs.types as std
 import time, datetime
 
 log = get_logger("TestElection")

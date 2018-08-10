@@ -92,7 +92,7 @@ class Router:
         self.sm.composer.interface.send_cmd(new_cmd)
 
     def _socket_connected(self, cmd: ReactorCommand):
-        self.log.important3("Socket Connected! Router got cmd {}".format(cmd))  # TODO remove this (debug line)
+        # self.log.spam("Socket Connected! Router got cmd {}".format(cmd))  # TODO remove this (debug line)
         kwargs = cmd.kwargs
         del(kwargs['callback'])
         self.sm.state.call_status_input_handler(input_type=StateInput.SOCKET_CONNECTED, **kwargs)

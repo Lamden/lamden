@@ -1,8 +1,8 @@
 from cilantro.logger import get_logger
 from cilantro.utils import Hasher
 from cilantro.storage.tables import create_table
-import seneca.seneca_internal.storage.easy_db as t
-from seneca.execute_sc import execute_contract, get_read_only_contract_obj as get_exports
+import seneca.engine.storage.easy_db as t
+from seneca.execute import execute_contract, get_read_only_contract_obj as get_exports
 import datetime
 import os
 
@@ -74,7 +74,7 @@ def _ex_contract(executor, contract_table, contract_id: str='', user_id=GENESIS_
             author, exec_dt, code_str = _lookup_contract_info(executor, contract_table, contract_id)
 
         global_run_data = {'caller_user_id': user_id, 'execution_datetime': exec_dt, 'caller_contract_id': contract_id}
-        this_contract_run_data = {'author': author, 'execution_datetime': exec_dt, 'contract_id': contract_id}
+        this_contract_run_data = {'author': user_id, 'execution_datetime': exec_dt, 'contract_id': contract_id}
 
         _ex_func = get_exports if get_contract else execute_contract
         result = _ex_func(global_run_data, this_contract_run_data, code_str,
