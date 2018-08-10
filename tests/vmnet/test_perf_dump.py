@@ -1,4 +1,5 @@
 from vmnet.test.base import *
+import cilantro.constants.nodes
 import unittest, time
 
 def wrap_func(fn, *args, **kwargs):
@@ -9,6 +10,7 @@ def wrap_func(fn, *args, **kwargs):
 def run_mn():
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.nodes import NodeFactory
+    from cilantro.utils.test.mp_testables import MPMasternode
     from cilantro.constants.testnet import TESTNET_MASTERNODES
     import os
     import logging
@@ -17,15 +19,15 @@ def run_mn():
     overwrite_logger_level(logging.DEBUG)
     # overwrite_logger_level(21)
 
-    ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
     sk = TESTNET_MASTERNODES[0]['sk']
-    NodeFactory.run_masternode(ip=ip, signing_key=sk, reset_db=True)
+    mn = MPMasternode(signing_key=sk)
 
 
 def run_witness(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.nodes import NodeFactory
     from cilantro.constants.testnet import TESTNET_WITNESSES
+    from cilantro.utils.test.mp_testables import MPWitness
     import os
     import logging
 
@@ -35,13 +37,14 @@ def run_witness(slot_num):
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
-    NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'], reset_db=True)
+    witness = MPWitness(signing_key=w_info['sk'])
 
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.nodes import NodeFactory
     from cilantro.constants.testnet import TESTNET_DELEGATES
+    from cilantro.utils.test.mp_testables import MPDelegate
     import os
     import logging
 
@@ -51,24 +54,26 @@ def run_delegate(slot_num):
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
-    NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'], reset_db=True)
+    witness = MPDelegate(signing_key=d_info['sk'])
 
 
 def pump_it(lamd, use_poisson):
     from cilantro.utils.test import God
     from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro.constants.nodes import BLOCK_SIZE
     import logging
 
     overwrite_logger_level(logging.WARNING)
 
     log = get_logger("Mr. Pump")
-    log.important("Starting the pump")
+    log.important("Starting the pump at an average rate of {} tx/second, with block size of {}".format(lamd, BLOCK_SIZE))
 
     God.pump_it(rate=lamd, use_poisson=use_poisson)
 
+
 class TestPump(BaseNetworkTestCase):
 
-    TRANSACTION_RATE = 50  # Avg transaction/second. lambda parameter in Poission distribution
+    TRANSACTION_RATE = 10  # Avg transaction/second. lambda parameter in Poission distribution
     MODEL_AS_POISSON = True
 
     testname = 'test_performance_dump'
@@ -77,6 +82,8 @@ class TestPump(BaseNetworkTestCase):
 
     @vmnet_test(run_webui=True)
     def test_bootstrap(self):
+
+        cilantro.constants.nodes.BLOCK_SIZE = 3
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True)

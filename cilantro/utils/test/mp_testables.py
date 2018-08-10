@@ -5,12 +5,9 @@ from cilantro.protocol.transport import Composer
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.nodes import Masternode, Witness, Delegate, NodeFactory
+from cilantro.storage.db import DB
 import asyncio
 import os
-
-
-async def _start_node(node):
-    node.start()
 
 
 def _build_node(signing_key, name='', node_cls=None) -> tuple:
@@ -20,10 +17,15 @@ def _build_node(signing_key, name='', node_cls=None) -> tuple:
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(loop)
 
+    with DB(should_reset=True) as db:
+        pass
+
     ip = os.getenv('HOST_IP', '127.0.0.1')
 
     node = NodeFactory._build_node(loop=loop, signing_key=signing_key, ip=ip, node_cls=node_cls, name=name)
-    tasks = [_start_node(node)]
+    node.start()
+    
+    tasks = [node.tasks + node.composer.interface._recv_messages()]
 
     return node, loop, tasks
 
@@ -84,29 +86,13 @@ class MPMasternode(MPTesterBase):
     @classmethod
     def build_obj(cls, signing_key, name='Masternode') -> tuple:
         return _build_node(signing_key=signing_key, name=name, node_cls=Masternode)
-    # @classmethod
-    # def build_obj(cls, sk, name='Masternode') -> tuple:
-    #     loop = asyncio.get_event_loop()
-    #     asyncio.set_event_loop(loop)
-    #
-    #     ip = os.getenv('HOST_IP', '127.0.0.1')
-    #
-    #     log = get_logger("MPMasternode Builder")
-    #     log.info("Creating Masternode with IP {}, signing key {}..., and name {}".format(ip, sk[:8], name))
-    #
-    #     mn = NodeFactory._build_node(loop=loop, signing_key=sk, ip=ip, node_cls=Masternode, name=name)
-    #     mn.start(start_loop=False)
-    #
-    #     tasks = mn.tasks + [mn.composer.interface._recv_messages()]
-    #
-    #     return mn, loop, tasks
 
 
 @mp_testable(Witness)
 class MPWitness(MPTesterBase):
     @classmethod
-    def build_obj(cls, signing_key, name='Delegate') -> tuple:
-        return _build_node(signing_key=signing_key, name=name, node_cls=Delegate)
+    def build_obj(cls, signing_key, name='Witness') -> tuple:
+        return _build_node(signing_key=signing_key, name=name, node_cls=Witness)
 
 
 @mp_testable(Delegate)
@@ -115,16 +101,3 @@ class MPDelegate(MPTesterBase):
     def build_obj(cls, signing_key, name='Delegate') -> tuple:
         return _build_node(signing_key=signing_key, name=name, node_cls=Delegate)
 
-# @mp_testable(Delegate)
-# class MPDelegate(MPTesterBase):
-#     @classmethod
-#     def build_obj(cls, sk, url, name='Delegate') -> tuple:
-#         loop = asyncio.get_event_loop()
-#         asyncio.set_event_loop(loop)
-#
-#         witness = NodeFactory._build_node(loop=loop, signing_key=sk, ip=url, node_cls=Delegate, name=name)
-#         witness.start(start_loop=False)
-#
-#         tasks = witness.tasks + [witness.composer.interface._recv_messages()]
-#
-#         return witness, loop, tasks

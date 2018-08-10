@@ -77,10 +77,10 @@ class ReactorInterface:
         self.log.important2("ReactorInterface signaling teardown to daemon")
         self.socket.send(KILL_SIG)
 
-        self.log.debug("Closing pair socket")
+        self.log.info("Closing pair socket")
         self.socket.close()
 
-        self.log.debug("Closing event loop")
+        self.log.info("Closing event loop")
         self.loop.call_soon_threadsafe(self.loop.stop)
 
     def _start_daemon(self, url, sk, name):
@@ -114,15 +114,15 @@ class ReactorInterface:
         invoking .start_reactor on the ReactorInterface object.
         """
         try:
-            self.log.debug("~~ Reactor listening to messages from ReactorDaemon ~~")
+            self.log.info("~~ Reactor listening to messages from ReactorDaemon ~~")
             while True:
-                self.log.debug("Waiting for callback...")
+                self.log.spam("Waiting for callback...")
                 msg = await self.socket.recv()
                 callback = ReactorCommand.from_bytes(msg)
-                self.log.debug("Got callback cmd <{}>".format(callback))
+                self.log.spam("Got callback cmd <{}>".format(callback))
                 self.router.route_callback(callback)
         except asyncio.CancelledError:
-            self.log.debug("_recv_messages future canceled!")
+            self.log.warning("ReactorInterface _recv_messages future canceled!")
 
     def notify_resume(self):
         self.log.info("NOTIFY READY")
