@@ -3,7 +3,7 @@ from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.logger import get_logger
 from collections import deque
-from seneca.seneca_internal.storage.mysql_spits_executer import Executer
+from seneca.engine.storage.mysql_spits_executer import Executer
 from cilantro.constants.protocol import MAX_QUEUE_DELAY_MS
 from cilantro.storage.tables import DB_NAME
 from cilantro.storage.db import DB

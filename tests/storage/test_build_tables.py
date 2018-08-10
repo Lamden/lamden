@@ -1,5 +1,5 @@
 from unittest import TestCase
-from seneca.seneca_internal.storage.mysql_executer import Executer
+from seneca.engine.storage.mysql_executer import Executer
 from cilantro.storage.blocks import *
 from cilantro.storage.contracts import *
 from cilantro.storage.contracts import _read_contract_files, _contract_id_for_filename, _lookup_contract_info

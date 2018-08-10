@@ -7,14 +7,16 @@ start-db: test_db_conf.ini
 start: start-db
 
 console-db:
-	./scripts/connect_mysql_client.sh
+	./scripts/connect-mysql-client.sh
 
 stop-db:
-	docker kill `docker ps --format "table {{.Names}}" --filter "ancestor=cilantro-db"| tail -n +2` || true; sleep 2
+	docker kill `docker ps --format "table {{.Names}}" --filter "ancestor=lamden/cilantro-db"| tail -n +2` || true; sleep 2
 
 stop: stop-db
 
-test:
+restart-db: stop-db start-db
+
+test: restart-db
 	./tests/run_tests.py --integration 0
 
 install:
