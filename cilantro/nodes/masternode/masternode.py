@@ -10,7 +10,7 @@ from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
 from cilantro.constants.masternode import STAGING_TIMEOUT
 from cilantro.nodes import NodeBase
 
-from cilantro.protocol.states.decorators import input_request, input, enter_from_any, exit_to_any, enter_from, input_timeout, timeout_after
+from cilantro.protocol.states.decorators import input_request, input, enter_from_any, exit_to_any, enter_from, input_timeout, timeout_after, input_connection_dropped
 from cilantro.protocol.states.state import State, StateInput
 
 from cilantro.messages.transaction.container import TransactionContainer
@@ -56,6 +56,10 @@ class Masternode(NodeBase):
 
 
 class MNBaseState(State):
+    @input_connection_dropped
+    def conn_dropped(self, vk, ip):
+        self.log.warning('({}:{}) has dropped'.format(vk, ip))
+        pass
 
     @input(TransactionBase)
     def handle_tx(self, tx: TransactionBase):
