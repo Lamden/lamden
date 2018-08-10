@@ -20,7 +20,8 @@ class Router:
                        StateInput.REQUEST: self._route_request,
                        StateInput.TIMEOUT: self._route,
                        StateInput.LOOKUP_FAILED: self._lookup_failed,
-                       StateInput.SOCKET_CONNECTED: self._socket_connected}
+                       StateInput.SOCKET_CONNECTED: self._socket_connected,
+                       StateInput.CONN_DROPPED: self._connection_dropped}
 
     def route_callback(self, cmd: ReactorCommand):
         """
@@ -96,3 +97,8 @@ class Router:
         kwargs = cmd.kwargs
         del(kwargs['callback'])
         self.sm.state.call_status_input_handler(input_type=StateInput.SOCKET_CONNECTED, **kwargs)
+
+    def _connection_dropped(self, cmd: ReactorCommand):
+        kwargs = cmd.kwargs
+        del(kwargs['callback'])
+        self.sm.state.call_status_input_handler(input_type=StateInput.CONN_DROPPED, **kwargs)

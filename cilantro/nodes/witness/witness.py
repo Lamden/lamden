@@ -2,7 +2,7 @@ from cilantro.nodes import NodeBase
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, WITNESS_DELEGATE_FILTER
 
 from cilantro.protocol.states.state import State
-from cilantro.protocol.states.decorators import input, enter_from_any
+from cilantro.protocol.states.decorators import input, enter_from_any, input_connection_dropped
 
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.envelope.envelope import Envelope
@@ -25,6 +25,11 @@ class Witness(NodeBase):
 
 
 class WitnessBaseState(State):
+    @input_connection_dropped
+    def conn_dropped(self, vk, ip):
+        self.log.important2('({}:{}) has dropped'.format(vk, ip))
+        pass
+
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase, envelope: Envelope):
         self.log.error("Witness not configured to recv tx: {} with env {}".format(tx, envelope))
