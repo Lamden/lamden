@@ -55,6 +55,7 @@ class DelegateInterpretState(DelegateBaseState):
 
     @input(OrderingContainer)
     def handle_tx(self, tx: OrderingContainer):
+        assert len(self.parent.pending_txs) == 0, "Interpret state should only be handling txs if pending_txs is empty!"
         self.interpret_tx(tx=tx)
 
     def interpret_tx(self, tx: OrderingContainer):
