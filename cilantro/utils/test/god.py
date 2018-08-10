@@ -134,7 +134,6 @@ class God:
             wait = rvs_func()
 
             cls.log.spam("Sending next transaction in {} seconds".format(wait))
-            cls.log.important2("Sending next transaction in {} seconds".format(wait))
             time.sleep(wait)
 
             tx = gen_func()
