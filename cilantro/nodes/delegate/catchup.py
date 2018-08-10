@@ -42,7 +42,6 @@ class DelegateCatchupState(DelegateBaseState):
         self.log.fatal("current block hash: {}\ncurrent_block: {}\npending blocks: {}\n"
                        .format(self.parent.current_hash, self.current_block, self.new_blocks))
         self.log.fatal("System exiting.")
-        # TODO should we tear things down? Or will signal handlers take care of that upon calling exit()? Need to investigate
         exit()
 
     @enter_from_any

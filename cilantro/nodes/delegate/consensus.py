@@ -40,7 +40,7 @@ class DelegateConsensusState(DelegateBaseState):
 
     @timeout_after(CONSENSUS_TIMEOUT)
     def timeout(self):
-        self.log.fatal("Consensus state exceeded timeout duration of {} seconds! Transitioning to CatchUpState")
+        self.log.fatal("Consensus state exceeded timeout duration of {} seconds! Transitioning to CatchUpState".format(CONSENSUS_TIMEOUT))
         self.parent.transition(DelegateCatchupState)
 
     @enter_from_any
