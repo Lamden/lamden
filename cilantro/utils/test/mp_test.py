@@ -245,10 +245,10 @@ class MPTesterProcess:
         """
         self.log.info("Tearing down TesterProcess bound to URL {}".format(self.url))
 
-        self.log.debug("Closing pair socket")
+        self.log.debug("Closing pair socket to MPTest process")
         self.socket.close()
 
-        self.log.debug("Stopping tasks")
+        self.log.debug("Stopping MPTester object tasks")
         self.gathered_tasks.cancel()
 
     def _assertions(self):
@@ -332,8 +332,8 @@ class MPTesterBase:
         else:
             self.url = _gen_url(self.name)
 
-            self.test_proc = LProcess(target=_run_test_proc, args=(self.name, self.url, build_fn,
-                                                                        self.config_fn, self.assert_fn,))
+            self.test_proc = LProcess(target=_run_test_proc, name=self.name, args=(self.name, self.url, build_fn,
+                                                                                   self.config_fn, self.assert_fn,))
             self.test_proc.start()
 
     def wait_for_test_object(self):
@@ -341,16 +341,6 @@ class MPTesterBase:
         msg = self.socket.recv_pyobj()
         assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
         self.log.info("GOT RDY SIG: {}".format(msg))
-
-    # @staticmethod
-    # def __run_test_proc(func_nm, name, url, build_fn, config_fn, assert_fn):
-    #     import os
-    #     gen_profile = os.getenv('LAMDEN_PERF_PROFILE', '1')
-    #     if gen_profile != '0':
-    #         f = get_filename(name)
-    #         cProfile.runctx('func_nm(name, url, build_fn, config_fn, assert_fn)', globals(), locals(), f)
-    #     else:
-    #         func_nm(name, url, build_fn, config_fn, assert_fn)
 
     @classmethod
     def build_obj(cls, *args, **kwargs) -> tuple:

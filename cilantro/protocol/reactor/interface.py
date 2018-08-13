@@ -27,7 +27,7 @@ class ReactorInterface:
         self.socket.bind(self.url)
 
         # Start reactor sub process
-        self.proc = LProcess(target=self._start_daemon, args=(self.url, signing_key, name))
+        self.proc = LProcess(target=self._start_daemon, name='NetworkDaemon', args=(self.url, signing_key, name))
         # self.proc.daemon = True
         self.proc.start()
 
