@@ -1,7 +1,7 @@
 from cilantro.logger import get_logger
 from multiprocessing import Process
-import traceback, os, cProfile
-
+import traceback, os, cProfile, pkg_resources, json
+from vprof import runner
 
 DELIM_LEN = 60
 OUTER_DELIM = '!'
@@ -32,7 +32,7 @@ class LProcess(Process):
             # Profiling with vprof to create visualizations as specified in vprof_options
             elif len(vprof_options) > 0:
                 vprof_options = ''.join(vprof_options)
-                run_stats = runner.run_profilers(super().run, [], {}, vprof_options)
+                run_stats = runner.run_profilers((super().run, [], {}), vprof_options)
                 with open('{}.json'.format(profpath), 'w+') as f:
                     run_stats['version'] = pkg_resources.get_distribution("vprof").version
                     f.write(json.dumps(run_stats))
