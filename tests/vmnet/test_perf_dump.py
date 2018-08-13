@@ -8,7 +8,7 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def run_mn():
-    TEST_DUR = 120
+    TEST_DUR = 170
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.utils.test.god import countdown
     from cilantro.utils.test.mp_testables import MPMasternode
@@ -22,6 +22,7 @@ def run_mn():
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(logging.DEBUG)
     overwrite_logger_level(21)
+    # overwrite_logger_level(10)
 
     sk = TESTNET_MASTERNODES[0]['sk']
     mn = MPMasternode(signing_key=sk)
@@ -35,7 +36,7 @@ def run_mn():
 
 
 def run_witness(slot_num):
-    TEST_DUR = 120
+    TEST_DUR = 170
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.utils.test.god import countdown
     from cilantro.constants.testnet import TESTNET_WITNESSES
@@ -48,6 +49,7 @@ def run_witness(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(21)
+    # overwrite_logger_level(10)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -63,7 +65,7 @@ def run_witness(slot_num):
 
 
 def run_delegate(slot_num):
-    TEST_DUR = 120
+    TEST_DUR = 170
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.utils.test.god import countdown
     from cilantro.constants.testnet import TESTNET_DELEGATES
@@ -75,6 +77,8 @@ def run_delegate(slot_num):
     log.important3("Test starting")
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(21)
+    # overwrite_logger_level(10)
+
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -106,7 +110,7 @@ class TestPerformanceDump(BaseNetworkTestCase):
     setuptime = 5
     compose_file = 'cilantro-bootstrap.yml'
 
-    PROFILE_TYPE = 'p'
+    PROFILE_TYPE = 'm'
 
     @vmnet_test(run_webui=True)
     def test_dump(self):

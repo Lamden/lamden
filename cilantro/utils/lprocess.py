@@ -15,8 +15,9 @@ class LProcess(Process):
         profiling = os.getenv('PROFILING', '')
         vprof_options = set('cmph').intersection(set(profiling))
         testname = os.getenv('TEST_NAME', 'sample_test')
+        testid = os.getenv('TEST_ID', '')
         nodename = os.getenv('HOSTNAME', 'node')
-        profdir = os.path.join('profiles', testname, nodename)
+        profdir = os.path.join('profiles', testname, testid, nodename)
         profpath = os.path.join(profdir, self.name)
         try:
             # First create this directory for profiling
