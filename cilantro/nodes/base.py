@@ -43,6 +43,14 @@ class NodeBase(StateMachine):
         if start_loop:
             self.composer.interface.start_reactor(tasks=self.tasks)
 
+    def teardown(self):
+        """
+        Tears down the application stack.
+        """
+        self.log.important("Tearing down application")
+        self.composer.interface.teardown()
+        # exit()
+
     @property
     def composer(self):
         return self._composer

@@ -76,7 +76,7 @@ class MNNewBlockState(MNBaseState):
     def _try_next_block(self):
         if len(self.pending_blocks) > 0:
             self.current_block = self.pending_blocks.popleft()
-            self.log.debug("Entering fetch state for block contender {}".format(self.current_block))
+            self.log.spam("Entering fetch state for block contender {}".format(self.current_block))
             self.parent.transition(MNFetchNewBlockState, block_contender=self.current_block)
         else:
             self.log.warning("No more pending blocks. Transitioning back to RunState /w success=False")

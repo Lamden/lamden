@@ -30,6 +30,19 @@ RAGHU = ('b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668',
 ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL, RAGHU]
 
 
+def countdown(duration: int, msg: str, log=None, status_update_freq=5):
+    _l = log or get_logger("Countdown")
+    if duration > status_update_freq:
+        num_sleeps = duration // status_update_freq
+
+        for _ in range(num_sleeps):
+            time.sleep(status_update_freq)
+            duration -= status_update_freq
+            _l.important3(msg.format(duration))
+
+    if duration > 0:
+        time.sleep(duration)
+
 class God:
 
     _DEFAULT_SK = '6b73b06b9faee35527f034fb1809e4fc94915a29568a708fd972fcfba20d8555'
@@ -111,7 +124,8 @@ class God:
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
         """
-        This func blocks.
+        Pump random transactions from random users to Masternode's REST endpoint at an average rate of 'rate'
+        transactions per second. This func blocks.
         :param rate:
         :param gen_func:
         :return:
@@ -142,9 +156,9 @@ class God:
             cls.send_tx(tx)
 
     @classmethod
-    def dump_it(cls, volume: int, gen_func=None):
+    def dump_it(cls, volume: int, delay: int=0, gen_func=None):
         """
-        Dump it fast
+        Dump it fast. Send
         :param volume:
         :return:
         """
@@ -153,15 +167,32 @@ class God:
         if not gen_func:
             gen_func = cls._default_gen_func()
 
-        cls.log.info("Generating {} transactions to dump...".format(volume))
+        gen_start_time = time.time()
+        cls.log.important2("Generating {} transactions to dump...".format(volume))
         txs = [gen_func() for _ in range(volume)]
-        cls.log.info("Done generating transactions.")
+        cls.log.important2("Done generating transactions.")
+
+        delay -= int(time.time() - gen_start_time)
+        countdown(delay, "Waiting for an additional {} seconds before dumping...", cls.log, status_update_freq=8)
+        # if delay > DUMP_UPDATE_PERIOD:
+        #     cls.log.important2("Waiting for an additional {} seconds before dumping...".format(delay))
+        #     num_sleeps = delay % DUMP_UPDATE_PERIOD
+        #     remainder = delay - num_sleeps * DUMP_UPDATE_PERIOD
+        #     if remainder < 0:
+        #         remainder = 0
+        #
+        #     for _ in range(num_sleeps):
+        #         time.sleep(DUMP_UPDATE_PERIOD)
+        #         delay -= DUMP_UPDATE_PERIOD
+        #         cls.log.important2("Dumping in {} seconds...".format(delay))
+
+        # time.sleep(delay)
 
         start = time.time()
-        cls.log.important("Dumping {} transactions...".format(len(txs)))
+        cls.log.important2("Dumping {} transactions...".format(len(txs)))
         for tx in txs:
             cls.send_tx(tx)
-        cls.log.important("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
+        cls.log.important2("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
 
     @classmethod
     def random_std_tx(cls):

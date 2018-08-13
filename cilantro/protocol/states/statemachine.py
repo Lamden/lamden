@@ -129,6 +129,6 @@ class StateMachine:
         does not have this property, then this message is printed
         """
         if hasattr(self, 'log'):
-            self.log.debug(msg)
+            self.log.debugv(msg)
         else:
             print(msg)

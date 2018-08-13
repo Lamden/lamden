@@ -62,7 +62,9 @@ def create_table(ex, table, should_drop):
 
 def _assassinate_sleeping_db_cursors(ex):
     """
-    Find sleeping DB cursors. Slay them one by one, without mercy or remorse. Leave no survivors.
+    Find sleeping DB cursors.
+    Slay them one by one, without mercy or remorse.
+    Leave no survivors.
     """
     for _ in range(NUM_SNIPES):
         try:

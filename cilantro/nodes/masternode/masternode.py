@@ -174,7 +174,7 @@ class MNStagingState(MNBaseState):
 
     @timeout_after(STAGING_TIMEOUT)
     def timeout(self):
-        self.log.fatal("Masternode failed to exit StagingState before timeout of {}!!! Exiting system.")
+        self.log.fatal("Masternode failed to exit StagingState before timeout of {}! Exiting system.".format(STAGING_TIMEOUT))
         self.log.fatal("Ready delegates: {}".format(self.ready_delegates))
         exit()
 
