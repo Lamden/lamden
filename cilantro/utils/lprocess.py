@@ -36,6 +36,8 @@ class LProcess(Process):
                 with open('{}.json'.format(profpath), 'w+') as f:
                     run_stats['version'] = pkg_resources.get_distribution("vprof").version
                     f.write(json.dumps(run_stats))
+            else:
+                super().run()
         except Exception as e:
             err_msg = '\n' + OUTER_DELIM * DELIM_LEN
             err_msg += '\nException caught on ' + self.name + ':\n' + str(e)
