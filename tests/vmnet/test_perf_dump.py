@@ -8,8 +8,9 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def run_mn():
-    TEST_DUR = 90
+    TEST_DUR = 120
     from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro.utils.test.god import countdown
     from cilantro.utils.test.mp_testables import MPMasternode
     from cilantro.constants.testnet import TESTNET_MASTERNODES
     import os, time
@@ -26,13 +27,17 @@ def run_mn():
     mn = MPMasternode(signing_key=sk)
 
     log.important3("Sleeping for {} seconds before tearing down".format(TEST_DUR))
+    countdown(TEST_DUR, "Tearing down in {} seconds...", log, status_update_freq=10)
     time.sleep(TEST_DUR)
     mn.teardown()
 
+    log.success("EXPERIMENT OVER!!!")
+
 
 def run_witness(slot_num):
-    TEST_DUR = 90
+    TEST_DUR = 120
     from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro.utils.test.god import countdown
     from cilantro.constants.testnet import TESTNET_WITNESSES
     from cilantro.utils.test.mp_testables import MPWitness
     import os, time
@@ -50,13 +55,17 @@ def run_witness(slot_num):
     witness = MPWitness(signing_key=w_info['sk'])
 
     log.important3("Sleeping for {} seconds before tearing down".format(TEST_DUR))
-    time.sleep(TEST_DUR)
+    countdown(TEST_DUR, "Tearing down in {} seconds...", log, status_update_freq=10)
+    # time.sleep(TEST_DUR)
     witness.teardown()
+
+    log.success("EXPERIMENT OVER!!!")
 
 
 def run_delegate(slot_num):
-    TEST_DUR = 90
+    TEST_DUR = 120
     from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro.utils.test.god import countdown
     from cilantro.constants.testnet import TESTNET_DELEGATES
     from cilantro.utils.test.mp_testables import MPDelegate
     import os, time
@@ -73,8 +82,11 @@ def run_delegate(slot_num):
     delegate = MPDelegate(signing_key=d_info['sk'])
 
     log.important3("Sleeping for {} seconds before tearing down".format(TEST_DUR))
-    time.sleep(TEST_DUR)
+    countdown(TEST_DUR, "Tearing down in {} seconds...", log, status_update_freq=10)
+    # time.sleep(TEST_DUR)
     delegate.teardown()
+
+    log.success("EXPERIMENT OVER!!!")
 
 
 def dump_it(volume, delay=30):
@@ -88,27 +100,29 @@ def dump_it(volume, delay=30):
 
 class TestPerformanceDump(BaseNetworkTestCase):
 
-    VOLUME = 200  # Number of transactions to dump
+    VOLUME = 1000  # Number of transactions to dump
 
-    testname = 'dump_it'
+    testname = 'test_performance_dump'
     setuptime = 5
     compose_file = 'cilantro-bootstrap.yml'
+
+    PROFILE_TYPE = 'p'
 
     @vmnet_test(run_webui=True)
     def test_dump(self):
 
         # Bootstrap master
-        self.execute_python('masternode', run_mn, async=True, profiling='c')
+        self.execute_python('masternode', run_mn, async=True, profiling=self.PROFILE_TYPE)
 
         # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):
-            self.execute_python(nodename, wrap_func(run_witness, i), async=True, profiling='c')
+            self.execute_python(nodename, wrap_func(run_witness, i), async=True, profiling=self.PROFILE_TYPE)
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
-            self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling='c')
+            self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
 
-        self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME, delay=20), async=True, profiling='c')
+        self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME, delay=20), async=True, profiling=self.PROFILE_TYPE)
 
         input("Enter any key to terminate")
 

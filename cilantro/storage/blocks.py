@@ -151,10 +151,11 @@ class BlockStorageDriver:
         # Compute block hash
         block_hash = cls.compute_block_hash(block_data)
 
-        # Encode block data for serialization and finally persist the data
+        # Encode block data for serialization
         log.info("Attempting to persist new block with hash {}".format(block_hash))
         block_data = cls._encode_block(block_data)
 
+        # Finally, persist the data
         with DB() as db:
             # Store block
             res = db.tables.blocks.insert([{'hash': block_hash, **block_data}]).run(db.ex)
@@ -412,6 +413,8 @@ class BlockStorageDriver:
                                                  .format(block_data['masternode_vk']))
         if not wallet.verify(block_data['masternode_vk'], bytes.fromhex(block_data['merkle_root']), block_data['masternode_signature']):
             raise InvalidBlockSignatureException("Could not validate Masternode's signature on block data")
+
+        # TODO validate this is signed by a real Masternode. This is tricky for reasons mentioned above
 
     @classmethod
     def compute_block_hash(cls, block_data: dict) -> str:

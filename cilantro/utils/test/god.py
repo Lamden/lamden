@@ -30,8 +30,18 @@ RAGHU = ('b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668',
 ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL, RAGHU]
 
 
-DUMP_UPDATE_PERIOD = 5
+def countdown(duration: int, msg: str, log=None, status_update_freq=5):
+    _l = log or get_logger("Countdown")
+    if duration > status_update_freq:
+        num_sleeps = duration // status_update_freq
 
+        for _ in range(num_sleeps):
+            time.sleep(status_update_freq)
+            duration -= status_update_freq
+            _l.important3(msg.format(duration))
+
+    if duration > 0:
+        time.sleep(duration)
 
 class God:
 
@@ -114,7 +124,8 @@ class God:
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
         """
-        This func blocks.
+        Pump random transactions from random users to Masternode's REST endpoint at an average rate of 'rate'
+        transactions per second. This func blocks.
         :param rate:
         :param gen_func:
         :return:
@@ -147,7 +158,7 @@ class God:
     @classmethod
     def dump_it(cls, volume: int, delay: int=0, gen_func=None):
         """
-        Dump it fast
+        Dump it fast. Send
         :param volume:
         :return:
         """
@@ -162,19 +173,20 @@ class God:
         cls.log.important2("Done generating transactions.")
 
         delay -= int(time.time() - gen_start_time)
-        if delay > DUMP_UPDATE_PERIOD:
-            cls.log.important2("Waiting for an additional {} seconds before dumping...".format(delay))
-            num_sleeps = delay % DUMP_UPDATE_PERIOD
-            remainder = delay - num_sleeps * DUMP_UPDATE_PERIOD
-            if remainder < 0:
-                remainder = 0
+        countdown(delay, "Waiting for an additional {} seconds before dumping...", cls.log, status_update_freq=8)
+        # if delay > DUMP_UPDATE_PERIOD:
+        #     cls.log.important2("Waiting for an additional {} seconds before dumping...".format(delay))
+        #     num_sleeps = delay % DUMP_UPDATE_PERIOD
+        #     remainder = delay - num_sleeps * DUMP_UPDATE_PERIOD
+        #     if remainder < 0:
+        #         remainder = 0
+        #
+        #     for _ in range(num_sleeps):
+        #         time.sleep(DUMP_UPDATE_PERIOD)
+        #         delay -= DUMP_UPDATE_PERIOD
+        #         cls.log.important2("Dumping in {} seconds...".format(delay))
 
-            for _ in range(num_sleeps):
-                time.sleep(DUMP_UPDATE_PERIOD)
-                delay -= DUMP_UPDATE_PERIOD
-                cls.log.important2("Dumping in {} seconds...".format(delay))
-
-        time.sleep(delay)
+        # time.sleep(delay)
 
         start = time.time()
         cls.log.important2("Dumping {} transactions...".format(len(txs)))
