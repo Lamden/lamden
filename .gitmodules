@@ -1,6 +1,0 @@
-[submodule "seneca"]
-	path = seneca
-	url = https://github.com/Lamden/seneca
-[submodule "vmnet"]
-	path = vmnet
-	url = https://github.com/Lamden/vmnet
