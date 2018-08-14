@@ -1,11 +1,10 @@
-import asyncio
+import asyncio, time, cilantro
 import zmq.asyncio
-from vmnet.test.base import *
-import time
+from vmnet.testcase import BaseNetworkTestCase
 from cilantro.logger import get_logger
 from .mp_test import SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC, SIG_START
 from os.path import dirname
-import cilantro
+from functools import wraps
 
 # URL of orchestration node. TODO -- set this to env vars
 URL = "tcp://127.0.0.1:5020"
@@ -25,6 +24,40 @@ def signal_handler(sig, frame):
     print("Docker containers be ded")
     sys.exit(0)
 
+def vmnet_test(*args, **kwargs):
+    def _vmnet_test(func):
+        os.environ['RUN_WEBUI'] = '1' if run_webui else '0'
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            self = args[0]
+            assert isinstance(self, BaseNetworkTestCase), \
+                "@vmnet_test can only be used to decorate BaseNetworkTestCase subclass methods (got self={}, but expected " \
+                "a BaseNetworkTestCase subclass instance)".format(self)
+
+            klass = self.__class__
+            parent_klass = self.__class__.__bases__[0]  # In Cilantro, this should be MPTestCase
+
+            # Horrible hack to get MPTestCase to work
+            if parent_klass is not BaseNetworkTestCase:
+                klass = parent_klass
+
+            # klass.start_docker(run_webui=run_webui)
+
+            klass.vmnet_test_active = True
+            res = func(*args, **kwargs)
+            klass.vmnet_test_active = False
+            # klass._reset_containers()
+
+            return res
+
+        return wrapper
+
+    if len(args) == 1 and callable(args[0]):
+        run_webui = False
+        return _vmnet_test(args[0])
+    else:
+        run_webui = kwargs.get('run_webui', False)
+        return _vmnet_test
 
 class MPTestCase(BaseNetworkTestCase):
     compose_file = '{}/cilantro/tests/vmnet/compose_files/cilantro-nodes.yml'.format(CILANTRO_PATH)
@@ -162,5 +195,6 @@ class MPTestCase(BaseNetworkTestCase):
 
 
 # TODO find him a better home
-if MPTestCase.vmnet_test_active:
-    signal.signal(signal.SIGINT, signal_handler)
+if hasattr(MPTestCase, 'vmnet_test_active'):
+    if MPTestCase.vmnet_test_active:
+        signal.signal(signal.SIGINT, signal_handler)
