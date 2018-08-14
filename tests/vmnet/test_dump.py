@@ -72,7 +72,7 @@ class TestDump(BaseNetworkTestCase):
     def test_dump(self):
 
         # Bootstrap master
-        self.execute_python('masternode', run_mn)
+        self.execute_python('masternode', run_mn, profiling='c')
 
         # Bootstrap TESTNET_WITNESSES
         for i, nodename in enumerate(self.groups['witness']):
@@ -80,7 +80,7 @@ class TestDump(BaseNetworkTestCase):
 
         # Bootstrap TESTNET_DELEGATES
         for i, nodename in enumerate(self.groups['delegate']):
-            self.execute_python(nodename, wrap_func(run_delegate, i))
+            self.execute_python(nodename, wrap_func(run_delegate, i), profiling='c')
 
         self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME, delay=16))
 
