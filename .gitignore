@@ -35,6 +35,9 @@ seneca
 **/profiles/**
 **/tmp_exec_code*.py
 
+# Config files
+db_conf.ini
+
 # Docker
 docker-compose.yml
 
