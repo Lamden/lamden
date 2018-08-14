@@ -29,10 +29,11 @@ cilantro/protocol/networks/data
 certs
 tests/vmnet/docker-compose.yml
 .DS_Store
+certs
 state.tmp
+seneca
 **/profiles/**
 **/tmp_exec_code*.py
-db_conf.ini
 
 # Docker
 docker-compose.yml
