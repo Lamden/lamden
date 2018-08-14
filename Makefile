@@ -19,7 +19,12 @@ restart-db: stop-db start-db
 test: restart-db
 	./tests/run_tests.py --integration 0
 
-install:
+update-submodules:
+	git submodule update --init --remote; \
+	cd vmnet && python3 setup.py install && cd ..; \
+	cd seneca && python3 setup.py install && cd ..; \
+
+install: update-submodules
 	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir
 
 clean-logs:

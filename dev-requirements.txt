@@ -3,6 +3,4 @@ ipython==6.4.0
 coverage
 numpy
 scipy
-sphinx
-sphinx-autodoc-typehints
 vprof

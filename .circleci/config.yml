@@ -21,6 +21,11 @@ jobs:
              pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
 
       - run:
+          name: Install Git Submodules
+          command: |
+              make update-submodules
+
+      - run:
           name: Install Mysql Client
           command: |
              sudo apt install -y mysql-client
