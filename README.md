@@ -55,13 +55,30 @@ in a separate virtual environment to not affect other Python builds on your mach
 
 Currently supported on Linux and macOS. Some dependencies are not available on Windows but Windows support will come in the near future.
 
-    git clone https://github.com/Lamden/cilantro.git
+    git clone --recurse-submodules https://github.com/Lamden/cilantro.git
     cd/to/cilantro
-    pip3 install -r requirements.txt
+    make install
     mkdir logs
 
 Now you're all set to get up and running! Poke around and have some fun. 
 
+To run unit tests, navigate to Cilantro's main directory (the one with the Makefile), and execute:
+     
+     make test
+
+## Simulating Networks with Docker Compose
+
+To simulate a large and near-instant influx of transactions, run
+     
+     make dump
+     
+ Parameters such as number of nodes, the total number of transactions to flood into the system, and others, can be configured in tests/vmnet/test_dump.py
+ 
+ To simulate a steady stream of transactions, where arrival times are exponentially distributed to roughly model a real world scenario, run
+     
+     make pump
+     
+Like with test_dump, you can configure parameters including incoming transactions per second in tests/vmnet/test_pump.py
 
 ## Testnet
 https://testnet.lamden.io/
