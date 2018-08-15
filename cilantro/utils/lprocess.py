@@ -34,7 +34,9 @@ class LProcess(Process):
             # Profiling with vprof to create visualizations as specified in vprof_options
             elif len(vprof_options) > 0:
                 vprof_options = ''.join(vprof_options)
+                log.important3("STARTING PROFILER WITH OPTIONS {}".format(vprof_options))
                 run_stats = runner.run_profilers((super().run, [], {}), vprof_options)
+                log.important3("FINISHED PROFILER FOR PROC NAME {}".format(self.name))
                 with open('{}.json'.format(profpath), 'w+') as f:
                     run_stats['version'] = pkg_resources.get_distribution("vprof").version
                     f.write(json.dumps(run_stats))
