@@ -28,7 +28,7 @@ log = get_logger(__name__)
 class Ironhouse:
     def __init__(self, sk=None, auth_validate=None, wipe_certs=False, auth_port=None, keyname=None, *args, **kwargs):
         self.auth_port = auth_port or os.getenv('AUTH_PORT', 4523)
-        self.keyname = keyname or os.getenv('HOSTNAME', 'ironhouse')
+        self.keyname = keyname or os.getenv('HOST_NAME', 'ironhouse')
         self.authorized_nodes = {}
         self.base_dir = 'certs/{}'.format(self.keyname)
         self.keys_dir = os.path.join(self.base_dir, 'certificates')

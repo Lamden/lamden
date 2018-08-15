@@ -1,6 +1,6 @@
-from vmnet.test.base import *
-import cilantro.constants.nodes
-import unittest, time
+from vmnet.testcase import BaseNetworkTestCase
+import unittest, time, random, vmnet
+from cilantro.utils.test.mp_test_case import vmnet_test
 
 
 def wrap_func(fn, *args, **kwargs):
@@ -107,11 +107,7 @@ def dump_it(volume, delay=20):
 class TestPerformanceDump(BaseNetworkTestCase):
 
     VOLUME = 1000  # Number of transactions to dump
-
-    testname = 'test_performance_dump'
-    setuptime = 5
-    compose_file = 'cilantro-bootstrap.yml'
-
+    config_file = 'configs/cilantro-bootstrap.json'
     PROFILE_TYPE = 'c'
 
     @vmnet_test(run_webui=True)

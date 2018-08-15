@@ -1,9 +1,6 @@
-from vmnet.test.base import *
-import unittest, time, random
-
-
-import vmnet
-
+from vmnet.testcase import BaseNetworkTestCase
+import unittest, time, random, vmnet
+from cilantro.utils.test.mp_test_case import vmnet_test
 
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
@@ -69,26 +66,23 @@ def dump_it(volume, delay=30):
 class TestDump(BaseNetworkTestCase):
 
     VOLUME = 1000  # Number of transactions to dump
-
-    testname = 'dump_it'
-    setuptime = 5
-    compose_file = 'cilantro-bootstrap.yml'
+    config_file = 'configs/test-vmnet-v2.json'
 
     @vmnet_test(run_webui=True)
     def test_dump(self):
 
         # Bootstrap master
-        self.execute_python('masternode', run_mn, async=True)
+        self.execute_python('masternode', run_mn, profiling='p')
 
         # Bootstrap TESTNET_WITNESSES
         for i, nodename in enumerate(self.groups['witness']):
-            self.execute_python(nodename, wrap_func(run_witness, i), async=True)
+            self.execute_python(nodename, wrap_func(run_witness, i))
 
         # Bootstrap TESTNET_DELEGATES
         for i, nodename in enumerate(self.groups['delegate']):
-            self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
+            self.execute_python(nodename, wrap_func(run_delegate, i), profiling='p')
 
-        self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME, delay=16), async=True)
+        self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME, delay=16))
 
         input("Enter any key to terminate")
 

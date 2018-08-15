@@ -116,7 +116,7 @@ class TestSecureTransport(MPTestCase):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
             from cilantro.protocol.states.decorators import StateInput
             cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
-            composer.interface.router.route_callback.assert_called_once_with(cb)
+            composer.interface.router.route_callback.assert_called_with(cb)
 
         def assert_bad_sub(composer: Composer):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
