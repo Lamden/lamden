@@ -139,8 +139,8 @@ class MPTesterProcess:
                 return
 
             self.log.error("\n\nException in main TesterProc loop: {}\n\n".format(traceback.format_exc()))
-            self.socket.send_pyobj(SIG_FAIL)
-            self._teardown()
+            # self.socket.send_pyobj(SIG_FAIL)
+            # self._teardown()
 
     def _build_components(self, build_fn) -> tuple:
         objs = build_fn()

@@ -32,7 +32,7 @@ class ReactorInterface:
         self.proc.start()
 
         # Register signal handler to teardown
-        signal.signal(signal.SIGTERM, self._signal_teardown)
+        # signal.signal(signal.SIGTERM, self._signal_teardown)
 
         # Block execution of this proc until reactor proc is ready
         self.loop.run_until_complete(self._wait_child_rdy())
@@ -58,7 +58,7 @@ class ReactorInterface:
             self.teardown()
 
     def _signal_teardown(self, signal, frame):
-        print("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
+        self.log.fatal("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
         self.teardown()
         sys.exit(0)
 

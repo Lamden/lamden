@@ -2,10 +2,12 @@ from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random, vmnet
 from cilantro.utils.test.mp_test_case import vmnet_test
 
+
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
         return fn(*args, **kwargs)
     return wrapper
+
 
 def run_mn():
     TEST_DUR = 170
@@ -93,7 +95,7 @@ def run_delegate(slot_num):
     log.success("EXPERIMENT OVER!!!")
 
 
-def dump_it(volume, delay=30):
+def dump_it(volume, delay=20):
     from cilantro.utils.test import God
     from cilantro.logger import get_logger, overwrite_logger_level
     import logging
@@ -106,7 +108,7 @@ class TestPerformanceDump(BaseNetworkTestCase):
 
     VOLUME = 1000  # Number of transactions to dump
     config_file = 'configs/cilantro-bootstrap.json'
-    PROFILE_TYPE = 'm'
+    PROFILE_TYPE = 'c'
 
     @vmnet_test(run_webui=True)
     def test_dump(self):
@@ -125,6 +127,7 @@ class TestPerformanceDump(BaseNetworkTestCase):
         self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME, delay=20), async=True, profiling=self.PROFILE_TYPE)
 
         input("Enter any key to terminate")
+
 
 if __name__ == '__main__':
     unittest.main()

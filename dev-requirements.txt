@@ -1,5 +1,4 @@
 coloredlogs
-ipython==6.4.0
 coverage
 numpy
 scipy

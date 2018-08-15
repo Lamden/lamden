@@ -19,6 +19,7 @@ jobs:
           name: Install Cilantro Requirements
           command: |
              pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
+             pip install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
 
       - run:
           name: Install Mysql Client
