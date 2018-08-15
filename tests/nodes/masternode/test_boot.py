@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 from cilantro.nodes.masternode.masternode import MNBootState, MNRunState, MNStagingState
 from cilantro.protocol.states.statemachine import StateTransition
 from cilantro.protocol.states.state import EmptyState
+from cilantro.utils.lprocess import LProcess
 
 class TestMasterNodeBootState(TestCase):
 
@@ -21,6 +22,7 @@ class TestMasterNodeBootState(TestCase):
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
 
         mock_composer.add_pub.assert_called_with(ip=ip)
+        state.parent.server.terminate()
 
     def test_entry_adds_router(self):
         """
@@ -37,6 +39,7 @@ class TestMasterNodeBootState(TestCase):
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
 
         mock_composer.add_router.assert_called_with(ip=ip)
+        state.parent.server.terminate()
 
     def test_entry_transitions_to_staging(self):
         """
@@ -48,6 +51,7 @@ class TestMasterNodeBootState(TestCase):
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
 
         mock_sm.transition.assert_called_with(MNStagingState)
+        state.parent.server.terminate()
 
     def test_entry_adds_server_task(self):
         """
@@ -62,4 +66,5 @@ class TestMasterNodeBootState(TestCase):
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
         num_tasks_after = len(tasks)
 
-        self.assertTrue(num_tasks_after - num_tasks_before == 1)
+        self.assertEqual(type(state.parent.server), LProcess)
+        state.parent.server.terminate()
