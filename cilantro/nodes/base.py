@@ -49,7 +49,6 @@ class NodeBase(StateMachine):
         """
         self.log.important("Tearing down application")
         self.composer.interface.teardown()
-        # exit()
 
     @property
     def composer(self):
