@@ -72,6 +72,7 @@ class MPTestCase(BaseNetworkTestCase):
     config_file = '{}/cilantro/tests/vmnet/configs/cilantro-nodes.json'.format(CILANTRO_PATH)
     testers = []
     curr_tester_index = 1
+    vmnet_test_active = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
