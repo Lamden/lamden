@@ -21,6 +21,9 @@ urllib3==1.22
 uvloop==0.9.1
 yarl==1.1.0
 wheel
+vprof
+docker
+dill
 
--e git://github.com/Lamden/vmnet.git@613c83181a7f69ed9969d7b8ae0947ed238c3280#egg=vmnet
+-e git://github.com/Lamden/vmnet.git#egg=vmnet
 -e git://github.com/Lamden/seneca.git#egg=seneca

@@ -51,7 +51,7 @@ def wrap_func(func, *args, **kwargs):
 
 def get_filename(proc_name):
     import os
-    prefix = os.getenv('HOSTNAME', '')
+    prefix = os.getenv('HOST_NAME', '')
     if prefix:
         proc_name = prefix + '_' + proc_name
     return "{}_{}".format(proc_name, os.getpid())

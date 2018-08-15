@@ -110,7 +110,7 @@ class ColoredStreamHandler(logging.StreamHandler):
 def get_logger(name=''):
 
     filedir = "logs/{}".format(os.getenv('TEST_NAME', 'test'))
-    filename = "{}/{}.log".format(filedir, os.getenv('HOSTNAME', name))
+    filename = "{}/{}.log".format(filedir, os.getenv('HOST_NAME', name))
     os.makedirs(filedir, exist_ok=True)
 
     filehandlers = [
