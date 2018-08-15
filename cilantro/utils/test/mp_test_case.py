@@ -16,6 +16,8 @@ TESTER_POLL_FREQ = 0.1
 
 CILANTRO_PATH = dirname(dirname(cilantro.__path__[0]))
 
+log = get_logger("MPTestCaseBoy")  # TODO delete dat
+
 def signal_handler(sig, frame):
     print("Killing docker containers...")
     os.system("docker kill $(docker ps -q)")
@@ -32,16 +34,15 @@ def vmnet_test(*args, **kwargs):
                 "a BaseNetworkTestCase subclass instance)".format(self)
 
             klass = self.__class__
-            # parent_klass = self.__class__.__bases__[0]  # In Cilantro, this should be MPTestCase
-            #
-            # # Horrible hack to get MPTestCase to work
-            # if parent_klass is not BaseNetworkTestCase:
-            #     klass = parent_klass
+            parent_klass = self.__class__.__bases__[0]  # In Cilantro, this should be MPTestCase
 
-            # klass.start_docker(run_webui=run_webui)
-            # cls = BaseNetworkTestCase
+            # Horrible hack to get MPTestCase to work
+            if parent_klass is not BaseNetworkTestCase:
+                klass = parent_klass
+
             klass.test_name = klass.__name__
-            klass._set_configs(launch(klass.config_file, klass.test_name))
+            config_dict = launch(klass.config_file, klass.test_name)
+            klass._set_configs(klass, config_dict)
 
             # Create log directory for test name
             log_dir = join(klass.project_path, 'logs', klass.test_name)

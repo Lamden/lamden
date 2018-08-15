@@ -50,8 +50,8 @@ class TestTransportIntegration(MPTestCase):
 
         env = random_envelope()
 
-        sub = MPComposer(config_fn=config_sub, assert_fn=assert_sub, name='** [MN1] SUB', sk=sk1)
-        pub = MPComposer(name='++ [Delegate1] PUB', sk=sk2)
+        sub = MPComposer(config_fn=config_sub, assert_fn=assert_sub, name='[MN1] SUB', sk=sk1)
+        pub = MPComposer(name='[Delegate1] PUB', sk=sk2)
         pub_ip = pub.ip
 
         sub.add_sub(vk=vk2, filter=FILTER)
@@ -88,9 +88,9 @@ class TestTransportIntegration(MPTestCase):
 
         envs = [random_envelope() for _ in range(4)]
 
-        sub = MPComposer(config_fn=config_sub, assert_fn=assert_sub, name='** [MN1] SUB', sk=sk1)
-        pub1 = MPComposer(name='++ [Delegate1] PUB1', sk=sk2)
-        pub2 = MPComposer(name='++ [Delegate2] PUB2', sk=sk3)
+        sub = MPComposer(config_fn=config_sub, assert_fn=assert_sub, name='[MN1] SUB', sk=sk1)
+        pub1 = MPComposer(name='[Delegate1] PUB1', sk=sk2)
+        pub2 = MPComposer(name='[Delegate2] PUB2', sk=sk3)
 
         sub.add_sub(vk=vk2, filter=FILTER)
         sub.add_sub(vk=vk3, filter=FILTER)
@@ -136,9 +136,9 @@ class TestTransportIntegration(MPTestCase):
         env2 = random_envelope()
         env3 = random_envelope()
 
-        sub = MPComposer(config_fn=configure, assert_fn=assert_sub, name='** SUB [MN1]', sk=sk1)
-        pub1 = MPComposer(name='++ PUB 1 [Delegate1]', sk=sk2)
-        pub2 = MPComposer(name='++ PUB 2 [Delegate2]', sk=sk3)
+        sub = MPComposer(config_fn=configure, assert_fn=assert_sub, name='SUB [MN1]', sk=sk1)
+        pub1 = MPComposer(name='PUB 1 [Delegate1]', sk=sk2)
+        pub2 = MPComposer(name='PUB 2 [Delegate2]', sk=sk3)
 
         sub.add_sub(vk=vk2, filter=FILTER)  # sub to pub1
         sub.add_sub(vk=vk3, filter=FILTER)  # sub to pub2
@@ -185,8 +185,8 @@ class TestTransportIntegration(MPTestCase):
         filter1 = FILTERS[0]
         filter2 = FILTERS[1]
 
-        sub = MPComposer(config_fn=configure, assert_fn=run_assertions, name='** SUB', sk=sk1)
-        pub = MPComposer(name='++ PUB', sk=sk2)
+        sub = MPComposer(config_fn=configure, assert_fn=run_assertions, name='SUB', sk=sk1)
+        pub = MPComposer(name='PUB', sk=sk2)
 
         sub.add_sub(vk=vk2, filter=filter2)
         sub.add_sub(vk=vk2, filter=filter1)
