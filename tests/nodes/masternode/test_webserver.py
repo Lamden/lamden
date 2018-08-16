@@ -20,6 +20,6 @@ class TestWebserver(TestCase):
 
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
 
-        mock_composer.add_pub.assert_called_with(ip=ip)
+
 
         state.parent.server.terminate()

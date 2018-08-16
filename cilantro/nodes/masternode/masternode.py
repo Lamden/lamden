@@ -141,13 +141,13 @@ class MNBootState(MNBaseState):
 
         # Create web server
         self.log.debug("Creating REST server on port 8080")
-        self.queue_mode = Value('d', 0)
-        self.parent.server = LProcess(target=start_webserver, args=(self.queue_mode, ))
-        self.parent.server.start()
+        # self.queue_mode = Value('d', 0)
+        # self.parent.server = LProcess(target=start_webserver, args=(self.queue_mode, ))
+        # self.parent.server.start()
 
-        # server = web.Server(self.parent.route_http)
-        # server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
-        # self.parent.tasks.append(server_future)
+        server = web.Server(self.parent.route_http)
+        server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
+        self.parent.tasks.append(server_future)
 
         # Once done booting, transition to staging
         self.parent.transition(MNStagingState)

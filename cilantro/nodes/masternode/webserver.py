@@ -28,9 +28,5 @@ def start_webserver(queue_mode):
     log.debug("Creating REST server on port {}".format(WEB_SERVER_PORT))
     app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=multiprocessing.cpu_count())
 
-# self.queue_mode = Value('d', 0)
-# webserver = LProcess(target=start_webserver, args=(self.queue_mode))
-# webserver.start()
-
 if __name__ == '__main__':
     start_webserver(0)

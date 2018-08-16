@@ -1,7 +1,0 @@
-FROM cilantro_base
-
-WORKDIR /app
-
-EXPOSE 10000-20000
-
-CMD bash run.sh run_delegate.py
