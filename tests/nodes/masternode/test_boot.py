@@ -22,7 +22,6 @@ class TestMasterNodeBootState(TestCase):
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
 
         mock_composer.add_pub.assert_called_with(ip=ip)
-        state.parent.server.terminate()
 
     def test_entry_adds_router(self):
         """
@@ -39,7 +38,6 @@ class TestMasterNodeBootState(TestCase):
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
 
         mock_composer.add_router.assert_called_with(ip=ip)
-        state.parent.server.terminate()
 
     def test_entry_transitions_to_staging(self):
         """
@@ -51,7 +49,6 @@ class TestMasterNodeBootState(TestCase):
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
 
         mock_sm.transition.assert_called_with(MNStagingState)
-        state.parent.server.terminate()
 
     def test_entry_adds_server_task(self):
         """
@@ -67,4 +64,3 @@ class TestMasterNodeBootState(TestCase):
         num_tasks_after = len(tasks)
 
         self.assertEqual(type(state.parent.server), LProcess)
-        state.parent.server.terminate()
