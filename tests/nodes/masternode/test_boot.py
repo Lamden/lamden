@@ -63,4 +63,4 @@ class TestMasterNodeBootState(TestCase):
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
         num_tasks_after = len(tasks)
 
-        self.assertEqual(type(state.parent.server), LProcess)
+        self.assertTrue(num_tasks_after - num_tasks_before == 1)
