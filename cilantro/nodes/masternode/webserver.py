@@ -11,7 +11,7 @@ app = Sanic(__name__)
 q_mode = 0
 log = get_logger(__name__)
 
-@app.route("/")
+@app.route("/", methods=["POST",])
 async def transaction(request):
     container = TransactionContainer.from_bytes(request.body)
     tx = container.open()
@@ -20,10 +20,11 @@ async def transaction(request):
         sm_handler.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
         return text("Successfully published transaction: {}".format(tx))
     except Exception as e:
-        self.log.error("\n Error publishing HTTP request...err = {}".format(traceback.format_exc()))
+        log.error("\n Error publishing HTTP request...err = {}".format(traceback.format_exc()))
         return text("problem processing request with err: {}".format(e))
 
 def start_webserver(queue_mode):
+    global q_mode
     q_mode = queue_mode
     log.debug("Creating REST server on port {}".format(WEB_SERVER_PORT))
     app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=multiprocessing.cpu_count())

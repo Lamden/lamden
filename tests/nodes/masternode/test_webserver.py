@@ -20,6 +20,6 @@ class TestWebserver(TestCase):
 
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
 
-
+        input('enter to terminate')
 
         state.parent.server.terminate()
