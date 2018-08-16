@@ -1,4 +1,4 @@
-from vmnet.test.base import *
+from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random
 from cilantro.protocol import wallet
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES

@@ -1,4 +1,4 @@
-from vmnet.test.base import *
+from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random
 import vmnet, cilantro
 from os.path import dirname
