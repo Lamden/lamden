@@ -49,6 +49,8 @@ class NodeBase(StateMachine):
         """
         self.log.important("Tearing down application")
         self.composer.interface.teardown()
+        if hasattr(self, 'server'):
+            self.server.terminate()
 
     @property
     def composer(self):

@@ -1,5 +1,8 @@
-from vmnet.test.base import *
-import unittest, time
+from vmnet.testcase import BaseNetworkTestCase
+import unittest, time, cilantro
+from os.path import join, dirname
+from cilantro.utils.test.mp_test_case import vmnet_test
+
 
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
@@ -71,9 +74,7 @@ class TestPump(BaseNetworkTestCase):
     TRANSACTION_RATE = 50  # Avg transaction/second. lambda parameter in Poission distribution
     MODEL_AS_POISSON = True
 
-    testname = 'pump_it'
-    setuptime = 5
-    compose_file = 'cilantro-bootstrap.yml'
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-bootstrap.json')
 
     @vmnet_test(run_webui=True)
     def test_bootstrap(self):
