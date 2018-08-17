@@ -11,7 +11,7 @@ from cilantro.utils.test.mp_test_case import MPTestCase
 import os, requests, time, random
 
 
-if os.getenv('HOST_IP'):
+if os.getenv('HOST_IP', '127.0.0.1'):
     _MN_URL = "http://{}:8080".format(os.getenv('MASTERNODE', '0.0.0.0'))
 else:
     _MN_URL = "http://0.0.0.0:8080"

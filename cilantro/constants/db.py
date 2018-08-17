@@ -11,7 +11,7 @@ settings.read(db_conf_path)
 
 # TODO deprecate ad-hoc stuff for VMNet. Use unified approach of loading settings from config file
 # If this is being run on VMNet, HOST_IP will be set. In this case we want to use preset DB_SETTINGS
-if os.getenv('HOST_IP'):
+if os.getenv('HOST_IP', '127.0.0.1'):
     DB_SETTINGS = {'username': 'root',
                    'password': '',
                    'db': 'cilantro_dev',
