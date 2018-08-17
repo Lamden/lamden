@@ -11,7 +11,7 @@ Author: Chris Laws
 import os, shutil, datetime
 import asyncio, zmq
 import zmq.auth, zmq.asyncio
-from os.path import basename, splitext
+from os.path import basename, splitext, join, exists
 from zmq.auth.thread import ThreadAuthenticator
 from zmq.auth.asyncio import AsyncioAuthenticator
 from zmq.utils.z85 import decode, encode
@@ -26,54 +26,63 @@ from cilantro.logger import get_logger
 log = get_logger(__name__)
 
 class Ironhouse:
-    def __init__(self, sk=None, auth_validate=None, wipe_certs=False, auth_port=None, keyname=None, *args, **kwargs):
-        self.auth_port = auth_port or os.getenv('AUTH_PORT', 4523)
-        self.keyname = keyname or os.getenv('HOST_NAME', 'ironhouse')
-        self.authorized_nodes = {}
-        self.base_dir = 'certs/{}'.format(self.keyname)
-        self.keys_dir = os.path.join(self.base_dir, 'certificates')
-        self.authorized_keys_dir = os.path.join(self.base_dir, 'authorized_keys')
-        if auth_validate:
-            self.auth_validate = auth_validate
-        else:
-            self.auth_validate = Ironhouse.auth_validate
-        self.wipe_certs = wipe_certs
-        self.generate_certificates(sk)
 
-    def vk2pk(self, vk):
+    auth_port = os.getenv('AUTH_PORT', 4523)
+    keyname = os.getenv('HOST_NAME', 'ironhouse')
+    authorized_nodes = {}
+    base_dir = 'certs/{}'.format(keyname)
+    keys_dir = join(base_dir, 'certificates')
+    authorized_keys_dir = join(base_dir, 'authorized_keys')
+    ctx = None
+    auth = None
+
+    def __init__(self, sk=None, auth_validate=None, wipe_certs=False, auth_port=None, keyname=None, *args, **kwargs):
+        if auth_validate: self.auth_validate = auth_validate
+        else: self.auth_validate = Ironhouse.auth_validate
+        self.auth_port = auth_port or self.auth_port
+        self.keyname = keyname or Ironhouse.keyname
+        self.authorized_keys = {}
+        self.vk, self.public_key, self.secret = self.generate_certificates(sk, wipe_certs=wipe_certs)
+
+    @classmethod
+    def vk2pk(cls, vk):
         return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
 
-    def generate_certificates(self, sk_hex):
+    @classmethod
+    def generate_certificates(cls, sk_hex, wipe_certs=False):
         sk = SigningKey(seed=bytes.fromhex(sk_hex))
-        self.vk = sk.verify_key.encode().hex()
-        self.public_key = self.vk2pk(self.vk)
+        vk = sk.verify_key.encode().hex()
+        public_key = cls.vk2pk(vk)
         private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key).hex()
 
-        for d in [self.keys_dir, self.authorized_keys_dir]:
-            if self.wipe_certs and os.path.exists(d):
+        for d in [cls.keys_dir, cls.authorized_keys_dir]:
+            if wipe_certs and exists(d):
                 shutil.rmtree(d)
             os.makedirs(d, exist_ok=True)
 
-        if self.wipe_certs:
-            self.create_from_private_key(private_key)
+        if wipe_certs:
+            _, secret = cls.create_from_private_key(private_key)
 
-            for key_file in os.listdir(self.keys_dir):
+            for key_file in os.listdir(cls.keys_dir):
                 if key_file.endswith(".key"):
-                    shutil.move(os.path.join(self.keys_dir, key_file),
-                                os.path.join(self.authorized_keys_dir, '.'))
+                    shutil.move(join(cls.keys_dir, key_file),
+                                join(cls.authorized_keys_dir, '.'))
 
-            if os.path.exists(self.keys_dir):
-                shutil.rmtree(self.keys_dir)
+            if exists(cls.keys_dir):
+                shutil.rmtree(cls.keys_dir)
 
             log.info('Generated CURVE certificate files!')
 
-    def create_from_private_key(self, private_key):
+        return vk, public_key, secret
+
+    @classmethod
+    def create_from_private_key(cls, private_key):
         priv = PrivateKey(bytes.fromhex(private_key))
         publ = priv.public_key
-        self.public_key = public_key = encode(publ._public_key)
-        self.secret = secret_key = encode(priv._private_key)
+        public_key = encode(publ._public_key)
+        secret = encode(priv._private_key)
 
-        base_filename = os.path.join(self.keys_dir, self.keyname)
+        base_filename = join(cls.keys_dir, cls.keyname)
         public_key_file = "{0}.key".format(base_filename)
         now = datetime.datetime.now()
 
@@ -81,15 +90,16 @@ class Ironhouse:
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)
 
-    def create_from_public_key(self, public_key):
-        if self.public_key == public_key:
-            return
+        return public_key, secret
+
+    def add_public_key(self, public_key):
+        if self.public_key == public_key: return
         keyname = decode(public_key).hex()
-        base_filename = os.path.join(self.authorized_keys_dir, keyname)
+        base_filename = join(self.authorized_keys_dir, keyname)
         public_key_file = "{0}.key".format(base_filename)
         now = datetime.datetime.now()
 
-        if os.path.exists(public_key_file):
+        if exists(public_key_file):
             log.debug('Public cert for {} has already been created.'.format(public_key))
             return
 
@@ -101,19 +111,22 @@ class Ironhouse:
                         public_key)
 
         self.reconfigure_curve()
+        self.authorized_keys[public_key] = True
         log.debug('{} has added {} to its authorized list'.format(os.getenv('HOST_IP'), public_key))
 
     def remove_public_key(self, public_key):
-        if self.public_key == public_key:
-            return
+        if self.public_key == public_key: return
         keyname = decode(public_key).hex()
-        base_filename = os.path.join(self.authorized_keys_dir, keyname)
+        base_filename = join(self.authorized_keys_dir, keyname)
         public_key_file = "{0}.key".format(base_filename)
-        if os.path.exists(public_key_file):
+        if exists(public_key_file):
             os.remove(public_key_file)
         self.reconfigure_curve()
+        self.authorized_keys[public_key] = False
+        log.debug('{} has remove {} from its authorized list'.format(os.getenv('HOST_IP'), public_key))
 
-    def secure_context(self, async=False):
+    @classmethod
+    def secure_context(cls, async=False):
         if async:
             ctx = zmq.asyncio.Context()
             auth = AsyncioAuthenticator(ctx)
@@ -126,13 +139,14 @@ class Ironhouse:
 
     def reconfigure_curve(self):
         log.debug('{} is reconfiguring curves'.format(os.getenv('HOST_IP')))
-        self.daemon_auth.configure_curve(domain='*', location=self.authorized_keys_dir)
+        if self.auth:
+            self.auth.configure_curve(domain='*', location=self.authorized_keys_dir)
 
-    def secure_socket(self, sock, curve_serverkey=None):
-        sock.curve_secretkey = self.secret
-        sock.curve_publickey = self.public_key
+    @classmethod
+    def secure_socket(cls, sock, secret, public_key, curve_serverkey=None):
+        sock.curve_secretkey = secret
+        sock.curve_publickey = public_key
         if curve_serverkey:
-            # self.create_from_public_key(curve_serverkey) #NOTE Do not automatically trust
             sock.curve_serverkey = curve_serverkey
         else: sock.curve_server = True
         return sock
@@ -148,7 +162,7 @@ class Ironhouse:
         log.debug('{} sending handshake to {}...'.format(os.getenv('HOST_IP'), server_url))
         client = self.ctx.socket(zmq.REQ)
         client.setsockopt(zmq.LINGER, 0)
-        client = self.secure_socket(client, target_public_key)
+        client = self.secure_socket(client, self.secret, self.public_key, target_public_key)
         client.connect(server_url)
         client.send(self.vk.encode())
         authorized = 'unauthorized'
@@ -159,7 +173,7 @@ class Ironhouse:
             log.debug('{} got secure reply {}, {}'.format(os.getenv('HOST_IP'), msg, target_public_key))
             received_public_key = self.vk2pk(msg)
             if self.auth_validate(msg) == True and target_public_key == received_public_key:
-                self.create_from_public_key(received_public_key)
+                self.add_public_key(received_public_key)
                 authorized = 'authorized'
         except Exception as e:
             log.debug('{} got no reply from {} after waiting...'.format(os.getenv('HOST_IP'), server_url))
@@ -174,7 +188,7 @@ class Ironhouse:
         self.ctx, self.auth = self.secure_context(async=True)
         self.daemon_context, self.daemon_auth = self.secure_context(async=True)
         self.auth.configure_curve(domain='*', location=zmq.auth.CURVE_ALLOW_ANY)
-        self.sec_sock = self.secure_socket(self.ctx.socket(zmq.REP))
+        self.sec_sock = self.secure_socket(self.ctx.socket(zmq.REP), self.secret, self.public_key)
         self.sec_sock.bind('tcp://*:{}'.format(self.auth_port))
         self.server = asyncio.ensure_future(self.secure_server())
 
@@ -198,7 +212,7 @@ class Ironhouse:
 
                 if self.auth_validate(message) == True:
                     public_key = self.vk2pk(message)
-                    self.create_from_public_key(public_key)
+                    self.add_public_key(public_key)
                     self.authorized_nodes[digest(message)] = message
                     log.debug('{} sending secure reply: {}'.format(os.getenv('HOST_IP'), self.vk))
                     self.sec_sock.send(self.vk.encode())
