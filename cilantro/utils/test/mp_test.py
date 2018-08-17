@@ -6,7 +6,6 @@ import zmq.asyncio
 import random
 import inspect
 import traceback
-import cProfile
 import time
 from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger
@@ -26,6 +25,7 @@ SIG_SUCC = b'G00DSUCC'
 SIG_FAIL = b'BADSUCC'
 SIG_ABORT = b'NOSUCC'
 SIG_START = b'STARTSUCC'
+
 
 def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
     log = get_logger("TestObjectRunner[{}]".format(name))
@@ -56,6 +56,7 @@ def get_filename(proc_name):
         proc_name = prefix + '_' + proc_name
     return "{}_{}".format(proc_name, os.getpid())
 
+
 def mp_testable(test_cls):
     """
     Decorator to copy all the public API for object type test_cls to the decorated class. The decorated
@@ -79,6 +80,7 @@ def mp_testable(test_cls):
         return cls
 
     return _mp_testable
+
 
 def _gen_url(name=''):
     """
@@ -323,6 +325,8 @@ class MPTesterBase:
             self.url = url
             self.ip = ip
 
+            self.log.notice("Creating node named {} in a docker container with name {} and ip {}".format(self.name, name, self.ip))
+
             runner_func = wrap_func(_run_test_proc, self.name, remote_url, build_fn, self.config_fn, self.assert_fn)
 
             # TODO -- will i need a ton of imports and stuff to make this run smoothly...?
@@ -331,6 +335,7 @@ class MPTesterBase:
         # Create Tester object in a Subprocess
         else:
             self.url = _gen_url(self.name)
+            self.log.notice("Creating node named {} in a subprocess with IPC url {}".format(self.name, self.url))
 
             self.test_proc = LProcess(target=_run_test_proc, name=self.name, args=(self.name, self.url, build_fn,
                                                                                    self.config_fn, self.assert_fn,))

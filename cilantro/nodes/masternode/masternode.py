@@ -6,7 +6,7 @@
     They have no say as to what is 'right,' as governance is ultimately up to the network. However, they can monitor
     the behavior of nodes and tell the network who is misbehaving.
 """
-from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
+from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.masternode import STAGING_TIMEOUT
 from cilantro.nodes import NodeBase
 
@@ -21,8 +21,10 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.storage.blocks import BlockStorageDriver, BlockMetaData
 from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.messages.transaction.base import TransactionBase
+from cilantro.messages.signals.kill_signal import KillSignal
 
 from aiohttp import web
+import time
 import traceback
 from cilantro.storage.db import VKBook
 from collections import deque
@@ -45,10 +47,15 @@ class Masternode(NodeBase):
         self.tx_queue = deque()  # A queue of transactions sent by users to the Masternode via a REST endpoint
 
     async def route_http(self, request):
+        self.log.important2("MASTERNODE GOT REQUEST WITH PATH {}".format(request.path))
         raw_data = await request.content.read()
-        container = TransactionContainer.from_bytes(raw_data)
-        tx = container.open()
-        # self.log.debug("Masternode got tx: {}".format(tx))
+
+        if request.path == '/teardown-network':
+            self.log.important("Masternode got kill message from rest endpoint!")
+            tx = KillSignal.create()
+        else:
+            container = TransactionContainer.from_bytes(raw_data)
+            tx = container.open()
 
         try:
             self.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
@@ -59,10 +66,23 @@ class Masternode(NodeBase):
 
 
 class MNBaseState(State):
+
+    @input(KillSignal)
+    def handle_kill_sig(self, msg: KillSignal):
+        # TODO check signature on kill sig make sure its trusted and such
+        self.log.important3("Masternode got kill signal! Relaying signal to all subscribed witnesses and delegates.")
+        kill_sig = KillSignal.create()
+
+        self.parent.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=kill_sig)
+        self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, message=kill_sig)
+
+        time.sleep(2)  # Allow time for messages to be composed before we teardown
+
+        self.parent.teardown()
+
     @input_connection_dropped
     def conn_dropped(self, vk, ip):
         self.log.warning('({}:{}) has dropped'.format(vk, ip))
-        pass
 
     @input(TransactionBase)
     def handle_tx(self, tx: TransactionBase):

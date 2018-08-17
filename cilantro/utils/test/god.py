@@ -1,11 +1,13 @@
 from cilantro.messages.transaction.standard import StandardTransaction, StandardTransactionBuilder
 from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.messages.transaction.contract import *
+from cilantro.messages.signals.kill_signal import KillSignal
 import asyncio
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.transport import Composer
 from unittest.mock import MagicMock
 from cilantro.logger import get_logger
+from cilantro.utils.test.mp_test_case import MPTestCase
 import os, requests, time, random
 
 
@@ -78,6 +80,12 @@ class God:
             c = Composer(interface=self.interface, signing_key=signing_key, name='God-Composer-{}'.format(signing_key[:4]))
             self.composers[signing_key] = c
             return c
+
+    @classmethod
+    def teardown_all(cls, masternode_url):
+        masternode_url += '/teardown-network'
+        cls.log.important("Sending teardown notification to Masternode at url {}".format(masternode_url))
+        r = requests.post(masternode_url, data=KillSignal.create().serialize())
 
     @classmethod
     def _default_gen_func(cls):

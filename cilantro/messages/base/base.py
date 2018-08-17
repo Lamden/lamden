@@ -107,8 +107,8 @@ class MessageBase(metaclass=MessageBaseMeta):
     def __eq__(self, other):
         assert type(self) is type(other), "Cannot compare messages of seperate classes {} and {}. " \
                                           "Override __eq__ to support this behavior".format(type(self), type(other))
-        assert self._data, "._data is None set for LHS"
-        assert other._data, "._data is None for RHS"
+        assert self._data is not None, "._data is None set for LHS"
+        assert other._data is not None, "._data is None for RHS"
 
         if hasattr(self._data, 'to_dict') and hasattr(other._data, 'to_dict'):
             return self._data.to_dict() == other._data.to_dict()
