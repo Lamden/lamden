@@ -22,6 +22,9 @@ test: restart-db
 install:
 	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir
 
+build-image:
+	docker build -f vmnet_configs/images/cilantro_base.dev .
+
 clean-logs:
 	./scripts/clean-logs.sh
 
