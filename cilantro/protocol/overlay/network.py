@@ -82,7 +82,7 @@ class Network(object):
             try: self.protocol.router.removeContact(node)
             except: pass
             self.ironhouse.authorized_nodes[node.id] = False
-        log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP'), [self.vkcache.get(k).ip for k in self.ironhouse.authorized_nodes if self.vkcache.get(k)]))
+        log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP', '127.0.0.1'), [self.vkcache.get(k).ip for k in self.ironhouse.authorized_nodes if self.vkcache.get(k)]))
         return authorization == 'authorized'
 
     def setup_stethoscope(self):
