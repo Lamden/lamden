@@ -46,16 +46,17 @@ def vmnet_test(*args, **kwargs):
 
             # Create log directory for test name
             log_dir = join(klass.project_path, 'logs', klass.test_name)
+            try: shutil.rmtree(log_dir)
+            except: pass
             os.makedirs(log_dir, exist_ok=True)
 
             if run_webui:
                 klass.webserver_proc, klass.websocket_proc = start_ui(
                     klass.test_name, klass.project_path)
 
-            BaseNetworkTestCase.vmnet_test_active = True
+            klass.vmnet_test_active = True
             res = func(*args, **kwargs)
-            BaseNetworkTestCase.vmnet_test_active = False
-            # klass._reset_containers()
+            klass.vmnet_test_active = False
 
             return res
 
@@ -69,7 +70,7 @@ def vmnet_test(*args, **kwargs):
         return _vmnet_test
 
 class MPTestCase(BaseNetworkTestCase):
-    config_file = '{}/cilantro/tests/vmnet/configs/cilantro-nodes.json'.format(CILANTRO_PATH)
+    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes.json'.format(CILANTRO_PATH)
     testers = []
     curr_tester_index = 1
     vmnet_test_active = False

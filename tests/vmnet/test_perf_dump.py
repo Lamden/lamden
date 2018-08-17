@@ -1,5 +1,6 @@
 from vmnet.testcase import BaseNetworkTestCase
-import unittest, time, random, vmnet
+import unittest, time, random, vmnet, cilantro
+from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test
 
 
@@ -107,7 +108,7 @@ def dump_it(volume, delay=20):
 class TestPerformanceDump(BaseNetworkTestCase):
 
     VOLUME = 1000  # Number of transactions to dump
-    config_file = 'configs/cilantro-bootstrap.json'
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-bootstrap.json')
     PROFILE_TYPE = 'c'
 
     @vmnet_test(run_webui=True)

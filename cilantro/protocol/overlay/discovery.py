@@ -19,7 +19,6 @@ class Discovery:
     min_bootstrap_nodes = 3
     max_tasks = 100000
     crawler_port = os.getenv('CRAWLER_PORT', 31337)
-    public_ip = get_public_ip()
 
     async def discover(self, mode, return_asap=True):
         ips = {}
@@ -30,6 +29,7 @@ class Discovery:
             ips[hostname] = [decimal_to_ip(d) for d in range(*get_local_range(host))]
             self.subnets[get_subnet(host)] = {'area': hostname, 'count': 0}
         else:
+            self.public_ip = get_public_ip()
             self.ip = self.public_ip
             if mode == 'neighborhood':
                 for area in get_region_range(self.public_ip):

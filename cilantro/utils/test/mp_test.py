@@ -85,7 +85,7 @@ def _gen_url(name=''):
     Helper method to generate a random URL for use in a PAIR socket
     """
     rand_num = random.randint(0, pow(2, 16))
-    return "ipc://mptest-{}-{}".format(name, rand_num)
+    return "ipc://mptest-ipc-{}-{}".format(name, rand_num)
 
 
 class MPTesterProcess:

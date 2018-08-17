@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 from cilantro.nodes.masternode.masternode import MNBootState, MNRunState, MNStagingState
 from cilantro.protocol.states.statemachine import StateTransition
 from cilantro.protocol.states.state import EmptyState
+from cilantro.utils.lprocess import LProcess
 
 class TestMasterNodeBootState(TestCase):
 
