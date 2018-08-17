@@ -31,11 +31,15 @@ class ReactorInterface:
         # self.proc.daemon = True
         self.proc.start()
 
+        self.futures = None
+
         # Register signal handler to teardown
         # signal.signal(signal.SIGTERM, self._signal_teardown)
 
         # Block execution of this proc until reactor proc is ready
         self.loop.run_until_complete(self._wait_child_rdy())
+
+        self.torn_down = False
 
     def start_reactor(self, tasks):
         """
@@ -50,9 +54,13 @@ class ReactorInterface:
         the loop's run_until_complete.
         """
         try:
-            self.recv_fut = asyncio.gather(self._recv_messages(), *tasks)
-            self.loop.run_until_complete(self.recv_fut)
+            self.futures = asyncio.gather(self._recv_messages(), *tasks)
+            self.loop.run_until_complete(self.futures)
         except Exception as e:
+            if type(e) is asyncio.CancelledError:
+                self.log.warning("ReactorInterface event loop cancelled")
+                return
+
             self.log.error("Exception in main event loop: {}".format(traceback.format_exc()))
             self.log.info("Tearing down from runtime loop exception")
             self.teardown()
@@ -66,16 +74,22 @@ class ReactorInterface:
         """
         Close sockets. Close Event Loop. Teardown. Bless up.
         """
-        self.log.info("[MAIN PROC] Tearing down Reactor Interface process (the main process)")
+        if not self.torn_down:
+            self.torn_down = True
+        else:
+            return
 
-        # TODO -- why is this complaining of no attribute 'recv_fut' ???
-        # self.log.debug("Canceling recv_messages future")
-        # self.recv_fut.cancel()
-        # self.loop.call_soon_threadsafe(self.recv_fut.cancel)
+        self.log.notice("[MAIN PROC] Tearing down Reactor Interface process (the main process)")
 
-        # Signal teardown to daemon
-        self.log.important2("ReactorInterface signaling teardown to daemon")
+        self.log.info("ReactorInterface signaling teardown to daemon")
         self.socket.send(KILL_SIG)
+
+        # Sleep to allow kill sig to be sent before closing socket
+        time.sleep(2)
+
+        if self.futures:
+            self.log.debug("Canceling recv_messages future")
+            self.futures.cancel()
 
         self.log.info("Closing pair socket")
         self.socket.close()
@@ -121,8 +135,13 @@ class ReactorInterface:
                 callback = ReactorCommand.from_bytes(msg)
                 self.log.spam("Got callback cmd <{}>".format(callback))
                 self.router.route_callback(callback)
-        except asyncio.CancelledError:
-            self.log.warning("ReactorInterface _recv_messages future canceled!")
+        except Exception as e:
+            if type(e) is asyncio.CancelledError:
+                self.log.warning("ReactorInterface _recv_messages future canceled!")
+            elif type(e) is zmq.error.ZMQError:
+                self.log.warning("Got zmq error in ReactorInterface _recv_messages. Error = \n{}".format(e))
+            else:
+                raise e
 
     def notify_resume(self):
         self.log.info("NOTIFY READY")

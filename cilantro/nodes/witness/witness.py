@@ -7,6 +7,7 @@ from cilantro.protocol.states.decorators import input, enter_from_any, input_con
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.transaction.ordering import OrderingContainer
+from cilantro.messages.signals.kill_signal import KillSignal
 
 from cilantro.storage.db import VKBook
 
@@ -25,6 +26,13 @@ class Witness(NodeBase):
 
 
 class WitnessBaseState(State):
+
+    @input(KillSignal)
+    def handle_kill_sig(self, msg: KillSignal):
+        # TODO - make sure this is secure (from a KillSignal)
+        self.log.important("Node got received remote kill signal from network!")
+        self.parent.teardown()
+
     @input_connection_dropped
     def conn_dropped(self, vk, ip):
         self.log.important2('({}:{}) has dropped'.format(vk, ip))

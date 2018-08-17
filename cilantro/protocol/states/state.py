@@ -63,7 +63,7 @@ class StateMeta(type):
                         # Sanity check to make sure this class doesnt have a any transition decorator already applied
                         assert any_attr_val is None, "ANY transition {} decorator already set to {} for class {}! " \
                                                      "(attempted to set it again to func: {})"\
-                                                     # .format(trans_attr, any_attr_val, clsobj, func)
+                                                     .format(trans_attr, any_attr_val, clsobj, func)
 
                         setattr(clsobj, StateTransition.get_any_attr(trans_attr), func)
                     else:

@@ -32,6 +32,7 @@ from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.block_data.block_metadata import BlockMetaDataReply, NewBlockNotification
+from cilantro.messages.signals.kill_signal import KillSignal
 
 from cilantro.constants.zmq_filters import DELEGATE_DELEGATE_FILTER, WITNESS_DELEGATE_FILTER, MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.delegate import BOOT_TIMEOUT, BOOT_REQUIRED_MASTERNODES, BOOT_REQUIRED_WITNESSES
@@ -60,6 +61,12 @@ class Delegate(NodeBase):
 
 
 class DelegateBaseState(State):
+
+    @input(KillSignal)
+    def handle_kill_sig(self, msg: KillSignal):
+        # TODO - make sure this is secure (from a KillSignal)
+        self.log.important("Node got received remote kill signal from network!")
+        self.parent.teardown()
 
     def reset_attrs(self):
         pass
