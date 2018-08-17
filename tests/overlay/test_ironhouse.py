@@ -25,6 +25,7 @@ class TestIronhouseBase(TestCase):
         self.public_key = '73619fa1464ce16802b480a0fd7868ffcce0f7285050a927a07ef1ffdd34c162'
         self.curve_public_key = b'B77YmmOI=O0<)GJ@DJ2Q+&5jzp/absPNMCh?88@S'
         self.ironhouse = Ironhouse(self.sk, wipe_certs=True, auth_validate=auth_validate)
+        self.secret = self.ironhouse.secret
 
 class TestConsts(TestIronhouseBase):
     def test_assert_paths(self):
@@ -34,11 +35,11 @@ class TestConsts(TestIronhouseBase):
     def test_generate_certificates_failed(self):
         self.ironhouse.wipe_certs = False
         shutil.rmtree(self.ironhouse.base_dir)
-        self.ironhouse.generate_certificates(self.sk)
-        self.assertFalse(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir should not be created')
+        self.ironhouse.generate_certificates(self.sk, wipe_certs=True)
+        self.assertTrue(listdir(self.ironhouse.authorized_keys_dir) == ['{}.key'.format(self.ironhouse.keyname)], 'public keys dir should not be created')
 
     def test_generate_certificates(self):
-        self.ironhouse.generate_certificates(self.sk)
+        self.ironhouse.generate_certificates(self.sk, wipe_certs=True)
         self.assertTrue(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir not created')
         self.assertEqual(self.private_key, decode(self.ironhouse.secret).hex(), 'secret key generation is incorrect')
         self.assertEqual(self.public_key, decode(self.ironhouse.public_key).hex(), 'public key generation is incorrect')
@@ -55,7 +56,7 @@ class TestConsts(TestIronhouseBase):
 
     def test_generate_from_public_key(self):
         self.ironhouse.daemon_context, self.ironhouse.daemon_auth = self.ironhouse.secure_context(async=True)
-        self.ironhouse.create_from_public_key(encode(self.public_key.encode()))
+        self.ironhouse.add_public_key(encode(self.public_key.encode()))
         self.assertTrue(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir not created')
         self.assertTrue(exists('{}/{}.key'.format(self.ironhouse.authorized_keys_dir, self.ironhouse.keyname)), 'public key not generated')
         self.ironhouse.daemon_auth.stop()
@@ -71,35 +72,35 @@ class TestAuthSync(TestIronhouseBase):
     def test_secure_socket_sync(self):
         ctx, auth = self.ironhouse.secure_context(async=False)
         sock = ctx.socket(zmq.REP)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=None)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=None)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure REP socket')
 
         sock = ctx.socket(zmq.REQ)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=self.curve_public_key)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=self.curve_public_key)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure REQ socket')
 
         sock = ctx.socket(zmq.PUSH)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=None)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=None)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure PUSH socket')
 
         sock = ctx.socket(zmq.PULL)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=self.curve_public_key)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=self.curve_public_key)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure PULL socket')
 
         sock = ctx.socket(zmq.DEALER)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=self.curve_public_key)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=self.curve_public_key)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure DEALER socket')
 
         sock = ctx.socket(zmq.ROUTER)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=None)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=None)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure ROUTER socket')
 
         sock = ctx.socket(zmq.PUB)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=None)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=None)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure PUB socket')
 
         sock = ctx.socket(zmq.SUB)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=self.curve_public_key)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=self.curve_public_key)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure SUB socket')
         sec_sock.close()
 
@@ -117,35 +118,35 @@ class TestAuthAsync(TestIronhouseBase):
     def test_secure_socket_async(self):
         ctx, auth = self.ironhouse.secure_context(async=True)
         sock = ctx.socket(zmq.REP)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=None)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=None)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure REP socket')
 
         sock = ctx.socket(zmq.REQ)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=self.curve_public_key)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=self.curve_public_key)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure REQ socket')
 
         sock = ctx.socket(zmq.PUSH)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=None)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=None)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure PUSH socket')
 
         sock = ctx.socket(zmq.PULL)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=self.curve_public_key)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=self.curve_public_key)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure PULL socket')
 
         sock = ctx.socket(zmq.DEALER)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=self.curve_public_key)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=self.curve_public_key)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure DEALER socket')
 
         sock = ctx.socket(zmq.ROUTER)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=None)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=None)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure ROUTER socket')
 
         sock = ctx.socket(zmq.PUB)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=None)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=None)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure PUB socket')
 
         sock = ctx.socket(zmq.SUB)
-        sec_sock = self.ironhouse.secure_socket(sock, curve_serverkey=self.curve_public_key)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key, curve_serverkey=self.curve_public_key)
         self.assertIsInstance(sec_sock, zmq.sugar.socket.Socket, 'unable to secure SUB socket')
 
         sec_sock.close()
@@ -155,7 +156,7 @@ class TestAuthAsync(TestIronhouseBase):
     def test_reconfigure_curve(self):
         ctx, auth = self.ironhouse.secure_context(async=True)
         sock = ctx.socket(zmq.REP)
-        sec_sock = self.ironhouse.secure_socket(sock)
+        sec_sock = self.ironhouse.secure_socket(sock, self.secret, self.curve_public_key)
         auth.configure_curve(domain='*', location=self.ironhouse.authorized_keys_dir)
         self.assertIn(self.curve_public_key, auth.certs['*'].keys(), 'cannot find cert in auth')
         sec_sock.close()
@@ -168,7 +169,7 @@ class TestServer(TestIronhouseBase):
             ip = '127.0.0.1'
             port = 4523
             client = self.ironhouse.ctx.socket(zmq.REQ)
-            client = self.ironhouse.secure_socket(client, self.curve_public_key)
+            client = self.ironhouse.secure_socket(client, self.secret, self.curve_public_key, self.curve_public_key)
             client.connect('tcp://{}:{}'.format(ip, port))
             client.send(self.vk.encode())
 
@@ -180,7 +181,6 @@ class TestServer(TestIronhouseBase):
         self.ironhouse.setup_secure_server()
         self.assertIsInstance(self.ironhouse.ctx, zmq.Context, 'asynchronous context created incorrectly')
         self.assertIsInstance(self.ironhouse.sec_sock, zmq.sugar.socket.Socket, 'unable to secure a socket')
-
 
         self.loop.run_until_complete(
             asyncio.ensure_future(
@@ -195,14 +195,14 @@ class TestServer(TestIronhouseBase):
             self.assertTrue(authorized)
             self.ironhouse.cleanup()
             self.fake_ironhouse.cleanup()
-            self.loop.stop()
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
         self.fake = genkeys('91f7021a9e8c65ca873747ae24de08e0a7acf58159a8aa6548910fe152dab3d8')
         self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
         self.fake_ironhouse.setup_secure_server()
-        self.fake_ironhouse.create_from_public_key(self.curve_public_key)
+        self.fake_ironhouse.add_public_key(self.curve_public_key)
         self.ironhouse.setup_secure_server()
-        self.ironhouse.create_from_public_key(self.fake['curve_key'])
+        self.ironhouse.add_public_key(self.fake['curve_key'])
 
         self.loop.run_until_complete(
             asyncio.ensure_future(
@@ -215,9 +215,32 @@ class TestServer(TestIronhouseBase):
             authorized = await self.ironhouse.authenticate(self.curve_public_key, '127.0.0.1')
             self.assertTrue(authorized)
             self.ironhouse.cleanup()
-            self.loop.stop()
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
         self.ironhouse.setup_secure_server()
+
+        self.loop.run_until_complete(
+            asyncio.ensure_future(
+                send_async_sec()
+            )
+        )
+
+    def test_authenticate_then_reject(self):
+        port = 5523
+        async def send_async_sec():
+            await self.ironhouse.authenticate(self.fake['curve_key'], '127.0.0.1', port)
+            self.ironhouse.remove_public_key(self.fake['curve_key'])
+            self.assertFalse(self.ironhouse.authorized_keys[self.fake['curve_key']])
+            self.ironhouse.cleanup()
+            self.fake_ironhouse.cleanup()
+            self.loop.call_soon_threadsafe(self.loop.stop)
+
+        self.fake = genkeys('91f7021a9e8c65ca873747ae24de08e0a7acf58159a8aa6548910fe152dab3d8')
+        self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
+        self.fake_ironhouse.setup_secure_server()
+        self.fake_ironhouse.add_public_key(self.curve_public_key)
+        self.ironhouse.setup_secure_server()
+        self.ironhouse.add_public_key(self.fake['curve_key'])
 
         self.loop.run_until_complete(
             asyncio.ensure_future(
@@ -230,7 +253,7 @@ class TestServer(TestIronhouseBase):
             authorized = await self.ironhouse.authenticate(b'A/c=Kn2)aHRI*>fK-{v*r^YCyXJ//3.CGQQC@A9J', '127.0.0.1')
             self.assertEqual(authorized, 'no_reply')
             self.ironhouse.cleanup()
-            self.loop.stop()
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
         self.ironhouse.setup_secure_server()
 
@@ -240,17 +263,17 @@ class TestServer(TestIronhouseBase):
             )
         )
 
-
     def test_auth_validate(self):
         port = 5523
         self.validated = False
         async def send_async_sec():
             authorized = await self.ironhouse.authenticate(self.fake['curve_key'], '127.0.0.1', port)
+            self.assertTrue(self.ironhouse.authorized_keys[self.fake['curve_key']])
             self.assertTrue(authorized)
             self.assertTrue(self.validated)
             self.ironhouse.cleanup()
             self.fake_ironhouse.cleanup()
-            self.loop.stop()
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
         def auth_validate_fake(vk):
             self.validated = True
@@ -262,12 +285,11 @@ class TestServer(TestIronhouseBase):
         self.fake = genkeys('7ae3fcfd3a9047adbec6ad11e5a58036df9934dc0746431d80b49d25584d7e78')
         self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
         self.fake_ironhouse.setup_secure_server()
-        self.fake_ironhouse.create_from_public_key(self.curve_public_key)
+        self.fake_ironhouse.add_public_key(self.curve_public_key)
         self.fake_ironhouse.auth_validate = auth_validate_fake
         self.ironhouse.setup_secure_server()
-        self.ironhouse.create_from_public_key(self.fake['curve_key'])
+        self.ironhouse.add_public_key(self.fake['curve_key'])
         self.ironhouse.auth_validate = auth_validate
-
 
         self.loop.run_until_complete(
             asyncio.ensure_future(
@@ -282,16 +304,16 @@ class TestServer(TestIronhouseBase):
             self.assertTrue(authorized)
             self.aih.cleanup()
             self.dih.cleanup()
-            self.loop.stop()
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
         self.a = genkeys('5664ec7306cc22e56820ae988b983bdc8ebec8246cdd771cfee9671299e98e3c')
         self.aih = Ironhouse(self.a['sk'], wipe_certs=True, auth_port=port, keyname='a')
         self.aih.setup_secure_server()
-        self.aih.create_from_public_key(self.curve_public_key)
+        self.aih.add_public_key(self.curve_public_key)
 
         self.dih = Ironhouse(self.sk, wipe_certs=True)
         self.dih.setup_secure_server()
-        self.dih.create_from_public_key(self.a['curve_key'])
+        self.dih.add_public_key(self.a['curve_key'])
 
         self.loop.run_until_complete(
             asyncio.ensure_future(
@@ -304,7 +326,7 @@ class TestServer(TestIronhouseBase):
             authorized = await self.ironhouse.authenticate(b'ack', '127.0.0.1', 1234)
             self.assertEqual(authorized, 'invalid')
             self.ironhouse.cleanup()
-            self.loop.stop()
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
         self.ironhouse.setup_secure_server()
 
@@ -323,7 +345,7 @@ class TestServer(TestIronhouseBase):
             self.assertTrue(self.validated)
             self.ironhouse.cleanup()
             self.fake_ironhouse.cleanup()
-            self.loop.stop()
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
         def auth_validate_fake(vk):
             self.validated = True
@@ -335,10 +357,10 @@ class TestServer(TestIronhouseBase):
         self.fake = genkeys('7ae3fcfd3a9047adbec6ad11e5a58036df9934dc0746431d80b49d25584d7e78')
         self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
         self.fake_ironhouse.setup_secure_server()
-        self.fake_ironhouse.create_from_public_key(self.curve_public_key)
+        self.fake_ironhouse.add_public_key(self.curve_public_key)
         self.fake_ironhouse.auth_validate = auth_validate_fake
         self.ironhouse.setup_secure_server()
-        self.ironhouse.create_from_public_key(self.fake['curve_key'])
+        self.ironhouse.add_public_key(self.fake['curve_key'])
         self.ironhouse.auth_validate = auth_validate
 
         self.loop.run_until_complete(
@@ -356,7 +378,7 @@ class TestServer(TestIronhouseBase):
             self.assertTrue(self.validated)
             self.ironhouse.cleanup()
             self.fake_ironhouse.cleanup()
-            self.loop.stop()
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
         def auth_validate_fake(vk):
             self.validated = True
@@ -368,10 +390,10 @@ class TestServer(TestIronhouseBase):
         self.fake = genkeys('7ae3fcfd3a9047adbec6ad11e5a58036df9934dc0746431d80b49d25584d7e78')
         self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
         self.fake_ironhouse.setup_secure_server()
-        self.fake_ironhouse.create_from_public_key(self.curve_public_key)
+        self.fake_ironhouse.add_public_key(self.curve_public_key)
         self.fake_ironhouse.auth_validate = auth_validate_fake
         self.ironhouse.setup_secure_server()
-        self.ironhouse.create_from_public_key(self.fake['curve_key'])
+        self.ironhouse.add_public_key(self.fake['curve_key'])
         self.ironhouse.auth_validate = auth_validate
 
 
@@ -385,7 +407,7 @@ class TestServer(TestIronhouseBase):
         async def delay():
             await asyncio.sleep(0.1)
             del self.ironhouse
-            self.loop.stop()
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
         self.loop.run_until_complete(
             asyncio.ensure_future(
