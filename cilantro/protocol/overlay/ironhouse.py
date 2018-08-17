@@ -35,6 +35,7 @@ class Ironhouse:
     authorized_keys_dir = join(base_dir, 'authorized_keys')
     ctx = None
     auth = None
+    daemon_auth = None
 
     def __init__(self, sk=None, auth_validate=None, wipe_certs=False, auth_port=None, keyname=None, *args, **kwargs):
         if auth_validate: self.auth_validate = auth_validate
@@ -110,9 +111,9 @@ class Ironhouse:
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)
 
+        log.debug('{} has added {} to its authorized list'.format(os.getenv('HOST_IP'), public_key))
         self.reconfigure_curve()
         self.authorized_keys[public_key] = True
-        log.debug('{} has added {} to its authorized list'.format(os.getenv('HOST_IP'), public_key))
 
     def remove_public_key(self, public_key):
         if self.public_key == public_key: return
@@ -121,9 +122,10 @@ class Ironhouse:
         public_key_file = "{0}.key".format(base_filename)
         if exists(public_key_file):
             os.remove(public_key_file)
+
+        log.debug('{} has remove {} from its authorized list'.format(os.getenv('HOST_IP'), public_key))
         self.reconfigure_curve()
         self.authorized_keys[public_key] = False
-        log.debug('{} has remove {} from its authorized list'.format(os.getenv('HOST_IP'), public_key))
 
     @classmethod
     def secure_context(cls, async=False):
@@ -139,8 +141,8 @@ class Ironhouse:
 
     def reconfigure_curve(self):
         log.debug('{} is reconfiguring curves'.format(os.getenv('HOST_IP')))
-        if self.auth:
-            self.auth.configure_curve(domain='*', location=self.authorized_keys_dir)
+        if self.daemon_auth:
+            self.daemon_auth.configure_curve(domain='*', location=self.authorized_keys_dir)
 
     @classmethod
     def secure_socket(cls, sock, secret, public_key, curve_serverkey=None):
@@ -164,7 +166,7 @@ class Ironhouse:
         client.setsockopt(zmq.LINGER, 0)
         client = self.secure_socket(client, self.secret, self.public_key, target_public_key)
         client.connect(server_url)
-        client.send(self.vk.encode())
+        client.send_multipart([self.vk.encode(), os.getenv('HOST_IP').encode()])
         authorized = 'unauthorized'
 
         try:
@@ -205,17 +207,22 @@ class Ironhouse:
         log.info('Listening to secure connections at {}'.format(self.auth_port))
         try:
             while True:
-                message = await self.sec_sock.recv()
-                message = message.decode()
+                received_vk, received_ip = await self.sec_sock.recv_multipart()
+                received_vk = received_vk.decode()
+                received_ip = received_ip.decode()
 
-                log.debug('{} got secure request {}'.format(os.getenv('HOST_IP'), message))
+                log.debug('{} got secure request {} from user claiming to be "{}"'.format(
+                    os.getenv('HOST_IP'), received_vk, received_ip))
 
-                if self.auth_validate(message) == True:
-                    public_key = self.vk2pk(message)
+                if self.auth_validate(received_vk) == True:
+                    public_key = self.vk2pk(received_vk)
                     self.add_public_key(public_key)
-                    self.authorized_nodes[digest(message)] = message
+                    self.authorized_nodes[digest(received_vk)] = received_ip
                     log.debug('{} sending secure reply: {}'.format(os.getenv('HOST_IP'), self.vk))
+                    log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP'), list(self.authorized_nodes.values())))
                     self.sec_sock.send(self.vk.encode())
+                else:
+                    log.warning('Unauthorized user {}({})'.format(received_ip, received_vk))
         finally:
             self.cleanup()
 

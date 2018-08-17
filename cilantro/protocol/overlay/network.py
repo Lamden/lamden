@@ -82,8 +82,6 @@ class Network(object):
             try: self.protocol.router.removeContact(node)
             except: pass
             self.ironhouse.authorized_nodes[node.id] = False
-        # log.critical('the cache says this: {}'.format([self.vkcache[k].ip for k in self.vkcache]))
-        # log.critical('the auth list says this: {}'.format([self.ironhouse.authorized_nodes[k] for k in self.ironhouse.authorized_nodes]))
         log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP'), [self.vkcache.get(k).ip for k in self.ironhouse.authorized_nodes if self.vkcache.get(k)]))
         return authorization == 'authorized'
 

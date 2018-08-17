@@ -169,7 +169,8 @@ class SubPubExecutor(Executor):
 
         self.log.notice("Creating publisher socket on url {}".format(url))
         self.pubs[url] = self.ironhouse.secure_socket(
-            self.context.socket(socket_type=zmq.PUB))
+            self.context.socket(socket_type=zmq.PUB),
+            self.ironhouse.secret, self.ironhouse.public_key)
         # self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
         self.pubs[url].bind(url)
         time.sleep(0.2)
@@ -184,6 +185,7 @@ class SubPubExecutor(Executor):
             curve_serverkey = self.ironhouse.vk2pk(vk)
             self.subs[url]['socket'] = socket = self.ironhouse.secure_socket(
                 self.context.socket(socket_type=zmq.SUB),
+                self.ironhouse.secret, self.ironhouse.public_key,
                 curve_serverkey=curve_serverkey)
             self.subs[url]['filters'] = []
 
@@ -274,7 +276,8 @@ class DealerRouterExecutor(Executor):
         self.log.notice("Creating router socket on url {}".format(url))
         # self.router = self.context.socket(socket_type=zmq.ROUTER)
         self.router = self.ironhouse.secure_socket(
-            self.context.socket(socket_type=zmq.ROUTER))
+            self.context.socket(socket_type=zmq.ROUTER),
+            self.ironhouse.secret, self.ironhouse.public_key)
         self.router.bind(url)
 
         self.router_handler = self.add_listener(self.recv_multipart, socket=self.router,
@@ -290,7 +293,10 @@ class DealerRouterExecutor(Executor):
         self.log.notice("Creating dealer socket for url {} with id {}".format(url, id))
 
         curve_serverkey = self.ironhouse.vk2pk(vk)
-        socket = self.ironhouse.secure_socket(self.context.socket(socket_type=zmq.DEALER), curve_serverkey=curve_serverkey)
+        socket = self.ironhouse.secure_socket(
+            self.context.socket(socket_type=zmq.DEALER),
+            self.ironhouse.secret, self.ironhouse.public_key,
+            curve_serverkey=curve_serverkey)
         socket.identity = id.encode('ascii')
 
         self.log.debugv("Dealer socket connecting to url {}".format(url))
