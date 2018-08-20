@@ -22,7 +22,7 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         """
         pass
 
-    def __init__(self, signing_key='0'*64, name='Worker', *args, **kwargs):
+    def __init__(self, signing_key: str, name='Worker', *args, **kwargs):
         """
         IMPORTANT: This should not be overridden by subclasses. Instead, override the setup() method.
 
@@ -39,6 +39,7 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         # in subclasses by overriding __init__ because instantiating this instance involves running an event loop
         # forever (which would block the setup code upon calling 'super().__init__(..)' in the subclass)
         for k, v in kwargs.items():
+            self.log.important("setting k {} to v {}".format(k, v))
             setattr(self, k, v)
 
         self._router = Router(handler=self, name=name)
@@ -47,5 +48,6 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
 
         self.setup()
 
+        self.log.notice("Starting Worker named {}".format(name))
         self._manager.start()  # This starts the event loop and blocks this process indefinitely
 

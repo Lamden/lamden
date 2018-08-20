@@ -55,7 +55,7 @@ class Composer:
         :param req_env: The original request envelope (an instance of Envelope)
         :return: An Envelope instance
         """
-        self.log.debug("Creating REPLY envelope with msg type {} for request envelope {}".format(type(reply), req_env))
+        self.log.spam("Creating REPLY envelope with msg type {} for request envelope {}".format(type(reply), req_env))
         request_uuid = req_env.meta.uuid
         reply_uuid = EnvelopeAuth.reply_uuid(request_uuid)
 

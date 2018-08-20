@@ -93,7 +93,9 @@ class Executor(metaclass=ExecutorMeta):
             callback_fn(header=header, envelope=env)
 
     def notify_socket_connected(self, socket_type: int, vk: str, url: str):
-        self.router.route_callback(callback=StateInput.SOCKET_CONNECTED, socket_type=socket_type, vk=vk, url=url)
+        pass
+        # TODO fix and implement this
+        # self.router.route_callback(callback=StateInput.SOCKET_CONNECTED, socket_type=socket_type, vk=vk, url=url)
 
     def _validate_envelope(self, envelope_binary: bytes, header: str) -> Union[None, Envelope]:
         # TODO return/raise custom exceptions in this instead of just logging stuff and returning none
@@ -113,10 +115,12 @@ class Executor(metaclass=ExecutorMeta):
 
         # If header is not none (meaning this is a ROUTE msg with an ID frame), then verify that the ID frame is
         # the same as the vk on the seal
-        if header and (header != env.seal.verifying_key):
-            self.log.error("Header frame {} does not match seal's vk {}\nfor envelope {}"
-                           .format(header, env.seal.verifying_key, env))
-            return None
+
+        # TODO add this code back in appropriately...
+        # if header and (header != env.seal.verifying_key):
+        #     self.log.error("Header frame {} does not match seal's vk {}\nfor envelope {}"
+        #                    .format(header, env.seal.verifying_key, env))
+        #     return None
 
         # Make sure we haven't seen this message before
         if env.meta.uuid in Executor._recently_seen:
@@ -234,12 +238,12 @@ class DealerRouterExecutor(Executor):
         self.expected_replies = {}  # Dict where key is reply UUID and value is the asyncio timeout handler
 
         # Router socket and recv handler
-        self.router = None
+        self.router_socket = None
         self.router_handler = None
 
     def _recv_request_env(self, header: str, envelope: Envelope):
         self.log.spam("Recv REQUEST envelope with header {} and envelope {}".format(header, envelope))
-        self.router.route_callback(callback=StateInput.REQUEST, header=header, envelope_binary=envelope.serialize())
+        self.router.route_callback(callback=StateInput.REQUEST, header=header, message=envelope.message, envelope=envelope)
 
     def _recv_reply_env(self, header: str, envelope: Envelope):
         self.log.spam("Recv REPLY envelope with header {} and envelope {}".format(header, envelope))
@@ -250,7 +254,7 @@ class DealerRouterExecutor(Executor):
             self.expected_replies[reply_uuid].cancel()
             del(self.expected_replies[reply_uuid])
 
-        self.router.route_callback(callback=StateInput.INPUT, header=header, envelope_binary=envelope.serialize())
+        self.router.route_callback(callback=StateInput.INPUT, header=header, message=envelope.message, envelope=envelope)
 
     def _timeout(self, url: str, request_envelope: bytes, reply_uuid: int):
         assert reply_uuid in self.expected_replies, "Timeout triggered but reply_uuid was not in expected_replies"
@@ -260,16 +264,16 @@ class DealerRouterExecutor(Executor):
         self.router.route_callback(callback=StateInput.TIMEOUT, envelope_binary=request_envelope)
 
     def add_router(self, url: str):
-        assert self.router is None, "Attempted to add router on url {} but socket already configured".format(url)
+        assert self.router_socket is None, "Attempted to add router on url {} but socket already configured".format(url)
 
         self.log.socket("Creating router socket on url {}".format(url))
-        self.router = self.context.socket(socket_type=zmq.ROUTER)
+        self.router_socket = self.context.socket(socket_type=zmq.ROUTER)
         # self.router = self.ironhouse.secure_socket(
         #     self.context.socket(socket_type=zmq.ROUTER),
         #     self.ironhouse.secret, self.ironhouse.public_key)
-        self.router.bind(url)
+        self.router_socket.bind(url)
 
-        self.router_handler = self.add_listener(self.recv_env_multipart, socket=self.router,
+        self.router_handler = self.add_listener(self.recv_env_multipart, socket=self.router_socket,
                                                 callback_fn=self._recv_request_env)
 
     def add_dealer(self, url: str, id: str, vk: str=''):
@@ -320,14 +324,13 @@ class DealerRouterExecutor(Executor):
         self.dealers[url][_SOCKET].send_multipart([envelope])
 
     def reply(self, id: str, envelope: bytes):
-        assert self.router, "Attempted to reply but router socket is not set"
+        assert self.router_socket, "Attempted to reply but router socket is not set"
         assert isinstance(id, str), "'id' arg must be a string"
         assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
-
-        self.router.send_multipart([id.encode(), envelope])
+        self.router_socket.send_multipart([id.encode(), envelope])
 
     def remove_router(self):
-        assert self.router, "Tried to remove router but self.router is not set"
+        assert self.router_socket, "Tried to remove router but self.router is not set"
 
         self.router_handler.cancel()
         # self.log.info("Removing router at url {}".format(url))
@@ -352,5 +355,5 @@ class DealerRouterExecutor(Executor):
     def teardown(self):
         for url in self.dealers.copy():
             self.remove_dealer(url)
-        if self.router:
+        if self.router_socket:
             self.remove_router()
