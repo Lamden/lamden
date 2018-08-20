@@ -128,8 +128,8 @@ def get_logger(name=''):
     log = logging.getLogger(name)
     log.setLevel(_LOG_LVL)
 
-    # sys.stdout = LoggerWriter(log.debug)
-    # sys.stderr = LoggerWriter(log.error)
+    sys.stdout = LoggerWriter(log.debug)
+    sys.stderr = LoggerWriter(log.error)
 
     for log_name, log_level in CUSTOM_LEVELS.items():
         apply_custom_level(log, log_name, log_level)
