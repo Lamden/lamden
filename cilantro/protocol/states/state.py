@@ -133,7 +133,7 @@ class State(metaclass=StateMeta):
     def reset_attrs(self):
         raise NotImplementedError("reset_attrs must be implemented for any State subclass")
 
-    def call_input_handler(self, message, input_type: str, envelope=None):
+    def call_input_handler(self, input_type: str, message, envelope=None, *args, **kwargs):
         # TODO assert type message is MessageBase, and envelope is Envelope ???
         self._assert_has_input_handler(message, input_type)
 
@@ -143,15 +143,16 @@ class State(metaclass=StateMeta):
         if (isinstance(handler_func, MagicMock) and envelope) or self._has_envelope_arg(handler_func):
             assert envelope, "Envelope arg was found for input func {}, " \
                              "but no envelope passed into call_input_handler".format(handler_func)
-            output = handler_func(message, envelope=envelope)
+            output = handler_func(message, *args, envelope=envelope, **kwargs)
         else:
-            output = handler_func(message)
+            output = handler_func(message, *args, **kwargs)
 
         return output
 
     def call_transition_handler(self, trans_type, state, *args, **kwargs):
-        trans_func = self._get_transition_handler(trans_type, state)
+        assert len(args) == 0, "Unnamed args not supported using transitions. You must use key word arguments"
 
+        trans_func = self._get_transition_handler(trans_type, state)
         timeout_func = getattr(self, StateTimeout.TIMEOUT_FLAG)
 
         # On entry, schedule the timeout function (if any), and run the appropriate ENTRY transition handler

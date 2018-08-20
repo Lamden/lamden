@@ -1,11 +1,12 @@
 from cilantro.messages.base.base import MessageBase
-from cilantro.protocol.reactor.interface import ReactorInterface
 from cilantro.protocol.reactor.executor import ReactorCommand, SubPubExecutor, DealerRouterExecutor
+from cilantro.protocol.reactor.manager import ExecutorManager
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.logger import get_logger
 from cilantro.protocol.structures import EnvelopeAuth
 from cilantro.protocol import wallet
 from cilantro.constants.ports import PUB_SUB_PORT, ROUTER_DEALER_PORT
+from cilantro.protocol.overlay.interface import OverlayInterface
 
 """
 The Composer class serves as a high level API for a StateMachine (application layer) to execute networking commands on
@@ -13,11 +14,25 @@ the ReactorDaemon process. It creates
 """
 
 
+"""
+TODO code a turnt decorator to validate args on a lot of these functions. Namely:
+- ip XOR vk should be provided. Vk should be valid 64 char hex, IP should be valid IPv4 address
+- Port should be valid port int
+- protocol should be either 'ipc'/'tcp'
+
+TODO update docstrings
+
+TODO implement functions that remove sockets
+
+TODO implement functionality to use this without a signing key
+"""
+
+
 class Composer:
-    def __init__(self, interface: ReactorInterface, signing_key: str, name='Node'):
+    def __init__(self, manager: ExecutorManager, signing_key: str, name='Node'):
         super().__init__()
         self.log = get_logger("{}.Composer".format(name))
-        self.interface = interface
+        self.manager = manager
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
 
@@ -40,32 +55,29 @@ class Composer:
         :param req_env: The original request envelope (an instance of Envelope)
         :return: An Envelope instance
         """
-        self.log.debug("Creating REPLY envelope with msg type {} for request envelope {}".format(type(reply), req_env))
+        self.log.spam("Creating REPLY envelope with msg type {} for request envelope {}".format(type(reply), req_env))
         request_uuid = req_env.meta.uuid
         reply_uuid = EnvelopeAuth.reply_uuid(request_uuid)
 
         return Envelope.create_from_message(message=reply, signing_key=self.signing_key,
                                             verifying_key=self.verifying_key, uuid=reply_uuid)
 
-    def resume(self):
-        self.log.info("Resuming ReactorInterface")
-        self.interface.notify_resume()
+    def _build_url(self, protocol, port, ip='', vk=''):
+        assert protocol in ('ipc', 'tcp'), "Got protocol {}, but only tcp and ipc are supported".format(protocol)
 
-    def pause(self):
-        self.log.info("Pausing ReactorInterface")
-        self.interface.notify_pause()
+        if vk:
+            ip = OverlayInterface.ip_for_vk(vk)
+        return "{}://{}:{}".format(protocol, ip, port)
 
-    def add_sub(self, filter: str, ip: str='', vk: str=''):
+    def add_sub(self, filter: str, protocol: str='tcp', port: int=PUB_SUB_PORT, ip: str='', vk: str=''):
         """
         Connects the subscriber socket to listen to 'URL' with filter 'filter'.
         :param url: The URL to CONNECT the sub socket to (ex 'tcp://17.1.3.4:4200')
         :param filter: The filter to subscribe to. Only data published with this filter will be received. Currently,
         only one filter per CONNECT is supported.
         """
-        # url = "tcp://{}:{}".format(ip or vk, Constants.Ports.PubSub)
-        url = "tcp://{}:{}".format(ip or vk, PUB_SUB_PORT)
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_sub.__name__, filter=filter, url=url, vk=vk)
-        self.interface.send_cmd(cmd)
+        url = self._build_url(protocol=protocol, port=port, ip=ip, vk=vk)
+        self.manager.executors['SubPubExecutor'].add_sub(url=url, filter=filter, vk=vk)
 
     def remove_sub(self, ip: str='', vk: str=''):
         """
@@ -82,9 +94,7 @@ class Composer:
         :param url: The URL of the router that the created dealer socket should CONNECT to.
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        url = "tcp://{}:{}".format(ip or vk, PUB_SUB_PORT)
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub.__name__, url=url)
-        self.interface.send_cmd(cmd)
+        raise NotImplementedError("This still needs to be coded up")
 
     def remove_sub_filter(self, filter: str, ip: str='', vk: str=''):
         """
@@ -92,9 +102,7 @@ class Composer:
         unsubscribes to 'filter
         :param filter: A string to use as the filter frame. This filter will be unsubscribed.
         """
-        url = "tcp://{}:{}".format(ip or vk, PUB_SUB_PORT)
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_sub_filter.__name__, url=url, filter=filter)
-        self.interface.send_cmd(cmd)
+        raise NotImplementedError("This still needs to be coded up")
 
     def send_pub_msg(self, filter: str, message: MessageBase):
         """
@@ -111,19 +119,16 @@ class Composer:
         :param filter: A string to use as the filter frame
         :param envelope: An instance of Envelope
         """
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.send_pub.__name__, filter=filter,
-                                        envelope=envelope)
-        self.interface.send_cmd(cmd)
+        self.manager.executors['SubPubExecutor'].send_pub(filter=filter, envelope=envelope.serialize())
 
-    def add_pub(self, ip: str='', vk: str=''):
+    def add_pub(self, protocol: str='tcp', port: int=PUB_SUB_PORT, ip: str=''):
         """
         Create a publisher socket that BINDS to 'url'
         :param url: The URL to publish under.
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        url = "tcp://{}:{}".format(ip or vk, PUB_SUB_PORT)
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.add_pub.__name__, url=url)
-        self.interface.send_cmd(cmd)
+        url = self._build_url(protocol=protocol, port=port, ip=ip, vk='')
+        self.manager.executors['SubPubExecutor'].add_pub(url=url)
 
     def remove_pub(self, ip: str='', vk: str=''):
         """
@@ -131,11 +136,9 @@ class Composer:
         :param url: The URL of the router that the created dealer socket should CONNECT to.
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        url = "tcp://{}:{}".format(ip or vk, PUB_SUB_PORT)
-        cmd = ReactorCommand.create_cmd(SubPubExecutor.__name__, SubPubExecutor.remove_pub.__name__, url=url)
-        self.interface.send_cmd(cmd)
+        raise NotImplementedError("This still needs to be coded up")
 
-    def add_dealer(self, ip: str='', vk: str=''):
+    def add_dealer(self, id='', protocol: str='tcp', port: int=PUB_SUB_PORT, ip: str='', vk: str=''):
         """
         Add a dealer socket at url. Dealers are like 'async requesters', and can connect to a single Router socket (1-1)
         (side note: A router socket, however, can connect to N dealers)
@@ -143,34 +146,34 @@ class Composer:
         :param url: The URL of the router that the created dealer socket should CONNECT to.
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        url = "tcp://{}:{}".format(ip or vk, ROUTER_DEALER_PORT)
-        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_dealer.__name__,
-                                        id=self.verifying_key, url=url, vk=vk)
-        self.interface.send_cmd(cmd)
+        if not id:
+            id = self.verifying_key
 
-    def add_router(self, ip: str='', vk: str=''):
+        url = self._build_url(protocol=protocol, port=port, ip=ip, vk=vk)
+        self.manager.executors['DealerRouterExecutor'].add_dealer(url=url, id=id, vk=vk)
+
+    def add_router(self, protocol: str='tcp', port: int=ROUTER_DEALER_PORT, ip: str=''):
         """
         Add a router socket at url. Routers are like 'async repliers', and can connect to many Dealer sockets (N-1)
         :param url: The URL the router socket should BIND to
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
-        url = "tcp://{}:{}".format(ip or vk, ROUTER_DEALER_PORT)
-        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.add_router.__name__, url=url)
-        self.interface.send_cmd(cmd)
+        url = self._build_url(protocol=protocol, port=port, ip=ip, vk='')
+        self.manager.executors['DealerRouterExecutor'].add_router(url=url)
 
-    def send_request_msg(self, message: MessageBase, timeout=0, ip: str='', vk: str=''):
+    def send_request_msg(self, message: MessageBase, timeout=0, protocol: str='tcp', port: int=ROUTER_DEALER_PORT,
+                         ip: str='', vk: str=''):
         """
         TODO docstring
         """
-        self.send_request_env(ip=ip, vk=vk, envelope=self._package_msg(message), timeout=timeout)
+        self.send_request_env(ip=ip, vk=vk, envelope=self._package_msg(message), timeout=timeout, protocol=protocol, port=port)
 
-    def send_request_env(self, envelope: Envelope, timeout=0, ip: str='', vk: str=''):
-        url = "tcp://{}:{}".format(ip or vk, ROUTER_DEALER_PORT)
+    def send_request_env(self, envelope: Envelope, timeout=0, protocol: str='tcp', port: int=ROUTER_DEALER_PORT,
+                         vk: str='', ip: str=''):
+        url = self._build_url(protocol=protocol, port=port, ip=ip, vk=vk)
         reply_uuid = EnvelopeAuth.reply_uuid(envelope.meta.uuid)
-
-        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.request.__name__, url=url,
-                                        envelope=envelope, timeout=timeout, reply_uuid=reply_uuid)
-        self.interface.send_cmd(cmd)
+        self.manager.executors['DealerRouterExecutor'].request(url=url, envelope=envelope.serialize(),
+                                                               timeout=timeout, reply_uuid=reply_uuid)
 
     def send_reply(self, message: MessageBase, request_envelope: Envelope):
         """
@@ -183,14 +186,11 @@ class Composer:
         """
         requester_id = request_envelope.seal.verifying_key
         reply_env = self._package_reply(reply=message, req_env=request_envelope)
-        cmd = ReactorCommand.create_cmd(DealerRouterExecutor.__name__, DealerRouterExecutor.reply.__name__,
-                                        id=requester_id, envelope=reply_env)
-        self.interface.send_cmd(cmd)
+        self.manager.executors['DealerRouterExecutor'].reply(id=requester_id, envelope=reply_env.serialize())
 
     def teardown(self):
         """
         Teardown the entire application stack
         """
-        self.log.important("Composer tearing down application!")
-        self.interface.teardown()
+        raise NotImplementedError("This still needs to be coded up")
 

@@ -244,7 +244,7 @@ class StateTest(TestCase):
 
         self.assertEqual(expected_handler, func)
 
-        state.call_input_handler(msg, StateInput.REQUEST, envelope=mock_env)
+        state.call_input_handler(StateInput.REQUEST, msg, envelope=mock_env)
 
         self.assertEqual(state.request, msg)
 
@@ -255,7 +255,7 @@ class StateTest(TestCase):
 
         state = TrafficLightRedState(mock_sm)
 
-        state.call_input_handler(msg, StateInput.INPUT, envelope=mock_env)
+        state.call_input_handler(StateInput.INPUT, msg, envelope=mock_env)
 
         self.assertEqual(state.message, msg)
         self.assertEqual(state.envelope, mock_env)
@@ -361,7 +361,7 @@ class StateTest(TestCase):
         mock_func = MagicMock(spec=state.handle_stop_msg_on_red)
         state.handle_stop_msg_on_red = mock_func
 
-        state.call_input_handler(msg, StateInput.INPUT, envelope=mock_env)
+        state.call_input_handler(StateInput.INPUT, msg, envelope=mock_env)
 
         mock_func.assert_called_with(msg, mock_env)
 

@@ -44,7 +44,7 @@ class TestSecureTransport(MPTestCase):
         def config_sub(composer: Composer):
             from unittest.mock import MagicMock
 
-            composer.interface.router = MagicMock()
+            composer.manager.router = MagicMock()
             return composer
 
         def assert_sub(composer: Composer):
@@ -57,7 +57,7 @@ class TestSecureTransport(MPTestCase):
             expected_cb = call(ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env))
             unexpected_cb = call(ReactorCommand.create_callback(callback=StateInput.LOOKUP_FAILED, envelope=evil_env))
 
-            call_args = composer.interface.router.route_callback.call_args_list
+            call_args = composer.manager.router.route_callback.call_args_list
 
             # # DEBUG STUFF
             # from cilantro.logger.base import get_logger
@@ -109,21 +109,21 @@ class TestSecureTransport(MPTestCase):
         """
         def config_sub(composer: Composer):
             from unittest.mock import MagicMock
-            composer.interface.router = MagicMock()
+            composer.manager.router = MagicMock()
             return composer
 
         def assert_good_sub(composer: Composer):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
             from cilantro.protocol.states.decorators import StateInput
             cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
-            composer.interface.router.route_callback.assert_called_with(cb)
+            composer.manager.router.route_callback.assert_called_with(cb)
 
         def assert_bad_sub(composer: Composer):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
             from cilantro.protocol.states.decorators import StateInput
             from unittest.mock import call
             cb = call(ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env))
-            assert cb not in composer.interface.router.route_callback.call_args_list
+            assert cb not in composer.manager.router.route_callback.call_args_list
 
         env = random_envelope()
         evil_env = random_envelope()

@@ -42,7 +42,7 @@ class MPComposer(MPTesterBase):
         router = MagicMock()
 
         reactor = ReactorInterface(router=router, loop=loop, signing_key=sk)
-        composer = Composer(interface=reactor, signing_key=sk)
+        composer = Composer(manager=reactor, signing_key=sk)
 
         return composer, loop, [reactor._recv_messages()]
 
