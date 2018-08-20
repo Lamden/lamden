@@ -160,9 +160,8 @@ class MNBootState(MNBaseState):
             self.parent.composer.add_dealer(vk=vk)
 
         # Create web server
-        self.log.debug("Creating REST server on port 8080")
-        # self.queue_mode = Value('d', 0)
-        # self.parent.server = LProcess(target=start_webserver, args=(self.queue_mode, ))
+        # self.log.debug("Creating REST server on port 8080")
+        # self.parent.server = LProcess(target=start_webserver)
         # self.parent.server.start()
 
         server = web.Server(self.parent.route_http)
