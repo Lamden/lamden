@@ -66,7 +66,8 @@ class Composer:
         assert protocol in ('ipc', 'tcp'), "Got protocol {}, but only tcp and ipc are supported".format(protocol)
 
         if vk:
-            ip = OverlayInterface.ip_for_vk(vk)
+            node = OverlayInterface.get_node_from_vk(vk)
+            self.log.critical(node)
         return "{}://{}:{}".format(protocol, ip, port)
 
     def add_sub(self, filter: str, protocol: str='tcp', port: int=PUB_SUB_PORT, ip: str='', vk: str=''):
@@ -193,4 +194,3 @@ class Composer:
         Teardown the entire application stack
         """
         raise NotImplementedError("This still needs to be coded up")
-

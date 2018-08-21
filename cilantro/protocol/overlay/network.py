@@ -82,7 +82,7 @@ class Network(object):
             try: self.protocol.router.removeContact(node)
             except: pass
             self.ironhouse.authorized_nodes[node.id] = False
-            self.event_sock.send(ujson.dumps({'e':'unauthorized', 'ip': node.ip}))
+            self.event_sock.send_json({'e':'unauthorized', 'ip': node.ip})
         log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP', '127.0.0.1'), [self.vkcache.get(k).ip for k in self.ironhouse.authorized_nodes if self.vkcache.get(k)]))
         return authorization == 'authorized'
 
@@ -118,19 +118,18 @@ class Network(object):
                                 self.protocol.router.removeContact(node)
                                 self.poll.unregister(fileno)
                                 conn.close()
-                                self.connection_drop()
+                                self.connection_drop(node)
                 await asyncio.sleep(0.1)
         except asyncio.CancelledError:
             log.info('Network shutting down gracefully.')
 
-    def connection_drop(self):
+    def connection_drop(self, node):
+        self.event_sock.send_json({'e':'disconect', 'ip':node.ip})
         callback = ReactorCommand.create_callback(
             callback=StateInput.CONN_DROPPED,
-            vk=self.ironhouse.vk,
-            ip=self.node.ip
+            ip=node.ip
         )
         log.debug("Sending callback failure to mainthread {}".format(callback))
-        self.event_sock.send(ujson.dumps({'e':'disconect', 'vk':self.ironhouse.vk,'ip':self.node.ip}))
 
     def connect_to_neighbor(self, node):
         if self.node.id == node.id: return
@@ -142,7 +141,7 @@ class Network(object):
             conn.connect(addr)
             self.poll.register(conn.fileno(), POLLIN)
             log.info("[CLIENT SIDE] Client ({}, {}) connected".format(*addr))
-            self.event_sock.send(ujson.dumps({'e':'connected', 'addr': addr}))
+            self.event_sock.send_json({'e':'connected', 'addr': addr})
             return conn
         except Exception as e:
             del self.connections[conn.fileno()]
@@ -241,7 +240,7 @@ class Network(object):
 
         # do our crawling
         await asyncio.gather(*ds)
-        self.event_sock.send(ujson.dumps({'e':'table_refreshed'}))
+        self.event_sock.send_json({'e':'table_refreshed'})
 
     def bootstrappableNeighbors(self):
         """
