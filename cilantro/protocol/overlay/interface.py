@@ -1,8 +1,6 @@
-# TODO
-# implement this class for realz ... My idea was to have this class spin up a subproc and
-# talk to the overlay process over an dealer/router socket over IPC. Perhaps this isnt the best solution tho
-# I shall defer to good sir falcon on how to best talk with the overlay  --davis
-
+import zmq, zmq.asyncio, asyncio, ujson
+from cilantro.protocol.overlay.dht import DHT
+from cilantro.constants.overlay_network import ALPHA, KSIZE, MAX_PEERS
 
 ip_vk_map = {
     '82540bb5a9c84162214c5540d6e43be49bbfe19cf49685660cab608998a65144': '127.0.0.1',  # Masternode 1
@@ -13,14 +11,38 @@ ip_vk_map = {
     '0c998fa1b2675d76372897a7d9b18d4c1fbe285dc0cc795a50e4aad613709baf': '127.0.0.1',  # Delegate 3
 }
 
-
 class OverlayInterface:
     """
     This class provides a high level API to interface with the overlay network
     """
 
+    ctx = zmq.asyncio.Context()
+    event_sock = self.ctx.socket(zmq.PUB)
+    loop = asyncio.get_event_loop()
+    discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
+    dht = DHT(sk=sk, mode=discovery_mode, loop=asyncio.get_event_loop(),
+              alpha=ALPHA, ksize=KSIZE, event_sock=event_sock,
+              max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
+
     @classmethod
-    def ip_for_vk(cls, vk: str):
+    def ip_for_vk(cls, vk: str, timeout=3):
         # this entire func is obviously a horrendous hack but until we properly integrate the overlay it must be done
         assert vk in ip_vk_map, "Got VK {} that is not in ip_vk_map keys {}".format(vk, ip_vk_map.keys())
-        return ip_vk_map[vk]
+        try:
+            ip = asyncio.wait_for(cls.dht.network.lookup_ip(vk), timeout)
+            return ip
+        except:
+            log.warning('Did not find an ip for VK {}'.format(vk))
+
+    @classmethod
+    def overlay_event_socket(cls):
+        socket = cls.ctx.socket(zmq.SUB)
+        socket.connect('ipc://overlay-ipc-sock')
+        return socket
+
+    @classmethod
+    async def listen_for_events(cls, event_handler):
+        listener_sock = cls.overlay_event_socket()
+        while True:
+            msg = await cls.event_sock.recv()
+            event_handler(ujson.loads(msg))
