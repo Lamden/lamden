@@ -6,6 +6,9 @@ from cilantro.utils.test.god import God
 from cilantro.logger.base import get_logger
 
 
+LOG_LEVEL = 0
+
+
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
         return fn(*args, **kwargs)
@@ -20,7 +23,7 @@ def run_mn():
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[0]['sk']
@@ -35,7 +38,7 @@ def run_witness(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -51,7 +54,7 @@ def run_delegate(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -72,11 +75,17 @@ class TestManualDump(BaseNetworkTestCase):
 
     VOLUME = 2  # Number of transactions to dump
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-bootstrap.json')
-    PROFILE_TYPE = 'c'
+    PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)
     def test_dump(self):
         log = get_logger("Dumper")
+
+        # DEBUG
+        from cilantro.protocol.overlay.interface import ip_vk_map
+        log.important("Overlay interface VK Map\n {}".format(ip_vk_map))
+        log.important("Nodemap: {}".format(self.nodemap))
+        # END DEBUG
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True, profiling=self.PROFILE_TYPE)

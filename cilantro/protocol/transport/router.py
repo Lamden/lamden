@@ -33,39 +33,6 @@ class Router:
 
         self.routes[callback](callback, *args, **kwargs)
 
-    # def route_callback(self, cmd: ReactorCommand):
-    #     """
-    #     Takes in a callback from a ReactorInterface, and invokes the appropriate receiver on the state machine
-    #     """
-    #     self.log.spam("ROUTING CALLBACK:\n{}".format(cmd))
-    #     assert isinstance(cmd, ReactorCommand), "route_callback must take a ReactorCommand instance as input"
-    #     assert cmd.callback, "ReactorCommand {} does not have 'callback' in kwargs".format(cmd)
-    #     assert cmd.callback in self.routes, "Unrecognized callback {}".format(cmd.callback)
-    #
-    #     # TODO remove below (this is just debug checking)
-    #     # Super extra sanity check to make sure id frame from requests matches seal's vk (this is also done in Daemon)
-    #     if cmd.callback == StateInput.REQUEST:
-    #         assert cmd.kwargs['header'] == cmd.envelope.seal.verifying_key, "Header frame and VK dont match!!!"
-    #         assert cmd.envelope.verify_seal(), "Envelope couldnt be verified! This should of been checked " \
-    #                                            "by the ReactorDaemon!!!!"
-    #
-    #     if cmd.envelope:
-    #         envelope = None
-    #         try:
-    #             envelope = cmd.envelope
-    #             if not envelope.verify_seal():
-    #                 self.log.error("\n\n\n Could not verify seal for envelope {} \n\n\n".format(envelope))
-    #                 return
-    #             # Ensure its possible to deserialize the data (this will raise exception if not)
-    #             # Deserializing the data (via from_bytes(..) also runs .validate() on the message)
-    #             msg = envelope.message
-    #         except Exception as e:
-    #             self.log.error("\n\n!!!!!\nError unpacking cmd envelope {}\nCmd:\n{}\n!!!!\n".format(e, cmd))
-    #             return
-    #
-    #     # Route command to subroutine based on callback
-    #     self.routes[cmd.callback](cmd)
-
     def _route(self, input_type, *args, **kwargs):
         """
         Should be for internal use only.

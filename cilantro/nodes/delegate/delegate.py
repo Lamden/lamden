@@ -134,7 +134,7 @@ class DelegateBootState(DelegateBaseState):
     def socket_connected(self, socket_type: int, vk: str, url: str):
         assert vk in VKBook.get_all(), "Connected to vk {} that is not present in VKBook.get_all()!!!".format(vk)
         key = vk + '_' + str(socket_type)
-        self.log.spam("Delegate connected to vk {} with sock type {}".format(vk, socket_type))  # TODO remove this (debug line)
+        self.log.spam("Delegate connected to vk {} with sock type {}".format(vk, socket_type))
 
         # TODO make less ugly pls
         if vk in VKBook.get_delegates():

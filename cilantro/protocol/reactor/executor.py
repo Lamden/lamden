@@ -41,7 +41,7 @@ class Executor(metaclass=ExecutorMeta):
         self.loop = loop
         asyncio.set_event_loop(self.loop)
         self.context = context
-        self.log = get_logger("{}.{}".format(Executor._parent_name, type(self).__name__))
+        self.log = get_logger("{}".format(type(self).__name__))
 
     def add_listener(self, listener_fn, *args, **kwargs):
         # listener_fn must be a coro
@@ -49,7 +49,7 @@ class Executor(metaclass=ExecutorMeta):
         return asyncio.ensure_future(self._listen(listener_fn, *args, **kwargs))
 
     async def _listen(self, listener_fn, *args, **kwargs):
-        self.log.info("_listen called with fn {}, and args={}, kwargs={}".format(listener_fn, args, kwargs))
+        self.log.debugv("_listen called with fn {}, and args={}, kwargs={}".format(listener_fn, args, kwargs))
 
         try:
             await listener_fn(*args, **kwargs)
@@ -93,9 +93,7 @@ class Executor(metaclass=ExecutorMeta):
             callback_fn(header=header, envelope=env)
 
     def notify_socket_connected(self, socket_type: int, vk: str, url: str):
-        pass
-        # TODO fix and implement this
-        # self.router.route_callback(callback=StateInput.SOCKET_CONNECTED, socket_type=socket_type, vk=vk, url=url)
+        self.router.route_callback(callback=StateInput.SOCKET_CONNECTED, socket_type=socket_type, vk=vk, url=url)
 
     def _validate_envelope(self, envelope_binary: bytes, header: str) -> Union[None, Envelope]:
         # TODO return/raise custom exceptions in this instead of just logging stuff and returning none
@@ -256,12 +254,13 @@ class DealerRouterExecutor(Executor):
 
         self.router.route_callback(callback=StateInput.INPUT, header=header, message=envelope.message, envelope=envelope)
 
-    def _timeout(self, url: str, request_envelope: bytes, reply_uuid: int):
+    def _timeout(self, url: str, envelope: Envelope, reply_uuid: int):
         assert reply_uuid in self.expected_replies, "Timeout triggered but reply_uuid was not in expected_replies"
-        self.log.debug("Request to url {} timed out! reply uuid {}".format(url, reply_uuid))
 
+        self.log.debug("Request to url {} timed out! reply uuid {}".format(url, reply_uuid))
         del(self.expected_replies[reply_uuid])
-        self.router.route_callback(callback=StateInput.TIMEOUT, envelope_binary=request_envelope)
+
+        self.router.route_callback(callback=StateInput.TIMEOUT, message=envelope.message, envelope=envelope)
 
     def add_router(self, url: str):
         assert self.router_socket is None, "Attempted to add router on url {} but socket already configured".format(url)
@@ -305,11 +304,10 @@ class DealerRouterExecutor(Executor):
         self.notify_socket_connected(socket_type=zmq.DEALER, vk=vk, url=url)
 
     # TODO pass in the intended replier's vk so we can be sure the reply we get is actually from him
-    def request(self, url: str, reply_uuid: str, envelope: bytes, timeout=0):
+    def request(self, url: str, reply_uuid: str, envelope: Envelope, timeout=0):
         self.log.spam("requesting /w reply uuid {} and env {}".format(reply_uuid, envelope))
         assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
             .format(url, self.dealers)
-        assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
 
         reply_uuid = int(reply_uuid)
         timeout = float(timeout)
@@ -321,7 +319,7 @@ class DealerRouterExecutor(Executor):
             self.log.spam("Adding timeout of {} for reply uuid {}".format(timeout, reply_uuid))
             self.expected_replies[reply_uuid] = self.loop.call_later(timeout, self._timeout, url, envelope, reply_uuid)
 
-        self.dealers[url][_SOCKET].send_multipart([envelope])
+        self.dealers[url][_SOCKET].send_multipart([envelope.serialize()])
 
     def reply(self, id: str, envelope: bytes):
         assert self.router_socket, "Attempted to reply but router socket is not set"

@@ -76,7 +76,7 @@ coloredlogs.DEFAULT_LEVEL_STYLES = {
     'success':{'color':'white', 'bold': True, 'background': 'green'},
     'verbose':{'color':'blue' },
     'warning':{'color':'yellow' },
-    'debugv':{'color':'blue', 'faint':True }
+    'debugv':{'color':78, 'faint':True }
 }
 coloredlogs.DEFAULT_FIELD_STYLES = {
     'asctime': {'color': 'green'},

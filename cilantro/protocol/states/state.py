@@ -237,8 +237,9 @@ class State(metaclass=StateMeta):
         # what got pruned, so we do this business below. Would be cool if we could do like a C style macro to optionally
         # include this behavior just for dev
         pruned_kwargs = set(kwargs.keys()) - set(new_kwargs.keys())
-        self.log.debugv("Handler func named {} did not have key word args {} in signature, so they were pruned from "
-                        "'kwargs' for convenience".format(func.__qualname__, pruned_kwargs))
+        if len(pruned_kwargs) > 0:
+            self.log.debugv("Handler func named {} did not have key word args {} in signature, so they were pruned from "
+                            "'kwargs' for convenience".format(func.__qualname__, pruned_kwargs))
 
         return new_kwargs
 
