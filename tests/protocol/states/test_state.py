@@ -415,7 +415,7 @@ class StateTest(TestCase):
         state = TrafficLightRedState(mock_sm)
 
         args = ['im an arg', 10, 'im also an arg']
-        kwargs = {'dat_key': 'dat_value', 'my_fav_num': 1260}
+        kwargs = {'vk': 'A' * 64, 'socket_type': 10}
 
         mock_func = MagicMock(spec=state.conn_dropped)
         state.conn_dropped = mock_func
