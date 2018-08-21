@@ -207,7 +207,7 @@ class Ironhouse:
         log.info('Listening to secure connections at {}'.format(self.auth_port))
         try:
             while True:
-                received_vk, received_ip = await self.sec_sock.recv_env_multipart()
+                received_vk, received_ip = await self.sec_sock.recv_multipart()
                 received_vk = received_vk.decode()
                 received_ip = received_ip.decode()
 
