@@ -195,6 +195,7 @@ class State(metaclass=StateMeta):
         func_kwargs = self._prune_kwargs(func, **kwargs)
         func(*args, **func_kwargs)
 
+    # TODO make this more optimal. We really should only precomute this stuff once when the app loads, and never again
     def _get_input_handler(self, message, input_type: str):
         registry = getattr(self, input_type)
         assert isinstance(registry, dict), "Expected registry to be a dictionary!"
@@ -220,8 +221,8 @@ class State(metaclass=StateMeta):
         sig = inspect.signature(func)
         return 'envelope' in sig.parameters
 
-    @classmethod
-    def _prune_kwargs(cls, func, **kwargs) -> dict:
+    # TODO make this more optimal. We really should only precomute this stuff once when the app loads, and never again
+    def _prune_kwargs(self, func, **kwargs) -> dict:
         """
         Prunes kwargs s.t. only keys which are present as named args in func's signature are present.
         """
@@ -230,7 +231,16 @@ class State(metaclass=StateMeta):
         # If 'kwargs' is present in the signature, do not prune anything
         if 'kwargs' in params:
             return kwargs
-        return {k: kwargs[k] for k in kwargs if k in params}
+        new_kwargs = {k: kwargs[k] for k in kwargs if k in params}
+
+        # NOTE at this point we could just return new_kwargs (and we should in prod). For dev we might like to know
+        # what got pruned, so we do this business below. Would be cool if we could do like a C style macro to optionally
+        # include this behavior just for dev
+        pruned_kwargs = set(kwargs.keys()) - set(new_kwargs.keys())
+        self.log.debugv("Handler func named {} did not have key word args {} in signature, so they were pruned from "
+                        "'kwargs' for convenience".format(func.__qualname__, pruned_kwargs))
+
+        return new_kwargs
 
     def _assert_has_input_handler(self, message: MessageBase, input_type: str):
         # Assert that input_type is actually a recognized input_type
@@ -271,7 +281,7 @@ class State(metaclass=StateMeta):
         # At this point, no handler could be found. Warn the user and return None
         # self.log.warning("\nNo {} transition handler found for state {}. Any_handler = {} ... Transition "
         #                  "Registry = {}".format(trans_type, state, any_handler, trans_registry))
-        self.log.debug("No {} transition handler found for transitioning from state {} to {}".format(trans_type, self, state))
+        self.log.debugv("No {} transition handler found for transitioning from state {} to {}".format(trans_type, self, state))
         return None
 
     def __eq__(self, other):

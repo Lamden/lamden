@@ -51,10 +51,12 @@ class StateTest(TestCase):
         def some_func(arg1='hello', arg2='goodbye'):
             pass
 
+        mock_sm = MagicMock()
+        state = TrafficLightYellowState(mock_sm)
         kwargs = {'arg2': 9000, 'key that isnt an arg in some_func': b'hi'}
 
         expected_kwargs = {'arg2': 9000}
-        pruned_kwargs = State._prune_kwargs(some_func, **kwargs)
+        pruned_kwargs = state._prune_kwargs(some_func, **kwargs)
 
         self.assertEqual(expected_kwargs, pruned_kwargs)
 
