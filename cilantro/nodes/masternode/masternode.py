@@ -162,7 +162,6 @@ class MNBootState(MNBaseState):
 
         # Create web server
         self.log.debug("Creating REST server on port 8080")
-
         server = web.Server(self.parent.route_http)
         server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
         self.parent.tasks.append(server_future)
