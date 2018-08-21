@@ -190,7 +190,8 @@ class State(metaclass=StateMeta):
             return
 
         func = getattr(self, func.__name__)
-        func(*args, **kwargs)
+        func_kwargs = self._prune_kwargs(func, **kwargs)
+        func(*args, **func_kwargs)
 
     def _get_input_handler(self, message, input_type: str):
         registry = getattr(self, input_type)
@@ -218,11 +219,15 @@ class State(metaclass=StateMeta):
         return 'envelope' in sig.parameters
 
     @classmethod
-    def _prune_kwargs(cls, func, **kwargs):
+    def _prune_kwargs(cls, func, **kwargs) -> dict:
         """
         Prunes kwargs s.t. only keys which are present as named args in func's signature are present.
         """
         params = inspect.signature(func).parameters
+
+        # If 'kwargs' is present in the signature, do not prune anything
+        if 'kwargs' in params:
+            return kwargs
         return {k: kwargs[k] for k in kwargs if k in params}
 
     def _assert_has_input_handler(self, message: MessageBase, input_type: str):
