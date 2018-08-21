@@ -1,4 +1,4 @@
-import unittest, cilantro, asyncio
+import unittest, cilantro, asyncio, zmq.asyncio, zmq
 from unittest import TestCase
 from unittest.mock import patch
 from cilantro.protocol.overlay.dht import *

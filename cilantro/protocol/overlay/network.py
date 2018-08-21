@@ -82,7 +82,7 @@ class Network(object):
             try: self.protocol.router.removeContact(node)
             except: pass
             self.ironhouse.authorized_nodes[node.id] = False
-            self.event_sock.send_json({'e':'unauthorized', 'ip': node.ip})
+            if self.event_sock: self.event_sock.send_json({'e':'unauthorized', 'ip': node.ip})
         log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP', '127.0.0.1'), [self.vkcache.get(k).ip for k in self.ironhouse.authorized_nodes if self.vkcache.get(k)]))
         return authorization == 'authorized'
 
@@ -124,7 +124,7 @@ class Network(object):
             log.info('Network shutting down gracefully.')
 
     def connection_drop(self, node):
-        self.event_sock.send_json({'e':'disconect', 'ip':node.ip})
+        if self.event_sock: self.event_sock.send_json({'e':'disconect', 'ip':node.ip})
         callback = ReactorCommand.create_callback(
             callback=StateInput.CONN_DROPPED,
             ip=node.ip
@@ -141,7 +141,7 @@ class Network(object):
             conn.connect(addr)
             self.poll.register(conn.fileno(), POLLIN)
             log.info("[CLIENT SIDE] Client ({}, {}) connected".format(*addr))
-            self.event_sock.send_json({'e':'connected', 'addr': addr})
+            if self.event_sock: self.event_sock.send_json({'e':'connected', 'addr': addr})
             return conn
         except Exception as e:
             del self.connections[conn.fileno()]
@@ -240,7 +240,7 @@ class Network(object):
 
         # do our crawling
         await asyncio.gather(*ds)
-        self.event_sock.send_json({'e':'table_refreshed'})
+        if self.event_sock: self.event_sock.send_json({'e':'table_refreshed'})
 
     def bootstrappableNeighbors(self):
         """
