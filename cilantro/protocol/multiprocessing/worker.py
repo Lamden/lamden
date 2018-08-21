@@ -42,7 +42,7 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
             self.log.important("setting k {} to v {}".format(k, v))
             setattr(self, k, v)
 
-        self._router = Router(handler=self, name=name)
+        self._router = Router(get_handler_func=lambda: self, name=name)
         self._manager = ExecutorManager(signing_key=signing_key, router=self._router, name=name)
         self.composer = Composer(manager=self._manager, signing_key=signing_key, name=name)
 

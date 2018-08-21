@@ -10,10 +10,10 @@ class Router:
     """
     The Router class transports incoming data from the ReactorDaemon to the appropriate State Machine logic.
     """
-    def __init__(self, handler, name='Node'):
+    def __init__(self, get_handler_func, name='Node'):
         super().__init__()
         self.log = get_logger("{}.Router".format(name))
-        self.handler = handler
+        self.get_handler_func = get_handler_func
 
         # Define mapping between callback names and router functions
         self.routes = {StateInput.INPUT: self._route,
@@ -22,6 +22,10 @@ class Router:
                        StateInput.LOOKUP_FAILED: self._lookup_failed,
                        StateInput.SOCKET_CONNECTED: self._call_status_handler,
                        StateInput.CONN_DROPPED: self._call_status_handler}
+
+    @property
+    def handler(self):
+        return self.get_handler_func()
 
     def route_callback(self, callback: str, *args, **kwargs):
         self.log.spam("Routing callback {} with\nargs={}\nkwargs={}".format(callback, args, kwargs))
