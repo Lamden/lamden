@@ -13,7 +13,7 @@ class NodeFactory:
 
         node = node_cls(signing_key=signing_key, ip=ip, loop=loop, name=name)
         router = Router(get_handler_func=lambda: node.state, name=name)
-        manager = ExecutorManager(signing_key=signing_key, router=router, name=node_cls.__name__)
+        manager = ExecutorManager(signing_key=signing_key, router=router, name=node_cls.__name__, loop=loop)
         composer = Composer(manager=manager, signing_key=signing_key, name=name)
 
         node.composer = composer

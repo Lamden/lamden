@@ -64,7 +64,7 @@ class Executor(metaclass=ExecutorMeta):
             self.log.error(err_msg)
 
     async def recv_env_multipart(self, socket, callback_fn: types.MethodType, ignore_first_frame=False):
-        self.log.notice("--- Starting recv on socket {} with callback_fn {} ---".format(socket, callback_fn))
+        self.log.socket("--- Starting recv on socket {} with callback_fn {} ---".format(socket, callback_fn))
         while True:
             self.log.spam("waiting for multipart msg...")
 
@@ -148,7 +148,7 @@ class SubPubExecutor(Executor):
 
     # TODO -- is looping over all pubs ok?
     def send_pub(self, filter: str, envelope: bytes):
-        assert isinstance(filter, str), "'id' arg must be a string"
+        assert isinstance(filter, str), "'filter' arg must be a string not {}".format(filter)
         assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
         assert len(self.pubs) > 0, "Attempted to publish data but publisher socket(s) is not configured"
 
@@ -168,7 +168,7 @@ class SubPubExecutor(Executor):
         time.sleep(0.2)  # for late joiner syndrome (TODO i think we can do away wit this?)
 
     def add_sub(self, url: str, filter: str, vk: str=''):
-        assert isinstance(filter, str), "'filter' arg must be a string"
+        assert isinstance(filter, str), "'filter' arg must be a string not {}".format(filter)
         # assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
 
         if url not in self.subs:
@@ -203,7 +203,7 @@ class SubPubExecutor(Executor):
         del self.subs[url]
 
     def remove_sub_filter(self, url: str, filter: str):
-        assert isinstance(filter, str), "'filter' arg must be a string"
+        assert isinstance(filter, str), "'filter' arg must be a string not {}".format(filter)
         assert url in self.subs, "Attempted to remove a sub that was not registered in self.subs"
         assert filter in self.subs[url]['filters'], "Attempted to remove a filter that was not associated with the url"
         self.subs[url]['filters'].remove(filter)

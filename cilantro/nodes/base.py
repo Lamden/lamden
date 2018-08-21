@@ -32,16 +32,15 @@ class NodeBase(StateMachine):
         assert self.composer, "Composer property must be set before start is called"
 
         # Start the state machine
-        self.log.debug("Starting state machine")
+        self.log.info("Bootstrapping state machine into initial state")
         super().start()  # blocks until StateMachine finishes boot state
 
-        # Start the main event loop
-        self.log.debug("Starting ReactorInterface event loop")
+        # Start all futures ... # TODO we should probly wrap each in a try/catch so the exceptions arent swallowed up
+        for future in self.tasks:
+            asyncio.ensure_future(future)
 
-        # ReactorInterface starts listening to messages from ReactorDaemon. Also starts any other tasks appended to
-        # self.tasks by gathering them (using asyncio.gather) and then 'run_until_complete'-ing them in the event loop
         if start_loop:
-            self.composer.interface.start_reactor(tasks=self.tasks)
+            self.composer.manager.start()
 
     def teardown(self):
         """

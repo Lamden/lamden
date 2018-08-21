@@ -25,6 +25,7 @@ from cilantro.messages.signals.kill_signal import KillSignal
 
 from aiohttp import web
 import time
+import asyncio
 import traceback
 from cilantro.storage.db import VKBook
 from collections import deque
@@ -161,9 +162,6 @@ class MNBootState(MNBaseState):
 
         # Create web server
         self.log.debug("Creating REST server on port 8080")
-        # self.queue_mode = Value('d', 0)
-        # self.parent.server = LProcess(target=start_webserver, args=(self.queue_mode, ))
-        # self.parent.server.start()
 
         server = web.Server(self.parent.route_http)
         server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
@@ -237,8 +235,8 @@ class MNStagingState(MNBaseState):
         num_ready = len(self.ready_delegates)
 
         if num_ready >= majority:
-            self.log.important("2/3 Delegates are at the latest blockchain state! MN exiting StagingState."
-                               "\n(Ready Delegates = {})".format(self.ready_delegates))
+            self.log.important("{}/{} Delegates are at the latest blockchain state! MN exiting StagingState."
+                               "\n(Ready Delegates = {})".format(num_ready, len(VKBook.get_delegates()), self.ready_delegates))
             self.parent.transition(MNRunState)
             return
         else:
