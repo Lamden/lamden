@@ -6,6 +6,9 @@ from cilantro.utils.test.god import God
 from cilantro.logger.base import get_logger
 
 
+LOG_LEVEL = 0
+
+
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
         return fn(*args, **kwargs)
@@ -70,13 +73,19 @@ def dump_it(volume, delay=0):
 
 class TestManualDump(BaseNetworkTestCase):
 
-    VOLUME = 2  # Number of transactions to dump
+    VOLUME = 400  # Number of transactions to dump
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-bootstrap.json')
-    PROFILE_TYPE = 'c'
+    PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)
     def test_dump(self):
         log = get_logger("Dumper")
+
+        # DEBUG
+        from cilantro.protocol.overlay.interface import ip_vk_map
+        log.important("Overlay interface VK Map\n {}".format(ip_vk_map))
+        log.important("Nodemap: {}".format(self.nodemap))
+        # END DEBUG
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True, profiling=self.PROFILE_TYPE)

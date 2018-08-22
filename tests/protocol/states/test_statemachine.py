@@ -2,6 +2,7 @@ from unittest import TestCase
 from .stumachine import *
 from cilantro.protocol.states.state import StateInput
 
+
 class StateMachineTest(TestCase):
 
     def test_register_decorators(self):
@@ -120,7 +121,7 @@ class StateMachineTest(TestCase):
         sm.transition(LiftState)
         self.assertTrue(sm.state == LiftState)
 
-        sm.state.call_input_handler(sleep_msg, StateInput.INPUT)
+        sm.state.call_input_handler(StateInput.INPUT, sleep_msg)
 
         self.assertTrue(sm.state == SleepState)
         self.assertEqual(sm.state.sleep_time, sleep_time)
@@ -137,7 +138,7 @@ class StateMachineTest(TestCase):
         weight = 7000
         msg = LiftingTimeMessage(weight=weight, lift=lift)
 
-        sm.state.call_input_handler(msg, StateInput.INPUT)
+        sm.state.call_input_handler(StateInput.INPUT, msg)
 
         self.assertTrue(sm.state == LiftState)
         self.assertEqual(sm.state.current_lift, lift)

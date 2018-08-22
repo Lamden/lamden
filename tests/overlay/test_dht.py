@@ -1,13 +1,28 @@
 import unittest, cilantro, asyncio, zmq.asyncio, zmq
 from unittest import TestCase
-from unittest.mock import patch
-from cilantro.protocol.overlay.dht import *
-from cilantro.protocol.overlay.network import *
+from cilantro.protocol.overlay.dht import DHT
+from cilantro.protocol.overlay.network import Network
 from os.path import exists, dirname
 from threading import Timer
 from cilantro.utils import ErrorWithArgs
-from cilantro.protocol.overlay.utils import digest
-from cilantro.utils.test.overlay import *
+
+from zmq.utils.z85 import decode, encode
+from nacl.public import PrivateKey
+from nacl.signing import SigningKey, VerifyKey
+from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
+
+def genkeys(sk_hex):
+    sk = SigningKey(seed=bytes.fromhex(sk_hex))
+    vk = sk.verify_key.encode().hex()
+    public_key = VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key
+    private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key)
+    return {
+        'sk': sk_hex,
+        'vk': vk,
+        'public_key': public_key.hex(),
+        'private_key': encode(private_key),
+        'curve_key': encode(public_key)
+    }
 
 class TestDHT(TestCase):
     def setUp(self):

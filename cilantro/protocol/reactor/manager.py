@@ -6,10 +6,10 @@ from cilantro.protocol.reactor.executor import Executor
 
 class ExecutorManager:
 
-    def __init__(self, signing_key, router, name='Worker'):
+    def __init__(self, signing_key, router, name='Worker', loop=None):
         self.log = get_logger(name)
 
-        self.loop = asyncio.new_event_loop()
+        self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
         self.context = zmq.asyncio.Context()
@@ -19,8 +19,19 @@ class ExecutorManager:
 
     def start(self):
         try:
+            self.log.notice("Starting event loop")
             self.loop.run_forever()
         except Exception as e:
-            self.log.fatal("Exception running main event loop... error:\n{}".format(e))
+            self.log.fatal("Exception running main event loop... error:\n{}\n".format(e))
+        finally:
+            # TODO clean thangs up
+            pass
 
-        # TODO cleanup in 'finally'?
+    def teardown(self):
+        # TODO implement
+        raise NotImplementedError("Need to code this up")
+
+        # loop over executors, call teardown on each
+        # cancel any futures
+        # signal to any subprocs to teardown also?
+

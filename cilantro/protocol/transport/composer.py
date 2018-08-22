@@ -139,7 +139,7 @@ class Composer:
         """
         raise NotImplementedError("This still needs to be coded up")
 
-    def add_dealer(self, id='', protocol: str='tcp', port: int=PUB_SUB_PORT, ip: str='', vk: str=''):
+    def add_dealer(self, id='', protocol: str='tcp', port: int=ROUTER_DEALER_PORT, ip: str='', vk: str=''):
         """
         Add a dealer socket at url. Dealers are like 'async requesters', and can connect to a single Router socket (1-1)
         (side note: A router socket, however, can connect to N dealers)
@@ -173,7 +173,7 @@ class Composer:
                          vk: str='', ip: str=''):
         url = self._build_url(protocol=protocol, port=port, ip=ip, vk=vk)
         reply_uuid = EnvelopeAuth.reply_uuid(envelope.meta.uuid)
-        self.manager.executors['DealerRouterExecutor'].request(url=url, envelope=envelope.serialize(),
+        self.manager.executors['DealerRouterExecutor'].request(url=url, envelope=envelope,
                                                                timeout=timeout, reply_uuid=reply_uuid)
 
     def send_reply(self, message: MessageBase, request_envelope: Envelope):

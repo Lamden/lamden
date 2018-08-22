@@ -5,9 +5,10 @@ from threading import Timer, Thread
 from multiprocessing import Process, Queue
 
 class TestInterface(TestCase):
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
+    @classmethod
+    def setUpClass(cls):
+        cls.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(cls.loop)
 
     def test_start_stop_service(self):
         def _stop():
@@ -29,8 +30,9 @@ class TestInterface(TestCase):
             time.sleep(0.1)
             p.terminate()
             OverlayInterface._stop_service()
+            OverlayInterface.loop.call_soon_threadsafe(OverlayInterface.loop.stop)
 
-        def _send():
+        def _send_msg():
             def _e_handler(e):
                 OverlayInterface._test_res = e
             def _thread():
@@ -39,6 +41,8 @@ class TestInterface(TestCase):
             def _assert():
                 self.assertEqual(OverlayInterface._test_res['ip'], '127.0.0.1')
                 l.call_soon_threadsafe(l.stop)
+                th.join()
+                th_a.join()
 
             l = asyncio.new_event_loop()
             asyncio.set_event_loop(l)
@@ -49,7 +53,7 @@ class TestInterface(TestCase):
             th_a.start()
             l.run_forever()
 
-        p = Process(target=_send)
+        p = Process(target=_send_msg)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         t = Timer(5, _stop)
@@ -64,8 +68,9 @@ class TestInterface(TestCase):
             time.sleep(0.1)
             p.terminate()
             OverlayInterface._stop_service()
+            OverlayInterface.loop.call_soon_threadsafe(OverlayInterface.loop.stop)
 
-        def _send():
+        def _send_msg():
             def _e_handler(e):
                 OverlayInterface._test_res = e
             def _thread():
@@ -74,6 +79,8 @@ class TestInterface(TestCase):
             def _assert():
                 self.assertEqual(OverlayInterface._test_res, {'status': 'not_found'})
                 l.call_soon_threadsafe(l.stop)
+                th.join()
+                th_a.join()
 
             l = asyncio.new_event_loop()
             asyncio.set_event_loop(l)
@@ -84,7 +91,7 @@ class TestInterface(TestCase):
             th_a.start()
             l.run_forever()
 
-        p = Process(target=_send)
+        p = Process(target=_send_msg)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         t = Timer(5, _stop)
@@ -92,8 +99,9 @@ class TestInterface(TestCase):
         OverlayInterface._start_service(sk='06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a')
         self.assertEqual(p.exitcode, 0)
 
-    def tearDown(self):
-        self.loop.close()
+    @classmethod
+    def tearDownClass(cls):
+        cls.loop.close()
 
 if __name__ == '__main__':
     unittest.main()

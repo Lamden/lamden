@@ -25,6 +25,7 @@ from cilantro.messages.signals.kill_signal import KillSignal
 
 from aiohttp import web
 import time
+import asyncio
 import traceback
 from cilantro.storage.db import VKBook
 from collections import deque
@@ -47,7 +48,6 @@ class Masternode(NodeBase):
         self.tx_queue = deque()  # A queue of transactions sent by users to the Masternode via a REST endpoint
 
     async def route_http(self, request):
-        self.log.important2("MASTERNODE GOT REQUEST WITH PATH {}".format(request.path))
         raw_data = await request.content.read()
 
         if request.path == '/teardown-network':
@@ -164,6 +164,7 @@ class MNBootState(MNBaseState):
         # self.parent.server = LProcess(target=start_webserver)
         # self.parent.server.start()
 
+        self.log.debug("Creating REST server on port 8080")
         server = web.Server(self.parent.route_http)
         server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
         self.parent.tasks.append(server_future)
@@ -236,8 +237,8 @@ class MNStagingState(MNBaseState):
         num_ready = len(self.ready_delegates)
 
         if num_ready >= majority:
-            self.log.important("2/3 Delegates are at the latest blockchain state! MN exiting StagingState."
-                               "\n(Ready Delegates = {})".format(self.ready_delegates))
+            self.log.important("{}/{} Delegates are at the latest blockchain state! MN exiting StagingState."
+                               "\n(Ready Delegates = {})".format(num_ready, len(VKBook.get_delegates()), self.ready_delegates))
             self.parent.transition(MNRunState)
             return
         else:
