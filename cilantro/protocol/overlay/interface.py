@@ -14,10 +14,11 @@ class OverlayInterface:
     event_url = 'ipc://overlay-event-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
     cmd_url = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
     loop = asyncio.get_event_loop()
+    _started = False
 
     @classmethod
     def _start_service(cls, sk):
-        assert not hasattr(cls, '_started'), 'Service already started.'
+        assert not cls._started, 'Service already started.'
         ctx = zmq.asyncio.Context()
         cls.event_sock = ctx.socket(zmq.PUB)
         cls.event_sock.bind(cls.event_url)
@@ -31,10 +32,11 @@ class OverlayInterface:
 
     @classmethod
     def _stop_service(cls):
-        assert hasattr(cls, '_started'), 'Service not yet started'
+        assert cls._started, 'Service not yet started'
         cls.event_sock.close()
         cls.cmd_sock.close()
         cls.dht.cleanup()
+        cls._started = False
         log.info('Service stopped.')
 
     @classmethod
@@ -57,7 +59,7 @@ class OverlayInterface:
 
     @classmethod
     def get_node_from_vk(cls, vk, timeout=3):
-        assert hasattr(cls, 'event_sock'), 'You have to add an event listener first'
+        assert hasattr(cls, 'listener_sock'), 'You have to add an event listener first'
         if not hasattr(cls, 'cmd_send_sock'): cls._overlay_command_socket()
         cls.cmd_send_sock.send_multipart([b'_get_node_from_vk', vk.encode()])
 
