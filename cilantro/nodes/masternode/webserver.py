@@ -5,29 +5,36 @@ from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.constants.masternode import WEB_SERVER_PORT
 from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.protocol.states.state import StateInput
-import traceback, multiprocessing
+from cilantro.messages.signals.kill_signal import KillSignal
+import traceback, multiprocessing, os, asyncio
+from collections import deque
 
 app = Sanic(__name__)
-q_mode = 0
+app.queue = deque()
 log = get_logger(__name__)
 
 @app.route("/", methods=["POST",])
 async def transaction(request):
-    container = TransactionContainer.from_bytes(request.body)
-    tx = container.open()
-    try:
-        sm_handler = StateMachine()
-        sm_handler.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
-        return text("Successfully published transaction: {}".format(tx))
-    except Exception as e:
-        log.error("\n Error publishing HTTP request...err = {}".format(traceback.format_exc()))
-        return text("problem processing request with err: {}".format(e))
+    async def _transaction(req):
+        tx_bytes = req.body
+        container = TransactionContainer.from_bytes(tx_bytes)
+        tx = container.open()
+        app.queue.append(tx)
+    await _transaction(request)
+    return text('received tx')
 
-def start_webserver(queue_mode):
-    global q_mode
-    q_mode = queue_mode
+@app.route("/queue", methods=["GET",])
+async def get_queue(request):
+    return json({'queue': len(app.queue)})
+
+@app.route("/teardown-network", methods=["POST",])
+async def teardown_network(request):
+    tx = KillSignal.create()
+    return text('tearing down network')
+
+def start_webserver():
     log.debug("Creating REST server on port {}".format(WEB_SERVER_PORT))
-    app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=multiprocessing.cpu_count())
+    app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=2)
 
 if __name__ == '__main__':
-    start_webserver(0)
+    start_webserver()

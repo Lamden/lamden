@@ -165,27 +165,24 @@ class TestAuthAsync(TestIronhouseBase):
 
 class TestServer(TestIronhouseBase):
     def test_secure_server(self):
+        ip = '127.0.0.1'
+        port = 4523
         async def send_async_sec():
-            ip = '127.0.0.1'
-            port = 4523
             client = self.ironhouse.ctx.socket(zmq.REQ)
             client = self.ironhouse.secure_socket(client, self.secret, self.curve_public_key, self.curve_public_key)
             client.connect('tcp://{}:{}'.format(ip, port))
             client.send(self.vk.encode())
-
-            msg = await client.recv()
             client.close()
             self.ironhouse.cleanup()
             self.loop.call_soon_threadsafe(self.loop.stop)
+
 
         self.ironhouse.setup_secure_server()
         self.assertIsInstance(self.ironhouse.ctx, zmq.Context, 'asynchronous context created incorrectly')
         self.assertIsInstance(self.ironhouse.sec_sock, zmq.sugar.socket.Socket, 'unable to secure a socket')
 
         self.loop.run_until_complete(
-            asyncio.ensure_future(
-                send_async_sec()
-            )
+            asyncio.ensure_future(send_async_sec())
         )
 
     def test_authenticate(self):

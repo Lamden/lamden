@@ -111,7 +111,7 @@ class Ironhouse:
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)
 
-        log.debug('{} has added {} to its authorized list'.format(os.getenv('HOST_IP'), public_key))
+        log.debug('{} has added {} to its authorized list'.format(os.getenv('HOST_IP', '127.0.0.1'), public_key))
         self.reconfigure_curve()
         self.authorized_keys[public_key] = True
 
@@ -123,7 +123,7 @@ class Ironhouse:
         if exists(public_key_file):
             os.remove(public_key_file)
 
-        log.debug('{} has remove {} from its authorized list'.format(os.getenv('HOST_IP'), public_key))
+        log.debug('{} has remove {} from its authorized list'.format(os.getenv('HOST_IP', '127.0.0.1'), public_key))
         self.reconfigure_curve()
         self.authorized_keys[public_key] = False
 
@@ -140,7 +140,7 @@ class Ironhouse:
         return ctx, auth
 
     def reconfigure_curve(self):
-        log.debug('{} is reconfiguring curves'.format(os.getenv('HOST_IP')))
+        log.debug('{} is reconfiguring curves'.format(os.getenv('HOST_IP', '127.0.0.1')))
         if self.daemon_auth:
             self.daemon_auth.configure_curve(domain='*', location=self.authorized_keys_dir)
 
@@ -161,24 +161,24 @@ class Ironhouse:
             log.debug('Invalid public key')
             return 'invalid'
         server_url = 'tcp://{}:{}'.format(ip, port or self.auth_port)
-        log.debug('{} sending handshake to {}...'.format(os.getenv('HOST_IP'), server_url))
+        log.debug('{} sending handshake to {}...'.format(os.getenv('HOST_IP', '127.0.0.1'), server_url))
         client = self.ctx.socket(zmq.REQ)
         client.setsockopt(zmq.LINGER, 0)
         client = self.secure_socket(client, self.secret, self.public_key, target_public_key)
         client.connect(server_url)
-        client.send_multipart([self.vk.encode(), os.getenv('HOST_IP').encode()])
+        client.send_multipart([self.vk.encode(), os.getenv('HOST_IP', '127.0.0.1').encode()])
         authorized = 'unauthorized'
 
         try:
             msg = await asyncio.wait_for(client.recv(), AUTH_TIMEOUT)
             msg = msg.decode()
-            log.debug('{} got secure reply {}, {}'.format(os.getenv('HOST_IP'), msg, target_public_key))
+            log.debug('{} got secure reply {}, {}'.format(os.getenv('HOST_IP', '127.0.0.1'), msg, target_public_key))
             received_public_key = self.vk2pk(msg)
             if self.auth_validate(msg) == True and target_public_key == received_public_key:
                 self.add_public_key(received_public_key)
                 authorized = 'authorized'
         except Exception as e:
-            log.debug('{} got no reply from {} after waiting...'.format(os.getenv('HOST_IP'), server_url))
+            log.debug('{} got no reply from {} after waiting...'.format(os.getenv('HOST_IP', '127.0.0.1'), server_url))
             authorized = 'no_reply'
 
         client.disconnect(server_url)
@@ -207,19 +207,19 @@ class Ironhouse:
         log.info('Listening to secure connections at {}'.format(self.auth_port))
         try:
             while True:
-                received_vk, received_ip = await self.sec_sock.recv_env_multipart()
+                received_vk, received_ip = await self.sec_sock.recv_multipart()
                 received_vk = received_vk.decode()
                 received_ip = received_ip.decode()
 
                 log.debug('{} got secure request {} from user claiming to be "{}"'.format(
-                    os.getenv('HOST_IP'), received_vk, received_ip))
+                    os.getenv('HOST_IP', '127.0.0.1'), received_vk, received_ip))
 
                 if self.auth_validate(received_vk) == True:
                     public_key = self.vk2pk(received_vk)
                     self.add_public_key(public_key)
                     self.authorized_nodes[digest(received_vk)] = received_ip
-                    log.debug('{} sending secure reply: {}'.format(os.getenv('HOST_IP'), self.vk))
-                    log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP'), list(self.authorized_nodes.values())))
+                    log.debug('{} sending secure reply: {}'.format(os.getenv('HOST_IP', '127.0.0.1'), self.vk))
+                    log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP', '127.0.0.1'), list(self.authorized_nodes.values())))
                     self.sec_sock.send(self.vk.encode())
                 else:
                     log.warning('Unauthorized user {}({})'.format(received_ip, received_vk))

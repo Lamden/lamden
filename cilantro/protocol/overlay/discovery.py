@@ -25,7 +25,7 @@ class Discovery:
         if mode in ['test', 'local']:
             self.ip = os.getenv('HOST_IP', '127.0.0.1')
             host = self.ip
-            hostname = 'virtual_network' if os.getenv('HOST_IP') else 'localhost'
+            hostname = 'virtual_network' if os.getenv('HOST_IP', '127.0.0.1') else 'localhost'
             ips[hostname] = [decimal_to_ip(d) for d in range(*get_local_range(host))]
             self.subnets[get_subnet(host)] = {'area': hostname, 'count': 0}
         else:
