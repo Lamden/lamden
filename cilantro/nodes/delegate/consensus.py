@@ -160,6 +160,8 @@ class DelegateConsensusState(DelegateBaseState):
                 self.log.critical("New block has prev hash {} that does not match our current block hash {}"
                                   .format(notif.prev_block_hash, self.parent.current_hash))
 
-            self.log.notice("Delegate transitioning to CatchUpState")
+            self.log.notice("Delegate transitioning to CatchUpState!\nDelegate's latest block hash {}"
+                            "\nNewBlockNotification's prev block hash {}\nDelegate in consensus: {}"
+                            .format(self.parent.current_hash, notif.prev_block_hash, self.in_consensus))
             self.parent.transition(DelegateCatchupState)
             return
