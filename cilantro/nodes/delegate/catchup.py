@@ -36,6 +36,9 @@ class DelegateCatchupState(DelegateBaseState):
         self.new_blocks = []  # A queue of blocks to fetch
         self.current_block = None  # The current block being fetched
 
+        # TODO engineer executors to provide original request env along with reply so we don't have to do this
+        self.current_request = None  # The current TransactionRequest which we want a TransactionReply for
+
     @timeout_after(CATCHUP_TIMEOUT)
     def timeout(self):
         self.log.fatal("CatchUp state exceeded timeout of {} seconds!".format(CATCHUP_TIMEOUT))
@@ -71,8 +74,9 @@ class DelegateCatchupState(DelegateBaseState):
 
     @input(TransactionReply)
     def handle_tx_reply(self, reply: TransactionReply, envelope: Envelope):
-        request = envelope.message
-        self.log.debug("Delegate got tx reply {} with original env {}".format(reply, request))
+        assert self.current_request, "Got TransactionReply, but self.current_request is not set!"
+        request = self.current_request
+        self.log.debugv("Delegate got tx reply {} with original request {}".format(reply, request))
 
         # Verify that the transactions blobs in the reply match the requested hashes in the request
         if not reply.validate_matches_request(request):
@@ -93,7 +97,7 @@ class DelegateCatchupState(DelegateBaseState):
 
         # Finally, store this new block and update our current block hash. Reset self.current_block, update next block
         BlockStorageDriver.store_block_from_meta(self.current_block)
-        self.current_block = None
+        self.current_block, self.current_request = None, None
         self._update_next_block()
 
     @input(NewBlockNotification)
@@ -141,6 +145,7 @@ class DelegateCatchupState(DelegateBaseState):
 
         request = TransactionRequest.create(self.current_block.merkle_leaves)
         self.parent.composer.send_request_msg(message=request, vk=VKBook.get_masternodes()[0])
+        self.current_request = request
         # TODO implement request timeout functionality for TrnasactionRequest /w TX_REQ_TIMEOUT
 
 
