@@ -23,6 +23,11 @@ class Router:
                        StateInput.SOCKET_CONNECTED: self._call_status_handler,
                        StateInput.CONN_DROPPED: self._call_status_handler}
 
+        # The composer property should be set after the Router object is instantiated.
+        # This is because the Composer constructor implicitly requires a reference to the Router, thus to avoid this
+        # cyclic dependency we cannot pass it into the Router constructor.
+        self.composer = None
+
     @property
     def handler(self):
         return self.get_handler_func()
@@ -43,24 +48,27 @@ class Router:
     def _route_timeout(self, input_type, *args, **kwargs):
         self.handler.call_input_handler(StateInput.TIMEOUT, *args, **kwargs)
 
-    def _route_request(self, input_type, *args, envelope=None, **kwargs):
+    def _route_request(self, input_type, *args, **kwargs):
         """
         Should be for internal use only.
         Routes a reply envelope to the appropriate @input receiver. This is different that a 'regular' (non request)
         envelope, because data returned to the @input function will be packaged as a reply and sent off by the composer
         """
-        assert envelope, "_route_request was called with no envelope arg!"
+        assert self.composer, "Cannot route_requests without a refernce to a Composer! This should of been set after " \
+                              "the Router then Composer objects were created"
+        assert 'envelope' in kwargs, "_route_request was called with no 'envelope' kwarg! kwargs={}".format(kwargs)
 
+        envelope = kwargs['envelope']
         reply = self.handler.call_input_handler(input_type, *args, **kwargs)
+
         if not reply:
             self.log.debug("Warning -- No reply returned for request msg of type {}".format(type(envelope.message)))
             return
-
         assert isinstance(reply, MessageBase), "whatever is returned from @input_request function must be a " \
                                                "MessageBase subclass instance"
 
         self.log.spam("Sending reply message {}".format(reply))
-        self.handler.composer.send_reply(message=reply, request_envelope=envelope)
+        self.composer.send_reply(message=reply, request_envelope=envelope)
 
     def _lookup_failed(self, input_type, *args, **kwargs):
         assert 'vk' in kwargs, "_lookup_failed route hit with no vk in kwargs...\nargs={}\nkwargs={}".format(args, kwargs)

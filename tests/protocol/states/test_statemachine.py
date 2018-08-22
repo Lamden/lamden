@@ -2,6 +2,7 @@ from unittest import TestCase
 from .stumachine import *
 from cilantro.protocol.states.state import StateInput
 
+
 class StateMachineTest(TestCase):
 
     def test_register_decorators(self):

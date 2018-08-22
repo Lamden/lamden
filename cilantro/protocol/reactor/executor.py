@@ -60,7 +60,7 @@ class Executor(metaclass=ExecutorMeta):
                         .format(listener_fn, args, kwargs)
             err_msg += '\nError Message: '
             err_msg += '\n\n{}'.format(traceback.format_exc())
-            err_msg += '\n' + delim_line + '\n' + delim_line
+            err_msg += '\n' + delim_line + '\n' + delim_line + '\n'
             self.log.error(err_msg)
 
     async def recv_env_multipart(self, socket, callback_fn: types.MethodType, ignore_first_frame=False):

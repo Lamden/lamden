@@ -140,7 +140,7 @@ class DelegateCatchupState(DelegateBaseState):
         assert self.current_block, "_fetch_tx_for_current_block called but self.current_block not set!"
 
         request = TransactionRequest.create(self.current_block.merkle_leaves)
-        self.parent.composer.send_request_msg(msg=request, vk=VKBook.get_masternodes()[0])
+        self.parent.composer.send_request_msg(message=request, vk=VKBook.get_masternodes()[0])
         # TODO implement request timeout functionality for TrnasactionRequest /w TX_REQ_TIMEOUT
 
 

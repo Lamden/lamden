@@ -17,6 +17,7 @@ class NodeFactory:
         composer = Composer(manager=manager, signing_key=signing_key, name=name)
 
         node.composer = composer
+        router.composer = composer
 
         return node
 

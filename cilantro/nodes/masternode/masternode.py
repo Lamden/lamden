@@ -48,7 +48,6 @@ class Masternode(NodeBase):
         self.tx_queue = deque()  # A queue of transactions sent by users to the Masternode via a REST endpoint
 
     async def route_http(self, request):
-        self.log.important2("MASTERNODE GOT REQUEST WITH PATH {}".format(request.path))
         raw_data = await request.content.read()
 
         if request.path == '/teardown-network':

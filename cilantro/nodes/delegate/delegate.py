@@ -21,7 +21,7 @@ from cilantro.nodes import NodeBase
 from cilantro.storage.db import VKBook
 from cilantro.storage.blocks import BlockStorageDriver
 
-from cilantro.protocol.states.decorators import input, enter_from_any, input_socket_connected, timeout_after, input_connection_dropped
+from cilantro.protocol.states.decorators import *
 from cilantro.protocol.states.state import State
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.utils.hasher import Hasher
@@ -64,7 +64,7 @@ class DelegateBaseState(State):
 
     @input(KillSignal)
     def handle_kill_sig(self, msg: KillSignal):
-        # TODO - make sure this is secure (from a KillSignal)
+        # TODO - make sure this is secure (from a legit Masternode)
         self.log.important("Node got received remote kill signal from network!")
         self.parent.teardown()
 
@@ -78,13 +78,13 @@ class DelegateBaseState(State):
 
     @input(OrderingContainer)
     def handle_tx(self, tx: OrderingContainer):
-        self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
+        self.log.debugv("Delegate not interpreting transactions, adding {} to queue".format(tx))
         self.parent.pending_txs.append(Hasher.hash(tx.transaction), tx)
-        self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
+        self.log.debugv("{} transactions pending interpretation".format(self.parent.pending_txs))
 
     @input(MerkleSignature)
     def handle_sig(self, sig: MerkleSignature):
-        self.log.debug("Received signature with data {} but not in consensus, adding it to queue"
+        self.log.info("Received signature with data {} but not in consensus, adding it to queue"
                        .format(sig._data))
         self.parent.pending_sigs.append(sig)
 
@@ -96,17 +96,17 @@ class DelegateBaseState(State):
 
     @input(TransactionReply)
     def handle_tx_reply(self, reply: TransactionReply, envelope: Envelope):
-        self.log.debug("Delegate current state {} not configured to handle"
-                        "transaction replies".format(self))
+        self.log.warning("Delegate current state {} not configured to handle"
+                       "transaction replies".format(self))
 
-    @input(TransactionRequest)
+    @input_request(TransactionRequest)
     def handle_tx_request(self, request: TransactionRequest):
-        self.log.debug("Delegate current state {} not configured to handle"
+        self.log.warning("Delegate current state {} not configured to handle"
                         "transaction requests".format(self))
 
     @input(BlockMetaDataReply)
     def handle_blockmeta_reply(self, reply: BlockMetaDataReply):
-        self.log.debug("Delegate current state {} not configured to handle block"
+        self.log.warning("Delegate current state {} not configured to handle block"
                        "meta replies".format(self))
 
 
@@ -189,47 +189,3 @@ class DelegateBootState(DelegateBaseState):
         self.parent.transition(DelegateCatchupState)
 
 
-## TESTING
-# from functools import wraps
-# import random
-# P = 0.36
-#
-# def do_nothing(*args, **kwargs):
-#     # print("!!! DOING NOTHING !!!\nargs: {}\n**kwargs: {}".format(args, kwargs))
-#     print("DOING NOTHING")
-#
-# def sketchy_execute(prob_fail):
-#     def decorate(func):
-#         @wraps(func)
-#         def wrapper(*args, **kwargs):
-#             # print("UR BOY HAS INJECTED A SKETCH EXECUTE FUNC LOL GLHF")
-#             if random.random() < prob_fail:
-#                 print("!!! not running func")
-#                 return do_nothing(*args, **kwargs)
-#             else:
-#                 # print("running func")
-#                 return func(*args, **kwargs)
-#         return wrapper
-#     return decorate
-#
-#
-# class RogueMeta(type):
-#     _OVERWRITES = ('route', 'route_req', 'route_timeout')
-#
-#     def __new__(cls, clsname, bases, clsdict):
-#         clsobj = super().__new__(cls, clsname, bases, clsdict)
-#
-#         print("Rogue meta created with class name: ", clsname)
-#         print("bases: ", bases)
-#         print("clsdict: ", clsdict)
-#         print("dir: ", dir(clsobj))
-#
-#         for name in dir(clsobj):
-#             if name in cls._OVERWRITES:
-#                 print("\n\n***replacing {} with sketchy executor".format(name))
-#                 setattr(clsobj, name, sketchy_execute(P)(getattr(clsobj, name)))
-#             else:
-#                 print("skipping name {}".format(name))
-#
-#         return clsobj
-## END TESTING

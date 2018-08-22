@@ -17,6 +17,11 @@ class NodeBase(StateMachine):
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
 
+        # DEBUG
+        import os
+        self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, os.getenv("HOST_IP")))
+        # END DEBUG
+
         self.loop = loop
         asyncio.set_event_loop(loop)
 

@@ -27,3 +27,11 @@ class ExecutorManager:
             # TODO clean thangs up
             pass
 
+    def teardown(self):
+        # TODO implement
+        raise NotImplementedError("Need to code this up")
+
+        # loop over executors, call teardown on each
+        # cancel any futures
+        # signal to any subprocs to teardown also?
+

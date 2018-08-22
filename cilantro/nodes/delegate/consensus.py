@@ -41,7 +41,7 @@ class DelegateConsensusState(DelegateBaseState):
     @timeout_after(CONSENSUS_TIMEOUT)
     def timeout(self):
         self.log.fatal("Consensus state exceeded timeout duration of {} seconds! Transitioning to CatchUpState".format(CONSENSUS_TIMEOUT))
-        self.parent.interpret.flush(update_state=False)
+        self.parent.interpreter.flush(update_state=False)
         self.parent.transition(DelegateCatchupState)
 
     @enter_from_any
@@ -66,17 +66,20 @@ class DelegateConsensusState(DelegateBaseState):
         # Create merkle signature message and publish it
         merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now',
                                             sender=self.parent.verifying_key)
-        self.log.debugv("Broadcasting signature {}".format(self.signature))
+        self.log.debug("Broadcasting signature {}".format(self.signature))
         self.parent.composer.send_pub_msg(filter=DELEGATE_DELEGATE_FILTER, message=merkle_sig)
 
         # Now that we've computed/composed the merkle tree hash, validate all our pending signatures
         for sig in [s for s in self.parent.pending_sigs if self.validate_sig(s)]:
             self.signatures.append(sig)
 
+        # Add our own signature
+        self.signatures.append(merkle_sig)
+
         self.check_majority()
 
     @exit_to_any
-    def exit_any(self, next_state):
+    def exit_any(self):
         self.reset_attrs()
 
     def validate_sig(self, sig: MerkleSignature) -> bool:
@@ -96,7 +99,7 @@ class DelegateConsensusState(DelegateBaseState):
 
         # Below is just for debugging, so we can see if a signature cannot be verified
         if not sig.verify(self.merkle.root):
-            self.log.warning("Delegate could not verify signature {}".format(sig))
+            self.log.warning("Delegate could not verify signature! Different Merkle trees.\nSig: {}".format(sig))
 
         return sig.verify(self.merkle.root)
 
@@ -104,7 +107,7 @@ class DelegateConsensusState(DelegateBaseState):
         self.log.debug("delegate has {} signatures out of {} total TESTNET_DELEGATES"
                        .format(len(self.signatures), self.NUM_DELEGATES))
 
-        if len(self.signatures) >= MAJORITY:
+        if len(self.signatures) >= MAJORITY and not self.in_consensus:
             self.log.important("Delegate in consensus!")
             self.in_consensus = True
 

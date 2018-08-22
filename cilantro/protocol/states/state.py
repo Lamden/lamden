@@ -133,22 +133,14 @@ class State(metaclass=StateMeta):
     def reset_attrs(self):
         raise NotImplementedError("reset_attrs must be implemented for any State subclass")
 
-    def call_input_handler(self, input_type: str, message, envelope=None, *args, **kwargs):
+    def call_input_handler(self, input_type: str, message, *args, **kwargs):
         # TODO assert type message is MessageBase, and envelope is Envelope ???
         self._assert_has_input_handler(message, input_type)
 
         handler_func = self._get_input_handler(message, input_type)
         func_kwargs = self._prune_kwargs(handler_func, **kwargs)
 
-        # TODO -- find cleaner way to copy method signatures in unit tests
-        # ... also comon davis this ad-hoc logic is hideous u can do better --davis
-        if (isinstance(handler_func, MagicMock) and envelope) or self._has_envelope_arg(handler_func):
-            assert envelope, "Envelope arg was found for input func {}, " \
-                             "but no envelope passed into call_input_handler".format(handler_func)
-            output = handler_func(message, *args, envelope=envelope, **func_kwargs)
-        else:
-            output = handler_func(message, *args, **func_kwargs)
-
+        output = handler_func(message, *args, **func_kwargs)
         return output
 
     def call_transition_handler(self, trans_type, state, *args, **kwargs):

@@ -38,13 +38,14 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         # We set all kwargs to instance variables so they are accessible in the setup() function. Setup cannot be done
         # in subclasses by overriding __init__ because instantiating this instance involves running an event loop
         # forever (which would block the setup code upon calling 'super().__init__(..)' in the subclass)
+        # TODO this pattern is questionable. Perhaps args/kwargs should be passed into setup(...)?  --davis
         for k, v in kwargs.items():
             self.log.important("setting k {} to v {}".format(k, v))
             setattr(self, k, v)
 
         self._router = Router(get_handler_func=lambda: self, name=name)
         self._manager = ExecutorManager(signing_key=signing_key, router=self._router, name=name)
-        self.composer = Composer(manager=self._manager, signing_key=signing_key, name=name)
+        self.composer = self._router.composer = Composer(manager=self._manager, signing_key=signing_key, name=name)
 
         self.setup()
 
