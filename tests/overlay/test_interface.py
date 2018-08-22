@@ -1,4 +1,4 @@
-import unittest, asyncio, zmq, time
+import unittest, asyncio, zmq, time, os
 from unittest import TestCase
 from cilantro.protocol.overlay.interface import OverlayInterface
 from threading import Timer, Thread
@@ -30,30 +30,63 @@ class TestInterface(TestCase):
         def _stop():
             p = Process(target=_send)
             p.start()
-            time.sleep(0.1)
+            time.sleep(0.05)
             p.terminate()
             OverlayInterface.cmd_sock.close()
             OverlayInterface._stop_service()
 
         def _send():
-            print('!!!s')
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
             def _e_handler(e):
-                print('!!!',e)
-            OverlayInterface.listen_for_events(_e_handler)
+                OverlayInterface._test_res = e
+            def _thread():
+                asyncio.set_event_loop(l)
+                OverlayInterface.get_node_from_vk('82540bb5a9c84162214c5540d6e43be49bbfe19cf49685660cab608998a65144')
+            def _assert():
+                self.assertEqual(OverlayInterface._test_res['ip'], '127.0.0.1')
+            l = asyncio.new_event_loop()
+            asyncio.set_event_loop(l)
+            asyncio.ensure_future(OverlayInterface.event_listener(_e_handler))
+            th = Timer(0.01, _thread)
+            th.start()
+            th_a = Timer(0.03, _assert)
+            th_a.start()
+            l.run_forever()
 
-            # def _thread():
-            #     loop = asyncio.new_event_loop()
-            #     asyncio.set_event_loop(loop)
-            #     OverlayInterface.get_node_from_vk('askdjbaskdj')
-            # loop = asyncio.new_event_loop()
-            # asyncio.set_event_loop(loop)
-            # asyncio.ensure_future(OverlayInterface.event_listener(_e_handler))
-            # t = Thread(target=_thread)
-            # t.start()
-            # loop.run_forever()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        t = Timer(5, _stop)
+        t.start()
+        OverlayInterface._start_service(sk='06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a')
 
+    def test_send_commands_fail(self):
+
+        def _stop():
+            p = Process(target=_send)
+            p.start()
+            time.sleep(0.05)
+            p.terminate()
+            OverlayInterface.cmd_sock.close()
+            OverlayInterface._stop_service()
+
+        def _send():
+            def _e_handler(e):
+                OverlayInterface._test_res = e
+            def _thread():
+                asyncio.set_event_loop(l)
+                OverlayInterface.get_node_from_vk('askdjbaskdj')
+            def _assert():
+                self.assertEqual(OverlayInterface._test_res, {'status': 'not_found'})
+            l = asyncio.new_event_loop()
+            asyncio.set_event_loop(l)
+            asyncio.ensure_future(OverlayInterface.event_listener(_e_handler))
+            th = Timer(0.01, _thread)
+            th.start()
+            th_a = Timer(0.03, _assert)
+            th_a.start()
+            l.run_forever()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         t = Timer(5, _stop)
         t.start()
         OverlayInterface._start_service(sk='06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a')

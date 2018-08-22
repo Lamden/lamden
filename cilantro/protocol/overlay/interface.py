@@ -14,12 +14,12 @@ class OverlayInterface:
     event_url = 'ipc://overlay-event-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
     cmd_url = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
     loop = asyncio.get_event_loop()
-    ctx = zmq.asyncio.Context()
 
     @classmethod
     def _start_service(cls, sk):
         assert not hasattr(cls, '_started'), 'Service already started.'
-        cls.event_sock = cls.ctx.socket(zmq.PUB)
+        ctx = zmq.asyncio.Context()
+        cls.event_sock = ctx.socket(zmq.PUB)
         cls.event_sock.bind(cls.event_url)
         cls.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         cls.dht = DHT(sk=sk, mode=cls.discovery_mode, loop=cls.loop,
@@ -39,8 +39,9 @@ class OverlayInterface:
 
     @classmethod
     async def _listen_for_cmds(cls):
-        log.info('Listening for overlay events over {}'.format(cls.event_url))
-        cls.cmd_sock = cls.ctx.socket(zmq.ROUTER)
+        log.info('Listening for overlay commands over {}'.format(cls.cmd_url))
+        ctx = zmq.asyncio.Context()
+        cls.cmd_sock = ctx.socket(zmq.ROUTER)
         cls.cmd_sock.bind(cls.cmd_url)
         while True:
             msg = await cls.cmd_sock.recv_multipart()
@@ -49,15 +50,16 @@ class OverlayInterface:
 
     @classmethod
     def _overlay_command_socket(cls):
-        cls.cmd_sock = cls.ctx.socket(zmq.DEALER)
-        cls.cmd_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
-        cls.cmd_sock.connect(cls.cmd_url)
+        ctx = zmq.asyncio.Context()
+        cls.cmd_send_sock = ctx.socket(zmq.DEALER)
+        cls.cmd_send_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
+        cls.cmd_send_sock.connect(cls.cmd_url)
 
     @classmethod
     def get_node_from_vk(cls, vk, timeout=3):
         assert hasattr(cls, 'event_sock'), 'You have to add an event listener first'
-        if not hasattr(cls, 'cmd_sock'): cls._overlay_command_socket()
-        cls.cmd_sock.send_multipart([b'_get_node_from_vk', vk.encode()])
+        if not hasattr(cls, 'cmd_send_sock'): cls._overlay_command_socket()
+        cls.cmd_send_sock.send_multipart([b'_get_node_from_vk', vk.encode()])
 
     @classmethod
     def _get_node_from_vk(cls, vk: str, timeout=3):
@@ -83,7 +85,8 @@ class OverlayInterface:
 
     @classmethod
     def overlay_event_socket(cls):
-        socket = cls.ctx.socket(zmq.SUB)
+        ctx = zmq.asyncio.Context()
+        socket = ctx.socket(zmq.SUB)
         socket.setsockopt(zmq.SUBSCRIBE, b"")
         socket.connect(cls.event_url)
         return socket
@@ -91,10 +94,18 @@ class OverlayInterface:
     @classmethod
     async def event_listener(cls, event_handler):
         log.info('Listening for overlay events over {}'.format(cls.event_url))
-        listener_sock = cls.overlay_event_socket()
+        cls.listener_sock = cls.overlay_event_socket()
         while True:
-            msg = await listener_sock.recv_json()
-            event_handler(msg)
+            try:
+                msg = await cls.listener_sock.recv_json()
+                event_handler(msg)
+            except Exception as e:
+                log.warning(e)
+
+    @classmethod
+    def stop_listening(cls):
+        cls.cmd_send_sock.close()
+        cls.listener_sock.close()
 
     @classmethod
     def listen_for_events(cls, event_handler):
