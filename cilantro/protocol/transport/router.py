@@ -75,8 +75,6 @@ class Router:
         self.log.warning("Lookup failed for reactor command with vk {}. Retrying.".format(kwargs['vk']))
 
         # TODO set a max num retries, and propogate failure to SM handler if num retries is exceeded
-
-        # self.handler.composer.interface.send_cmd(new_cmd)
         # TODO handle this ... retry it or route to input or something
 
     def _call_status_handler(self, input_type, *args, **kwargs):
