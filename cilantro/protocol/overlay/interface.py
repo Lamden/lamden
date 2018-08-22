@@ -11,8 +11,8 @@ class OverlayInterface:
     This class provides a high level API to interface with the overlay network
     """
 
-    event_url = 'ipc://overlay-event-ipc-sock-{}'.format(os.getenv('HOST_IP', ''))
-    cmd_url = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', ''))
+    event_url = 'ipc://overlay-event-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
+    cmd_url = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
     loop = asyncio.get_event_loop()
     ctx = zmq.asyncio.Context()
 
@@ -26,7 +26,8 @@ class OverlayInterface:
                   alpha=ALPHA, ksize=KSIZE, event_sock=cls.event_sock,
                   max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
         cls._started = True
-        cls.loop.run_until_complete(cls._listen_for_cmds())
+        try: cls.loop.run_until_complete(cls._listen_for_cmds())
+        except: pass
 
     @classmethod
     def _stop_service(cls):
@@ -34,6 +35,7 @@ class OverlayInterface:
         cls.event_sock.close()
         cls.cmd_sock.close()
         cls.dht.cleanup()
+        log.info('Service stopped.')
 
     @classmethod
     async def _listen_for_cmds(cls):
@@ -53,6 +55,7 @@ class OverlayInterface:
 
     @classmethod
     def get_node_from_vk(cls, vk, timeout=3):
+        assert hasattr(cls, 'event_sock'), 'You have to add an event listener first'
         if not hasattr(cls, 'cmd_sock'): cls._overlay_command_socket()
         cls.cmd_sock.send_multipart([b'_get_node_from_vk', vk.encode()])
 
@@ -64,7 +67,6 @@ class OverlayInterface:
             if vk in VKBook.get_all():
                 try:
                     node, cached = await asyncio.wait_for(cls.dht.network.lookup_ip(vk), timeout)
-                    cls.event_sock
                 except:
                     log.notice('Did not find an ip for VK {}'.format(vk))
             if node:
