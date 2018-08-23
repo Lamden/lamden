@@ -81,12 +81,6 @@ class TestManualDump(BaseNetworkTestCase):
     def test_dump(self):
         log = get_logger("Dumper")
 
-        # DEBUG
-        from cilantro.protocol.overlay.interface import ip_vk_map
-        log.important("Overlay interface VK Map\n {}".format(ip_vk_map))
-        log.important("Nodemap: {}".format(self.nodemap))
-        # END DEBUG
-
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True, profiling=self.PROFILE_TYPE)
 
