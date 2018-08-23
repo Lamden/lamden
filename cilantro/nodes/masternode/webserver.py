@@ -14,16 +14,24 @@ app.queue = deque()
 log = get_logger(__name__)
 
 @app.route("/", methods=["POST",])
-async def transaction(request):
+async def contract_tx(request):
     tx_bytes = req.body
     container = TransactionContainer.from_bytes(tx_bytes)
     tx = container.open()
     app.queue.append(tx)
     return text('ok')
 
-@app.route("/queue", methods=["GET",])
-async def get_queue(request):
-    return json({'queue': len(app.queue)})
+@app.route("/start-interpreter", methods=["POST",])
+async def start_interpreter(request):
+    app.add_task(process_contracts)
+    return text('ok')
+
+async def process_contracts():
+    while True:
+        try:
+            contract_tx = app.queue.popleft()
+        except:
+            await asyncio.sleep(0.01)
 
 @app.route("/teardown-network", methods=["POST",])
 async def teardown_network(request):
