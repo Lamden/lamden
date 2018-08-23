@@ -7,7 +7,7 @@ from cilantro.protocol.structures import EnvelopeAuth
 from cilantro.protocol import wallet
 from cilantro.constants.ports import PUB_SUB_PORT, ROUTER_DEALER_PORT
 from cilantro.protocol.overlay.interface import OverlayInterface
-import uuid
+import asyncio
 
 """
 The Composer class serves as a high level API for a StateMachine (application layer) to execute networking commands on
@@ -31,10 +31,9 @@ TODO implement functionality to use this without a signing key
 def vk_lookup(func):
     def _func(self, *args, **kwargs):
         if 'vk' in kwargs and kwargs['vk']:
-            # save this guy for later, until we get a return for vk lookup
-            cmd_id = OverlayInterface.get_node_from_vk(vk)
-            assert cmd_id not in self.command_queue, "Collission! Uuid {} already in command queue {}".format(cmd_id, self.command_queue)
-            self.log.debugv("Looking up vk {}, which returned command id {}".format(vk, uuid))
+            cmd_id = OverlayInterface.get_node_from_vk(kwargs['vk'])
+            assert cmd_id not in self.command_queue, "Collision! Uuid {} already in command queue {}".format(cmd_id, self.command_queue)
+            self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.command_queue[cmd_id] = (func.__name__, args, kwargs)
         else:
             func(*args, **kwargs)
@@ -57,8 +56,7 @@ class Composer:
 
         self.log.debugv("Overlay server returned lookup ip event {}".format(e))
         assert e['event_id'] in self.command_queue, "Overlay returned event id that is not in command_queue!"
-
-        cmd_name, args, kwargs = self.command_queue(e['event_id'])
+        cmd_name, args, kwargs = self.command_queue[e['event_id']]
 
         self.log.notice("old kwargs: {}".format(kwargs))  # TODO delete
         kwargs.update(e)

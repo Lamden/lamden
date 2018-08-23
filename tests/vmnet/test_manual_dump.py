@@ -23,7 +23,7 @@ def run_mn():
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(21)
+    #overwrite_logger_level(21)
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[0]['sk']
@@ -38,7 +38,7 @@ def run_witness(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(21)
+    #overwrite_logger_level(21)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -54,7 +54,7 @@ def run_delegate(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -79,7 +79,7 @@ class TestManualDump(BaseNetworkTestCase):
 
     @vmnet_test(run_webui=True)
     def test_dump(self):
-        log = get_logger("Dumper")
+        log = get_logger("Dumpbot 6967")
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True, profiling=self.PROFILE_TYPE)
