@@ -90,7 +90,6 @@ class Composer:
         self.log.debug("Composer flushing {} commands from queue".format(len(self.pending_commands)))
 
         for cmd_name, args, kwargs in self.pending_commands:
-            self.log.important2("Executing pending command {} with args {} and kwargs {}".format(cmd_name, args, kwargs))  # TODO remove
             self.log.spam("Executing pending command {} with args {} and kwargs {}".format(cmd_name, args, kwargs))
             getattr(self, cmd_name)(*args, **kwargs)
 
