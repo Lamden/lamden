@@ -28,6 +28,7 @@ class NodeBase(StateMachine):
         self.loop = loop
         asyncio.set_event_loop(loop)
 
+        self.log.notice("Starting overlay service")
         self.overlay_proc = Process(target=OverlayInterface._start_service, args=(signing_key,))
         self.overlay_proc.start()
 

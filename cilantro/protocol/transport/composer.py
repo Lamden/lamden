@@ -8,7 +8,8 @@ from cilantro.protocol import wallet
 from cilantro.constants.ports import PUB_SUB_PORT, ROUTER_DEALER_PORT
 from cilantro.protocol.overlay.interface import OverlayInterface
 import asyncio
-
+from collections import deque
+from functools import wraps
 
 """
 TODO code a turnt decorator to validate args on a lot of these functions. Namely:
@@ -23,18 +24,26 @@ TODO implement functions that remove sockets
 TODO implement functionality to use this without a signing key
 """
 
-
+# TODO dynamically apply this decorator to all functions that have 'vk' in their signature using a meta class
 def vk_lookup(func):
+    @wraps(func)
     def _func(self, *args, **kwargs):
         if 'vk' in kwargs and kwargs['vk']:
-            # save this guy for later, until we get a return for vk lookup
-            cmd_id = OverlayInterface.get_node_from_vk(vk)
-            assert cmd_id not in self.command_queue, "Collission! Uuid {} already in command queue {}".format(cmd_id, self.command_queue)
-            self.log.debugv("Looking up vk {}, which returned command id {}".format(vk, uuid))
+            # We can't call get_node_from_vk if the event loop is not running, so we add it to pending commands
+            if not asyncio.get_event_loop().is_running():
+                self.log.debugv("Cannot execute vk lookup yet as event loop is not running. Adding func {} to command "
+                                "queue".format(func.__name__))
+                self.pending_commands.append((func.__name__, args, kwargs))
+                return
+
+            cmd_id = OverlayInterface.get_node_from_vk(kwargs['vk'])
+            assert cmd_id not in self.command_queue, "Collision! Uuid {} already in command queue {}".format(cmd_id, self.command_queue)
+            self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.command_queue[cmd_id] = (func.__name__, args, kwargs)
         else:
-            func(*args, **kwargs)
+            func(self, *args, **kwargs)
     return _func
+
 
 class Composer:
     def __init__(self, manager: ExecutorManager, signing_key: str, name='Node'):
@@ -43,25 +52,48 @@ class Composer:
         self.manager = manager
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
+
         self.overlay_fut = asyncio.ensure_future(OverlayInterface.event_listener(self._handle_overlay_event))
         self.command_queue = {}  # dict of UUID to kwargs
+        self.pending_commands = deque()  # To hold commands until the event loop is started
+
+        # The 'future' task to flush pending_commands when event loop starts
+        self.flush_pending_fut = asyncio.ensure_future(self._flush_pending_commands())
 
     def _handle_overlay_event(self, e):
+        self.log.important2("Composer got overlay event {}".format(e))  # TODO remove this
+
         if e['event'] is not 'got_ip':
             self.log.spam("Composer got event {} that is not got_ip. Ignoring.".format(e))
+            # TODO handle all events. Or write code to only subscribe to certain events
             return
 
         self.log.debugv("Overlay server returned lookup ip event {}".format(e))
         assert e['event_id'] in self.command_queue, "Overlay returned event id that is not in command_queue!"
+        cmd_name, args, kwargs = self.command_queue[e['event_id']]
 
-        cmd_name, args, kwargs = self.command_queue(e['event_id'])
-
-        self.log.notice("old kwargs: {}".format(kwargs))  # TODO delete
-        kwargs.update(e)
-        self.log.notice("new kwargs: {}".format(kwargs))  # TODO delete
+        self.log.important2("old kwargs: {}".format(kwargs))  # TODO delete
+        kwargs['ip'] = e['ip']
+        self.log.important2("new kwargs: {}".format(kwargs))  # TODO delete
 
         func = getattr(self, cmd_name)
         func(*args, **kwargs)
+
+    async def _flush_pending_commands(self):
+        # TODO plz not this. engineer more 'reactive' solution w/o sleeps
+        self.log.important("composer taking a nap before flushing pending_commands while overlay gets rdy...")
+        await asyncio.sleep(10)
+        self.log.important("composer done with nap.")
+
+        self.log.important2("Composer flushing {} commands from queue".format(len(self.pending_commands)))  # TODO remove
+        self.log.debug("Composer flushing {} commands from queue".format(len(self.pending_commands)))
+
+        for cmd_name, args, kwargs in self.pending_commands:
+            self.log.important2("Executing pending command {} with args {} and kwargs {}".format(cmd_name, args, kwargs))  # TODO remove
+            self.log.spam("Executing pending command {} with args {} and kwargs {}".format(cmd_name, args, kwargs))
+            getattr(self, cmd_name)(*args, **kwargs)
+
+        self.pending_commands.clear()
 
     def _package_msg(self, msg: MessageBase) -> Envelope:
         """

@@ -23,7 +23,7 @@ def run_mn():
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(21)
+    #overwrite_logger_level(21)
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[0]['sk']
@@ -38,7 +38,7 @@ def run_witness(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(21)
+    #overwrite_logger_level(21)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -54,7 +54,7 @@ def run_delegate(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -79,13 +79,8 @@ class TestManualDump(BaseNetworkTestCase):
 
     @vmnet_test(run_webui=True)
     def test_dump(self):
-        log = get_logger("Dumper")
-
-        # DEBUG
-        from cilantro.protocol.overlay.interface import ip_vk_map
-        log.important("Overlay interface VK Map\n {}".format(ip_vk_map))
-        log.important("Nodemap: {}".format(self.nodemap))
-        # END DEBUG
+        log = get_logger("Dumpatron 6000")
+        log.important3("DUMPATRON 6000 REPORTING FOR DUTY")
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True, profiling=self.PROFILE_TYPE)
@@ -99,11 +94,11 @@ class TestManualDump(BaseNetworkTestCase):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
 
         input("Press any key to begin the dump...")
-        log.important3("Dumping transactions")
+        log.important3("Dumpatron 6000 dumping transactions")
         self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME), async=True, profiling=self.PROFILE_TYPE)
 
         input("Press any key to initiate teardown")
-        log.important3("Initiating system teardown")
+        log.important3("Dumpatron 6000 initiating system teardown")
         God.teardown_all("http://{}".format(self.ports['masternode']['8080']))
 
 
