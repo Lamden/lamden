@@ -159,14 +159,16 @@ class MNBootState(MNBaseState):
             self.parent.composer.add_dealer(vk=vk)
 
         # Create web server
-        self.log.debug("Creating REST server on port 8080")
-        self.parent.server = LProcess(target=start_webserver)
-        self.parent.server.start()
+        self.log.info("Creating REST server on port 8080")
 
-        # self.log.debug("Creating REST server on port 8080")
-        # server = web.Server(self.parent.route_http)
-        # server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
-        # self.parent.tasks.append(server_future)
+        # TODO comment this back in
+        # self.parent.server = LProcess(target=start_webserver)
+        # self.parent.server.start()
+
+        # self.log.info("Creating REST server on port 8080")
+        server = web.Server(self.parent.route_http)
+        server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
+        self.parent.tasks.append(server_future)
 
         # Once done booting, transition to staging
         self.parent.transition(MNStagingState)

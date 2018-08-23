@@ -28,7 +28,9 @@ TODO implement functionality to use this without a signing key
 def vk_lookup(func):
     @wraps(func)
     def _func(self, *args, **kwargs):
-        if 'vk' in kwargs and kwargs['vk']:
+        contains_vk = 'vk' in kwargs and kwargs['vk']
+        contains_ip = 'ip' in kwargs and kwargs['ip']
+        if contains_vk and not contains_ip:
             # We can't call get_node_from_vk if the event loop is not running, so we add it to pending commands
             if not asyncio.get_event_loop().is_running():
                 self.log.debugv("Cannot execute vk lookup yet as event loop is not running. Adding func {} to command "
@@ -63,7 +65,7 @@ class Composer:
     def _handle_overlay_event(self, e):
         self.log.important2("Composer got overlay event {}".format(e))  # TODO remove this
 
-        if e['event'] is not 'got_ip':
+        if e['event'] != 'got_ip':
             self.log.spam("Composer got event {} that is not got_ip. Ignoring.".format(e))
             # TODO handle all events. Or write code to only subscribe to certain events
             return
