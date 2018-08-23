@@ -56,7 +56,7 @@ def run_delegate(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    if not os.getenv('CILANTRO_VERBOSE', None):
+    if not os.getenv('CILANTRO_VERBOSE', True):
         overwrite_logger_level(21)
 
     d_info = TESTNET_DELEGATES[slot_num]
