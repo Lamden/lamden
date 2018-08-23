@@ -133,25 +133,20 @@ class State(metaclass=StateMeta):
     def reset_attrs(self):
         raise NotImplementedError("reset_attrs must be implemented for any State subclass")
 
-    def call_input_handler(self, message, input_type: str, envelope=None):
+    def call_input_handler(self, input_type: str, message, *args, **kwargs):
         # TODO assert type message is MessageBase, and envelope is Envelope ???
         self._assert_has_input_handler(message, input_type)
 
         handler_func = self._get_input_handler(message, input_type)
+        func_kwargs = self._prune_kwargs(handler_func, **kwargs)
 
-        # TODO -- find cleaner way to copy method signatures in unit tests
-        if (isinstance(handler_func, MagicMock) and envelope) or self._has_envelope_arg(handler_func):
-            assert envelope, "Envelope arg was found for input func {}, " \
-                             "but no envelope passed into call_input_handler".format(handler_func)
-            output = handler_func(message, envelope=envelope)
-        else:
-            output = handler_func(message)
-
+        output = handler_func(message, *args, **func_kwargs)
         return output
 
     def call_transition_handler(self, trans_type, state, *args, **kwargs):
-        trans_func = self._get_transition_handler(trans_type, state)
+        assert len(args) == 0, "Unnamed args not supported using transitions. You must use key word arguments"
 
+        trans_func = self._get_transition_handler(trans_type, state)
         timeout_func = getattr(self, StateTimeout.TIMEOUT_FLAG)
 
         # On entry, schedule the timeout function (if any), and run the appropriate ENTRY transition handler
@@ -189,8 +184,10 @@ class State(metaclass=StateMeta):
             return
 
         func = getattr(self, func.__name__)
-        func(*args, **kwargs)
+        func_kwargs = self._prune_kwargs(func, **kwargs)
+        func(*args, **func_kwargs)
 
+    # TODO make this more optimal. We really should only precomute this stuff once when the app loads, and never again
     def _get_input_handler(self, message, input_type: str):
         registry = getattr(self, input_type)
         assert isinstance(registry, dict), "Expected registry to be a dictionary!"
@@ -216,13 +213,27 @@ class State(metaclass=StateMeta):
         sig = inspect.signature(func)
         return 'envelope' in sig.parameters
 
-    @classmethod
-    def _prune_kwargs(cls, func, **kwargs):
+    # TODO make this more optimal. We really should only precomute this stuff once when the app loads, and never again
+    def _prune_kwargs(self, func, **kwargs) -> dict:
         """
         Prunes kwargs s.t. only keys which are present as named args in func's signature are present.
         """
         params = inspect.signature(func).parameters
-        return {k: kwargs[k] for k in kwargs if k in params}
+
+        # If 'kwargs' is present in the signature, do not prune anything
+        if 'kwargs' in params:
+            return kwargs
+        new_kwargs = {k: kwargs[k] for k in kwargs if k in params}
+
+        # NOTE at this point we could just return new_kwargs (and we should in prod). For dev we might like to know
+        # what got pruned, so we do this business below. Would be cool if we could do like a C style macro to optionally
+        # include this behavior just for dev
+        pruned_kwargs = set(kwargs.keys()) - set(new_kwargs.keys())
+        if len(pruned_kwargs) > 0:
+            self.log.debugv("Handler func named {} did not have key word args {} in signature, so they were pruned from "
+                            "'kwargs' for convenience".format(func.__qualname__, pruned_kwargs))
+
+        return new_kwargs
 
     def _assert_has_input_handler(self, message: MessageBase, input_type: str):
         # Assert that input_type is actually a recognized input_type
@@ -263,7 +274,7 @@ class State(metaclass=StateMeta):
         # At this point, no handler could be found. Warn the user and return None
         # self.log.warning("\nNo {} transition handler found for state {}. Any_handler = {} ... Transition "
         #                  "Registry = {}".format(trans_type, state, any_handler, trans_registry))
-        self.log.debug("No {} transition handler found for transitioning from state {} to {}".format(trans_type, self, state))
+        self.log.debugv("No {} transition handler found for transitioning from state {} to {}".format(trans_type, self, state))
         return None
 
     def __eq__(self, other):

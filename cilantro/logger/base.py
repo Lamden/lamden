@@ -38,6 +38,7 @@ Custom Log Levels
 CUSTOM_LEVELS = {
     'SPAM': 1,
     'DEBUGV': 5,
+    'SOCKET': 23,
     'NOTICE': 24,
     'SUCCESS': 26,
     'IMPORTANT': 56,
@@ -61,20 +62,21 @@ Custom Styling
 """
 
 coloredlogs.DEFAULT_LEVEL_STYLES = {
-    'critical':{'color':'white', 'bold':True, 'background': 'red'},
-    'fatal':{'color':'white', 'bold':True, 'background': 'red', 'underline': True},
-    'debug':{'color':'green' },
-    'error':{'color':'red' },
-    'info':{'color':'white' },
-    'notice':{'color':'magenta' },
-    'important':{ 'color':'cyan', 'bold': True, 'background': 'magenta'},
-    'important2':{ 'color':'magenta', 'bold': True, 'background': 'cyan'},
-    'important3':{ 'color':'black', 'bold': True, 'background': 'yellow'},
-    'spam':{ 'color':'white', 'faint':True },
-    'success':{'color':'white', 'bold': True, 'background': 'green'},
-    'verbose':{'color':'blue' },
-    'warning':{'color':'yellow' },
-    'debugv':{'color':'blue', 'faint':True }
+    'critical': {'color': 'white', 'bold': True, 'background': 'red'},
+    'fatal': {'color': 'white', 'bold': True, 'background': 'red', 'underline': True},
+    'debug': {'color': 'green'},
+    'error': {'color': 'red'},
+    'info': {'color': 'white'},
+    'notice': {'color': 'magenta'},
+    'socket': {'color': 216},
+    'important': {'color': 'cyan', 'bold': True, 'background': 'magenta'},
+    'important2': {'color': 'magenta', 'bold': True, 'background': 'cyan'},
+    'important3': {'color': 'black', 'bold': True, 'background': 'yellow'},
+    'spam': {'color': 'white', 'faint': True},
+    'success': {'color': 'white', 'bold': True, 'background': 'green'},
+    'verbose': {'color': 'blue'},
+    'warning': {'color': 'yellow'},
+    'debugv': {'color': 'blue', 'faint': True}
 }
 coloredlogs.DEFAULT_FIELD_STYLES = {
     'asctime': {'color': 'green'},

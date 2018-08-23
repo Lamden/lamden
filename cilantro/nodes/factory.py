@@ -1,5 +1,5 @@
 from cilantro.nodes import Masternode, Witness, Delegate, NodeBase
-from cilantro.protocol.reactor import ReactorInterface
+from cilantro.protocol.reactor.manager import ExecutorManager
 from cilantro.protocol.transport import Router, Composer
 import asyncio
 
@@ -12,11 +12,12 @@ class NodeFactory:
     def _build_node(loop, signing_key, ip, node_cls, name) -> NodeBase:
 
         node = node_cls(signing_key=signing_key, ip=ip, loop=loop, name=name)
-        router = Router(statemachine=node, name=name)
-        interface = ReactorInterface(router=router, loop=loop, signing_key=signing_key, name=name)
-        composer = Composer(interface=interface, signing_key=signing_key, name=name)
+        router = Router(get_handler_func=lambda: node.state, name=name)
+        manager = ExecutorManager(signing_key=signing_key, router=router, name=node_cls.__name__, loop=loop)
+        composer = Composer(manager=manager, signing_key=signing_key, name=name)
 
         node.composer = composer
+        router.composer = composer
 
         return node
 

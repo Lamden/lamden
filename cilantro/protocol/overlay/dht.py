@@ -17,7 +17,6 @@ class DHT(Discovery):
         self.retry_discovery = retry_discovery
 
         self.crawler_port = kwargs.get('port') or os.getenv('PORT', 30001)
-        self.listen_for_crawlers()
 
         self.mode = mode
         self.host_ip = os.getenv('HOST_IP', '127.0.0.1')
@@ -43,6 +42,7 @@ class DHT(Discovery):
         return True
 
     def start_network(self, *args, **kwargs):
+        self.listen_for_crawlers()
         self.network = Network(network_port=self.network_port, *args, **kwargs)
         log.debug('Discovery begins...')
         start = time.time()
@@ -57,5 +57,6 @@ class DHT(Discovery):
         self.join_network()
 
     def cleanup(self):
+
         self.stop_discovery()
         self.network.stop()

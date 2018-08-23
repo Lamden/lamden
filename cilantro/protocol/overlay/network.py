@@ -6,7 +6,7 @@ import pickle
 import asyncio
 import os
 
-import socket, select
+import socket, select, ujson
 
 from cilantro.logger import get_logger
 from cilantro.protocol.structures import Bidict
@@ -36,7 +36,7 @@ class Network(object):
 
     protocol_class = KademliaProtocol
 
-    def __init__(self, ksize=20, alpha=3, node_id=None, discovery_mode='neighborhood', loop=None, max_peers=64, network_port=None, public_ip=None, *args, **kwargs):
+    def __init__(self, ksize=20, alpha=3, node_id=None, discovery_mode='neighborhood', loop=None, max_peers=64, network_port=None, public_ip=None, event_sock=None, *args, **kwargs):
         """
         Create a server instance.  This will start listening on the given port.
 
@@ -54,10 +54,10 @@ class Network(object):
         self.protocol = None
         self.refresh_loop = None
         self.save_state_loop = None
+        self.event_sock = event_sock
         self.max_peers = max_peers
         self.network_port = network_port
         self.heartbeat_port = self.network_port+HEARTBEAT_PORT_OFFSET
-        self.daemon = kwargs.get('daemon')
         self.ironhouse = Ironhouse(auth_port=self.network_port+AUTH_PORT_OFFSET, *args, **kwargs)
         self.node = Node(
             node_id=digest(self.ironhouse.vk),
@@ -82,6 +82,7 @@ class Network(object):
             try: self.protocol.router.removeContact(node)
             except: pass
             self.ironhouse.authorized_nodes[node.id] = False
+            if self.event_sock: self.event_sock.send_json({'event':'unauthorized', 'ip': node.ip})
         log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP', '127.0.0.1'), [self.vkcache.get(k).ip for k in self.ironhouse.authorized_nodes if self.vkcache.get(k)]))
         return authorization == 'authorized'
 
@@ -117,20 +118,18 @@ class Network(object):
                                 self.protocol.router.removeContact(node)
                                 self.poll.unregister(fileno)
                                 conn.close()
-                                self.connection_drop()
+                                self.connection_drop(node)
                 await asyncio.sleep(0.1)
         except asyncio.CancelledError:
             log.info('Network shutting down gracefully.')
 
-    def connection_drop(self):
-        if self.daemon:
-            callback = ReactorCommand.create_callback(
-                callback=StateInput.CONN_DROPPED,
-                vk=self.ironhouse.vk,
-                ip=self.node.ip
-            )
-            log.debug("Sending callback failure to mainthread {}".format(callback))
-            self.daemon.socket.send(callback.serialize())
+    def connection_drop(self, node):
+        if self.event_sock: self.event_sock.send_json({'event':'disconect', 'ip':node.ip})
+        callback = ReactorCommand.create_callback(
+            callback=StateInput.CONN_DROPPED,
+            ip=node.ip
+        )
+        log.debug("Sending callback failure to mainthread {}".format(callback))
 
     def connect_to_neighbor(self, node):
         if self.node.id == node.id: return
@@ -142,6 +141,7 @@ class Network(object):
             conn.connect(addr)
             self.poll.register(conn.fileno(), POLLIN)
             log.info("[CLIENT SIDE] Client ({}, {}) connected".format(*addr))
+            if self.event_sock: self.event_sock.send_json({'event':'connected', 'addr': addr})
             return conn
         except Exception as e:
             del self.connections[conn.fileno()]
@@ -240,6 +240,7 @@ class Network(object):
 
         # do our crawling
         await asyncio.gather(*ds)
+        if self.event_sock: self.event_sock.send_json({'event':'table_refreshed'})
 
     def bootstrappableNeighbors(self):
         """

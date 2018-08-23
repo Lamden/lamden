@@ -72,12 +72,13 @@ class God:
         self.composers = {}
 
     def _get_or_create_composer(self, signing_key):
+        # TODO fix this ... this is horribly old and likely broken untested code
         if signing_key in self.composers:
             self.log.debug("Existing Composer object found for signing key {}".format(signing_key))
             return self.composers[signing_key]
         else:
             self.log.debug("Creating new Composer object for signing key {}".format(signing_key))
-            c = Composer(interface=self.interface, signing_key=signing_key, name='God-Composer-{}'.format(signing_key[:4]))
+            c = Composer(manager=self.interface, signing_key=signing_key, name='God-Composer-{}'.format(signing_key[:4]))
             self.composers[signing_key] = c
             return c
 

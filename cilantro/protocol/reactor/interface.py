@@ -143,14 +143,6 @@ class ReactorInterface:
             else:
                 raise e
 
-    def notify_resume(self):
-        self.log.info("NOTIFY READY")
-        # TODO -- implement (add queue of tx, flush on notify ready, pause on notify_pause
-
-    def notify_pause(self):
-        self.log.info("NOTIFY PAUSE")
-        # TODO -- implement
-
     def send_cmd(self, cmd: ReactorCommand):
         assert isinstance(cmd, ReactorCommand), "Only ReactorCommand instances can sent through the reactor"
         self.socket.send(cmd.serialize())

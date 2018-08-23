@@ -39,14 +39,14 @@ class TestTransportIntegration(MPTestCase):
         def config_sub(composer: Composer):
             from unittest.mock import MagicMock
 
-            composer.interface.router = MagicMock()
+            composer.manager.router = MagicMock()
             return composer
 
         def assert_sub(composer: Composer):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
             from cilantro.protocol.states.decorators import StateInput
             cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
-            composer.interface.router.route_callback.assert_called_with(cb)
+            composer.manager.router.route_callback.assert_called_with(cb)
 
         env = random_envelope()
 
@@ -70,7 +70,7 @@ class TestTransportIntegration(MPTestCase):
         """
         def config_sub(composer: Composer):
             from unittest.mock import MagicMock
-            composer.interface.router = MagicMock()
+            composer.manager.router = MagicMock()
             return composer
 
         def assert_sub(composer: Composer):
@@ -83,8 +83,8 @@ class TestTransportIntegration(MPTestCase):
                 callback = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
                 expected_calls.append(call(callback))
 
-            call_args = composer.interface.router.route_callback.call_args_list
-            composer.interface.router.route_callback.assert_has_calls(expected_calls, any_order=True)
+            call_args = composer.manager.router.route_callback.call_args_list
+            composer.manager.router.route_callback.assert_has_calls(expected_calls, any_order=True)
 
         envs = [random_envelope() for _ in range(4)]
 
@@ -117,7 +117,7 @@ class TestTransportIntegration(MPTestCase):
         """
         def configure(composer: Composer):
             from unittest.mock import MagicMock
-            composer.interface.router.route_callback = MagicMock()
+            composer.manager.router.route_callback = MagicMock()
             return composer
 
         def assert_sub(composer: Composer):
@@ -129,8 +129,8 @@ class TestTransportIntegration(MPTestCase):
             callback2 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env2)
             calls = [call(callback1), call(callback2)]
 
-            call_args = composer.interface.router.route_callback.call_args_list
-            composer.interface.router.route_callback.assert_has_calls(calls, any_order=True)
+            call_args = composer.manager.router.route_callback.call_args_list
+            composer.manager.router.route_callback.assert_has_calls(calls, any_order=True)
 
         env1 = random_envelope()
         env2 = random_envelope()
@@ -168,7 +168,7 @@ class TestTransportIntegration(MPTestCase):
         """
         def configure(composer: Composer):
             from unittest.mock import MagicMock
-            composer.interface.router = MagicMock()
+            composer.manager.router = MagicMock()
             return composer
 
         def run_assertions(composer: Composer):
@@ -178,7 +178,7 @@ class TestTransportIntegration(MPTestCase):
 
             cb1 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env1)
             cb2 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env2)
-            composer.interface.router.route_callback.assert_has_calls([call(cb1), call(cb2)], any_order=True)
+            composer.manager.router.route_callback.assert_has_calls([call(cb1), call(cb2)], any_order=True)
 
         env1 = random_envelope()
         env2 = random_envelope()
@@ -210,19 +210,19 @@ class TestTransportIntegration(MPTestCase):
             def reply(*args, **kwargs):  # do i need the *args **kwargs ??
                 composer.send_reply(message=reply_msg, request_envelope=request_env)
 
-            composer.interface.router = MagicMock()
-            composer.interface.router.route_callback.side_effect = reply
+            composer.manager.router = MagicMock()
+            composer.manager.router.route_callback.side_effect = reply
             return composer
 
         def config_dealer(composer: Composer):
             from unittest.mock import MagicMock
-            composer.interface.router = MagicMock()
+            composer.manager.router = MagicMock()
             return composer
 
         def assert_dealer(composer: Composer):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
 
-            args = composer.interface.router.route_callback.call_args_list
+            args = composer.manager.router.route_callback.call_args_list
             # assert len(args) == 1, "dealer's route_callback should of only been called once (with the reply env)"
 
             reply_callback_found = False
@@ -240,7 +240,7 @@ class TestTransportIntegration(MPTestCase):
             from cilantro.protocol.states.decorators import StateInput
             from cilantro.messages.reactor.reactor_command import ReactorCommand
             cb = ReactorCommand.create_callback(callback=StateInput.REQUEST, envelope=request_env, header=dealer_id)
-            composer.interface.router.route_callback.assert_called_with(cb)
+            composer.manager.router.route_callback.assert_called_with(cb)
 
         dealer_id = vk1
         dealer_sk = sk1
