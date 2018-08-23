@@ -50,6 +50,7 @@ class OverlayInterface(object):
                   max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
         cls._started = True
         cls.listener_fut = asyncio.ensure_future(cls._listen_for_cmds())
+        cls.event_sock.send_json({ 'event': 'service_started' })
         cls.loop.run_forever()
 
     @classmethod
