@@ -28,6 +28,8 @@ TODO implement functions that remove sockets
 TODO implement functionality to use this without a signing key
 """
 
+
+# TODO dynamically apply this decorator to all functions that have 'vk' in their signature using a meta class
 def vk_lookup(func):
     def _func(self, *args, **kwargs):
         if 'vk' in kwargs and kwargs['vk']:
@@ -36,8 +38,9 @@ def vk_lookup(func):
             self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.command_queue[cmd_id] = (func.__name__, args, kwargs)
         else:
-            func(*args, **kwargs)
+            func(self, *args, **kwargs)
     return _func
+
 
 class Composer:
     def __init__(self, manager: ExecutorManager, signing_key: str, name='Node'):
@@ -46,7 +49,10 @@ class Composer:
         self.manager = manager
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
+
+        self.log.important("Spinning up overlay listener as future!!!")
         self.overlay_fut = asyncio.ensure_future(OverlayInterface.event_listener(self._handle_overlay_event))
+        self.log.important("Overlay listener spun up")
         self.command_queue = {}  # dict of UUID to kwargs
 
     def _handle_overlay_event(self, e):

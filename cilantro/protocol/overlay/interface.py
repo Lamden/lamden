@@ -75,14 +75,22 @@ class OverlayInterface:
         cls.cmd_send_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
         cls.cmd_send_sock.connect(cls.cmd_url)
 
-    def __getattr__(self, attr):
-        if attr in ('get_node_from_vk',):
-            cls = OverlayInterface
-            assert hasattr(cls, 'listener_sock'), 'You have to add an event listener first'
-            if not hasattr(cls, 'cmd_send_sock'): cls._overlay_command_socket()
-            event_id = uuid.uuid4().hex
-            cls.cmd_send_sock.send_multipart(['_{}'.format(attr).encode(), event_id.encode(), vk.encode()])
-            return event_id
+    # NOTE TO FALC -- this doesnt work because we are calling the class method OverlayInterface.get_node_from_vk
+    # not an instance method. i think to do it like this you would have to override __getattr__ in the metaclass --davis
+    # def __getattr__(self, attr):
+    #     if attr in ('get_node_from_vk',):
+    #         cls = OverlayInterface
+    #         assert hasattr(cls, 'listener_sock'), 'You have to add an event listener first'
+    #         if not hasattr(cls, 'cmd_send_sock'): cls._overlay_command_socket()
+    #         event_id = uuid.uuid4().hex
+    #         cls.cmd_send_sock.send_multipart(['_{}'.format(attr).encode(), event_id.encode(), vk.encode()])
+    #         return event_id
+
+    @classmethod
+    def get_node_from_vk(cls, vk, timeout=3):
+        assert hasattr(cls, 'listener_sock'), 'You have to add an event listener first'
+        if not hasattr(cls, 'cmd_send_sock'): cls._overlay_command_socket()
+        cls.cmd_send_sock.send_multipart([b'_get_node_from_vk', vk.encode()])
 
     @classmethod
     def _get_node_from_vk(cls, event_id, vk: str, timeout=3):
