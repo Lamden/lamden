@@ -42,8 +42,11 @@ def vk_lookup(func):
             assert cmd_id not in self.command_queue, "Collision! Uuid {} already in command queue {}".format(cmd_id, self.command_queue)
             self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.command_queue[cmd_id] = (func.__name__, args, kwargs)
+
+        # If the 'ip' key is already set in kwargs, no need to do a lookup
         else:
             func(self, *args, **kwargs)
+
     return _func
 
 
@@ -63,31 +66,27 @@ class Composer:
         self.flush_pending_fut = asyncio.ensure_future(self._flush_pending_commands())
 
     def _handle_overlay_event(self, e):
-        self.log.important2("Composer got overlay event {}".format(e))  # TODO remove this
+        self.log.spam("Composer got overlay event {}".format(e))
 
         if e['event'] != 'got_ip':
             self.log.spam("Composer got event {} that is not got_ip. Ignoring.".format(e))
             # TODO handle all events. Or write code to only subscribe to certain events
             return
 
-        self.log.debugv("Overlay server returned lookup ip event {}".format(e))
         assert e['event_id'] in self.command_queue, "Overlay returned event id that is not in command_queue!"
+
         cmd_name, args, kwargs = self.command_queue[e['event_id']]
-
-        self.log.important2("old kwargs: {}".format(kwargs))  # TODO delete
         kwargs['ip'] = e['ip']
-        self.log.important2("new kwargs: {}".format(kwargs))  # TODO delete
 
-        func = getattr(self, cmd_name)
-        func(*args, **kwargs)
+        getattr(self, cmd_name)(*args, **kwargs)
 
     async def _flush_pending_commands(self):
         # TODO plz not this. engineer more 'reactive' solution w/o sleeps
-        self.log.important("composer taking a nap before flushing pending_commands while overlay gets rdy...")
+        # TODO -- falcon has an overlay ready event. use it.
+        self.log.notice("composer taking a nap before flushing pending_commands while overlay gets rdy...")
         await asyncio.sleep(10)
-        self.log.important("composer done with nap.")
+        self.log.notice("composer done with nap.")
 
-        self.log.important2("Composer flushing {} commands from queue".format(len(self.pending_commands)))  # TODO remove
         self.log.debug("Composer flushing {} commands from queue".format(len(self.pending_commands)))
 
         for cmd_name, args, kwargs in self.pending_commands:
@@ -169,7 +168,6 @@ class Composer:
         """
         raise NotImplementedError("This still needs to be coded up")
 
-    @vk_lookup
     def send_pub_msg(self, filter: str, message: MessageBase):
         """
         Publish data with filter frame 'filter'. An envelope (including a seal and the metadata) will be created from
@@ -179,7 +177,6 @@ class Composer:
         """
         self.send_pub_env(filter=filter, envelope=self._package_msg(message))
 
-    @vk_lookup
     def send_pub_env(self, filter: str, envelope: Envelope):
         """
         Publish envelope with filter frame 'filter'.
@@ -188,7 +185,6 @@ class Composer:
         """
         self.manager.executors['SubPubExecutor'].send_pub(filter=filter, envelope=envelope.serialize())
 
-    @vk_lookup
     def add_pub(self, protocol: str='tcp', port: int=PUB_SUB_PORT, ip: str=''):
         """
         Create a publisher socket that BINDS to 'url'
@@ -239,6 +235,7 @@ class Composer:
         """
         self.send_request_env(ip=ip, vk=vk, envelope=self._package_msg(message), timeout=timeout, protocol=protocol, port=port)
 
+    @vk_lookup
     def send_request_env(self, envelope: Envelope, timeout=0, protocol: str='tcp', port: int=ROUTER_DEALER_PORT,
                          vk: str='', ip: str=''):
         url = self._build_url(protocol=protocol, port=port, ip=ip, vk=vk)
