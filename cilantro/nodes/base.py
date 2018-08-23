@@ -1,6 +1,9 @@
 from cilantro.logger import get_logger
 from cilantro.protocol.transport import Composer
 from cilantro.protocol.states.statemachine import StateMachine
+from cilantro.protocol.overlay.interface import OverlayInterface
+from multiprocessing import Process
+
 import asyncio
 # from cilantro.protocol.reactor.executor import *
 from cilantro.protocol import wallet
@@ -24,6 +27,9 @@ class NodeBase(StateMachine):
 
         self.loop = loop
         asyncio.set_event_loop(loop)
+
+        self.overlay_proc = Process(target=OverlayInterface._start_service, args=(signing_key,))
+        self.overlay_proc.start()
 
         self._composer = None
 

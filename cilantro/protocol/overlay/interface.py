@@ -27,7 +27,7 @@ class OverlayInterface:
 
     event_url = 'ipc://overlay-event-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
     cmd_url = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
     _started = False
 
     @classmethod
@@ -65,7 +65,8 @@ class OverlayInterface:
         while True:
             msg = await cls.cmd_sock.recv_multipart()
             log.debug('[Overlay] Received cmd (Proc={}): {}'.format(msg[0], msg[1:]))
-            getattr(cls, msg[1].decode())(*msg[2:])
+            data = [b.decode() for b in msg[2:]]
+            getattr(cls, msg[1].decode())(*data)
 
     @classmethod
     def _overlay_command_socket(cls):
@@ -74,15 +75,17 @@ class OverlayInterface:
         cls.cmd_send_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
         cls.cmd_send_sock.connect(cls.cmd_url)
 
-    @classmethod
-    def get_node_from_vk(cls, vk, timeout=3):
-        assert hasattr(cls, 'listener_sock'), 'You have to add an event listener first'
-        if not hasattr(cls, 'cmd_send_sock'): cls._overlay_command_socket()
-        cls.cmd_send_sock.send_multipart([b'_get_node_from_vk', vk.encode()])
+    def __getattr__(self, attr):
+        if attr in ('get_node_from_vk',):
+            cls = OverlayInterface
+            assert hasattr(cls, 'listener_sock'), 'You have to add an event listener first'
+            if not hasattr(cls, 'cmd_send_sock'): cls._overlay_command_socket()
+            event_id = uuid.uuid4().hex
+            cls.cmd_send_sock.send_multipart(['_{}'.format(attr).encode(), event_id.encode(), vk.encode()])
+            return event_id
 
     @classmethod
-    def _get_node_from_vk(cls, vk: str, timeout=3):
-        vk = vk.decode()
+    def _get_node_from_vk(cls, event_id, vk: str, timeout=3):
         async def coro():
             node = None
             if vk in VKBook.get_all():
@@ -92,13 +95,16 @@ class OverlayInterface:
                     log.notice('Did not find an ip for VK {}'.format(vk))
             if node:
                 cls.event_sock.send_json({
-                    'status': 'success',
+                    'event': 'got_ip',
+                    'event_id': event_id,
                     'public_key': node.public_key.decode(),
-                    'ip': node.ip
+                    'ip': node.ip,
+                    'vk': vk
                 })
             else:
                 cls.event_sock.send_json({
-                    'status': 'not_found'
+                    'event': 'not_found',
+                    'event_id': event_id
                 })
         asyncio.ensure_future(coro())
 

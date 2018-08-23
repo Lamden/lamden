@@ -56,7 +56,6 @@ class Masternode(NodeBase):
         else:
             container = TransactionContainer.from_bytes(raw_data)
             tx = container.open()
-
         try:
             self.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
             return web.Response(text="Successfully published transaction: {}".format(tx))

@@ -7,6 +7,7 @@ from cilantro.protocol.structures import EnvelopeAuth
 from cilantro.protocol import wallet
 from cilantro.constants.ports import PUB_SUB_PORT, ROUTER_DEALER_PORT
 from cilantro.protocol.overlay.interface import OverlayInterface
+import uuid
 
 """
 The Composer class serves as a high level API for a StateMachine (application layer) to execute networking commands on
@@ -27,6 +28,17 @@ TODO implement functions that remove sockets
 TODO implement functionality to use this without a signing key
 """
 
+def vk_lookup(func):
+    def _func(self, *args, **kwargs):
+        if 'vk' in kwargs and kwargs['vk']:
+            # save this guy for later, until we get a return for vk lookup
+            cmd_id = OverlayInterface.get_node_from_vk(vk)
+            assert cmd_id not in self.command_queue, "Collission! Uuid {} already in command queue {}".format(cmd_id, self.command_queue)
+            self.log.debugv("Looking up vk {}, which returned command id {}".format(vk, uuid))
+            self.command_queue[cmd_id] = (func.__name__, args, kwargs)
+        else:
+            func(*args, **kwargs)
+    return _func
 
 class Composer:
     def __init__(self, manager: ExecutorManager, signing_key: str, name='Node'):
@@ -35,6 +47,25 @@ class Composer:
         self.manager = manager
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
+        self.overlay_fut = asyncio.ensure_future(OverlayInterface.event_listener(self._handle_overlay_event))
+        self.command_queue = {}  # dict of UUID to kwargs
+
+    def _handle_overlay_event(self, e):
+        if e['event'] is not 'got_ip':
+            self.log.spam("Composer got event {} that is not got_ip. Ignoring.".format(e))
+            return
+
+        self.log.debugv("Overlay server returned lookup ip event {}".format(e))
+        assert e['event_id'] in self.command_queue, "Overlay returned event id that is not in command_queue!"
+
+        cmd_name, args, kwargs = self.command_queue(e['event_id'])
+
+        self.log.notice("old kwargs: {}".format(kwargs))  # TODO delete
+        kwargs.update(e)
+        self.log.notice("new kwargs: {}".format(kwargs))  # TODO delete
+
+        func = getattr(self, cmd_name)
+        func(*args, **kwargs)
 
     def _package_msg(self, msg: MessageBase) -> Envelope:
         """
@@ -65,11 +96,12 @@ class Composer:
     def _build_url(self, protocol, port, ip='', vk=''):
         assert protocol in ('ipc', 'tcp'), "Got protocol {}, but only tcp and ipc are supported".format(protocol)
 
-        if vk:
+        if vk and not ip:
             node = OverlayInterface.get_node_from_vk(vk)
             self.log.critical(node)
         return "{}://{}:{}".format(protocol, ip, port)
 
+    @vk_lookup
     def add_sub(self, filter: str, protocol: str='tcp', port: int=PUB_SUB_PORT, ip: str='', vk: str=''):
         """
         Connects the subscriber socket to listen to 'URL' with filter 'filter'.
@@ -80,6 +112,7 @@ class Composer:
         url = self._build_url(protocol=protocol, port=port, ip=ip, vk=vk)
         self.manager.executors['SubPubExecutor'].add_sub(url=url, filter=filter, vk=vk)
 
+    @vk_lookup
     def remove_sub(self, ip: str='', vk: str=''):
         """
         Stop subscribing to a URL and filter. Note that all other subscriber connections will drop this filter as well
@@ -97,6 +130,7 @@ class Composer:
         """
         raise NotImplementedError("This still needs to be coded up")
 
+    @vk_lookup
     def remove_sub_filter(self, filter: str, ip: str='', vk: str=''):
         """
         Removes a filters from the sub socket. Unlike the remove_sub API, this does not disconnect a URL. It only
@@ -105,6 +139,7 @@ class Composer:
         """
         raise NotImplementedError("This still needs to be coded up")
 
+    @vk_lookup
     def send_pub_msg(self, filter: str, message: MessageBase):
         """
         Publish data with filter frame 'filter'. An envelope (including a seal and the metadata) will be created from
@@ -114,6 +149,7 @@ class Composer:
         """
         self.send_pub_env(filter=filter, envelope=self._package_msg(message))
 
+    @vk_lookup
     def send_pub_env(self, filter: str, envelope: Envelope):
         """
         Publish envelope with filter frame 'filter'.
@@ -122,6 +158,7 @@ class Composer:
         """
         self.manager.executors['SubPubExecutor'].send_pub(filter=filter, envelope=envelope.serialize())
 
+    @vk_lookup
     def add_pub(self, protocol: str='tcp', port: int=PUB_SUB_PORT, ip: str=''):
         """
         Create a publisher socket that BINDS to 'url'
@@ -131,6 +168,7 @@ class Composer:
         url = self._build_url(protocol=protocol, port=port, ip=ip, vk='')
         self.manager.executors['SubPubExecutor'].add_pub(url=url)
 
+    @vk_lookup
     def remove_pub(self, ip: str='', vk: str=''):
         """
         Removes a publisher (duh)
@@ -139,6 +177,7 @@ class Composer:
         """
         raise NotImplementedError("This still needs to be coded up")
 
+    @vk_lookup
     def add_dealer(self, id='', protocol: str='tcp', port: int=ROUTER_DEALER_PORT, ip: str='', vk: str=''):
         """
         Add a dealer socket at url. Dealers are like 'async requesters', and can connect to a single Router socket (1-1)
@@ -162,6 +201,7 @@ class Composer:
         url = self._build_url(protocol=protocol, port=port, ip=ip, vk='')
         self.manager.executors['DealerRouterExecutor'].add_router(url=url)
 
+    @vk_lookup
     def send_request_msg(self, message: MessageBase, timeout=0, protocol: str='tcp', port: int=ROUTER_DEALER_PORT,
                          ip: str='', vk: str=''):
         """
