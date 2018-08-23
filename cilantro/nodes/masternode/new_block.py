@@ -160,7 +160,7 @@ class MNFetchNewBlockState(MNNewBlockState):
     @timeout_after(FETCH_BLOCK_TIMEOUT)
     def timeout(self):
         self.log.critical("MN failed to fetch block data in less than {} seconds!\nBlock Contender = {}"
-                          .format(NEW_BLOCK_TIMEOUT, self.block_contender))
+                          .format(FETCH_BLOCK_TIMEOUT, self.block_contender))
         self.parent.transition(MNNewBlockState, success=False, pending_blocks=self.pending_blocks)
 
     # Development sanity check (remove in production)

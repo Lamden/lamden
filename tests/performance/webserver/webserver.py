@@ -1,3 +1,4 @@
+import unittest
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 from cilantro.nodes.masternode.masternode import MNBootState, MNRunState, MNStagingState
@@ -26,3 +27,6 @@ class TestWebserverPerformance(TestCase):
         state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
 
         subprocess.run('ab -k -c 50 -n 10000 -p post_data 0.0.0.0:8080/'.split(' '))
+
+if __name__ == '__main__':
+    unittest.main()

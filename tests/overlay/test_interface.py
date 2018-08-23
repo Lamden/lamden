@@ -77,7 +77,7 @@ class TestInterface(TestCase):
                 asyncio.set_event_loop(l)
                 OverlayInterface.get_node_from_vk('fsdfhsdfkjsdh')
             def _assert():
-                self.assertEqual(OverlayInterface._test_res, {'status': 'not_found'})
+                self.assertTrue(OverlayInterface._test_res['event'], 'not_found')
                 l.call_soon_threadsafe(l.stop)
                 th.join()
                 th_a.join()

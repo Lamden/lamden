@@ -56,7 +56,6 @@ class Masternode(NodeBase):
         else:
             container = TransactionContainer.from_bytes(raw_data)
             tx = container.open()
-
         try:
             self.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
             return web.Response(text="Successfully published transaction: {}".format(tx))
@@ -160,11 +159,13 @@ class MNBootState(MNBaseState):
             self.parent.composer.add_dealer(vk=vk)
 
         # Create web server
-        # self.log.debug("Creating REST server on port 8080")
+        self.log.info("Creating REST server on port 8080")
+
+        # TODO comment this back in
         # self.parent.server = LProcess(target=start_webserver)
         # self.parent.server.start()
 
-        self.log.debug("Creating REST server on port 8080")
+        # self.log.info("Creating REST server on port 8080")
         server = web.Server(self.parent.route_http)
         server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
         self.parent.tasks.append(server_future)
