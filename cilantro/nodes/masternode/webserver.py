@@ -15,13 +15,11 @@ log = get_logger(__name__)
 
 @app.route("/", methods=["POST",])
 async def transaction(request):
-    async def _transaction(req):
-        tx_bytes = req.body
-        container = TransactionContainer.from_bytes(tx_bytes)
-        tx = container.open()
-        app.queue.append(tx)
-    await _transaction(request)
-    return text('received tx')
+    tx_bytes = req.body
+    container = TransactionContainer.from_bytes(tx_bytes)
+    tx = container.open()
+    app.queue.append(tx)
+    return text('ok')
 
 @app.route("/queue", methods=["GET",])
 async def get_queue(request):
