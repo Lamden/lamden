@@ -84,16 +84,15 @@ class Composer:
 
     async def _flush_pending_commands(self):
         # TODO plz not this. engineer more 'reactive' solution w/o sleeps
-        import time
         self.log.important("composer taking a nap before flushing pending_commands while overlay gets rdy...")
-        # time.sleep(12)
         await asyncio.sleep(10)
         self.log.important("composer done with nap.")
 
-        self.log.important2("Composer flushing {} commands for queue".format(len(self.pending_commands)))  # TODO remove
-        self.log.debug("Composer flushing {} commands for queue".format(len(self.pending_commands)))
+        self.log.important2("Composer flushing {} commands from queue".format(len(self.pending_commands)))  # TODO remove
+        self.log.debug("Composer flushing {} commands from queue".format(len(self.pending_commands)))
 
         for cmd_name, args, kwargs in self.pending_commands:
+            self.log.important2("Executing pending command {} with args {} and kwargs {}".format(cmd_name, args, kwargs))  # TODO remove
             self.log.spam("Executing pending command {} with args {} and kwargs {}".format(cmd_name, args, kwargs))
             getattr(self, cmd_name)(*args, **kwargs)
 
