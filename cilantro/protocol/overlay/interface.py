@@ -20,7 +20,16 @@ nodemap = {'masternode': '172.29.5.0', 'witness_1': '172.29.5.1', 'witness_2': '
  'delegate_3': '172.29.5.3', 'delegate_4': '172.29.5.4', 'delegate_5': '172.29.5.5',
  'mgmt': '172.29.5.6'}
 
-class OverlayInterface:
+def command(fn):
+    def _command(cls, *args, **kwargs):
+        assert hasattr(cls, 'listener_sock'), 'You have to add an event listener first'
+        if not hasattr(cls, 'cmd_send_sock'): cls._overlay_command_socket()
+        event_id = uuid.uuid4().hex
+        cls.cmd_send_sock.send_multipart(['_{}'.format(fn.__name__).encode(), event_id.encode()] + [arg.encode() for arg in args])
+        return event_id
+    return _command
+
+class OverlayInterface(object):
     """
     This class provides a high level API to interface with the overlay network
     """
@@ -75,14 +84,9 @@ class OverlayInterface:
         cls.cmd_send_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
         cls.cmd_send_sock.connect(cls.cmd_url)
 
-    def __getattr__(self, attr):
-        if attr in ('get_node_from_vk',):
-            cls = OverlayInterface
-            assert hasattr(cls, 'listener_sock'), 'You have to add an event listener first'
-            if not hasattr(cls, 'cmd_send_sock'): cls._overlay_command_socket()
-            event_id = uuid.uuid4().hex
-            cls.cmd_send_sock.send_multipart(['_{}'.format(attr).encode(), event_id.encode(), vk.encode()])
-            return event_id
+    @classmethod
+    @command
+    def get_node_from_vk(cls, *args, **kwargs): pass
 
     @classmethod
     def _get_node_from_vk(cls, event_id, vk: str, timeout=3):

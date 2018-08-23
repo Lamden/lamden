@@ -7,12 +7,7 @@ from cilantro.protocol.structures import EnvelopeAuth
 from cilantro.protocol import wallet
 from cilantro.constants.ports import PUB_SUB_PORT, ROUTER_DEALER_PORT
 from cilantro.protocol.overlay.interface import OverlayInterface
-import uuid
-
-"""
-The Composer class serves as a high level API for a StateMachine (application layer) to execute networking commands on
-the ReactorDaemon process. It creates
-"""
+import asyncio
 
 
 """
@@ -27,6 +22,7 @@ TODO implement functions that remove sockets
 
 TODO implement functionality to use this without a signing key
 """
+
 
 def vk_lookup(func):
     def _func(self, *args, **kwargs):
