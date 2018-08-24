@@ -49,6 +49,10 @@ class MNBaseState(State):
     @input(KillSignal)
     def handle_kill_sig(self, msg: KillSignal):
         # TODO check signature on kill sig make sure its trusted and such
+
+        # TODO this is broken rn b/c only the TransactionBatcher process has a PUB port open
+        raise NotImplementedError("This is broken right now. See comments.")
+
         self.log.important3("Masternode got kill signal! Relaying signal to all subscribed witnesses and delegates.")
         kill_sig = KillSignal.create()
 
@@ -129,7 +133,7 @@ class MNBootState(MNBaseState):
         self.log.debug("MN IP: {}".format(self.parent.ip))
 
         # Add publisher socket  TODO -- put this in TransactionBatcher process
-        self.parent.composer.add_pub(ip=self.parent.ip)
+        # self.parent.composer.add_pub(ip=self.parent.ip)
 
         # Add router socket
         self.parent.composer.add_router(ip=self.parent.ip)

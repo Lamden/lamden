@@ -23,8 +23,7 @@ def run_mn():
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    if not os.getenv('CILANTRO_VERBOSE', None):
-        overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[0]['sk']
@@ -39,8 +38,7 @@ def run_witness(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    if not os.getenv('CILANTRO_VERBOSE', None):
-        overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -56,8 +54,7 @@ def run_delegate(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    if not os.getenv('CILANTRO_VERBOSE', True):
-        overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')

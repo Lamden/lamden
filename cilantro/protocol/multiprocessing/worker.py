@@ -2,6 +2,7 @@ import asyncio, os
 import zmq.asyncio
 
 from cilantro.logger import get_logger
+from cilantro.protocol import wallet
 from cilantro.protocol.reactor.executor import Executor
 from cilantro.protocol.reactor.manager import ExecutorManager
 from cilantro.protocol.transport.router import Router
@@ -33,6 +34,7 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         """
         assert len(args) == 0, "Worker cannot be constructed with args. Only key word args are supported."
         self.name, self.signing_key = name, signing_key
+        self.verifying_key = wallet.get_vk(self.signing_key)
         self.log = get_logger(name)
 
         # We set all kwargs to instance variables so they are accessible in the setup() function. Setup cannot be done
