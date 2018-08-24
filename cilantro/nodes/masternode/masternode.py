@@ -10,7 +10,7 @@ from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, MASTERNODE
 from cilantro.constants.masternode import STAGING_TIMEOUT
 from cilantro.nodes import NodeBase
 
-from cilantro.protocol.states.decorators import input_request, input, enter_from_any, exit_to_any, enter_from, input_timeout, timeout_after, input_connection_dropped
+from cilantro.protocol.states.decorators import *
 from cilantro.protocol.states.state import State, StateInput
 
 from cilantro.messages.transaction.container import TransactionContainer
@@ -31,8 +31,9 @@ from cilantro.storage.db import VKBook
 from collections import deque
 
 from cilantro.utils import LProcess
-from multiprocessing import Value
+from multiprocessing import Queue
 from cilantro.nodes.masternode.webserver import start_webserver
+from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 
 MNNewBlockState = 'MNNewBlockState'
 MNStagingState = 'MNStagingState'
@@ -158,17 +159,23 @@ class MNBootState(MNBaseState):
         for vk in VKBook.get_delegates():
             self.parent.composer.add_dealer(vk=vk)
 
-        # Create web server
+        # Create and start web server
+        # TODO put this in run state, or somewhere after we exit staging
         self.log.info("Creating REST server on port 8080")
+        self.parent.tx_queue = q = Queue()   # perhaps there is a better name than 'rest_q'
+        self.parent.server = LProcess(target=start_webserver, args=(q,))
+        self.parent.server.start()
 
-        # TODO comment this back in
-        # self.parent.server = LProcess(target=start_webserver)
-        # self.parent.server.start()
+        # Create a worker to do turnt raghu transaction batching stuff
+        # TODO put this in run state, or somewhere after we exit staging
+        # TODO perhaps there is a better name that "batcher"
+        self.parent.batcher = LProcess(target=TransactionBatcher, kwargs={'queue': q, 'signing_key': self.parent.signing_key})
+        self.parent.batcher.start()
 
         # self.log.info("Creating REST server on port 8080")
-        server = web.Server(self.parent.route_http)
-        server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
-        self.parent.tasks.append(server_future)
+        # server = web.Server(self.parent.route_http)
+        # server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
+        # self.parent.tasks.append(server_future)
 
         # Once done booting, transition to staging
         self.parent.transition(MNStagingState)
@@ -210,10 +217,10 @@ class MNStagingState(MNBaseState):
     def enter_any(self):
         self.reset_attrs()
 
+    # TODO remove this. keeping it for dev purposes for a bit
     @input(TransactionBase)
     def handle_tx(self, tx: TransactionBase):
-        self.log.spam("Delegate received tx but still in staging state. Adding it to queue.")
-        self.parent.tx_queue.append(tx)
+        raise Exception("OH NO! This should not get called anymore. TransactionBase processing should be done by ")
 
     @input_request(BlockMetaDataRequest)
     def handle_blockmeta_request(self, request: BlockMetaDataRequest, envelope: Envelope):
@@ -253,13 +260,16 @@ class MNRunState(MNBaseState):
 
     @enter_from_any
     def enter_any(self):
-        if not self.parent.tx_queue:
-            return
+        # TODO start web server and consumer proc here
+        pass
+        # TODO remove this
+        # if not self.parent.tx_queue:
+        #     return
 
-        self.log.notice("Flushing queue of {} transactions".format(len(self.parent.tx_queue)))
-        for tx in self.parent.tx_queue:
-            self.handle_tx(tx)
-        self.parent.tx_queue.clear()
+        # self.log.notice("Flushing queue of {} transactions".format(len(self.parent.tx_queue)))
+        # for tx in self.parent.tx_queue:
+        #     self.handle_tx(tx)
+        # self.parent.tx_queue.clear()
 
     @enter_from(MNNewBlockState)
     def enter_from_newblock(self, success=False):
