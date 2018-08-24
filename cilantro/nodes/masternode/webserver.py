@@ -15,7 +15,7 @@ log = get_logger(__name__)
 
 @app.route("/", methods=["POST",])
 async def contract_tx(request):
-    tx_bytes = req.body
+    tx_bytes = request.body
     container = TransactionContainer.from_bytes(tx_bytes)
     tx = container.open()
     app.queue.append(tx)
