@@ -1,6 +1,7 @@
 from sanic import Sanic
 from sanic.response import json, text
-from cilantro.logger.base import get_logger
+from cilantro.logger.base import get_logger, overwrite_logger_level
+from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.constants.masternode import WEB_SERVER_PORT
 from cilantro.protocol.states.statemachine import StateMachine
@@ -40,7 +41,7 @@ async def teardown_network(request):
 
 def start_webserver():
     log.debug("Creating REST server on port {}".format(WEB_SERVER_PORT))
-    app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=2)
+    app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=2, debug=False, access_log=False)
 
 if __name__ == '__main__':
     start_webserver()
