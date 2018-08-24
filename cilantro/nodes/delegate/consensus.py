@@ -58,7 +58,7 @@ class DelegateConsensusState(DelegateBaseState):
 
         # Merkle-ize transaction queue and create signed merkle hash
         all_tx = self.parent.interpreter.queue_binary
-        # self.log.debugv("Delegate got tx from interpreter queue: {}".format(all_tx))
+        self.log.spam("Delegate got transactions from interpreter queue: {}".format(all_tx))
         self.merkle = MerkleTree.from_raw_transactions(all_tx)
         self.log.debugv("Delegate got merkle hash {}".format(self.merkle.root_as_hex))
         self.signature = wallet.sign(self.parent.signing_key, self.merkle.root)
