@@ -41,28 +41,7 @@ MNBootState = 'MNBootState'
 
 
 class Masternode(NodeBase):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Define 'global' properties, shared among all states
-        self.tx_queue = deque()  # A queue of transactions sent by users to the Masternode via a REST endpoint
-
-    async def route_http(self, request):
-        raw_data = await request.content.read()
-
-        if request.path == '/teardown-network':
-            self.log.important("Masternode got kill message from rest endpoint!")
-            tx = KillSignal.create()
-        else:
-            container = TransactionContainer.from_bytes(raw_data)
-            tx = container.open()
-        try:
-            self.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
-            return web.Response(text="Successfully published transaction: {}".format(tx))
-        except Exception as e:
-            self.log.error("\n Error publishing HTTP request...err = {}".format(traceback.format_exc()))
-            return web.Response(text="problem processing request with err: {}".format(e))
+    pass
 
 
 class MNBaseState(State):
@@ -149,7 +128,7 @@ class MNBootState(MNBaseState):
     def enter_any(self, prev_state):
         self.log.debug("MN IP: {}".format(self.parent.ip))
 
-        # Add publisher socket
+        # Add publisher socket  TODO -- put this in TransactionBatcher process
         self.parent.composer.add_pub(ip=self.parent.ip)
 
         # Add router socket
@@ -158,24 +137,6 @@ class MNBootState(MNBaseState):
         # Add dealer sockets to TESTNET_DELEGATES, for purposes of requesting block data
         for vk in VKBook.get_delegates():
             self.parent.composer.add_dealer(vk=vk)
-
-        # Create and start web server
-        # TODO put this in run state, or somewhere after we exit staging
-        self.log.info("Creating REST server on port 8080")
-        self.parent.tx_queue = q = Queue()   # perhaps there is a better name than 'rest_q'
-        self.parent.server = LProcess(target=start_webserver, args=(q,))
-        self.parent.server.start()
-
-        # Create a worker to do turnt raghu transaction batching stuff
-        # TODO put this in run state, or somewhere after we exit staging
-        # TODO perhaps there is a better name that "batcher"
-        self.parent.batcher = LProcess(target=TransactionBatcher, kwargs={'queue': q, 'signing_key': self.parent.signing_key})
-        self.parent.batcher.start()
-
-        # self.log.info("Creating REST server on port 8080")
-        # server = web.Server(self.parent.route_http)
-        # server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
-        # self.parent.tasks.append(server_future)
 
         # Once done booting, transition to staging
         self.parent.transition(MNStagingState)
@@ -260,16 +221,18 @@ class MNRunState(MNBaseState):
 
     @enter_from_any
     def enter_any(self):
-        # TODO start web server and consumer proc here
-        pass
-        # TODO remove this
-        # if not self.parent.tx_queue:
-        #     return
+        # Create and start web server
+        self.log.notice("Masternode creating REST server on port 8080")
+        self.parent.tx_queue = q = Queue()
+        self.parent.server = LProcess(target=start_webserver, args=(q,))
+        self.parent.server.start()
 
-        # self.log.notice("Flushing queue of {} transactions".format(len(self.parent.tx_queue)))
-        # for tx in self.parent.tx_queue:
-        #     self.handle_tx(tx)
-        # self.parent.tx_queue.clear()
+        # Create a worker to do transaction batching
+        self.log.debug("Masternode creating transaction batcher process")
+        self.parent.batcher = LProcess(target=TransactionBatcher,
+                                       kwargs={'queue': q, 'signing_key': self.parent.signing_key,
+                                               'ip': self.parent.ip})
+        self.parent.batcher.start()
 
     @enter_from(MNNewBlockState)
     def enter_from_newblock(self, success=False):
