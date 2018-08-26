@@ -23,7 +23,7 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         """
         pass
 
-    def __init__(self, signing_key: str, name='Worker', *args, **kwargs):
+    def __init__(self, signing_key: str, name='', *args, **kwargs):
         """
         IMPORTANT: This should not be overridden by subclasses. Instead, override the setup() method.
 
@@ -33,7 +33,9 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         :param kwargs: A list of named variables that will be set as instance attributes.
         """
         assert len(args) == 0, "Worker cannot be constructed with args. Only key word args are supported."
-        self.name, self.signing_key = name, signing_key
+
+        self.name = name or self.__name__
+        self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
         self.log = get_logger(name)
 

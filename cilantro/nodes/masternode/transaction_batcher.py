@@ -16,18 +16,18 @@ class TransactionBatcher(Worker):
         asyncio.ensure_future(self.compose_transactions())
 
     async def compose_transactions(self):
-        self.log.important3("STARTING TRANSACTION BATCHER")
-        self.log.important("Current queue size is {}".format(self.queue.qsize()))
+        self.log.important("STARTING TRANSACTION BATCHER")
+        self.log.info("Current queue size is {}".format(self.queue.qsize()))
 
         while True:
-            self.log.important("Batcher resting for {} seconds".format(BATCH_INTERVAL))
+            self.log.debugv("Batcher resting for {} seconds".format(BATCH_INTERVAL))
             await asyncio.sleep(BATCH_INTERVAL)
 
-            self.log.important("Sending {} transactions in a row".format(self.queue.qsize()))
+            self.log.debug("Sending {} transactions in batch".format(self.queue.qsize()))
             for _ in range(self.queue.qsize()):
                 tx = self.queue.get()
 
                 oc = OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key)
-                self.log.spam("mn about to pub for tx {}".format(tx))  # debug line
+                self.log.spam("mn about to pub for tx {}".format(tx))  # debug line TODO remove it later
                 self.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc)
 
