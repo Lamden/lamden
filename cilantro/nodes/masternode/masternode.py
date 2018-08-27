@@ -8,6 +8,7 @@
 """
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.masternode import STAGING_TIMEOUT
+from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
 from cilantro.nodes import NodeBase
 
 from cilantro.protocol.states.decorators import *
@@ -56,8 +57,8 @@ class MNBaseState(State):
         self.log.important3("Masternode got kill signal! Relaying signal to all subscribed witnesses and delegates.")
         kill_sig = KillSignal.create()
 
-        self.parent.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=kill_sig)
-        self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, message=kill_sig)
+        self.parent.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=kill_sig, port=MN_TX_PUB_PORT)
+        self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, port=MN_NEW_BLOCK_PUB_PORT, message=kill_sig)
 
         time.sleep(2)  # Allow time for messages to be composed before we teardown
 
@@ -66,12 +67,6 @@ class MNBaseState(State):
     @input_connection_dropped
     def conn_dropped(self, vk, ip):
         self.log.warning('({}:{}) has dropped'.format(vk, ip))
-
-    @input(TransactionBase)
-    def handle_tx(self, tx: TransactionBase):
-        oc = OrderingContainer.create(tx=tx, masternode_vk=self.parent.verifying_key)
-        self.log.spam("mn about to pub for tx {}".format(tx))  # debug line
-        self.parent.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc)
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
@@ -130,10 +125,8 @@ class MNBootState(MNBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
-        self.log.debug("MN IP: {}".format(self.parent.ip))
-
-        # Add publisher socket  TODO -- put this in TransactionBatcher process
-        # self.parent.composer.add_pub(ip=self.parent.ip)
+        # Add publisher socket for sending NewBlockNotifications to delegates
+        self.parent.composer.add_pub(ip=self.parent.ip, port=MN_NEW_BLOCK_PUB_PORT)
 
         # Add router socket
         self.parent.composer.add_router(ip=self.parent.ip)

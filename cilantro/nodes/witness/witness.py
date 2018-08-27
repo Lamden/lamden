@@ -1,5 +1,6 @@
 from cilantro.nodes import NodeBase
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, WITNESS_DELEGATE_FILTER
+from cilantro.constants.ports import MN_TX_PUB_PORT
 
 from cilantro.protocol.states.state import State
 from cilantro.protocol.states.decorators import input, enter_from_any, input_connection_dropped
@@ -62,7 +63,7 @@ class WitnessBootState(WitnessBaseState):
         # Sub to Masternodes
         for mn_vk in VKBook.get_masternodes():
             self.log.debug("Subscribes to MN with vk: {}".format(mn_vk))
-            self.parent.composer.add_sub(filter=WITNESS_MASTERNODE_FILTER, vk=mn_vk)
+            self.parent.composer.add_sub(filter=WITNESS_MASTERNODE_FILTER, vk=mn_vk, port=MN_TX_PUB_PORT)
 
         # Create publisher socket
         self.parent.composer.add_pub(ip=self.parent.ip)
@@ -85,5 +86,5 @@ class WitnessRunState(WitnessBaseState):
 
     @input(OrderingContainer)
     def recv_ordered_tx(self, tx: OrderingContainer, envelope: Envelope):
-        self.log.spam("witness got tx: {}, with env {}".format(tx, envelope))  # debug line, remove later
+        self.log.spam("witness got tx: {}, with env {}".format(tx, envelope))
         self.parent.composer.send_pub_env(envelope=envelope, filter=WITNESS_DELEGATE_FILTER)

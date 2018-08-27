@@ -1,5 +1,6 @@
 # TODO this file could perhaps be named better
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
+from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
 
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.messages.transaction.ordering import OrderingContainer
@@ -12,7 +13,7 @@ BATCH_INTERVAL = 2  # TODO move this into a constants file
 class TransactionBatcher(Worker):
 
     def setup(self):
-        self.composer.add_pub(ip=self.ip)
+        self.composer.add_pub(ip=self.ip, port=MN_TX_PUB_PORT)
         asyncio.ensure_future(self.compose_transactions())
 
     async def compose_transactions(self):
@@ -29,5 +30,5 @@ class TransactionBatcher(Worker):
 
                 oc = OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key)
                 self.log.spam("mn about to pub for tx {}".format(tx))  # debug line TODO remove it later
-                self.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc)
+                self.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc, port=MN_TX_PUB_PORT)
 

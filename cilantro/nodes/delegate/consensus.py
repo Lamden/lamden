@@ -58,10 +58,11 @@ class DelegateConsensusState(DelegateBaseState):
 
         # Merkle-ize transaction queue and create signed merkle hash
         all_tx = self.parent.interpreter.queue_binary
-        self.log.spam("Delegate got transactions from interpreter queue: {}".format(all_tx))
         self.merkle = MerkleTree.from_raw_transactions(all_tx)
-        self.log.debugv("Delegate got merkle hash {}".format(self.merkle.root_as_hex))
         self.signature = wallet.sign(self.parent.signing_key, self.merkle.root)
+
+        self.log.debugv("Delegate got merkle hash {}".format(self.merkle.root_as_hex))
+        self.log.spam("Delegate got merkle leaves {}".format(self.merkle.leaves_as_hex))
 
         # Create merkle signature message and publish it
         merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now',
@@ -124,7 +125,7 @@ class DelegateConsensusState(DelegateBaseState):
 
     @input_request(TransactionRequest)
     def handle_tx_request(self, request: TransactionRequest):
-        self.log.debugv("delegate got tx request: {}".format(request))
+        self.log.debug("delegate got tx request: {}".format(request))
 
         tx_blobs = []
         for tx_hash in request.tx_hashes:

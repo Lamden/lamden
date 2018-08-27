@@ -94,7 +94,7 @@ class TestManualDump(BaseNetworkTestCase):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
 
         input("Press any key to begin the dump...")
-        log.important3("Dumpatron6000 dumping transactions! I was born for this.")
+        log.important3("Dumpatron6000 dumping transactions!")
         self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME), async=True, profiling=self.PROFILE_TYPE)
 
         input("Press any key to initiate teardown")

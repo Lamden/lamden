@@ -23,7 +23,7 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         """
         pass
 
-    def __init__(self, signing_key: str, name='', *args, **kwargs):
+    def __init__(self, ip: str, signing_key: str, name='', *args, **kwargs):
         """
         IMPORTANT: This should not be overridden by subclasses. Instead, override the setup() method.
 
@@ -34,8 +34,9 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         """
         assert len(args) == 0, "Worker cannot be constructed with args. Only key word args are supported."
 
-        self.name = name or self.__name__
+        self.name = name or type(self).__name__
         self.signing_key = signing_key
+        self.ip = ip
         self.verifying_key = wallet.get_vk(self.signing_key)
         self.log = get_logger(name)
 
@@ -49,7 +50,8 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
 
         self._router = Router(get_handler_func=lambda: self, name=name)
         self._manager = ExecutorManager(signing_key=signing_key, router=self._router, name=name)
-        self.composer = self._router.composer = Composer(manager=self._manager, signing_key=signing_key, name=name)
+        self.composer = Composer(manager=self._manager, signing_key=signing_key, ip=ip, name=name)
+        self._router.composer = self.composer
 
         self.setup()
 

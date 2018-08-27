@@ -5,7 +5,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.logger import get_logger
 from cilantro.protocol.structures import EnvelopeAuth
 from cilantro.protocol import wallet
-from cilantro.constants.ports import PUB_SUB_PORT, ROUTER_DEALER_PORT
+from cilantro.constants.ports import DEFAULT_PUB_PORT, ROUTER_PORT
 from cilantro.protocol.overlay.interface import OverlayInterface
 import asyncio
 from collections import deque
@@ -51,10 +51,11 @@ def vk_lookup(func):
 
 
 class Composer:
-    def __init__(self, manager: ExecutorManager, signing_key: str, name='Node'):
+    def __init__(self, manager: ExecutorManager, signing_key: str, ip, name='Node'):
         super().__init__()
         self.log = get_logger("{}.Composer".format(name))
         self.manager = manager
+        self.ip = ip
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
 
@@ -84,7 +85,7 @@ class Composer:
         # TODO plz not this. engineer more 'reactive' solution w/o sleeps
         # TODO -- falcon has an overlay ready event. use it.
         self.log.notice("composer taking a nap before flushing pending_commands while overlay gets rdy...")
-        await asyncio.sleep(10)
+        await asyncio.sleep(8)
         self.log.notice("composer done with nap.")
 
         self.log.debug("Composer flushing {} commands from queue".format(len(self.pending_commands)))
@@ -130,7 +131,7 @@ class Composer:
         return "{}://{}:{}".format(protocol, ip, port)
 
     @vk_lookup
-    def add_sub(self, filter: str, protocol: str='tcp', port: int=PUB_SUB_PORT, ip: str='', vk: str=''):
+    def add_sub(self, filter: str, protocol: str='tcp', port: int=DEFAULT_PUB_PORT, ip: str='', vk: str=''):
         """
         Connects the subscriber socket to listen to 'URL' with filter 'filter'.
         :param url: The URL to CONNECT the sub socket to (ex 'tcp://17.1.3.4:4200')
@@ -167,29 +168,32 @@ class Composer:
         """
         raise NotImplementedError("This still needs to be coded up")
 
-    def send_pub_msg(self, filter: str, message: MessageBase):
+    def send_pub_msg(self, filter: str, message: MessageBase, protocol: str='tcp', port: int=DEFAULT_PUB_PORT, ip: str=''):
         """
         Publish data with filter frame 'filter'. An envelope (including a seal and the metadata) will be created from
         the MessageBase. If you want to send an existing envelope, use send_pub_env
         :param filter: A string to use as the filter frame
         :param message: A MessageBase subclass
         """
-        self.send_pub_env(filter=filter, envelope=self._package_msg(message))
+        self.send_pub_env(filter=filter, envelope=self._package_msg(message), protocol=protocol, port=port, ip=ip)
 
-    def send_pub_env(self, filter: str, envelope: Envelope):
+    def send_pub_env(self, filter: str, envelope: Envelope, protocol: str='tcp', port: int=DEFAULT_PUB_PORT, ip: str=''):
         """
         Publish envelope with filter frame 'filter'.
         :param filter: A string to use as the filter frame
         :param envelope: An instance of Envelope
         """
-        self.manager.executors['SubPubExecutor'].send_pub(filter=filter, envelope=envelope.serialize())
+        ip = ip or self.ip
+        url = self._build_url(protocol=protocol, port=port, ip=ip, vk='')
+        self.manager.executors['SubPubExecutor'].send_pub(url=url, filter=filter, data=envelope.serialize())
 
-    def add_pub(self, protocol: str='tcp', port: int=PUB_SUB_PORT, ip: str=''):
+    def add_pub(self, protocol: str='tcp', port: int=DEFAULT_PUB_PORT, ip: str=''):
         """
         Create a publisher socket that BINDS to 'url'
         :param url: The URL to publish under.
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
+        ip = ip or self.ip
         url = self._build_url(protocol=protocol, port=port, ip=ip, vk='')
         self.manager.executors['SubPubExecutor'].add_pub(url=url)
 
@@ -203,7 +207,7 @@ class Composer:
         raise NotImplementedError("This still needs to be coded up")
 
     @vk_lookup
-    def add_dealer(self, id='', protocol: str='tcp', port: int=ROUTER_DEALER_PORT, ip: str='', vk: str=''):
+    def add_dealer(self, id='', protocol: str='tcp', port: int=ROUTER_PORT, ip: str= '', vk: str= ''):
         """
         Add a dealer socket at url. Dealers are like 'async requesters', and can connect to a single Router socket (1-1)
         (side note: A router socket, however, can connect to N dealers)
@@ -217,17 +221,18 @@ class Composer:
         url = self._build_url(protocol=protocol, port=port, ip=ip, vk=vk)
         self.manager.executors['DealerRouterExecutor'].add_dealer(url=url, id=id, vk=vk)
 
-    def add_router(self, protocol: str='tcp', port: int=ROUTER_DEALER_PORT, ip: str=''):
+    def add_router(self, protocol: str='tcp', port: int=ROUTER_PORT, ip: str= ''):
         """
         Add a router socket at url. Routers are like 'async repliers', and can connect to many Dealer sockets (N-1)
         :param url: The URL the router socket should BIND to
         :param vk: The Node's VK to connect to. This will be looked up in the overlay network
         """
+        ip = ip or self.ip
         url = self._build_url(protocol=protocol, port=port, ip=ip, vk='')
         self.manager.executors['DealerRouterExecutor'].add_router(url=url)
 
     @vk_lookup
-    def send_request_msg(self, message: MessageBase, timeout=0, protocol: str='tcp', port: int=ROUTER_DEALER_PORT,
+    def send_request_msg(self, message: MessageBase, timeout=0, protocol: str='tcp', port: int=ROUTER_PORT,
                          ip: str='', vk: str=''):
         """
         TODO docstring
@@ -235,7 +240,7 @@ class Composer:
         self.send_request_env(ip=ip, vk=vk, envelope=self._package_msg(message), timeout=timeout, protocol=protocol, port=port)
 
     @vk_lookup
-    def send_request_env(self, envelope: Envelope, timeout=0, protocol: str='tcp', port: int=ROUTER_DEALER_PORT,
+    def send_request_env(self, envelope: Envelope, timeout=0, protocol: str='tcp', port: int=ROUTER_PORT,
                          vk: str='', ip: str=''):
         url = self._build_url(protocol=protocol, port=port, ip=ip, vk=vk)
         reply_uuid = EnvelopeAuth.reply_uuid(envelope.meta.uuid)
