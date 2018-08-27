@@ -160,7 +160,7 @@ class BlockStorageDriver:
             # Store block
             res = db.tables.blocks.insert([{'hash': block_hash, **block_data}]).run(db.ex)
             if res:
-                log.success("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block_hash))
+                log.success2("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block_hash))
             else:
                 raise BlockStorageDatabaseException("Error inserting block! Got None/False result back "
                                                     "from insert query. Result={}".format(res))
@@ -199,7 +199,7 @@ class BlockStorageDriver:
             encoded_block_data = cls._encode_block(block.block_dict())
             res = db.tables.blocks.insert([encoded_block_data]).run(db.ex)
             if res:
-                log.success("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block.block_hash))
+                log.success2("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block.block_hash))
             else:
                 raise BlockStorageDatabaseException("Error inserting block! Got None/False result back "
                                                     "from insert query. Result={}".format(res))
