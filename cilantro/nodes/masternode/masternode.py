@@ -234,7 +234,7 @@ class MNRunState(MNBaseState):
     @enter_from(MNNewBlockState)
     def enter_from_newblock(self, success=False):
         if not success:
-            self.log.warning("\n\nNewBlockState transitioned back with failure!!!\n\n")
+            self.log.warning("NewBlockState transitioned back with failure!!!")
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):

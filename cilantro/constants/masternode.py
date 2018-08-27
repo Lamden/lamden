@@ -7,5 +7,9 @@ FETCH_BLOCK_TIMEOUT = 24
 NUM_PRIMARY = 8
 NODES_REQUIRED_CONSENSUS = 5
 
-# Webserver
+# Web Server
 WEB_SERVER_PORT = 8080
+NUM_WORKERS = 2  # Number of Sanic worker procs
+
+# Transaction Batcher
+BATCH_INTERVAL = 2
