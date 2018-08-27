@@ -9,30 +9,30 @@
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.masternode import STAGING_TIMEOUT
 from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
-from cilantro.nodes import NodeBase
+from cilantro.constants.nodes import BLOCK_SIZE
+from cilantro.constants.testnet import MAJORITY
+
 
 from cilantro.protocol.states.decorators import *
 from cilantro.protocol.states.state import State, StateInput
 
-from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 from cilantro.messages.block_data.block_metadata import BlockMetaDataRequest, BlockMetaDataReply
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.storage.blocks import BlockStorageDriver, BlockMetaData
+from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.signals.kill_signal import KillSignal
 
-from aiohttp import web
-import time
-import asyncio
-import traceback
 from cilantro.storage.db import VKBook
-from collections import deque
 
+import time
 from cilantro.utils import LProcess
 from multiprocessing import Queue
+
+from cilantro.nodes import NodeBase
 from cilantro.nodes.masternode.webserver import start_webserver
 from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 
@@ -115,6 +115,37 @@ class MNBaseState(State):
 
         reply = BlockMetaDataReply.create(block_metas=block_metas)
         return reply
+
+    def validate_block_contender(self, block: BlockContender) -> bool:
+        """
+        Helper method to validate a block contender. For a block contender to be valid it must:
+        1) Have a provable merkle tree, ie. all nodes must be hash of (left child + right child)
+        2) Be signed by at least 2/3 of the top 32 delegates
+        3) Have the correct number of transactions
+        4) Be a proposed child of the latest block in the database
+        :param block_contender: The BlockContender to validate
+        :return: True if the BlockContender is valid, false otherwise
+        """
+        # Development sanity checks
+        # TODO -- in production these assertions should return False instead of raising an Exception
+        assert len(block.merkle_leaves) >= 1, "Masternode got block contender with no nodes! {}".format(block)
+        assert len(block.signatures) >= MAJORITY, \
+            "Received a block contender with only {} signatures (which is less than a MAJORITY of {}"\
+            .format(len(block.signatures), MAJORITY)
+
+        assert len(block.merkle_leaves) == BLOCK_SIZE, \
+            "Block contender has {} merkle leaves, but block size is {}!!!\nmerkle_leaves={}"\
+            .format(len(block.merkle_leaves), BLOCK_SIZE, block.merkle_leaves)
+
+        # TODO validate the sigs are actually from the top N delegates
+
+        if not block.prev_block_hash == BlockStorageDriver.get_latest_block_hash():
+            self.log.warning("BlockContender validation failed. Block contender's previous block hash {} does not "
+                             "match DB's latest block hash {}"
+                             .format(block.prev_block_hash, BlockStorageDriver.get_latest_block_hash()))
+            return False
+
+        return block.validate_signatures()
 
 
 @Masternode.register_init_state
@@ -238,6 +269,10 @@ class MNRunState(MNBaseState):
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
-        # TODO reject 'old' block contenders
+        # TODO this logic is not very clean. we are doing validation on blocks twice if a BlockContender is
+        # received in RunState.
+        if not self.validate_block_contender(block):
+            return
+
         self.log.info("Masternode received block contender. Transitioning to NewBlockState".format(block))
         self.parent.transition(MNNewBlockState, block=block)

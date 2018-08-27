@@ -1,7 +1,5 @@
 from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
-from cilantro.constants.testnet import MAJORITY
 from cilantro.constants.masternode import NEW_BLOCK_TIMEOUT, FETCH_BLOCK_TIMEOUT
-from cilantro.constants.nodes import BLOCK_SIZE
 from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT
 from cilantro.nodes.masternode import MNBaseState, Masternode
 
@@ -118,36 +116,6 @@ class MNNewBlockState(MNBaseState):
                 self.log.error("Masternode could not verify signature!!! Sig={}".format(sig))
                 return False
         return True
-
-    def validate_block_contender(self, block: BlockContender) -> bool:
-        """
-        Helper method to validate a block contender. For a block contender to be valid it must:
-        1) Have a provable merkle tree, ie. all nodes must be hash of (left child + right child)
-        2) Be signed by at least 2/3 of the top 32 TESTNET_DELEGATES
-        3) Have the correct number of transactions
-        :param block_contender: The BlockContender to validate
-        :return: True if the BlockContender is valid, false otherwise
-        """
-        # Development sanity checks
-        # TODO -- in production these assertions should return False instead of raising an Exception
-        assert len(block.merkle_leaves) >= 1, "Masternode got block contender with no nodes! {}".format(block)
-        assert len(block.signatures) >= MAJORITY, \
-            "Received a block contender with only {} signatures (which is less than a MAJORITY of {}"\
-            .format(len(block.signatures), MAJORITY)
-
-        assert len(block.merkle_leaves) == BLOCK_SIZE, \
-            "Block contender has {} merkle leaves, but block size is {}!!!\nmerkle_leaves={}"\
-            .format(len(block.merkle_leaves), BLOCK_SIZE, block.merkle_leaves)
-
-        # TODO validate the sigs are actually from the top N TESTNET_DELEGATES
-
-        if not block.prev_block_hash == BlockStorageDriver.get_latest_block_hash():
-            self.log.warning("BlockContender validation failed. Block contender's previous block hash {} does not "
-                             "match DB's latest block hash {}"
-                             .format(block.prev_block_hash, BlockStorageDriver.get_latest_block_hash()))
-            return False
-
-        return block.validate_signatures()
 
 
 @Masternode.register_state
