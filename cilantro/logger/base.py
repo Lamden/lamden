@@ -45,6 +45,7 @@ CUSTOM_LEVELS = {
     'IMPORTANT2': 57,
     'IMPORTANT3': 58,
     'FATAL': 9001,
+    'LMK': 9002,
     }
 
 for log_name, log_level in CUSTOM_LEVELS.items():
@@ -72,6 +73,7 @@ coloredlogs.DEFAULT_LEVEL_STYLES = {
     'important': {'color': 'cyan', 'bold': True, 'background': 'magenta'},
     'important2': {'color': 'magenta', 'bold': True, 'background': 'cyan'},
     'important3': {'color': 'black', 'bold': True, 'background': 'yellow'},
+    'lmk': {'color': 'black', 'background': 'white'},
     'spam': {'color': 'white', 'faint': True},
     'success': {'color': 'white', 'bold': True, 'background': 'green'},
     'verbose': {'color': 'blue'},
