@@ -246,4 +246,3 @@ class MNFetchNewBlockState(MNNewBlockState):
         self.log.debug("Envelope Data: {}".format(envelope))
 
         # TODO -- implement a way to get the VK of the dude we originally requested from
-        # TODO also it appears timeouts are not working....need to fix integration tests on this and see whatsup
