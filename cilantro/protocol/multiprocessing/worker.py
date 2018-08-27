@@ -2,6 +2,7 @@ import asyncio, os
 import zmq.asyncio
 
 from cilantro.logger import get_logger
+from cilantro.protocol import wallet
 from cilantro.protocol.reactor.executor import Executor
 from cilantro.protocol.reactor.manager import ExecutorManager
 from cilantro.protocol.transport.router import Router
@@ -22,7 +23,7 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         """
         pass
 
-    def __init__(self, signing_key: str, name='Worker', *args, **kwargs):
+    def __init__(self, ip: str, signing_key: str, name='', *args, **kwargs):
         """
         IMPORTANT: This should not be overridden by subclasses. Instead, override the setup() method.
 
@@ -32,7 +33,11 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         :param kwargs: A list of named variables that will be set as instance attributes.
         """
         assert len(args) == 0, "Worker cannot be constructed with args. Only key word args are supported."
-        self.name, self.signing_key = name, signing_key
+
+        self.name = name or type(self).__name__
+        self.signing_key = signing_key
+        self.ip = ip
+        self.verifying_key = wallet.get_vk(self.signing_key)
         self.log = get_logger(name)
 
         # We set all kwargs to instance variables so they are accessible in the setup() function. Setup cannot be done
@@ -45,7 +50,8 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
 
         self._router = Router(get_handler_func=lambda: self, name=name)
         self._manager = ExecutorManager(signing_key=signing_key, router=self._router, name=name)
-        self.composer = self._router.composer = Composer(manager=self._manager, signing_key=signing_key, name=name)
+        self.composer = Composer(manager=self._manager, signing_key=signing_key, ip=ip, name=name)
+        self._router.composer = self.composer
 
         self.setup()
 

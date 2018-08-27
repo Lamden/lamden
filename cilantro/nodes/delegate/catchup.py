@@ -84,7 +84,7 @@ class DelegateCatchupState(DelegateBaseState):
             return
 
         # Verify that the transactions match the merkle leaves in the block meta
-        if request.tx_hashes() != self.current_block.merkle_leaves:
+        if request.tx_hashes != self.current_block.merkle_leaves:
             self.log.error("Requested TX hashes\n{}\ndoes not match current block's merkle leaves\n{}"
                            .format(request.tx_hashes, self.current_block))
             return

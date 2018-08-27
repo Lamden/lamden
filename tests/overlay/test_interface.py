@@ -13,7 +13,7 @@ class TestInterface(TestCase):
     def test_start_stop_service(self):
         def _stop():
             self.assertTrue(hasattr(OverlayInterface, 'dht'))
-            OverlayInterface._stop_service()
+            OverlayInterface.stop_service()
             self.assertTrue(OverlayInterface.event_sock.closed)
             self.assertIsInstance(OverlayInterface.cmd_sock, zmq.Socket)
             self.assertIsInstance(OverlayInterface.event_sock, zmq.Socket)
@@ -21,7 +21,7 @@ class TestInterface(TestCase):
 
         t = Timer(5, _stop)
         t.start()
-        OverlayInterface._start_service(sk='06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a')
+        OverlayInterface.start_service(sk='06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a')
 
     def test_send_commands(self):
 
@@ -29,7 +29,7 @@ class TestInterface(TestCase):
             p.start()
             time.sleep(0.1)
             p.terminate()
-            OverlayInterface._stop_service()
+            OverlayInterface.stop_service()
             OverlayInterface.loop.call_soon_threadsafe(OverlayInterface.loop.stop)
 
         def _send_msg():
@@ -58,7 +58,7 @@ class TestInterface(TestCase):
         asyncio.set_event_loop(loop)
         t = Timer(5, _stop)
         t.start()
-        OverlayInterface._start_service(sk='06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a')
+        OverlayInterface.start_service(sk='06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a')
         self.assertEqual(p.exitcode, 0)
 
     def test_send_commands_fail(self):
@@ -67,7 +67,7 @@ class TestInterface(TestCase):
             p.start()
             time.sleep(0.1)
             p.terminate()
-            OverlayInterface._stop_service()
+            OverlayInterface.stop_service()
             OverlayInterface.loop.call_soon_threadsafe(OverlayInterface.loop.stop)
 
         def _send_msg():
@@ -96,7 +96,7 @@ class TestInterface(TestCase):
         asyncio.set_event_loop(loop)
         t = Timer(5, _stop)
         t.start()
-        OverlayInterface._start_service(sk='06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a')
+        OverlayInterface.start_service(sk='06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a')
         self.assertEqual(p.exitcode, 0)
 
     @classmethod

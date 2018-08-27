@@ -8,9 +8,10 @@
 """
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.masternode import STAGING_TIMEOUT
+from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
 from cilantro.nodes import NodeBase
 
-from cilantro.protocol.states.decorators import input_request, input, enter_from_any, exit_to_any, enter_from, input_timeout, timeout_after, input_connection_dropped
+from cilantro.protocol.states.decorators import *
 from cilantro.protocol.states.state import State, StateInput
 
 from cilantro.messages.transaction.container import TransactionContainer
@@ -31,8 +32,9 @@ from cilantro.storage.db import VKBook
 from collections import deque
 
 from cilantro.utils import LProcess
-from multiprocessing import Value
+from multiprocessing import Queue
 from cilantro.nodes.masternode.webserver import start_webserver
+from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 
 MNNewBlockState = 'MNNewBlockState'
 MNStagingState = 'MNStagingState'
@@ -40,28 +42,7 @@ MNBootState = 'MNBootState'
 
 
 class Masternode(NodeBase):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Define 'global' properties, shared among all states
-        self.tx_queue = deque()  # A queue of transactions sent by users to the Masternode via a REST endpoint
-
-    async def route_http(self, request):
-        raw_data = await request.content.read()
-
-        if request.path == '/teardown-network':
-            self.log.important("Masternode got kill message from rest endpoint!")
-            tx = KillSignal.create()
-        else:
-            container = TransactionContainer.from_bytes(raw_data)
-            tx = container.open()
-        try:
-            self.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
-            return web.Response(text="Successfully published transaction: {}".format(tx))
-        except Exception as e:
-            self.log.error("\n Error publishing HTTP request...err = {}".format(traceback.format_exc()))
-            return web.Response(text="problem processing request with err: {}".format(e))
+    pass
 
 
 class MNBaseState(State):
@@ -69,11 +50,15 @@ class MNBaseState(State):
     @input(KillSignal)
     def handle_kill_sig(self, msg: KillSignal):
         # TODO check signature on kill sig make sure its trusted and such
+
+        # TODO this is broken rn b/c only the TransactionBatcher process has a PUB port open
+        raise NotImplementedError("This is broken right now. See comments.")
+
         self.log.important3("Masternode got kill signal! Relaying signal to all subscribed witnesses and delegates.")
         kill_sig = KillSignal.create()
 
-        self.parent.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=kill_sig)
-        self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, message=kill_sig)
+        self.parent.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=kill_sig, port=MN_TX_PUB_PORT)
+        self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, port=MN_NEW_BLOCK_PUB_PORT, message=kill_sig)
 
         time.sleep(2)  # Allow time for messages to be composed before we teardown
 
@@ -82,12 +67,6 @@ class MNBaseState(State):
     @input_connection_dropped
     def conn_dropped(self, vk, ip):
         self.log.warning('({}:{}) has dropped'.format(vk, ip))
-
-    @input(TransactionBase)
-    def handle_tx(self, tx: TransactionBase):
-        oc = OrderingContainer.create(tx=tx, masternode_vk=self.parent.verifying_key)
-        self.log.spam("mn about to pub for tx {}".format(tx))  # debug line
-        self.parent.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc)
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
@@ -146,10 +125,8 @@ class MNBootState(MNBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
-        self.log.debug("MN IP: {}".format(self.parent.ip))
-
-        # Add publisher socket
-        self.parent.composer.add_pub(ip=self.parent.ip)
+        # Add publisher socket for sending NewBlockNotifications to delegates
+        self.parent.composer.add_pub(ip=self.parent.ip, port=MN_NEW_BLOCK_PUB_PORT)
 
         # Add router socket
         self.parent.composer.add_router(ip=self.parent.ip)
@@ -157,18 +134,6 @@ class MNBootState(MNBaseState):
         # Add dealer sockets to TESTNET_DELEGATES, for purposes of requesting block data
         for vk in VKBook.get_delegates():
             self.parent.composer.add_dealer(vk=vk)
-
-        # Create web server
-        self.log.info("Creating REST server on port 8080")
-
-        # TODO comment this back in
-        # self.parent.server = LProcess(target=start_webserver)
-        # self.parent.server.start()
-
-        # self.log.info("Creating REST server on port 8080")
-        server = web.Server(self.parent.route_http)
-        server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
-        self.parent.tasks.append(server_future)
 
         # Once done booting, transition to staging
         self.parent.transition(MNStagingState)
@@ -210,10 +175,10 @@ class MNStagingState(MNBaseState):
     def enter_any(self):
         self.reset_attrs()
 
+    # TODO remove this. keeping it for dev purposes for a bit
     @input(TransactionBase)
     def handle_tx(self, tx: TransactionBase):
-        self.log.spam("Delegate received tx but still in staging state. Adding it to queue.")
-        self.parent.tx_queue.append(tx)
+        raise Exception("OH NO! This should not get called anymore. TransactionBase processing should be done by ")
 
     @input_request(BlockMetaDataRequest)
     def handle_blockmeta_request(self, request: BlockMetaDataRequest, envelope: Envelope):
@@ -253,21 +218,26 @@ class MNRunState(MNBaseState):
 
     @enter_from_any
     def enter_any(self):
-        if not self.parent.tx_queue:
-            return
+        # Create and start web server
+        self.log.notice("Masternode creating REST server on port 8080")
+        self.parent.tx_queue = q = Queue()
+        self.parent.server = LProcess(target=start_webserver, args=(q,))
+        self.parent.server.start()
 
-        self.log.notice("Flushing queue of {} transactions".format(len(self.parent.tx_queue)))
-        for tx in self.parent.tx_queue:
-            self.handle_tx(tx)
-        self.parent.tx_queue.clear()
+        # Create a worker to do transaction batching
+        self.log.debug("Masternode creating transaction batcher process")
+        self.parent.batcher = LProcess(target=TransactionBatcher,
+                                       kwargs={'queue': q, 'signing_key': self.parent.signing_key,
+                                               'ip': self.parent.ip})
+        self.parent.batcher.start()
 
     @enter_from(MNNewBlockState)
     def enter_from_newblock(self, success=False):
         if not success:
-            # this should really just be a warning, but for dev we log it as an error
-            self.log.fatal("\n\nNewBlockState transitioned back with failure!!!\n\n")
+            self.log.warning("\n\nNewBlockState transitioned back with failure!!!\n\n")
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
+        # TODO reject 'old' block contenders
         self.log.info("Masternode received block contender. Transitioning to NewBlockState".format(block))
         self.parent.transition(MNNewBlockState, block=block)

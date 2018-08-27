@@ -2,6 +2,7 @@ from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.testnet import MAJORITY
 from cilantro.constants.masternode import NEW_BLOCK_TIMEOUT, FETCH_BLOCK_TIMEOUT
 from cilantro.constants.nodes import BLOCK_SIZE
+from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT
 from cilantro.nodes.masternode import MNBaseState, Masternode
 
 from cilantro.utils import Hasher
@@ -34,15 +35,14 @@ class MNNewBlockState(MNBaseState):
 
     @timeout_after(NEW_BLOCK_TIMEOUT)
     def timeout(self):
-        # TODO i think this timeout is essentially useless b/c all the fetching/processing is done in
-        # MNFetchNewBlockState. This state just orchestrates things
         self.log.critical("MN failed to publish a new block in less than {} seconds!".format(NEW_BLOCK_TIMEOUT))
         self.parent.transition(MNRunState, success=False)
 
-    # Development sanity check (remove in production)
+    # Development sanity check (TODO remove in production)
     @enter_from_any
     def enter_any(self, prev_state):
-        raise Exception("NewBlockState should only be entered from RunState or FetchNewBlockState, but previous state is {}".format(prev_state))
+        raise Exception("NewBlockState should only be entered from RunState or FetchNewBlockState, "
+                        "but previous state is {}".format(prev_state))
 
     @enter_from(MNRunState)
     def enter_from_run(self, block: BlockContender):
@@ -54,7 +54,8 @@ class MNNewBlockState(MNBaseState):
             self.log.debug("Entering fetch state for block contender {}".format(self.current_block))
             self.parent.transition(MNFetchNewBlockState, block_contender=self.current_block)
         else:
-            self.log.warning("Got invalid block contender straight from Masternode. Transitioning back to RunState /w success=False")
+            self.log.warning("Got invalid block contender straight from Masternode. "
+                             "Transitioning back to RunState /w success=False")
             self.parent.transition(MNRunState, success=False)
 
     @enter_from(MNFetchNewBlockState)
@@ -68,6 +69,7 @@ class MNNewBlockState(MNBaseState):
 
             self.log.info("Done storing new block. Transitioning back to run state with success=True")
             self.parent.transition(MNRunState, success=True)
+
         # If failure, then try the next block contender in the queue (if any).
         else:
             self.log.warning("FetchNewBlockState failed for block {}. Trying next block (if any)".format(self.current_block))
@@ -95,10 +97,10 @@ class MNNewBlockState(MNBaseState):
             self._try_next_block()
             return
 
-        # Notify TESTNET_DELEGATES of new block
+        # Notify delegates that a new block was published
         self.log.info("Masternode sending NewBlockNotification to TESTNET_DELEGATES with new block hash {} ".format(block_hash))
         notif = NewBlockNotification.create(**BlockStorageDriver.get_latest_block(include_number=False))
-        self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, message=notif)
+        self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, message=notif, port=MN_NEW_BLOCK_PUB_PORT)
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
@@ -126,7 +128,8 @@ class MNNewBlockState(MNBaseState):
         :param block_contender: The BlockContender to validate
         :return: True if the BlockContender is valid, false otherwise
         """
-        # Development sanity checks (these should be removed in production)
+        # Development sanity checks
+        # TODO -- in production these assertions should return False instead of raising an Exception
         assert len(block.merkle_leaves) >= 1, "Masternode got block contender with no nodes! {}".format(block)
         assert len(block.signatures) >= MAJORITY, \
             "Received a block contender with only {} signatures (which is less than a MAJORITY of {}"\
@@ -137,7 +140,12 @@ class MNNewBlockState(MNBaseState):
             .format(len(block.merkle_leaves), BLOCK_SIZE, block.merkle_leaves)
 
         # TODO validate the sigs are actually from the top N TESTNET_DELEGATES
-        # TODO -- ensure that this block contender's previous block is this Masternode's current block...
+
+        if not block.prev_block_hash == BlockStorageDriver.get_latest_block_hash():
+            self.log.warning("BlockContender validation failed. Block contender's previous block hash {} does not "
+                             "match DB's latest block hash {}"
+                             .format(block.prev_block_hash, BlockStorageDriver.get_latest_block_hash()))
+            return False
 
         return block.validate_signatures()
 
@@ -176,16 +184,16 @@ class MNFetchNewBlockState(MNNewBlockState):
         self.block_contender = block_contender
         self.tx_hashes = block_contender.merkle_leaves
 
-        # Populate self.node_states TESTNET_DELEGATES who signed this block
+        # Populate self.node_states delegates who signed this block
         for sig in block_contender.signatures:
             self.node_states[sig.sender] = self.NODE_AVAILABLE
 
         repliers = list(self.node_states.keys())
 
-        # Compute batch size. We take max incase the block size is smaller than the # of TESTNET_DELEGATES.
+        # Compute batch size. We take max incase the block size is smaller than the # of delegates.
         batch_size = max(1, len(self.tx_hashes) // len(self.node_states))
 
-        # Request individual block data from TESTNET_DELEGATES
+        # Request individual block data from delegates
         for i in range(len(self.node_states)):
             start_idx = i * batch_size
             end_idx = (i+1) * batch_size

@@ -23,7 +23,7 @@ def run_mn():
     m_info = TESTNET_MASTERNODES[0]
     m_info['ip'] = os.getenv('HOST_IP')
 
-    OverlayInterface._start_service(sk=m_info['sk'])
+    OverlayInterface.start_service(sk=m_info['sk'])
     OverlayInterface.listen_for_events(event_handler)
 
 def run_witness(slot_num):
@@ -38,7 +38,7 @@ def run_witness(slot_num):
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
-    OverlayInterface._start_service(sk=w_info['sk'])
+    OverlayInterface.start_service(sk=w_info['sk'])
     OverlayInterface.listen_for_events(event_handler)
 
 
@@ -54,7 +54,7 @@ def run_delegate(slot_num):
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
-    OverlayInterface._start_service(sk=d_info['sk'])
+    OverlayInterface.start_service(sk=d_info['sk'])
     OverlayInterface.listen_for_events(event_handler)
 
 class TestOverlayInterface(BaseNetworkTestCase):
