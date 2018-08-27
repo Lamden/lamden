@@ -17,7 +17,7 @@ class TransactionBatcher(Worker):
         asyncio.ensure_future(self.compose_transactions())
 
     async def compose_transactions(self):
-        self.log.important("STARTING TRANSACTION BATCHER")
+        self.log.important("Starting TransactionBatcher")
         self.log.info("Current queue size is {}".format(self.queue.qsize()))
 
         while True:
@@ -29,6 +29,6 @@ class TransactionBatcher(Worker):
                 tx = self.queue.get()
 
                 oc = OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key)
-                self.log.spam("mn about to pub for tx {}".format(tx))  # debug line TODO remove it later
+                self.log.spam("masternode about to publish transaction from sender {}".format(tx.sender))
                 self.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc, port=MN_TX_PUB_PORT)
 

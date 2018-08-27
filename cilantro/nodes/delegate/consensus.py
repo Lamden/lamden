@@ -61,13 +61,14 @@ class DelegateConsensusState(DelegateBaseState):
         self.merkle = MerkleTree.from_raw_transactions(all_tx)
         self.signature = wallet.sign(self.parent.signing_key, self.merkle.root)
 
-        self.log.debugv("Delegate got merkle hash {}".format(self.merkle.root_as_hex))
+        self.log.info("Delegate entering consensus state with merkle hash {}, and latest block hash {}"
+                      .format(self.merkle.root_as_hex, self.parent.current_hash))
         self.log.spam("Delegate got merkle leaves {}".format(self.merkle.leaves_as_hex))
 
         # Create merkle signature message and publish it
         merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now',
                                             sender=self.parent.verifying_key)
-        self.log.debug("Broadcasting signature {}".format(self.signature))
+        self.log.debugv("Broadcasting signature {}".format(self.signature))
         self.parent.composer.send_pub_msg(filter=DELEGATE_DELEGATE_FILTER, message=merkle_sig)
 
         # Now that we've computed/composed the merkle tree hash, validate all our pending signatures
@@ -113,8 +114,10 @@ class DelegateConsensusState(DelegateBaseState):
             self.in_consensus = True
 
             # Create BlockContender and send it to all Masternode(s)
-            bc = BlockContender.create(signatures=self.signatures, merkle_leaves=self.merkle.leaves_as_hex)
+            bc = BlockContender.create(signatures=self.signatures, merkle_leaves=self.merkle.leaves_as_hex,
+                                       prev_block_hash=self.parent.current_hash)
             for mn_vk in VKBook.get_masternodes():
+                self.log.debug("Delegate sending block contender to masternode with VK {}".format(mn_vk))
                 self.parent.composer.send_request_msg(message=bc, vk=mn_vk)
 
     @input(MerkleSignature)

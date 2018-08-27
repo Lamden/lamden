@@ -34,8 +34,9 @@ class BlockContenderTest(TestCase):
         sig1, sk1, vk1 = self._create_merkle_sig(msg)
         sig2, sk2, vk2 = self._create_merkle_sig(msg)
         signatures = [sig1, sig2]
+        prev_b_hash = 'A' * 64
 
-        bc = BlockContender.create(signatures, nodes)
+        bc = BlockContender.create(signatures, nodes, prev_b_hash)
 
         # assert bc.signatures = signature over all signatures
         for i in range(len(signatures)):
@@ -43,6 +44,8 @@ class BlockContenderTest(TestCase):
 
         for i in range(len(nodes)):
             self.assertTrue(bc.merkle_leaves[i] == (nodes[i]))
+
+        self.assertEquals(bc.prev_block_hash, prev_b_hash)
 
     def test_bc_creation_from_bytes(self):
         msg = b'DEADBEEF'
@@ -52,7 +55,7 @@ class BlockContenderTest(TestCase):
         sig2, sk2, vk2 = self._create_merkle_sig(msg)
         signatures = [sig1, sig2]
 
-        bc = BlockContender.create(signatures, nodes)
+        bc = BlockContender.create(signatures, nodes, 'A' * 64)
 
         clone = BlockContender.from_bytes(bc.serialize())
 
@@ -83,7 +86,7 @@ class BlockContenderTest(TestCase):
         bad_sigs = ['not merkle sig object', 'also not a merkle sig object']
         mock_nodes = [b'this is a node', b'this is another node']
 
-        self.assertRaises(Exception, BlockContender.create, bad_sigs, mock_nodes)
+        self.assertRaises(Exception, BlockContender.create, bad_sigs, mock_nodes, 'A * 64')
 
     def test_create_bc_normal_fields(self):
         msg = b'payload'
@@ -96,7 +99,7 @@ class BlockContenderTest(TestCase):
 
         signatures = [sig1, sig2, sig3, sig4]
 
-        BlockContender.create(signatures, nodes)  # should not throw an error
+        BlockContender.create(signatures, nodes, 'A' * 64)  # should not throw an error
 
     def test_deserialize_valid_object(self):
         """
@@ -112,7 +115,7 @@ class BlockContenderTest(TestCase):
 
         signatures = [sig1, sig2, sig3, sig4]
 
-        bc = BlockContender.create(signatures, nodes)
+        bc = BlockContender.create(signatures, nodes, 'A' * 64)
 
         bc_ser = bc.serialize()
 
@@ -152,7 +155,7 @@ class BlockContenderTest(TestCase):
 
         signatures = [sig1, sig2, sig3, sig4]
 
-        bc = BlockContender.create(signatures, merkle_leaves=tree.leaves_as_hex)
+        bc = BlockContender.create(signatures, merkle_leaves=tree.leaves_as_hex, prev_block_hash='A' * 64)
         is_valid = bc.validate_signatures()
 
         self.assertTrue(is_valid)
@@ -172,7 +175,7 @@ class BlockContenderTest(TestCase):
 
         signatures = [sig1, sig2, sig3, sig4]
 
-        bc = BlockContender.create(signatures, merkle_leaves=tree.leaves_as_hex)
+        bc = BlockContender.create(signatures, merkle_leaves=tree.leaves_as_hex, prev_block_hash="A" * 64)
         is_valid = bc.validate_signatures()
 
         self.assertFalse(is_valid)
@@ -190,7 +193,7 @@ class BlockContenderTest(TestCase):
 
         signatures = [sig1, sig2, sig3, sig4]
 
-        bc1 = BlockContender.create(signatures, merkle_leaves=tree.leaves_as_hex)
-        bc2 = BlockContender.create(signatures, merkle_leaves=tree.leaves_as_hex)
+        bc1 = BlockContender.create(signatures, merkle_leaves=tree.leaves_as_hex, prev_block_hash='A' * 64)
+        bc2 = BlockContender.create(signatures, merkle_leaves=tree.leaves_as_hex, prev_block_hash='A' * 64)
 
         self.assertEquals(bc1, bc2)
