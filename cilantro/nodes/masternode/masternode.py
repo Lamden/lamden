@@ -57,10 +57,12 @@ class MNBaseState(State):
         self.log.important3("Masternode got kill signal! Relaying signal to all subscribed witnesses and delegates.")
         kill_sig = KillSignal.create()
 
+        # Signal teardown to witnesses
         self.parent.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=kill_sig, port=MN_TX_PUB_PORT)
+        # Signal teardown to delegates
         self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, port=MN_NEW_BLOCK_PUB_PORT, message=kill_sig)
 
-        time.sleep(2)  # Allow time for messages to be composed before we teardown
+        time.sleep(2)  # Allow time for messages to be composed before we teardown this node
 
         self.parent.teardown()
 

@@ -117,13 +117,19 @@ class BlockContender(MessageBase):
         return True
 
 
-def build_test_contender(tree: MerkleTree=None):
+def build_test_contender(tree: MerkleTree=None, prev_block_hash=''):
     """
     Method to build a 'test' block contender. Used exclusively in unit tests.
     """
+    from cilantro.storage.blocks import BlockStorageDriver
+    from cilantro.constants.nodes import BLOCK_SIZE
+
     if not tree:
-        nodes = [1, 2, 3, 4]
+        nodes = [str(i).encode() for i in range(BLOCK_SIZE)]
         tree = MerkleTree(leaves=nodes)
 
+    if not prev_block_hash:
+        prev_block_hash = BlockStorageDriver.get_latest_block_hash()
+
     sigs = [build_test_merkle_sig(msg=tree.root) for _ in range(8)]
-    return BlockContender.create(signatures=sigs, merkle_leaves=tree.leaves_as_hex, prev_block_hash='A' * 64)
+    return BlockContender.create(signatures=sigs, merkle_leaves=tree.leaves_as_hex, prev_block_hash=prev_block_hash)
