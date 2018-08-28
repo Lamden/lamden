@@ -40,7 +40,7 @@ class OverlayInterface(object):
     _started = False
 
     @classmethod
-    def start_service(cls, sk):
+    def _start_service(cls, sk):
         ctx = zmq.asyncio.Context()
         cls.event_sock = ctx.socket(zmq.PUB)
         cls.event_sock.bind(cls.event_url)
@@ -54,7 +54,7 @@ class OverlayInterface(object):
         cls.loop.run_forever()
 
     @classmethod
-    def stop_service(cls):
+    def _stop_service(cls):
         try:
             cls._started = False
             cls.event_sock.close()
@@ -114,6 +114,23 @@ class OverlayInterface(object):
         asyncio.ensure_future(coro())
 
     @classmethod
+    @command
+    def get_service_status(cls, *args, **kwargs): pass
+
+    @classmethod
+    def _get_service_status(cls, event_id):
+        if cls._started:
+            cls.event_sock.send_json({
+                'event': 'service_status',
+                'status': 'ready'
+            })
+        else:
+            cls.event_sock.send_json({
+                'event': 'service_status',
+                'status': 'not_ready'
+            })
+
+    @classmethod
     def overlay_event_socket(cls):
         ctx = zmq.asyncio.Context()
         socket = ctx.socket(zmq.SUB)
@@ -139,4 +156,4 @@ class OverlayInterface(object):
 
     @classmethod
     def listen_for_events(cls, event_handler):
-        cls.loop.run_until_complete(cls.event_listener(event_handler))
+cls.loop.run_until_complete(cls.event_listener(event_handler))
