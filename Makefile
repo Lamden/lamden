@@ -42,5 +42,8 @@ dump:
 kill-docker:
 	docker kill $(docker ps -q)
 
+build-testnet-json:
+	python3 -c "from cilantro.utils.test.testnet_nodes import *; generate_testnet_json()"
+
 help:
 	echo '\n\n'; cat Makefile; echo '\n\n'
