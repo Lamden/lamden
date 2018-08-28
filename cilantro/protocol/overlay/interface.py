@@ -118,7 +118,7 @@ class OverlayInterface(object):
     def get_service_status(cls, *args, **kwargs): pass
 
     @classmethod
-    def _get_service_status(cls, event_id, vk: str, timeout=3):
+    def _get_service_status(cls, event_id):
         if cls._started:
             cls.event_sock.send_json({
                 'event': 'service_status',
