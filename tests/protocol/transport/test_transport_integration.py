@@ -58,6 +58,7 @@ class TestTransportIntegration(MPTestCase):
 
         self.start()
 
+    # TODO fix this test
     @vmnet_test
     def test_pubsub_n_1_n(self):
         """
@@ -105,6 +106,7 @@ class TestTransportIntegration(MPTestCase):
 
     # TODO same test as above, but with multiple filters
 
+    # TODO fix this test
     @vmnet_test
     def test_pubsub_n_1_n_removesub(self):
         """
@@ -156,6 +158,7 @@ class TestTransportIntegration(MPTestCase):
 
         self.start()
 
+    # TODO fix this test
     @vmnet_test
     def test_pubsub_1_1_2_mult_filters(self):
         """
@@ -195,6 +198,7 @@ class TestTransportIntegration(MPTestCase):
 
         self.start()
 
+    # TODO fix this test
     @vmnet_test
     def test_req_reply_1_1_1(self):
         """
