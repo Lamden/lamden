@@ -41,7 +41,7 @@ class DelegateConsensusState(DelegateBaseState):
     @timeout_after(CONSENSUS_TIMEOUT)
     def timeout(self):
         self.log.fatal("Consensus state exceeded timeout duration of {} seconds! Transitioning to CatchUpState".format(CONSENSUS_TIMEOUT))
-        self.parent.interpret.flush(update_state=False)
+        self.parent.interpreter.flush(update_state=False)
         self.parent.transition(DelegateCatchupState)
 
     @enter_from_any
@@ -58,10 +58,12 @@ class DelegateConsensusState(DelegateBaseState):
 
         # Merkle-ize transaction queue and create signed merkle hash
         all_tx = self.parent.interpreter.queue_binary
-        # self.log.debugv("Delegate got tx from interpreter queue: {}".format(all_tx))
         self.merkle = MerkleTree.from_raw_transactions(all_tx)
-        self.log.debugv("Delegate got merkle hash {}".format(self.merkle.root_as_hex))
         self.signature = wallet.sign(self.parent.signing_key, self.merkle.root)
+
+        self.log.info("Delegate entering consensus state with merkle hash {}, and latest block hash {}"
+                      .format(self.merkle.root_as_hex, self.parent.current_hash))
+        self.log.spam("Delegate got merkle leaves {}".format(self.merkle.leaves_as_hex))
 
         # Create merkle signature message and publish it
         merkle_sig = MerkleSignature.create(sig_hex=self.signature, timestamp='now',
@@ -73,10 +75,13 @@ class DelegateConsensusState(DelegateBaseState):
         for sig in [s for s in self.parent.pending_sigs if self.validate_sig(s)]:
             self.signatures.append(sig)
 
+        # Add our own signature
+        self.signatures.append(merkle_sig)
+
         self.check_majority()
 
     @exit_to_any
-    def exit_any(self, next_state):
+    def exit_any(self):
         self.reset_attrs()
 
     def validate_sig(self, sig: MerkleSignature) -> bool:
@@ -96,7 +101,7 @@ class DelegateConsensusState(DelegateBaseState):
 
         # Below is just for debugging, so we can see if a signature cannot be verified
         if not sig.verify(self.merkle.root):
-            self.log.warning("Delegate could not verify signature {}".format(sig))
+            self.log.warning("Delegate could not verify signature! Different Merkle trees.\nSig: {}".format(sig))
 
         return sig.verify(self.merkle.root)
 
@@ -104,13 +109,15 @@ class DelegateConsensusState(DelegateBaseState):
         self.log.debug("delegate has {} signatures out of {} total TESTNET_DELEGATES"
                        .format(len(self.signatures), self.NUM_DELEGATES))
 
-        if len(self.signatures) >= MAJORITY:
+        if len(self.signatures) >= MAJORITY and not self.in_consensus:
             self.log.important("Delegate in consensus!")
             self.in_consensus = True
 
             # Create BlockContender and send it to all Masternode(s)
-            bc = BlockContender.create(signatures=self.signatures, merkle_leaves=self.merkle.leaves_as_hex)
+            bc = BlockContender.create(signatures=self.signatures, merkle_leaves=self.merkle.leaves_as_hex,
+                                       prev_block_hash=self.parent.current_hash)
             for mn_vk in VKBook.get_masternodes():
+                self.log.debug("Delegate sending block contender to masternode with VK {}".format(mn_vk))
                 self.parent.composer.send_request_msg(message=bc, vk=mn_vk)
 
     @input(MerkleSignature)
@@ -121,7 +128,7 @@ class DelegateConsensusState(DelegateBaseState):
 
     @input_request(TransactionRequest)
     def handle_tx_request(self, request: TransactionRequest):
-        self.log.debugv("delegate got tx request: {}".format(request))
+        self.log.debug("delegate got tx request: {}".format(request))
 
         tx_blobs = []
         for tx_hash in request.tx_hashes:
@@ -157,6 +164,8 @@ class DelegateConsensusState(DelegateBaseState):
                 self.log.critical("New block has prev hash {} that does not match our current block hash {}"
                                   .format(notif.prev_block_hash, self.parent.current_hash))
 
-            self.log.notice("Delegate transitioning to CatchUpState")
+            self.log.notice("Delegate transitioning to CatchUpState!\nDelegate's latest block hash {}"
+                            "\nNewBlockNotification's prev block hash {}\nDelegate in consensus: {}"
+                            .format(self.parent.current_hash, notif.prev_block_hash, self.in_consensus))
             self.parent.transition(DelegateCatchupState)
             return

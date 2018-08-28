@@ -51,10 +51,12 @@ class StateTest(TestCase):
         def some_func(arg1='hello', arg2='goodbye'):
             pass
 
+        mock_sm = MagicMock()
+        state = TrafficLightYellowState(mock_sm)
         kwargs = {'arg2': 9000, 'key that isnt an arg in some_func': b'hi'}
 
         expected_kwargs = {'arg2': 9000}
-        pruned_kwargs = State._prune_kwargs(some_func, **kwargs)
+        pruned_kwargs = state._prune_kwargs(some_func, **kwargs)
 
         self.assertEqual(expected_kwargs, pruned_kwargs)
 
@@ -244,7 +246,7 @@ class StateTest(TestCase):
 
         self.assertEqual(expected_handler, func)
 
-        state.call_input_handler(msg, StateInput.REQUEST, envelope=mock_env)
+        state.call_input_handler(StateInput.REQUEST, msg, envelope=mock_env)
 
         self.assertEqual(state.request, msg)
 
@@ -255,7 +257,7 @@ class StateTest(TestCase):
 
         state = TrafficLightRedState(mock_sm)
 
-        state.call_input_handler(msg, StateInput.INPUT, envelope=mock_env)
+        state.call_input_handler(StateInput.INPUT, msg, envelope=mock_env)
 
         self.assertEqual(state.message, msg)
         self.assertEqual(state.envelope, mock_env)
@@ -361,7 +363,7 @@ class StateTest(TestCase):
         mock_func = MagicMock(spec=state.handle_stop_msg_on_red)
         state.handle_stop_msg_on_red = mock_func
 
-        state.call_input_handler(msg, StateInput.INPUT, envelope=mock_env)
+        state.call_input_handler(StateInput.INPUT, msg, envelope=mock_env)
 
         mock_func.assert_called_with(msg, mock_env)
 
@@ -415,7 +417,7 @@ class StateTest(TestCase):
         state = TrafficLightRedState(mock_sm)
 
         args = ['im an arg', 10, 'im also an arg']
-        kwargs = {'dat_key': 'dat_value', 'my_fav_num': 1260}
+        kwargs = {'vk': 'A' * 64, 'socket_type': 10}
 
         mock_func = MagicMock(spec=state.conn_dropped)
         state.conn_dropped = mock_func

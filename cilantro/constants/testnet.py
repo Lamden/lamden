@@ -44,3 +44,5 @@ TESTNET_DELEGATES = [
 ]
 
 MAJORITY = 2
+
+LOG_LEVEL = 21  # Just for debugging, so we can set the log level in one place for VMNet tests

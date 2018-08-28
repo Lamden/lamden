@@ -4,7 +4,7 @@ from unittest import TestCase
 class TestExecutor(TestCase):
 
     """
-    Tests that recv_multipart:
+    Tests that recv_env_multipart:
     - sets header to None if ignore_first_frame is True
     - must have exactly 2 frames if ignore_first_frame is False
     - first frame must be decode() able

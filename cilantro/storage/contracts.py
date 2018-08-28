@@ -5,6 +5,7 @@ import seneca.engine.storage.easy_db as t
 from seneca.execute import execute_contract, get_read_only_contract_obj as get_exports
 import datetime
 import os
+from functools import lru_cache
 
 
 log = get_logger("ContractsTable")
@@ -54,6 +55,7 @@ def module_loader_fn(ex, contract_table):
     Returns a module loader function used for executing contracts
     :return: A function which takes a single parameter, a contract_id, and returns a tuple of (contract_data, code_str)
     """
+    @lru_cache(maxsize=32)
     def _module_loader_fn(contract_id: str) -> tuple:
         author, exec_dt, code_str = _lookup_contract_info(ex, contract_table, contract_id)
         runtime_data = {'author': author, 'contract_id': contract_id, 'execution_datetime': exec_dt}
@@ -92,6 +94,7 @@ def run_contract(*args, **kwargs):
     return _ex_contract(*args, **kwargs, get_contract=False)
 
 
+@lru_cache(maxsize=32)
 def _lookup_contract_info(executor, contract_table, contract_id: str) -> tuple:
     """
     Looks up the contract info for the specified contract id. This includes the author, execution datetime, and code
@@ -114,6 +117,7 @@ def _lookup_contract_info(executor, contract_table, contract_id: str) -> tuple:
     return author, exec_dt, code_str
 
 
+@lru_cache(maxsize=32)
 def _read_contract_files() -> list:
     """
     Reads all contracts in the cilantro/contracts directory.

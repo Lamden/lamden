@@ -16,7 +16,7 @@ class TestMasterNodeRunState(TestCase):
 
         state = MNRunState(state_machine=mock_sm)
 
-        state.call_input_handler(bc, StateInput.REQUEST)
+        state.call_input_handler(StateInput.REQUEST, bc)
 
         mock_sm.transition.assert_called_with('MNNewBlockState', block=bc)
 

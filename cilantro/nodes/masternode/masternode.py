@@ -8,30 +8,33 @@
 """
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.masternode import STAGING_TIMEOUT
-from cilantro.nodes import NodeBase
+from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
+from cilantro.constants.nodes import BLOCK_SIZE
+from cilantro.constants.testnet import MAJORITY
 
-from cilantro.protocol.states.decorators import input_request, input, enter_from_any, exit_to_any, enter_from, input_timeout, timeout_after, input_connection_dropped
+
+from cilantro.protocol.states.decorators import *
 from cilantro.protocol.states.state import State, StateInput
 
-from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 from cilantro.messages.block_data.block_metadata import BlockMetaDataRequest, BlockMetaDataReply
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.storage.blocks import BlockStorageDriver, BlockMetaData
+from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.signals.kill_signal import KillSignal
 
-from aiohttp import web
-import time
-import traceback
 from cilantro.storage.db import VKBook
-from collections import deque
 
+import time
 from cilantro.utils import LProcess
-from multiprocessing import Value
+from multiprocessing import Queue
+
+from cilantro.nodes import NodeBase
 from cilantro.nodes.masternode.webserver import start_webserver
+from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 
 MNNewBlockState = 'MNNewBlockState'
 MNStagingState = 'MNStagingState'
@@ -39,30 +42,7 @@ MNBootState = 'MNBootState'
 
 
 class Masternode(NodeBase):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Define 'global' properties, shared among all states
-        self.tx_queue = deque()  # A queue of transactions sent by users to the Masternode via a REST endpoint
-
-    async def route_http(self, request):
-        self.log.important2("MASTERNODE GOT REQUEST WITH PATH {}".format(request.path))
-        raw_data = await request.content.read()
-
-        if request.path == '/teardown-network':
-            self.log.important("Masternode got kill message from rest endpoint!")
-            tx = KillSignal.create()
-        else:
-            container = TransactionContainer.from_bytes(raw_data)
-            tx = container.open()
-
-        try:
-            self.state.call_input_handler(message=tx, input_type=StateInput.INPUT)
-            return web.Response(text="Successfully published transaction: {}".format(tx))
-        except Exception as e:
-            self.log.error("\n Error publishing HTTP request...err = {}".format(traceback.format_exc()))
-            return web.Response(text="problem processing request with err: {}".format(e))
+    pass
 
 
 class MNBaseState(State):
@@ -70,25 +50,25 @@ class MNBaseState(State):
     @input(KillSignal)
     def handle_kill_sig(self, msg: KillSignal):
         # TODO check signature on kill sig make sure its trusted and such
+
+        # TODO this is broken rn b/c only the TransactionBatcher process has a PUB port open
+        raise NotImplementedError("This is broken right now. See comments.")
+
         self.log.important3("Masternode got kill signal! Relaying signal to all subscribed witnesses and delegates.")
         kill_sig = KillSignal.create()
 
-        self.parent.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=kill_sig)
-        self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, message=kill_sig)
+        # Signal teardown to witnesses
+        self.parent.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=kill_sig, port=MN_TX_PUB_PORT)
+        # Signal teardown to delegates
+        self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, port=MN_NEW_BLOCK_PUB_PORT, message=kill_sig)
 
-        time.sleep(2)  # Allow time for messages to be composed before we teardown
+        time.sleep(2)  # Allow time for messages to be composed before we teardown this node
 
         self.parent.teardown()
 
     @input_connection_dropped
     def conn_dropped(self, vk, ip):
         self.log.warning('({}:{}) has dropped'.format(vk, ip))
-
-    @input(TransactionBase)
-    def handle_tx(self, tx: TransactionBase):
-        oc = OrderingContainer.create(tx=tx, masternode_vk=self.parent.verifying_key)
-        self.log.spam("mn about to pub for tx {}".format(tx))  # debug line
-        self.parent.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc)
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
@@ -138,6 +118,37 @@ class MNBaseState(State):
         reply = BlockMetaDataReply.create(block_metas=block_metas)
         return reply
 
+    def validate_block_contender(self, block: BlockContender) -> bool:
+        """
+        Helper method to validate a block contender. For a block contender to be valid it must:
+        1) Have a provable merkle tree, ie. all nodes must be hash of (left child + right child)
+        2) Be signed by at least 2/3 of the top 32 delegates
+        3) Have the correct number of transactions
+        4) Be a proposed child of the latest block in the database
+        :param block_contender: The BlockContender to validate
+        :return: True if the BlockContender is valid, false otherwise
+        """
+        # Development sanity checks
+        # TODO -- in production these assertions should return False instead of raising an Exception
+        assert len(block.merkle_leaves) >= 1, "Masternode got block contender with no nodes! {}".format(block)
+        assert len(block.signatures) >= MAJORITY, \
+            "Received a block contender with only {} signatures (which is less than a MAJORITY of {}"\
+            .format(len(block.signatures), MAJORITY)
+
+        assert len(block.merkle_leaves) == BLOCK_SIZE, \
+            "Block contender has {} merkle leaves, but block size is {}!!!\nmerkle_leaves={}"\
+            .format(len(block.merkle_leaves), BLOCK_SIZE, block.merkle_leaves)
+
+        # TODO validate the sigs are actually from the top N delegates
+
+        if not block.prev_block_hash == BlockStorageDriver.get_latest_block_hash():
+            self.log.warning("BlockContender validation failed. Block contender's previous block hash {} does not "
+                             "match DB's latest block hash {}"
+                             .format(block.prev_block_hash, BlockStorageDriver.get_latest_block_hash()))
+            return False
+
+        return block.validate_signatures()
+
 
 @Masternode.register_init_state
 class MNBootState(MNBaseState):
@@ -147,10 +158,8 @@ class MNBootState(MNBaseState):
 
     @enter_from_any
     def enter_any(self, prev_state):
-        self.log.debug("MN IP: {}".format(self.parent.ip))
-
-        # Add publisher socket
-        self.parent.composer.add_pub(ip=self.parent.ip)
+        # Add publisher socket for sending NewBlockNotifications to delegates
+        self.parent.composer.add_pub(ip=self.parent.ip, port=MN_NEW_BLOCK_PUB_PORT)
 
         # Add router socket
         self.parent.composer.add_router(ip=self.parent.ip)
@@ -158,15 +167,6 @@ class MNBootState(MNBaseState):
         # Add dealer sockets to TESTNET_DELEGATES, for purposes of requesting block data
         for vk in VKBook.get_delegates():
             self.parent.composer.add_dealer(vk=vk)
-
-        # Create web server
-        # self.log.debug("Creating REST server on port 8080")
-        # self.parent.server = LProcess(target=start_webserver)
-        # self.parent.server.start()
-
-        server = web.Server(self.parent.route_http)
-        server_future = self.parent.loop.create_server(server, "0.0.0.0", 8080)
-        self.parent.tasks.append(server_future)
 
         # Once done booting, transition to staging
         self.parent.transition(MNStagingState)
@@ -208,10 +208,10 @@ class MNStagingState(MNBaseState):
     def enter_any(self):
         self.reset_attrs()
 
+    # TODO remove this. keeping it for dev purposes for a bit
     @input(TransactionBase)
     def handle_tx(self, tx: TransactionBase):
-        self.log.spam("Delegate received tx but still in staging state. Adding it to queue.")
-        self.parent.tx_queue.append(tx)
+        raise Exception("OH NO! This should not get called anymore. TransactionBase processing should be done by ")
 
     @input_request(BlockMetaDataRequest)
     def handle_blockmeta_request(self, request: BlockMetaDataRequest, envelope: Envelope):
@@ -236,8 +236,8 @@ class MNStagingState(MNBaseState):
         num_ready = len(self.ready_delegates)
 
         if num_ready >= majority:
-            self.log.important("2/3 Delegates are at the latest blockchain state! MN exiting StagingState."
-                               "\n(Ready Delegates = {})".format(self.ready_delegates))
+            self.log.important("{}/{} Delegates are at the latest blockchain state! MN exiting StagingState."
+                               "\n(Ready Delegates = {})".format(num_ready, len(VKBook.get_delegates()), self.ready_delegates))
             self.parent.transition(MNRunState)
             return
         else:
@@ -251,21 +251,30 @@ class MNRunState(MNBaseState):
 
     @enter_from_any
     def enter_any(self):
-        if not self.parent.tx_queue:
-            return
+        # Create and start web server
+        self.log.notice("Masternode creating REST server on port 8080")
+        self.parent.tx_queue = q = Queue()
+        self.parent.server = LProcess(target=start_webserver, args=(q,))
+        self.parent.server.start()
 
-        self.log.notice("Flushing queue of {} transactions".format(len(self.parent.tx_queue)))
-        for tx in self.parent.tx_queue:
-            self.handle_tx(tx)
-        self.parent.tx_queue.clear()
+        # Create a worker to do transaction batching
+        self.log.debug("Masternode creating transaction batcher process")
+        self.parent.batcher = LProcess(target=TransactionBatcher,
+                                       kwargs={'queue': q, 'signing_key': self.parent.signing_key,
+                                               'ip': self.parent.ip})
+        self.parent.batcher.start()
 
     @enter_from(MNNewBlockState)
     def enter_from_newblock(self, success=False):
         if not success:
-            # this should really just be a warning, but for dev we log it as an error
-            self.log.fatal("\n\nNewBlockState transitioned back with failure!!!\n\n")
+            self.log.warning("NewBlockState transitioned back with failure!!!")
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
+        # TODO this logic is not very clean. we are doing validation on blocks twice if a BlockContender is
+        # received in RunState.
+        if not self.validate_block_contender(block):
+            return
+
         self.log.info("Masternode received block contender. Transitioning to NewBlockState".format(block))
         self.parent.transition(MNNewBlockState, block=block)

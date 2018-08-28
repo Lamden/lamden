@@ -21,7 +21,7 @@ from cilantro.nodes import NodeBase
 from cilantro.storage.db import VKBook
 from cilantro.storage.blocks import BlockStorageDriver
 
-from cilantro.protocol.states.decorators import input, enter_from_any, input_socket_connected, timeout_after, input_connection_dropped
+from cilantro.protocol.states.decorators import *
 from cilantro.protocol.states.state import State
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.utils.hasher import Hasher
@@ -36,6 +36,7 @@ from cilantro.messages.signals.kill_signal import KillSignal
 
 from cilantro.constants.zmq_filters import DELEGATE_DELEGATE_FILTER, WITNESS_DELEGATE_FILTER, MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.delegate import BOOT_TIMEOUT, BOOT_REQUIRED_MASTERNODES, BOOT_REQUIRED_WITNESSES
+from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT
 
 from collections import deque
 from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
@@ -64,7 +65,7 @@ class DelegateBaseState(State):
 
     @input(KillSignal)
     def handle_kill_sig(self, msg: KillSignal):
-        # TODO - make sure this is secure (from a KillSignal)
+        # TODO - make sure this is secure (from a legit Masternode)
         self.log.important("Node got received remote kill signal from network!")
         self.parent.teardown()
 
@@ -78,13 +79,13 @@ class DelegateBaseState(State):
 
     @input(OrderingContainer)
     def handle_tx(self, tx: OrderingContainer):
-        self.log.debug("Delegate not interpreting transactions, adding {} to queue".format(tx))
+        self.log.debugv("Delegate not interpreting transactions, adding {} to queue".format(tx))
         self.parent.pending_txs.append(Hasher.hash(tx.transaction), tx)
-        self.log.debug("{} transactions pending interpretation".format(self.parent.pending_txs))
+        self.log.debugv("{} transactions pending interpretation".format(len(self.parent.pending_txs)))
 
     @input(MerkleSignature)
     def handle_sig(self, sig: MerkleSignature):
-        self.log.debug("Received signature with data {} but not in consensus, adding it to queue"
+        self.log.info("Received signature with data {} but not in consensus, adding it to queue"
                        .format(sig._data))
         self.parent.pending_sigs.append(sig)
 
@@ -96,17 +97,17 @@ class DelegateBaseState(State):
 
     @input(TransactionReply)
     def handle_tx_reply(self, reply: TransactionReply, envelope: Envelope):
-        self.log.debug("Delegate current state {} not configured to handle"
-                        "transaction replies".format(self))
+        self.log.warning("Delegate current state {} not configured to handle"
+                       "transaction replies".format(self))
 
-    @input(TransactionRequest)
+    @input_request(TransactionRequest)
     def handle_tx_request(self, request: TransactionRequest):
-        self.log.debug("Delegate current state {} not configured to handle"
+        self.log.warning("Delegate current state {} not configured to handle"
                         "transaction requests".format(self))
 
     @input(BlockMetaDataReply)
     def handle_blockmeta_reply(self, reply: BlockMetaDataReply):
-        self.log.debug("Delegate current state {} not configured to handle block"
+        self.log.warning("Delegate current state {} not configured to handle block"
                        "meta replies".format(self))
 
 
@@ -134,7 +135,7 @@ class DelegateBootState(DelegateBaseState):
     def socket_connected(self, socket_type: int, vk: str, url: str):
         assert vk in VKBook.get_all(), "Connected to vk {} that is not present in VKBook.get_all()!!!".format(vk)
         key = vk + '_' + str(socket_type)
-        self.log.spam("Delegate connected to vk {} with sock type {}".format(vk, socket_type))  # TODO remove this (debug line)
+        self.log.spam("Delegate connected to vk {} with sock type {}".format(vk, socket_type))
 
         # TODO make less ugly pls
         if vk in VKBook.get_delegates():
@@ -151,14 +152,14 @@ class DelegateBootState(DelegateBaseState):
         self.reset_attrs()
 
         self.log.notice("Delegate connecting to other nodes ..")
-        # Sub to other TESTNET_DELEGATES
+        # Sub to other delegates
         for delegate_vk in VKBook.get_delegates():
             if delegate_vk == self.parent.verifying_key:  # Do not sub to yourself
                 continue
 
             self.parent.composer.add_sub(vk=delegate_vk, filter=DELEGATE_DELEGATE_FILTER)
 
-        # Sub to TESTNET_WITNESSES
+        # Sub to witnesses
         for witness_vk in VKBook.get_witnesses():
             self.parent.composer.add_sub(vk=witness_vk, filter=WITNESS_DELEGATE_FILTER)
 
@@ -171,7 +172,7 @@ class DelegateBootState(DelegateBaseState):
         # Add dealer and sub socket for Masternodes
         for mn_vk in VKBook.get_masternodes():
             self.parent.composer.add_dealer(vk=mn_vk)
-            self.parent.composer.add_sub(vk=mn_vk, filter=MASTERNODE_DELEGATE_FILTER)
+            self.parent.composer.add_sub(vk=mn_vk, filter=MASTERNODE_DELEGATE_FILTER, port=MN_NEW_BLOCK_PUB_PORT)
 
     def _check_ready(self):
         """
@@ -189,47 +190,3 @@ class DelegateBootState(DelegateBaseState):
         self.parent.transition(DelegateCatchupState)
 
 
-## TESTING
-# from functools import wraps
-# import random
-# P = 0.36
-#
-# def do_nothing(*args, **kwargs):
-#     # print("!!! DOING NOTHING !!!\nargs: {}\n**kwargs: {}".format(args, kwargs))
-#     print("DOING NOTHING")
-#
-# def sketchy_execute(prob_fail):
-#     def decorate(func):
-#         @wraps(func)
-#         def wrapper(*args, **kwargs):
-#             # print("UR BOY HAS INJECTED A SKETCH EXECUTE FUNC LOL GLHF")
-#             if random.random() < prob_fail:
-#                 print("!!! not running func")
-#                 return do_nothing(*args, **kwargs)
-#             else:
-#                 # print("running func")
-#                 return func(*args, **kwargs)
-#         return wrapper
-#     return decorate
-#
-#
-# class RogueMeta(type):
-#     _OVERWRITES = ('route', 'route_req', 'route_timeout')
-#
-#     def __new__(cls, clsname, bases, clsdict):
-#         clsobj = super().__new__(cls, clsname, bases, clsdict)
-#
-#         print("Rogue meta created with class name: ", clsname)
-#         print("bases: ", bases)
-#         print("clsdict: ", clsdict)
-#         print("dir: ", dir(clsobj))
-#
-#         for name in dir(clsobj):
-#             if name in cls._OVERWRITES:
-#                 print("\n\n***replacing {} with sketchy executor".format(name))
-#                 setattr(clsobj, name, sketchy_execute(P)(getattr(clsobj, name)))
-#             else:
-#                 print("skipping name {}".format(name))
-#
-#         return clsobj
-## END TESTING

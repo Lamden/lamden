@@ -38,14 +38,14 @@ class TestTransportIntegration(MPTestCase):
         def config_sub(composer: Composer):
             from unittest.mock import MagicMock
 
-            composer.interface.router = MagicMock()
+            composer.manager.router = MagicMock()
             return composer
 
         def assert_sub(composer: Composer):
             from cilantro.messages.reactor.reactor_command import ReactorCommand
             from cilantro.protocol.states.decorators import StateInput
             cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
-            composer.interface.router.route_callback.assert_called_once_with(cb)
+            composer.manager.router.route_callback.assert_called_once_with(cb)
 
         env = random_envelope()
 
