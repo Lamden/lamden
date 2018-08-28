@@ -57,5 +57,18 @@ class BlockManager:
    # we could also use the strategy of master regulating its batch based on its rate of txns
    #         - so that # of txns in a batch can be anywhere betweeen L/2 to 2L  (normalizing against L txns per sec)
    #         - in this case, we only need to know that at least one batch is available at all subtrees of next block
-     
+   #  master
+   #    1 for every sec, batch L txns if available.   (assuming this is our normal throughput L per sec at each master)
+   #    2 if not send skip batch and it has atleast one txn, then wait for 1 secs, otherwise, go to previous step
+   #    3 see if it has at least L/2 txns, then batch them and send, otherwise, send skip batch and wait for 1 more sec
+   #    4 see if it has at least L/4 txns, then batch them and send, otherwise, send skip batch and wait for 1 more sec
+   #    5 see if it has at least L/8 txns, then batch them and send, otherwise, send skip batch and wait for 1 more sec
+   #    6 send whatever txns as a batch and go back to step 1 # this is needed at some point for fairness
+   # Given this scheme, delegates only have to worry about whether they have a batch or not rather than # of txns?
+   # since they get either one valid batch or skip a batch every sec, they will know whether next round is skip or not.
+   # the only case is when they don't get anything for a long time,
+   #   in this case they can alarm to block-manager for the missing beat? which can also be input to behavior/trust tracking?
+   #   block-manager can initiate the communication to other block-mgrs to see the situation with other delegates.
+   #   if it is missing selectively, then either delegates can send those bags to missing delegates or throw them away if not enough reliable quorum available as another option. 
+   # each delegate will keep the prev_batch_timestamp to see if they have the next one in the next sec
 
