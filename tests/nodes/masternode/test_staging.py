@@ -15,17 +15,18 @@ class TestMasterNodeStagingState(TestCase):
         # Create a new event loop for this test suite
         asyncio.set_event_loop(asyncio.new_event_loop())
 
-    def test_handle_tx_adds_to_queue(self):
-        mock_queue = MagicMock(spec=deque)
-        mock_sm = MagicMock(tx_queue=mock_queue)
-        state = MNStagingState(state_machine=mock_sm)
-        state.call_transition_handler(trans_type=StateTransition.ENTER, state=MNBootState)
-
-        mock_tx = MagicMock(spec=TransactionBase)
-
-        state.handle_tx(mock_tx)
-
-        mock_queue.append.assert_called_with(mock_tx)
+    # Deprecated b/c Web server does this logic now
+    # def test_handle_tx_adds_to_queue(self):
+    #     mock_queue = MagicMock(spec=deque)
+    #     mock_sm = MagicMock(tx_queue=mock_queue)
+    #     state = MNStagingState(state_machine=mock_sm)
+    #     state.call_transition_handler(trans_type=StateTransition.ENTER, state=MNBootState)
+    #
+    #     mock_tx = MagicMock(spec=TransactionBase)
+    #
+    #     state.handle_tx(mock_tx)
+    #
+    #     mock_queue.append.assert_called_with(mock_tx)
 
     def test_latest_block_request_adds_to_ready_delegates(self):
         """

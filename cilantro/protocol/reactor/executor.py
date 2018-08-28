@@ -145,14 +145,13 @@ class SubPubExecutor(Executor):
         self.router.route_callback(callback=StateInput.INPUT, message=envelope.message, envelope=envelope)
 
     # TODO -- is looping over all pubs ok?
-    def send_pub(self, filter: str, envelope: bytes):
+    def send_pub(self, url: str, filter: str, data: bytes):
         assert isinstance(filter, str), "'filter' arg must be a string not {}".format(filter)
-        assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
-        assert len(self.pubs) > 0, "Attempted to publish data but publisher socket(s) is not configured"
+        assert isinstance(data, bytes), "'envelope' arg must be bytes"
+        assert url in self.pubs, "Attempted to pub to URL {} that is not in self.pubs {}".format(url, self.pubs)
 
-        for url in self.pubs:
-            self.log.spam("Publishing to URL {} with envelope: {}".format(url, Envelope.from_bytes(envelope)))
-            self.pubs[url].send_multipart([filter.encode(), envelope])
+        self.log.spam("Publishing to URL {} with envelope: {}".format(url, Envelope.from_bytes(data)))
+        self.pubs[url].send_multipart([filter.encode(), data])
 
     def add_pub(self, url: str):
         assert url not in self.pubs, "Attempted to add pub on url that is already in self.pubs"

@@ -40,7 +40,7 @@ class OverlayInterface(object):
     _started = False
 
     @classmethod
-    def _start_service(cls, sk):
+    def start_service(cls, sk):
         ctx = zmq.asyncio.Context()
         cls.event_sock = ctx.socket(zmq.PUB)
         cls.event_sock.bind(cls.event_url)
@@ -54,7 +54,7 @@ class OverlayInterface(object):
         cls.loop.run_forever()
 
     @classmethod
-    def _stop_service(cls):
+    def stop_service(cls):
         try:
             cls._started = False
             cls.event_sock.close()

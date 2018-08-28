@@ -23,8 +23,7 @@ def run_mn():
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    if not os.getenv('CILANTRO_VERBOSE', None):
-        overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[0]['sk']
@@ -39,8 +38,7 @@ def run_witness(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    if not os.getenv('CILANTRO_VERBOSE', None):
-        overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -56,8 +54,7 @@ def run_delegate(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    if not os.getenv('CILANTRO_VERBOSE', True):
-        overwrite_logger_level(21)
+    # overwrite_logger_level(21)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -97,7 +94,7 @@ class TestManualDump(BaseNetworkTestCase):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
 
         input("Press any key to begin the dump...")
-        log.important3("Dumpatron6000 dumping transactions! I was born for this.")
+        log.important3("Dumpatron6000 dumping transactions!")
         self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME), async=True, profiling=self.PROFILE_TYPE)
 
         input("Press any key to initiate teardown")

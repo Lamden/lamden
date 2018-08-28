@@ -171,7 +171,8 @@ class TestBlockStorageDriver(TestCase):
 
         # Create a sketch block contender with the incorrect number of merkle leaves
         bc = bd['block_contender']
-        sketch_bc = BlockContender.create(signatures=bc.signatures, merkle_leaves=['0' * 64 for _ in range(27)])
+        sketch_bc = BlockContender.create(signatures=bc.signatures, merkle_leaves=['0' * 64 for _ in range(27)],
+                                          prev_block_hash='A' * 64)
 
         bd['block_contender'] = sketch_bc
 

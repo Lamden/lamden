@@ -36,6 +36,7 @@ from cilantro.messages.signals.kill_signal import KillSignal
 
 from cilantro.constants.zmq_filters import DELEGATE_DELEGATE_FILTER, WITNESS_DELEGATE_FILTER, MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.delegate import BOOT_TIMEOUT, BOOT_REQUIRED_MASTERNODES, BOOT_REQUIRED_WITNESSES
+from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT
 
 from collections import deque
 from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
@@ -80,7 +81,7 @@ class DelegateBaseState(State):
     def handle_tx(self, tx: OrderingContainer):
         self.log.debugv("Delegate not interpreting transactions, adding {} to queue".format(tx))
         self.parent.pending_txs.append(Hasher.hash(tx.transaction), tx)
-        self.log.debugv("{} transactions pending interpretation".format(self.parent.pending_txs))
+        self.log.debugv("{} transactions pending interpretation".format(len(self.parent.pending_txs)))
 
     @input(MerkleSignature)
     def handle_sig(self, sig: MerkleSignature):
@@ -151,14 +152,14 @@ class DelegateBootState(DelegateBaseState):
         self.reset_attrs()
 
         self.log.notice("Delegate connecting to other nodes ..")
-        # Sub to other TESTNET_DELEGATES
+        # Sub to other delegates
         for delegate_vk in VKBook.get_delegates():
             if delegate_vk == self.parent.verifying_key:  # Do not sub to yourself
                 continue
 
             self.parent.composer.add_sub(vk=delegate_vk, filter=DELEGATE_DELEGATE_FILTER)
 
-        # Sub to TESTNET_WITNESSES
+        # Sub to witnesses
         for witness_vk in VKBook.get_witnesses():
             self.parent.composer.add_sub(vk=witness_vk, filter=WITNESS_DELEGATE_FILTER)
 
@@ -171,7 +172,7 @@ class DelegateBootState(DelegateBaseState):
         # Add dealer and sub socket for Masternodes
         for mn_vk in VKBook.get_masternodes():
             self.parent.composer.add_dealer(vk=mn_vk)
-            self.parent.composer.add_sub(vk=mn_vk, filter=MASTERNODE_DELEGATE_FILTER)
+            self.parent.composer.add_sub(vk=mn_vk, filter=MASTERNODE_DELEGATE_FILTER, port=MN_NEW_BLOCK_PUB_PORT)
 
     def _check_ready(self):
         """

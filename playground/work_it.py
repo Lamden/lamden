@@ -80,7 +80,7 @@ class Producer(Worker):
             msg = random.choice(POKE_MSGS)
             poke = Poke.create(msg)
             self.log.info("Sending poke with msg {}".format(msg))
-            self.composer.send_pub_msg(filter=self.filter, message=poke)
+            self.composer.send_pub_msg(protocol='ipc', port=self.pubsub_port, filter=self.filter, message=poke)
             await asyncio.sleep(self.rest_time)
 
         self.log.important("Producer done poking!")
@@ -103,7 +103,7 @@ class PubSubConsumer(Worker):
 
     @input(Poke)
     def handle_poke(self, poke: Poke):
-        self.log.notice("PubSubConsumer poked with message {}".format(poke.message))
+        self.log.important("PubSubConsumer poked with message {}".format(poke.message))
 
 
 class RepReplyConsumer(Worker):
@@ -128,7 +128,7 @@ class RepReplyConsumer(Worker):
 
     @input(AnswerReply)
     def handle_answer(self, answer: AnswerReply, envelope: Envelope, **kwargs):
-        self.log.notice("Got answer {} ".format(answer.answer))
+        self.log.important2("Got answer {} ".format(answer.answer))
 
 
 if __name__== "__main__":

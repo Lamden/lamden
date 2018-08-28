@@ -41,6 +41,7 @@ CUSTOM_LEVELS = {
     'SOCKET': 23,
     'NOTICE': 24,
     'SUCCESS': 26,
+    'SUCCESS2': 27,
     'IMPORTANT': 56,
     'IMPORTANT2': 57,
     'IMPORTANT3': 58,
@@ -74,9 +75,10 @@ coloredlogs.DEFAULT_LEVEL_STYLES = {
     'important3': {'color': 'black', 'bold': True, 'background': 'yellow'},
     'spam': {'color': 'white', 'faint': True},
     'success': {'color': 'white', 'bold': True, 'background': 'green'},
+    'success2': {'color': 165, 'bold': True, 'background': 'green'},
     'verbose': {'color': 'blue'},
     'warning': {'color': 'yellow'},
-    'debugv': {'color': 'blue', 'faint': True}
+    'debugv': {'color': 'blue', 'faint': False}
 }
 coloredlogs.DEFAULT_FIELD_STYLES = {
     'asctime': {'color': 'green'},
