@@ -177,7 +177,7 @@ class Ironhouse:
             received_public_key = self.vk2pk(msg)
             if self.auth_validate(msg) == True and target_public_key == received_public_key:
                 self.add_public_key(received_public_key)
-                self.pk2vk[public_key] = msg
+                self.pk2vk[received_public_key] = msg
                 authorized = 'authorized'
         except Exception as e:
             log.debug('{} got no reply from {} after waiting...'.format(os.getenv('HOST_IP', '127.0.0.1'), server_url))
