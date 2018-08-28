@@ -288,7 +288,7 @@ class MPTesterBase:
         # Create a wrapper around the build_obj with args and kwargs. We do this b/c this function will actually be
         # invoked in a separate process/machine, thus we need to capture the function call to serialize it and send
         # it across a socket
-        build_fn = wrap_func(type(self).build_obj, *args, **kwargs)
+        build_fn = wrap_func(type(self).build_obj, *args, name=name, **kwargs)
 
         self._config_url_and_test_proc(build_fn, always_run_as_subproc)
 

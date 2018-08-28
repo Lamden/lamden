@@ -57,7 +57,7 @@ class TestTransportIntegration(MPTestCase):
         sub.add_sub(vk=vk2, filter=FILTER)
         pub.add_pub(ip=pub_ip)
 
-        time.sleep(5.0)
+        time.sleep(15.0)
 
         pub.send_pub_env(filter=FILTER, envelope=env)
 

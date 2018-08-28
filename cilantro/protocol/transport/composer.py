@@ -32,9 +32,9 @@ def vk_lookup(func):
         contains_ip = 'ip' in kwargs and kwargs['ip']
         if contains_vk and not contains_ip:
             # We can't call get_node_from_vk if the event loop is not running, so we add it to pending commands
-            if not asyncio.get_event_loop().is_running():
-                self.log.debugv("Cannot execute vk lookup yet as event loop is not running. Adding func {} to command "
-                                "queue".format(func.__name__))
+            if not asyncio.get_event_loop().is_running() or not self.overlay_ready:
+                self.log.debugv("Cannot execute vk lookup yet as event loop is not running, or overlay is not ready."
+                                " Adding func {} to command queue".format(func.__name__))
                 self.pending_commands.append((func.__name__, args, kwargs))
                 return
 
@@ -60,6 +60,7 @@ class Composer:
         self.verifying_key = wallet.get_vk(self.signing_key)
 
         self.overlay_fut = asyncio.ensure_future(OverlayInterface.event_listener(self._handle_overlay_event))
+        self.overlay_ready = False
         self.command_queue = {}  # dict of UUID to kwargs
         self.pending_commands = deque()  # To hold commands until the event loop is started
 
@@ -69,24 +70,31 @@ class Composer:
     def _handle_overlay_event(self, e):
         self.log.spam("Composer got overlay event {}".format(e))
 
-        if e['event'] != 'got_ip':
-            self.log.spam("Composer got event {} that is not got_ip. Ignoring.".format(e))
-            # TODO handle all events. Or write code to only subscribe to certain events
+        if e['event'] == 'service_started' or (e['event'] == 'service_status' and e['status'] == 'ready'):
+            self.log.notice("Overlay service ready!")
+            self.overlay_ready = True
+            self._flush_pending_commands()
             return
 
-        assert e['event_id'] in self.command_queue, "Overlay returned event id that is not in command_queue!"
+        elif e['event'] == 'got_ip':
+            assert e['event_id'] in self.command_queue, "Overlay returned event id that is not in command_queue!"
 
-        cmd_name, args, kwargs = self.command_queue[e['event_id']]
-        kwargs['ip'] = e['ip']
+            cmd_name, args, kwargs = self.command_queue[e['event_id']]
+            kwargs['ip'] = e['ip']
 
-        getattr(self, cmd_name)(*args, **kwargs)
+            getattr(self, cmd_name)(*args, **kwargs)
 
-    async def _flush_pending_commands(self):
+        else:
+            # TODO handle all events. Or write code to only subscribe to certain events
+            self.log.spam("Composer got overlay event {} that it does not know how to handle. Ignoring.".format(e))
+            return
+
+    def _flush_pending_commands(self):
         # TODO plz not this. engineer more 'reactive' solution w/o sleeps
         # TODO -- falcon has an overlay ready event. use it.
-        self.log.notice("composer taking a nap before flushing pending_commands while overlay gets rdy...")
-        await asyncio.sleep(8)
-        self.log.notice("composer done with nap.")
+        # self.log.notice("composer taking a nap before flushing pending_commands while overlay gets rdy...")
+        # await asyncio.sleep(8)
+        # self.log.notice("composer done with nap.")
 
         self.log.debug("Composer flushing {} commands from queue".format(len(self.pending_commands)))
 

@@ -2,10 +2,10 @@ from cilantro.logger import get_logger
 from cilantro.protocol.transport import Composer
 from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.protocol.overlay.interface import OverlayInterface
-from multiprocessing import Process
+from cilantro.utils.lprocess import LProcess
 
 import asyncio
-# from cilantro.protocol.reactor.executor import *
+import os
 from cilantro.protocol import wallet
 
 class NodeBase(StateMachine):
@@ -20,16 +20,13 @@ class NodeBase(StateMachine):
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
 
-        # DEBUG
-        import os
         self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, os.getenv("HOST_IP")))
-        # END DEBUG
 
         self.loop = loop
         asyncio.set_event_loop(loop)
 
         self.log.notice("Starting overlay service")
-        self.overlay_proc = Process(target=OverlayInterface.start_service, args=(signing_key,))
+        self.overlay_proc = LProcess(target=OverlayInterface.start_service, args=(signing_key,))
         self.overlay_proc.start()
 
         self._composer = None
