@@ -5,7 +5,8 @@
     It will also stitch two subblocks into one subtree and send to master and other delegates for voting.
     And will send in its vote on other subtrees to master directly when received from other delegates
 
-    It can also have a thin layer of row conflict info that can be used to push some transactions to next block if they are conflicting with transactions in flight
+    It can also have a thin layer of row conflict info that can be used to push some transactions to next block if they
+    are conflicting with transactions in flight
     It will rotate asking 16 sets of sub-block-builders to proceed.
 
     It will also get new block notifications from master and can update its thin layer caching
