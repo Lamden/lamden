@@ -14,15 +14,6 @@ class TransactionBase(MessageBase):
     def __init__(self, data):
         super().__init__(data)
 
-    # TODO deprecate and remove this
-    # def interpret(self, *args, **kwargs):
-    #     """
-    #     Interprets the transaction and returns the SQLAlchemy queries associated with the transaction's changes
-    #     :return: SQLAlchemy query objects
-    #     """
-    #     assert hasattr(type(self), 'contract'), "Transaction type {} has no contract defined".format(type(self))
-    #     return contract(type(self))(type(self).contract)(self, *args, **kwargs)
-
     def validate(self):
         """
         Validates the underlying data, raising an exception if something is wrong

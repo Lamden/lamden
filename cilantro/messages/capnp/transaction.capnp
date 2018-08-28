@@ -28,6 +28,10 @@ struct ContractTransaction {
     }
 }
 
+struct TransactionBatch {
+    transactions @0 :List(OrderingContainer);
+}
+
 struct StandardTransaction {
     metadata @0 :MetaData;
     payload @1 :Payload;

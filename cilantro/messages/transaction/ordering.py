@@ -48,3 +48,12 @@ class OrderingContainer(MessageBase):
             .format(self._data.type, MessageBase.registry)
 
         return MessageBase.registry[self._data.type].from_bytes(self._data.transaction)
+
+
+def build_test_container(masternode_vk=None):
+    from cilantro.storage.db import VKBook
+    from cilantro.messages.transaction.base import build_test_transaction
+
+    if not masternode_vk:
+        masternode_vk = VKBook.get_masternodes()[0]
+    return OrderingContainer.create(tx=build_test_transaction(), masternode_vk=masternode_vk)
