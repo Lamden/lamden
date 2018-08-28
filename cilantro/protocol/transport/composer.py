@@ -64,13 +64,24 @@ class Composer:
         self.command_queue = {}  # dict of UUID to kwargs
         self.pending_commands = deque()  # To hold commands until the event loop is started
 
-        # The 'future' task to flush pending_commands when event loop starts
-        self.flush_pending_fut = asyncio.ensure_future(self._flush_pending_commands())
+        # TODO do we need to make sure this _check_overlay_status runs sequentially after
+        # OverlayInterface.event_listener(...) ?? b/c we need the listener socket to be configured before
+        # we can call OverlayInterface.get_service_status() i think
+        asyncio.ensure_future(self._check_overlay_status())
+
+    async def _check_overlay_status(self):
+        self.log.debug("Checking overlay status")
+        OverlayInterface.get_service_status()
 
     def _handle_overlay_event(self, e):
-        self.log.spam("Composer got overlay event {}".format(e))
+        self.log.debug("Composer got overlay event {}".format(e))
+        event_name = e['event']
 
         if e['event'] == 'service_started' or (e['event'] == 'service_status' and e['status'] == 'ready'):
+            if self.overlay_ready:
+                self.log.debugv("Overlay is already ready. Not flushing commands")
+                return
+
             self.log.notice("Overlay service ready!")
             self.overlay_ready = True
             self._flush_pending_commands()
@@ -90,13 +101,10 @@ class Composer:
             return
 
     def _flush_pending_commands(self):
-        # TODO plz not this. engineer more 'reactive' solution w/o sleeps
-        # TODO -- falcon has an overlay ready event. use it.
-        # self.log.notice("composer taking a nap before flushing pending_commands while overlay gets rdy...")
-        # await asyncio.sleep(8)
-        # self.log.notice("composer done with nap.")
+        assert asyncio.get_event_loop().is_running(), "Event loop must be running to flush commands"
+        assert self.overlay_ready, "Overlay must be ready to flush commands"
 
-        self.log.debug("Composer flushing {} commands from queue".format(len(self.pending_commands)))
+        self.log.debugv("Composer flushing {} commands from queue".format(len(self.pending_commands)))
 
         for cmd_name, args, kwargs in self.pending_commands:
             self.log.spam("Executing pending command {} with args {} and kwargs {}".format(cmd_name, args, kwargs))

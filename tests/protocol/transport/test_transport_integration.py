@@ -36,23 +36,18 @@ class TestTransportIntegration(MPTestCase):
         """
         Tests pub/sub 1-1 (one sub one pub) with one message
         """
-        def config_sub(composer: Composer):
-            from unittest.mock import MagicMock
-
-            composer.manager.router = MagicMock()
-            return composer
-
         def assert_sub(composer: Composer):
-            from cilantro.messages.reactor.reactor_command import ReactorCommand
             from cilantro.protocol.states.decorators import StateInput
-            cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
-            composer.manager.router.route_callback.assert_called_with(cb)
+            composer.manager.router.route_callback.assert_called_with(callback=StateInput.INPUT, envelope=env, message=env.message)
 
         env = random_envelope()
 
-        sub = MPComposer(config_fn=config_sub, assert_fn=assert_sub, name='[MN1] SUB', sk=sk1)
+        sub = MPComposer(assert_fn=assert_sub, name='[MN1] SUB', sk=sk1)
         pub = MPComposer(name='[Delegate1] PUB', sk=sk2)
         pub_ip = pub.ip
+
+        # Take a nap while we wait for overlay to hookup
+        time.sleep(5)
 
         sub.add_sub(vk=vk2, filter=FILTER)
         pub.add_pub(ip=pub_ip)

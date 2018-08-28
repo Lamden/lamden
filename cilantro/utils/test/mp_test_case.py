@@ -150,7 +150,7 @@ class MPTestCase(BaseNetworkTestCase):
             fail_msg += "{0}\n".format('-' * 120)
             self.log.error(fail_msg)
             time.sleep(0.2)  # block while this message has time to log correctly
-            raise Exception()
+            raise Exception("Test(s) did not pass. See log.")
 
     def _poll_testers(self, timeout) -> tuple:
         start_msg = '\n' + '~' * 80

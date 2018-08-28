@@ -231,4 +231,5 @@ class Ironhouse:
 
     @staticmethod
     def auth_validate(vk):
-return vk in VKBook.get_all()
+        return vk in VKBook.get_all()
+
