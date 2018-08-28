@@ -39,7 +39,6 @@ class Network(object):
     def __init__(self, ksize=20, alpha=3, node_id=None, discovery_mode='neighborhood', loop=None, max_peers=64, network_port=None, public_ip=None, event_sock=None, *args, **kwargs):
         """
         Create a server instance.  This will start listening on the given port.
-
         Args:
             ksize (int): The k parameter from the paper
             alpha (int): The ALPHA parameter from the paper
@@ -124,7 +123,7 @@ class Network(object):
             log.info('Network shutting down gracefully.')
 
     def connection_drop(self, node):
-        if self.event_sock: self.event_sock.send_json({'event':'disconect', 'ip':node.ip})
+        if self.event_sock: self.event_sock.send_json({'event':'disconect', 'ip':node.ip, 'vk': self.ironhouse.pk2vk.get(node.public_key) })
         callback = ReactorCommand.create_callback(
             callback=StateInput.CONN_DROPPED,
             ip=node.ip
@@ -141,7 +140,7 @@ class Network(object):
             conn.connect(addr)
             self.poll.register(conn.fileno(), POLLIN)
             log.info("[CLIENT SIDE] Client ({}, {}) connected".format(*addr))
-            if self.event_sock: self.event_sock.send_json({'event':'connected', 'addr': addr})
+            if self.event_sock: self.event_sock.send_json({'event':'connected', 'ip': addr[0], 'vk': self.ironhouse.pk2vk.get(node.public_key)})
             return conn
         except Exception as e:
             del self.connections[conn.fileno()]
@@ -207,7 +206,6 @@ class Network(object):
     def listen(self, port=None, interface='0.0.0.0'):
         """
         Start listening on the given port.
-
         Provide interface="::" to accept ipv6 address
         """
         port = self.network_port
@@ -246,7 +244,6 @@ class Network(object):
         """
         Get a :class:`list` of (ip, port) :class:`tuple` pairs suitable for
         use as an argument to the bootstrap method.
-
         The server should have been bootstrapped
         already - this is just a utility for getting some neighbors and then
         storing them if this server is going down for a while.  When it comes
@@ -258,7 +255,6 @@ class Network(object):
     async def bootstrap(self, addrs):
         """
         Bootstrap the server by connecting to other known nodes in the network.
-
         Args:
             addrs: A `list` of (ip, port) `tuple` pairs.  Note that only IP
                    addresses are acceptable - hostnames will cause an error.
@@ -322,7 +318,6 @@ class Network(object):
         """
         Save the state of node with a given regularity to the given
         filename.
-
         Args:
             fname: File name to save retularly to
             frequency: Frequency in seconds that the state should be saved.
@@ -332,4 +327,4 @@ class Network(object):
         self.save_state_loop = self.loop.call_later(frequency,
                                                self.saveStateRegularly,
                                                fname,
-                                               frequency)
+frequency)

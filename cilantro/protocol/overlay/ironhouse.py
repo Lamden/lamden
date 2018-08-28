@@ -43,6 +43,7 @@ class Ironhouse:
         self.auth_port = auth_port or self.auth_port
         self.keyname = keyname or Ironhouse.keyname
         self.authorized_keys = {}
+        self.pk2vk = {}
         self.vk, self.public_key, self.secret = self.generate_certificates(sk, wipe_certs=wipe_certs)
 
     @classmethod
@@ -176,6 +177,7 @@ class Ironhouse:
             received_public_key = self.vk2pk(msg)
             if self.auth_validate(msg) == True and target_public_key == received_public_key:
                 self.add_public_key(received_public_key)
+                self.pk2vk[public_key] = msg
                 authorized = 'authorized'
         except Exception as e:
             log.debug('{} got no reply from {} after waiting...'.format(os.getenv('HOST_IP', '127.0.0.1'), server_url))
@@ -218,6 +220,7 @@ class Ironhouse:
                     public_key = self.vk2pk(received_vk)
                     self.add_public_key(public_key)
                     self.authorized_nodes[digest(received_vk)] = received_ip
+                    self.pk2vk[public_key] = received_vk
                     log.debug('{} sending secure reply: {}'.format(os.getenv('HOST_IP', '127.0.0.1'), self.vk))
                     log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP', '127.0.0.1'), list(self.authorized_nodes.values())))
                     self.sec_sock.send(self.vk.encode())
@@ -229,3 +232,4 @@ class Ironhouse:
     @staticmethod
     def auth_validate(vk):
         return vk in VKBook.get_all()
+

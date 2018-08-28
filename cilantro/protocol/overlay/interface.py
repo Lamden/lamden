@@ -114,6 +114,23 @@ class OverlayInterface(object):
         asyncio.ensure_future(coro())
 
     @classmethod
+    @command
+    def get_service_status(cls, *args, **kwargs): pass
+
+    @classmethod
+    def _get_service_status(cls, event_id):
+        if cls._started:
+            cls.event_sock.send_json({
+                'event': 'service_status',
+                'status': 'ready'
+            })
+        else:
+            cls.event_sock.send_json({
+                'event': 'service_status',
+                'status': 'not_ready'
+            })
+
+    @classmethod
     def overlay_event_socket(cls):
         ctx = zmq.asyncio.Context()
         socket = ctx.socket(zmq.SUB)

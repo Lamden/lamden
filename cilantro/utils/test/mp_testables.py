@@ -1,10 +1,12 @@
 from cilantro.logger import get_logger
 from cilantro.utils.test import MPTesterBase, mp_testable, God, MPTestCase
 from unittest.mock import MagicMock
-from cilantro.protocol.transport import Composer
-from cilantro.protocol.reactor import ReactorInterface
+from cilantro.protocol.transport.composer import Composer
+from cilantro.protocol.reactor.manager import ExecutorManager
 from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.nodes import Masternode, Witness, Delegate, NodeFactory
+from cilantro.protocol.overlay.interface import OverlayInterface
+from cilantro.utils.lprocess import LProcess
 from cilantro.storage.db import DB
 import asyncio
 import os
@@ -37,14 +39,16 @@ class MPComposer(MPTesterBase):
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
 
-        mock_sm = MagicMock(spec=StateMachine)
-        mock_sm.__name__ = name
+        # Start Overlay Process
+        overlay_proc = LProcess(target=OverlayInterface.start_service, args=(sk,))
+        overlay_proc.start()
+
         router = MagicMock()
+        ip = os.getenv('HOST_IP', '127.0.0.1')
+        manager = ExecutorManager(signing_key=sk, router=router, name=name, loop=loop)
+        composer = Composer(manager=manager, signing_key=sk, ip=ip, name=name)
 
-        reactor = ReactorInterface(router=router, loop=loop, signing_key=sk)
-        composer = Composer(manager=reactor, signing_key=sk)
-
-        return composer, loop, [reactor._recv_messages()]
+        return composer, loop, []
 
 
 @mp_testable(StateMachine)
