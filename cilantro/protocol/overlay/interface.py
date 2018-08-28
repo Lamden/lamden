@@ -156,4 +156,4 @@ class OverlayInterface(object):
 
     @classmethod
     def listen_for_events(cls, event_handler):
-cls.loop.run_until_complete(cls.event_listener(event_handler))
+        cls.loop.run_until_complete(cls.event_listener(event_handler))

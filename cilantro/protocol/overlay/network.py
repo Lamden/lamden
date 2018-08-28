@@ -327,4 +327,4 @@ class Network(object):
         self.save_state_loop = self.loop.call_later(frequency,
                                                self.saveStateRegularly,
                                                fname,
-frequency)
+                                               frequency)
