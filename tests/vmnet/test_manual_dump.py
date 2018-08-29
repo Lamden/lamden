@@ -79,8 +79,8 @@ class TestManualDump(BaseNetworkTestCase):
 
     @vmnet_test(run_webui=True)
     def test_dump(self):
-        log = get_logger("Dumpatron6000")
-        log.important3("DUMPATRON6000 REPORTING FOR DUTY")
+        log = get_logger("Dumpatron")
+        log.important3("DUMPATRON REPORTING FOR DUTY")
 
         # Bootstrap master
         self.execute_python('masternode', run_mn, async=True, profiling=self.PROFILE_TYPE)
@@ -94,11 +94,11 @@ class TestManualDump(BaseNetworkTestCase):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
 
         input("Press any key to begin the dump...")
-        log.important3("Dumpatron6000 dumping transactions!")
+        log.important3("Dumpatron dumping transactions!")
         self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME), async=True, profiling=self.PROFILE_TYPE)
 
         input("Press any key to initiate teardown")
-        log.important3("Dumpatron6000 initiating system teardown")
+        log.important3("Dumpatron initiating system teardown")
         God.teardown_all("http://{}".format(self.ports['masternode']['8080']))
 
 

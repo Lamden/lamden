@@ -10,8 +10,8 @@ import json
 log = get_logger("TestnetNodeBuilder")
 TESTNET_JSON_PATH = cilantro.__path__[0] + '/../' + 'testnet.json'
 
-NUM_MASTERS = 2
-NUM_WITNESSES = 4
+NUM_MASTERS = 1
+NUM_WITNESSES = 2
 NUM_DELEGATES = 4
 
 

@@ -39,6 +39,7 @@ with open(TESTNET_JSON_PATH, 'r') as f:
 _MASTERNODES = _dat_good_json['masternodes']
 _WITNESSES = _dat_good_json['witnesses']
 _DELEGATES = _dat_good_json['delegates']
+assert len(_MASTERNODES) / len(_WITNESSES) == 0, "# of witnesses must be divisible by # of masternodes"
 
 MAJORITY = math.ceil(len(_DELEGATES) * 2/3)
 
@@ -46,3 +47,9 @@ TESTNET_MASTERNODES = [{'sk': node['sk'], 'vk': node['vk']} for node in _MASTERN
 TESTNET_WITNESSES = [{'sk': node['sk'], 'vk': node['vk']} for node in _WITNESSES.values()]
 TESTNET_DELEGATES = [{'sk': node['sk'], 'vk': node['vk']} for node in _DELEGATES.values()]
 
+
+# Map of masternodes --> responsible witness set
+r = len(_WITNESSES) // len(_MASTERNODES)
+MN_WITNESS_MAP = {}
+# for i, mn_vk in enumerate(_MASTERNODES):
+    
