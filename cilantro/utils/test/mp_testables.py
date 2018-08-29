@@ -56,7 +56,7 @@ class MPComposer(MPTesterBase):
 @mp_testable(StateMachine)
 class MPStateMachine(MPTesterBase):
     @classmethod
-    def build_obj(cls, sm_class):
+    def build_obj(cls, sm_class, name=''):
         # These 2 lines are probs unnecessary
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)

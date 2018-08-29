@@ -1,6 +1,10 @@
-from cilantro.utils.test import MPTestCase, MPStateMachine
-from .stumachine import *
-import time
+from cilantro.utils.test.mp_test_case import MPTestCase
+from cilantro.utils.test.mp_testables import MPStateMachine
+import time, unittest
+try:
+    from .stumachine import *
+except:
+    from stumachine import *
 
 
 class IntegrationTestState(MPTestCase):
@@ -37,3 +41,5 @@ class IntegrationTestState(MPTestCase):
 
         self.start()
 
+if __name__ == '__main__':
+    unittest.main()
