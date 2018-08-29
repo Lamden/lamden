@@ -25,7 +25,9 @@ def command(fn):
         assert hasattr(cls, 'listener_sock'), 'You have to add an event listener first'
         if not hasattr(cls, 'cmd_send_sock'): cls._overlay_command_socket()
         event_id = uuid.uuid4().hex
+        log.critical("bout to send event")
         cls.cmd_send_sock.send_multipart(['_{}'.format(fn.__name__).encode(), event_id.encode()] + [arg.encode() for arg in args])
+        log.critical("event sent")
         return event_id
     return _command
 
@@ -119,12 +121,15 @@ class OverlayInterface(object):
 
     @classmethod
     def _get_service_status(cls, event_id):
+        log.critical("GETTING SERVICE STATUS")  # TODO delete
         if cls._started:
+            log.critical("SENDING SERVICE STATUS READY")  # TODO delete
             cls.event_sock.send_json({
                 'event': 'service_status',
                 'status': 'ready'
             })
         else:
+            log.critical("SENDING SERVICE STATUS NOT READY")  # TODO delete
             cls.event_sock.send_json({
                 'event': 'service_status',
                 'status': 'not_ready'

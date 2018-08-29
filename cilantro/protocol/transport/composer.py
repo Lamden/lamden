@@ -74,10 +74,12 @@ class Composer:
         self.log.debug("Checking overlay status")
 
         self.log.important("checking overlay status...")
+
         try:
             OverlayInterface.get_service_status()
         except Exception as e:
             self.log.critical("error checking overlay service status: {}".format(e))
+
         self.log.important("sent get_service_status() call to overlay interface!")
 
         self.log.debug("Sent get_service_status to overlay!")
