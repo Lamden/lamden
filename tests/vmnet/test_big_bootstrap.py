@@ -74,7 +74,7 @@ def dump_it(volume, delay=0):
 class TestManualDump(BaseNetworkTestCase):
 
     VOLUME = 10  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-bootstrap.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-thicc-bootstrap.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)
@@ -83,7 +83,7 @@ class TestManualDump(BaseNetworkTestCase):
         log.important3("DUMPATRON6000 REPORTING FOR DUTY")
 
         # Bootstrap master
-        self.execute_python('masternode', run_mn, async=True, profiling=self.PROFILE_TYPE)
+        self.execute_python('masternode_1', run_mn, async=True, profiling=self.PROFILE_TYPE)
 
         # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):

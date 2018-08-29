@@ -1,5 +1,7 @@
 from cilantro.logger import get_logger
-from cilantro.utils.test import MPTesterBase, mp_testable, God, MPTestCase
+from cilantro.utils.test.mp_test_case import MPTestCase
+from cilantro.utils.test.mp_test import MPTesterBase, mp_testable
+from cilantro.utils.test.god import God
 from unittest.mock import MagicMock
 from cilantro.protocol.transport.composer import Composer
 from cilantro.protocol.reactor.manager import ExecutorManager
