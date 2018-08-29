@@ -15,13 +15,13 @@ NUM_WITNESSES = 2
 NUM_DELEGATES = 4
 
 
-def _build_nodes(num_nodes=64, prefix='node') -> dict:
-    nodes = {}
+def _build_nodes(num_nodes=64, prefix='node') -> list:
+    nodes = []
 
     for i in range(num_nodes):
-        name = "{}_{}".format(prefix, i + 1)
+        # name = "{}_{}".format(prefix, i + 1)
         sk, vk = wallet.new()
-        nodes[name] = {'sk': sk, 'vk': vk}
+        nodes.append({'sk': sk, 'vk': vk})
 
     return nodes
 

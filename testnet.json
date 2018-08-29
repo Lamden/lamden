@@ -1,48 +1,36 @@
 {
-    "masternodes": {
-        "masternode_1": {
-            "sk": "c94042193c74e37e0392c149ac577e44d0fba23ef350ba79952df447f59b9e56",
-            "vk": "a9f6f027554b9ed7b115e07c938a000f6aed566ea336845ca5fc15728256afc8"
-        },
-        "masternode_2": {
-            "sk": "5dc80afbe21b580878a81afead012fa19883c5c1d6821ece7613198a6800a158",
-            "vk": "f7b30acae5e2d461f6b773e0fdbb9d1dd3114a01bc2e684d6633802cb30d52a5"
+    "masternodes": [
+        {
+            "sk": "c62212982a97947da16df71df30589547e49bdc93ce45f04455565694d997efc",
+            "vk": "7fed90e37de48736901a3640eda2a2e5837ba23b8dc5993f1bd04733b8e23ca9"
         }
-    },
-    "witnesses": {
-        "witness_1": {
-            "sk": "6a019a4d0b630072f2c47e7d7e94fe6289851c98d60d94b3d636eb55f17f1166",
-            "vk": "f12682d3e2bc93eb88cbd6fa277aff42bf64048743d3d5662b5e040b22aab0d4"
+    ],
+    "witnesses": [
+        {
+            "sk": "94a595ff1b0443a9ff44e0538cab44fb6ffec4a19b85ed6dd104b344402f4d16",
+            "vk": "5ee1f247087d72716e71e27486327242a158836e1668f20ed8d2f59624983d21"
         },
-        "witness_2": {
-            "sk": "1c72193b30239a6a127a9f1020defc1e6390061b1286c99cafe219116a0248cc",
-            "vk": "a4fe2f544db350259f9448e3b9828843dd96d1e165c537da71255f291dc779c1"
-        },
-        "witness_3": {
-            "sk": "ca33a2a8a36a05e8d8093711649f4473fe56e94c7ef4e1f4e84cc081d83cd4d5",
-            "vk": "59503e11d490098092689ebe5f564b43da2697a3ad5145f910c0dc8017153321"
-        },
-        "witness_4": {
-            "sk": "2e63e6417c45e639810df72319826a2c56231c3cad0676c02e2f7a5b9ffed721",
-            "vk": "d60cd04f7b2d2fc67a6292e39d59611117b40e5daa6c09e6950dd3398a9d72f3"
+        {
+            "sk": "bab6eb6f61a2543e7f59380e5867e7017006d412ab3d94464409bdbdc142371a",
+            "vk": "9e7afde728aa8f96f2ec8241d081c13682855e3612dc825d4816a336c384f1ff"
         }
-    },
-    "delegates": {
-        "delegate_1": {
-            "sk": "c082b8ad1733f420d73812c0cf612bfba6a7132c562005e2d2ee335d9a606923",
-            "vk": "fde19b4687a75f458f8a7290919446c0dbd2c64ee662eab820b3b0f259ef1932"
+    ],
+    "delegates": [
+        {
+            "sk": "da5c615983757b810cac63e00b925bfef5e0a0b66535a84d31ce8ca64bd5aa60",
+            "vk": "18f0066a9a6e583b9d1ea850191e999ee16cde083a64083da3549b7ce3291fcc"
         },
-        "delegate_2": {
-            "sk": "578444d98ea8e15e58ac4ae7536c423bc806323627292591785f82d613eb6c8d",
-            "vk": "9bdb5dadef991fc3021090877553c2e12cfa582a03ea774e01336ff8f4939713"
+        {
+            "sk": "cdb9da571303e9d80f9abde6743cee73fbbb5b0f30f39ad6044a5c6f60636b43",
+            "vk": "cf59a8b6ee38e12a11e83f211833d76891b16794bc6fae015bb8e63791ba7337"
         },
-        "delegate_3": {
-            "sk": "af2e1391146853d89104ba80760777014608fc4a5bebeb2f38dab0a7419de609",
-            "vk": "3caf7e8137f6d9d6e40bd5e4b333484bd0824a06b0758dc7090320dccca3302b"
+        {
+            "sk": "1e38091fce89148dda9e0565794f798d67491ab229d8324202a742bb21a781e9",
+            "vk": "69637c1fb24643480907fdebb7617b1d35983b0fa24c54772731a0c630ae25c4"
         },
-        "delegate_4": {
-            "sk": "a327027862d2b8ba7e354aef1406ecbe41a7f3670273ab138356d8984c595b62",
-            "vk": "493138365aab9b5d197904638f4ddc6007c60231be6c3644da4eab312e51b205"
+        {
+            "sk": "b29e4ae53057fd191bf1e741d8d64d27fffc2e2e9558f5e6f4e0088ab20b4125",
+            "vk": "0259fdd5eb2c716c93937250bf7c2ea97d62241d957ec5e514b4159b13831338"
         }
-    }
+    ]
 }
