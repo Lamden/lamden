@@ -23,7 +23,7 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         """
         pass
 
-    def __init__(self, ip: str, signing_key: str, name='', *args, **kwargs):
+    def __init__(self, ip: str, signing_key: str, name=None, *args, **kwargs):
         """
         IMPORTANT: This should not be overridden by subclasses. Instead, override the setup() method.
 
@@ -34,7 +34,8 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         """
         assert len(args) == 0, "Worker cannot be constructed with args. Only key word args are supported."
 
-        self.name = name or type(self).__name__
+        name = name or type(self).__name__
+        self.name = name
         self.signing_key = signing_key
         self.ip = ip
         self.verifying_key = wallet.get_vk(self.signing_key)
@@ -45,7 +46,6 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         # forever (which would block the setup code upon calling 'super().__init__(..)' in the subclass)
         # TODO this pattern is questionable. Perhaps args/kwargs should be passed into setup(...)?  --davis
         for k, v in kwargs.items():
-            self.log.important("setting k {} to v {}".format(k, v))
             setattr(self, k, v)
 
         self._router = Router(get_handler_func=lambda: self, name=name)

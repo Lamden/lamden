@@ -1,6 +1,7 @@
 from cilantro.nodes import NodeBase
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, WITNESS_DELEGATE_FILTER
 from cilantro.constants.ports import MN_TX_PUB_PORT
+from cilantro.constants.testnet import *
 
 from cilantro.protocol.states.state import State
 from cilantro.protocol.states.decorators import input, enter_from_any, input_connection_dropped
@@ -59,19 +60,18 @@ class WitnessBootState(WitnessBaseState):
 
     @enter_from_any
     def enter(self, prev_state):
+        assert self.parent.verifying_key in WITNESS_MN_MAP, "Witness has vk {} that is not in WITNESS_MN_MAP {}!"\
+            .format(self.parent.verifying_key, WITNESS_MN_MAP)
 
-        # Sub to Masternodes
-        for mn_vk in VKBook.get_masternodes():
-            self.log.debug("Subscribes to MN with vk: {}".format(mn_vk))
-            self.parent.composer.add_sub(filter=WITNESS_MASTERNODE_FILTER, vk=mn_vk, port=MN_TX_PUB_PORT)
+        # Sub to assigned Masternode
+        mn_vk = WITNESS_MN_MAP[self.parent.verifying_key]
+        self.log.notice("Witness with vk {} subscribing to masternode with vk {}".format(self.parent.verifying_key, mn_vk))
+        self.parent.composer.add_sub(filter=WITNESS_MASTERNODE_FILTER, vk=mn_vk, port=MN_TX_PUB_PORT)
 
         # Create publisher socket
         self.parent.composer.add_pub(ip=self.parent.ip)
 
         # Once done setting up sockets, transition to RunState
-        self.parent.transition(WitnessRunState)
-
-    def run(self):
         self.parent.transition(WitnessRunState)
 
 

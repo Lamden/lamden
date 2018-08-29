@@ -3,7 +3,7 @@
         {
             "name": "masternode",
             "image": "cilantro_base.dev",
-            "count": 2,
+            "count": 1,
             "ports": [
                 10200, 8080, 4319
             ]
@@ -11,7 +11,7 @@
         {
             "name": "witness",
             "image": "cilantro_base.dev",
-            "count": 4,
+            "count": 2,
             "ports": [
                 10200, 8080, 4319
             ]

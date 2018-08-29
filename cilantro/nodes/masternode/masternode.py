@@ -252,7 +252,7 @@ class MNRunState(MNBaseState):
     @enter_from_any
     def enter_any(self):
         # Create and start web server
-        self.log.notice("Masternode creating REST server on port 8080")
+        self.log.debug("Masternode creating REST server on port 8080")
         self.parent.tx_queue = q = Queue()
         self.parent.server = LProcess(target=start_webserver, args=(q,))
         self.parent.server.start()

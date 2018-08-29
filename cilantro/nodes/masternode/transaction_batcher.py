@@ -14,6 +14,10 @@ class TransactionBatcher(Worker):
         self.composer.add_pub(ip=self.ip, port=MN_TX_PUB_PORT)
         asyncio.ensure_future(self.compose_transactions())
 
+        # DEBUG TODO DELETE
+        self.log.important3("TX BATCHER SETUP DONE!")
+        # END DEBUG
+
     async def compose_transactions(self):
         self.log.important("Starting TransactionBatcher with a batch interval of {} seconds".format(BATCH_INTERVAL))
         self.log.info("Current queue size is {}".format(self.queue.qsize()))

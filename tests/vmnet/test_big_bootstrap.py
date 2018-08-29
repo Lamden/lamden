@@ -83,7 +83,7 @@ class TestBigDump(BaseNetworkTestCase):
         log.important3("DUMPATRON REPORTING FOR DUTY")
 
         # Bootstrap master
-        self.execute_python('masternode_1', run_mn, async=True, profiling=self.PROFILE_TYPE)
+        self.execute_python('masternode', run_mn, async=True, profiling=self.PROFILE_TYPE)
 
         # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):

@@ -33,6 +33,7 @@
 import json, math
 from cilantro.utils.test.testnet_nodes import TESTNET_JSON_PATH
 
+
 with open(TESTNET_JSON_PATH, 'r') as f:
     _dat_good_json = json.load(f)
 
@@ -48,10 +49,10 @@ TESTNET_MASTERNODES = [{'sk': node['sk'], 'vk': node['vk']} for node in _MASTERN
 TESTNET_WITNESSES = [{'sk': node['sk'], 'vk': node['vk']} for node in _WITNESSES]
 TESTNET_DELEGATES = [{'sk': node['sk'], 'vk': node['vk']} for node in _DELEGATES]
 
-# Map of masternodes --> responsible witness set
-r = len(_WITNESSES) // len(_MASTERNODES)
-MN_WITNESS_MAP = {}
-WITNESS_MN_MAP = {}
+r = len(_WITNESSES) // len(_MASTERNODES)  # replication factor
+MN_WITNESS_MAP = {}  # Map of masternodes --> responsible witness set
+WITNESS_MN_MAP = {}  # inverse of map above
+
 for i, mn in enumerate(_MASTERNODES):
     mn_vk = mn['vk']
     witnesses = [node['vk'] for node in _WITNESSES[i*r:i*r+r]]

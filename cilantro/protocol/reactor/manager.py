@@ -19,7 +19,7 @@ class ExecutorManager:
 
     def start(self):
         try:
-            self.log.notice("Starting event loop")
+            self.log.info("Starting event loop")
             self.loop.run_forever()
         except Exception as e:
             self.log.fatal("Exception running main event loop... error:\n{}\n".format(e))
