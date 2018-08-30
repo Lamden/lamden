@@ -57,6 +57,15 @@ jobs:
             - "/usr/local/lib/python3.6/site-packages"
 
       - run:
+          name: Check for Custom Seneca Branch Injected by REST API
+          command: |
+            if [ -z "$SENECA_BRANCH" ]; then
+              echo "SENECA_BRANCH is set to {$SENECA_BRANCH}"
+            else
+              echo "$SENECA_BRANCH env variable is not set"
+            fi
+
+      - run:
           name: Wait For mysqld
           command: |
             dockerize -wait tcp://localhost:3306 -timeout 1m

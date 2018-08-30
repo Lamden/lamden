@@ -37,7 +37,7 @@ def trigger_build(project='cilantro', org='lamden', branch='master', env_vars: d
     url = "https://circleci.com/api/v1.1/project/github/{org}/{project}/tree/{branch}?circle-token={token}"\
         .format(org=org, project=project, branch=branch, token=API_TOKEN)
 
-    r = requests.post(url, data=env_vars)
+    r = requests.post(url, data={'build_parameters': env_vars})
     json_reply = json.loads(r.content.decode('utf-8'))
     return json_reply['build_num']
 
@@ -56,4 +56,4 @@ if __name__ == '__main__':
     # _get_build_status(662)
     # print(check_build_success(675))
     # poll_for_build(675, max_time=12, poll_freq=4)
-    trigger_and_wait_for_build(max_time=20, poll_freq=5)
+    trigger_and_wait_for_build(max_time=20, poll_freq=5, branch='dev2-delegate-block-manager', env_vars={'SENECA_BRANCH': '644f27b2dff1c310d81f409d96121d80e48745a8'})
