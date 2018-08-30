@@ -18,8 +18,8 @@ jobs:
       - run:
           name: Install Cilantro Requirements
           command: |
-             pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
-             pip install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
+             pip3 install -r requirements.txt --upgrade --no-cache-dir --exists-action w
+             pip3 install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
 
       - run:
           name: Install Mysql Client
@@ -64,6 +64,7 @@ jobs:
             else
               echo "SENECA_BRANCH is set to $SENECA_BRANCH"
               pip3 install git+https://github.com/Lamden/seneca.git@$SENECA_BRANCH#egg=seneca --no-cache-dir --upgrade
+              export SENECA_BRANCH=''
             fi
 
       - run:

@@ -26,4 +26,4 @@ docker
 dill
 
 -e git://github.com/Lamden/vmnet.git#egg=vmnet
--e git://github.com/Lamden/seneca.git@644f27b2dff1c310d81f409d96121d80e48745a8#egg=seneca
+-e git://github.com/Lamden/seneca.git#egg=seneca
