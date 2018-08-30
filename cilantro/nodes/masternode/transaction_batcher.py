@@ -11,8 +11,8 @@ import asyncio
 class TransactionBatcher(Worker):
 
     def setup(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # loop = asyncio.new_event_loop()
+        # asyncio.set_event_loop(loop)
         self.composer.add_pub(ip=self.ip, port=MN_TX_PUB_PORT)
         asyncio.ensure_future(self.compose_transactions())
 
