@@ -11,6 +11,8 @@ import asyncio
 class TransactionBatcher(Worker):
 
     def setup(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         self.composer.add_pub(ip=self.ip, port=MN_TX_PUB_PORT)
         asyncio.ensure_future(self.compose_transactions())
 
@@ -27,10 +29,9 @@ class TransactionBatcher(Worker):
             await asyncio.sleep(BATCH_INTERVAL)
 
             self.log.debug("Sending {} transactions in batch".format(self.queue.qsize()))
-            for _ in range(self.queue.qsize()):
-                tx = self.queue.get()
+            # for _ in range(self.queue.qsize()):
+            tx = self.queue.get()
 
-                oc = OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key)
-                self.log.spam("masternode about to publish transaction from sender {}".format(tx.sender))
-                self.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc, port=MN_TX_PUB_PORT)
-
+            oc = OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key)
+            self.log.spam("masternode about to publish transaction from sender {}".format(tx.sender))
+            self.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc, port=MN_TX_PUB_PORT)

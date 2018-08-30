@@ -4,7 +4,7 @@ from cilantro.constants.ports import MN_TX_PUB_PORT
 from cilantro.constants.testnet import *
 
 from cilantro.protocol.states.state import State
-from cilantro.protocol.states.decorators import input, enter_from_any, input_connection_dropped
+from cilantro.protocol.states.decorators import input, enter_from_any, input_connection_dropped, input_socket_connected
 
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.envelope.envelope import Envelope
@@ -34,6 +34,23 @@ class WitnessBaseState(State):
         # TODO - make sure this is secure (from a KillSignal)
         self.log.important("Node got received remote kill signal from network!")
         self.parent.teardown()
+
+    @input_socket_connected
+    def socket_connected(self, socket_type: int, vk: str, url: str):
+        if not hasattr(self, 'connected_masternodes'):
+            self.connected_masternodes = set()
+            self.connected_delegates = set()
+        assert vk in VKBook.get_all(), "Connected to vk {} that is not present in VKBook.get_all()!!!".format(vk)
+        key = vk + '_' + str(socket_type)
+        self.log.spam("Delegate connected to vk {} with sock type {}".format(vk, socket_type))
+
+        # TODO make less ugly pls
+        if vk in VKBook.get_delegates():
+            self.connected_delegates.add(key)
+        elif vk in VKBook.get_masternodes():
+            self.connected_masternodes.add(key)
+
+        self.parent.transition(WitnessBootState)
 
     @input_connection_dropped
     def conn_dropped(self, vk, ip):

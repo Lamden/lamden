@@ -92,14 +92,14 @@ class OverlayInterface(object):
     def get_node_from_vk(cls, *args, **kwargs): pass
 
     @classmethod
-    def _get_node_from_vk(cls, event_id, vk: str, timeout=3):
+    def _get_node_from_vk(cls, event_id, vk: str, timeout=5):
         async def coro():
             node = None
             if vk in VKBook.get_all():
                 try:
                     node, cached = await asyncio.wait_for(cls.dht.network.lookup_ip(vk), timeout)
                 except:
-                    log.notice('Did not find an ip for VK {}'.format(vk))
+                    log.notice('Did not find an ip for VK {} in {}s'.format(vk, timeout))
             if node:
                 cls.event_sock.send_json({
                     'event': 'got_ip',

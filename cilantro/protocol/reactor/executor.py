@@ -67,7 +67,6 @@ class Executor(metaclass=ExecutorMeta):
         self.log.socket("--- Starting recv on socket {} with callback_fn {} ---".format(socket, callback_fn))
         while True:
             self.log.spam("waiting for multipart msg...")
-
             try:
                 msg = await socket.recv_multipart()
             except asyncio.CancelledError:

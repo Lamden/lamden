@@ -57,4 +57,3 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
 
         self.log.notice("Starting Worker named {}".format(name))
         self._manager.start()  # This starts the event loop and blocks this process indefinitely
-
