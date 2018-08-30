@@ -62,7 +62,7 @@ jobs:
             if [ -z "$SENECA_BRANCH" ]; then
               echo "SENECA_BRANCH env variable is not set"
             else
-              echo "SENECA_BRANCH is set to {$SENECA_BRANCH}"
+              echo "SENECA_BRANCH is set to $SENECA_BRANCH"
               pip3 install git+https://github.com/Lamden/seneca.git@$SENECA_BRANCH#egg=seneca --no-cache-dir --upgrade
             fi
 
