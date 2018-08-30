@@ -1,4 +1,4 @@
-import os, requests, json, time
+import os, requests, json, time, argparse
 
 
 API_TOKEN = os.getenv("CIRCLE_TOKEN")
@@ -51,9 +51,14 @@ def _get_build_status(build_num: int, project='cilantro', org='lamden') -> dict:
 
 
 if __name__ == '__main__':
-    # build_num = trigger_build('cilantro')
-    # broken is 675, working is 662
-    # _get_build_status(662)
-    # print(check_build_success(675))
-    # poll_for_build(675, max_time=12, poll_freq=4)
-    trigger_and_wait_for_build(max_time=20, poll_freq=5, branch='dev2-delegate-block-manager', env_vars={'SENECA_BRANCH': '644f27b2dff1c310d81f409d96121d80e48745a8'})
+    args = argparse.ArgumentParser()
+
+    args.add_argument('--cilantro_branch', nargs='?', type=str, default='master')
+    args.add_argument('--seneca_branch', nargs='?', type=str, default='master')
+    args.add_argument('--max_wait', nargs='?', type=int, default=300)
+    args.add_argument('--poll_freq', nargs='?', type=int, default=8)
+
+    cli_args = args.parse_args()
+    trigger_and_wait_for_build(max_time=cli_args.max_wait, poll_freq=cli_args.poll_freq, branch=cli_args.cilantro_branch,
+                               env_vars={'SENECA_BRANCH': cli_args.seneca_branch})
+
