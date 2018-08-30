@@ -37,7 +37,7 @@ def trigger_build(project='cilantro', org='lamden', branch='master', env_vars: d
     url = "https://circleci.com/api/v1.1/project/github/{org}/{project}/tree/{branch}?circle-token={token}"\
         .format(org=org, project=project, branch=branch, token=API_TOKEN)
 
-    r = requests.post(url, data={'build_parameters': env_vars})
+    r = requests.post(url, json={'build_parameters': env_vars})
     json_reply = json.loads(r.content.decode('utf-8'))
     return json_reply['build_num']
 
