@@ -17,7 +17,7 @@ class TestInterface(TestCase):
             self.assertTrue(OverlayInterface.event_sock.closed)
             self.assertIsInstance(OverlayInterface.cmd_sock, zmq.Socket)
             self.assertIsInstance(OverlayInterface.event_sock, zmq.Socket)
-            OverlayInterface.loop.call_soon_threadsafe(OverlayInterface.loop.stop)
+            OverlayInterface.client_loop.call_soon_threadsafe(OverlayInterface.client_loop.stop)
 
         t = Timer(5, _stop)
         t.start()
@@ -30,7 +30,7 @@ class TestInterface(TestCase):
             time.sleep(0.1)
             p.terminate()
             OverlayInterface.stop_service()
-            OverlayInterface.loop.call_soon_threadsafe(OverlayInterface.loop.stop)
+            OverlayInterface.client_loop.call_soon_threadsafe(OverlayInterface.client_loop.stop)
 
         def _send_msg():
             def _e_handler(e):
@@ -68,7 +68,7 @@ class TestInterface(TestCase):
             time.sleep(0.1)
             p.terminate()
             OverlayInterface.stop_service()
-            OverlayInterface.loop.call_soon_threadsafe(OverlayInterface.loop.stop)
+            OverlayInterface.client_loop.call_soon_threadsafe(OverlayInterface.client_loop.stop)
 
         def _send_msg():
             def _e_handler(e):
