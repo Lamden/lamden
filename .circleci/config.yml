@@ -64,6 +64,7 @@ jobs:
             else
               echo "SENECA_BRANCH is set to $SENECA_BRANCH"
               pip3 install git+https://github.com/Lamden/seneca.git@$SENECA_BRANCH#egg=seneca --no-cache-dir --upgrade
+              export SENECA_BRANCH=''
             fi
 
       - run:
