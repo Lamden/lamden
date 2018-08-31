@@ -16,13 +16,13 @@ def command(fn):
 
 
 class OverlayServer(object):
-    def __init__(self, sk, loop=None, ctx=None, block=True):
+    def __init__(self, sk, loop=None, block=True):
         self.log = get_logger(type(self).__name__)
         self._started = False
 
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.ctx = ctx or zmq.asyncio.Context()
+        self.ctx = zmq.asyncio.Context()
 
         self.evt_sock = self.ctx.socket(zmq.PUB)
         self.evt_sock.bind(event_url)
@@ -95,17 +95,17 @@ class OverlayServer(object):
             try: self.fut.set_result('done')
             except: self.fut.cancel()
             self.dht.cleanup()
-            self.log.info('Service stopped.')
+            self.log.notice('Overlay service stopped.')
         except:
             pass
 
 
 class OverlayClient(object):
-    def __init__(self, event_handler, loop, ctx, block=False):
+    def __init__(self, event_handler, loop=None, ctx=None, block=False):
         self.log = get_logger(type(self).__name__)
 
-        self.loop = loop
-        self.ctx = ctx
+        self.loop = loop or asyncio.get_event_loop()
+        self.ctx = ctx or zmq.asyncio.Context.instance()
 
         self.cmd_sock = self.ctx.socket(socket_type=zmq.DEALER)
         self.cmd_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
