@@ -1,7 +1,7 @@
 from cilantro.logger import get_logger
 from cilantro.protocol.transport import Composer
 from cilantro.protocol.states.statemachine import StateMachine
-from cilantro.protocol.overlay.interface import OverlayInterface
+from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
 from cilantro.utils.lprocess import LProcess
 
 import asyncio
@@ -26,12 +26,16 @@ class NodeBase(StateMachine):
         asyncio.set_event_loop(loop)
 
         self.log.notice("Starting overlay service")
-        self.overlay_proc = LProcess(target=OverlayInterface.start_service, args=(signing_key,))
+        self.overlay_proc = LProcess(target=self.start_overlay_server, args=(signing_key,))
         self.overlay_proc.start()
 
         self._composer = None
 
         self.tasks = []
+
+    @staticmethod
+    def start_overlay_server(signing_key):
+        server = OverlayServer(sk=signing_key)
 
     def start(self, start_loop=True):
         """

@@ -13,49 +13,70 @@ def wrap_func(fn, *args, **kwargs):
 
 def run_mn():
     from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.interface import OverlayInterface
+    from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
+    from multiprocessing import Process
     import os, time
 
     log = get_logger(__name__)
     def event_handler(e):
         log.critical('{}: {}'.format(os.getenv('HOST_IP'), e))
 
+    def server_proc():
+        OverlayServer(sk=m_info['sk'])
+
     m_info = TESTNET_MASTERNODES[0]
     m_info['ip'] = os.getenv('HOST_IP')
 
-    OverlayInterface.start_service(sk=m_info['sk'])
-    OverlayInterface.listen_for_events(event_handler)
+    s = Process(target=server_proc)
+    s.start()
+    client = OverlayClient(event_handler, block=True)
+
 
 def run_witness(slot_num):
     from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.interface import OverlayInterface
+    from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
+    from multiprocessing import Process
     import os
 
     log = get_logger(__name__)
     def event_handler(e):
         log.critical('{}: {}'.format(os.getenv('HOST_IP'), e))
 
+    def server_proc():
+        OverlayServer(sk=w_info['sk'])
+
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
-    OverlayInterface.start_service(sk=w_info['sk'])
-    OverlayInterface.listen_for_events(event_handler)
-
+    s = Process(target=server_proc)
+    s.start()
+    client = OverlayClient(event_handler, block=True)
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.interface import OverlayInterface
-    import os
+    from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
+    from multiprocessing import Process
+    import os, asyncio
 
     log = get_logger("DELEGATE FACTORY")
     def event_handler(e):
         log.critical('{}: {}'.format(os.getenv('HOST_IP'), e))
 
+    def server_proc():
+        OverlayServer(sk=d_info['sk'])
+
+    async def send_cmd(cli):
+        await asyncio.sleep(15)
+        cli.get_node_from_vk(d_info['vk'])
+
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
-    OverlayInterface.start_service(sk=d_info['sk'])
-    OverlayInterface.listen_for_events(event_handler)
+    s = Process(target=server_proc)
+    s.start()
+    client = OverlayClient(event_handler, block=False)
+    asyncio.ensure_future(send_cmd(client))
+    client.loop.run_forever()
 
 class TestOverlayInterface(BaseNetworkTestCase):
     config_file = '../../vmnet_configs/cilantro-bootstrap.json'
