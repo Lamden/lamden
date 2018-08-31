@@ -108,14 +108,10 @@ class OverlayServer(object):
 
 
 class OverlayClient(object):
-    def __init__(self, event_handler, loop, ctx, block=False):
+    def __init__(self, event_handler, loop=None, ctx=None, block=False):
 
-        self.loop = loop
-        self.ctx = ctx
-
-        # DEBUG TODO DELETE
-        log.important3("OverlayClient using loop {} and context {}".format(self.loop, self.ctx))
-        # END DEBUG
+        self.loop = loop or asyncio.get_event_loop()
+        self.ctx = ctx or zmq.asyncio.Context()
 
         self.cmd_sock = self.ctx.socket(socket_type=zmq.DEALER)
         self.cmd_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
