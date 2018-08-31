@@ -124,12 +124,10 @@ class OverlayClient(object):
     def get_service_status(self, *args, **kwargs): pass
 
     async def event_listener(self, event_handler):
-        log.important('Listening for overlay events over {}'.format(event_url))  # TODO remove
         log.info('Listening for overlay events over {}'.format(event_url))
         while True:
             try:
                 msg = await self.evt_sock.recv_json()
-                log.important(msg)
                 event_handler(msg)
             except Exception as e:
                 log.warning(e)
