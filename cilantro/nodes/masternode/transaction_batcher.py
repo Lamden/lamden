@@ -33,4 +33,3 @@ class TransactionBatcher(Worker):
                 oc = OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key)
                 self.log.spam("masternode about to publish transaction from sender {}".format(tx.sender))
                 self.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc, port=MN_TX_PUB_PORT)
-

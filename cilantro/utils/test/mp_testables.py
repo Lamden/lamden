@@ -7,7 +7,7 @@ from cilantro.protocol.transport.composer import Composer
 from cilantro.protocol.reactor.manager import ExecutorManager
 from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.nodes import Masternode, Witness, Delegate, NodeFactory
-from cilantro.protocol.overlay.interface import OverlayInterface
+from cilantro.protocol.overlay.interface import OverlayClient, OverlayServer
 from cilantro.utils.lprocess import LProcess
 from cilantro.storage.db import DB
 import asyncio
@@ -28,7 +28,7 @@ def _build_node(signing_key, name='', node_cls=None) -> tuple:
 
     node = NodeFactory._build_node(loop=loop, signing_key=signing_key, ip=ip, node_cls=node_cls, name=name)
     node.start(start_loop=False)
-    
+
     tasks = node.tasks + [node.composer.interface._recv_messages()]
 
     return node, loop, tasks
@@ -42,7 +42,7 @@ class MPComposer(MPTesterBase):
         asyncio.set_event_loop(loop)
 
         # Start Overlay Process
-        overlay_proc = LProcess(target=OverlayInterface.start_service, args=(sk,))
+        overlay_proc = LProcess(target=self.start_overlay_server, args=(sk,))
         overlay_proc.start()
 
         router = MagicMock()
@@ -51,6 +51,10 @@ class MPComposer(MPTesterBase):
         composer = Composer(manager=manager, signing_key=sk, ip=ip, name=name)
 
         return composer, loop, []
+
+    @staticmethod
+    def start_overlay_server(sk):
+        server = OverlayServer(sk)
 
 
 @mp_testable(StateMachine)
@@ -106,4 +110,3 @@ class MPDelegate(MPTesterBase):
     @classmethod
     def build_obj(cls, signing_key, name='Delegate') -> tuple:
         return _build_node(signing_key=signing_key, name=name, node_cls=Delegate)
-

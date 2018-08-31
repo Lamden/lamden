@@ -5,103 +5,60 @@ from cilantro.storage.db import VKBook
 from cilantro.logger.base import get_logger
 
 log = get_logger(__name__)
-
-# ip_vk_map = {
-#     '82540bb5a9c84162214c5540d6e43be49bbfe19cf49685660cab608998a65144': '172.29.5.0',  # Masternode 1
-#     '0e669c219a29f54c8ba4293a5a3df4371f5694b761a0a50a26bf5b50d5a76974': '172.29.5.1',  # Witness 1
-#     '50869c7ee2536d65c0e4ef058b50682cac4ba8a5aff36718beac517805e9c2c0': '172.29.5.2',  # Witness 2
-#     '3dd5291906dca320ab4032683d97f5aa285b6491e59bba25c958fc4b0de2efc8': '172.29.5.3',  # Delegate 1 (aka delegate_3)
-#     'ab59a17868980051cc846804e49c154829511380c119926549595bf4b48e2f85': '172.29.5.4',  # Delegate 2 (aka delegate_4)
-#     '0c998fa1b2675d76372897a7d9b18d4c1fbe285dc0cc795a50e4aad613709baf': '172.29.5.5',  # Delegate 3 (aka delegate_5)
-# }
-#
-# # TODO delete this
-# nodemap = {'masternode': '172.29.5.0', 'witness_1': '172.29.5.1', 'witness_2': '172.29.5.2',
-#  'delegate_3': '172.29.5.3', 'delegate_4': '172.29.5.4', 'delegate_5': '172.29.5.5',
-#  'mgmt': '172.29.5.6'}
+event_url = 'ipc://overlay-event-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
+cmd_url = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
 
 def command(fn):
-    def _command(cls, *args, **kwargs):
-        assert hasattr(cls, 'listener_sock'), 'You have to add an event listener first'
-        if not hasattr(cls, 'cmd_send_sock'): cls._overlay_command_socket()
+    def _command(self, *args, **kwargs):
         event_id = uuid.uuid4().hex
         log.critical("bout to send event")
-        cls.cmd_send_sock.send_multipart(['_{}'.format(fn.__name__).encode(), event_id.encode()] + [arg.encode() for arg in args])
+        self.cmd_sock.send_multipart(['_{}'.format(fn.__name__).encode(), event_id.encode()] + [arg.encode() for arg in args])
         log.critical("event sent")
         return event_id
     return _command
 
-class OverlayInterface(object):
-    """
-    This class provides a high level API to interface with the overlay network
-    """
+class OverlayServer(object):
+    def __init__(self, sk, loop=None, ctx=None, block=True):
+        self._started = False
 
-    event_url = 'ipc://overlay-event-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
-    cmd_url = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
-    loop = asyncio.new_event_loop()
-    _started = False
+        self.loop = loop or asyncio.get_event_loop()
+        self.ctx = ctx or zmq.asyncio.Context()
 
-    @classmethod
-    def start_service(cls, sk):
-        ctx = zmq.asyncio.Context()
-        cls.event_sock = ctx.socket(zmq.PUB)
-        cls.event_sock.bind(cls.event_url)
-        cls.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
-        cls.dht = DHT(sk=sk, mode=cls.discovery_mode, loop=cls.loop,
-                  alpha=ALPHA, ksize=KSIZE, event_sock=cls.event_sock,
+        self.evt_sock = self.ctx.socket(zmq.PUB)
+        self.evt_sock.bind(event_url)
+        self.cmd_sock = self.ctx.socket(zmq.ROUTER)
+        self.cmd_sock.bind(cmd_url)
+
+        self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
+        self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
+                  alpha=ALPHA, ksize=KSIZE, event_sock=self.evt_sock,
                   max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
-        cls._started = True
-        cls.listener_fut = asyncio.ensure_future(cls._listen_for_cmds())
-        cls.event_sock.send_json({ 'event': 'service_started' })
-        cls.loop.run_forever()
 
-    @classmethod
-    def stop_service(cls):
-        try:
-            cls._started = False
-            cls.event_sock.close()
-            cls.cmd_sock.close()
-            try: cls.listener_fut.set_result('done')
-            except: cls.listener_fut.cancel()
-            cls.dht.cleanup()
-            log.info('Service stopped.')
-        except:
-            pass
+        self.fut = asyncio.ensure_future(self.command_listener())
+        self._started = True
+        self.evt_sock.send_json({ 'event': 'service_started' })
 
-    @classmethod
-    async def _listen_for_cmds(cls):
-        log.info('Listening for overlay commands over {}'.format(cls.cmd_url))
-        ctx = zmq.asyncio.Context()
-        cls.cmd_sock = ctx.socket(zmq.ROUTER)
-        cls.cmd_sock.bind(cls.cmd_url)
+        if block:
+            self.loop.run_forever()
+
+    async def command_listener(self):
+        log.info('Listening for overlay commands over {}'.format(cmd_url))
         while True:
-            msg = await cls.cmd_sock.recv_multipart()
+            msg = await self.cmd_sock.recv_multipart()
             log.debug('[Overlay] Received cmd (Proc={}): {}'.format(msg[0], msg[1:]))
             data = [b.decode() for b in msg[2:]]
-            getattr(cls, msg[1].decode())(*data)
+            getattr(self, msg[1].decode())(*data)
 
-    @classmethod
-    def _overlay_command_socket(cls):
-        ctx = zmq.asyncio.Context()
-        cls.cmd_send_sock = ctx.socket(zmq.DEALER)
-        cls.cmd_send_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
-        cls.cmd_send_sock.connect(cls.cmd_url)
-
-    @classmethod
-    @command
-    def get_node_from_vk(cls, *args, **kwargs): pass
-
-    @classmethod
-    def _get_node_from_vk(cls, event_id, vk: str, timeout=3):
+    def _get_node_from_vk(self, event_id, vk: str, timeout=5):
         async def coro():
             node = None
             if vk in VKBook.get_all():
                 try:
-                    node, cached = await asyncio.wait_for(cls.dht.network.lookup_ip(vk), timeout)
+                    node, cached = await asyncio.wait_for(self.dht.network.lookup_ip(vk), timeout)
                 except:
-                    log.notice('Did not find an ip for VK {}'.format(vk))
+                    log.notice('Did not find an ip for VK {} in {}s'.format(vk, timeout))
             if node:
-                cls.event_sock.send_json({
+                self.evt_sock.send_json({
                     'event': 'got_ip',
                     'event_id': event_id,
                     'public_key': node.public_key.decode(),
@@ -109,56 +66,73 @@ class OverlayInterface(object):
                     'vk': vk
                 })
             else:
-                cls.event_sock.send_json({
+                self.evt_sock.send_json({
                     'event': 'not_found',
                     'event_id': event_id
                 })
         asyncio.ensure_future(coro())
 
-    @classmethod
-    @command
-    def get_service_status(cls, *args, **kwargs): pass
-
-    @classmethod
-    def _get_service_status(cls, event_id):
+    def _get_service_status(self, event_id):
         log.critical("GETTING SERVICE STATUS")  # TODO delete
-        if cls._started:
+        if self._started:
             log.critical("SENDING SERVICE STATUS READY")  # TODO delete
-            cls.event_sock.send_json({
+            self.evt_sock.send_json({
                 'event': 'service_status',
                 'status': 'ready'
             })
         else:
             log.critical("SENDING SERVICE STATUS NOT READY")  # TODO delete
-            cls.event_sock.send_json({
+            self.evt_sock.send_json({
                 'event': 'service_status',
                 'status': 'not_ready'
             })
 
-    @classmethod
-    def overlay_event_socket(cls):
-        ctx = zmq.asyncio.Context()
-        socket = ctx.socket(zmq.SUB)
-        socket.setsockopt(zmq.SUBSCRIBE, b"")
-        socket.connect(cls.event_url)
-        return socket
+    def teardown(self):
+        try:
+            self._started = False
+            self.evt_sock.close()
+            self.cmd_sock.close()
+            try: self.fut.set_result('done')
+            except: self.fut.cancel()
+            self.dht.cleanup()
+            log.info('Service stopped.')
+        except:
+            pass
 
-    @classmethod
-    async def event_listener(cls, event_handler):
-        log.info('Listening for overlay events over {}'.format(cls.event_url))
-        cls.listener_sock = cls.overlay_event_socket()
+class OverlayClient(object):
+    def __init__(self, event_handler, loop, ctx, block=False):
+
+        self.loop = loop
+        self.ctx = ctx
+
+        self.cmd_sock = self.ctx.socket(zmq.DEALER)
+        self.cmd_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
+        self.cmd_sock.connect(cmd_url)
+        self.evt_sock = self.ctx.socket(zmq.SUB)
+        self.evt_sock.setsockopt(zmq.SUBSCRIBE, b"")
+        self.evt_sock.connect(event_url)
+
+        self.fut = asyncio.ensure_future(self.event_listener(event_handler))
+        if block:
+            self.loop.run_forever()
+
+    @command
+    def get_node_from_vk(self, *args, **kwargs): pass
+
+    @command
+    def get_service_status(self, *args, **kwargs): pass
+
+    async def event_listener(self, event_handler):
+        log.info('Listening for overlay events over {}'.format(event_url))
         while True:
             try:
-                msg = await cls.listener_sock.recv_json()
+                msg = await self.evt_sock.recv_json()
                 event_handler(msg)
             except Exception as e:
                 log.warning(e)
 
-    @classmethod
-    def stop_listening(cls):
-        cls.cmd_send_sock.close()
-        cls.listener_sock.close()
-
-    @classmethod
-    def listen_for_events(cls, event_handler):
-        cls.loop.run_until_complete(cls.event_listener(event_handler))
+    def teardown(self):
+        self.cmd_sock.close()
+        self.evt_sock.close()
+        try: self.fut.set_result('done')
+        except: self.fut.cancel()
