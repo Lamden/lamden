@@ -34,6 +34,10 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         """
         assert len(args) == 0, "Worker cannot be constructed with args. Only key word args are supported."
 
+        # Create a new event loop for this process
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         name = name or type(self).__name__
         self.name = name
         self.signing_key = signing_key
@@ -49,7 +53,7 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
             setattr(self, k, v)
 
         self._router = Router(get_handler_func=lambda: self, name=name)
-        self._manager = ExecutorManager(signing_key=signing_key, router=self._router, name=name)
+        self._manager = ExecutorManager(signing_key=signing_key, router=self._router, name=name, loop=self.loop)
         self.composer = Composer(manager=self._manager, signing_key=signing_key, ip=ip, name=name)
         self._router.composer = self.composer
 

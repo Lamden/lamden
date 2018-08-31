@@ -9,10 +9,7 @@ class ExecutorManager:
     def __init__(self, signing_key, router, name='Worker', loop=None):
         self.log = get_logger(name)
 
-        try: loop = asyncio.get_event_loop()
-        except: loop = asyncio.new_event_loop()
         self.loop = loop
-
         asyncio.set_event_loop(self.loop)
 
         self.context = zmq.asyncio.Context()
