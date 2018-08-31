@@ -76,18 +76,10 @@ class Composer:
 
     async def _check_overlay_status(self):
         self.log.debug("Checking overlay status")
-
-        self.log.important("checking overlay status...")
-
         self.overlay_cli.get_service_status()
 
-        self.log.important("sent get_service_status() call to overlay interface!")
-
-        self.log.debug("Sent get_service_status to overlay!")
-
     def _handle_overlay_event(self, e):
-        self.log.debug("Composer got overlay event {}".format(e))
-        event_name = e['event']
+        self.log.spam("Composer got overlay event {}".format(e))
 
         if e['event'] == 'service_started' or (e['event'] == 'service_status' and e['status'] == 'ready'):
             if self.overlay_ready:

@@ -16,7 +16,6 @@ class ExecutorManager:
                           for name, executor in Executor.registry.items()}
 
     def start(self):
-        # if not self.loop.is_running():  TODO y have this
         try:
             self.log.info("Starting event loop")
             self.loop.run_forever()
@@ -27,9 +26,9 @@ class ExecutorManager:
             pass
 
     def teardown(self):
-        # TODO implement
         raise NotImplementedError("Need to code this up")
 
+        # TODO implement
         # loop over executors, call teardown on each
         # cancel any futures
         # signal to any subprocs to teardown also?

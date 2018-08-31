@@ -20,7 +20,7 @@ class TransactionBatcher(Worker):
 
     async def compose_transactions(self):
         self.log.important("Starting TransactionBatcher with a batch interval of {} seconds".format(BATCH_INTERVAL))
-        self.log.info("Current queue size is {}".format(self.queue.qsize()))
+        self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
 
         while True:
             self.log.debugv("Batcher resting for {} seconds".format(BATCH_INTERVAL))

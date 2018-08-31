@@ -62,10 +62,6 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         # The router needs a reference to the composer to do this.
         self._router.composer = self.composer
 
-        # DEBUG TODO DELETE
-        self.log.important2("Worker {} using event loop {}".format(name, self.loop))
-        # END DEBUG
-
         self.setup()
 
         self.log.notice("Starting Worker named {}".format(name))

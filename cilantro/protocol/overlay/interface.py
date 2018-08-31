@@ -4,22 +4,20 @@ from cilantro.constants.overlay_network import ALPHA, KSIZE, MAX_PEERS
 from cilantro.storage.db import VKBook
 from cilantro.logger.base import get_logger
 
-log = get_logger(__name__)
 event_url = 'ipc://overlay-event-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
 cmd_url = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
 
 def command(fn):
     def _command(self, *args, **kwargs):
         event_id = uuid.uuid4().hex
-        log.critical("bout to send event with id {} args {} and kwargs {}".format(event_id, args, kwargs))  # TODO remove
         self.cmd_sock.send_multipart(['_{}'.format(fn.__name__).encode(), event_id.encode()] + [arg.encode() for arg in args])
-        log.critical("event sent")  # TODO remove
         return event_id
     return _command
 
 
 class OverlayServer(object):
     def __init__(self, sk, loop=None, ctx=None, block=True):
+        self.log = get_logger(type(self).__name__)
         self._started = False
 
         self.loop = loop or asyncio.new_event_loop()
@@ -39,20 +37,18 @@ class OverlayServer(object):
                   max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
 
         self._started = True
-        log.critical('overlay server about to send READY')  # TODO remove
         self.evt_sock.send_json({
             'event': 'service_status',
             'status': 'ready'
         })
-        log.critical('ready event sent from server')  # TODO remove
         if block:
             self.loop.run_forever()
 
     async def command_listener(self):
-        log.info('Listening for overlay commands over {}'.format(cmd_url))
+        self.log.info('Listening for overlay commands over {}'.format(cmd_url))
         while True:
             msg = await self.cmd_sock.recv_multipart()
-            log.debug('[Overlay] Received cmd (Proc={}): {}'.format(msg[0], msg[1:]))
+            self.log.debug('[Overlay] Received cmd (Proc={}): {}'.format(msg[0], msg[1:]))
             data = [b.decode() for b in msg[2:]]
             getattr(self, msg[1].decode())(*data)
 
@@ -63,7 +59,7 @@ class OverlayServer(object):
                 try:
                     node, cached = await asyncio.wait_for(self.dht.network.lookup_ip(vk), timeout)
                 except:
-                    log.notice('Did not find an ip for VK {} in {}s'.format(vk, timeout))
+                    self.log.notice('Did not find an ip for VK {} in {}s'.format(vk, timeout))
             if node:
                 self.evt_sock.send_json({
                     'event': 'got_ip',
@@ -80,15 +76,12 @@ class OverlayServer(object):
         asyncio.ensure_future(coro())
 
     def _get_service_status(self, event_id):
-        log.critical("GETTING SERVICE STATUS")  # TODO delete
         if self._started:
-            log.critical("SENDING SERVICE STATUS READY")  # TODO delete
             self.evt_sock.send_json({
                 'event': 'service_status',
                 'status': 'ready'
             })
         else:
-            log.critical("SENDING SERVICE STATUS NOT READY")  # TODO delete
             self.evt_sock.send_json({
                 'event': 'service_status',
                 'status': 'not_ready'
@@ -102,20 +95,17 @@ class OverlayServer(object):
             try: self.fut.set_result('done')
             except: self.fut.cancel()
             self.dht.cleanup()
-            log.info('Service stopped.')
+            self.log.info('Service stopped.')
         except:
             pass
 
 
 class OverlayClient(object):
     def __init__(self, event_handler, loop, ctx, block=False):
+        self.log = get_logger(type(self).__name__)
 
         self.loop = loop
         self.ctx = ctx
-
-        # DEBUG TODO DELETE
-        log.important3("OverlayClient using loop {} and context {}".format(self.loop, self.ctx))
-        # END DEBUG
 
         self.cmd_sock = self.ctx.socket(socket_type=zmq.DEALER)
         self.cmd_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
@@ -135,15 +125,11 @@ class OverlayClient(object):
     def get_service_status(self, *args, **kwargs): pass
 
     async def event_listener(self, event_handler):
-        log.important('Listening for overlay events over {}'.format(event_url))  # TODO remove
-        log.info('Listening for overlay events over {}'.format(event_url))
+        self.log.info('Listening for overlay events over {}'.format(event_url))
         while True:
-            try:
-                msg = await self.evt_sock.recv_json()
-                log.important(msg)
-                event_handler(msg)
-            except Exception as e:
-                log.warning(e)
+            msg = await self.evt_sock.recv_json()
+            self.log.spam("OverlayClient received event {}".format(msg))
+            event_handler(msg)
 
     def teardown(self):
         self.cmd_sock.close()

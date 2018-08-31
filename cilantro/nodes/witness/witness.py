@@ -37,25 +37,11 @@ class WitnessBaseState(State):
 
     @input_socket_connected
     def socket_connected(self, socket_type: int, vk: str, url: str):
-        if not hasattr(self, 'connected_masternodes'):
-            self.connected_masternodes = set()
-            self.connected_delegates = set()
-        assert vk in VKBook.get_all(), "Connected to vk {} that is not present in VKBook.get_all()!!!".format(vk)
-        key = vk + '_' + str(socket_type)
-        self.log.spam("Delegate connected to vk {} with sock type {}".format(vk, socket_type))
-
-        # TODO make less ugly pls
-        if vk in VKBook.get_delegates():
-            self.connected_delegates.add(key)
-        elif vk in VKBook.get_masternodes():
-            self.connected_masternodes.add(key)
-
-        self.parent.transition(WitnessBootState)
+        self.log.warning("Witness state {} not configured to handle socket_connected event".format(type(self)))
 
     @input_connection_dropped
     def conn_dropped(self, vk, ip):
-        self.log.important2('({}:{}) has dropped'.format(vk, ip))
-        pass
+        self.log.important2('vk {} with ip {} has dropped'.format(vk, ip))
 
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase, envelope: Envelope):
@@ -80,13 +66,13 @@ class WitnessBootState(WitnessBaseState):
         assert self.parent.verifying_key in WITNESS_MN_MAP, "Witness has vk {} that is not in WITNESS_MN_MAP {}!"\
             .format(self.parent.verifying_key, WITNESS_MN_MAP)
 
+        # Create publisher socket
+        self.parent.composer.add_pub(ip=self.parent.ip)
+
         # Sub to assigned Masternode
         mn_vk = WITNESS_MN_MAP[self.parent.verifying_key]
         self.log.notice("Witness with vk {} subscribing to masternode with vk {}".format(self.parent.verifying_key, mn_vk))
         self.parent.composer.add_sub(filter=WITNESS_MASTERNODE_FILTER, vk=mn_vk, port=MN_TX_PUB_PORT)
-
-        # Create publisher socket
-        self.parent.composer.add_pub(ip=self.parent.ip)
 
         # Once done setting up sockets, transition to RunState
         self.parent.transition(WitnessRunState)

@@ -44,10 +44,6 @@ class Executor(metaclass=ExecutorMeta):
         self.context = context
         self.log = get_logger("{}".format(type(self).__name__))
 
-        # DEBUG TODO DELETE
-        self.log.important2("Executor using event loop {}".format(loop))
-        # END DEBUG
-
     def add_listener(self, listener_fn, *args, **kwargs):
         # listener_fn must be a coro
         self.log.info("add_listener scheduling future {} with args {} and kwargs {}".format(listener_fn, args, kwargs))
@@ -158,7 +154,7 @@ class SubPubExecutor(Executor):
         self.pubs[url].send_multipart([filter.encode(), data])
 
     def add_pub(self, url: str):
-        assert url not in self.pubs, "Attempted to add pub on url that is already in self.pubs"
+        assert url not in self.pubs, "Attempted to add pub on url {} that is already in self.pubs {}".format(url, self.pubs)
 
         self.log.socket("Creating publisher socket on url {}".format(url))
         # self.pubs[url] = self.ironhouse.secure_socket(
