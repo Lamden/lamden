@@ -71,15 +71,11 @@ class Composer:
         asyncio.ensure_future(self._check_overlay_status())
 
     async def _check_overlay_status(self):
-        await asyncio.sleep(1)
         self.log.debug("Checking overlay status")
 
         self.log.important("checking overlay status...")
 
-        try:
-            self.overlay_cli.get_service_status()
-        except Exception as e:
-            self.log.critical("error checking overlay service status: {}".format(e))
+        self.overlay_cli.get_service_status()
 
         self.log.important("sent get_service_status() call to overlay interface!")
 

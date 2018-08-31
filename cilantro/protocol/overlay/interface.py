@@ -37,8 +37,11 @@ class OverlayServer(object):
                   max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
 
         self._started = True
-        self.evt_sock.send_json({ 'event': 'service_started' })
-
+        log.critical('about to send READY')
+        self.evt_sock.send_json({
+            'event': 'service_status',
+            'status': 'ready'
+        })
         if block:
             self.loop.run_forever()
 
