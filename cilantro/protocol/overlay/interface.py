@@ -11,20 +11,18 @@ cmd_url = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
 def command(fn):
     def _command(self, *args, **kwargs):
         event_id = uuid.uuid4().hex
-        log.critical("bout to send event with id {} args {} and kwargs {}".format(event_id, args, kwargs))  # TODO remove
         self.cmd_sock.send_multipart(['_{}'.format(fn.__name__).encode(), event_id.encode()] + [arg.encode() for arg in args])
-        log.critical("event sent")  # TODO remove
         return event_id
     return _command
 
 
 class OverlayServer(object):
-    def __init__(self, sk, loop=None, ctx=None, block=True):
+    def __init__(self, sk, loop=None, block=True):
         self._started = False
 
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.ctx = ctx or zmq.asyncio.Context()
+        self.ctx = zmq.asyncio.Context.instance()
 
         self.evt_sock = self.ctx.socket(zmq.PUB)
         self.evt_sock.bind(event_url)
@@ -39,12 +37,10 @@ class OverlayServer(object):
                   max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
 
         self._started = True
-        log.critical('overlay server about to send READY')  # TODO remove
         self.evt_sock.send_json({
             'event': 'service_status',
             'status': 'ready'
         })
-        log.critical('ready event sent from server')  # TODO remove
         if block:
             self.loop.run_forever()
 
@@ -80,15 +76,12 @@ class OverlayServer(object):
         asyncio.ensure_future(coro())
 
     def _get_service_status(self, event_id):
-        log.critical("GETTING SERVICE STATUS")  # TODO delete
         if self._started:
-            log.critical("SENDING SERVICE STATUS READY")  # TODO delete
             self.evt_sock.send_json({
                 'event': 'service_status',
                 'status': 'ready'
             })
         else:
-            log.critical("SENDING SERVICE STATUS NOT READY")  # TODO delete
             self.evt_sock.send_json({
                 'event': 'service_status',
                 'status': 'not_ready'
@@ -111,7 +104,7 @@ class OverlayClient(object):
     def __init__(self, event_handler, loop=None, ctx=None, block=False):
 
         self.loop = loop or asyncio.get_event_loop()
-        self.ctx = ctx or zmq.asyncio.Context()
+        self.ctx = ctx or zmq.asyncio.Context.instance()
 
         self.cmd_sock = self.ctx.socket(socket_type=zmq.DEALER)
         self.cmd_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
