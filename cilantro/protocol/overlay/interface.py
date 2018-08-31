@@ -17,11 +17,15 @@ def command(fn):
         return event_id
     return _command
 
+
 class OverlayServer(object):
     def __init__(self, sk, loop=None, ctx=None, block=True):
         self._started = False
 
-        self.loop = loop or asyncio.get_event_loop()
+        # why are we even allowed to pass in a loop/ctx? isnt this designed to run in a stand alone process?
+        # thus, shouldnt it always explicitly create/manage its own event loop?  --davis
+        self.loop = loop or asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
 
         self.evt_sock = self.ctx.socket(zmq.PUB)
@@ -37,11 +41,12 @@ class OverlayServer(object):
                   max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
 
         self._started = True
-        log.critical('about to send READY')
+        log.critical('overlay server about to send READY')
         self.evt_sock.send_json({
             'event': 'service_status',
             'status': 'ready'
         })
+        log.critical('ready event sent from server')
         if block:
             self.loop.run_forever()
 
@@ -103,11 +108,16 @@ class OverlayServer(object):
         except:
             pass
 
+
 class OverlayClient(object):
     def __init__(self, event_handler, loop, ctx, block=False):
 
         self.loop = loop
         self.ctx = ctx
+
+        # DEBUG TODO DELETE
+        log.important3("OverlayClient using loop {}".format(self.loop))
+        # END DEBUG
 
         self.cmd_sock = self.ctx.socket(zmq.DEALER)
         self.cmd_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
@@ -127,6 +137,7 @@ class OverlayClient(object):
     def get_service_status(self, *args, **kwargs): pass
 
     async def event_listener(self, event_handler):
+        log.important('Listening for overlay events over {}'.format(event_url))  # TODO remove
         log.info('Listening for overlay events over {}'.format(event_url))
         while True:
             try:

@@ -25,17 +25,21 @@ class NodeBase(StateMachine):
         self.loop = loop
         asyncio.set_event_loop(loop)
 
+        # DEBUG TODO DELETE
+        self.log.important3("STARTING OVERLAY SERVICE")
+        # END DEBUG
+
         self.log.notice("Starting overlay service")
-        self.overlay_proc = LProcess(target=self.start_overlay_server, args=(signing_key,))
+        self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk':signing_key})
         self.overlay_proc.start()
+
+        # DEBUG TODO DELETE
+        self.log.important3("OVERLAY SERVICE STARTED")
+        # END DEBUG
 
         self._composer = None
 
         self.tasks = []
-
-    @staticmethod
-    def start_overlay_server(signing_key):
-        server = OverlayServer(sk=signing_key)
 
     def start(self, start_loop=True):
         """
