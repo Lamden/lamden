@@ -14,6 +14,7 @@ class TestInterface(TestCase):
     def test_start_stop_service(self):
         def _stop():
             self.assertTrue(hasattr(self.server, 'dht'))
+            self.assertTrue(self.server._started)
             self.server.teardown()
             self.assertIsInstance(self.server.cmd_sock, zmq.Socket)
             self.assertIsInstance(self.server.evt_sock, zmq.Socket)

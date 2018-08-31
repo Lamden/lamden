@@ -72,19 +72,14 @@ class Composer:
         # Listen to overlay events, and check the overlay status. The composer should defer executing any commands
         # involving vk lookups until the overlay is ready. We wrap both tasks in asyncio.ensure_future because we want
         # to defer them until the event loop is running (the event loop is not yet running when the Composer is created)
-        # TODO do we need to make sure this _check_overlay_status runs sequentially after listener is setup
         asyncio.ensure_future(self._check_overlay_status())
 
     async def _check_overlay_status(self):
-        await asyncio.sleep(1)
         self.log.debug("Checking overlay status")
 
         self.log.important("checking overlay status...")
 
-        try:
-            self.overlay_cli.get_service_status()
-        except Exception as e:
-            self.log.critical("error checking overlay service status: {}".format(e))
+        self.overlay_cli.get_service_status()
 
         self.log.important("sent get_service_status() call to overlay interface!")
 

@@ -7,7 +7,7 @@ from cilantro.protocol.transport.composer import Composer
 from cilantro.protocol.reactor.manager import ExecutorManager
 from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.nodes import Masternode, Witness, Delegate, NodeFactory
-from cilantro.protocol.overlay.interface import OverlayClient, OverlayServer
+from cilantro.protocol.overlay.interface import OverlayServer
 from cilantro.utils.lprocess import LProcess
 from cilantro.storage.db import DB
 import asyncio
