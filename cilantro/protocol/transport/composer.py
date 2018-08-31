@@ -38,7 +38,7 @@ def vk_lookup(func):
                 self.pending_commands.append((func.__name__, args, kwargs))
                 return
 
-            cmd_id = self.overlay.cli.get_node_from_vk(kwargs['vk'])
+            cmd_id = self.overlay_cli.get_node_from_vk(kwargs['vk'])
             assert cmd_id not in self.command_queue, "Collision! Uuid {} already in command queue {}".format(cmd_id, self.command_queue)
             self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.command_queue[cmd_id] = (func.__name__, args, kwargs)

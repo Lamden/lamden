@@ -11,9 +11,9 @@ cmd_url = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
 def command(fn):
     def _command(self, *args, **kwargs):
         event_id = uuid.uuid4().hex
-        log.critical("bout to send event")
+        log.critical("bout to send event with id {} args {} and kwargs {}".format(event_id, args, kwargs))  # TODO remove
         self.cmd_sock.send_multipart(['_{}'.format(fn.__name__).encode(), event_id.encode()] + [arg.encode() for arg in args])
-        log.critical("event sent")
+        log.critical("event sent")  # TODO remove
         return event_id
     return _command
 
@@ -114,13 +114,13 @@ class OverlayClient(object):
         self.ctx = ctx
 
         # DEBUG TODO DELETE
-        log.important3("OverlayClient using loop {}".format(self.loop))
+        log.important3("OverlayClient using loop {} and context {}".format(self.loop, self.ctx))
         # END DEBUG
 
-        self.cmd_sock = self.ctx.socket(zmq.DEALER)
+        self.cmd_sock = self.ctx.socket(socket_type=zmq.DEALER)
         self.cmd_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
         self.cmd_sock.connect(cmd_url)
-        self.evt_sock = self.ctx.socket(zmq.SUB)
+        self.evt_sock = self.ctx.socket(socket_type=zmq.SUB)
         self.evt_sock.setsockopt(zmq.SUBSCRIBE, b"")
         self.evt_sock.connect(event_url)
 
