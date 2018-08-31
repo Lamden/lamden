@@ -33,12 +33,13 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         :param kwargs: A list of named variables that will be set as instance attributes.
         """
         assert len(args) == 0, "Worker cannot be constructed with args. Only key word args are supported."
+        name = name or type(self).__name__
 
         # Create a new event loop for this process
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
+        self.context = zmq.asyncio.Context
 
-        name = name or type(self).__name__
         self.name = name
         self.signing_key = signing_key
         self.ip = ip
@@ -53,9 +54,17 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
             setattr(self, k, v)
 
         self._router = Router(get_handler_func=lambda: self, name=name)
-        self._manager = ExecutorManager(signing_key=signing_key, router=self._router, name=name, loop=self.loop)
+        self._manager = ExecutorManager(loop=self.loop, context=self.context, signing_key=signing_key, router=self._router, name=name)
         self.composer = Composer(manager=self._manager, signing_key=signing_key, ip=ip, name=name)
+
+        # We give the Router a reference to composer for some 'magic reply handling'. Anything returned from a
+        # @input_request function will automatically get packaged and sent as a reply to the original requester.
+        # The router needs a reference to the composer to do this.
         self._router.composer = self.composer
+
+        # DEBUG TODO DELETE
+        self.log.important2("Worker {} using event loop {}".format(name, self.loop))
+        # END DEBUG
 
         self.setup()
 

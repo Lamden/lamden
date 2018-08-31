@@ -59,14 +59,19 @@ class Composer:
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
 
-        self.overlay_fut = asyncio.ensure_future(OverlayInterface.event_listener(self._handle_overlay_event))
         self.overlay_ready = False
-        self.command_queue = {}  # dict of UUID to kwargs
+
+        # self.command_queue is dict of command UUID to kwargs. It is used to defer commands that require vk's to be
+        # converted to IP addresses until the overlay returns with a 'got_ip' event
+        self.command_queue = {}
+
         self.pending_commands = deque()  # To hold commands until the event loop is started
 
-        # TODO do we need to make sure this _check_overlay_status runs sequentially after
-        # OverlayInterface.event_listener(...) ?? b/c we need the listener socket to be configured before
-        # we can call OverlayInterface.get_service_status() i think
+        # Listen to overlay events, and check the overlay status. The composer should defer executing any commands
+        # involving vk lookups until the overlay is ready. We wrap both tasks in asyncio.ensure_future because we want
+        # to defer them until the event loop is running (the event loop is not yet running when the Composer is created)
+        self.overlay_fut = asyncio.ensure_future(OverlayInterface.event_listener(self._handle_overlay_event))
+        # TODO do we need to make sure this _check_overlay_status runs sequentially after listener is setup
         asyncio.ensure_future(self._check_overlay_status())
 
     async def _check_overlay_status(self):

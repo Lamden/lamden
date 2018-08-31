@@ -39,9 +39,14 @@ class Executor(metaclass=ExecutorMeta):
     def __init__(self, loop, context, router):
         self.router = router
         self.loop = loop
-        asyncio.set_event_loop(self.loop)
+        asyncio.set_event_loop(self.loop)  # not sure if this is necessary -- davis
+
         self.context = context
         self.log = get_logger("{}".format(type(self).__name__))
+
+        # DEBUG TODO DELETE
+        self.log.important2("Executor using event loop {}".format(loop))
+        # END DEBUG
 
     def add_listener(self, listener_fn, *args, **kwargs):
         # listener_fn must be a coro

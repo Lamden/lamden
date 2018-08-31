@@ -6,13 +6,11 @@ from cilantro.protocol.reactor.executor import Executor
 
 class ExecutorManager:
 
-    def __init__(self, signing_key, router, name='Worker', loop=None):
+    def __init__(self, loop, context, signing_key, router, name='Worker'):
         self.log = get_logger(name)
 
-        self.loop = loop or asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-        self.context = zmq.asyncio.Context()
+        self.loop = loop
+        self.context = context
         self.router = router
         self.executors = {name: executor(loop=self.loop, context=self.context, router=self.router)
                           for name, executor in Executor.registry.items()}
