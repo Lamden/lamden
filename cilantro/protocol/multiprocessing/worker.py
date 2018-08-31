@@ -38,7 +38,7 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         # Create a new event loop for this process
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.context = zmq.asyncio.Context
+        self.context = zmq.asyncio.Context()
 
         self.name = name
         self.signing_key = signing_key
