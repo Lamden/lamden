@@ -18,15 +18,14 @@ class ExecutorManager:
                           for name, executor in Executor.registry.items()}
 
     def start(self):
-        if not self.loop.is_running():
-            try:
-                self.log.info("Starting event loop")
-                self.loop.run_forever()
-            except Exception as e:
-                self.log.fatal("Exception running main event loop... error:\n{}\n".format(e))
-            finally:
-                # TODO clean thangs up
-                pass
+        try:
+            self.log.info("Starting event loop")
+            self.loop.run_forever()
+        except Exception as e:
+            self.log.fatal("Exception running main event loop... error:\n{}\n".format(e))
+        finally:
+            # TODO clean thangs up
+            pass
 
     def teardown(self):
         # TODO implement

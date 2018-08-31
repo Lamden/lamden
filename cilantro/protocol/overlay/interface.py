@@ -29,12 +29,13 @@ class OverlayServer(object):
         self.cmd_sock = self.ctx.socket(zmq.ROUTER)
         self.cmd_sock.bind(cmd_url)
 
+        self.fut = asyncio.ensure_future(self.command_listener())
+
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
                   alpha=ALPHA, ksize=KSIZE, event_sock=self.evt_sock,
                   max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
 
-        self.fut = asyncio.ensure_future(self.command_listener())
         self._started = True
         self.evt_sock.send_json({ 'event': 'service_started' })
 
@@ -127,6 +128,7 @@ class OverlayClient(object):
         while True:
             try:
                 msg = await self.evt_sock.recv_json()
+                log.important(msg)
                 event_handler(msg)
             except Exception as e:
                 log.warning(e)
