@@ -22,8 +22,6 @@ class OverlayServer(object):
     def __init__(self, sk, loop=None, ctx=None, block=True):
         self._started = False
 
-        # why are we even allowed to pass in a loop/ctx? isnt this designed to run in a stand alone process?
-        # thus, shouldnt it always explicitly create/manage its own event loop?  --davis
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
@@ -41,12 +39,12 @@ class OverlayServer(object):
                   max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
 
         self._started = True
-        log.critical('overlay server about to send READY')
+        log.critical('overlay server about to send READY')  # TODO remove
         self.evt_sock.send_json({
             'event': 'service_status',
             'status': 'ready'
         })
-        log.critical('ready event sent from server')
+        log.critical('ready event sent from server')  # TODO remove
         if block:
             self.loop.run_forever()
 
