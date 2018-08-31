@@ -71,10 +71,10 @@ def dump_it(volume, delay=0):
     God.dump_it(volume=volume, delay=delay)
 
 
-class TestManualDump(BaseNetworkTestCase):
+class TestBigDump(BaseNetworkTestCase):
 
     VOLUME = 10  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-bootstrap.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-thicc-bootstrap.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)

@@ -1,9 +1,10 @@
 from cilantro.nodes import NodeBase
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, WITNESS_DELEGATE_FILTER
 from cilantro.constants.ports import MN_TX_PUB_PORT
+from cilantro.constants.testnet import *
 
 from cilantro.protocol.states.state import State
-from cilantro.protocol.states.decorators import input, enter_from_any, input_connection_dropped
+from cilantro.protocol.states.decorators import input, enter_from_any, input_connection_dropped, input_socket_connected
 
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.envelope.envelope import Envelope
@@ -34,10 +35,13 @@ class WitnessBaseState(State):
         self.log.important("Node got received remote kill signal from network!")
         self.parent.teardown()
 
+    @input_socket_connected
+    def socket_connected(self, socket_type: int, vk: str, url: str):
+        self.log.warning("Witness state {} not configured to handle socket_connected event".format(type(self)))
+
     @input_connection_dropped
     def conn_dropped(self, vk, ip):
-        self.log.important2('({}:{}) has dropped'.format(vk, ip))
-        pass
+        self.log.important2('vk {} with ip {} has dropped'.format(vk, ip))
 
     @input(TransactionBase)
     def recv_tx(self, tx: TransactionBase, envelope: Envelope):
@@ -59,19 +63,18 @@ class WitnessBootState(WitnessBaseState):
 
     @enter_from_any
     def enter(self, prev_state):
-
-        # Sub to Masternodes
-        for mn_vk in VKBook.get_masternodes():
-            self.log.debug("Subscribes to MN with vk: {}".format(mn_vk))
-            self.parent.composer.add_sub(filter=WITNESS_MASTERNODE_FILTER, vk=mn_vk, port=MN_TX_PUB_PORT)
+        assert self.parent.verifying_key in WITNESS_MN_MAP, "Witness has vk {} that is not in WITNESS_MN_MAP {}!"\
+            .format(self.parent.verifying_key, WITNESS_MN_MAP)
 
         # Create publisher socket
         self.parent.composer.add_pub(ip=self.parent.ip)
 
-        # Once done setting up sockets, transition to RunState
-        self.parent.transition(WitnessRunState)
+        # Sub to assigned Masternode
+        mn_vk = WITNESS_MN_MAP[self.parent.verifying_key]
+        self.log.notice("Witness with vk {} subscribing to masternode with vk {}".format(self.parent.verifying_key, mn_vk))
+        self.parent.composer.add_sub(filter=WITNESS_MASTERNODE_FILTER, vk=mn_vk, port=MN_TX_PUB_PORT)
 
-    def run(self):
+        # Once done setting up sockets, transition to RunState
         self.parent.transition(WitnessRunState)
 
 

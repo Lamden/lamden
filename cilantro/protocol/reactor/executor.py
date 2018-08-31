@@ -39,7 +39,8 @@ class Executor(metaclass=ExecutorMeta):
     def __init__(self, loop, context, router):
         self.router = router
         self.loop = loop
-        asyncio.set_event_loop(self.loop)
+        asyncio.set_event_loop(self.loop)  # not sure if this is necessary -- davis
+
         self.context = context
         self.log = get_logger("{}".format(type(self).__name__))
 
@@ -67,7 +68,6 @@ class Executor(metaclass=ExecutorMeta):
         self.log.socket("--- Starting recv on socket {} with callback_fn {} ---".format(socket, callback_fn))
         while True:
             self.log.spam("waiting for multipart msg...")
-
             try:
                 msg = await socket.recv_multipart()
             except asyncio.CancelledError:
@@ -154,7 +154,7 @@ class SubPubExecutor(Executor):
         self.pubs[url].send_multipart([filter.encode(), data])
 
     def add_pub(self, url: str):
-        assert url not in self.pubs, "Attempted to add pub on url that is already in self.pubs"
+        assert url not in self.pubs, "Attempted to add pub on url {} that is already in self.pubs {}".format(url, self.pubs)
 
         self.log.socket("Creating publisher socket on url {}".format(url))
         # self.pubs[url] = self.ironhouse.secure_socket(

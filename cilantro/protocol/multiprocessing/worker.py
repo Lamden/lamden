@@ -23,7 +23,7 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         """
         pass
 
-    def __init__(self, ip: str, signing_key: str, name='', *args, **kwargs):
+    def __init__(self, ip: str, signing_key: str, name=None, *args, **kwargs):
         """
         IMPORTANT: This should not be overridden by subclasses. Instead, override the setup() method.
 
@@ -33,8 +33,14 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         :param kwargs: A list of named variables that will be set as instance attributes.
         """
         assert len(args) == 0, "Worker cannot be constructed with args. Only key word args are supported."
+        name = name or type(self).__name__
 
-        self.name = name or type(self).__name__
+        # Create a new event loop for this process
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.context = zmq.asyncio.Context()
+
+        self.name = name
         self.signing_key = signing_key
         self.ip = ip
         self.verifying_key = wallet.get_vk(self.signing_key)
@@ -45,16 +51,18 @@ class Worker(State):  # or should this be called 'WorkerProcess' ... or somethin
         # forever (which would block the setup code upon calling 'super().__init__(..)' in the subclass)
         # TODO this pattern is questionable. Perhaps args/kwargs should be passed into setup(...)?  --davis
         for k, v in kwargs.items():
-            self.log.important("setting k {} to v {}".format(k, v))
             setattr(self, k, v)
 
         self._router = Router(get_handler_func=lambda: self, name=name)
-        self._manager = ExecutorManager(signing_key=signing_key, router=self._router, name=name)
+        self._manager = ExecutorManager(loop=self.loop, context=self.context, signing_key=signing_key, router=self._router, name=name)
         self.composer = Composer(manager=self._manager, signing_key=signing_key, ip=ip, name=name)
+
+        # We give the Router a reference to composer for some 'magic reply handling'. Anything returned from a
+        # @input_request function will automatically get packaged and sent as a reply to the original requester.
+        # The router needs a reference to the composer to do this.
         self._router.composer = self.composer
 
         self.setup()
 
         self.log.notice("Starting Worker named {}".format(name))
         self._manager.start()  # This starts the event loop and blocks this process indefinitely
-

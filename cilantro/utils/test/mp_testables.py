@@ -1,11 +1,13 @@
 from cilantro.logger import get_logger
-from cilantro.utils.test import MPTesterBase, mp_testable, God, MPTestCase
+from cilantro.utils.test.mp_test_case import MPTestCase
+from cilantro.utils.test.mp_test import MPTesterBase, mp_testable
+from cilantro.utils.test.god import God
 from unittest.mock import MagicMock
 from cilantro.protocol.transport.composer import Composer
 from cilantro.protocol.reactor.manager import ExecutorManager
 from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.nodes import Masternode, Witness, Delegate, NodeFactory
-from cilantro.protocol.overlay.interface import OverlayInterface
+from cilantro.protocol.overlay.interface import OverlayServer
 from cilantro.utils.lprocess import LProcess
 from cilantro.storage.db import DB
 import asyncio
@@ -26,7 +28,7 @@ def _build_node(signing_key, name='', node_cls=None) -> tuple:
 
     node = NodeFactory._build_node(loop=loop, signing_key=signing_key, ip=ip, node_cls=node_cls, name=name)
     node.start(start_loop=False)
-    
+
     tasks = node.tasks + [node.composer.interface._recv_messages()]
 
     return node, loop, tasks
@@ -40,7 +42,7 @@ class MPComposer(MPTesterBase):
         asyncio.set_event_loop(loop)
 
         # Start Overlay Process
-        overlay_proc = LProcess(target=OverlayInterface.start_service, args=(sk,))
+        overlay_proc = LProcess(target=self.start_overlay_server, args=(sk,))
         overlay_proc.start()
 
         router = MagicMock()
@@ -50,11 +52,15 @@ class MPComposer(MPTesterBase):
 
         return composer, loop, []
 
+    @staticmethod
+    def start_overlay_server(sk):
+        server = OverlayServer(sk)
+
 
 @mp_testable(StateMachine)
 class MPStateMachine(MPTesterBase):
     @classmethod
-    def build_obj(cls, sm_class):
+    def build_obj(cls, sm_class, name=''):
         # These 2 lines are probs unnecessary
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
@@ -104,4 +110,3 @@ class MPDelegate(MPTesterBase):
     @classmethod
     def build_obj(cls, signing_key, name='Delegate') -> tuple:
         return _build_node(signing_key=signing_key, name=name, node_cls=Delegate)
-

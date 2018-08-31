@@ -1,4 +1,5 @@
-from cilantro.utils.test import MPTestCase, MPComposer, vmnet_test
+from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test
+from cilantro.utils.test.mp_testables import MPComposer
 from cilantro.protocol.transport import Composer
 from cilantro.messages.transaction.standard import StandardTransactionBuilder
 from cilantro.protocol import wallet
@@ -52,41 +53,34 @@ class TestTransportIntegration(MPTestCase):
         sub.add_sub(vk=vk2, filter=FILTER)
         pub.add_pub(ip=pub_ip)
 
-        time.sleep(15.0)
+        time.sleep(2)  # Allow nodes to connect before sending the next command
 
         pub.send_pub_env(filter=FILTER, envelope=env)
 
         self.start()
 
-    # TODO fix this test
     @vmnet_test
     def test_pubsub_n_1_n(self):
         """
         Tests pub/sub with 2 pubs, 1 sub, and multiple messages and the same filter
         """
-        def config_sub(composer: Composer):
-            from unittest.mock import MagicMock
-            composer.manager.router = MagicMock()
-            return composer
-
         def assert_sub(composer: Composer):
-            from cilantro.messages.reactor.reactor_command import ReactorCommand
             from cilantro.protocol.states.decorators import StateInput
             from unittest.mock import call
 
             expected_calls = []
             for env in envs:
-                callback = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
-                expected_calls.append(call(callback))
+                expected_calls.append(call(callback=StateInput.INPUT, envelope=env, message=env.message))
 
-            call_args = composer.manager.router.route_callback.call_args_list
             composer.manager.router.route_callback.assert_has_calls(expected_calls, any_order=True)
 
         envs = [random_envelope() for _ in range(4)]
 
-        sub = MPComposer(config_fn=config_sub, assert_fn=assert_sub, name='[MN1] SUB', sk=sk1)
+        sub = MPComposer(assert_fn=assert_sub, name='[MN1] SUB', sk=sk1)
         pub1 = MPComposer(name='[Delegate1] PUB1', sk=sk2)
         pub2 = MPComposer(name='[Delegate2] PUB2', sk=sk3)
+
+        time.sleep(5)  # Take a nap while we wait for overlay to hookup
 
         sub.add_sub(vk=vk2, filter=FILTER)
         sub.add_sub(vk=vk3, filter=FILTER)
@@ -94,7 +88,7 @@ class TestTransportIntegration(MPTestCase):
         pub1.add_pub(ip=pub1.ip)
         pub2.add_pub(ip=pub2.ip)
 
-        time.sleep(5.0)
+        time.sleep(5.0)  # Allow nodes to connect
 
         pub1.send_pub_env(filter=FILTER, envelope=envs[0])
         pub1.send_pub_env(filter=FILTER, envelope=envs[1])
@@ -112,28 +106,21 @@ class TestTransportIntegration(MPTestCase):
         """
         Tests pub/sub n-1, with a sub removing a publisher after its first message
         """
-        def configure(composer: Composer):
-            from unittest.mock import MagicMock
-            composer.manager.router.route_callback = MagicMock()
-            return composer
-
         def assert_sub(composer: Composer):
-            from cilantro.messages.reactor.reactor_command import ReactorCommand
             from cilantro.protocol.states.decorators import StateInput
             from unittest.mock import call
 
-            callback1 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env1)
-            callback2 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env2)
-            calls = [call(callback1), call(callback2)]
+            expected_calls = []
+            for env in (env1, env2):
+                expected_calls.append(call(callback=StateInput.INPUT, envelope=env, message=env.message))
 
-            call_args = composer.manager.router.route_callback.call_args_list
-            composer.manager.router.route_callback.assert_has_calls(calls, any_order=True)
+            composer.manager.router.route_callback.assert_has_calls(expected_calls, any_order=True)
 
         env1 = random_envelope()
         env2 = random_envelope()
         env3 = random_envelope()
 
-        sub = MPComposer(config_fn=configure, assert_fn=assert_sub, name='SUB [MN1]', sk=sk1)
+        sub = MPComposer(assert_fn=assert_sub, name='SUB [MN1]', sk=sk1)
         pub1 = MPComposer(name='PUB 1 [Delegate1]', sk=sk2)
         pub2 = MPComposer(name='PUB 2 [Delegate2]', sk=sk3)
 
@@ -148,49 +135,44 @@ class TestTransportIntegration(MPTestCase):
         pub1.send_pub_env(filter=FILTER, envelope=env1)
         pub2.send_pub_env(filter=FILTER, envelope=env2)
 
-        time.sleep(1.0)  # allow messages to go through
+        time.sleep(2.0)  # allow messages to go through
         sub.remove_sub(vk=vk3)  # unsub to pub2
-        time.sleep(1.0)  # allow remove_sub_url command to go through
+        time.sleep(2.0)  # allow remove_sub_url command to go through
 
         pub2.send_pub_env(filter=FILTER, envelope=env3)  # this should not be recv by sub, as he removed this guy's url
 
-        time.sleep(5.0)  # allow messages to go through before we start checking assertions
-
         self.start()
 
-    # TODO fix this test
     @vmnet_test
     def test_pubsub_1_1_2_mult_filters(self):
         """
         Tests pub/sub 1-1 (one sub one pub) with 2 message each on a different filter
         """
-        def configure(composer: Composer):
-            from unittest.mock import MagicMock
-            composer.manager.router = MagicMock()
-            return composer
-
         def run_assertions(composer: Composer):
-            from cilantro.messages.reactor.reactor_command import ReactorCommand
             from cilantro.protocol.states.decorators import StateInput
             from unittest.mock import call
 
-            cb1 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env1)
-            cb2 = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env2)
-            composer.manager.router.route_callback.assert_has_calls([call(cb1), call(cb2)], any_order=True)
+            expected_calls = []
+            for env in (env1, env2):
+                expected_calls.append(call(callback=StateInput.INPUT, envelope=env, message=env.message))
+
+            composer.manager.router.route_callback.assert_has_calls(expected_calls, any_order=True)
 
         env1 = random_envelope()
         env2 = random_envelope()
         filter1 = FILTERS[0]
         filter2 = FILTERS[1]
 
-        sub = MPComposer(config_fn=configure, assert_fn=run_assertions, name='SUB', sk=sk1)
+        sub = MPComposer(assert_fn=run_assertions, name='SUB', sk=sk1)
         pub = MPComposer(name='PUB', sk=sk2)
+
+        time.sleep(5)  # Take a nap while we wait for overlay to hookup
 
         sub.add_sub(vk=vk2, filter=filter2)
         sub.add_sub(vk=vk2, filter=filter1)
         pub.add_pub(ip=pub.ip)
 
-        time.sleep(5.0)  # allow time for VK lookups before we start sending things
+        time.sleep(3)  # allow time for VK lookups before we start sending things
 
         # Send 2 envelopes on 2 different filters
         pub.send_pub_env(filter=filter1, envelope=env1)
@@ -198,48 +180,53 @@ class TestTransportIntegration(MPTestCase):
 
         self.start()
 
-    # TODO fix this test
     @vmnet_test
     def test_req_reply_1_1_1(self):
         """
         Tests request/reply 1_1_1
         """
         def config_router(composer: Composer):
-            from unittest.mock import MagicMock
             def reply(*args, **kwargs):  # do i need the *args **kwargs ??
                 composer.send_reply(message=reply_msg, request_envelope=request_env)
 
-            composer.manager.router = MagicMock()
             composer.manager.router.route_callback.side_effect = reply
             return composer
 
-        def config_dealer(composer: Composer):
-            from unittest.mock import MagicMock
-            composer.manager.router = MagicMock()
-            return composer
-
         def assert_dealer(composer: Composer):
-            from cilantro.messages.reactor.reactor_command import ReactorCommand
+            from cilantro.protocol.states.decorators import StateInput
+            from unittest.mock import call, ANY
 
-            args = composer.manager.router.route_callback.call_args_list
-            # assert len(args) == 1, "dealer's route_callback should of only been called once (with the reply env)"
+            # expected_calls = [call(callback=StateInput.INPUT, envevlope=env, message=env.message)]
+            # args = composer.manager.router.route_callback.call_args_list
+            cb = call(callback=StateInput.INPUT, envelope=ANY, message=reply_msg)
+            composer.manager.router.route_callback.assert_called_with(callback=StateInput.INPUT, envelope=ANY, message=reply_msg)
+            # composer.manager.router.route_callback.assert_has_calls([cb], any_order=True)
+            # reply_callback_found = Falsek
+            # for call in args:
+            #     if
+                # callback_cmd = call[0][0]
 
-            reply_callback_found = False
-            for call in args:
-                callback_cmd = call[0][0]
-                assert isinstance(callback_cmd, ReactorCommand), "arg of route_callback should be a ReactorCommand"
-                if callback_cmd.envelope and callback_cmd.envelope.message == reply_msg:
-                    reply_callback_found = True
-                    break
+                # DEBUG TODO DELETE
+                # from cilantro.logger.base import get_logger
+                # log = get_logger("TEST")
+                # log.important3("got call {}".format(call))
+                # END DEBUG
+
+                # assert isinstance(callback_cmd, ReactorCommand), "arg of route_callback should be a ReactorCommand"
+                # if callback_cmd.envelope and callback_cmd.envelope.message == reply_msg:
+                #     reply_callback_found = True
+                #     break
                     # assert callback_cmd.envelope.message == reply_msg, "Callback's envelope's message should be the reply_msg"
-            assert reply_callback_found, "Reply callback {} not found in call args {}".format(reply_msg, args)
+            # assert reply_callback_found, "Reply callback {} not found in call args {}".format(reply_msg, args)
 
 
         def assert_router(composer: Composer):
             from cilantro.protocol.states.decorators import StateInput
-            from cilantro.messages.reactor.reactor_command import ReactorCommand
-            cb = ReactorCommand.create_callback(callback=StateInput.REQUEST, envelope=request_env, header=dealer_id)
-            composer.manager.router.route_callback.assert_called_with(cb)
+            from unittest.mock import call
+            cb = call(callback=StateInput.REQUEST, envelope=request_env,
+                                                message=request_env.message, header=dealer_id)
+            composer.manager.router.route_callback.assert_called_with(callback=StateInput.REQUEST, envelope=request_env,
+                                                                      message=request_env.message, header=dealer_id)
 
         dealer_id = vk1
         dealer_sk = sk1
@@ -249,13 +236,15 @@ class TestTransportIntegration(MPTestCase):
         request_env = random_envelope(sk=dealer_sk)
         reply_msg = random_msg()
 
-        dealer = MPComposer(name='DEALER', sk=sk1, config_fn=config_dealer, assert_fn=assert_dealer)
+        dealer = MPComposer(name='DEALER', sk=sk1, assert_fn=assert_dealer)
         router = MPComposer(config_fn=config_router, assert_fn=assert_router, name='ROUTER', sk=router_sk)
 
-        dealer.add_dealer(vk=router_vk)
-        router.add_router(vk=router_vk)
+        time.sleep(5) # allow for overlay to hook up
 
-        time.sleep(5.0)
+        dealer.add_dealer(vk=router_vk)
+        router.add_router()
+
+        time.sleep(5)
 
         dealer.send_request_env(vk=router_vk, envelope=request_env)
 

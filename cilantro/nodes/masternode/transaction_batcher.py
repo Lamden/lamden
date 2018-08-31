@@ -14,9 +14,13 @@ class TransactionBatcher(Worker):
         self.composer.add_pub(ip=self.ip, port=MN_TX_PUB_PORT)
         asyncio.ensure_future(self.compose_transactions())
 
+        # DEBUG TODO DELETE
+        self.log.important3("TX BATCHER SETUP DONE!")
+        # END DEBUG
+
     async def compose_transactions(self):
         self.log.important("Starting TransactionBatcher with a batch interval of {} seconds".format(BATCH_INTERVAL))
-        self.log.info("Current queue size is {}".format(self.queue.qsize()))
+        self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
 
         while True:
             self.log.debugv("Batcher resting for {} seconds".format(BATCH_INTERVAL))
@@ -29,4 +33,3 @@ class TransactionBatcher(Worker):
                 oc = OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key)
                 self.log.spam("masternode about to publish transaction from sender {}".format(tx.sender))
                 self.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc, port=MN_TX_PUB_PORT)
-

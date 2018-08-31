@@ -10,18 +10,18 @@ import json
 log = get_logger("TestnetNodeBuilder")
 TESTNET_JSON_PATH = cilantro.__path__[0] + '/../' + 'testnet.json'
 
-NUM_MASTERS = 64
-NUM_WITNESSES = 256
-NUM_DELEGATES = 32
+NUM_MASTERS = 1
+NUM_WITNESSES = 2
+NUM_DELEGATES = 4
 
 
-def _build_nodes(num_nodes=64, prefix='node') -> dict:
-    nodes = {}
+def _build_nodes(num_nodes=64, prefix='node') -> list:
+    nodes = []
 
     for i in range(num_nodes):
-        name = "{}_{}".format(prefix, i + 1)
+        # name = "{}_{}".format(prefix, i + 1)
         sk, vk = wallet.new()
-        nodes[name] = {'sk': sk, 'vk': vk}
+        nodes.append({'sk': sk, 'vk': vk})
 
     return nodes
 
@@ -39,8 +39,8 @@ def build_delegate(num_nodes=32):
 
 
 def generate_testnet_json(num_masters=NUM_MASTERS, num_witnesses=NUM_WITNESSES, num_delegates=NUM_DELEGATES):
-    testnet = {'masters': build_masternodes(num_masters), 'witnesses': build_masternodes(num_witnesses),
-               'delegates': build_masternodes(num_delegates)}
+    testnet = {'masternodes': build_masternodes(num_masters), 'witnesses': build_witnesses(num_witnesses),
+               'delegates': build_delegate(num_delegates)}
 
     with open(TESTNET_JSON_PATH, 'w') as fp:
         json.dump(testnet, fp, indent=4)

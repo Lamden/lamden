@@ -10,7 +10,7 @@ from cilantro.constants.db import DB_SETTINGS
 import time
 
 
-checkpoint_freq = 64
+checkpoint_freq = 2048
 log = get_logger("SenecaTester")
 RECEIVER_VK = '324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502'
 SENDER_VK = 'a103715914a7aae8dd8fddba945ab63a169dfe6e37f79b4a58bcf85bfd681694'
@@ -20,7 +20,7 @@ AMOUNT = 1
 CODE_STR = \
 """
 import currency
-currency.transfer_coins('324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502', 1)
+currency.transfer_coins('324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502', 67)
 """
 
 
@@ -70,6 +70,8 @@ def run_contracts_standalone(num_contracts=100):
         if count % checkpoint_freq == 0:
             log.notice("{} contracts run so far.".format(count))
 
+    ex.commit()
+
     total_time = time.time() - start
     cps = num_contracts / total_time
     log.important("Ran {} contracts in {} seconds".format(num_contracts, round(total_time, 4)))
@@ -79,4 +81,4 @@ def run_contracts_standalone(num_contracts=100):
 if __name__== "__main__":
     overwrite_logger_level(20)
     # run_contracts(1000)
-    run_contracts_standalone(1000)
+    run_contracts_standalone(12345)

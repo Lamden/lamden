@@ -42,8 +42,12 @@ class BlockManager:
     
 
    def send_make_block(self, block_num):
+       pass
+       # TODO implement
 
    async def recv_sb_merkle_sig(self):
+       pass
+       # TODO implement
        # need to keep in an array based on sbb_index.
        # need to resolve differences across sub-blocks in the same order
        # once the sub-tree that it is responsible for is resolved, then send its MS to master nodes and other delegates

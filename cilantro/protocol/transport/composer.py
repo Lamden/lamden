@@ -6,7 +6,7 @@ from cilantro.logger import get_logger
 from cilantro.protocol.structures import EnvelopeAuth
 from cilantro.protocol import wallet
 from cilantro.constants.ports import DEFAULT_PUB_PORT, ROUTER_PORT
-from cilantro.protocol.overlay.interface import OverlayInterface
+from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
 import asyncio
 from collections import deque
 from functools import wraps
@@ -38,7 +38,7 @@ def vk_lookup(func):
                 self.pending_commands.append((func.__name__, args, kwargs))
                 return
 
-            cmd_id = OverlayInterface.get_node_from_vk(kwargs['vk'])
+            cmd_id = self.overlay_cli.get_node_from_vk(kwargs['vk'])
             assert cmd_id not in self.command_queue, "Collision! Uuid {} already in command queue {}".format(cmd_id, self.command_queue)
             self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.command_queue[cmd_id] = (func.__name__, args, kwargs)
@@ -59,23 +59,27 @@ class Composer:
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
 
-        self.overlay_fut = asyncio.ensure_future(OverlayInterface.event_listener(self._handle_overlay_event))
+        self.overlay_cli = OverlayClient(self._handle_overlay_event, loop=manager.loop, ctx=manager.context)
+        self.overlay_fut = self.overlay_cli.fut
         self.overlay_ready = False
-        self.command_queue = {}  # dict of UUID to kwargs
+
+        # self.command_queue is dict of command UUID to kwargs. It is used to defer commands that require vk's to be
+        # converted to IP addresses until the overlay returns with a 'got_ip' event
+        self.command_queue = {}
+
         self.pending_commands = deque()  # To hold commands until the event loop is started
 
-        # TODO do we need to make sure this _check_overlay_status runs sequentially after
-        # OverlayInterface.event_listener(...) ?? b/c we need the listener socket to be configured before
-        # we can call OverlayInterface.get_service_status() i think
+        # Listen to overlay events, and check the overlay status. The composer should defer executing any commands
+        # involving vk lookups until the overlay is ready. We wrap both tasks in asyncio.ensure_future because we want
+        # to defer them until the event loop is running (the event loop is not yet running when the Composer is created)
         asyncio.ensure_future(self._check_overlay_status())
 
     async def _check_overlay_status(self):
         self.log.debug("Checking overlay status")
-        OverlayInterface.get_service_status()
+        self.overlay_cli.get_service_status()
 
     def _handle_overlay_event(self, e):
-        self.log.debug("Composer got overlay event {}".format(e))
-        event_name = e['event']
+        self.log.spam("Composer got overlay event {}".format(e))
 
         if e['event'] == 'service_started' or (e['event'] == 'service_status' and e['status'] == 'ready'):
             if self.overlay_ready:
@@ -142,7 +146,7 @@ class Composer:
         assert protocol in ('ipc', 'tcp'), "Got protocol {}, but only tcp and ipc are supported".format(protocol)
 
         if vk and not ip:
-            node = OverlayInterface.get_node_from_vk(vk)
+            node = self.overlay_cli.get_node_from_vk(vk) # WARNING: This will not work, capture the event from the listener and build url there
             self.log.critical(node)
         return "{}://{}:{}".format(protocol, ip, port)
 

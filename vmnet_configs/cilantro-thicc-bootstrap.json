@@ -1,0 +1,36 @@
+{
+    "services": [
+        {
+            "name": "masternode",
+            "image": "cilantro_base.dev",
+            "count": 1,
+            "ports": [
+                10200, 8080, 4319
+            ]
+        },
+        {
+            "name": "witness",
+            "image": "cilantro_base.dev",
+            "count": 2,
+            "ports": [
+                10200, 8080, 4319
+            ]
+        },
+        {
+            "name": "delegate",
+            "image": "cilantro_base.dev",
+            "count": 4,
+            "ports": [
+                10200, 8080, 4319
+            ]
+        },
+        {
+            "name": "mgmt",
+            "image": "cilantro_base.dev",
+            "count": 1,
+            "ports": [
+                10200, 8080, 4319
+            ]
+        }
+    ]
+}
