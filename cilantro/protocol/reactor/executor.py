@@ -1,12 +1,11 @@
-from cilantro import Constants
 from cilantro.logger import get_logger
-from cilantro.messages import ReactorCommand, Envelope
+from cilantro.messages.reactor.reactor_command import ReactorCommand
+from cilantro.messages.envelope.envelope import Envelope
 from collections import defaultdict
-from cilantro.protocol.structures import CappedSet, EnvelopeAuth
+from cilantro.protocol.structures import CappedSet
 import traceback, os
-from cilantro.protocol.statemachine import StateInput
-from cilantro.utils import IPUtils
-from cilantro.protocol.overlay.dht import DHT
+from cilantro.protocol.states.state import StateInput
+from cilantro.constants.protocol import DUPE_TABLE_SIZE
 import asyncio, time
 import zmq.asyncio
 
@@ -34,16 +33,15 @@ class ExecutorMeta(type):
 
 class Executor(metaclass=ExecutorMeta):
 
-    _recently_seen = CappedSet(max_size=Constants.Protocol.DupeTableSize)
+    _recently_seen = CappedSet(max_size=DUPE_TABLE_SIZE)
     _parent_name = 'ReactorDaemon'  # used for log names
 
-    def __init__(self, loop, context, inproc_socket, ironhouse):
+    def __init__(self, loop, context, router):
+        self.router = router
         self.loop = loop
         asyncio.set_event_loop(self.loop)
         self.context = context
-        self.inproc_socket = inproc_socket
-        self.ironhouse = ironhouse
-        self.log = get_logger("{}.{}".format(Executor._parent_name, type(self).__name__))
+        self.log = get_logger("{}".format(type(self).__name__))
 
     def add_listener(self, listener_fn, *args, **kwargs):
         # listener_fn must be a coro
@@ -51,7 +49,7 @@ class Executor(metaclass=ExecutorMeta):
         return asyncio.ensure_future(self._listen(listener_fn, *args, **kwargs))
 
     async def _listen(self, listener_fn, *args, **kwargs):
-        self.log.info("_listen called with fn {}, and args={}, kwargs={}".format(listener_fn, args, kwargs))
+        self.log.debugv("_listen called with fn {}, and args={}, kwargs={}".format(listener_fn, args, kwargs))
 
         try:
             await listener_fn(*args, **kwargs)
@@ -62,13 +60,13 @@ class Executor(metaclass=ExecutorMeta):
                         .format(listener_fn, args, kwargs)
             err_msg += '\nError Message: '
             err_msg += '\n\n{}'.format(traceback.format_exc())
-            err_msg += '\n' + delim_line + '\n' + delim_line
+            err_msg += '\n' + delim_line + '\n' + delim_line + '\n'
             self.log.error(err_msg)
 
-    async def recv_multipart(self, socket, callback_fn: types.MethodType, ignore_first_frame=False):
-        self.log.warning("--- Starting recv on socket {} with callback_fn {} ---".format(socket, callback_fn))
+    async def recv_env_multipart(self, socket, callback_fn: types.MethodType, ignore_first_frame=False):
+        self.log.socket("--- Starting recv on socket {} with callback_fn {} ---".format(socket, callback_fn))
         while True:
-            self.log.debug("waiting for multipart msg...")
+            self.log.spam("waiting for multipart msg...")
 
             try:
                 msg = await socket.recv_multipart()
@@ -77,7 +75,7 @@ class Executor(metaclass=ExecutorMeta):
                 socket.close()
                 break
 
-            self.log.debug("Got multipart msg: {}".format(msg))
+            self.log.spam("Got multipart msg: {}".format(msg))
 
             if ignore_first_frame:
                 header = None
@@ -92,20 +90,10 @@ class Executor(metaclass=ExecutorMeta):
                 continue
 
             Executor._recently_seen.add(env.meta.uuid)
-
             callback_fn(header=header, envelope=env)
 
-    def call_on_mp(self, callback: str, header: str=None, envelope_binary: bytes=None, **kwargs):
-        if header:
-            kwargs['header'] = header
-
-        cmd = ReactorCommand.create_callback(callback=callback, envelope_binary=envelope_binary, **kwargs)
-
-        # self.log.critical("\ncalling callback cmd to reactor interface: {}".format(cmd))  # DEBUG line remove this
-
-        self.inproc_socket.send(cmd.serialize())
-
-        # self.log.critical("command sent: {}".format(cmd))  # DEBUG line, remove this later
+    def notify_socket_connected(self, socket_type: int, vk: str, url: str):
+        self.router.route_callback(callback=StateInput.SOCKET_CONNECTED, socket_type=socket_type, vk=vk, url=url)
 
     def _validate_envelope(self, envelope_binary: bytes, header: str) -> Union[None, Envelope]:
         # TODO return/raise custom exceptions in this instead of just logging stuff and returning none
@@ -125,10 +113,12 @@ class Executor(metaclass=ExecutorMeta):
 
         # If header is not none (meaning this is a ROUTE msg with an ID frame), then verify that the ID frame is
         # the same as the vk on the seal
-        if header and (header != env.seal.verifying_key):
-            self.log.error("Header frame {} does not match seal's vk {}\nfor envelope {}"
-                           .format(header, env.seal.verifying_key, env))
-            return None
+
+        # TODO add this code back in appropriately...
+        # if header and (header != env.seal.verifying_key):
+        #     self.log.error("Header frame {} does not match seal's vk {}\nfor envelope {}"
+        #                    .format(header, env.seal.verifying_key, env))
+        #     return None
 
         # Make sure we haven't seen this message before
         if env.meta.uuid in Executor._recently_seen:
@@ -145,62 +135,64 @@ class Executor(metaclass=ExecutorMeta):
 
 
 class SubPubExecutor(Executor):
-    def __init__(self, loop, context, inproc_socket, *args, **kwargs):
-        super().__init__(loop, context, inproc_socket, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.subs = defaultdict(dict)  # Subscriber socket
         self.pubs = {}  # Key is url, value is Publisher socket
 
     def _recv_pub_env(self, header: str, envelope: Envelope):
-        self.log.debug("Recv'd pub envelope with header {} and env {}".format(header, envelope))
-        self.call_on_mp(callback=StateInput.INPUT, envelope_binary=envelope.serialize())
+        self.log.spam("Recv'd pub envelope with header {} and env {}".format(header, envelope))
+        self.router.route_callback(callback=StateInput.INPUT, message=envelope.message, envelope=envelope)
 
     # TODO -- is looping over all pubs ok?
-    def send_pub(self, filter: str, envelope: bytes):
-        assert isinstance(filter, str), "'id' arg must be a string"
-        assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
-        assert len(self.pubs) > 0, "Attempted to publish data but publisher socket(s) is not configured"
+    def send_pub(self, url: str, filter: str, data: bytes):
+        assert isinstance(filter, str), "'filter' arg must be a string not {}".format(filter)
+        assert isinstance(data, bytes), "'envelope' arg must be bytes"
+        assert url in self.pubs, "Attempted to pub to URL {} that is not in self.pubs {}".format(url, self.pubs)
 
-        for url in self.pubs:
-            self.log.debug("Publishing to URL {} with envelope: {}".format(url, Envelope.from_bytes(envelope)))
-            # self.log.info("Publishing to... {}".format(url))
-            self.pubs[url].send_multipart([filter.encode(), envelope])
+        self.log.spam("Publishing to URL {} with envelope: {}".format(url, Envelope.from_bytes(data)))
+        self.pubs[url].send_multipart([filter.encode(), data])
 
     def add_pub(self, url: str):
         assert url not in self.pubs, "Attempted to add pub on url that is already in self.pubs"
 
-        self.log.info("Creating publisher socket on url {}".format(url))
-        self.pubs[url] = self.ironhouse.secure_socket(
-            self.context.socket(socket_type=zmq.PUB))
-        # self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
+        self.log.socket("Creating publisher socket on url {}".format(url))
+        # self.pubs[url] = self.ironhouse.secure_socket(
+        #     self.context.socket(socket_type=zmq.PUB),
+        #     self.ironhouse.secret, self.ironhouse.public_key)
+        self.pubs[url] = self.context.socket(socket_type=zmq.PUB)
         self.pubs[url].bind(url)
-        time.sleep(0.2)
+        time.sleep(0.2)  # for late joiner syndrome (TODO i think we can do away wit this?)
 
-    def add_sub(self, url: str, filter: str, vk: str):
-        assert isinstance(filter, str), "'filter' arg must be a string"
-        assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
+    def add_sub(self, url: str, filter: str, vk: str=''):
+        assert isinstance(filter, str), "'filter' arg must be a string not {}".format(filter)
+        # assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
 
         if url not in self.subs:
-            self.log.info("Creating subscriber socket to {}".format(url))
+            self.log.socket("Creating subscriber socket to {}".format(url))
 
-            curve_serverkey = self.ironhouse.vk2pk(vk)
-            # self.subs[url]['socket'] = socket = self.context.socket(socket_type=zmq.SUB)
-            self.subs[url]['socket'] = socket = self.ironhouse.secure_socket(
-                self.context.socket(socket_type=zmq.SUB),
-                curve_serverkey=curve_serverkey)
-            socket.connect(url)
+            # curve_serverkey = self.ironhouse.vk2pk(vk)
+            # self.subs[url]['socket'] = socket = self.ironhouse.secure_socket(
+            #     self.context.socket(socket_type=zmq.SUB),
+            #     self.ironhouse.secret, self.ironhouse.public_key,
+            #     curve_serverkey=curve_serverkey)
+            self.subs[url]['socket'] = socket = self.context.socket(socket_type=zmq.SUB)
             self.subs[url]['filters'] = []
 
+            socket.connect(url)
+
         if filter not in self.subs[url]['filters']:
-            self.log.debug("Adding filter {} to sub socket at url {}".format(filter, url))
+            self.log.debugv("Adding filter {} to sub socket at url {}".format(filter, url))
             self.subs[url]['filters'].append(filter)
             self.subs[url]['socket'].setsockopt(zmq.SUBSCRIBE, filter.encode())
 
         if not self.subs[url].get('future'):
-            self.log.debug("Starting listener event for subscriber socket at url {}".format(url))
-            self.subs[url]['future'] = self.add_listener(self.recv_multipart,
-                                                 socket=self.subs[url]['socket'],
-                                                 callback_fn=self._recv_pub_env,
-                                                 ignore_first_frame=True)
+            self.log.debugv("Starting listener event for subscriber socket at url {}".format(url))
+            self.subs[url]['future'] = self.add_listener(self.recv_env_multipart,
+                                                         socket=self.subs[url]['socket'],
+                                                         callback_fn=self._recv_pub_env,
+                                                         ignore_first_frame=True)
+            self.notify_socket_connected(socket_type=zmq.SUB, vk=vk, url=url)
 
     def remove_sub(self, url: str):
         assert url in self.subs, "Attempted to remove a sub that was not registered in self.subs"
@@ -208,7 +200,7 @@ class SubPubExecutor(Executor):
         del self.subs[url]
 
     def remove_sub_filter(self, url: str, filter: str):
-        assert isinstance(filter, str), "'filter' arg must be a string"
+        assert isinstance(filter, str), "'filter' arg must be a string not {}".format(filter)
         assert url in self.subs, "Attempted to remove a sub that was not registered in self.subs"
         assert filter in self.subs[url]['filters'], "Attempted to remove a filter that was not associated with the url"
         self.subs[url]['filters'].remove(filter)
@@ -232,8 +224,8 @@ class SubPubExecutor(Executor):
 
 
 class DealerRouterExecutor(Executor):
-    def __init__(self, loop, context, inproc_socket, *args, **kwargs):
-        super().__init__(loop, context, inproc_socket, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         # 'dealers' is a simple nested dict for holding sockets by URL as well as their associated recv handlers
         # key for 'dealers' is socket URL, and value is another dict with keys 'socket' (value is Socket instance)
@@ -243,15 +235,15 @@ class DealerRouterExecutor(Executor):
         self.expected_replies = {}  # Dict where key is reply UUID and value is the asyncio timeout handler
 
         # Router socket and recv handler
-        self.router = None
+        self.router_socket = None
         self.router_handler = None
 
     def _recv_request_env(self, header: str, envelope: Envelope):
-        self.log.debug("Recv REQUEST envelope with header {} and envelope {}".format(header, envelope))
-        self.call_on_mp(callback=StateInput.REQUEST, header=header, envelope_binary=envelope.serialize())
+        self.log.spam("Recv REQUEST envelope with header {} and envelope {}".format(header, envelope))
+        self.router.route_callback(callback=StateInput.REQUEST, header=header, message=envelope.message, envelope=envelope)
 
     def _recv_reply_env(self, header: str, envelope: Envelope):
-        self.log.debug("Recv REPLY envelope with header {} and envelope {}".format(header, envelope))
+        self.log.spam("Recv REPLY envelope with header {} and envelope {}".format(header, envelope))
 
         reply_uuid = envelope.meta.uuid
         if reply_uuid in self.expected_replies:
@@ -259,84 +251,83 @@ class DealerRouterExecutor(Executor):
             self.expected_replies[reply_uuid].cancel()
             del(self.expected_replies[reply_uuid])
 
-        self.call_on_mp(callback=StateInput.INPUT, header=header, envelope_binary=envelope.serialize())
+        self.router.route_callback(callback=StateInput.INPUT, header=header, message=envelope.message, envelope=envelope)
 
-    def _timeout(self, url: str, request_envelope: bytes, reply_uuid: int):
+    def _timeout(self, url: str, envelope: Envelope, reply_uuid: int):
         assert reply_uuid in self.expected_replies, "Timeout triggered but reply_uuid was not in expected_replies"
-        self.log.info("Request to url {} timed out! reply uuid {}".format(url, reply_uuid))
-        self.log.debug("Request envelope: {}".format(request_envelope))
 
+        self.log.debug("Request to url {} timed out! reply uuid {}".format(url, reply_uuid))
         del(self.expected_replies[reply_uuid])
-        self.call_on_mp(callback=StateInput.TIMEOUT, envelope_binary=request_envelope)
+
+        self.router.route_callback(callback=StateInput.TIMEOUT, message=envelope.message, envelope=envelope)
 
     def add_router(self, url: str):
-        assert self.router is None, "Attempted to add router on url {} but socket already configured".format(url)
+        assert self.router_socket is None, "Attempted to add router on url {} but socket already configured".format(url)
 
-        self.log.info("Creating router socket on url {}".format(url))
-        # self.router = self.context.socket(socket_type=zmq.ROUTER)
-        self.router = self.ironhouse.secure_socket(
-            self.context.socket(socket_type=zmq.ROUTER))
-        self.router.bind(url)
+        self.log.socket("Creating router socket on url {}".format(url))
+        self.router_socket = self.context.socket(socket_type=zmq.ROUTER)
+        # self.router = self.ironhouse.secure_socket(
+        #     self.context.socket(socket_type=zmq.ROUTER),
+        #     self.ironhouse.secret, self.ironhouse.public_key)
+        self.router_socket.bind(url)
 
-        self.router_handler = self.add_listener(self.recv_multipart, socket=self.router,
+        self.router_handler = self.add_listener(self.recv_env_multipart, socket=self.router_socket,
                                                 callback_fn=self._recv_request_env)
 
-    def add_dealer(self, url: str, id: str, vk: str):
-        assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
+    def add_dealer(self, url: str, id: str, vk: str=''):
+        # assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
         if url in self.dealers:
             self.log.warning("Attempted to add dealer {} that is already in self.dealers".format(url))
             return
-        # assert url not in self.dealers, "Url {} already in self.dealers {}".format(url, self.dealers)
 
         assert isinstance(id, str), "'id' arg must be a string"
-        self.log.info("Creating dealer socket for url {} with id {}".format(url, id))
+        self.log.socket("Creating dealer socket for url {} with id {}".format(url, id))
 
-        curve_serverkey = self.ironhouse.vk2pk(vk)
-        self.log.debug('{}: add_dealer for url: {}'.format(os.getenv('HOST_IP'), url))
-        # socket = self.context.socket(socket_type=zmq.DEALER)
-        socket = self.ironhouse.secure_socket(
-            self.context.socket(socket_type=zmq.DEALER),
-            curve_serverkey=curve_serverkey)
-
+        # curve_serverkey = self.ironhouse.vk2pk(vk)
+        # socket = self.ironhouse.secure_socket(
+        #     self.context.socket(socket_type=zmq.DEALER),
+        #     self.ironhouse.secret, self.ironhouse.public_key,
+        #     curve_serverkey=curve_serverkey)
+        socket = self.context.socket(socket_type=zmq.DEALER)
         socket.identity = id.encode('ascii')
 
-        self.log.info("Dealer socket connecting to url {}".format(url))
+        self.log.socket("Dealer socket connecting to url {}".format(url))
         socket.connect(url)
 
-        future = self.add_listener(self.recv_multipart, socket=socket, callback_fn=self._recv_reply_env,
+        future = self.add_listener(self.recv_env_multipart, socket=socket, callback_fn=self._recv_reply_env,
                                    ignore_first_frame=True)
 
         self.dealers[url][_SOCKET] = socket
         self.dealers[url][_HANDLER] = future
 
+        self.notify_socket_connected(socket_type=zmq.DEALER, vk=vk, url=url)
+
     # TODO pass in the intended replier's vk so we can be sure the reply we get is actually from him
-    def request(self, url: str, reply_uuid: str, envelope: bytes, timeout=0):
-        self.log.debug("requesting /w reply uuid {} and env {}".format(reply_uuid, envelope))
+    def request(self, url: str, reply_uuid: str, envelope: Envelope, timeout=0):
+        self.log.spam("requesting /w reply uuid {} and env {}".format(reply_uuid, envelope))
         assert url in self.dealers, "Attempted to make request to url {} that is not in self.dealers {}"\
             .format(url, self.dealers)
-        assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
 
         reply_uuid = int(reply_uuid)
         timeout = float(timeout)
 
-        self.log.debug("Composing request to url {}\ntimeout: {}\nenvelope: {}".format(url, timeout, envelope))
+        self.log.spam("Composing request to url {}\ntimeout: {}\nenvelope: {}".format(url, timeout, envelope))
 
         if timeout > 0:
             assert reply_uuid not in self.expected_replies, "Reply UUID is already in expected replies"
-            self.log.debug("Adding timeout of {} for reply uuid {}".format(timeout, reply_uuid))
+            self.log.spam("Adding timeout of {} for reply uuid {}".format(timeout, reply_uuid))
             self.expected_replies[reply_uuid] = self.loop.call_later(timeout, self._timeout, url, envelope, reply_uuid)
 
-        self.dealers[url][_SOCKET].send_multipart([envelope])
+        self.dealers[url][_SOCKET].send_multipart([envelope.serialize()])
 
     def reply(self, id: str, envelope: bytes):
-        assert self.router, "Attempted to reply but router socket is not set"
+        assert self.router_socket, "Attempted to reply but router socket is not set"
         assert isinstance(id, str), "'id' arg must be a string"
         assert isinstance(envelope, bytes), "'envelope' arg must be bytes"
-
-        self.router.send_multipart([id.encode(), envelope])
+        self.router_socket.send_multipart([id.encode(), envelope])
 
     def remove_router(self):
-        assert self.router, "Tried to remove router but self.router is not set"
+        assert self.router_socket, "Tried to remove router but self.router is not set"
 
         self.router_handler.cancel()
         # self.log.info("Removing router at url {}".format(url))
@@ -345,7 +336,7 @@ class DealerRouterExecutor(Executor):
         assert url in self.dealers, "Attempted to remove dealer url {} that is not in list of dealers {}"\
             .format(url, self.dealers)
 
-        self.log.info("Removing dealer at url {} with id {}".format(url, id))
+        self.log.notice("Removing dealer at url {} with id {}".format(url, id))
 
         socket = self.dealers[url][_SOCKET]
         future = self.dealers[url][_HANDLER]
@@ -361,5 +352,5 @@ class DealerRouterExecutor(Executor):
     def teardown(self):
         for url in self.dealers.copy():
             self.remove_dealer(url)
-        if self.router:
+        if self.router_socket:
             self.remove_router()

@@ -1,6 +1,7 @@
 from unittest import TestCase
 
-from cilantro.messages import MessageBase
+from cilantro.messages.transaction.base import MessageBase
+
 
 """
 TestMessage bare bones implementation of MessageBase for Testing purposes only

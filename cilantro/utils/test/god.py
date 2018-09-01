@@ -1,14 +1,17 @@
-from cilantro.messages import *
+from cilantro.messages.transaction.standard import StandardTransaction, StandardTransactionBuilder
+from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.messages.transaction.contract import *
+from cilantro.messages.signals.kill_signal import KillSignal
 import asyncio
 from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.transport import Composer
 from unittest.mock import MagicMock
 from cilantro.logger import get_logger
+from cilantro.utils.test.mp_test_case import MPTestCase
 import os, requests, time, random
 
 
-if os.getenv('HOST_IP'):
+if os.getenv('HOST_IP', '127.0.0.1'):
     _MN_URL = "http://{}:8080".format(os.getenv('MASTERNODE', '0.0.0.0'))
 else:
     _MN_URL = "http://0.0.0.0:8080"
@@ -28,6 +31,19 @@ RAGHU = ('b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668',
 
 ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL, RAGHU]
 
+
+def countdown(duration: int, msg: str, log=None, status_update_freq=5):
+    _l = log or get_logger("Countdown")
+    if duration > status_update_freq:
+        num_sleeps = duration // status_update_freq
+
+        for _ in range(num_sleeps):
+            time.sleep(status_update_freq)
+            duration -= status_update_freq
+            _l.important3(msg.format(duration))
+
+    if duration > 0:
+        time.sleep(duration)
 
 class God:
 
@@ -56,14 +72,21 @@ class God:
         self.composers = {}
 
     def _get_or_create_composer(self, signing_key):
+        # TODO fix this ... this is horribly old and likely broken untested code
         if signing_key in self.composers:
             self.log.debug("Existing Composer object found for signing key {}".format(signing_key))
             return self.composers[signing_key]
         else:
             self.log.debug("Creating new Composer object for signing key {}".format(signing_key))
-            c = Composer(interface=self.interface, signing_key=signing_key, name='God-Composer-{}'.format(signing_key[:4]))
+            c = Composer(manager=self.interface, signing_key=signing_key, name='God-Composer-{}'.format(signing_key[:4]))
             self.composers[signing_key] = c
             return c
+
+    @classmethod
+    def teardown_all(cls, masternode_url):
+        masternode_url += '/teardown-network'
+        cls.log.important("Sending teardown notification to Masternode at url {}".format(masternode_url))
+        r = requests.post(masternode_url, data=KillSignal.create().serialize())
 
     @classmethod
     def _default_gen_func(cls):
@@ -101,13 +124,17 @@ class God:
 
     @classmethod
     def send_tx(cls, tx: TransactionBase):
-        r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
-        cls.log.debug("POST request to MN at URL {} has status code: {}".format(cls.mn_url, r.status_code))
+        try:
+            r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
+            cls.log.spam("POST request to MN at URL {} has status code: {}".format(cls.mn_url, r.status_code))
+        except Exception as e:
+            cls.log.warning("Error attempt to send transaction to Masternode at URL {}\nerror={}".format(cls.mn_url, e))
 
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
         """
-        This func blocks.
+        Pump random transactions from random users to Masternode's REST endpoint at an average rate of 'rate'
+        transactions per second. This func blocks.
         :param rate:
         :param gen_func:
         :return:
@@ -117,7 +144,7 @@ class God:
 
         if use_poisson:
             from scipy.stats import poisson, expon
-            rvs_func = lambda: expon.rvs(rate) - rate
+            rvs_func = lambda: expon.rvs(rate)/rate - 1
         else:
             rvs_func = lambda: 1/rate
 
@@ -129,20 +156,18 @@ class God:
         while True:
             wait = rvs_func()
 
-            cls.log.debugv("Sending next transaction in {} seconds".format(wait))
+            cls.log.spam("Sending next transaction in {} seconds".format(wait))
             time.sleep(wait)
 
             tx = gen_func()
 
-            cls.log.debugv("sending transaction {}".format(tx))
+            cls.log.spam("sending transaction {}".format(tx))
             cls.send_tx(tx)
-            # r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
-            # cls.log.debugv("POST request got status code {}".format(r.status_code))
 
     @classmethod
-    def dump_it(cls, volume: int, gen_func=None):
+    def dump_it(cls, volume: int, delay: int=0, gen_func=None):
         """
-        Dump it fast
+        Dump it fast. Send
         :param volume:
         :return:
         """
@@ -151,15 +176,32 @@ class God:
         if not gen_func:
             gen_func = cls._default_gen_func()
 
-        cls.log.info("Generating {} transactions to dump...".format(volume))
+        gen_start_time = time.time()
+        cls.log.important2("Generating {} transactions to dump...".format(volume))
         txs = [gen_func() for _ in range(volume)]
-        cls.log.info("Done generating transactions.")
+        cls.log.important2("Done generating transactions.")
+
+        delay -= int(time.time() - gen_start_time)
+        countdown(delay, "Waiting for an additional {} seconds before dumping...", cls.log, status_update_freq=8)
+        # if delay > DUMP_UPDATE_PERIOD:
+        #     cls.log.important2("Waiting for an additional {} seconds before dumping...".format(delay))
+        #     num_sleeps = delay % DUMP_UPDATE_PERIOD
+        #     remainder = delay - num_sleeps * DUMP_UPDATE_PERIOD
+        #     if remainder < 0:
+        #         remainder = 0
+        #
+        #     for _ in range(num_sleeps):
+        #         time.sleep(DUMP_UPDATE_PERIOD)
+        #         delay -= DUMP_UPDATE_PERIOD
+        #         cls.log.important2("Dumping in {} seconds...".format(delay))
+
+        # time.sleep(delay)
 
         start = time.time()
-        cls.log.important("Dumping {} transactions...".format(len(txs)))
+        cls.log.important2("Dumping {} transactions...".format(len(txs)))
         for tx in txs:
             cls.send_tx(tx)
-        cls.log.important("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
+        cls.log.important2("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
 
     @classmethod
     def random_std_tx(cls):

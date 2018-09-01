@@ -1,4 +1,4 @@
-from cilantro.messages import MessageBase
+from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.utils import lazy_property, Hasher
 from cilantro.messages.utils import validate_hex
@@ -45,7 +45,7 @@ class TransactionRequest(MessageBase):
 
 class TransactionReply(MessageBase):
     """
-    TransactionReply acts as a holder for an individual transaction. They are requested from delegates by Masternodes when
+    TransactionReply acts as a holder for an individual transaction. They are requested from TESTNET_DELEGATES by Masternodes when
     a Masternode needs to retrieve the block data associated with a BlockContender
     """
 

@@ -1,5 +1,7 @@
-from vmnet.test.base import *
+from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random
+from cilantro.protocol import wallet
+from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 
 import vmnet
 
@@ -10,28 +12,24 @@ def wrap_func(fn, *args, **kwargs):
 
 def run_mn():
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os, time
 
     log = get_logger(__name__)
 
-    m_info = Constants.Testnet.Masternodes[0]
+    m_info = TESTNET_MASTERNODES[0]
     m_info['ip'] = os.getenv('HOST_IP')
 
     mn = NodeFactory.run_masternode(ip=m_info['ip'], signing_key=m_info['sk'])
 
 def run_witness(slot_num):
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
 
     log = get_logger(__name__)
 
-    w_info = Constants.Testnet.Witnesses[slot_num]
+    w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'])
@@ -39,30 +37,24 @@ def run_witness(slot_num):
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
-    from cilantro.db import DB, DB_NAME
     import os
 
     log = get_logger("DELEGATE FACTORY")
 
-    d_info = Constants.Testnet.Delegates[slot_num]
+    d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
 
 def run_mgmt():
     from cilantro.logger import get_logger
-    from cilantro import Constants
-    from cilantro.db import DB, DB_NAME
     from cilantro.utils.test import MPComposer
-    from cilantro.protocol.wallets import ED25519Wallet
-    import os, time, asyncio
 
     log = get_logger(__name__)
-    sk = Constants.Testnet.Masternodes[0]['sk']
-    vk = Constants.Protocol.Wallets.get_vk(sk)
-    s,v = ED25519Wallet.new()
+    sk = TESTNET_MASTERNODES[0]['sk']
+    vk = wallet.get_vk(sk)
+    s,v = wallet.new()
     mpc = MPComposer(name='mgmt', sk=s)
     mpc.add_sub(filter='a', vk=vk)
 

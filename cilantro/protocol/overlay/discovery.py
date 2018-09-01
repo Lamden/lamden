@@ -6,7 +6,7 @@
 from cilantro.protocol.overlay.ip import *
 from cilantro.protocol.overlay.msg import *
 from cilantro.logger import get_logger
-import os, json, uuid, resource, socket, select, asyncio, time
+import os, resource, socket, asyncio, time
 
 SOCKET_LIMIT = 2500
 log = get_logger(__name__)
@@ -19,17 +19,17 @@ class Discovery:
     min_bootstrap_nodes = 3
     max_tasks = 100000
     crawler_port = os.getenv('CRAWLER_PORT', 31337)
-    public_ip = get_public_ip()
 
     async def discover(self, mode, return_asap=True):
         ips = {}
         if mode in ['test', 'local']:
             self.ip = os.getenv('HOST_IP', '127.0.0.1')
             host = self.ip
-            hostname = 'virtual_network' if os.getenv('HOST_IP') else 'localhost'
+            hostname = 'virtual_network' if os.getenv('HOST_IP', '127.0.0.1') else 'localhost'
             ips[hostname] = [decimal_to_ip(d) for d in range(*get_local_range(host))]
             self.subnets[get_subnet(host)] = {'area': hostname, 'count': 0}
         else:
+            self.public_ip = get_public_ip()
             self.ip = self.public_ip
             if mode == 'neighborhood':
                 for area in get_region_range(self.public_ip):
@@ -96,4 +96,7 @@ class Discovery:
     def stop_discovery(self):
         self.udp_sock.close()
         self.udp_sock_server.close()
-        self.server.set_result('done')
+        try:
+            self.server.set_result('done')
+        except:
+            self.server.cancel()

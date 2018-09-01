@@ -6,6 +6,7 @@ import zmq.asyncio
 import random
 import inspect
 import traceback
+import time
 from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger
 
@@ -26,10 +27,35 @@ SIG_ABORT = b'NOSUCC'
 SIG_START = b'STARTSUCC'
 
 
+def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
+    log = get_logger("TestObjectRunner[{}]".format(name))
+
+    # TODO create socket outside of loop and pass it in for
+    tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
+    log.debug("MPTesterProcess named {} created".format(name))
+    tester_socket = tester.socket
+
+    try:
+        tester.start_test()
+    except Exception as e:
+        log.error("\n\n TesterProcess encountered exception outside of internal loop! Error:\n {}\n\n"
+                       .format(traceback.format_exc()))
+        tester_socket.send_pyobj(SIG_FAIL)
+        tester._teardown()
+
+
 def wrap_func(func, *args, **kwargs):
     def _func():
         return func(*args, **kwargs)
     return _func
+
+def get_filename(proc_name):
+    import os
+    prefix = os.getenv('HOST_NAME', '')
+    if prefix:
+        proc_name = prefix + '_' + proc_name
+    return "{}_{}".format(proc_name, os.getpid())
+
 
 def mp_testable(test_cls):
     """
@@ -55,12 +81,13 @@ def mp_testable(test_cls):
 
     return _mp_testable
 
+
 def _gen_url(name=''):
     """
     Helper method to generate a random URL for use in a PAIR socket
     """
     rand_num = random.randint(0, pow(2, 16))
-    return "ipc://mptest-{}-{}".format(name, rand_num)
+    return "ipc://mptest-ipc-{}-{}".format(name, rand_num)
 
 
 class MPTesterProcess:
@@ -72,6 +99,7 @@ class MPTesterProcess:
 
     def __init__(self, name, url, build_fn, config_fn, assert_fn):
         self.url = url
+        # self.profname = profname
         self.name = name
         self.config_fn = config_fn
         self.assert_fn = assert_fn
@@ -106,15 +134,15 @@ class MPTesterProcess:
             self.log.debug("starting tester proc event loop")
             self.loop.run_until_complete(self.gathered_tasks)
         except Exception as e:
-            # If the tasks were canceled internally, then do not run _teardown() again
+            # If the tasks were canceled internally, then do not run teardown() again
             if type(e) is asyncio.CancelledError:
                 self.log.debug("Task(s) cancel detected. Closing event loop.")
-                self.loop.close()
+                self.loop.stop()
                 return
 
             self.log.error("\n\nException in main TesterProc loop: {}\n\n".format(traceback.format_exc()))
-            self.socket.send_pyobj(SIG_FAIL)
-            self._teardown()
+            # self.socket.send_pyobj(SIG_FAIL)
+            # self._teardown()
 
     def _build_components(self, build_fn) -> tuple:
         objs = build_fn()
@@ -219,10 +247,10 @@ class MPTesterProcess:
         """
         self.log.info("Tearing down TesterProcess bound to URL {}".format(self.url))
 
-        self.log.debug("Closing pair socket")
+        self.log.debug("Closing pair socket to MPTest process")
         self.socket.close()
 
-        self.log.debug("Stopping tasks")
+        self.log.debug("Stopping MPTester object tasks")
         self.gathered_tasks.cancel()
 
     def _assertions(self):
@@ -288,8 +316,6 @@ class MPTesterBase:
             assert MPTEST_PORT in MPTestCase.ports[name], "MPTEST_PORT {} not found in docker node {}'s ports {}"\
                                                           .format(MPTEST_PORT, name, MPTestCase.ports[name])
 
-            self.log.warning("Executing tester on container {} with ip {}".format(name, ip))
-
             url = MPTestCase.ports[name][MPTEST_PORT]  # URL the orchestration node should connect to
             url = url.replace('localhost', '127.0.0.1') # Adjust localhost to 127.0.0.1
             url = "tcp://{}".format(url)
@@ -299,18 +325,20 @@ class MPTesterBase:
             self.url = url
             self.ip = ip
 
-            runner_func = wrap_func(self._run_test_proc, self.name, remote_url, build_fn, self.config_fn, self.assert_fn)
+            self.log.notice("Creating node named {} in a docker container with name {} and ip {}".format(self.name, name, self.ip))
+
+            runner_func = wrap_func(_run_test_proc, self.name, remote_url, build_fn, self.config_fn, self.assert_fn)
 
             # TODO -- will i need a ton of imports and stuff to make this run smoothly...?
             MPTestCase.execute_python(name, runner_func, async=True)
 
         # Create Tester object in a Subprocess
         else:
-            self.log.warning("Creating Tester object in a subprocess")
             self.url = _gen_url(self.name)
+            self.log.notice("Creating node named {} in a subprocess with IPC url {}".format(self.name, self.url))
 
-            self.test_proc = LProcess(target=self._run_test_proc, args=(self.name, self.url, build_fn,
-                                                                        self.config_fn, self.assert_fn,))
+            self.test_proc = LProcess(target=_run_test_proc, name=self.name, args=(self.name, self.url, build_fn,
+                                                                                   self.config_fn, self.assert_fn,))
             self.test_proc.start()
 
     def wait_for_test_object(self):
@@ -318,24 +346,6 @@ class MPTesterBase:
         msg = self.socket.recv_pyobj()
         assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
         self.log.info("GOT RDY SIG: {}".format(msg))
-
-    @staticmethod
-    def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
-        log = get_logger("TestObjectRunner[{}]".format(name))
-
-        # TODO create socket outside of loop and pass it in for
-        log.debug("Creating MPTesterProcess named {}...".format(name))
-        tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
-        log.debug("MPTesterProcess named {} created".format(name))
-        tester_socket = tester.socket
-
-        try:
-            tester.start_test()
-        except Exception as e:
-            log.error("\n\n TesterProcess encountered exception outside of internal loop! Error:\n {}\n\n"
-                           .format(traceback.format_exc()))
-            tester_socket.send_pyobj(SIG_FAIL)
-            tester._teardown()
 
     @classmethod
     def build_obj(cls, *args, **kwargs) -> tuple:
@@ -355,7 +365,8 @@ class MPTesterBase:
         self.socket.close()
 
         if self.test_proc:
-            self.log.debug("Joining tester proc {}...".format(self.name))
+            self.log.debug("Joining tester terminate {}...".format(self.name))
+            self.test_proc.terminate()
             self.test_proc.join()
             self.log.debug("Tester Proc {} joined".format(self.name))
 

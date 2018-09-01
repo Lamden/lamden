@@ -1,11 +1,12 @@
-import asyncio
+import asyncio, time, cilantro, os, shutil, signal, sys
 import zmq.asyncio
-from vmnet.test.base import *
-import time
+from vmnet.launch import launch
+from vmnet.webserver import start_ui
+from vmnet.testcase import BaseNetworkTestCase
 from cilantro.logger import get_logger
 from .mp_test import SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC, SIG_START
-from os.path import dirname
-import cilantro
+from os.path import dirname, join
+from functools import wraps
 
 # URL of orchestration node. TODO -- set this to env vars
 URL = "tcp://127.0.0.1:5020"
@@ -15,27 +16,64 @@ TESTER_POLL_FREQ = 0.1
 
 CILANTRO_PATH = dirname(dirname(cilantro.__path__[0]))
 
+log = get_logger("MPTestCaseBoy")  # TODO delete dat
 
-import signal
-import sys
-import os
 def signal_handler(sig, frame):
     print("Killing docker containers...")
     os.system("docker kill $(docker ps -q)")
     print("Docker containers be ded")
     sys.exit(0)
 
+def vmnet_test(*args, **kwargs):
+    def _vmnet_test(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            self = args[0]
+            assert isinstance(self, BaseNetworkTestCase), \
+                "@vmnet_test can only be used to decorate BaseNetworkTestCase subclass methods (got self={}, but expected " \
+                "a BaseNetworkTestCase subclass instance)".format(self)
+
+            klass = self.__class__
+            parent_klass = self.__class__.__bases__[0]  # In Cilantro, this should be MPTestCase
+
+            # Horrible hack to get MPTestCase to work
+            if parent_klass is not BaseNetworkTestCase:
+                klass = parent_klass
+
+            klass.test_name = klass.__name__
+            config_dict = launch(klass.config_file, klass.test_name)
+            klass._set_configs(klass, config_dict)
+
+            # Create log directory for test name
+            log_dir = join(klass.project_path, 'logs', klass.test_name)
+            try: shutil.rmtree(log_dir)
+            except: pass
+            os.makedirs(log_dir, exist_ok=True)
+
+            if run_webui:
+                klass.webserver_proc, klass.websocket_proc = start_ui(
+                    klass.test_name, klass.project_path)
+
+            klass.vmnet_test_active = True
+            res = func(*args, **kwargs)
+            klass.vmnet_test_active = False
+
+            return res
+
+        return wrapper
+
+    if len(args) == 1 and callable(args[0]):
+        run_webui = False
+        return _vmnet_test(args[0])
+    else:
+        run_webui = kwargs.get('run_webui', False)
+        return _vmnet_test
 
 class MPTestCase(BaseNetworkTestCase):
-    compose_file = '{}/cilantro/tests/vmnet/compose_files/cilantro-nodes.yml'.format(CILANTRO_PATH)
-
-    local_path = CILANTRO_PATH
-    docker_dir = '{}/cilantro/tests/vmnet/docker_dir'.format(CILANTRO_PATH)
-    logdir = '{}/cilantro/logs'.format(CILANTRO_PATH)
-    setuptime = 8
-
+    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes.json'.format(CILANTRO_PATH)
     testers = []
     curr_tester_index = 1
+    vmnet_test_active = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -71,6 +109,14 @@ class MPTestCase(BaseNetworkTestCase):
 
         MPTestCase.testers.clear()
         MPTestCase.curr_tester_index = 1
+
+        # if MPTestCase.vmnet_test_active:
+        #     self.log.important3("ayyyy im clearing the containers good sir")
+        #     self._reset_containers()
+        # else:
+        #     self.log.fatal("VMNET TEST NOT ACTIVE! NOT CLEARING ANYTHING!")
+
+        # MPTestCase.vmnet_test_active = False
 
     def start(self, timeout=TEST_TIMEOUT):
         """
@@ -154,5 +200,6 @@ class MPTestCase(BaseNetworkTestCase):
 
 
 # TODO find him a better home
-if MPTestCase.vmnet_test_active:
-    signal.signal(signal.SIGINT, signal_handler)
+# if hasattr(MPTestCase, 'vmnet_test_active'):
+#     if BaseNetworkTestCase.vmnet_test_active:
+#         signal.signal(signal.SIGINT, signal_handler)

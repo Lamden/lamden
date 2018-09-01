@@ -2,14 +2,15 @@ import asyncio, os, logging
 import zmq.asyncio
 from cilantro.logger import get_logger
 from cilantro.protocol.reactor.executor import Executor
-from cilantro.messages import ReactorCommand
-from cilantro import Constants
+from cilantro.messages.reactor.reactor_command import ReactorCommand
 from cilantro.protocol.overlay.dht import DHT
 from cilantro.protocol.overlay.node import Node
+from cilantro.protocol.overlay.utils import digest
 from cilantro.protocol.structures import CappedDict
 from cilantro.utils import IPUtils
 import signal, sys
-from cilantro.protocol.statemachine import *
+from cilantro.protocol.states.state import StateInput
+from cilantro.constants.overlay_network import ALPHA, KSIZE, MAX_PEERS
 import inspect
 
 import uvloop
@@ -26,7 +27,7 @@ class ReactorDaemon:
         self.url = url
 
         # Comment out below for more granularity in debugging
-        self.log.setLevel(logging.INFO)
+        # self.log.setLevel(logging.INFO)
 
         # TODO optimize cache
         self.ip_cache = CappedDict(max_size=64)
@@ -37,20 +38,19 @@ class ReactorDaemon:
         # Register signal handler to teardown
         signal.signal(signal.SIGTERM, self._signal_teardown)
 
-        # TODO get a workflow that runs on VM so we can test /w discovery
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
-                       alpha=Constants.Overlay.Alpha, ksize=Constants.Overlay.Ksize,
-                       max_peers=Constants.Overlay.MaxPeers, block=False, cmd_cli=False, wipe_certs=True)
+                       alpha=ALPHA, ksize=KSIZE, daemon=self,
+                       max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
 
-        self.context, auth = self.dht.network.ironhouse.secure_context(async=True)
+        self.context = zmq.asyncio.Context()
         self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
         self.socket.connect(self.url)
 
         # Set Executor _parent_name to differentiate between nodes in log files
         Executor._parent_name = name
 
-        self.executors = {name: executor(self.loop, self.context, self.socket, self.dht.network.ironhouse)
+        self.executors = {name: executor(self.loop, self.socket, self.dht.network.ironhouse)
                           for name, executor in Executor.registry.items()}
 
         try:
@@ -65,17 +65,17 @@ class ReactorDaemon:
     async def _recv_messages(self):
         try:
             # Notify parent proc that this proc is ready
-            self.log.debug("reactorcore notifying main proc of ready")
+            self.log.notice("Daemon notifying main proc of ready")
             self.socket.send(CHILD_RDY_SIG)
 
             self.log.info("-- Daemon proc listening to main proc on PAIR Socket at {} --".format(self.url))
             while True:
-                self.log.debug("ReactorDaemon awaiting for command from main thread...")
+                self.log.spam("ReactorDaemon awaiting for command from main thread...")
                 cmd_bin = await self.socket.recv()
-                self.log.debug("Got cmd from queue: {}".format(cmd_bin))
+                self.log.spam("Got cmd from queue: {}".format(cmd_bin))
 
                 if cmd_bin == KILL_SIG:
-                    self.log.debug("Daemon Process got kill signal from main proc")
+                    self.log.important("Daemon Process got kill signal from main proc")
                     self._teardown()
                     return
 
@@ -90,7 +90,7 @@ class ReactorDaemon:
             self.log.warning("Daemon _recv_messages task canceled externally")
 
     def _signal_teardown(self, signal, frame):
-        self.log.debug("Daemon process got kill signal!")
+        self.log.important("Daemon process got kill signal!")
         self._teardown()
 
     def _teardown(self):
@@ -106,6 +106,8 @@ class ReactorDaemon:
         for e in self.executors.values():
             e.teardown()
 
+        self.dht.cleanup()
+
         self.log.warning("Closing event loop")
         self.loop.call_soon_threadsafe(self.loop.stop)
 
@@ -120,7 +122,7 @@ class ReactorDaemon:
         if cmd_args:
             executor_name, executor_func, kwargs = cmd_args
         else:
-            self.log.debug('Command requires VK lookup. Short circuiting from _execute_cmd.')
+            self.log.debugv('Command requires VK lookup. Short circuiting from _execute_cmd.')
             return
 
         # Sanity checks (for catching bugs mostly)
@@ -130,13 +132,17 @@ class ReactorDaemon:
             .format(executor_func, self.executors[executor_name])
 
         # Execute command
-        getattr(self.executors[executor_name], executor_func)(**kwargs)
+        try:
+            getattr(self.executors[executor_name], executor_func)(**kwargs)
+        except Exception as e:
+            self.log.fatal("Error executing command {}\n....error={}".format(cmd, e))
 
     def _parse_cmd(self, cmd: ReactorCommand):
         """
         Parses a cmd for execution, by extracting/preparing the necessary kwargs for execution.
         :param cmd: an instance of ReactorCommand
-        :return: A tuple of 3 elements (executor_name, executor_func, kwargs)
+        :return: A tuple of 3 elements (executor_name, executor_func, kwargs). Returns None if the command specifies
+        a URL with a VK instead of a IP address.
         """
         executor_name = cmd.class_name
         executor_func = cmd.func_name
@@ -152,7 +158,7 @@ class ReactorDaemon:
 
         # Replace VK with IP address if necessary
         if 'url' in kwargs:
-            self.log.debug("Processing command with url {}".format(kwargs['url']))
+            self.log.spam("Processing command with url {}".format(kwargs['url']))
             url = kwargs['url']
 
             # Check if URL has a VK inside
@@ -163,7 +169,7 @@ class ReactorDaemon:
                 else:
                     ip = self.dht.network.lookup_ip_in_cache(vk)
                 if not ip:
-                    self.log.info("Could not find ip for vk {} in cache. Performing lookup in DHT.".format(vk))
+                    self.log.debug("Could not find ip for vk {} in cache. Performing lookup in DHT.".format(vk))
 
                     asyncio.ensure_future(self._lookup_ip(cmd, url, vk))
                     return
@@ -176,19 +182,29 @@ class ReactorDaemon:
     async def _lookup_ip(self, cmd, url, vk, *args, **kwargs):
         ip, node = None, None
         try:
-            node = await self.dht.network.lookup_ip(vk)
+            node, cached = await self.dht.network.lookup_ip(vk)
+            # NOTE while secure, this is a more loose connection policy
+            self.log.debugv('IP {} resolves {} into {}'.format(os.getenv('HOST_IP', '127.0.0.1'), vk, node))
+            self.log.debugv('... but is {} authorized? Until next episode!'.format(node))
+            if node:
+                if not self.dht.network.ironhouse.authorized_nodes.get(node.id):
+                    authorization = await self.dht.network.authenticate(node)
+                    if not authorization:
+                        node = None
+            else:
+                node = None
+
         except Exception as e:
             delim_line = '!' * 64
             err_msg = '\n\n' + delim_line + '\n' + delim_line
-            err_msg += '\n ERROR CAUGHT IN LOOKUP FUNCTION {}\ncalled \w args={}\nand kwargs={}\n'\
-                        .format(args, kwargs)
+            err_msg += '\n ERROR CAUGHT IN LOOKUP FOR VK {}\ncalled \w args={}\nand kwargs={}\n'\
+                       .format(vk, args, kwargs)
             err_msg += '\nError Message: '
             err_msg += '\n\n{}'.format(traceback.format_exc())
             err_msg += '\n' + delim_line + '\n' + delim_line
-            self.log.error(err_msg)
+            self.log.fatal(err_msg)
 
         if node is None:
-
             kwargs = cmd.kwargs
             callback = ReactorCommand.create_callback(callback=StateInput.LOOKUP_FAILED, **kwargs)
             self.log.debug("Sending callback failure to mainthread {}".format(callback))

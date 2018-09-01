@@ -1,5 +1,4 @@
 import os
-import base64
 
 def compose_msg(data=''):
     pepper = os.getenv('PEPPER','cilantro')

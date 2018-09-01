@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+
 import unittest
 import sys
 import time
@@ -94,8 +97,9 @@ def main(args):
         for test in group:
 
             if _should_skip_module(test, skip_module_names):
-                log.info("Skipping test module {}".format(test))
+                log.notice("Skipping test module {}".format(test))
                 continue
+            log.info("Starting tests for module {}...".format(test))
 
             suite = loader.discover(test)  # finds all unit tests in the testgroup directory
 
@@ -112,9 +116,9 @@ def main(args):
 
             # Suppress all log output below logging.WARNING if -v is specified
             if not args.verbosity:
-                overwrite_logger_level(logging.WARNING)  # Set log level to warning to suppress most output from tests
+                overwrite_logger_level(9000)  # Set log level to 9000  to suppress most output from tests
             test_result = runner.run(suite)
-            overwrite_logger_level(logging.DEBUG)  # Change logging level back
+            overwrite_logger_level(1)  # Change logging level back
 
             run_time = round(time.time() - start, 3)
             tests_total = suite.countTestCases()
@@ -122,14 +126,13 @@ def main(args):
             test_failures = len(test_result.errors) + len(test_result.failures)
             tests_passed = tests_total - test_failures
 
-            _l = log.critical
             if test_result.errors:
                 for i in range(len(test_result.errors)):
                     all_errors.append(test_result.errors[i][0])
                     log.error("Error in {}".format(test))
                     log.error('Number of errors: {}'.format(len(test_result.errors)))
-                    log.error('Error #{}: {}'.format(i+1, test_result.errors[i][0]))  # test_result.errors[i][0] = test_retrieve_block_invalid_args (tests.db.test_blockchain_storage.TestBlockStorageDriver)
-                    log.error('Error traceback: {}'.format(test_result.errors[i][1]))
+                    log.error('Error #{}: {}'.format(i+1, test_result.errors[i][0]))  # test_result.errors[i][0] = test_retrieve_block_invalid_args (tests.storage.test_blockchain_storage.TestBlockStorageDriver)
+                    log.error('Error traceback: \n{}'.format(test_result.errors[i][1]))
                     TEST_FLAG = 'F'
 
             if test_result.failures:
@@ -143,10 +146,11 @@ def main(args):
 
             if not test_result.errors and not test_result.failures:
                 _l = log.info
-                log.info("No errors in {}".format(test))
                 num_success += 1
+            else:
+                _l = log.fatal
 
-            _l('\n\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
+            _l('\n' + delim + "\nSuite {} completed in {} seconds with {}/{} tests passed.\n"
                .format(test, run_time, tests_passed, tests_total) + delim + '\n')
 
     total_time = round(time.time() - abs_start, 3)
@@ -167,16 +171,13 @@ def main(args):
     _l(result_msg)
 
     if TEST_FLAG == 'S':
-        log.info('\n\nAll tests have finished running and passed - testing complete!\n')
+        log.success('\n\nAll tests have finished running and passed - testing complete!\n')
         overwrite_logger_level(9000)
         sys.exit(0)
     elif TEST_FLAG == 'F':
-        log.critical('\n\nSome tests have finished running and there are errors - check log\n')
+        log.fatal('\n\nSome tests have finished running and there are errors - check log\n')
         overwrite_logger_level(9000)
         sys.exit(1)
-
-    # Overwrite logger level to surpress asyncio's whining
-    # overwrite_logger_level(9000)
 
 
 if __name__ == '__main__':
@@ -184,40 +185,39 @@ if __name__ == '__main__':
 
     """
     -v or --verbosity
-    
+
     Optional verbosity. If true, no output from unit/integration tests will be suppressed
     """
     args.add_argument('-v', '--verbosity', action='store_true', help='Optional verbosity. If true, no output from unit/integration tests will be surpressed')
 
     """
     --unit [0/1]
-    
+
     Enable/disable unit tests. Default is 1 (enabled)
     """
     args.add_argument("--unit", type=int, default=1, help="Flag to run unit tests. Default is True")
 
     """
     --integration [0/1]
-    
+
     Enable/disable integration tests. Default is 1 (enabled)
     """
     args.add_argument("--integration", type=int, default=1, help="Flag to run integration tests. Default is True")
 
     """
-    --skip_tests TestEd25199Wallet.test_something_hella_long, SomeOtherModule.some_other_test, ...
-    
+    --skip_tests TestEd25199wallet.test_something_hella_long, SomeOtherModule.some_other_test, ...
+
     Skip individual test case functions by specifying TestClassName.test_func_name, separated by commas
     """
     args.add_argument("--skip_tests", nargs='+', type=str)
 
     """
     --skip_modules tests.protocol.wallets, tests.constants, ...
-    
-    Skip test modules by specifying a list of modules names separated by commas. Specifying a higher level module will 
+
+    Skip test modules by specifying a list of modules names separated by commas. Specifying a higher level module will
     skip all submodules, ie. specifying 'tests.protocol' will skip 'tests.protocol.proofs', 'tests.protocol.reactor',
     and any other 'tests.protocol.*'
     """
     args.add_argument("--skip_modules", nargs='+', type=str)
 
     main(args.parse_args())
-

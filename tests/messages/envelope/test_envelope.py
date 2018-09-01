@@ -1,10 +1,12 @@
-from cilantro import Constants
 from unittest import TestCase
 from unittest.mock import MagicMock
-from cilantro.messages import Envelope, MessageMeta, Seal, MessageBase, StandardTransactionBuilder
-from cilantro.protocol.structures import EnvelopeAuth
 
-W = Constants.Protocol.Wallets
+from cilantro.messages.envelope.envelope import Envelope, MessageMeta, Seal
+from cilantro.messages.base.base import MessageBase
+from cilantro.messages.transaction.standard import StandardTransactionBuilder
+
+from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol import wallet
 
 
 class TestEnvelopefromObjects(TestCase):
@@ -42,7 +44,7 @@ class TestEnvelopefromObjects(TestCase):
         Tests that creating an envelope from_bytes does not try to repack the underlying struct when serialize is called.
         This is b/c the serialize() func should be 'cached' with the binary data passed into from_bytes
         """
-        sk, vk = W.new()
+        sk, vk = wallet.new()
         message = self._default_msg()
 
         env = Envelope.create_from_message(message=message, signing_key=sk, verifying_key=vk)
@@ -109,7 +111,7 @@ class TestEnvelopefromObjects(TestCase):
         """
         meta = self._default_meta()
         message = self._default_msg()
-        sk, vk = W.new()
+        sk, vk = wallet.new()
         sk_prime = 'A' * 64
 
         signature = EnvelopeAuth.seal(signing_key=sk_prime, meta=meta, message=message)
@@ -125,7 +127,7 @@ class TestEnvelopefromObjects(TestCase):
         """
         meta = self._default_meta()
         message = self._default_msg()
-        sk, vk = W.new()
+        sk, vk = wallet.new()
 
         signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
         seal = Seal.create(signature=signature, verifying_key=vk)
@@ -137,8 +139,8 @@ class TestEnvelopefromObjects(TestCase):
     def test_validate_bad_seal(self):
         meta = self._default_meta()
         message = self._default_msg()
-        sk, vk = W.new()
-        sk2, vk2 = W.new()
+        sk, vk = wallet.new()
+        sk2, vk2 = wallet.new()
 
         signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
 
@@ -151,8 +153,8 @@ class TestEnvelopefromObjects(TestCase):
     def test_validate_bad_metadata(self):
         meta = b'lol'
         message = self._default_msg()
-        sk, vk = W.new()
-        sk2, vk2 = W.new()
+        sk, vk = wallet.new()
+        sk2, vk2 = wallet.new()
 
         signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
 
@@ -163,7 +165,7 @@ class TestEnvelopefromObjects(TestCase):
     def test_validate_bad_message(self):
         meta = self._default_meta()
         message = 'lol'
-        sk, vk = W.new()
+        sk, vk = wallet.new()
 
         self.assertRaises(Exception, EnvelopeAuth.seal, sk, meta, message)  # auth fails b/c message is not string
 
@@ -202,7 +204,7 @@ class TestEnvelopefromMessage(TestCase):
         """
         Tests create_from_message with valid args (no vk passed) creates an envelope valid signature and expected fields
         """
-        sk, vk = W.new()
+        sk, vk = wallet.new()
         msg = self._default_msg()
 
         env = Envelope.create_from_message(message=msg, signing_key=sk)
@@ -215,7 +217,7 @@ class TestEnvelopefromMessage(TestCase):
         """
         Tests create_from_message with invalid message
         """
-        sk, vk = W.new()
+        sk, vk = wallet.new()
         msg = 'hi im a bad message'
 
         self.assertRaises(Exception, Envelope.create_from_message, msg, sk, vk)
@@ -233,8 +235,8 @@ class TestEnvelopefromMessage(TestCase):
         """
         test create_from_message passing in sk does and incorrect vk
         """
-        sk, vk = W.new()
-        sk1, vk1 = W.new()
+        sk, vk = wallet.new()
+        sk1, vk1 = wallet.new()
         msg = self._default_msg()
         sender = 'dat boi'
 
@@ -250,7 +252,7 @@ class TestEnvelopefromMessage(TestCase):
         """
         Tests that serialize/deserialize are inverse operations with from_objects factory function
         """
-        sk, vk = W.new()
+        sk, vk = wallet.new()
         message = self._default_msg()
 
         env = Envelope.create_from_message(message=message, signing_key=sk, verifying_key=vk)
@@ -263,7 +265,7 @@ class TestEnvelopefromMessage(TestCase):
         """
         meta = self._default_meta()
         message = self._default_msg()
-        sk, vk = W.new()
+        sk, vk = wallet.new()
 
         signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
         seal = Seal.create(signature=signature, verifying_key=vk)

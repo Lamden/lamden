@@ -1,6 +1,5 @@
-from cilantro import Constants
 from decimal import Decimal
-
+from cilantro.constants.protocol import DECIMAL_PRECISION
 
 def validate_hex(hex_str, length=None, field_name="", raise_err=True):
     def handle_err(exp: Exception):
@@ -21,7 +20,7 @@ def validate_hex(hex_str, length=None, field_name="", raise_err=True):
 
     return True
 
+
 def int_to_decimal(int_val):
     val = str(int_val)
-    P = Constants.Protocol.DecimalPrecision
-    return Decimal(str(val[0:-P]) + '.' + str(val[-P:]))
+    return Decimal(str(val[0:-DECIMAL_PRECISION]) + '.' + str(val[-DECIMAL_PRECISION:]))

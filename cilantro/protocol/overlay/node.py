@@ -1,5 +1,5 @@
 from operator import itemgetter
-import heapq, os
+import heapq
 
 
 class Node:

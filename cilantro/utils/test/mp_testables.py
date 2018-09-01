@@ -1,13 +1,33 @@
-from cilantro import Constants
 from cilantro.logger import get_logger
 from cilantro.utils.test import MPTesterBase, mp_testable, God, MPTestCase
-from unittest.mock import patch, call, MagicMock
-from cilantro.protocol.transport import Router, Composer
+from unittest.mock import MagicMock
+from cilantro.protocol.transport import Composer
 from cilantro.protocol.reactor import ReactorInterface
-from cilantro.protocol.statemachine import StateMachine
-from cilantro.nodes import Masternode, Delegate, Witness, NodeFactory
+from cilantro.protocol.states.statemachine import StateMachine
+from cilantro.nodes import Masternode, Witness, Delegate, NodeFactory
+from cilantro.storage.db import DB
 import asyncio
 import os
+
+
+def _build_node(signing_key, name='', node_cls=None) -> tuple:
+    assert node_cls and name, "This is an abstract class. Subclasses must pass in node_cls and name."
+    assert node_cls in (Witness, Masternode, Delegate), "node_cls must be Witness/Masternode/Delegate, not {}".format(node_cls)
+
+    loop = asyncio.get_event_loop()
+    asyncio.set_event_loop(loop)
+
+    with DB(should_reset=True) as db:
+        pass
+
+    ip = os.getenv('HOST_IP', '127.0.0.1')
+
+    node = NodeFactory._build_node(loop=loop, signing_key=signing_key, ip=ip, node_cls=node_cls, name=name)
+    node.start(start_loop=False)
+    
+    tasks = node.tasks + [node.composer.interface._recv_messages()]
+
+    return node, loop, tasks
 
 
 @mp_testable(Composer)
@@ -22,7 +42,7 @@ class MPComposer(MPTesterBase):
         router = MagicMock()
 
         reactor = ReactorInterface(router=router, loop=loop, signing_key=sk)
-        composer = Composer(interface=reactor, signing_key=sk)
+        composer = Composer(manager=reactor, signing_key=sk)
 
         return composer, loop, [reactor._recv_messages()]
 
@@ -55,12 +75,7 @@ class MPGod(MPTesterBase):
 @mp_testable(Masternode)
 class MPMasternode(MPTesterBase):
     def __init__(self, *args, **kwargs):
-        self.log = get_logger("MPMasternode")
-        self.log.critical("Calling base class init on MPMasternode's __init__")
         super().__init__(*args, **kwargs)
-        self.log.critical("base class init done on MPMasternode's __init__")
-
-        # self.log.critical("vmnet_test_active: {}".format(MPTestCase.vmnet_test_active))
 
         # Set God's Masternode URL to use this guy updated port if we are running on VM
         if MPTestCase.vmnet_test_active:
@@ -69,33 +84,20 @@ class MPMasternode(MPTesterBase):
             God.set_mn_url(ip='127.0.0.1', port=node_ports['8080'].split(':')[-1])
 
     @classmethod
-    def build_obj(cls, sk, name='Masternode') -> tuple:
-        loop = asyncio.get_event_loop()
-        asyncio.set_event_loop(loop)
-
-        ip = os.getenv('HOST_IP', '127.0.0.1')
-
-        log = get_logger("MPMasternode Builder")
-        log.info("Creating Masternode with IP {}, signing key {}..., and name {}".format(ip, sk[:8], name))
-
-        mn = NodeFactory._build_node(loop=loop, signing_key=sk, ip=ip, node_cls=Masternode, name=name)
-        mn.start(start_loop=False)
-
-        tasks = mn.tasks + [mn.composer.interface._recv_messages()]
-
-        return mn, loop, tasks
+    def build_obj(cls, signing_key, name='Masternode') -> tuple:
+        return _build_node(signing_key=signing_key, name=name, node_cls=Masternode)
 
 
 @mp_testable(Witness)
 class MPWitness(MPTesterBase):
     @classmethod
-    def build_obj(cls, sk, url, name='Masternode') -> tuple:
-        loop = asyncio.get_event_loop()
-        asyncio.set_event_loop(loop)
+    def build_obj(cls, signing_key, name='Witness') -> tuple:
+        return _build_node(signing_key=signing_key, name=name, node_cls=Witness)
 
-        witness = NodeFactory._build_node(loop=loop, signing_key=sk, ip=url, node_cls=Witness, name=name)
-        witness.start(start_loop=False)
 
-        tasks = witness.tasks + [witness.composer.interface._recv_messages()]
+@mp_testable(Delegate)
+class MPDelegate(MPTesterBase):
+    @classmethod
+    def build_obj(cls, signing_key, name='Delegate') -> tuple:
+        return _build_node(signing_key=signing_key, name=name, node_cls=Delegate)
 
-        return witness, loop, tasks

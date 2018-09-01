@@ -1,11 +1,11 @@
 from unittest import TestCase
 from unittest import mock
-from cilantro.db import *
-from cilantro.logger import get_logger
-from seneca.execute_sc import execute_contract
-from seneca.smart_contract_user_libs import stdlib as std
-from seneca.seneca_internal.storage.mysql_executer import Executer
-from cilantro.db.contracts import run_contract, get_contract_exports
+from cilantro.storage.tables import build_tables
+from seneca.libs import types as std
+from seneca.engine.storage.mysql_executer import Executer
+from cilantro.storage.contracts import get_contract_exports
+from cilantro.constants.db import DB_SETTINGS
+
 
 def contract(*contract_ids):
     def decorator(fn, *args, **kwargs):
@@ -25,7 +25,7 @@ class SmartContractTestCase(TestCase):
 
     def setUp(self):
         super().setUp()
-        self.ex = Executer('root', '', '', '127.0.0.1')
+        self.ex = Executer(**DB_SETTINGS)
         self.tables = build_tables(self.ex, should_drop=True)
 
     def tearDown(self):

@@ -1,4 +1,4 @@
-from cilantro.messages import MessageBase
+from cilantro.messages.base.base import MessageBase
 import capnp
 import envelope_capnp
 

@@ -1,8 +1,10 @@
-from cilantro import Constants
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
+from cilantro.storage.db import contract
 from cilantro.utils import lazy_property
 
+from cilantro.protocol import wallet as W
+from cilantro.protocol.pow import SHA3POW
 
 class TransactionBase(MessageBase):
     """
@@ -11,8 +13,6 @@ class TransactionBase(MessageBase):
 
     def __init__(self, data):
         super().__init__(data)
-        self.pow = Constants.Protocol.Proofs
-        self.wallet = Constants.Protocol.Wallets
 
     # TODO deprecate and remove this
     # def interpret(self, *args, **kwargs):
@@ -43,7 +43,7 @@ class TransactionBase(MessageBase):
         If the POW is valid, this method returns nothing.
         :raises: An exception if the POW is not valid.
         """
-        if not self.pow.check(self._payload_binary, self._data.metadata.proof.decode()):
+        if not SHA3POW.check(self._payload_binary, self._data.metadata.proof.decode()):
             raise Exception("Invalid proof of work for tx: {}".format(self._data))
 
     def validate_signature(self):
@@ -52,7 +52,7 @@ class TransactionBase(MessageBase):
         If the signature is valid, this method returns nothing.
         :raises: An exception if the signature is invalid
         """
-        if not self.wallet.verify(self.sender, self._payload_binary, self.signature):
+        if not W.verify(self.sender, self._payload_binary, self.signature):
             raise Exception("Invalid signature for tx: {}".format(self._data))
 
     def validate_metadata(self):

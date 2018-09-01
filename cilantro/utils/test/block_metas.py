@@ -1,8 +1,8 @@
-from cilantro.messages.consensus.block_contender import build_test_contender, BlockContender
+from cilantro.messages.consensus.block_contender import build_test_contender
 from cilantro.messages.transaction.base import build_test_transaction
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.protocol import wallet
 from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro import Constants
+from cilantro.constants.testnet import TESTNET_MASTERNODES
 
 def build_valid_block_data(num_transactions=4) -> dict:
     """
@@ -10,8 +10,8 @@ def build_valid_block_data(num_transactions=4) -> dict:
     :param num_transactions:
     :return:
     """
-    mn_sk = Constants.Testnet.Masternodes[0]['sk']
-    mn_vk = ED25519Wallet.get_vk(mn_sk)
+    mn_sk = TESTNET_MASTERNODES[0]['sk']
+    mn_vk = wallet.get_vk(mn_sk)
     timestamp = 9000
 
     raw_transactions = [build_test_transaction().serialize() for _ in range(num_transactions)]
@@ -24,7 +24,7 @@ def build_valid_block_data(num_transactions=4) -> dict:
 
     prev_block_hash = '0' * 64
 
-    mn_sig = ED25519Wallet.sign(mn_sk, tree.root)
+    mn_sig = wallet.sign(mn_sk, tree.root)
 
     return {
         'prev_block_hash': prev_block_hash,

@@ -1,21 +1,18 @@
-from cilantro import Constants
-from cilantro.utils.test import MPTesterBase, MPTestCase, mp_testable, MPComposer, vmnet_test
-from cilantro.protocol.transport import Router, Composer
-from cilantro.protocol.reactor import ReactorInterface
-from cilantro.messages import *
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.utils.test import MPTestCase, MPComposer, vmnet_test
+from cilantro.protocol.transport import Composer
+from cilantro.messages.transaction.standard import StandardTransactionBuilder
+from cilantro.protocol import wallet
 from cilantro.protocol.reactor.executor import *
-from cilantro.db import VKBook
-import asyncio
 import unittest
 import time
 
+from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
 
-W = Constants.Protocol.Wallets
-sk1, vk1 = Constants.Testnet.Masternodes[0]['sk'], Constants.Testnet.Masternodes[0]['vk']
-sk2, vk2 = Constants.Testnet.Delegates[0]['sk'], Constants.Testnet.Delegates[0]['vk']
-sk3, vk3 = Constants.Testnet.Delegates[1]['sk'], Constants.Testnet.Delegates[1]['vk']
-sk4, vk4 = Constants.Testnet.Delegates[2]['sk'], Constants.Testnet.Delegates[2]['vk']
+W = wallet
+sk1, vk1 = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
+sk2, vk2 = TESTNET_DELEGATES[0]['sk'], TESTNET_DELEGATES[0]['vk']
+sk3, vk3 = TESTNET_DELEGATES[1]['sk'], TESTNET_DELEGATES[1]['vk']
+sk4, vk4 = TESTNET_DELEGATES[2]['sk'], TESTNET_DELEGATES[2]['vk']
 
 # sk_sketch, vk_sketch = W.new()
 sk_sketch, vk_sketch = "968017ed7931bca83dba52d80c1d759b794bad71d5679fbbafd5d4f16d4dc396", \
@@ -31,7 +28,7 @@ def random_msg():
     return StandardTransactionBuilder.random_tx()
 
 def random_envelope(sk=None, tx=None):
-    sk = sk or ED25519Wallet.new()[0]
+    sk = sk or wallet.new()[0]
     tx = tx or random_msg()
     return Envelope.create_from_message(message=tx, signing_key=sk)
 
@@ -47,14 +44,39 @@ class TestSecureTransport(MPTestCase):
         def config_sub(composer: Composer):
             from unittest.mock import MagicMock
 
-            composer.interface.router = MagicMock()
+            composer.manager.router = MagicMock()
             return composer
 
         def assert_sub(composer: Composer):
-            from cilantro.messages import ReactorCommand, Envelope
-            from cilantro.protocol.statemachine.decorators import StateInput
-            cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
-            composer.interface.router.route_callback.assert_called_once_with(cb)
+            from cilantro.messages.reactor.reactor_command import ReactorCommand
+            from cilantro.protocol.states.decorators import StateInput
+            from unittest.mock import call
+            # cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
+            # composer.interface.router.route_callback.assert_called_once_with(cb)
+
+            expected_cb = call(ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env))
+            unexpected_cb = call(ReactorCommand.create_callback(callback=StateInput.LOOKUP_FAILED, envelope=evil_env))
+
+            call_args = composer.manager.router.route_callback.call_args_list
+
+            # # DEBUG STUFF
+            # from cilantro.logger.base import get_logger
+            # l = get_logger("assert sub")
+            # l.debug('EXPECTED')
+            # l.critical(expected_cb)
+            # l.debug('UNEXPECTED')
+            # l.critical(unexpected_cb)
+            # l.important2("got dat call args: {}".format(call_args))
+            # # END DEBUG STUFF
+
+            # composer.interface.router.route_callback.assert_has_calls([expected_cb], any_order=True)
+
+            assert expected_cb in call_args, "Expected callback {} to be in call_args {}".format(expected_cb, call_args)
+            assert unexpected_cb not in call_args, "Did not expect callback {} to be in call_args {}".format(unexpected_cb, call_args)
+
+            # assert len(call_args) == 2, "route_callback should be called exactly twice, not {} times with {}"\
+            #                             .format(len(call_args), call_args)
+            # composer.interface.router.route_callback.assert_has_calls(calls, any_order=True)
 
         env = random_envelope()
         evil_env = random_envelope()
@@ -87,21 +109,21 @@ class TestSecureTransport(MPTestCase):
         """
         def config_sub(composer: Composer):
             from unittest.mock import MagicMock
-            composer.interface.router = MagicMock()
+            composer.manager.router = MagicMock()
             return composer
 
         def assert_good_sub(composer: Composer):
-            from cilantro.messages import ReactorCommand, Envelope
-            from cilantro.protocol.statemachine.decorators import StateInput
+            from cilantro.messages.reactor.reactor_command import ReactorCommand
+            from cilantro.protocol.states.decorators import StateInput
             cb = ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env)
-            composer.interface.router.route_callback.assert_called_once_with(cb)
+            composer.manager.router.route_callback.assert_called_with(cb)
 
         def assert_bad_sub(composer: Composer):
-            from cilantro.messages import ReactorCommand, Envelope
-            from cilantro.protocol.statemachine.decorators import StateInput
+            from cilantro.messages.reactor.reactor_command import ReactorCommand
+            from cilantro.protocol.states.decorators import StateInput
             from unittest.mock import call
             cb = call(ReactorCommand.create_callback(callback=StateInput.INPUT, envelope=env))
-            assert cb not in composer.interface.router.route_callback.call_args_list
+            assert cb not in composer.manager.router.route_callback.call_args_list
 
         env = random_envelope()
         evil_env = random_envelope()

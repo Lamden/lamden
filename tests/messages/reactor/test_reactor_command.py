@@ -1,6 +1,8 @@
 from unittest import TestCase
-from cilantro.messages import ReactorCommand, StandardTransactionBuilder, Envelope
-from cilantro.protocol.wallets import ED25519Wallet
+from cilantro.messages.reactor.reactor_command import ReactorCommand
+from cilantro.messages.transaction.standard import StandardTransactionBuilder
+from cilantro.messages.envelope.envelope import Envelope
+from cilantro.protocol import wallet
 
 
 class TestReactorCommand(TestCase):
@@ -50,7 +52,7 @@ class TestReactorCommand(TestCase):
         """
         Tests creating a message with an envelope produces an object with the expected properties
         """
-        sk, vk = ED25519Wallet.new()
+        sk, vk = wallet.new()
         tx = StandardTransactionBuilder.random_tx()
         sender = 'me'
         env = Envelope.create_from_message(message=tx, signing_key=sk)

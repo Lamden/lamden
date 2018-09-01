@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 
-class TestEd25199Wallet(TestCase):
+class TestEd25199wallet(TestCase):
 
     # def test_blow_tf_up(self):
     #     self.assertEqual(2 + 2, 5)

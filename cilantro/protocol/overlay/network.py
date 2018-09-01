@@ -2,22 +2,21 @@
 Package for interacting on the network at a high level.
 """
 
-import random
 import pickle
 import asyncio
-import logging
-import os, zmq
+import os
 
-import socket, select, struct
+import socket, select, ujson
 
-from nacl.signing import VerifyKey
 from cilantro.logger import get_logger
 from cilantro.protocol.structures import Bidict
 from cilantro.protocol.overlay.protocol import KademliaProtocol
 from cilantro.protocol.overlay.utils import digest
 from cilantro.protocol.overlay.node import Node
-from cilantro.protocol.overlay.crawling import ValueSpiderCrawl, NodeSpiderCrawl
+from cilantro.protocol.overlay.crawling import NodeSpiderCrawl
 from cilantro.protocol.overlay.ironhouse import Ironhouse
+from cilantro.messages.reactor.reactor_command import ReactorCommand
+from cilantro.protocol.states.state import StateInput
 
 try: poll = select.epoll
 except: poll = select.poll
@@ -37,25 +36,24 @@ class Network(object):
 
     protocol_class = KademliaProtocol
 
-    def __init__(self, ksize=20, alpha=3, node_id=None, discovery_mode='neighborhood', loop=None, max_peers=64, network_port=None, public_ip=None, *args, **kwargs):
+    def __init__(self, ksize=20, alpha=3, node_id=None, discovery_mode='neighborhood', loop=None, max_peers=64, network_port=None, public_ip=None, event_sock=None, *args, **kwargs):
         """
         Create a server instance.  This will start listening on the given port.
-
         Args:
             ksize (int): The k parameter from the paper
-            alpha (int): The alpha parameter from the paper
+            alpha (int): The ALPHA parameter from the paper
             node_id: The id for this node on the network.
         """
         self.loop = loop if loop else asyncio.get_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.vkcache = Bidict()
-        self.authorized_node = {}
+        self.vkcache = {}
         self.ksize = ksize
         self.alpha = alpha
         self.transport = None
         self.protocol = None
         self.refresh_loop = None
         self.save_state_loop = None
+        self.event_sock = event_sock
         self.max_peers = max_peers
         self.network_port = network_port
         self.heartbeat_port = self.network_port+HEARTBEAT_PORT_OFFSET
@@ -72,17 +70,20 @@ class Network(object):
         self.saveStateRegularly('state.tmp')
 
     async def authenticate(self, node):
-        if len([n for n in self.bootstrappableNeighbors() if n == (node.ip, node.port, node.public_key)]) == 1:
-            log.debug('Node {}:{} is already a neighbor'.format(node.ip, node.port))
-            return True
-        authorized = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
-        if authorized == True:
-            log.debug('{}:{} is authorized'.format(node.ip, node.port))
-        elif authorized == False:
-            log.warning('!UNAUTHORIZED! {}:{}'.format(node.ip, node.port))
-        else:
-            log.debug('Ignoring {}:{}'.format(node.ip, node.port))
-        return authorized
+        authorization = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
+        log.debug('{}:{}\'s authorization is {}'.format(node.ip, node.port, authorization))
+        if authorization == 'authorized':
+            self.protocol.router.addContact(node)
+            self.connect_to_neighbor(node)
+            self.vkcache[node.id] = node
+            self.ironhouse.authorized_nodes[node.id] = node.ip
+        elif authorization == 'unauthorized':
+            try: self.protocol.router.removeContact(node)
+            except: pass
+            self.ironhouse.authorized_nodes[node.id] = False
+            if self.event_sock: self.event_sock.send_json({'event':'unauthorized', 'ip': node.ip})
+        log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP', '127.0.0.1'), [self.vkcache.get(k).ip for k in self.ironhouse.authorized_nodes if self.vkcache.get(k)]))
+        return authorization == 'authorized'
 
     def setup_stethoscope(self):
         socket.setdefaulttimeout(0.1)
@@ -109,25 +110,28 @@ class Network(object):
                             log.debug('reconnecting {} - {}'.format(self.network_port, addr))
                             conn.connect(addr)
                         except Exception as e:
-                            if e.args[0] in [
-                                54, # reset by peer
-                            ]:
+                            log.debug(e.args)
+                            if e.args[1] == 'Connection reset by peer':
                                 log.info("Client ({}, {}) disconnected from {}".format(*addr, self.node))
                                 del self.connections[fileno]
-                                if self.vkcache.get(node.ip):
-                                    del self.vkcache[node.ip]
                                 self.protocol.router.removeContact(node)
                                 self.poll.unregister(fileno)
                                 conn.close()
+                                self.connection_drop(node)
                 await asyncio.sleep(0.1)
         except asyncio.CancelledError:
             log.info('Network shutting down gracefully.')
 
+    def connection_drop(self, node):
+        if self.event_sock: self.event_sock.send_json({'event':'disconect', 'ip':node.ip, 'vk': self.ironhouse.pk2vk.get(node.public_key) })
+        callback = ReactorCommand.create_callback(
+            callback=StateInput.CONN_DROPPED,
+            ip=node.ip
+        )
+        log.debug("Sending callback failure to mainthread {}".format(callback))
+
     def connect_to_neighbor(self, node):
         if self.node.id == node.id: return
-
-        self.ironhouse.create_from_public_key(node.public_key)
-        self.ironhouse.reconfigure_curve()
 
         addr = (node.ip, node.port+HEARTBEAT_PORT_OFFSET)
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -136,21 +140,22 @@ class Network(object):
             conn.connect(addr)
             self.poll.register(conn.fileno(), POLLIN)
             log.info("[CLIENT SIDE] Client ({}, {}) connected".format(*addr))
+            if self.event_sock: self.event_sock.send_json({'event':'connected', 'ip': addr[0], 'vk': self.ironhouse.pk2vk.get(node.public_key)})
             return conn
         except Exception as e:
             del self.connections[conn.fileno()]
             conn.close()
 
-    def lookup_ip_in_cache(self, vk):
-        ip = self.vkcache.get(vk)
-        if ip:
-            log.debug('Found ip {} in cache'.format(ip))
-        return ip
+    def lookup_ip_in_cache(self, id):
+        node = self.vkcache.get(id)
+        if node:
+            log.debug('Found ip {} in cache'.format(node.ip))
+        return node
 
     async def lookup_ip(self, node_key):
-        cache_node = self.lookup_ip_in_cache(node_key)
-        if cache_node: return cache_node
         node_id = digest(node_key)
+        cache_node = self.lookup_ip_in_cache(node_id)
+        if cache_node: return cache_node, True
         if node_id == self.node.id: return self.node
 
         nearest = self.protocol.router.findNeighbors(self.node)
@@ -160,11 +165,11 @@ class Network(object):
         res_node = await spider.find(node_id=node_id)
 
         if type(res_node) == list: res_node = None
-        log.debug('{} resolves to {}'.format(node_key, res_node))
+        log.debug('VK {} resolves to {}'.format(node_key, res_node))
         if res_node != None:
-            self.vkcache[node_key] = res_node.ip
+            self.vkcache[node_id] = res_node
             pk = self.ironhouse.vk2pk(node_key)
-        return res_node
+        return res_node, False
 
     def stop(self):
         if self.transport is not None:
@@ -201,7 +206,6 @@ class Network(object):
     def listen(self, port=None, interface='0.0.0.0'):
         """
         Start listening on the given port.
-
         Provide interface="::" to accept ipv6 address
         """
         port = self.network_port
@@ -234,12 +238,12 @@ class Network(object):
 
         # do our crawling
         await asyncio.gather(*ds)
+        if self.event_sock: self.event_sock.send_json({'event':'table_refreshed'})
 
     def bootstrappableNeighbors(self):
         """
         Get a :class:`list` of (ip, port) :class:`tuple` pairs suitable for
         use as an argument to the bootstrap method.
-
         The server should have been bootstrapped
         already - this is just a utility for getting some neighbors and then
         storing them if this server is going down for a while.  When it comes
@@ -251,7 +255,6 @@ class Network(object):
     async def bootstrap(self, addrs):
         """
         Bootstrap the server by connecting to other known nodes in the network.
-
         Args:
             addrs: A `list` of (ip, port) `tuple` pairs.  Note that only IP
                    addresses are acceptable - hostnames will cause an error.
@@ -283,13 +286,13 @@ class Network(object):
 
     def saveState(self, fname):
         """
-        Save the state of this node (the alpha/ksize/id/immediate neighbors)
+        Save the state of this node (the ALPHA/KSIZE/id/immediate neighbors)
         to a cache file with the given fname.
         """
         log.info("Saving state to %s", fname)
         data = {
-            'ksize': self.ksize,
-            'alpha': self.alpha,
+            'KSIZE': self.ksize,
+            'ALPHA': self.alpha,
             'id': self.node.id,
             'neighbors': self.bootstrappableNeighbors()
         }
@@ -303,7 +306,7 @@ class Network(object):
     @classmethod
     def loadState(self, fname):
         """
-        Load the state of this node (the alpha/ksize/id/immediate neighbors)
+        Load the state of this node (the ALPHA/KSIZE/id/immediate neighbors)
         from a cache file with the given fname.
         """
         log.info("Loading state from %s", fname)
@@ -315,7 +318,6 @@ class Network(object):
         """
         Save the state of node with a given regularity to the given
         filename.
-
         Args:
             fname: File name to save retularly to
             frequency: Frequency in seconds that the state should be saved.

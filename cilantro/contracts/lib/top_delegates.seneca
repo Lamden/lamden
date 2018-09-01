@@ -2,7 +2,7 @@ import seneca.storage.tabular as st
 import seneca.storage.kv as kv
 import seneca.crypto as crypto
 import seneca.runtime as rt
-import seneca.stdlib as std
+import seneca.types as std
 from seneca.modulelib import export, make_exports
 import num_top_delegates as ntd
 import basic_math
@@ -13,18 +13,18 @@ def create_election(duration):
     return election.create_election(duration, list)
 
 def filter_delegates(election_id, top_delegates):
-    voter_id = rt.global_run_data.author
+    voter_id = rt.sender
     num_top_delegates = ntd.get()
     top_delegates = set(top_delegates)
     assert election.get_election(election_id), \
         'election is not found or no longer opened'
     assert len(top_delegates) <= num_top_delegates, \
-        'You can only election for {} delegates'.format(num_top_delegates)
+        'You can only election for {} TESTNET_DELEGATES'.format(num_top_delegates)
     res = election.get_voter_votes(election_id, voter_id)
     delegates_already_electiond_for = set([r['delegate_id'] for r in res])
     delegates_list_full = top_delegates.union(delegates_already_electiond_for)
     assert len(delegates_list_full) <= num_top_delegates, \
-        'You already electiond for {}(max={}) delegates and tried to election for {} more delegate(s).'.format(
+        'You already electiond for {}(max={}) TESTNET_DELEGATES and tried to election for {} more delegate(s).'.format(
             len(delegates_already_electiond_for), num_top_delegates, len(top_delegates)
         )
     return list(top_delegates.difference(delegates_already_electiond_for))

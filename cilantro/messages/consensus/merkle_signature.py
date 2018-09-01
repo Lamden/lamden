@@ -1,18 +1,16 @@
-from cilantro import Constants
-from cilantro.messages import MessageBase
+from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
 import json
-from cilantro.protocol.wallets import ED25519Wallet
-
+from cilantro.protocol import wallet
 
 class MerkleSignature(MessageBase):
     """
-    MerkleSignatures are exchanged among delegates during consensus to verify if they all have the same data.
+    MerkleSignatures are exchanged among TESTNET_DELEGATES during consensus to verify if they all have the same data.
     When a delegate starts consensus, it builds a Merkle tree with its entire transaction queue (all transaction that would
     be in the proposed block), signs the hash of the merkle tree, and creates a MerkleSignature with the resulting signature
-    as well as the delegates id and a timestamp.
+    as well as the TESTNET_DELEGATES id and a timestamp.
 
-    Other delegates receive this MerkleSignature, and attempt to verify it using the sender's verifying key and the receiving
+    Other TESTNET_DELEGATES receive this MerkleSignature, and attempt to verify it using the sender's verifying key and the receiving
     delegate's own merkle hash (which should be the same as the sender's merkle hash if their blocks have the same
     transactions).
 
@@ -47,7 +45,7 @@ class MerkleSignature(MessageBase):
         verifying_key = self.sender
 
         if validate_hex(verifying_key, length=64, raise_err=False):
-            return Constants.Protocol.Wallets.verify(verifying_key, msg, self.signature)
+            return wallet.verify(verifying_key, msg, self.signature)
         else:
             return False
 
@@ -90,8 +88,8 @@ def build_test_merkle_sig(msg: bytes=b'some default payload', sk=None, vk=None) 
     import time
 
     if not sk:
-        sk, vk = ED25519Wallet.new()
+        sk, vk = wallet.new()
 
-    signature = ED25519Wallet.sign(sk, msg)
+    signature = wallet.sign(sk, msg)
 
     return MerkleSignature.create(sig_hex=signature, timestamp=str(time.time()), sender=vk)

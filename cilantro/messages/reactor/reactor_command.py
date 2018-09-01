@@ -1,5 +1,8 @@
 from cilantro.utils import lazy_property
-from cilantro.messages import MessageBase, Envelope
+
+from cilantro.messages.base.base import MessageBase
+from cilantro.messages.envelope.envelope import Envelope
+
 import copy
 
 import capnp

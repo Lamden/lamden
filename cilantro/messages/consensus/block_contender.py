@@ -1,4 +1,4 @@
-from cilantro.messages import MessageBase
+from cilantro.messages.base.base import MessageBase
 from cilantro.utils import lazy_property, set_lazy_property, is_valid_hex
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 from cilantro.protocol.structures import MerkleTree
@@ -16,12 +16,16 @@ class BlockContender(MessageBase):
 
     SIGS = 'signatures'
     LEAVES = 'leaves'
+    PREV_BLOCK = 'prev_block_hash'
 
     def validate(self):
         # Validate field types and existence
         assert type(self._data) == dict, "BlockContender's _data must be a dict"
         assert BlockContender.SIGS in self._data, "signature field missing from data {}".format(self._data)
         assert BlockContender.LEAVES in self._data, "leaves field missing from data {}".format(self._data)
+
+        assert is_valid_hex(self.prev_block_hash, length=64), "Invalid previous block hash {} .. " \
+                                                              "expected 64 char hex string".format(self.prev_block_hash)
 
         # Ensure merkle leaves are valid hex
         for leaf in self.merkle_leaves:
@@ -46,11 +50,12 @@ class BlockContender(MessageBase):
         return pickle.dumps(self._data)
 
     @classmethod
-    def create(cls, signatures: List[MerkleSignature], merkle_leaves: List[str]):
+    def create(cls, signatures: List[MerkleSignature], merkle_leaves: List[str], prev_block_hash: str):
         """
         Creates a new block contender. Created by delegates to propose a block to Masternodes.
         :param signatures: A list of MerkleSignature objects
         :param merkle_leaves: A list merkle leaves contained within this proposed block. Each leaf is a byte string
+        :param prev_block_hash: The hash of the previous (parent) block upon which this proposed block would build upon
         :return: A BlockContender object
         """
         # Serialize list of signatures
@@ -60,7 +65,7 @@ class BlockContender(MessageBase):
             assert isinstance(sig, MerkleSignature), "signatures must be a list of MerkleSignatures"
             sigs_binary.append(sig.serialize())
 
-        data = {cls.SIGS: sigs_binary, cls.LEAVES: merkle_leaves}
+        data = {cls.SIGS: sigs_binary, cls.LEAVES: merkle_leaves, cls.PREV_BLOCK: prev_block_hash}
         obj = cls.from_data(data)
 
         set_lazy_property(obj, 'signatures', signatures)
@@ -79,6 +84,10 @@ class BlockContender(MessageBase):
         # Deserialize signatures
         return [MerkleSignature.from_bytes(self._data[BlockContender.SIGS][i])
                 for i in range(len(self._data[BlockContender.SIGS]))]
+
+    @property
+    def prev_block_hash(self) -> str:
+        return self._data[self.PREV_BLOCK]
 
     @property
     def merkle_leaves(self) -> List[str]:
@@ -108,13 +117,19 @@ class BlockContender(MessageBase):
         return True
 
 
-def build_test_contender(tree: MerkleTree=None):
+def build_test_contender(tree: MerkleTree=None, prev_block_hash=''):
     """
     Method to build a 'test' block contender. Used exclusively in unit tests.
     """
+    from cilantro.storage.blocks import BlockStorageDriver
+    from cilantro.constants.nodes import BLOCK_SIZE
+
     if not tree:
-        nodes = [1, 2, 3, 4]
+        nodes = [str(i).encode() for i in range(BLOCK_SIZE)]
         tree = MerkleTree(leaves=nodes)
 
+    if not prev_block_hash:
+        prev_block_hash = BlockStorageDriver.get_latest_block_hash()
+
     sigs = [build_test_merkle_sig(msg=tree.root) for _ in range(8)]
-    return BlockContender.create(signatures=sigs, merkle_leaves=tree.leaves_as_hex)
+    return BlockContender.create(signatures=sigs, merkle_leaves=tree.leaves_as_hex, prev_block_hash=prev_block_hash)

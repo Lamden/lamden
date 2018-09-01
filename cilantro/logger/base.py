@@ -3,12 +3,18 @@ Functions:
 -get_logger"""
 
 import logging, coloredlogs
-import os, sys
-
+import os, sys, requests
 VALID_LVLS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-_LOG_LVL = os.getenv('LOG_LEVEL', 'DEBUG')
-assert _LOG_LVL in VALID_LVLS, "Log level {} not in valid levels {}".format(_LOG_LVL, VALID_LVLS)
-_LOG_LVL = getattr(logging, _LOG_LVL)
+_LOG_LVL = os.getenv('LOG_LEVEL', None)
+if _LOG_LVL:
+    assert _LOG_LVL in VALID_LVLS, "Log level {} not in valid levels {}".format(_LOG_LVL, VALID_LVLS)
+    _LOG_LVL = getattr(logging, _LOG_LVL)
+else:
+    _LOG_LVL = 1
+
+req_log = logging.getLogger('urllib3')
+req_log.setLevel(logging.WARNING)
+req_log.propagate = True
 
 def get_main_log_path():
     from cilantro import logger
@@ -32,11 +38,14 @@ Custom Log Levels
 CUSTOM_LEVELS = {
     'SPAM': 1,
     'DEBUGV': 5,
+    'SOCKET': 23,
     'NOTICE': 24,
     'SUCCESS': 26,
+    'SUCCESS2': 27,
     'IMPORTANT': 56,
     'IMPORTANT2': 57,
-    'FATAL': 9000,
+    'IMPORTANT3': 58,
+    'FATAL': 9001,
     }
 
 for log_name, log_level in CUSTOM_LEVELS.items():
@@ -54,19 +63,22 @@ Custom Styling
 """
 
 coloredlogs.DEFAULT_LEVEL_STYLES = {
-    'critical':{'color':'white', 'bold':True, 'background': 'yellow'},
-    'fatal':{'color':'white', 'bold':True, 'background': 'red', 'underline': True},
-    'debug':{'color':'green' },
-    'error':{'color':'red' },
-    'info':{'color':'white' },
-    'notice':{'color':'magenta' },
-    'important':{ 'color':'cyan', 'bold': True, 'background': 'magenta'},
-    'important2':{ 'color':'magenta', 'bold': True, 'background': 'cyan'},
-    'spam':{ 'color':'white', 'faint':True },
-    'success':{'color':'white', 'bold': True, 'background': 'green'},
-    'verbose':{'color':'blue' },
-    'warning':{'color':'yellow' },
-    'debugv':{'color':'blue', 'faint':True }
+    'critical': {'color': 'white', 'bold': True, 'background': 'red'},
+    'fatal': {'color': 'white', 'bold': True, 'background': 'red', 'underline': True},
+    'debug': {'color': 'green'},
+    'error': {'color': 'red'},
+    'info': {'color': 'white'},
+    'notice': {'color': 'magenta'},
+    'socket': {'color': 216},
+    'important': {'color': 'cyan', 'bold': True, 'background': 'magenta'},
+    'important2': {'color': 'magenta', 'bold': True, 'background': 'cyan'},
+    'important3': {'color': 'black', 'bold': True, 'background': 'yellow'},
+    'spam': {'color': 'white', 'faint': True},
+    'success': {'color': 'white', 'bold': True, 'background': 'green'},
+    'success2': {'color': 165, 'bold': True, 'background': 'green'},
+    'verbose': {'color': 'blue'},
+    'warning': {'color': 'yellow'},
+    'debugv': {'color': 'blue', 'faint': False}
 }
 coloredlogs.DEFAULT_FIELD_STYLES = {
     'asctime': {'color': 'green'},
@@ -102,7 +114,7 @@ class ColoredStreamHandler(logging.StreamHandler):
 def get_logger(name=''):
 
     filedir = "logs/{}".format(os.getenv('TEST_NAME', 'test'))
-    filename = "{}/{}.log".format(filedir, os.getenv('HOSTNAME', name))
+    filename = "{}/{}.log".format(filedir, os.getenv('HOST_NAME', name))
     os.makedirs(filedir, exist_ok=True)
 
     filehandlers = [

@@ -55,7 +55,7 @@ def _insert_user(user_pub_key, role_name):
 
 def assert_has_perm(perm_name):
     # Find role for current user
-    r_name = users.select().where(users.user == rt.global_run_data.author).run()[0]['role']
+    r_name = users.select().where(users.user == rt.sender).run()[0]['role']
     # Find and return boolean value for the specified permission in that role
     is_allowed = roles.select().where(roles.role == r_name).run()[0][perm_name]
     assert is_allowed, "ERROR: The current user does not have the necessary permission."

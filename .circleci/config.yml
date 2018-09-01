@@ -4,21 +4,26 @@ jobs:
     working_directory: ~/cilantro
     docker:
       - image: circleci/python:3.6.5
-      - image: circleci/mysql:5.7
+      - image: lamden/cilantro-db
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_ROOT_PASSWORD: ""
-
+          username: cilantro_user
+          password: buttcoins
+          database: cilantro_dev
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-01-{{ checksum "requirements.txt" }}
+          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
           name: Install Cilantro Requirements
           command: |
-             pip install -r requirements.txt
+             pip3 install -r requirements.txt --upgrade --no-cache-dir --exists-action w
+             pip3 install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
+
+      - run:
+          name: Install Mysql Client
+          command: |
              sudo apt install -y mysql-client
 
 #      # This should go into custom primary image, here's only for the sake of explanation
@@ -40,11 +45,27 @@ jobs:
 #
 #      - setup_remote_docker
 
+      - run:
+          name: set temp credentials file (aka db config stuff)
+          command: |
+             ./scripts/make_test_config.py --password buttcoins --username cilantro_user --database cilantro_dev --hostname 127.0.0.1
+
       - save_cache:
-          key: cilantro-01-{{ checksum "requirements.txt" }}
+          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}
           paths:
             - "/usr/local/bin"
             - "/usr/local/lib/python3.6/site-packages"
+
+      - run:
+          name: Check for Custom Seneca Branch Injected by REST API
+          command: |
+            if [ -z "$SENECA_BRANCH" ]; then
+              echo "SENECA_BRANCH env variable is not set"
+            else
+              echo "SENECA_BRANCH is set to $SENECA_BRANCH"
+              pip3 install git+https://github.com/Lamden/seneca.git@$SENECA_BRANCH#egg=seneca --no-cache-dir --upgrade
+              export SENECA_BRANCH=''
+            fi
 
       - run:
           name: Wait For mysqld

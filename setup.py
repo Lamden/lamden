@@ -12,7 +12,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'db=cilantro.networking.db:serve',
+            'storage=cilantro.networking.storage:serve',
             'witness=cilantro.networking.witness:serve'
         ],
     },

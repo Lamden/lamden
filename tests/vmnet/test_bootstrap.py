@@ -1,7 +1,8 @@
-from vmnet.test.base import *
+from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random
 import vmnet, cilantro
 from os.path import dirname
+from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 
 cilantro_path = dirname(dirname(cilantro.__path__[0]))
 # cilantro_path = cilantro.__path__[0]
@@ -12,29 +13,26 @@ def wrap_func(fn, *args, **kwargs):
         return fn(*args, **kwargs)
     return wrapper
 
-
 def run_mn():
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     import os
     log = get_logger("MASTERNODE FACTORY")
 
     ip = os.getenv('HOST_IP') #Constants.Testnet.Masternodes[0]['ip']
-    sk = Constants.Testnet.Masternodes[0]['sk']
+    sk = TESTNET_MASTERNODES[0]['sk']
 
     NodeFactory.run_masternode(ip=ip, signing_key=sk)
 
 
 def run_witness(slot_num):
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     import os
 
     log = get_logger("WITNESS FACTORY")
 
-    w_info = Constants.Testnet.Witnesses[slot_num]
+    w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
 
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'])
@@ -42,13 +40,12 @@ def run_witness(slot_num):
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger
-    from cilantro import Constants
     from cilantro.nodes import NodeFactory
     import os
 
     log = get_logger("DELEGATE FACTORY")
 
-    d_info = Constants.Testnet.Delegates[slot_num]
+    d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
 
     log.critical("Building delegate on slot {} with info {}".format(slot_num, d_info))
@@ -71,15 +68,15 @@ class TestBootstrap(BaseNetworkTestCase):
     def test_bootstrap(self):
 
         # Bootstrap master
-        self.execute_python('masternode', run_mn, async=True)
+        self.execute_python('masternode', run_mn, async=True, profiling=True)
 
-        # Bootstrap witnesses
+        # Bootstrap TESTNET_WITNESSES
         for i, nodename in enumerate(self.groups['witness']):
-            self.execute_python(nodename, wrap_func(run_witness, i), async=True)
+            self.execute_python(nodename, wrap_func(run_witness, i), async=True, profiling=True)
 
-        # Bootstrap delegates
+        # Bootstrap TESTNET_DELEGATES
         for i, nodename in enumerate(self.groups['delegate']):
-            self.execute_python(nodename, wrap_func(run_delegate, i), async=True)
+            self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=True)
 
         input("\n\nEnter any key to terminate")
 

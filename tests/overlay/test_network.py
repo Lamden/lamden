@@ -1,14 +1,12 @@
-import unittest, cilantro, asyncio, socket, time, os, select
-from unittest import TestCase
+import unittest, asyncio, socket, time, os
+from unittest import TestCase, mock
+from unittest.mock import Mock
 from unittest.mock import patch
 from cilantro.protocol.overlay.network import Network
 from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.overlay.ironhouse import Ironhouse
 from cilantro.protocol.overlay.protocol import KademliaProtocol
-from cilantro.protocol.overlay.storage import ForgetfulStorage
 from cilantro.protocol.overlay.utils import digest
-from cilantro.db import VKBook
-from os.path import exists, dirname
 from threading import Timer
 from cilantro.utils.test.overlay import *
 
@@ -17,6 +15,14 @@ def stop(self):
     self.b_net.stop()
     self.evil_net.stop()
     self.loop.call_soon_threadsafe(self.loop.stop)
+
+class DaemonMock(Mock):
+    @property
+    def socket():
+        class SocketMock(Mock):
+            def send(self):
+                pass
+        return SocketMock
 
 class TestNetwork(TestCase):
     def setUp(self):
@@ -27,20 +33,26 @@ class TestNetwork(TestCase):
         self.evil = genkeys('c5cb6d3ac7d644df8c72b613d57e4c47df6107989e584863b86bde47df704464')
         self.off = genkeys('8ddaf072b9108444e189773e2ddcb4cbd2a76bbf3db448e55d0bfc131409a197')
         self.a_net = Network(sk=self.a['sk'],
-                            network_port=3321,
+                            network_port=13321,
                             keyname='a', wipe_certs=True,
-                            loop=self.loop)
+                            loop=self.loop,
+                            daemon=DaemonMock())
         self.b_net = Network(sk=self.b['sk'],
-                            network_port=4321,
+                            network_port=14321,
                             keyname='b', wipe_certs=True,
-                            loop=self.loop)
+                            loop=self.loop,
+                            daemon=DaemonMock())
         self.evil_net = Network(sk=self.evil['sk'],
-                            network_port=5321,
+                            network_port=15321,
                             keyname='evil', wipe_certs=True,
-                            loop=self.loop)
+                            loop=self.loop,
+                            daemon=DaemonMock())
         self.off_node = Node(
-            digest(self.off['vk']), ip='127.0.0.1', port=6321, public_key=self.off['curve_key']
+            digest(self.off['vk']), ip='127.0.0.1', port=16321, public_key=self.off['curve_key']
         )
+
+    def tearDown(self):
+        self.loop.close()
 
     def test_attributes(self):
         def run(self):
@@ -71,7 +83,6 @@ class TestNetwork(TestCase):
     def test_authenticate(self):
         def run(self):
             stop(self)
-
         self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
             self.b_net.authenticate(self.a_net.node))))
         self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
@@ -113,7 +124,7 @@ class TestNetwork(TestCase):
 
     def test_connect_to_neighbor_fail(self):
         def run(self):
-            self.evil_net.node.ip = '127.0.0.255'
+            self.evil_net.node.ip = '255.0.0.255'
             self.a_net.connect_to_neighbor(self.evil_net.node)
             self.assertEqual(self.a_net.connections, {})
             stop(self)
@@ -126,10 +137,13 @@ class TestNetwork(TestCase):
         def run(self):
             conn = self.a_net.connect_to_neighbor(self.b_net.node)
             time.sleep(0.1)
-            conn.shutdown(socket.SHUT_RDWR)
             self.b_net.stop()
             time.sleep(0.1)
-            self.assertEqual(self.a_net.connections, {})
+            if self.a_net.connections != {}:
+                for c in self.a_net.connections.values():
+                    self.assertTrue(c.fileno(), -1)
+            else:
+                self.assertEqual(self.a_net.connections, {})
             stop(self)
 
         t = Timer(0.01, run, [self])
@@ -150,11 +164,11 @@ class TestNetwork(TestCase):
             stop(self)
         result = self.loop.run_until_complete(
             asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 3321),
-                ('127.0.0.1', 4321)
+                ('127.0.0.1', 13321),
+                ('127.0.0.1', 14321)
             ]))
         )
-        self.assertEqual([3321,4321], sorted([n.port for n in result]))
+        self.assertEqual([13321,14321], sorted([n.port for n in result]))
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()
@@ -162,17 +176,18 @@ class TestNetwork(TestCase):
     def test_bootstrap_cached(self):
         def run(self):
             stop(self)
-        result = self.loop.run_until_complete(
+        self.loop.run_until_complete(
             asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 3321),
-                ('127.0.0.1', 4321)
+                ('127.0.0.1', 13321),
+                ('127.0.0.1', 14321)
             ]))
         )
         result = self.loop.run_until_complete(
             asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 3321)
+                ('127.0.0.1', 13321)
             ]))
         )
+        self.assertEqual([13321,14321], sorted([n.port for n in result]))
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()
@@ -191,8 +206,8 @@ class TestNetwork(TestCase):
         getRefreshIDs.side_effect = ids
         result = self.loop.run_until_complete(
             asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 3321),
-                ('127.0.0.1', 4321)
+                ('127.0.0.1', 13321),
+                ('127.0.0.1', 14321)
             ]))
         )
 
@@ -206,17 +221,17 @@ class TestNetwork(TestCase):
         def run(self):
             stop(self)
         def fn():
-            return [('127.0.0.1', 4321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]
+            return [('127.0.0.1', 14321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]
 
         bootstrappableNeighbors.side_effect = fn
 
         self.assertTrue(self.a_net.saveState('state.tmp'))
         state = self.a_net.loadState('state.tmp')
         os.remove('state.tmp')
-        self.assertEqual(state,{'alpha': 3,
+        self.assertEqual(state,{'ALPHA': 3,
             'id': b"\xaa\xd0\xed\x91O\xa4e'\x06\xdd7\xf8\xf9\xe46p\x9f\x9a\xa1Y",
-            'ksize': 20,
-            'neighbors': [('127.0.0.1', 4321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]})
+            'KSIZE': 20,
+            'neighbors': [('127.0.0.1', 14321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]})
 
         t = Timer(0.01, run, [self])
         t.start()
@@ -255,7 +270,7 @@ class TestNetwork(TestCase):
                 self.a_net.lookup_ip(self.b['vk'])
             ))
 
-        self.assertIsNone(result)
+        self.assertEqual(result, (None, False))
 
         t = Timer(0.01, run, [self])
         t.start()
@@ -267,8 +282,8 @@ class TestNetwork(TestCase):
         # Bootstrap first
         self.loop.run_until_complete(
             asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 3321),
-                ('127.0.0.1', 4321)
+                ('127.0.0.1', 13321),
+                ('127.0.0.1', 14321)
             ]))
         )
         # check for b's VK
@@ -277,7 +292,7 @@ class TestNetwork(TestCase):
                 self.a_net.lookup_ip(self.b['vk'])
             ))
 
-        self.assertEqual(result.id, self.b_net.node.id)
+        self.assertEqual(result[0].id, self.b_net.node.id)
 
         t = Timer(0.01, run, [self])
         t.start()
@@ -289,17 +304,17 @@ class TestNetwork(TestCase):
         # Bootstrap first
         self.loop.run_until_complete(
             asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 3321),
-                ('127.0.0.1', 4321)
+                ('127.0.0.1', 13321),
+                ('127.0.0.1', 14321)
             ]))
         )
         # check for evil's VK
-        result = self.loop.run_until_complete(
+        node, cached = self.loop.run_until_complete(
             asyncio.ensure_future(
                 self.a_net.lookup_ip(self.evil['vk'])
             ))
 
-        self.assertIsNone(result)
+        self.assertEqual((node, cached), (None, False))
 
         t = Timer(0.01, run, [self])
         t.start()
@@ -312,18 +327,18 @@ class TestNetwork(TestCase):
         # Bootstrap first
         self.loop.run_until_complete(
             asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 3321),
-                ('127.0.0.1', 4321)
+                ('127.0.0.1', 13321),
+                ('127.0.0.1', 14321)
             ]))
         )
         # check for b's VK
-        result = self.loop.run_until_complete(
+        node, cached = self.loop.run_until_complete(
             asyncio.ensure_future(
                 self.a_net.lookup_ip(self.b['vk'])
             ))
 
-        self.assertEqual(result.id, self.b_net.node.id)
-        self.assertEqual(self.a_net.lookup_ip_in_cache(self.b['vk']), self.b_net.node.ip)
+        self.assertEqual(node.id, self.b_net.node.id)
+        self.assertEqual(self.a_net.lookup_ip_in_cache(self.b_net.node.id).ip, self.b_net.node.ip)
 
         t = Timer(0.01, run, [self])
         t.start()
@@ -332,14 +347,14 @@ class TestNetwork(TestCase):
 
     def test_lookup_ip_with_neighbors_using_cache_fail(self):
         def run(self):
-            self.assertEqual(self.b_net.vkcache, {})
+            self.assertNotEqual(self.b_net.vkcache, {})
             stop(self)
 
         # Bootstrap first
         boot = self.loop.run_until_complete(
             asyncio.ensure_future(self.a_net.bootstrap([
-                ('127.0.0.1', 3321),
-                ('127.0.0.1', 4321)
+                ('127.0.0.1', 13321),
+                ('127.0.0.1', 14321)
             ]))
         )
 
@@ -379,7 +394,7 @@ class TestNetwork(TestCase):
         # Bootstrap first
         boot = self.loop.run_until_complete(
             asyncio.ensure_future(self.a_net.bootstrap_node(
-                ('127.0.0.1', 6321)
+                ('127.0.0.1', 16321)
             ))
         )
         self.assertIsNone(boot)
@@ -387,9 +402,6 @@ class TestNetwork(TestCase):
         t = Timer(0.01, run, [self])
         t.start()
         self.loop.run_forever()
-
-    def tearDown(self):
-        self.loop.close()
 
 if __name__ == '__main__':
     unittest.main()

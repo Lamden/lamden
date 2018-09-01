@@ -5,7 +5,7 @@ from cilantro.utils import LProcess
 import random
 import time
 from cilantro.logger import get_logger
-from cilantro.messages import ReactorCommand
+from cilantro.messages.reactor.reactor_command import ReactorCommand
 from cilantro.protocol.reactor.daemon import ReactorDaemon, CHILD_RDY_SIG, KILL_SIG
 import signal, sys
 
@@ -27,15 +27,19 @@ class ReactorInterface:
         self.socket.bind(self.url)
 
         # Start reactor sub process
-        self.proc = LProcess(target=self._start_daemon, args=(self.url, signing_key, name))
-        self.proc.daemon = True
+        self.proc = LProcess(target=self._start_daemon, name='NetworkDaemon', args=(self.url, signing_key, name))
+        # self.proc.daemon = True
         self.proc.start()
 
+        self.futures = None
+
         # Register signal handler to teardown
-        signal.signal(signal.SIGTERM, self._signal_teardown)
+        # signal.signal(signal.SIGTERM, self._signal_teardown)
 
         # Block execution of this proc until reactor proc is ready
         self.loop.run_until_complete(self._wait_child_rdy())
+
+        self.torn_down = False
 
     def start_reactor(self, tasks):
         """
@@ -50,34 +54,48 @@ class ReactorInterface:
         the loop's run_until_complete.
         """
         try:
-            self.recv_fut = asyncio.gather(self._recv_messages(), *tasks)
-            self.loop.run_until_complete(self.recv_fut)
+            self.futures = asyncio.gather(self._recv_messages(), *tasks)
+            self.loop.run_until_complete(self.futures)
         except Exception as e:
+            if type(e) is asyncio.CancelledError:
+                self.log.warning("ReactorInterface event loop cancelled")
+                return
+
             self.log.error("Exception in main event loop: {}".format(traceback.format_exc()))
             self.log.info("Tearing down from runtime loop exception")
-            self._teardown()
+            self.teardown()
 
     def _signal_teardown(self, signal, frame):
-        print("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
-        self._teardown()
+        self.log.fatal("Main process got kill signal: {}   ... with frame: {} ".format(signal, frame))
+        self.teardown()
         sys.exit(0)
 
-    def _teardown(self):
+    def teardown(self):
         """
         Close sockets. Close Event Loop. Teardown. Bless up.
         """
-        self.log.info("[MAIN PROC] Tearing down Reactor Interface process (the main process)")
+        if not self.torn_down:
+            self.torn_down = True
+        else:
+            return
 
-        # TODO -- why is this complaining of no attribute 'recv_fut' ???
-        # self.log.debug("Canceling recv_messages future")
-        # self.recv_fut.cancel()
-        # self.loop.call_soon_threadsafe(self.recv_fut.cancel)
+        self.log.notice("[MAIN PROC] Tearing down Reactor Interface process (the main process)")
 
-        self.log.debug("Closing pair socket")
+        self.log.info("ReactorInterface signaling teardown to daemon")
+        self.socket.send(KILL_SIG)
+
+        # Sleep to allow kill sig to be sent before closing socket
+        time.sleep(2)
+
+        if self.futures:
+            self.log.debug("Canceling recv_messages future")
+            self.futures.cancel()
+
+        self.log.info("Closing pair socket")
         self.socket.close()
 
-        # self.log.debug("Closing event loop")
-        # self.loop.call_soon_threadsafe(self.loop.stop)
+        self.log.info("Closing event loop")
+        self.loop.call_soon_threadsafe(self.loop.stop)
 
     def _start_daemon(self, url, sk, name):
         """
@@ -98,7 +116,7 @@ class ReactorInterface:
         This ensures that we do not try to send commands to the ReactorDaemon process before it is ready.
         """
         self.log.debug("Waiting for ready sig from child proc...")
-        msg = await asyncio.wait_for(self.socket.recv(), 18)
+        msg = await asyncio.wait_for(self.socket.recv(), 40)
         assert msg == CHILD_RDY_SIG, "Got unexpected rdy sig from child proc (got '{}', but expected '{}')" \
             .format(msg, CHILD_RDY_SIG)
         self.log.debug("Got ready sig from child proc: {}".format(msg))
@@ -110,23 +128,20 @@ class ReactorInterface:
         invoking .start_reactor on the ReactorInterface object.
         """
         try:
-            self.log.debug("~~ Reactor listening to messages from ReactorDaemon ~~")
+            self.log.info("~~ Reactor listening to messages from ReactorDaemon ~~")
             while True:
-                self.log.debug("Waiting for callback...")
+                self.log.spam("Waiting for callback...")
                 msg = await self.socket.recv()
                 callback = ReactorCommand.from_bytes(msg)
-                self.log.debug("Got callback cmd <{}>".format(callback))
+                self.log.spam("Got callback cmd <{}>".format(callback))
                 self.router.route_callback(callback)
-        except asyncio.CancelledError:
-            self.log.debug("_recv_messages future canceled!")
-
-    def notify_resume(self):
-        self.log.info("NOTIFIY READY")
-        # TODO -- implement (add queue of tx, flush on notify ready, pause on notify_pause
-
-    def notify_pause(self):
-        self.log.info("NOTIFY PAUSE")
-        # TODO -- implement
+        except Exception as e:
+            if type(e) is asyncio.CancelledError:
+                self.log.warning("ReactorInterface _recv_messages future canceled!")
+            elif type(e) is zmq.error.ZMQError:
+                self.log.warning("Got zmq error in ReactorInterface _recv_messages. Error = \n{}".format(e))
+            else:
+                raise e
 
     def send_cmd(self, cmd: ReactorCommand):
         assert isinstance(cmd, ReactorCommand), "Only ReactorCommand instances can sent through the reactor"

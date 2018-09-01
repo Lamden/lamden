@@ -1,7 +1,7 @@
-from cilantro import Constants
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.utils import validate_hex, int_to_decimal
-
+from cilantro.protocol import wallet
+from cilantro.protocol.pow import SHA3POW
 import capnp
 import transaction_capnp
 
@@ -50,8 +50,8 @@ class StandardTransactionBuilder:
         tx.payload.amount = amount
         payload_binary = tx.payload.copy().to_bytes()
 
-        tx.metadata.proof = Constants.Protocol.Proofs.find(payload_binary)[0]
-        tx.metadata.signature = Constants.Protocol.Wallets.sign(sender_s, payload_binary)
+        tx.metadata.proof = SHA3POW.find(payload_binary)[0]
+        tx.metadata.signature = wallet.sign(sender_s, payload_binary)
 
         return tx
 
@@ -65,6 +65,6 @@ class StandardTransactionBuilder:
         import random
         MAX_AMT = 1000
 
-        s = Constants.Protocol.Wallets.new()
-        r = Constants.Protocol.Wallets.new()
+        s = wallet.new()
+        r = wallet.new()
         return StandardTransactionBuilder.create_tx(s[0], s[1], r[1], random.randint(1, MAX_AMT))

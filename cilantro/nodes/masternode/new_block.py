@@ -1,8 +1,19 @@
-from cilantro import Constants
-from cilantro.protocol.statemachine import *
+from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
+from cilantro.constants.masternode import NEW_BLOCK_TIMEOUT, FETCH_BLOCK_TIMEOUT
+from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT
 from cilantro.nodes.masternode import MNBaseState, Masternode
-from cilantro.db.blocks import *
-from cilantro.messages import *
+
+from cilantro.utils import Hasher
+
+from cilantro.storage.blocks import List, BlockStorageDriver, BlockStorageException
+
+from cilantro.protocol.states.decorators import enter_from_any, enter_from, input_request, input_timeout, input, timeout_after
+
+from cilantro.messages.consensus.block_contender import BlockContender
+from cilantro.messages.block_data.block_metadata import NewBlockNotification
+from cilantro.messages.block_data.transaction_data import TransactionRequest, TransactionReply
+from cilantro.messages.envelope.envelope import Envelope
+
 from cilantro.protocol.structures import MerkleTree
 from collections import deque
 import random
@@ -20,10 +31,16 @@ class MNNewBlockState(MNBaseState):
         self.pending_blocks = deque()
         self.current_block = None
 
-    # Development sanity check (remove in production)
+    @timeout_after(NEW_BLOCK_TIMEOUT)
+    def timeout(self):
+        self.log.critical("MN failed to publish a new block in less than {} seconds!".format(NEW_BLOCK_TIMEOUT))
+        self.parent.transition(MNRunState, success=False)
+
+    # Development sanity check (TODO remove in production)
     @enter_from_any
     def enter_any(self, prev_state):
-        raise Exception("NewBlockState should only be entered from RunState or FetchNewBlockState, but previous state is {}".format(prev_state))
+        raise Exception("NewBlockState should only be entered from RunState or FetchNewBlockState, "
+                        "but previous state is {}".format(prev_state))
 
     @enter_from(MNRunState)
     def enter_from_run(self, block: BlockContender):
@@ -35,7 +52,8 @@ class MNNewBlockState(MNBaseState):
             self.log.debug("Entering fetch state for block contender {}".format(self.current_block))
             self.parent.transition(MNFetchNewBlockState, block_contender=self.current_block)
         else:
-            self.log.warning("Got invalid block contender straight from Masternode. Transitioning back to RunState /w success=False")
+            self.log.warning("Got invalid block contender straight from Masternode. "
+                             "Transitioning back to RunState /w success=False")
             self.parent.transition(MNRunState, success=False)
 
     @enter_from(MNFetchNewBlockState)
@@ -49,6 +67,7 @@ class MNNewBlockState(MNBaseState):
 
             self.log.info("Done storing new block. Transitioning back to run state with success=True")
             self.parent.transition(MNRunState, success=True)
+
         # If failure, then try the next block contender in the queue (if any).
         else:
             self.log.warning("FetchNewBlockState failed for block {}. Trying next block (if any)".format(self.current_block))
@@ -57,7 +76,7 @@ class MNNewBlockState(MNBaseState):
     def _try_next_block(self):
         if len(self.pending_blocks) > 0:
             self.current_block = self.pending_blocks.popleft()
-            self.log.debug("Entering fetch state for block contender {}".format(self.current_block))
+            self.log.spam("Entering fetch state for block contender {}".format(self.current_block))
             self.parent.transition(MNFetchNewBlockState, block_contender=self.current_block)
         else:
             self.log.warning("No more pending blocks. Transitioning back to RunState /w success=False")
@@ -65,8 +84,6 @@ class MNNewBlockState(MNBaseState):
 
     def _new_block_procedure(self, block: BlockContender, txs: List[bytes]):
         self.log.notice("Masternode attempting to store a new block")
-        # self.log.debugv("DONE COLLECTING BLOCK DATA FROM LEAVES. Storing new "
-        #                 "block with...\ncontender={}\nraw txs={}".format(block, txs))
 
         # Attempt to store block
         try:
@@ -78,10 +95,10 @@ class MNNewBlockState(MNBaseState):
             self._try_next_block()
             return
 
-        # Notify delegates of new block
-        self.log.info("Masternode sending NewBlockNotification to delegates with new block hash {} ".format(block_hash))
+        # Notify delegates that a new block was published
+        self.log.info("Masternode sending NewBlockNotification to TESTNET_DELEGATES with new block hash {} ".format(block_hash))
         notif = NewBlockNotification.create(**BlockStorageDriver.get_latest_block(include_number=False))
-        self.parent.composer.send_pub_msg(filter=Constants.ZmqFilters.MasternodeDelegate, message=notif)
+        self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, message=notif, port=MN_NEW_BLOCK_PUB_PORT)
 
     @input_request(BlockContender)
     def handle_block_contender(self, block: BlockContender):
@@ -100,35 +117,11 @@ class MNNewBlockState(MNBaseState):
                 return False
         return True
 
-    def validate_block_contender(self, block: BlockContender) -> bool:
-        """
-        Helper method to validate a block contender. For a block contender to be valid it must:
-        1) Have a provable merkle tree, ie. all nodes must be hash of (left child + right child)
-        2) Be signed by at least 2/3 of the top 32 delegates
-        3) Have the correct number of transactions
-        :param block_contender: The BlockContender to validate
-        :return: True if the BlockContender is valid, false otherwise
-        """
-        # Development sanity checks (these should be removed in production)
-        assert len(block.merkle_leaves) >= 1, "Masternode got block contender with no nodes! {}".format(block)
-        assert len(block.signatures) >= Constants.Testnet.Majority, \
-            "Received a block contender with only {} signatures (which is less than a majority of {}"\
-            .format(len(block.signatures), Constants.Testnet.Majority)
-
-        assert len(block.merkle_leaves) == Constants.Nodes.MaxQueueSize, \
-            "Block contender has {} merkle leaves, but MaxQueueSize is {}!!!\nmerkle_leaves={}"\
-            .format(len(block.merkle_leaves), Constants.Nodes.MaxQueueSize,block.merkle_leaves)
-
-        # TODO validate the sigs are actually from the top N delegates
-        # TODO -- ensure that this block contender's previous block is this Masternode's current block...
-
-        return block.validate_signatures()
-
 
 @Masternode.register_state
 class MNFetchNewBlockState(MNNewBlockState):
 
-    # Enum to describe delegates we are requesting block data from. A delegate who has no pending requests is in
+    # Enum to describe TESTNET_DELEGATES we are requesting block data from. A delegate who has no pending requests is in
     # NODE_AVAILABLE state. Once a request is sent to a delegate we set it to NODE_AWAITING. If the request times out,
     # we set the timed out node to NODE_TIMEOUT
     NODE_AVAILABLE, NODE_AWAITING, NODE_TIMEOUT = range(3)
@@ -139,6 +132,12 @@ class MNFetchNewBlockState(MNNewBlockState):
         self.node_states = {}
         self.tx_hashes = []
         self.retrieved_txs = {}
+
+    @timeout_after(FETCH_BLOCK_TIMEOUT)
+    def timeout(self):
+        self.log.critical("MN failed to fetch block data in less than {} seconds!\nBlock Contender = {}"
+                          .format(FETCH_BLOCK_TIMEOUT, self.block_contender))
+        self.parent.transition(MNNewBlockState, success=False, pending_blocks=self.pending_blocks)
 
     # Development sanity check (remove in production)
     @enter_from_any
@@ -184,9 +183,8 @@ class MNFetchNewBlockState(MNNewBlockState):
         else:
             delegate_vk = self._first_available_node()
 
-        self.log.debug("Requesting {} tx hashes from VK {}".format(len(tx_hashes), delegate_vk))
+        self.log.debugv("Requesting {} tx hashes from VK {}".format(len(tx_hashes), delegate_vk))
 
-        # TODO make this more optimal by requesting hashes in batch
         req = TransactionRequest.create(tx_hashes)
         self.parent.composer.send_request_msg(message=req, timeout=5, vk=delegate_vk)
 
@@ -230,6 +228,7 @@ class MNFetchNewBlockState(MNNewBlockState):
             self.log.debug("Done collecting block data. Transitioning back to NewBlockState.")
             self.parent.transition(MNNewBlockState, success=True, retrieved_txs=self._get_ordered_raw_txs(),
                                    pending_blocks=self.pending_blocks)
+            return
         else:
             self.log.debug("Still {} transactions yet to request until we can build the block"
                            .format(len(self.tx_hashes) - len(self.retrieved_txs)))
@@ -247,4 +246,3 @@ class MNFetchNewBlockState(MNNewBlockState):
         self.log.debug("Envelope Data: {}".format(envelope))
 
         # TODO -- implement a way to get the VK of the dude we originally requested from
-        # TODO also it appears timeouts are not working....need to fix integration tests on this and see whatsup
