@@ -4,7 +4,7 @@ from cilantro.utils.test.mp_test import MPTesterBase, mp_testable
 from cilantro.utils.test.god import God
 from unittest.mock import MagicMock
 from cilantro.protocol.transport.composer import Composer
-from cilantro.protocol.reactor.manager import ExecutorManager
+from cilantro.protocol.executors.manager import ExecutorManager
 from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.nodes import Masternode, Witness, Delegate, NodeFactory
 from cilantro.protocol.overlay.interface import OverlayServer

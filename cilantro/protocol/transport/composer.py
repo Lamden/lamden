@@ -1,6 +1,5 @@
 from cilantro.messages.base.base import MessageBase
-from cilantro.protocol.reactor.executor import ReactorCommand, SubPubExecutor, DealerRouterExecutor
-from cilantro.protocol.reactor.manager import ExecutorManager
+from cilantro.protocol.executors.manager import ExecutorManager
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.logger import get_logger
 from cilantro.protocol.structures import EnvelopeAuth

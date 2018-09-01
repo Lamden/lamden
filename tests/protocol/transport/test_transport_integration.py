@@ -3,7 +3,7 @@ from cilantro.utils.test.mp_testables import MPComposer
 from cilantro.protocol.transport import Composer
 from cilantro.messages.transaction.standard import StandardTransactionBuilder
 from cilantro.protocol import wallet
-from cilantro.protocol.reactor.executor import *
+from cilantro.protocol.executors.executor import *
 import unittest
 import time
 

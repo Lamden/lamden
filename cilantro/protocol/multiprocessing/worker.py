@@ -3,8 +3,8 @@ import zmq.asyncio
 
 from cilantro.logger import get_logger
 from cilantro.protocol import wallet
-from cilantro.protocol.reactor.executor import Executor
-from cilantro.protocol.reactor.manager import ExecutorManager
+from cilantro.protocol.executors.base import ExecutorBase
+from cilantro.protocol.executors.manager import ExecutorManager
 from cilantro.protocol.transport.router import Router
 from cilantro.protocol.transport.composer import Composer
 from cilantro.protocol.states.state import State
