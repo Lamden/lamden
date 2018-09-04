@@ -1,7 +1,7 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
 from cilantro.protocol.transport import Composer
-from cilantro.protocol.reactor import ReactorInterface
+from cilantro.protocol.executors import ReactorInterface
 from cilantro.protocol import wallet
 
 W = wallet

@@ -1,5 +1,5 @@
 from cilantro.nodes import Masternode, Witness, Delegate, NodeBase
-from cilantro.protocol.reactor.manager import ExecutorManager
+from cilantro.protocol.executors.manager import ExecutorManager
 from cilantro.protocol.transport import Router, Composer
 
 import asyncio
