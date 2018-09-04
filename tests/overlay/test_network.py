@@ -7,6 +7,7 @@ from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.overlay.ironhouse import Ironhouse
 from cilantro.protocol.overlay.protocol import KademliaProtocol
 from cilantro.protocol.overlay.utils import digest
+from cilantro.constants.testnet import *
 from threading import Timer
 from cilantro.utils.test.overlay import *
 
@@ -28,10 +29,10 @@ class TestNetwork(TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.a = genkeys('06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a')
-        self.b = genkeys('91f7021a9e8c65ca873747ae24de08e0a7acf58159a8aa6548910fe152dab3d8')
+        self.a = genkeys(TESTNET_MASTERNODES[0]['sk'])
+        self.b = genkeys(TESTNET_WITNESSES[0]['sk'])
         self.evil = genkeys('c5cb6d3ac7d644df8c72b613d57e4c47df6107989e584863b86bde47df704464')
-        self.off = genkeys('8ddaf072b9108444e189773e2ddcb4cbd2a76bbf3db448e55d0bfc131409a197')
+        self.off = genkeys(TESTNET_DELEGATES[0]['sk'])
         self.a_net = Network(sk=self.a['sk'],
                             network_port=13321,
                             keyname='a', wipe_certs=True,
@@ -83,6 +84,7 @@ class TestNetwork(TestCase):
     def test_authenticate(self):
         def run(self):
             stop(self)
+
         self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
             self.b_net.authenticate(self.a_net.node))))
         self.assertTrue(self.loop.run_until_complete(asyncio.ensure_future(
@@ -199,7 +201,7 @@ class TestNetwork(TestCase):
 
         def ids():
             return [
-                b"\xaa\xd0\xed\x91O\xa4e'\x06\xdd7\xf8\xf9\xe46p\x9f\x9a\xa1Y",
+                b"\xdb\xea\xea\xfb\xd2\x87S\xac\xfe\x88\xfc\x94\xddQ\xd4p\xec\x0e7v",
                 b'\x8e\xd4k+\xf6\x10\x9f\xe3\xcf~3@\xca\xee\xc6\x01\r^\xca\x8b'
             ]
 
@@ -229,7 +231,7 @@ class TestNetwork(TestCase):
         state = self.a_net.loadState('state.tmp')
         os.remove('state.tmp')
         self.assertEqual(state,{'ALPHA': 3,
-            'id': b"\xaa\xd0\xed\x91O\xa4e'\x06\xdd7\xf8\xf9\xe46p\x9f\x9a\xa1Y",
+            'id': b"\xdb\xea\xea\xfb\xd2\x87S\xac\xfe\x88\xfc\x94\xddQ\xd4p\xec\x0e7v",
             'KSIZE': 20,
             'neighbors': [('127.0.0.1', 14321, b'^U%HQr(I&^6YihbUAf4HaFQ%*v7gqcy?jwm^KK-{')]})
 

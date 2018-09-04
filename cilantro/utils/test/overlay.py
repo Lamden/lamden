@@ -33,6 +33,7 @@ def genkeys(sk_hex):
         'sk': sk_hex,
         'vk': vk,
         'public_key': public_key.hex(),
+        'secret_key': private_key.hex(),
         'private_key': encode(private_key),
         'curve_key': encode(public_key)
     }

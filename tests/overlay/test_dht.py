@@ -10,6 +10,7 @@ from zmq.utils.z85 import decode, encode
 from nacl.public import PrivateKey
 from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
+from cilantro.constants.testnet import *
 
 def genkeys(sk_hex):
     sk = SigningKey(seed=bytes.fromhex(sk_hex))
@@ -28,9 +29,9 @@ class TestDHT(TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.master = genkeys('06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a')
-        self.witness = genkeys('91f7021a9e8c65ca873747ae24de08e0a7acf58159a8aa6548910fe152dab3d8')
-        self.delegate = genkeys('8ddaf072b9108444e189773e2ddcb4cbd2a76bbf3db448e55d0bfc131409a197')
+        self.master = genkeys(TESTNET_MASTERNODES[0]['sk'])
+        self.witness = genkeys(TESTNET_WITNESSES[0]['sk'])
+        self.delegate = genkeys(TESTNET_DELEGATES[0]['sk'])
 
     def test_join_network_as_sole_master(self):
         def run(self):

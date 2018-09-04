@@ -10,6 +10,7 @@ from os.path import exists
 from threading import Timer
 import asyncio, shutil
 from cilantro.utils.test.overlay import *
+from cilantro.constants.testnet import *
 
 def auth_validate(vk):
     print('Test: Received on validation: {}'.format(vk))
@@ -19,11 +20,12 @@ class TestIronhouseBase(TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.sk = '06391888e37a48cef1ded85a375490df4f9b2c74f7723e88c954a055f3d2685a'
-        self.vk = '82540bb5a9c84162214c5540d6e43be49bbfe19cf49685660cab608998a65144'
-        self.private_key = 'f0ca3d349e56e419e72f11c1fd734ae929a483f9490907d2ded554d9f794f361'
-        self.public_key = '73619fa1464ce16802b480a0fd7868ffcce0f7285050a927a07ef1ffdd34c162'
-        self.curve_public_key = b'B77YmmOI=O0<)GJ@DJ2Q+&5jzp/absPNMCh?88@S'
+        keys = genkeys(TESTNET_MASTERNODES[0]['sk'])
+        self.sk = TESTNET_MASTERNODES[0]['sk']
+        self.vk = TESTNET_MASTERNODES[0]['vk']
+        self.private_key = keys['secret_key']
+        self.public_key = keys['public_key']
+        self.curve_public_key = keys['curve_key']
         self.ironhouse = Ironhouse(self.sk, wipe_certs=True, auth_validate=auth_validate)
         self.secret = self.ironhouse.secret
 
