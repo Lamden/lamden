@@ -10,6 +10,9 @@ from typing import Union
 import types
 
 
+# Internal constants (used as keys)
+_SOCKET = 'socket'
+_HANDLER = 'handler'
 
 
 class ExecutorMeta(type):

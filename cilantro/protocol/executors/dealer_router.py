@@ -1,13 +1,10 @@
-from cilantro.protocol.executors.base import ExecutorBase
+from cilantro.protocol.executors.base import ExecutorBase, _HANDLER, _SOCKET
 from collections import defaultdict
 from cilantro.protocol.states.state import StateInput
 from cilantro.messages.envelope.envelope import Envelope
 import zmq.asyncio
 
 
-# Internal constants (used as keys)
-_SOCKET = 'socket'
-_HANDLER = 'handler'
 
 
 class DealerRouterExecutor(ExecutorBase):

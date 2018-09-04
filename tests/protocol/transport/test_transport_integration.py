@@ -33,6 +33,31 @@ def random_envelope(sk=None, tx=None):
 class TestTransportIntegration(MPTestCase):
 
     @vmnet_test
+    def test_pair(self):
+        def assert_pair_1(composer: Composer):
+            pass
+
+        def assert_pair_2(composer: Composer):
+            pass
+
+        env = random_envelope()
+        env2 = random_envelope()
+        port = 8123
+
+        pair1 = MPComposer(assert_fn=assert_pair_1, name='[MN1] PAIR1', sk=sk1)
+        pair2 = MPComposer(assert_fn=assert_pair_2, name='[Delegate1] PAIR2', sk=sk2)
+
+        # Take a nap while we wait for overlay to hookup
+        time.sleep(5)
+
+        pair1.bind_pair(port=port)
+        pair1.connect_pair(port=port, vk=vk1)
+
+        time.sleep(2)  # Allow nodes to connect before sending the next command
+
+
+
+    @vmnet_test
     def test_pubsub_1_1_1(self):
         """
         Tests pub/sub 1-1 (one sub one pub) with one message

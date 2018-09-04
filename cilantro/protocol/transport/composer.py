@@ -4,7 +4,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.logger import get_logger
 from cilantro.protocol.structures import EnvelopeAuth
 from cilantro.protocol import wallet
-from cilantro.constants.ports import DEFAULT_PUB_PORT, ROUTER_PORT
+from cilantro.constants.ports import DEFAULT_PUB_PORT, ROUTER_PORT, PAIR_PORT
 from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
 import asyncio
 from collections import deque
@@ -65,7 +65,6 @@ class Composer:
         # self.command_queue is dict of command UUID to kwargs. It is used to defer commands that require vk's to be
         # converted to IP addresses until the overlay returns with a 'got_ip' event
         self.command_queue = {}
-
         self.pending_commands = deque()  # To hold commands until the event loop is started
 
         # Listen to overlay events, and check the overlay status. The composer should defer executing any commands
@@ -249,6 +248,28 @@ class Composer:
         ip = ip or self.ip
         url = self._build_url(protocol=protocol, port=port, ip=ip, vk='')
         self.manager.executors['DealerRouterExecutor'].add_router(url=url)
+
+    @vk_lookup
+    def bind_pair(self, protocol: str='tcp', port: int=PAIR_PORT, ip: str= ''):
+        ip = ip or self.ip
+        vk = self.verifying_key
+        url = self._build_url(protocol=protocol, port=port, ip=ip, vk=vk)
+        self.manager.executors['PairExecutor'].bind_pair(url, vk=vk)
+
+    @vk_lookup
+    def connect_pair(self, protocol: str='tcp', port: int=PAIR_PORT, ip: str= '', vk: str=''):
+        # TODO if there is no 'vk' arg, we might have to do a reverse VK --> IP lookup to zmq auth purposes
+        url = self._build_url(protocol=protocol, port=port, ip=ip, vk=vk)
+        self.manager.executors['PairExecutor'].connect_pair(url, vk=vk)
+
+    def send_pair_msg(self, filter: str, message: MessageBase, protocol: str = 'tcp', port: int=PAIR_PORT,
+                      ip: str = ''):
+        self.send_pair_env(filter=filter, envelope=self._package_msg(message), protocol=protocol, port=port, ip=ip)
+
+    def send_pair_env(self, filter: str, envelope: Envelope, protocol: str='tcp', port: int=PAIR_PORT, ip: str=''):
+        ip = ip or self.ip
+        url = self._build_url(protocol=protocol, port=port, ip=ip, vk='')
+        self.manager.executors['PairExecutor'].send(url=url, filter=filter, data=envelope.serialize())
 
     @vk_lookup
     def send_request_msg(self, message: MessageBase, timeout=0, protocol: str='tcp', port: int=ROUTER_PORT,

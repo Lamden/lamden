@@ -16,10 +16,9 @@ class SubPubExecutor(ExecutorBase):
         self.log.spam("Recv'd pub envelope with header {} and env {}".format(header, envelope))
         self.router.route_callback(callback=StateInput.INPUT, message=envelope.message, envelope=envelope)
 
-    # TODO -- is looping over all pubs ok?
     def send_pub(self, url: str, filter: str, data: bytes):
         assert isinstance(filter, str), "'filter' arg must be a string not {}".format(filter)
-        assert isinstance(data, bytes), "'envelope' arg must be bytes"
+        assert isinstance(data, bytes), "'data' arg must be bytes"
         assert url in self.pubs, "Attempted to pub to URL {} that is not in self.pubs {}".format(url, self.pubs)
 
         self.log.spam("Publishing to URL {} with envelope: {}".format(url, Envelope.from_bytes(data)))
@@ -37,6 +36,7 @@ class SubPubExecutor(ExecutorBase):
         time.sleep(0.2)  # for late joiner syndrome (TODO i think we can do away wit this?)
 
     def add_sub(self, url: str, filter: str, vk: str=''):
+        # TODO correctly pass in VK from composer
         assert isinstance(filter, str), "'filter' arg must be a string not {}".format(filter)
         # assert vk != self.ironhouse.vk, "Cannot subscribe to your own VK"
 
