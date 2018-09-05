@@ -5,7 +5,7 @@ import time
 import random
 from cilantro.logger.base import get_logger
 from multiprocessing import Process
-import funcools
+import functools
 
 URL =  "tcp://127.0.0.1:8899"
 URL2 =  "tcp://127.0.0.1:8869"
@@ -24,7 +24,7 @@ def spam():
 
     log.important("PUB about to start pumping messages at url {}".format(URL))
     # while True:
-    for i in range(4):
+    for i in range(3):
         log.spam("PUB sending msg {}".format(MSG))
         pub.send(str(i).encode())
         time.sleep(1)
@@ -38,9 +38,18 @@ def listen():
         log.socket("Starting listening on PUB socket {}".format(s))
         while True:
             log.spam("waiting for msg on sock {}".format(s))
-            msg = await s.recv()
-            log.notice("sock {} got msg {}".format(s, msg))
+            try:
+                msg = await s.recv()
+                log.notice("sock {} got msg {}".format(s, msg))
+            except Exception as e:
+                log.fatal("type of e: {}".format(type(e)))
+                log.fatal("sub listener got exception: {}".format(e))
 
+                if type(e) is asyncio.CancelledError:
+                    log.important("sub listener got cancled err...breaking ")
+                    break
+                else:
+                    log.critical("sub future got sketch error that it doesnt know how to handle!")
 
     async def pair_listen(pair_sock, sub_sock, sub_fut):
         log.socket("Starting listening on PAIR socket {}".format(pair_sock))
@@ -50,11 +59,18 @@ def listen():
             log.info("GOT PAIR MSG {}".format(msg))
             assert msg == KILL_SIG, "Can only get kill sig from pair socket"
 
+            log.important3("status of sub_fut:\ndone: {}\ncancelled: {}".format(sub_fut.done(), sub_fut.cancelled()))
+
             # Teardown sub
-            log.important3("CANCELING SUB FUTURE")
-            sub_fut.cancel()
+            # log.important3("CANCELING SUB FUTURE")
+            # sub_fut.cancel()
             log.important3("CLOSING SUB SOCKET")
             sub_sock.close()
+
+            log.notice("sleeping for 0.5")
+            await asyncio.sleep(0.5)
+            log.important3("status of sub_fut:\ndone: {}\ncancelled: {}".format(sub_fut.done(), sub_fut.cancelled()))
+
 
             log.important3("stopping dat loop")
             loop = asyncio.get_event_loop()
@@ -74,7 +90,7 @@ def listen():
     sub.connect(URL)
     pair.connect(URL2)
 
-    def cleanup(fut, sub_fut, sub_sock, pair_sock, pair_fut):
+    # def cleanup(fut, sub_fut, sub_sock, pair_sock, pair_fut):
 
     log.important2("SUB starting to listen to messages at URL {}".format(URL))
 
@@ -86,7 +102,8 @@ def listen():
     loop.run_forever()
 
     # Cleanup
-    sub.close()
+    # sub.close()
+    # pair.close()
     loop.close()
 
 
