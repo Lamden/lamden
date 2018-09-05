@@ -1,7 +1,9 @@
-import asyncio, os, logging
-import zmq.asyncio
 from cilantro.logger import get_logger
-from cilantro.protocol.reactor.executor import Executor
+from cilantro.protocol.executors.base import ExecutorBase
+
+# These guys must be imported so the MetaClass is interpreted and they are loaded in ExecutorBase.registry
+from cilantro.protocol.executors.dealer_router import DealerRouterExecutor
+from cilantro.protocol.executors.sub_pub import SubPubExecutor
 
 
 class ExecutorManager:
@@ -13,7 +15,7 @@ class ExecutorManager:
         self.context = context
         self.router = router
         self.executors = {name: executor(loop=self.loop, context=self.context, router=self.router)
-                          for name, executor in Executor.registry.items()}
+                          for name, executor in ExecutorBase.registry.items()}
 
     def start(self):
         try:
