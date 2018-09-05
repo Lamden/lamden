@@ -138,9 +138,9 @@ class TestNetwork(TestCase):
     def test_connect_to_neighbor_disconnect(self):
         def run(self):
             conn = self.a_net.connect_to_neighbor(self.b_net.node)
-            time.sleep(0.1)
+            time.sleep(0.5)
             self.b_net.stop()
-            time.sleep(0.1)
+            time.sleep(0.5)
             if self.a_net.connections != {}:
                 for c in self.a_net.connections.values():
                     self.assertTrue(c.fileno(), -1)
