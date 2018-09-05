@@ -86,9 +86,9 @@ class TestInterface(TestCase):
                 loop.call_soon_threadsafe(loop.stop)
 
             self.client = OverlayClient(_event_handler, block=False)
-            cli_t_cmd = Timer(0.2, _send_cmd)
+            cli_t_cmd = Timer(1.5, _send_cmd)
             cli_t_cmd.start()
-            cli_t_asrt = Timer(0.5, _assert)
+            cli_t_asrt = Timer(3, _assert)
             cli_t_asrt.start()
             self.client.loop.run_forever()
 
