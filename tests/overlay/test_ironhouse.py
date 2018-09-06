@@ -26,7 +26,7 @@ class TestIronhouseBase(TestCase):
         self.private_key = keys['secret_key']
         self.public_key = keys['public_key']
         self.curve_public_key = keys['curve_key']
-        self.ironhouse = Ironhouse(self.sk, wipe_certs=True, auth_validate=auth_validate)
+        self.ironhouse = Ironhouse(self.sk, auth_validate=auth_validate)
         self.secret = self.ironhouse.secret
 
 class TestConsts(TestIronhouseBase):
@@ -37,11 +37,11 @@ class TestConsts(TestIronhouseBase):
     def test_generate_certificates_failed(self):
         self.ironhouse.wipe_certs = False
         shutil.rmtree(self.ironhouse.base_dir)
-        self.ironhouse.generate_certificates(self.sk, wipe_certs=True)
+        self.ironhouse.generate_certificates(self.sk)
         self.assertTrue(listdir(self.ironhouse.authorized_keys_dir) == ['{}.key'.format(self.ironhouse.keyname)], 'public keys dir should not be created')
 
     def test_generate_certificates(self):
-        self.ironhouse.generate_certificates(self.sk, wipe_certs=True)
+        self.ironhouse.generate_certificates(self.sk)
         self.assertTrue(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir not created')
         self.assertEqual(self.private_key, decode(self.ironhouse.secret).hex(), 'secret key generation is incorrect')
         self.assertEqual(self.public_key, decode(self.ironhouse.public_key).hex(), 'public key generation is incorrect')
@@ -197,7 +197,7 @@ class TestServer(TestIronhouseBase):
             self.loop.call_soon_threadsafe(self.loop.stop)
 
         self.fake = genkeys('91f7021a9e8c65ca873747ae24de08e0a7acf58159a8aa6548910fe152dab3d8')
-        self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
+        self.fake_ironhouse = Ironhouse(self.fake['sk'], auth_validate=auth_validate, auth_port=port, keyname='fake')
         self.fake_ironhouse.setup_secure_server()
         self.fake_ironhouse.add_public_key(self.curve_public_key)
         self.ironhouse.setup_secure_server()
@@ -235,7 +235,7 @@ class TestServer(TestIronhouseBase):
             self.loop.call_soon_threadsafe(self.loop.stop)
 
         self.fake = genkeys('91f7021a9e8c65ca873747ae24de08e0a7acf58159a8aa6548910fe152dab3d8')
-        self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
+        self.fake_ironhouse = Ironhouse(self.fake['sk'], auth_validate=auth_validate, auth_port=port, keyname='fake')
         self.fake_ironhouse.setup_secure_server()
         self.fake_ironhouse.add_public_key(self.curve_public_key)
         self.ironhouse.setup_secure_server()
@@ -282,7 +282,7 @@ class TestServer(TestIronhouseBase):
             return vk == 'b9284b28589523f055ae5b54c98b0b904a1df3b0be5d546d30208d0516e71aa0'
 
         self.fake = genkeys('7ae3fcfd3a9047adbec6ad11e5a58036df9934dc0746431d80b49d25584d7e78')
-        self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
+        self.fake_ironhouse = Ironhouse(self.fake['sk'], auth_validate=auth_validate, auth_port=port, keyname='fake')
         self.fake_ironhouse.setup_secure_server()
         self.fake_ironhouse.add_public_key(self.curve_public_key)
         self.fake_ironhouse.auth_validate = auth_validate_fake
@@ -306,11 +306,11 @@ class TestServer(TestIronhouseBase):
             self.loop.call_soon_threadsafe(self.loop.stop)
 
         self.a = genkeys('5664ec7306cc22e56820ae988b983bdc8ebec8246cdd771cfee9671299e98e3c')
-        self.aih = Ironhouse(self.a['sk'], wipe_certs=True, auth_port=port, keyname='a')
+        self.aih = Ironhouse(self.a['sk'], auth_port=port, keyname='a')
         self.aih.setup_secure_server()
         self.aih.add_public_key(self.curve_public_key)
 
-        self.dih = Ironhouse(self.sk, wipe_certs=True)
+        self.dih = Ironhouse(self.sk)
         self.dih.setup_secure_server()
         self.dih.add_public_key(self.a['curve_key'])
 
@@ -354,7 +354,7 @@ class TestServer(TestIronhouseBase):
             return vk == b'catastrophe'
 
         self.fake = genkeys('7ae3fcfd3a9047adbec6ad11e5a58036df9934dc0746431d80b49d25584d7e78')
-        self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
+        self.fake_ironhouse = Ironhouse(self.fake['sk'], auth_validate=auth_validate, auth_port=port, keyname='fake')
         self.fake_ironhouse.setup_secure_server()
         self.fake_ironhouse.add_public_key(self.curve_public_key)
         self.fake_ironhouse.auth_validate = auth_validate_fake
@@ -387,7 +387,7 @@ class TestServer(TestIronhouseBase):
             return vk == b'catastrophe'
 
         self.fake = genkeys('7ae3fcfd3a9047adbec6ad11e5a58036df9934dc0746431d80b49d25584d7e78')
-        self.fake_ironhouse = Ironhouse(self.fake['sk'], wipe_certs=True, auth_validate=auth_validate, auth_port=port, keyname='fake')
+        self.fake_ironhouse = Ironhouse(self.fake['sk'], auth_validate=auth_validate, auth_port=port, keyname='fake')
         self.fake_ironhouse.setup_secure_server()
         self.fake_ironhouse.add_public_key(self.curve_public_key)
         self.fake_ironhouse.auth_validate = auth_validate_fake

@@ -44,36 +44,37 @@ class Ironhouse:
         self.keyname = keyname or Ironhouse.keyname
         self.authorized_keys = {}
         self.pk2vk = {}
-        self.vk, self.public_key, self.secret = self.generate_certificates(sk, wipe_certs=wipe_certs)
+        self.vk, self.public_key, self.secret = self.generate_certificates(sk)
 
     @classmethod
     def vk2pk(cls, vk):
         return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
 
     @classmethod
-    def generate_certificates(cls, sk_hex, wipe_certs=False):
+    def generate_certificates(cls, sk_hex):
         sk = SigningKey(seed=bytes.fromhex(sk_hex))
         vk = sk.verify_key.encode().hex()
         public_key = cls.vk2pk(vk)
         private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key).hex()
 
         for d in [cls.keys_dir, cls.authorized_keys_dir]:
-            if wipe_certs and exists(d):
+            if exists(d):
                 shutil.rmtree(d)
             os.makedirs(d, exist_ok=True)
 
-        if wipe_certs:
-            _, secret = cls.create_from_private_key(private_key)
+        secret = None
 
-            for key_file in os.listdir(cls.keys_dir):
-                if key_file.endswith(".key"):
-                    shutil.move(join(cls.keys_dir, key_file),
-                                join(cls.authorized_keys_dir, '.'))
+        _, secret = cls.create_from_private_key(private_key)
 
-            if exists(cls.keys_dir):
-                shutil.rmtree(cls.keys_dir)
+        for key_file in os.listdir(cls.keys_dir):
+            if key_file.endswith(".key"):
+                shutil.move(join(cls.keys_dir, key_file),
+                            join(cls.authorized_keys_dir, '.'))
 
-            log.info('Generated CURVE certificate files!')
+        if exists(cls.keys_dir):
+            shutil.rmtree(cls.keys_dir)
+
+        log.info('Generated CURVE certificate files!')
 
         return vk, public_key, secret
 
@@ -94,7 +95,7 @@ class Ironhouse:
 
         return public_key, secret
 
-    def add_public_key(self, public_key):
+    def add_public_key(self, public_key, vk=None):
         if self.public_key == public_key: return
         keyname = decode(public_key).hex()
         base_filename = join(self.authorized_keys_dir, keyname)
@@ -115,6 +116,8 @@ class Ironhouse:
         log.debug('{} has added {} to its authorized list'.format(os.getenv('HOST_IP', '127.0.0.1'), public_key))
         self.reconfigure_curve()
         self.authorized_keys[public_key] = True
+        if vk:
+            self.authorized_nodes[digest(vk)] = vk
 
     def remove_public_key(self, public_key):
         if self.public_key == public_key: return
@@ -140,9 +143,11 @@ class Ironhouse:
         auth.start()
         return ctx, auth
 
-    def reconfigure_curve(self):
+    def reconfigure_curve(self, auth=None):
         log.debug('{} is reconfiguring curves'.format(os.getenv('HOST_IP', '127.0.0.1')))
-        if self.daemon_auth:
+        if auth:
+            auth.configure_curve(domain='*', location=self.authorized_keys_dir)
+        elif self.daemon_auth:
             self.daemon_auth.configure_curve(domain='*', location=self.authorized_keys_dir)
 
     @classmethod
@@ -177,6 +182,9 @@ class Ironhouse:
             received_public_key = self.vk2pk(msg)
             if self.auth_validate(msg) == True and target_public_key == received_public_key:
                 self.add_public_key(received_public_key)
+                self.authorized_nodes[digest(msg)] = ip
+                log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP', '127.0.0.1'), list(self.authorized_nodes.values())))
+
                 self.pk2vk[received_public_key] = msg
                 authorized = 'authorized'
         except Exception as e:

@@ -15,12 +15,7 @@ PROTOCOL_TESTS = [
     'tests.protocol.interpreter',
     'tests.protocol.structures',
     'tests.protocol.states',
-    'tests.protocol.wallets',
-
-    # TODO -- write tests/ensure existing tests pass for modules below
-    # 'tests.protocol.proofs',
-    # 'tests.protocol.reactor',
-    # 'tests.protocol.transport',  # this should break ... so TODO: fix
+    'tests.protocol.wallets'
     ]
 
 NODE_TESTS = [
