@@ -4,13 +4,14 @@ from cilantro.utils.test.mp_test import MPTesterBase, mp_testable
 from cilantro.utils.test.god import God
 from unittest.mock import MagicMock
 from cilantro.protocol.transport.composer import Composer
-from cilantro.protocol.reactor.manager import ExecutorManager
+from cilantro.protocol.executors.manager import ExecutorManager
 from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.nodes import Masternode, Witness, Delegate, NodeFactory
 from cilantro.protocol.overlay.interface import OverlayServer
 from cilantro.utils.lprocess import LProcess
 from cilantro.storage.db import DB
 import asyncio
+import zmq.asyncio
 import os
 
 
@@ -40,21 +41,18 @@ class MPComposer(MPTesterBase):
     def build_obj(cls, sk, name='') -> tuple:
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
+        ctx = zmq.asyncio.Context()
 
         # Start Overlay Process
-        overlay_proc = LProcess(target=self.start_overlay_server, args=(sk,))
+        overlay_proc = LProcess(target=OverlayServer, args=(sk,))
         overlay_proc.start()
 
         router = MagicMock()
         ip = os.getenv('HOST_IP', '127.0.0.1')
-        manager = ExecutorManager(signing_key=sk, router=router, name=name, loop=loop)
+        manager = ExecutorManager(signing_key=sk, router=router, name=name, loop=loop, context=ctx)
         composer = Composer(manager=manager, signing_key=sk, ip=ip, name=name)
 
         return composer, loop, []
-
-    @staticmethod
-    def start_overlay_server(sk):
-        server = OverlayServer(sk)
 
 
 @mp_testable(StateMachine)

@@ -3,7 +3,6 @@ from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.messages.transaction.contract import *
 from cilantro.messages.signals.kill_signal import KillSignal
 import asyncio
-from cilantro.protocol.reactor import ReactorInterface
 from cilantro.protocol.transport import Composer
 from unittest.mock import MagicMock
 from cilantro.logger import get_logger
@@ -45,6 +44,7 @@ def countdown(duration: int, msg: str, log=None, status_update_freq=5):
     if duration > 0:
         time.sleep(duration)
 
+
 class God:
 
     _DEFAULT_SK = '6b73b06b9faee35527f034fb1809e4fc94915a29568a708fd972fcfba20d8555'
@@ -60,27 +60,26 @@ class God:
     mn_url = _MN_URL
 
     def __init__(self, loop=None):
-        self.log = get_logger("GOD")
-
-        self.loop = loop or asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-        mock_router = MagicMock()
-        self.interface = ReactorInterface(router=mock_router, loop=self.loop, signing_key=God._DEFAULT_SK)
-
-        # a dict of composer_sk to composer object
-        self.composers = {}
-
-    def _get_or_create_composer(self, signing_key):
-        # TODO fix this ... this is horribly old and likely broken untested code
-        if signing_key in self.composers:
-            self.log.debug("Existing Composer object found for signing key {}".format(signing_key))
-            return self.composers[signing_key]
-        else:
-            self.log.debug("Creating new Composer object for signing key {}".format(signing_key))
-            c = Composer(manager=self.interface, signing_key=signing_key, name='God-Composer-{}'.format(signing_key[:4]))
-            self.composers[signing_key] = c
-            return c
+        raise NotImplementedError("use class methods. __init__ does not work rn")
+    #     self.log = get_logger("GOD")
+    #
+    #     self.loop = loop or asyncio.new_event_loop()
+    #     asyncio.set_event_loop(self.loop)
+    #
+    #
+    #     # a dict of composer_sk to composer object
+    #     self.composers = {}
+    #
+    # def _get_or_create_composer(self, signing_key):
+    #     # TODO fix this ... this is horribly old and likely broken untested code
+    #     if signing_key in self.composers:
+    #         self.log.debug("Existing Composer object found for signing key {}".format(signing_key))
+    #         return self.composers[signing_key]
+    #     else:
+    #         self.log.debug("Creating new Composer object for signing key {}".format(signing_key))
+    #         c = Composer(manager=self.interface, signing_key=signing_key, name='God-Composer-{}'.format(signing_key[:4]))
+    #         self.composers[signing_key] = c
+    #         return c
 
     @classmethod
     def teardown_all(cls, masternode_url):
@@ -183,19 +182,6 @@ class God:
 
         delay -= int(time.time() - gen_start_time)
         countdown(delay, "Waiting for an additional {} seconds before dumping...", cls.log, status_update_freq=8)
-        # if delay > DUMP_UPDATE_PERIOD:
-        #     cls.log.important2("Waiting for an additional {} seconds before dumping...".format(delay))
-        #     num_sleeps = delay % DUMP_UPDATE_PERIOD
-        #     remainder = delay - num_sleeps * DUMP_UPDATE_PERIOD
-        #     if remainder < 0:
-        #         remainder = 0
-        #
-        #     for _ in range(num_sleeps):
-        #         time.sleep(DUMP_UPDATE_PERIOD)
-        #         delay -= DUMP_UPDATE_PERIOD
-        #         cls.log.important2("Dumping in {} seconds...".format(delay))
-
-        # time.sleep(delay)
 
         start = time.time()
         cls.log.important2("Dumping {} transactions...".format(len(txs)))

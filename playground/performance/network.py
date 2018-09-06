@@ -2,7 +2,7 @@ from cilantro.utils.test import MPTestCase, MPComposer, vmnet_test
 from cilantro.protocol.transport import Composer
 from cilantro.protocol import wallet
 from cilantro.messages.transaction.standard import StandardTransactionBuilder
-from cilantro.protocol.reactor.executor import *
+from cilantro.protocol.executors.executor import *
 import unittest
 import time
 
