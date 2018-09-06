@@ -16,16 +16,8 @@ overwrite_logger_level(10001)
 class TestWebserverPerformance(TestCase):
 
     def test_server_perf(self):
-        ip = '136.25.1.11'
-        mock_sm = MagicMock(ip=ip)
-
-        mock_composer = MagicMock()
-        mock_sm.composer = mock_composer
-
-        state = MNBootState(state_machine=mock_sm)
-
-        state.call_transition_handler(trans_type=StateTransition.ENTER, state=EmptyState)
-
+        os.system('python3 ../../../cilantro/nodes/masternode/webserver.py &')
+        time.sleep(2)
         subprocess.run('ab -k -c 50 -n 10000 -p post_data 0.0.0.0:8080/'.split(' '))
 
 if __name__ == '__main__':
