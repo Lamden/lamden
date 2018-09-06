@@ -38,7 +38,22 @@ RUN apt-get update \
     && pip3 install --upgrade setuptools wheel \
     && pip3 install -r requirements.txt \
     && pip3 install -r dev-requirements.txt \
-    && rm -rf capnproto \
+    && rm -rf pyzmq 2>/dev/null \
+    && git clone https://github.com/zeromq/pyzmq.git \
+        && apt install libzmq3-dev -y --no-install-recommends \
+        && cd pyzmq \
+        && cp zmq/utils/*.h zmq/backend/cython/ \
+        && cp zmq/utils/*.h zmq/devices/ \
+        && cythonize -ki zmq \
+        && python3 setup.py install \
+        && cd - \
+    && rm -rf pynacl 2>/dev/null \
+    && git clone https://github.com/pyca/pynacl.git \
+        && cd pynacl \
+        && cythonize -ki src/nacl \
+        && python3 setup.py install \
+        && cd - \
+    && rm -rf pyzmq pynacl capnproto \
     && apt-get remove -y --allow-remove-essential \
         build-essential \
         gcc g++ \
