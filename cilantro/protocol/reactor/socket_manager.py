@@ -13,8 +13,6 @@ from cilantro.protocol.structures import EnvelopeAuth
 
 
 
-
-
 # TODO Better name for SocketManager? SocketManager is also responsible for handling the OverlayClient, so maybe we
 # should name it something that makes that more obvious
 class SocketManager:
@@ -31,7 +29,8 @@ class SocketManager:
         self.context = context or zmq.asyncio.Context()
 
         self.sockets = []
-        self.pending_commands = {}   # A dict of 'event_id' to socket instance
+        self.pending_lookups = {}   # A dict of 'event_id' to socket instance
+        self.pending_commands = deque()  # To hold pending_lookups until the overlay client is ready
 
         # Configure overlay interface
         self.overlay_cli = OverlayClient(self._handle_overlay_event, loop=self.loop, ctx=self.context)
@@ -48,13 +47,24 @@ class SocketManager:
             asyncio.ensure_future(self._check_overlay_status())
 
         # Create a future to ensure the overlay server is ready in a reasonable amount of time, and blow up if it isn't
-        asyncio.ensure_future(self._enforce_client_ready())
+        self.timeout_future = asyncio.ensure_future(self._enforce_client_ready())
+
+    def create_socket(self, socket_type, *args, **kwargs) -> LSocket:
+        assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)
+
+        zmq_socket = self.context.socket(socket_type, *args, **kwargs)
+        socket = LSocket(zmq_socket, manager=self)
+        self.sockets.append(socket)
+
+        return socket
 
     async def _enforce_client_ready(self):
         await asyncio.sleep(CLIENT_SETUP_TIMEOUT)
         if not self.overlay_ready:
             msg = "Timed out waiting for overlay server! Did not receive a ready signal from overlay server in {} " \
                   "seconds".format(CLIENT_SETUP_TIMEOUT)
+            # TODO is it necessary to log this in addition to raising an error?
+            # I'm paranoid raising an Exception might get swallowed somewhere
             self.log.fatal(msg)
             raise Exception(msg)  # TODO i dont think this properly blow up this process b/c we are in a coro right now
 
@@ -63,18 +73,9 @@ class SocketManager:
         self.log.important("Checking overlay status")  # TODO remove
         self.overlay_cli.get_service_status()
 
-    def create_socket(self, socket_type, *args, **kwargs) -> LSocket:
-        assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)
-
-        zmq_socket = self.context.socket(socket_type, *args, **kwargs)
-        socket = LSocket(zmq_socket)
-        self.sockets.append(socket)
-
-        return socket
-
     def _handle_overlay_event(self, e):
-        self.log.spam("Composer got overlay event {}".format(e))
-        # self.log.important2("Composer got overlay event {}".format(e))  # TODO remove
+        self.log.spam("SocketManager got overlay event {}".format(e))
+        self.log.important2("SocketManager got overlay event {}".format(e))  # TODO remove
 
         if e['event'] == 'service_started' or (e['event'] == 'service_status' and e['status'] == 'ready'):
             if self.overlay_ready:
@@ -83,13 +84,14 @@ class SocketManager:
 
             self.log.notice("Overlay service ready!")
             self.overlay_ready = True
+            self.timeout_future.cancel()
             self._flush_pending_commands()
             return
 
         elif e['event'] == 'got_ip':
-            assert e['event_id'] in self.pending_commands, "Overlay returned event id that is not in pending_commands!"
+            assert e['event_id'] in self.pending_lookups, "Overlay returned event id that is not in pending_commands!"
 
-            sock = self.pending_commands.pop(e['event_id'])
+            sock = self.pending_lookups.pop(e['event_id'])
             sock.handle_overlay_event(e)
 
         else:
@@ -101,11 +103,14 @@ class SocketManager:
         assert asyncio.get_event_loop().is_running(), "Event loop must be running to flush commands"
         assert self.overlay_ready, "Overlay must be ready to flush commands"
 
-        self.log.debugv("Composer flushing {} commands from queue".format(len(self.pending_commands)))
+        self.log.debugv("SocketManager flushing {} commands from queue".format(len(self.pending_commands)))
 
-        for socket, cmd_name, args, kwargs in self.pending_commands:
-            self.log.spam("Executing pending command {} on socket {} with args {} and kwargs {}".format(cmd_name, socket, args, kwargs))
-            getattr(socket, cmd_name)(*args, **kwargs)
+        try:
+            for socket, cmd_name, args, kwargs in self.pending_commands:
+                self.log.spam("Executing pending command {} on socket {} with args {} and kwargs {}".format(cmd_name, socket, args, kwargs))
+                getattr(socket, cmd_name)(*args, **kwargs)
+        except Exception as e:
+            self.log.fatal("wtf:\n{}".format(e))
 
         self.pending_commands.clear()
 
