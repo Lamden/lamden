@@ -19,7 +19,7 @@ from nacl.public import PrivateKey, PublicKey
 from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 from cilantro.storage.db import VKBook
-from cilantro.constants.testnet import PUBSUB_SECRET
+from cilantro.constants.testnet import SECRETS
 from cilantro.constants.overlay_network import AUTH_TIMEOUT
 from cilantro.protocol.overlay.utils import digest
 from cilantro.logger import get_logger
@@ -51,18 +51,17 @@ class Ironhouse:
     def vk2pk(cls, vk):
         return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
 
-    @classmethod
-    def generate_universally_shared_certificates(cls):
-        # PUBSUB
-        vk, public_key, secret = cls.generate_certificates(PUBSUB_SECRET,
-                                   join(cls.base_dir, 'pubsub'))
-        cls.pubsub_cert = { 'vk': vk, 'public_key': public_key, 'secret': secret }
+    def generate_universally_shared_certificates(self):
+        for domain in SECRETS:
+            vk, public_key, secret = self.generate_certificates(SECRETS[domain],
+                                   join(self.base_dir, domain))
 
     @classmethod
     def generate_certificates(cls, sk_hex, custom_folder=None):
         sk = SigningKey(seed=bytes.fromhex(sk_hex))
         vk = sk.verify_key.encode().hex()
         public_key = cls.vk2pk(vk)
+        keyname = decode(public_key).hex()
         private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key).hex()
         authorized_keys_dir = custom_folder or cls.authorized_keys_dir
         for d in [cls.keys_dir, authorized_keys_dir]:
@@ -72,7 +71,7 @@ class Ironhouse:
 
         secret = None
 
-        _, secret = cls.create_from_private_key(private_key)
+        _, secret = cls.create_from_private_key(private_key, keyname)
 
         for key_file in os.listdir(cls.keys_dir):
             if key_file.endswith(".key"):
@@ -87,13 +86,13 @@ class Ironhouse:
         return vk, public_key, secret
 
     @classmethod
-    def create_from_private_key(cls, private_key):
+    def create_from_private_key(cls, private_key, keyname):
         priv = PrivateKey(bytes.fromhex(private_key))
         publ = priv.public_key
         public_key = encode(publ._public_key)
         secret = encode(priv._private_key)
 
-        base_filename = join(cls.keys_dir, cls.keyname)
+        base_filename = join(cls.keys_dir, keyname)
         public_key_file = "{0}.key".format(base_filename)
         now = datetime.datetime.now()
 
@@ -110,9 +109,9 @@ class Ironhouse:
         base_filename = join(authorized_keys_dir, keyname)
         public_key_file = "{0}.key".format(base_filename)
         now = datetime.datetime.now()
-
         if exists(public_key_file):
             log.debug('Public cert for {} has already been created.'.format(public_key))
+            self.reconfigure_curve(domain=domain)
             return
 
         os.makedirs(authorized_keys_dir, exist_ok=True)
@@ -131,6 +130,7 @@ class Ironhouse:
         authorized_keys_dir = join(self.base_dir, domain) if domain != '*' else self.authorized_keys_dir
         base_filename = join(authorized_keys_dir, keyname)
         public_key_file = "{0}.key".format(base_filename)
+
         if exists(public_key_file):
             os.remove(public_key_file)
 

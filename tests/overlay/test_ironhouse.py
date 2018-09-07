@@ -26,6 +26,7 @@ class TestIronhouseBase(TestCase):
         self.private_key = keys['secret_key']
         self.public_key = keys['public_key']
         self.curve_public_key = keys['curve_key']
+        self.keyname = decode(self.curve_public_key).hex()
         self.ironhouse = Ironhouse(self.sk, auth_validate=auth_validate)
         self.secret = self.ironhouse.secret
 
@@ -38,7 +39,7 @@ class TestConsts(TestIronhouseBase):
         self.ironhouse.wipe_certs = False
         shutil.rmtree(self.ironhouse.base_dir)
         self.ironhouse.generate_certificates(self.sk)
-        self.assertTrue(listdir(self.ironhouse.authorized_keys_dir) == ['{}.key'.format(self.ironhouse.keyname)], 'public keys dir should not be created')
+        self.assertTrue(listdir(self.ironhouse.authorized_keys_dir) == ['{}.key'.format(self.keyname)], 'public keys dir should not be created')
 
     def test_generate_certificates(self):
         self.ironhouse.generate_certificates(self.sk)
@@ -51,7 +52,7 @@ class TestConsts(TestIronhouseBase):
 
     def test_generate_from_private_key(self):
         makedirs(self.ironhouse.keys_dir, exist_ok=True)
-        self.ironhouse.create_from_private_key(self.private_key)
+        self.ironhouse.create_from_private_key(self.private_key, self.ironhouse.keyname)
         self.assertTrue(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir not created')
         self.assertEqual(self.private_key, decode(self.ironhouse.secret).hex(), 'secret key generation is incorrect')
         self.assertEqual(self.public_key, decode(self.ironhouse.public_key).hex(), 'public key generation is incorrect')
@@ -60,7 +61,7 @@ class TestConsts(TestIronhouseBase):
         self.ironhouse.daemon_context, self.ironhouse.daemon_auth = self.ironhouse.secure_context(async=True)
         self.ironhouse.add_public_key(encode(self.public_key.encode()))
         self.assertTrue(listdir(self.ironhouse.authorized_keys_dir), 'public keys dir not created')
-        self.assertTrue(exists('{}/{}.key'.format(self.ironhouse.authorized_keys_dir, self.ironhouse.keyname)), 'public key not generated')
+        self.assertTrue(exists('{}/{}.key'.format(self.ironhouse.authorized_keys_dir, self.keyname)), 'public key not generated')
         self.ironhouse.daemon_auth.stop()
 
 class TestAuthSync(TestIronhouseBase):
@@ -229,7 +230,7 @@ class TestServer(TestIronhouseBase):
         async def send_async_sec():
             await self.ironhouse.authenticate(self.fake['curve_key'], '127.0.0.1', port)
             self.ironhouse.remove_public_key(self.fake['curve_key'])
-            self.assertFalse(self.ironhouse.authorized_keys[self.fake['curve_key']])
+            self.assertFalse(self.ironhouse.daemon_auth.certs['*'].get(self.fake['curve_key'], False))
             self.ironhouse.cleanup()
             self.fake_ironhouse.cleanup()
             self.loop.call_soon_threadsafe(self.loop.stop)
@@ -267,7 +268,8 @@ class TestServer(TestIronhouseBase):
         self.validated = False
         async def send_async_sec():
             authorized = await self.ironhouse.authenticate(self.fake['curve_key'], '127.0.0.1', port)
-            self.assertTrue(self.ironhouse.authorized_keys[self.fake['curve_key']])
+            print('!!!', self.ironhouse.daemon_auth.certs)
+            self.assertTrue(self.ironhouse.daemon_auth.certs['*'].get(self.fake['curve_key'], False))
             self.assertTrue(authorized)
             self.assertTrue(self.validated)
             self.ironhouse.cleanup()
