@@ -21,8 +21,7 @@ def client(i):
         svr_vk, svr_public, svr_secret = Ironhouse.generate_certificates('a2ac4e2dcdd342fcadf79db4486948df3078329b6aa543f1952dab2ac36cfafe')
 
         ctx, auth = Ironhouse.secure_context(True)
-        ih_ins.add_public_key(svr_public, svr_vk)
-        ih_ins.reconfigure_curve(auth)
+        ih_ins.reconfigure_curve(auth, 'pubsub')
         sock = Ironhouse.secure_socket(ctx.socket(zmq.SUB),
             ih_ins.secret, ih_ins.public_key, svr_public)
         sock.setsockopt(zmq.SUBSCRIBE, b'topic')
@@ -56,9 +55,10 @@ def server(i):
         sock = Ironhouse.secure_socket(ctx.socket(zmq.PUB),
             svr_secret, svr_public)
         log.critical('binding to {}'.format("tcp://*:{}".format(9999)))
+        sock.zap_domain = b'pubsub'
         sock.bind("tcp://*:{}".format(9999))
         await asyncio.sleep(3)
-        ih_ins.reconfigure_curve(auth)
+        ih_ins.reconfigure_curve(auth, 'pubsub')
         while True:
             log.critical('{} sending stuff!'.format(os.getenv('HOST_IP')))
             sock.send_multipart([b'topic', os.getenv('HOST_IP').encode()])
@@ -71,8 +71,8 @@ def server(i):
     ih = Ironhouse(sk=TESTNET_MASTERNODES[i]['sk'], wipe_certs=True)
     nodes = os.getenv('NODE').split(',')
     ih.setup_secure_server()
-    asyncio.ensure_future(ih.authenticate(cli1_public, nodes[2]))
-    asyncio.ensure_future(ih.authenticate(cli2_public, nodes[3]))
+    asyncio.ensure_future(ih.authenticate(cli1_public, nodes[2], domain='pubsub'))
+    asyncio.ensure_future(ih.authenticate(cli2_public, nodes[3], domain='pubsub'))
     asyncio.ensure_future(bind(ih))
     loop.run_forever()
 
