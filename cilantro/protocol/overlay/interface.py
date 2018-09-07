@@ -3,9 +3,13 @@ from cilantro.protocol.overlay.dht import DHT
 from cilantro.constants.overlay_network import ALPHA, KSIZE, MAX_PEERS
 from cilantro.storage.db import VKBook
 from cilantro.logger.base import get_logger
+from collections import deque
+import json
 
-event_url = 'ipc://overlay-event-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
-cmd_url = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
+
+EVENT_URL = 'ipc://overlay-event-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
+CMD_URL = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
+
 
 def command(fn):
     def _command(self, *args, **kwargs):
@@ -25,34 +29,35 @@ class OverlayServer(object):
         self.ctx = zmq.asyncio.Context()
 
         self.evt_sock = self.ctx.socket(zmq.PUB)
-        self.evt_sock.bind(event_url)
+        self.evt_sock.bind(EVENT_URL)
         self.cmd_sock = self.ctx.socket(zmq.ROUTER)
-        self.cmd_sock.bind(cmd_url)
+        self.cmd_sock.bind(CMD_URL)
 
         self.fut = asyncio.ensure_future(self.command_listener())
 
         self.discovery_mode = 'test' if os.getenv('TEST_NAME') else 'neighborhood'
         self.dht = DHT(sk=sk, mode=self.discovery_mode, loop=self.loop,
-                  alpha=ALPHA, ksize=KSIZE, event_sock=self.evt_sock,
-                  max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
+                       alpha=ALPHA, ksize=KSIZE, event_sock=self.evt_sock,
+                       max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
 
         self._started = True
         self.evt_sock.send_json({
             'event': 'service_status',
             'status': 'ready'
         })
+
         if block:
             self.loop.run_forever()
 
     async def command_listener(self):
-        self.log.info('Listening for overlay commands over {}'.format(cmd_url))
+        self.log.info('Listening for overlay commands over {}'.format(CMD_URL))
         while True:
             msg = await self.cmd_sock.recv_multipart()
             self.log.debug('[Overlay] Received cmd (Proc={}): {}'.format(msg[0], msg[1:]))
             data = [b.decode() for b in msg[2:]]
-            getattr(self, msg[1].decode())(*data)
+            getattr(self, msg[1].decode())(msg[0], *data)
 
-    def _get_node_from_vk(self, event_id, vk: str, timeout=5):
+    def _get_node_from_vk(self, id_frame, event_id, vk: str, timeout=5):
         async def coro():
             node = None
             if vk in VKBook.get_all():
@@ -60,32 +65,38 @@ class OverlayServer(object):
                     node, cached = await asyncio.wait_for(self.dht.network.lookup_ip(vk), timeout)
                 except:
                     self.log.notice('Did not find an ip for VK {} in {}s'.format(vk, timeout))
+
             if node:
-                self.evt_sock.send_json({
+                data = json.dumps({
                     'event': 'got_ip',
                     'event_id': event_id,
                     'public_key': node.public_key.decode(),
                     'ip': node.ip,
                     'vk': vk
-                })
+                }).encode()
             else:
-                self.evt_sock.send_json({
+                data = json.dumps({
                     'event': 'not_found',
                     'event_id': event_id
-                })
+                }).encode()
+
+            self.cmd_sock.send_multipart([id_frame, data])
+
         asyncio.ensure_future(coro())
 
-    def _get_service_status(self, event_id):
+    def _get_service_status(self, id_frame, event_id):
         if self._started:
-            self.evt_sock.send_json({
+            data = json.dumps({
                 'event': 'service_status',
                 'status': 'ready'
-            })
+            }).encode()
         else:
-            self.evt_sock.send_json({
+            data = json.dumps({
                 'event': 'service_status',
                 'status': 'not_ready'
-            })
+            }).encode()
+
+        self.cmd_sock.send_multipart([id_frame, data])
 
     def teardown(self):
         try:
@@ -109,13 +120,18 @@ class OverlayClient(object):
 
         self.cmd_sock = self.ctx.socket(socket_type=zmq.DEALER)
         self.cmd_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
-        self.cmd_sock.connect(cmd_url)
+        self.cmd_sock.connect(CMD_URL)
         self.evt_sock = self.ctx.socket(socket_type=zmq.SUB)
         self.evt_sock.setsockopt(zmq.SUBSCRIBE, b"")
-        self.evt_sock.connect(event_url)
+        self.evt_sock.connect(EVENT_URL)
 
-        self.fut = asyncio.ensure_future(self.event_listener(event_handler))
+        self.event_future = asyncio.ensure_future(self.event_listener(event_handler))
+        self.reply_future = asyncio.ensure_future(self.reply_listener(event_handler))
+
+        self.queued_events = deque()  # Queue of events that we hold until the Overlay server is ready
+
         if block:
+            # TODO figure out how we can block this guy until the server replies with status ready
             self.loop.run_forever()
 
     @command
@@ -125,14 +141,28 @@ class OverlayClient(object):
     def get_service_status(self, *args, **kwargs): pass
 
     async def event_listener(self, event_handler):
-        self.log.info('Listening for overlay events over {}'.format(event_url))
+        self.log.info('Listening for overlay events over {}'.format(EVENT_URL))
         while True:
             msg = await self.evt_sock.recv_json()
             self.log.spam("OverlayClient received event {}".format(msg))
             event_handler(msg)
 
+    async def reply_listener(self, event_handler):
+        self.log.info("Listening for overlay replies over {}".format(CMD_URL))
+        while True:
+            msg = await self.cmd_sock.recv_multipart()
+            self.log.important("got overlay reply {}".format(msg))  # TODO remove
+            self.log.spam("got overlay reply {}".format(msg))  # TODO remove
+            event = json.loads(msg[-1])
+            event_handler(event)
+
     def teardown(self):
         self.cmd_sock.close()
         self.evt_sock.close()
-        try: self.fut.set_result('done')
-        except: self.fut.cancel()
+
+        try:
+            for fut in (self.event_future, self.reply_future):
+                fut.set_result('done')
+        except:
+            for fut in (self.event_future, self.reply_future):
+                fut.cancel()

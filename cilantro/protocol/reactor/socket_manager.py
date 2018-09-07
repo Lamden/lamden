@@ -33,8 +33,7 @@ class SocketManager:
         self.pending_commands = deque()  # To hold pending_lookups until the overlay client is ready
 
         # Configure overlay interface
-        self.overlay_cli = OverlayClient(self._handle_overlay_event, loop=self.loop, ctx=self.context)
-        self.overlay_future = self.overlay_cli.fut
+        self.overlay_client = OverlayClient(self._handle_overlay_event, loop=self.loop, ctx=self.context)
         self.overlay_ready = False
 
         # Listen to overlay events, and check the overlay status. The SocketManager should defer executing any commands
@@ -71,7 +70,7 @@ class SocketManager:
     async def _check_overlay_status(self):
         # self.log.debug("Checking overlay status")
         self.log.important("Checking overlay status")  # TODO remove
-        self.overlay_cli.get_service_status()
+        self.overlay_client.get_service_status()
 
     def _handle_overlay_event(self, e):
         self.log.spam("SocketManager got overlay event {}".format(e))
