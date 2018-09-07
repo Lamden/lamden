@@ -1,5 +1,7 @@
 from cilantro.protocol.reactor.socket_manager import SocketManager
 from cilantro.messages.base.base import MessageBase
+from cilantro.messages.envelope.envelope import Envelope
+from cilantro.protocol.structures import EnvelopeAuth
 from cilantro.logger.base import get_logger
 import zmq.asyncio, asyncio
 
@@ -52,16 +54,47 @@ class LSocket:
         kwargs['ip'] = event['ip']
         getattr(self, cmd_name)(*args, **kwargs)
 
-    def add_handler(self, handler_func, msg_types: List[MessageBase]=None, start_listening=False) -> asyncio.Future or None:
-        # TODO implement
-        pass
+    def add_handler(self, handler_func, msg_types: List[MessageBase]=None, start_listening=False) -> asyncio.Future or asyncio.coroutine:
+        async def _listen(socket, handler_func):
+            self.log.socket("Starting listener on socket {}".format(socket))
+
+            while True:
+                try:
+                    msg = await socket.recv_multipart()
+                except Exception as e:
+                    if type(e) is asyncio.CancelledError:
+                        self.log.important("Socket got asyncio.CancelledError. Breaking from lister loop.")  # TODO change log level on this
+                        break
+                    else:
+                        self.log.critical("Socket got exception! Exception:\n{}".format(e))
+                        raise e
+
+                self.log.spam("Socket recv multipart msg:\n{}".format(msg))
+                handler_func(msg)
+
+        if start_listening:
+            return asyncio.ensure_future(_listen(self.socket, handler_func))
+        else:
+            return _listen(self.socket, handler_func)
 
     @vk_lookup
     def connect(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
+        self._connect_or_bind(should_connect=True, port=port, protocol=protocol, ip=ip, vk=vk)
+
+    @vk_lookup
+    def bind(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
+        self._connect_or_bind(should_connect=False, port=port, protocol=protocol, ip=ip, vk=vk)
+
+    def _connect_or_bind(self, should_connect: bool, port: int, protocol: str='tcp', ip: str='', vk: str=''):
         assert ip, "Expected ip arg to be present!"
+        assert protocol in ('tcp', 'icp'), "Only tcp/ipc protocol is supported, not {}".format(protocol)
+        # TODO validate other args (port is an int within some range, ip address is a valid, ect)
 
         url = "{}://{}:{}".format(protocol, ip, port)
-        self.socket.connect(url)
+        if should_connect:
+            self.socket.connect(url)
+        else:
+            self.socket.bind(url)
 
         if vk and vk in self.pending_commands:
             self._flush_pending_commands(vk)
@@ -84,6 +117,34 @@ class LSocket:
             self.pending_commands.append(cmd_name, args, kwargs)
         return _capture_args
 
+    # TODO move this to its own module? Kind of annoying to have to pass in signing_key and verifying_key tho....
+    def _package_msg(self, msg: MessageBase) -> Envelope:
+        """
+        Convenience method to package a message into an envelope
+        :param msg: The MessageBase instance to package
+        :return: An Envelope instance
+        """
+        assert type(msg) is not Envelope, "Attempted to package a 'message' that is already an envelope"
+        assert issubclass(type(msg), MessageBase), "Attempted to package a message that is not a MessageBase subclass"
+
+        return Envelope.create_from_message(message=msg, signing_key=self.signing_key, verifying_key=self.verifying_key)
+
+    # TODO move this to its own module? Kind of annoying to have to pass in signing_key and verifying_key tho....
+    def _package_reply(self, reply: MessageBase, req_env: Envelope) -> Envelope:
+        """
+        Convenience method to create a reply envelope. The difference between this func and _package_msg, is that
+        in the reply envelope the UUID must be the hash of the original request's uuid (not some randomly generated int)
+        :param reply: The reply message (an instance of MessageBase)
+        :param req_env: The original request envelope (an instance of Envelope)
+        :return: An Envelope instance
+        """
+        self.log.spam("Creating REPLY envelope with msg type {} for request envelope {}".format(type(reply), req_env))
+        request_uuid = req_env.meta.uuid
+        reply_uuid = EnvelopeAuth.reply_uuid(request_uuid)
+
+        return Envelope.create_from_message(message=reply, signing_key=self.signing_key,
+                                            verifying_key=self.verifying_key, uuid=reply_uuid)
+
     def __getattr__(self, item):
         self.log.spam("called __getattr__ with item {}".format(item))  # TODO remove this
         assert hasattr(self.socket, item), ""
@@ -103,7 +164,3 @@ class LSocket:
         else:
             return underlying
 
-
-# TODO i need to engineer a mechanism such that when this socket is ready, all the commands called on it is flushed
-# this socket is ready when it has succesfully bound or connected to a URL, which means either an IP was passed in or
-# a VK was resolved. How do we trigger the latter?

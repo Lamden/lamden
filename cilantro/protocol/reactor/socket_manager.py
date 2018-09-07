@@ -35,7 +35,7 @@ class SocketManager:
 
         # Configure overlay interface
         self.overlay_cli = OverlayClient(self._handle_overlay_event, loop=self.loop, ctx=self.context)
-        self.overlay_fut = self.overlay_cli.fut
+        self.overlay_future = self.overlay_cli.fut
         self.overlay_ready = False
 
         # Listen to overlay events, and check the overlay status. The SocketManager should defer executing any commands
@@ -62,34 +62,6 @@ class SocketManager:
         # self.log.debug("Checking overlay status")
         self.log.important("Checking overlay status")  # TODO remove
         self.overlay_cli.get_service_status()
-
-    # TODO move this to its own module? Kind of annoying to have to pass in signing_key and verifying_key tho....
-    def _package_msg(self, msg: MessageBase) -> Envelope:
-        """
-        Convenience method to package a message into an envelope
-        :param msg: The MessageBase instance to package
-        :return: An Envelope instance
-        """
-        assert type(msg) is not Envelope, "Attempted to package a 'message' that is already an envelope"
-        assert issubclass(type(msg), MessageBase), "Attempted to package a message that is not a MessageBase subclass"
-
-        return Envelope.create_from_message(message=msg, signing_key=self.signing_key, verifying_key=self.verifying_key)
-
-    # TODO move this to its own module? Kind of annoying to have to pass in signing_key and verifying_key tho....
-    def _package_reply(self, reply: MessageBase, req_env: Envelope) -> Envelope:
-        """
-        Convenience method to create a reply envelope. The difference between this func and _package_msg, is that
-        in the reply envelope the UUID must be the hash of the original request's uuid (not some randomly generated int)
-        :param reply: The reply message (an instance of MessageBase)
-        :param req_env: The original request envelope (an instance of Envelope)
-        :return: An Envelope instance
-        """
-        self.log.spam("Creating REPLY envelope with msg type {} for request envelope {}".format(type(reply), req_env))
-        request_uuid = req_env.meta.uuid
-        reply_uuid = EnvelopeAuth.reply_uuid(request_uuid)
-
-        return Envelope.create_from_message(message=reply, signing_key=self.signing_key,
-                                            verifying_key=self.verifying_key, uuid=reply_uuid)
 
     def create_socket(self, socket_type, *args, **kwargs) -> LSocket:
         assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)
