@@ -19,7 +19,6 @@ from nacl.public import PrivateKey, PublicKey
 from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 from cilantro.storage.db import VKBook
-from cilantro.constants.testnet import SECRETS
 from cilantro.constants.overlay_network import AUTH_TIMEOUT
 from cilantro.protocol.overlay.utils import digest
 from cilantro.logger import get_logger
@@ -45,16 +44,17 @@ class Ironhouse:
         self.keyname = keyname or Ironhouse.keyname
         self.pk2vk = {}
         self.vk, self.public_key, self.secret = self.generate_certificates(sk)
-        self.generate_universally_shared_certificates()
 
     @classmethod
     def vk2pk(cls, vk):
         return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
 
-    def generate_universally_shared_certificates(self):
-        for domain in SECRETS:
-            vk, public_key, secret = self.generate_certificates(SECRETS[domain],
-                                   join(self.base_dir, domain))
+    @classmethod
+    def get_public_keys(cls, sk_hex):
+        sk = SigningKey(seed=bytes.fromhex(sk_hex))
+        vk = sk.verify_key.encode().hex()
+        public_key = cls.vk2pk(vk)
+        return vk, public_key
 
     @classmethod
     def generate_certificates(cls, sk_hex, custom_folder=None):
@@ -116,7 +116,6 @@ class Ironhouse:
 
         os.makedirs(authorized_keys_dir, exist_ok=True)
         log.info('Adding new public key cert {} to the system.'.format(public_key))
-
         zmq.auth.certs._write_key_file(public_key_file,
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)

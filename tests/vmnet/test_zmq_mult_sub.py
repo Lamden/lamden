@@ -14,20 +14,23 @@ def client(i):
     import zmq, asyncio, os, zmq.asyncio
     from cilantro.protocol.overlay.ironhouse import Ironhouse
     from cilantro.logger.base import get_logger
+    from cilantro.constants.testnet import TESTNET_MASTERNODES
     log = get_logger('sub')
     async def connect(ih_ins):
         await asyncio.sleep(4)
         # Dummy keys shared by masternodes
-        svr_vk, svr_public, svr_secret = Ironhouse.generate_certificates('a2ac4e2dcdd342fcadf79db4486948df3078329b6aa543f1952dab2ac36cfafe')
-
         ctx, auth = Ironhouse.secure_context(True)
         ih_ins.reconfigure_curve(auth, 'pubsub')
         sock = Ironhouse.secure_socket(ctx.socket(zmq.SUB),
-            ih_ins.secret, ih_ins.public_key, svr_public)
+            ih_ins.secret, ih_ins.public_key)
         sock.setsockopt(zmq.SUBSCRIBE, b'topic')
         nodes = os.getenv('NODE').split(',')
+        svr_vk, svr_public = Ironhouse.get_public_keys(TESTNET_MASTERNODES[0]['sk'])
+        sock.curve_serverkey = svr_public
         log.critical('connecting to {}'.format("tcp://{}:{}".format(nodes[0], 9999)))
         sock.connect("tcp://{}:{}".format(nodes[0], 9999))
+        svr_vk, svr_public = Ironhouse.get_public_keys(TESTNET_MASTERNODES[1]['sk'])
+        sock.curve_serverkey = svr_public
         log.critical('connecting to {}'.format("tcp://{}:{}".format(nodes[1], 9999)))
         sock.connect("tcp://{}:{}".format(nodes[1], 9999))
 
@@ -49,11 +52,9 @@ def server(i):
     log = get_logger('pub')
     async def bind(ih_ins):
         # Dummy keys shared by masternodes
-        svr_vk, svr_public, svr_secret = Ironhouse.generate_certificates('a2ac4e2dcdd342fcadf79db4486948df3078329b6aa543f1952dab2ac36cfafe')
-
         ctx, auth = Ironhouse.secure_context(True)
         sock = Ironhouse.secure_socket(ctx.socket(zmq.PUB),
-            svr_secret, svr_public)
+            ih_ins.secret, ih_ins.public_key)
         log.critical('binding to {}'.format("tcp://*:{}".format(9999)))
         sock.zap_domain = b'pubsub'
         sock.bind("tcp://*:{}".format(9999))
