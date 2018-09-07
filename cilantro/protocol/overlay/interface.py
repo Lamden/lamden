@@ -1,6 +1,6 @@
 import zmq, zmq.asyncio, asyncio, ujson, os, uuid
 from cilantro.protocol.overlay.dht import DHT
-from cilantro.constants.overlay_network import ALPHA, KSIZE, MAX_PEERS
+from cilantro.constants.overlay_network import ALPHA, KSIZE, MAX_PEERS, CLIENT_SETUP_TIMEOUT
 from cilantro.storage.db import VKBook
 from cilantro.logger.base import get_logger
 from collections import deque
@@ -128,11 +128,23 @@ class OverlayClient(object):
         self.event_future = asyncio.ensure_future(self.event_listener(event_handler))
         self.reply_future = asyncio.ensure_future(self.reply_listener(event_handler))
 
-        self.queued_events = deque()  # Queue of events that we hold until the Overlay server is ready
+        self._ready = False
+
+        try:
+            self.loop.run_until_complete(self.block_until_ready())
+        except:
+            self.log.info('Overlay Interface is not ready after {}s...'.format(CLIENT_SETUP_TIMEOUT))
 
         if block:
-            # TODO figure out how we can block this guy until the server replies with status ready
             self.loop.run_forever()
+
+    async def block_until_ready(self):
+        async def wait_until_ready():
+            while not self._ready:
+                await asyncio.sleep(0.5)
+
+        self.get_service_status()
+        await asyncio.wait_for(wait_until_ready(), CLIENT_SETUP_TIMEOUT)
 
     @command
     def get_node_from_vk(self, *args, **kwargs): pass
@@ -145,15 +157,17 @@ class OverlayClient(object):
         while True:
             msg = await self.evt_sock.recv_json()
             self.log.spam("OverlayClient received event {}".format(msg))
+            if msg.get('event') == 'service_status' and msg.get('status') == 'ready':
+                self._ready = True
             event_handler(msg)
 
     async def reply_listener(self, event_handler):
         self.log.info("Listening for overlay replies over {}".format(CMD_URL))
         while True:
             msg = await self.cmd_sock.recv_multipart()
-            self.log.important("got overlay reply {}".format(msg))  # TODO remove
-            self.log.spam("got overlay reply {}".format(msg))  # TODO remove
             event = json.loads(msg[-1])
+            if event.get('event') == 'service_status' and event.get('status') == 'ready':
+                self._ready = True
             event_handler(event)
 
     def teardown(self):

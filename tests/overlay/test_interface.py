@@ -8,6 +8,7 @@ from multiprocessing import Process, Queue
 class TestInterface(TestCase):
     @classmethod
     def setUpClass(cls):
+        os.environ['TEST_NAME'] = 'test'
         cls.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(cls.loop)
 
@@ -56,7 +57,7 @@ class TestInterface(TestCase):
             self.client.loop.run_forever()
 
         self.server = OverlayServer(sk=TESTNET_MASTERNODES[0]['sk'], block=False)
-        svr_t = Timer(1, _stop)
+        svr_t = Timer(3, _stop)
         svr_t.start()
         self.client_proc = Process(target=_client_proc)
         self.client_proc.start()
@@ -93,7 +94,7 @@ class TestInterface(TestCase):
             self.client.loop.run_forever()
 
         self.server = OverlayServer(sk=TESTNET_MASTERNODES[0]['sk'], block=False)
-        svr_t = Timer(1, _stop)
+        svr_t = Timer(3, _stop)
         svr_t.start()
         self.client_proc = Process(target=_client_proc)
         self.client_proc.start()
