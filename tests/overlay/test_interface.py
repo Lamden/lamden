@@ -57,7 +57,7 @@ class TestInterface(TestCase):
             self.client.loop.run_forever()
 
         self.server = OverlayServer(sk=TESTNET_MASTERNODES[0]['sk'], block=False)
-        svr_t = Timer(5, _stop)
+        svr_t = Timer(8, _stop)
         svr_t.start()
         self.client_proc = Process(target=_client_proc)
         self.client_proc.start()
