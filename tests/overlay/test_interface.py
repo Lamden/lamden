@@ -50,9 +50,9 @@ class TestInterface(TestCase):
                 loop.call_soon_threadsafe(loop.stop)
 
             self.client = OverlayClient(_event_handler, block=False)
-            cli_t_cmd = Timer(0.001, _send_cmd)
+            cli_t_cmd = Timer(0.1, _send_cmd)
             cli_t_cmd.start()
-            cli_t_asrt = Timer(0.2, _assert)
+            cli_t_asrt = Timer(0.5, _assert)
             cli_t_asrt.start()
             self.client.loop.run_forever()
 
@@ -87,9 +87,9 @@ class TestInterface(TestCase):
                 loop.call_soon_threadsafe(loop.stop)
 
             self.client = OverlayClient(_event_handler, block=False)
-            cli_t_cmd = Timer(0.001, _send_cmd)
+            cli_t_cmd = Timer(0.1, _send_cmd)
             cli_t_cmd.start()
-            cli_t_asrt = Timer(0.2, _assert)
+            cli_t_asrt = Timer(0.5, _assert)
             cli_t_asrt.start()
             self.client.loop.run_forever()
 
