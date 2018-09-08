@@ -36,7 +36,7 @@ from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol import wallet
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.logger import get_logger
-from cilantro.protocol.reactor.executor import Executor
+from cilantro.protocol.executors.executor import ExecutorBase
 from cilantro.messages.reactor.reactor_command import ReactorCommand
 from cilantro.protocol.overlay.dht import DHT
 from cilantro.protocol.overlay.node import Node

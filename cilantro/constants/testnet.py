@@ -48,6 +48,9 @@ MAJORITY = math.ceil(len(_DELEGATES) * 2/3)
 TESTNET_MASTERNODES = [{'sk': node['sk'], 'vk': node['vk']} for node in _MASTERNODES]
 TESTNET_WITNESSES = [{'sk': node['sk'], 'vk': node['vk']} for node in _WITNESSES]
 TESTNET_DELEGATES = [{'sk': node['sk'], 'vk': node['vk']} for node in _DELEGATES]
+SECRETS = {
+    'pubsub': '0452c22f5cf6482f872aa86b46ea2c46d6e6e34aa01745229b7e675e94c11fbd'
+}
 
 r = len(_WITNESSES) // len(_MASTERNODES)  # replication factor
 MN_WITNESS_MAP = {}  # Map of masternodes --> responsible witness set

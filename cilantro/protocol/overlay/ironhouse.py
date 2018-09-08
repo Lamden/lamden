@@ -42,49 +42,57 @@ class Ironhouse:
         else: self.auth_validate = Ironhouse.auth_validate
         self.auth_port = auth_port or self.auth_port
         self.keyname = keyname or Ironhouse.keyname
-        self.authorized_keys = {}
         self.pk2vk = {}
-        self.vk, self.public_key, self.secret = self.generate_certificates(sk, wipe_certs=wipe_certs)
+        self.vk, self.public_key, self.secret = self.generate_certificates(sk)
 
     @classmethod
     def vk2pk(cls, vk):
         return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
 
     @classmethod
-    def generate_certificates(cls, sk_hex, wipe_certs=False):
+    def get_public_keys(cls, sk_hex):
         sk = SigningKey(seed=bytes.fromhex(sk_hex))
         vk = sk.verify_key.encode().hex()
         public_key = cls.vk2pk(vk)
-        private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key).hex()
+        return vk, public_key
 
-        for d in [cls.keys_dir, cls.authorized_keys_dir]:
-            if wipe_certs and exists(d):
+    @classmethod
+    def generate_certificates(cls, sk_hex, custom_folder=None):
+        sk = SigningKey(seed=bytes.fromhex(sk_hex))
+        vk = sk.verify_key.encode().hex()
+        public_key = cls.vk2pk(vk)
+        keyname = decode(public_key).hex()
+        private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key).hex()
+        authorized_keys_dir = custom_folder or cls.authorized_keys_dir
+        for d in [cls.keys_dir, authorized_keys_dir]:
+            if exists(d):
                 shutil.rmtree(d)
             os.makedirs(d, exist_ok=True)
 
-        if wipe_certs:
-            _, secret = cls.create_from_private_key(private_key)
+        secret = None
 
-            for key_file in os.listdir(cls.keys_dir):
-                if key_file.endswith(".key"):
-                    shutil.move(join(cls.keys_dir, key_file),
-                                join(cls.authorized_keys_dir, '.'))
+        _, secret = cls.create_from_private_key(private_key, keyname)
 
-            if exists(cls.keys_dir):
-                shutil.rmtree(cls.keys_dir)
+        for key_file in os.listdir(cls.keys_dir):
+            if key_file.endswith(".key"):
+                shutil.move(join(cls.keys_dir, key_file),
+                            join(authorized_keys_dir, '.'))
 
-            log.info('Generated CURVE certificate files!')
+        if exists(cls.keys_dir):
+            shutil.rmtree(cls.keys_dir)
+
+        log.info('Generated CURVE certificate files!')
 
         return vk, public_key, secret
 
     @classmethod
-    def create_from_private_key(cls, private_key):
+    def create_from_private_key(cls, private_key, keyname):
         priv = PrivateKey(bytes.fromhex(private_key))
         publ = priv.public_key
         public_key = encode(publ._public_key)
         secret = encode(priv._private_key)
 
-        base_filename = join(cls.keys_dir, cls.keyname)
+        base_filename = join(cls.keys_dir, keyname)
         public_key_file = "{0}.key".format(base_filename)
         now = datetime.datetime.now()
 
@@ -94,39 +102,39 @@ class Ironhouse:
 
         return public_key, secret
 
-    def add_public_key(self, public_key):
+    def add_public_key(self, public_key, domain='*'):
         if self.public_key == public_key: return
         keyname = decode(public_key).hex()
-        base_filename = join(self.authorized_keys_dir, keyname)
+        authorized_keys_dir = join(self.base_dir, domain) if domain != '*' else self.authorized_keys_dir
+        base_filename = join(authorized_keys_dir, keyname)
         public_key_file = "{0}.key".format(base_filename)
         now = datetime.datetime.now()
-
         if exists(public_key_file):
             log.debug('Public cert for {} has already been created.'.format(public_key))
+            self.reconfigure_curve(domain=domain)
             return
 
-        os.makedirs(self.authorized_keys_dir, exist_ok=True)
+        os.makedirs(authorized_keys_dir, exist_ok=True)
         log.info('Adding new public key cert {} to the system.'.format(public_key))
-
         zmq.auth.certs._write_key_file(public_key_file,
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)
 
         log.debug('{} has added {} to its authorized list'.format(os.getenv('HOST_IP', '127.0.0.1'), public_key))
-        self.reconfigure_curve()
-        self.authorized_keys[public_key] = True
+        self.reconfigure_curve(domain=domain)
 
-    def remove_public_key(self, public_key):
+    def remove_public_key(self, public_key, domain='*'):
         if self.public_key == public_key: return
         keyname = decode(public_key).hex()
-        base_filename = join(self.authorized_keys_dir, keyname)
+        authorized_keys_dir = join(self.base_dir, domain) if domain != '*' else self.authorized_keys_dir
+        base_filename = join(authorized_keys_dir, keyname)
         public_key_file = "{0}.key".format(base_filename)
+
         if exists(public_key_file):
             os.remove(public_key_file)
 
         log.debug('{} has remove {} from its authorized list'.format(os.getenv('HOST_IP', '127.0.0.1'), public_key))
-        self.reconfigure_curve()
-        self.authorized_keys[public_key] = False
+        self.reconfigure_curve(domain=domain)
 
     @classmethod
     def secure_context(cls, async=False):
@@ -140,10 +148,12 @@ class Ironhouse:
         auth.start()
         return ctx, auth
 
-    def reconfigure_curve(self):
+    def reconfigure_curve(self, auth=None, domain='*'):
         log.debug('{} is reconfiguring curves'.format(os.getenv('HOST_IP', '127.0.0.1')))
-        if self.daemon_auth:
-            self.daemon_auth.configure_curve(domain='*', location=self.authorized_keys_dir)
+        if auth:
+            auth.configure_curve(domain=domain, location=self.authorized_keys_dir if domain == '*' else join(self.base_dir, domain))
+        elif self.daemon_auth:
+            self.daemon_auth.configure_curve(domain=domain, location=self.authorized_keys_dir)
 
     @classmethod
     def secure_socket(cls, sock, secret, public_key, curve_serverkey=None):
@@ -154,7 +164,7 @@ class Ironhouse:
         else: sock.curve_server = True
         return sock
 
-    async def authenticate(self, target_public_key, ip, port=None):
+    async def authenticate(self, target_public_key, ip, port=None, domain='*'):
         if target_public_key == self.public_key: return 'authorized'
         try:
             PublicKey(decode(target_public_key))
@@ -167,7 +177,7 @@ class Ironhouse:
         client.setsockopt(zmq.LINGER, 0)
         client = self.secure_socket(client, self.secret, self.public_key, target_public_key)
         client.connect(server_url)
-        client.send_multipart([self.vk.encode(), os.getenv('HOST_IP', '127.0.0.1').encode()])
+        client.send_multipart([self.vk.encode(), os.getenv('HOST_IP', '127.0.0.1').encode(), domain.encode()])
         authorized = 'unauthorized'
 
         try:
@@ -176,8 +186,11 @@ class Ironhouse:
             log.debug('{} got secure reply {}, {}'.format(os.getenv('HOST_IP', '127.0.0.1'), msg, target_public_key))
             received_public_key = self.vk2pk(msg)
             if self.auth_validate(msg) == True and target_public_key == received_public_key:
-                self.add_public_key(received_public_key)
-                self.pk2vk[public_key] = msg
+                self.add_public_key(received_public_key, domain=domain)
+                self.authorized_nodes[digest(msg)] = ip
+                log.debug('{}\'s New Authorized list: {}'.format(os.getenv('HOST_IP', '127.0.0.1'), list(self.authorized_nodes.values())))
+
+                self.pk2vk[received_public_key] = msg
                 authorized = 'authorized'
         except Exception as e:
             log.debug('{} got no reply from {} after waiting...'.format(os.getenv('HOST_IP', '127.0.0.1'), server_url))
@@ -209,16 +222,17 @@ class Ironhouse:
         log.info('Listening to secure connections at {}'.format(self.auth_port))
         try:
             while True:
-                received_vk, received_ip = await self.sec_sock.recv_multipart()
+                received_vk, received_ip, domain = await self.sec_sock.recv_multipart()
                 received_vk = received_vk.decode()
                 received_ip = received_ip.decode()
+                domain = domain.decode()
 
                 log.debug('{} got secure request {} from user claiming to be "{}"'.format(
                     os.getenv('HOST_IP', '127.0.0.1'), received_vk, received_ip))
 
                 if self.auth_validate(received_vk) == True:
                     public_key = self.vk2pk(received_vk)
-                    self.add_public_key(public_key)
+                    self.add_public_key(public_key, domain)
                     self.authorized_nodes[digest(received_vk)] = received_ip
                     self.pk2vk[public_key] = received_vk
                     log.debug('{} sending secure reply: {}'.format(os.getenv('HOST_IP', '127.0.0.1'), self.vk))
@@ -232,4 +246,3 @@ class Ironhouse:
     @staticmethod
     def auth_validate(vk):
         return vk in VKBook.get_all()
-
