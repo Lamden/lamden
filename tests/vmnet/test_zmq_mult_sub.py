@@ -1,3 +1,8 @@
+"""
+    Test to see if sockets connects can change configuration in between. This
+    serves to securely connect multiple publishers without using a new key.
+"""
+
 from cilantro.protocol.overlay.ironhouse import Ironhouse
 from cilantro.constants.testnet import *
 from cilantro.utils.test.mp_test_case import vmnet_test
