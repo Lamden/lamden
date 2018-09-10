@@ -70,16 +70,16 @@ def start_sub():
 
     sub = ctx.socket(zmq.SUB)
 
-    log.important3("taking dat nap")
-    time.sleep(4)
-    log.important3("done wit dat nap")
+    # log.important3("taking dat nap")
+    # time.sleep(4)
+    # log.important3("done wit dat nap")
 
     sub.connect(URL)
     sub.setsockopt(zmq.SUBSCRIBE, b'')
 
-    log.important3("taking dat nap")
-    time.sleep(4)
-    log.important3("done wit dat nap")
+    # log.important3("taking dat nap")
+    # time.sleep(4)
+    # log.important3("done wit dat nap")
 
     log.important3("Starting loop")
     loop.run_until_complete(listen(sub, handler_func))

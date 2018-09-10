@@ -45,7 +45,7 @@ def run_sub():
     overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': sk})
     overlay_proc.start()
 
-    t = Tester(signing_key=sk, name='Pub')
+    t = Tester(signing_key=sk, name='SUB')
     t.start_subbing(vk=pub_vk)
 
 
