@@ -32,7 +32,7 @@ class Tester:
 
         self.manager = SocketManager(signing_key=signing_key, context=self.ctx, loop=self.loop)
 
-        self.sock = self.manager.create_socket(zmq.PUB)
+        self.sock = None
 
     def start_pubbing(self, ip, num_msgs=50):
         async def _start_pubbing(num):
@@ -41,15 +41,17 @@ class Tester:
                 self.sock.send_multipart([b'', 'hello #{}'.format(i).encode()])
                 await asyncio.sleep(1)
 
+        self.sock = self.manager.create_socket(zmq.PUB)
         self.log.socket("binding pub socket")
         self.sock.bind(port=PORT, protocol=PROTOCOL, ip=ip)
 
         self.loop.run_until_complete(_start_pubbing(num_msgs))
 
     def start_subbing(self, vk):
+        self.sock = self.manager.create_socket(zmq.SUB)
         self.log.socket("connecting sub socket")
-        self.sock.connect(port=PORT, protocol=PROTOCOL, vk=vk)
         self.sock.setsockopt(zmq.SUBSCRIBE, b'')
+        self.sock.connect(port=PORT, protocol=PROTOCOL, vk=vk)
 
         sub_coro = self.sock.add_handler(handler_func=self.handle_pub)
 

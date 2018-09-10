@@ -9,6 +9,10 @@ from functools import wraps
 from typing import List
 
 
+RDY_WAIT_INTERVAL = 0.2  # TODO move this to constants, and explain it
+MAX_RDY_WAIT = 10.0  # TODO move this to constants, and explain it
+
+
 def vk_lookup(func):
     @wraps(func)
     def _func(self, *args, **kwargs):
@@ -16,18 +20,12 @@ def vk_lookup(func):
         contains_ip = 'ip' in kwargs and kwargs['ip']
 
         if contains_vk and not contains_ip:
-            if not self.manager.pending_commands:
-                self.log.debugv("Cannot execute vk lookup yet as event loop is not running, or overlay is not ready."
-                                " Adding func {} to command queue".format(func.__name__))
-                self.manager.pending_commands.append((self, func.__name__, args, kwargs))
-                return
-
-            cmd_id = self.manager.overlay_cli.get_node_from_vk(kwargs['vk'])
+            cmd_id = self.manager.overlay_client.get_node_from_vk(kwargs['vk'])
             assert cmd_id not in self.pending_lookups, "Collision! Uuid {} already in pending lookups {}".format(cmd_id, self.pending_lookups)
-            self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
 
+            self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.pending_lookups[cmd_id] = (func.__name__, args, kwargs)
-            self.manager.pending_commands[cmd_id] = self
+            self.manager.pending_lookups[cmd_id] = self
 
         # If the 'ip' key is already set in kwargs, no need to do a lookup
         else:
@@ -45,11 +43,14 @@ class LSocket:
 
         self.pending_commands = deque()  # A list of defered commands that are flushed once this socket connects/binds
         self.pending_lookups = {}  # A dict of event_id to tuple, where the tuple again represents a command execution
+        self.ready = False  # Gets set to True when all pending_lookups have been resolved, and we BIND/CONNECT
 
     def handle_overlay_event(self, event: dict):
         assert event['event_id'] in self.pending_lookups, "Socket got overlay event {} not in pending lookups {}"\
                                                            .format(event, self.pending_lookups)
         assert event['event'] == 'got_ip', "Socket only knows how to handle got_ip events, but got {}".format(event)
+        assert 'ip' in event, "got_ip event {} expected to have key 'ip'".format(event)
+        self.log.debug("Socket handling overlay event {}".format(event))
 
         cmd_name, args, kwargs = self.pending_lookups.pop(event['event_id'])
         kwargs['ip'] = event['ip']
@@ -65,20 +66,26 @@ class LSocket:
     def add_handler(self, handler_func, msg_types: List[MessageBase]=None, start_listening=False) -> asyncio.Future or asyncio.coroutine:
         async def _listen(socket, handler_func):
             self.log.socket("Starting listener on socket {}".format(socket))
+            duration_waited = 0
 
-            # TODO do we need to defer execution of this while loop until all lookups are resolved? I kinda feel like we do...
             while True:
-                try:
-                    msg = await socket.recv_multipart()
-                except Exception as e:
-                    if type(e) is asyncio.CancelledError:
-                        self.log.important("Socket got asyncio.CancelledError. Breaking from lister loop.")  # TODO change log level on this
-                        break
-                    else:
-                        self.log.critical("Socket got exception! Exception:\n{}".format(e))
-                        raise e
+                if duration_waited > MAX_RDY_WAIT and not self.ready:
+                    raise Exception("Socket failed to bind/connect in {} seconds!")
 
-                self.log.spam("Socket recv multipart msg:\n{}".format(msg))
+                if not self.ready:
+                    self.log.spam("Socket not ready yet...waiting {} seconds".format(RDY_WAIT_INTERVAL))  # TODO remove this? it be hella noisy..
+                    await asyncio.sleep(RDY_WAIT_INTERVAL)
+                    duration_waited += RDY_WAIT_INTERVAL
+                    continue
+
+                try:
+                    self.log.spam("Socket waiting for multipart msg...")
+                    msg = await socket.recv_multipart()
+                    self.log.spam("Socket recv multipart msg:\n{}".format(msg))
+                except asyncio.CancelledError:
+                    self.log.warning("Socket got asyncio.CancelledError. Breaking from lister loop.")
+                    break
+
                 handler_func(msg)
 
         if start_listening:
@@ -100,30 +107,32 @@ class LSocket:
         # TODO validate other args (port is an int within some range, ip address is a valid, ect)
 
         url = "{}://{}:{}".format(protocol, ip, port)
+        self.log.socket("{} to URL {}".format('CONNECTING' if should_connect else 'BINDING', url))
+
         if should_connect:
             self.socket.connect(url)
         else:
             self.socket.bind(url)
 
         if len(self.pending_lookups) == 0:
+            self.log.debugv("Pending lookups empty. Flushing commands")
+            self.ready = True
             self._flush_pending_commands()
+        else:
+            self.log.debuv("Not flushing commands yet, pending lookups not empty: {}".format(self.pending_lookups))
 
     def _flush_pending_commands(self):
-        if not len(self.pending_commands):  # Return if there are no commands to flush
-            return
-
-        assert asyncio.get_event_loop().is_running(), "Event loop must be running to flush commands"
-        assert self.manager.overlay_ready, "Overlay must be ready to flush commands"
         assert len(self.pending_lookups) == 0, 'All lookups must be resolved before we can flush pending commands'
-
+        assert self.ready, "Socket must be ready to flush pending commands!"
         self.log.debugv("Composer flushing {} commands from queue".format(len(self.pending_commands)))
 
         for cmd_name, args, kwargs in self.pending_commands:
-            self.log.spam("Executing pending command {} with args {} and kwargs {}".format(cmd_name, args, kwargs))
+            self.log.spam("Executing pending command named '{}' with args {} and kwargs {}".format(cmd_name, args, kwargs))
             getattr(self, cmd_name)(*args, **kwargs)
 
     def _defer_func(self, cmd_name):
         def _capture_args(*args, **kwargs):
+            self.log.spam("Socket defered func named {} with args {} and kwargs {}".format(cmd_name, args, kwargs))
             self.pending_commands.append((cmd_name, args, kwargs))
         return _capture_args
 
@@ -167,9 +176,8 @@ class LSocket:
             return underlying
 
         # If this socket is not ready (ie it has not bound/connected yet), defer execution of this method
-        if len(self.pending_lookups) > 0 or not self.manager.overlay_ready:
+        if not self.ready:
             self.log.debugv("Socket is not ready yet. Defering method named {}".format(item))
-            self.log.important2("Socket is not ready yet. Defering method named {}".format(item))
             return self._defer_func(item)
         else:
             return underlying
