@@ -29,6 +29,12 @@
          6. Make and send subblock to blockMgr
 """
 
+each sbb:
+   - 16 processes -> each process with 4 threads ?? 4 master bins ??
+      rotate circularly
+        thread1 -> take first batch and interpret it and send it. do a small yield??
+        thread2 -> take second batch and repeat
+
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 import asyncio, os, logging
 import zmq.asyncio
@@ -36,7 +42,7 @@ from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol import wallet
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.logger import get_logger
-from cilantro.protocol.executors.executor import ExecutorBase
+from cilantro.protocol.reactor.executor import Executor
 from cilantro.messages.reactor.reactor_command import ReactorCommand
 from cilantro.protocol.overlay.dht import DHT
 from cilantro.protocol.overlay.node import Node
@@ -84,8 +90,8 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 class SubBlockBuilder:
-    def __init__(self, signing_key, witness_list, url, sbb_index):
-        self.log = get_logger("SubBlockBuilder_{}".format(sb_index))
+    def __init__(self, signing_key, master_list, url, sbb_index):
+        self.log = get_logger("SubBlockBuilder_{}".format(sbb_index))
         # Comment out below for more granularity in debugging
         # self.log.setLevel(logging.INFO)
 
@@ -99,12 +105,14 @@ class SubBlockBuilder:
         asyncio.set_event_loop(self.loop)
 
         self.signing_key = signing_key
+        self.master_list = master_list
+
         # witness_list should be comma separated list of ip:vk  
-        self.witness_table = self._parse_witness_list(witness_list)
+        self.witness_table = self._parse_witness_list(witness_list_list)
         self.url = url
         self.sbb_index = sbb_index
         self.block_num = (int) sbb_index / 16       # hard code this for now
-        self.sub_block_num = (int) sb_index % 16
+        self.sub_block_num = (int) sbb_index % 16
         self.num_txs = 0
         self.num_sub_blocks = 0
         self.tasks = []
@@ -118,7 +126,7 @@ class SubBlockBuilder:
         self.verifying_key = wallet.get_vk(self.signing_key)
         skg = SigningKey(seed=bytes.fromhex(sk))
         self.vk = skg.verify_key.encode().hex()
-        self.public_key = self.vk2pk(self.vk)
+        self.public_key = ZmqAPI.vk2pk(self.vk)
         self.private_key = crypto_sign_ed25519_sk_to_curve25519(skg._signing_key).hex()
         priv = PrivateKey(bytes.fromhex(self.private_key))
         publ = priv.public_key
@@ -140,26 +148,29 @@ class SubBlockBuilder:
         finally:
             self._teardown()
 
-    def _parse_witness_list(self, witness_list):
-        witnesses = witness_list.split(",")
-        for witness in witnesses:
-          ip, vk = witness.split(":", 1)
-          self.witness_table[ip] = []
-          self.witness_table[ip].append(vk)
+    # will it receive the list from BM - no need to know upfront
+    # still need to figure out starting point where it has all the witnesses available - may not be up front
+    # also need to allow for the case where it will handle multiple masters (multiple sets of witnesses - format??)
+    def _parse_witness_list(self, witness_list_list):
+        witness_lists = witness_list_list.split(";")
+        for index, witness_list in enumerate(witness_lists):
+            witnesses = witness_list.split(",")
+            for witness in witnesses:
+                ip, vk = witness.split(":", 1)
+                self.witness_table[index][vk] = []
+                self.witness_table[index][vk].append(ip)
           
     def _subscribe_to_witnesses(self):
-        for ip, value in self.witness_table:
-            witness_vk = value[0]
-            url = "{}:{}".format(ip, PUB_SUB_PORT)
-            socket = self._add_sub(
-                                   url=url,
-                                   filter=str(WITNESS_DELEGATE_FILTER),
-                                   vk=witness_vk)
-            self.witness_table[ip].append(socket)
-            self.tasks.append(self._listen_to_witness(socket, url))
-            self.log.debug("Added sub connection to witness at ip:{} socket:{}"
-                           ."filter {}"
-                           .format(ip, witness_vk, WITNESS_DELEGATE_FILTER))
+        for index, tbl in enumerate(self.witness_table):
+            socket = ZmqAPI.get_socket(self.verifying_key, type=zmq.SUB)
+            for vk, value in self.witness_table:
+                ip = value[0]
+                url = "{}:{}".format(ip, PUB_SUB_PORT)
+                socket.connect(vk=vk, ip=ip)
+                self.log.debug("Connected to witness at ip:{} socket:{}"
+                               .format(ip, witness_vk))
+            self.witness_table[vk].append(socket)
+            self.tasks.append(self._listen_to_witness(socket, index))
 
     def run_loop_forever(self):
         self.tasks.append(self._listen_to_block_manager())
@@ -185,8 +196,12 @@ class SubBlockBuilder:
                     # self._interpret = 1  ?
                     return
 
-                if cmd_bin == SEND_NUM_TXS:
-                    # send back number of txs pending so it can skip this block if too low
+                if cmd_bin == ADD_WITNESS:
+                    # new witness that will cover the master
+                    # witness_vk, master_vk
+
+                if cmd_bin == SKIP_ROUND:
+                    # skip if don't have txns pending
 
                 if cmd_bin == CANCEL_SUBTREE:
                     if self._interpret:
@@ -198,51 +213,36 @@ class SubBlockBuilder:
 
 
     # async def recv_multipart(self, socket, callback_fn: types.MethodType, ignore_first_frame=False):
-    async def _listen_to_witness(self, socket, url, ignore_first_frame = True):
-        self.log.debug("Sub-block builder {} listening to witness at {}"
-                       .format(self.sbb_index, url))
+    async def _listen_to_witness(self, socket, index):
+        self.log.debug("Sub-block builder {} listening to witness set {}"
+                       .format(self.sbb_index, index))
+        last_bag_hash = 0
+        last_time_stamp = 0
+
         while True:
-            try:
-                msg = await socket.recv_multipart()
-            except asyncio.CancelledError:
-                self.log.debug("Socket at witness {} cancelled".format(url))
-                socket.close()
-                break
 
-            if ignore_first_frame:
-                header = None
-            else:
-                assert len(msg) == 2,
-                       "Expected 2 frames (header, envelope) but got {}"
-                       .format(msg)
-                header = msg[0].decode()
+            event = await socket.recv_event()
 
-            env_binary = msg[-1]
-            env = self._validate_envelope(envelope_binary=env_binary,
-                                          header=header)
-
-            if not env:
-                continue
-
-            self._recently_seen.add(env.meta.uuid)
-            tx = envelope.message
-            self.pending_txs.append(Hasher.hash(tx.transaction), tx)
-            # update num_txs and num_sub_blocks
+            if event == TXN_BAG:
+                bag_hash, timestamp = self.fetch_hash_timestamp(event)
+                if (bag_hash == last_bag_hash) or (timestamp < last_timestamp):
+                    continue
+                last_bag_hash = bag_hash
+                last_time_stamp = timestamp
+                txn_bag = event.fetch_bag()
+                self.pending_txs[index].append(bag_hash, txn_bag)
 
 
-    async def _interpret_next_subtree(self, num_of_batches = 1):
+    async def _interpret_next_subtree(self, index):
         self.log.debug("Starting to make a new sub-block {} for block {}"
                        .format(self.sub_block_num, self.block_num))
         # get next batch of txns ??  still need to decide whether to unpack a bag or check for end of txn batch
-        while(num_of_batches > 0):
-            txn = self.pending_txs.popleft()
-            if txn == end_of_batch:
-                num_of_batches = num_of_batches - 1
-            else:
-                self.interpreter.interpret(txn)  # this is a blocking call. either async or threads??
-            if not self._interpret:         # do we need abort??
-                self.interpreter.flush(update_state=False)
-                return;
+        txn_bag = self.pending_txs[index].popleft()
+        if txn_bag.empty():
+            return false
+        
+        for txn in txn_bag:
+            self.interpreter.interpret(txn)  # this is a blocking call. either async or threads??
 
         # Merkle-ize transaction queue and create signed merkle hash
         all_tx = self.interpreter.queue_binary
@@ -306,36 +306,5 @@ class SubBlockBuilder:
         self.log.warning("Closing pair socket")
         self.socket.close()
 
-        #self.log.warning("Tearing down executors")
-        #for e in self.executors.values():
-            #e.teardown()
-
         self.log.warning("Closing event loop")
         self.loop.call_soon_threadsafe(self.loop.stop)
-
-    def vk2pk(self, vk):
-        return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
-
-    # could this be as part of socket/communication utils ??
-    def _secure_socket(self, sock, curve_serverkey=None):
-        sock.curve_secretkey = self.secret
-        sock.curve_publickey = self.public_key
-        if curve_serverkey:
-            sock.curve_serverkey = curve_serverkey
-        else:
-            sock.curve_server = True
-        return sock
-
-    # could this be as part of zmq utils ??
-    def _add_sub(self, url: str, filter: str, vk: str):
-        assert isinstance(filter, str), "'filter' arg must be a string"
-
-        self.log.notice("Creating subscriber socket to {}".format(url))
-        curve_serverkey = self.vk2pk(vk)
-        socket = self._secure_socket(
-                                     self.context.socket(socket_type=zmq.SUB),
-                                     curve_serverkey=curve_serverkey)
-        socket.connect(url)
-        socket.setsockopt(zmq.SUBSCRIBE, filter.encode())
-        return socket
-
