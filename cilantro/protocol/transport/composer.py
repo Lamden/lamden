@@ -59,7 +59,6 @@ class Composer:
         self.verifying_key = wallet.get_vk(self.signing_key)
 
         self.overlay_cli = OverlayClient(self._handle_overlay_event, loop=manager.loop, ctx=manager.context)
-        self.overlay_fut = self.overlay_cli.fut
         self.overlay_ready = False
 
         # self.command_queue is dict of command UUID to kwargs. It is used to defer commands that require vk's to be
