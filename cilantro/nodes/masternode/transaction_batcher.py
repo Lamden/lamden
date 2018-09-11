@@ -5,18 +5,25 @@ from cilantro.constants.masternode import BATCH_INTERVAL
 
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.messages.transaction.ordering import OrderingContainer
+
+import zmq.asyncio
 import asyncio
 
 
 class TransactionBatcher(Worker):
 
-    def setup(self):
-        self.composer.add_pub(ip=self.ip, port=MN_TX_PUB_PORT)
-        asyncio.ensure_future(self.compose_transactions())
+    def __init__(self, queue, ip, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.queue, self.ip = queue, ip
 
-        # DEBUG TODO DELETE
-        self.log.important3("TX BATCHER SETUP DONE!")
-        # END DEBUG
+        # Create Pub socket to broadcast to witnesses
+        self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB)  # TODO set secure=True on this guy
+        self.pub_sock.bind(port=MN_TX_PUB_PORT, ip=self.ip)
+
+        # TODO create PAIR socket to orchestrate w/ main process?
+
+        # Start main event loop
+        self.loop.run_until_complete(self.compose_transactions())
 
     async def compose_transactions(self):
         self.log.important("Starting TransactionBatcher with a batch interval of {} seconds".format(BATCH_INTERVAL))
@@ -32,4 +39,4 @@ class TransactionBatcher(Worker):
 
                 oc = OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key)
                 self.log.spam("masternode about to publish transaction from sender {}".format(tx.sender))
-                self.composer.send_pub_msg(filter=WITNESS_MASTERNODE_FILTER, message=oc, port=MN_TX_PUB_PORT)
+                self.pub_sock.send_msg(msg=oc, header=WITNESS_MASTERNODE_FILTER.encode())

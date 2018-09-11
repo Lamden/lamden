@@ -93,6 +93,28 @@ class LSocket:
         else:
             return _listen(self.socket, handler_func)
 
+    def send_msg(self, msg: MessageBase, header: bytes=None):
+        """
+        Convenience method to send a message over this socket using send_multipart. If 'header' arg exists, it will be
+        used as the first frame of the message. For example, should be a filter if sending over PUB, or an ID frame if
+        it is a Router socket.
+        :param msg: The MessageBase instance to wrap in an envelope and send
+        :param header: The header frame to use. If None, no header frame will be sent.
+        """
+        self.send_envelope(env=self._package_msg(msg), header=header)
+
+    def send_envelope(self, env: Envelope, header: bytes=None):
+        """
+        Same as send_msg, but for an Envelope instance. See documentation for send_msg.
+        """
+        data = env.serialize()
+
+        if header:
+            assert type(header) is bytes, "Header arg must be bytes, not {}".format(type(header))
+            self.socket.send_multipart([header, data])
+        else:
+            self.socket.send_multipart([data])
+
     @vk_lookup
     def connect(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
         self._connect_or_bind(should_connect=True, port=port, protocol=protocol, ip=ip, vk=vk)
@@ -146,7 +168,8 @@ class LSocket:
         assert type(msg) is not Envelope, "Attempted to package a 'message' that is already an envelope"
         assert issubclass(type(msg), MessageBase), "Attempted to package a message that is not a MessageBase subclass"
 
-        return Envelope.create_from_message(message=msg, signing_key=self.signing_key, verifying_key=self.verifying_key)
+        return Envelope.create_from_message(message=msg, signing_key=self.manager.signing_key,
+                                            verifying_key=self.manager.verifying_key)
 
     # TODO move this to its own module? Kind of annoying to have to pass in signing_key and verifying_key tho....
     def _package_reply(self, reply: MessageBase, req_env: Envelope) -> Envelope:
@@ -161,8 +184,8 @@ class LSocket:
         request_uuid = req_env.meta.uuid
         reply_uuid = EnvelopeAuth.reply_uuid(request_uuid)
 
-        return Envelope.create_from_message(message=reply, signing_key=self.signing_key,
-                                            verifying_key=self.verifying_key, uuid=reply_uuid)
+        return Envelope.create_from_message(message=reply, signing_key=self.manager.signing_key,
+                                            verifying_key=self.manager.verifying_key, uuid=reply_uuid)
 
     def __getattr__(self, item):
         self.log.spam("called __getattr__ with item {}".format(item))  # TODO remove this
