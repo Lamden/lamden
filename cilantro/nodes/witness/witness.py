@@ -9,6 +9,7 @@ from cilantro.protocol.states.decorators import input, enter_from_any, input_con
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.transaction.ordering import OrderingContainer
+from cilantro.messages.transaction.batch import TransactionBatch
 from cilantro.messages.signals.kill_signal import KillSignal
 
 from cilantro.storage.db import VKBook
@@ -90,4 +91,13 @@ class WitnessRunState(WitnessBaseState):
     @input(OrderingContainer)
     def recv_ordered_tx(self, tx: OrderingContainer, envelope: Envelope):
         self.log.spam("witness got tx: {}, with env {}".format(tx, envelope))
+        raise Exception("Sending OrderingContainers directly to Witnesses should be deprecated! "
+                        "We should be sending TransactionBatches")
+        # self.parent.composer.send_pub_env(envelope=envelope, filter=WITNESS_DELEGATE_FILTER)
+
+    @input(TransactionBatch)
+    def recv_tx_batch(self, batch: TransactionBatch, envelope: Envelope):
+        self.log.important("Witness got TransactionBatch {}".format(batch))  # TODO change log level once confident
+
+        # TODO send this using the appropriate sub_block_builder port and filter
         self.parent.composer.send_pub_env(envelope=envelope, filter=WITNESS_DELEGATE_FILTER)

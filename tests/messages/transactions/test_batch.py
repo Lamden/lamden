@@ -10,6 +10,11 @@ class TestTransactionBatch(TestCase):
 
         self.assertTrue(batch.is_empty)
 
+    def test_empty_list_init(self):
+        batch = TransactionBatch.create([])
+
+        self.assertTrue(batch.is_empty)
+
     def test_with_ordering_container(self):
         containers = [build_test_container() for _ in range(4)]
         batch = TransactionBatch.create(containers)

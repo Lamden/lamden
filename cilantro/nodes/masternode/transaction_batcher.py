@@ -5,6 +5,7 @@ from cilantro.constants.masternode import BATCH_INTERVAL
 
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.messages.transaction.ordering import OrderingContainer
+from cilantro.messages.transaction.batch import TransactionBatch
 
 import zmq.asyncio
 import asyncio
@@ -30,13 +31,16 @@ class TransactionBatcher(Worker):
         self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
 
         while True:
-            self.log.debugv("Batcher resting for {} seconds".format(BATCH_INTERVAL))
+            self.log.spam("Batcher resting for {} seconds".format(BATCH_INTERVAL))
             await asyncio.sleep(BATCH_INTERVAL)
 
+            tx_list = []
             self.log.debug("Sending {} transactions in batch".format(self.queue.qsize()))
             for _ in range(self.queue.qsize()):
                 tx = self.queue.get()
+                self.log.spam("masternode bagging transaction from sender {}".format(tx.sender))
 
-                oc = OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key)
-                self.log.spam("masternode about to publish transaction from sender {}".format(tx.sender))
-                self.pub_sock.send_msg(msg=oc, header=WITNESS_MASTERNODE_FILTER.encode())
+                tx_list.append(OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key))
+
+            batch = TransactionBatch.create(transactions=tx_list)
+            self.pub_sock.send_msg(msg=batch, header=WITNESS_MASTERNODE_FILTER.encode())
