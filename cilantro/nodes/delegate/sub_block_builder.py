@@ -87,6 +87,9 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 #    for 4 blocks:
 #       blocks in 1 and 2 stages, just do io (no cpu - to make sure cpu is available for other proceses)
 #                just txns from witness and drop it in queue  - may keep a count of # of txns
+# witness will use master router/dealer to communicate it is going to cover it. can master accept/reject it?
+# master will publish it once it accepts
+# witness can quit at a certain time interval ?? and delegates can kick it out once it has other 5/6 copies and no data from it??
 
 
 class SubBlockBuilder:
@@ -160,6 +163,7 @@ class SubBlockBuilder:
                 self.witness_table[index][vk] = []
                 self.witness_table[index][vk].append(ip)
           
+    # delegates bind to sub sockets on a fixed port. Each witness can open its pub socket and connect to all sub sockets??
     def _subscribe_to_witnesses(self):
         for index, tbl in enumerate(self.witness_table):
             socket = ZmqAPI.get_socket(self.verifying_key, type=zmq.SUB)
@@ -190,10 +194,6 @@ class SubBlockBuilder:
                     self.log.debug("Sub-block builder {} got kill signal"
                     .format(self.sbb_index))
                     self._teardown()
-                    return
-
-                if cmd_bin == MAKE_SUBTREE:
-                    # self._interpret = 1  ?
                     return
 
                 if cmd_bin == ADD_WITNESS:
