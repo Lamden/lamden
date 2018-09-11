@@ -6,5 +6,5 @@ vprof
 docker
 dill
 # Non-Cythonized for CI
-PyNaCl==1.2.1
-pyzmq==17.0.0
+pynacl
+pyzmq

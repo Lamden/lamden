@@ -1,6 +1,7 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.overlay.ironhouse import Ironhouse
 from cilantro.logger.base import get_logger
 import zmq.asyncio, asyncio
 
@@ -36,10 +37,17 @@ def vk_lookup(func):
 
 class LSocket:
 
-    def __init__(self, socket: zmq.asyncio.Socket, manager, name='LSocket'):
-        self.socket = socket
-        self.manager = manager
+    def __init__(self, socket: zmq.asyncio.Socket, manager, name='LSocket', secure=False):
         self.log = get_logger(name)
+        self.secure = secure
+        self.socket = socket
+        if secure:
+            self.socket = Ironhouse.secure_socket(self.socket, manager.secret, manager.public_key)
+            self.socket.curve_secretkey = manager.secret
+            self.socket.curve_publickey = manager.public_key
+
+        self.manager = manager
+
 
         self.pending_commands = deque()  # A list of defered commands that are flushed once this socket connects/binds
         self.pending_lookups = {}  # A dict of event_id to tuple, where the tuple again represents a command execution
@@ -110,8 +118,14 @@ class LSocket:
         self.log.socket("{} to URL {}".format('CONNECTING' if should_connect else 'BINDING', url))
 
         if should_connect:
+            if self.secure:
+                self.socket.curve_serverkey = Ironhouse.vk2pk(vk)
+            self.manager.auth.configure_curve(domain='*', location=Ironhouse.authorized_keys_dir)
             self.socket.connect(url)
         else:
+            if self.secure:
+                self.socket.curve_server = True
+            self.manager.auth.configure_curve(domain='*', location=Ironhouse.authorized_keys_dir)
             self.socket.bind(url)
 
         if len(self.pending_lookups) == 0:
@@ -181,4 +195,3 @@ class LSocket:
             return self._defer_func(item)
         else:
             return underlying
-

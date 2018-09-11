@@ -5,6 +5,7 @@ from cilantro.protocol import wallet
 
 from cilantro.protocol.reactor.socket_manager import SocketManager
 from cilantro.protocol.reactor.lsocket import LSocket
+from cilantro.protocol.overlay.ironhouse import Ironhouse
 
 import asyncio
 import zmq.asyncio
@@ -41,14 +42,14 @@ class Tester:
                 self.sock.send_multipart([b'', 'hello #{}'.format(i).encode()])
                 await asyncio.sleep(1)
 
-        self.sock = self.manager.create_socket(zmq.PUB)
+        self.sock = self.manager.create_socket(zmq.PUB, secure=True)
         self.log.socket("binding pub socket")
         self.sock.bind(port=PORT, protocol=PROTOCOL, ip=ip)
 
         self.loop.run_until_complete(_start_pubbing(num_msgs))
 
     def start_subbing(self, vk):
-        self.sock = self.manager.create_socket(zmq.SUB)
+        self.sock = self.manager.create_socket(zmq.SUB, secure=True)
         self.log.socket("connecting sub socket")
         self.sock.setsockopt(zmq.SUBSCRIBE, b'')
         self.sock.connect(port=PORT, protocol=PROTOCOL, vk=vk)

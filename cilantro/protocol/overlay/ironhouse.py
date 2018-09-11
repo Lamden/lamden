@@ -137,13 +137,13 @@ class Ironhouse:
         self.reconfigure_curve(domain=domain)
 
     @classmethod
-    def secure_context(cls, async=False):
+    def secure_context(cls, context=None, async=False):
         if async:
-            ctx = zmq.asyncio.Context()
+            ctx = context or zmq.asyncio.Context()
             auth = AsyncioAuthenticator(ctx)
             auth.log = log # The constructor doesn't have "log" like its synchronous counter-part
         else:
-            ctx = zmq.Context()
+            ctx = context or zmq.Context()
             auth = ThreadAuthenticator(ctx, log=log)
         auth.start()
         return ctx, auth

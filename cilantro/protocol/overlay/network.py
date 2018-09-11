@@ -155,8 +155,12 @@ class Network(object):
     async def lookup_ip(self, node_key):
         node_id = digest(node_key)
         cache_node = self.lookup_ip_in_cache(node_id)
-        if cache_node: return cache_node, True
-        if node_id == self.node.id: return self.node
+
+        if cache_node:
+            if not await self.authenticate(cache_node):
+                return None, True
+            return cache_node, True
+        if node_id == self.node.id: return self.node, False
 
         nearest = self.protocol.router.findNeighbors(self.node)
         spider = NodeSpiderCrawl(self.protocol, self.node, nearest, self.ksize, self.alpha)
@@ -167,8 +171,10 @@ class Network(object):
         if type(res_node) == list: res_node = None
         log.debug('VK {} resolves to {}'.format(node_key, res_node))
         if res_node != None:
+            res_node.public_key = self.ironhouse.vk2pk(node_key)
             self.vkcache[node_id] = res_node
-            pk = self.ironhouse.vk2pk(node_key)
+            if not await self.authenticate(res_node):
+                return None, False
         return res_node, False
 
     def stop(self):
