@@ -120,7 +120,7 @@ class Ironhouse:
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)
 
-        log.debug('{} has added {} to its authorized list'.format(os.getenv('HOST_IP', '127.0.0.1'), public_key))
+        log.debug('{} has added {} to its authorized list under "{}"'.format(os.getenv('HOST_IP', '127.0.0.1'), public_key, domain))
         self.reconfigure_curve(domain=domain)
 
     def remove_public_key(self, public_key, domain='*'):
@@ -150,8 +150,9 @@ class Ironhouse:
 
     def reconfigure_curve(self, auth=None, domain='*'):
         log.debug('{} is reconfiguring curves'.format(os.getenv('HOST_IP', '127.0.0.1')))
+        location = self.authorized_keys_dir if domain == '*' else join(self.base_dir, domain)
         if auth:
-            auth.configure_curve(domain=domain, location=self.authorized_keys_dir if domain == '*' else join(self.base_dir, domain))
+            auth.configure_curve(domain=domain, location=location)
         elif self.daemon_auth:
             self.daemon_auth.configure_curve(domain=domain, location=self.authorized_keys_dir)
 

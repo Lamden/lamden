@@ -37,13 +37,13 @@ class SocketManager:
         self.pending_lookups = {}   # A dict of 'event_id' to socket instance
         self.overlay_client = OverlayClient(self._handle_overlay_event, loop=self.loop, ctx=self.context)
 
-    def create_socket(self, socket_type, secure=False, *args, **kwargs) -> LSocket:
+    def create_socket(self, socket_type, secure=False, domain='*', *args, **kwargs) -> LSocket:
         assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)
-
+        if not secure: domain = '*'
         ctx = self.secure_context if secure else self.context
         zmq_socket = ctx.socket(socket_type, *args, **kwargs)
 
-        socket = LSocket(zmq_socket, manager=self, secure=secure)
+        socket = LSocket(zmq_socket, manager=self, secure=secure, domain=domain)
         self.sockets.append(socket)
 
         return socket

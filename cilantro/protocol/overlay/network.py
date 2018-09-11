@@ -69,8 +69,8 @@ class Network(object):
         self.listen()
         self.saveStateRegularly('state.tmp')
 
-    async def authenticate(self, node):
-        authorization = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET)
+    async def authenticate(self, node, domain='*'):
+        authorization = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET, domain=domain)
         log.debug('{}:{}\'s authorization is {}'.format(node.ip, node.port, authorization))
         if authorization == 'authorized':
             self.protocol.router.addContact(node)
@@ -152,12 +152,12 @@ class Network(object):
             log.debug('Found ip {} in cache'.format(node.ip))
         return node
 
-    async def lookup_ip(self, node_key):
+    async def lookup_ip(self, node_key, domain='*'):
         node_id = digest(node_key)
         cache_node = self.lookup_ip_in_cache(node_id)
 
         if cache_node:
-            if not await self.authenticate(cache_node):
+            if not await self.authenticate(cache_node, domain):
                 return None, True
             return cache_node, True
         if node_id == self.node.id: return self.node, False
@@ -173,7 +173,7 @@ class Network(object):
         if res_node != None:
             res_node.public_key = self.ironhouse.vk2pk(node_key)
             self.vkcache[node_id] = res_node
-            if not await self.authenticate(res_node):
+            if not await self.authenticate(res_node, domain):
                 return None, False
         return res_node, False
 
