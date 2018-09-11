@@ -257,7 +257,8 @@ class TestNetwork(TestCase):
                 self.a_net.lookup_ip(self.a['vk'])
             ))
 
-        self.assertEqual(self.a_net.node, result)
+        print(result[0], self.a_net.node)
+        self.assertEqual(self.a_net.node, result[0])
 
         t = Timer(0.01, run, [self])
         t.start()
