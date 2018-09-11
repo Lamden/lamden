@@ -139,8 +139,6 @@ class BlockManager(BaseNode):
        
 
    async def _sub_to_delegate(self, socket, vk):
-       # Events:
-       # 1. receive merkle subtree
        while True:
           event = await socket->recv_event()
           
@@ -186,20 +184,49 @@ class BlockManager(BaseNode):
           if vk == self.verifying_key:
               return index
 
-   def send_make_block(self, block_num):
-
 
    def handle_sub_block(self, sub_block, index):
        # resolve conflicts if any with previous sub_blocks
        sub_block = self.resolve_conflicts(sub_block, index)
+       # keep it in 
+       self.save_and_vote(sub_block, index)
+
+
+   def save_and_vote(self, sub_block, index):
        if index == self.my_sb_index:
            self.publish_sub_block(sub_block)  # to masters and other delegates
-       # keep it in 
-       self.save_and_vote(sub_block)
+       else:
+           other_sb = self.pending_sigs.get(index, None)
+           if (other_sb == None):
+               self.my_sub_blocks[index] = sub_block
+           else:
+               status = self.vote(other_sb, sub_block)
+               if status:
+                   self.pending_sigs[index] = None
+               else:
+                   self.my_sub_blocks[index] = sub_block
+               
 
+   def vote(self, other_sb, sub_block):
+       bag_hash1 = other_sb.get_bag_hash()
+       bag_hash2 = sub_block.get_bag_hash()
+       if (bag_hash1 != bag_hash2):
+           return False
+       ms_hash1 = other_sb.get_root_hash()
+       ms_hash2 = sub_block.get_root_hash()
+       publish_vote(agree if ms_hash1 == ms_hash2 else disagree) # to all masters
+       return True
 
-   def recv_merkle_tree(self, merkle_sig):
-       self.parent.pending_sigs.append(merkle_sig)
-       # check to see if it matches my copy
-       # if not matched, then do trust work and/or resolve work
+   def recv_merkle_tree(self, other_sb):
+       index = self.get_sub_block_index(other_sb)
+       sub_block = self.my_sub_blocks.get(index, None)
+       if (sub_block == None):
+           self.pending_sigs[index] = other_sb
+       else:
+           status = self.vote(other_sb, sub_block)
+           if status:
+               self.my_sub_blocks[index] = None
+           else:
+               self.pending_sigs[index] = other_sb
+       
   
