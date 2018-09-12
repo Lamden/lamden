@@ -30,12 +30,14 @@ class TestReactorOverlay(MPTestCase):
         msg = b'ass'
 
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB')
-        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB')
+        sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB')
+        sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB')
 
         pub.add_pub_socket(ip=pub.ip)
 
-        sub.add_sub_socket()
-        sub.connect_sub(vk=PUB1_VK)
+        for sub in (sub1, sub2):
+            sub.add_sub_socket()
+            sub.connect_sub(vk=PUB1_VK)
 
         time.sleep(5)  # Allow time for VK lookup
 
