@@ -10,36 +10,36 @@ SUB1_SK, SUB1_VK = TESTNET_DELEGATES[0]['sk'], TESTNET_DELEGATES[0]['vk']
 SUB2_SK, SUB2_VK = TESTNET_DELEGATES[1]['sk'], TESTNET_DELEGATES[1]['vk']
 
 
+def config_sub(test_obj):
+    from unittest.mock import MagicMock
+    test_obj.handle_sub = MagicMock()
+    return test_obj
+
+
 class TestReactorOverlay(MPTestCase):
 
     @vmnet_test
     def test_pubsub_1_pub_2_sub_unauth(self):
-        def config_sub(test_obj):
-            from unittest.mock import MagicMock
-            test_obj.handle_pub = MagicMock()
-            return test_obj
-
         def assert_sub(test_obj):
-            from cilantro.logger.base import get_logger
-            log = get_logger("Sub Assertatorizer")
-            # log.debugv("type of testobj.handle_pub: {}".format(type(test_obj.handle_pub)))
-            log.important("Sub got callbacks: {}".format(test_obj.handle_pub.call_args_list))
+            # from cilantro.logger.base import get_logger
+            # log = get_logger("Sub Assertatorizer")
+            # log.important("Sub got callbacks: {}".format(test_obj.handle_sub.call_args_list))
+            expected_frames = [b'', msg]  # Filter is b''
+            test_obj.handle_sub.assert_called_with(expected_frames)
 
-            i = 10 / 0
+        msg = b'ass'
 
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB')
         sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB')
-
-        # time.sleep(5)  # nap while overlay hooks up ? We shouldnt need this but ur boy is paranoid
 
         pub.add_pub_socket(ip=pub.ip)
 
         sub.add_sub_socket()
         sub.connect_sub(vk=PUB1_VK)
 
-        # time.sleep(5)  # for the vk lookup? also should need this but again, i be paranoid af
+        time.sleep(5)  # Allow time for VK lookup
 
-        pub.start_publishing()
+        pub.send_pub(msg)
 
         self.start()
 

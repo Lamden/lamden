@@ -84,7 +84,6 @@ class OverlayServer(object):
                 }).encode()
 
             self.log.debugv("OverlayServer replying to id {} with data {}".format(id_frame, data))
-            self.log.important3("OverlayServer replying to id {} with data {}".format(id_frame, data))  # TODO remove
             self.cmd_sock.send_multipart([id_frame, data])
 
         asyncio.ensure_future(coro())
@@ -138,7 +137,7 @@ class OverlayClient(object):
         try:
             self.loop.run_until_complete(self.block_until_ready())
         except:
-            self.log.info('Overlay Interface is not ready after {}s...'.format(CLIENT_SETUP_TIMEOUT))
+            self.log.fatal('Overlay Interface is not ready after {}s...'.format(CLIENT_SETUP_TIMEOUT))
 
         if block:
             self.loop.run_forever()
