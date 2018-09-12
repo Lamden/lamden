@@ -41,6 +41,7 @@ class OverlayServer(object):
                        max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
 
         self._started = True
+        self.log.notice("OverlayServer started with EVENT_URL {} and CMD_URL {}".format(EVENT_URL, CMD_URL))
         self.evt_sock.send_json({
             'event': 'service_status',
             'status': 'ready'
@@ -57,13 +58,13 @@ class OverlayServer(object):
             data = [b.decode() for b in msg[2:]]
             getattr(self, msg[1].decode())(msg[0], *data)
 
-    def _get_node_from_vk(self, id_frame, event_id, vk: str, timeout=5):
+    def _get_node_from_vk(self, id_frame, event_id, vk: str, domain='*', timeout=5):
         async def coro():
             node = None
             if vk in VKBook.get_all():
                 try:
-                    node, cached = await asyncio.wait_for(self.dht.network.lookup_ip(vk), timeout)
-                except:
+                    node, cached = await asyncio.wait_for(self.dht.network.lookup_ip(vk, domain), timeout)
+                except asyncio.TimeoutError:
                     self.log.notice('Did not find an ip for VK {} in {}s'.format(vk, timeout))
 
             if node:
@@ -80,6 +81,8 @@ class OverlayServer(object):
                     'event_id': event_id
                 }).encode()
 
+            self.log.debugv("OverlayServer replying to id {} with data {}".format(id_frame, data))
+            self.log.important3("OverlayServer replying to id {} with data {}".format(id_frame, data))  # TODO remove
             self.cmd_sock.send_multipart([id_frame, data])
 
         asyncio.ensure_future(coro())
@@ -165,6 +168,7 @@ class OverlayClient(object):
         self.log.info("Listening for overlay replies over {}".format(CMD_URL))
         while True:
             msg = await self.cmd_sock.recv_multipart()
+            self.log.spam("OverlayClient received event {}".format(msg))
             event = json.loads(msg[-1])
             if event.get('event') == 'service_status' and event.get('status') == 'ready':
                 self._ready = True
