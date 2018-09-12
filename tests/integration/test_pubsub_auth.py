@@ -21,17 +21,14 @@ class TestReactorOverlay(MPTestCase):
     @vmnet_test
     def test_pubsub_1_pub_2_sub_unauth(self):
         def assert_sub(test_obj):
-            # from cilantro.logger.base import get_logger
-            # log = get_logger("Sub Assertatorizer")
-            # log.important("Sub got callbacks: {}".format(test_obj.handle_sub.call_args_list))
             expected_frames = [b'', msg]  # Filter is b''
             test_obj.handle_sub.assert_called_with(expected_frames)
 
-        msg = b'ass'
+        msg = b'*falcon noise*'
 
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB')
-        sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB')
-        sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB')
+        sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB1')
+        sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB2')
 
         pub.add_pub_socket(ip=pub.ip)
 
@@ -45,21 +42,114 @@ class TestReactorOverlay(MPTestCase):
 
         self.start()
 
-    # @vmnet_test
-    # def test_pubsub_1_pub_2_sub_auth(self):
-    #     pass
-    #
-    # @vmnet_test
-    # def test_pubsub_2_pub_1_sub_auth(self):
-    #     pass
-    #
-    # @vmnet_test
-    # def test_pubsub_2_pub_2_sub_auth(self):
-    #     pass
-    #
-    # @vmnet_test
-    # def test_pubsub_2_pub_2_sub_mixed_auth_unauth(self):
-    #     pass
+    @vmnet_test
+    def test_pubsub_1_pub_2_sub_auth(self):
+        def assert_sub(test_obj):
+            expected_frames = [b'', msg]  # Filter is b''
+            test_obj.handle_sub.assert_called_with(expected_frames)
+
+        msg = b'*falcon noise*'
+
+        pub = MPPubSubAuth(sk=PUB1_SK, name='PUB')
+        sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB1')
+        sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB2')
+
+        pub.add_pub_socket(ip=pub.ip, secure=True)
+
+        for sub in (sub1, sub2):
+            sub.add_sub_socket(secure=True)
+            sub.connect_sub(vk=PUB1_VK)
+
+        time.sleep(5)  # Allow time for VK lookup
+
+        pub.send_pub(msg)
+
+        self.start()
+
+    @vmnet_test
+    def test_pubsub_2_pub_1_sub_auth(self):
+        def assert_sub(test_obj):
+            from unittest.mock import call
+            expected_frames = [
+                call([b'', msg1]),
+                call([b'', msg2])
+            ]
+            test_obj.handle_sub.assert_has_calls(expected_frames, any_order=True)
+
+        msg1 = b'*falcon1 noise*'
+        msg2 = b'*falcon2 noise*'
+
+        pub1 = MPPubSubAuth(sk=PUB1_SK, name='PUB1')
+        pub2 = MPPubSubAuth(sk=PUB2_SK, name='PUB2')
+        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB')
+
+        pub1.add_pub_socket(ip=pub1.ip, secure=True)
+        pub2.add_pub_socket(ip=pub2.ip, secure=True)
+
+        sub.add_sub_socket(secure=True)
+        sub.connect_sub(vk=PUB1_VK)
+        sub.connect_sub(vk=PUB2_VK)
+
+        time.sleep(5)  # Allow time for VK lookup
+
+        pub1.send_pub(msg1)
+        pub2.send_pub(msg2)
+
+        self.start()
+
+    @vmnet_test
+    def test_pubsub_1_pub_1_sub_mixed_auth_unauth(self):
+        def assert_sub(test_obj):
+            from unittest.mock import call
+            expected_frames = [
+                call([b'', msg1]),
+                call([b'', msg2])
+            ]
+            test_obj.handle_sub.assert_has_calls(expected_frames, any_order=True)
+
+        msg1 = b'*falcon1 noise*'
+        msg2 = b'*falcon2 noise*'
+
+        pub1 = MPPubSubAuth(sk=PUB1_SK, name='PUB1')
+        pub2 = MPPubSubAuth(sk=PUB2_SK, name='PUB2')
+        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB')
+
+        pub1.add_pub_socket(ip=pub1.ip, secure=True)
+        pub2.add_pub_socket(ip=pub2.ip, secure=False)
+
+        sub.add_sub_socket(secure=True, socket_key='sub1')
+        sub.add_sub_socket(secure=False, socket_key='sub2')
+        sub.connect_sub(vk=PUB1_VK, socket_key='sub1')
+        sub.connect_sub(vk=PUB2_VK, socket_key='sub2')
+
+        time.sleep(8)  # Allow time for VK lookup
+
+        pub1.send_pub(msg1)
+        pub2.send_pub(msg2)
+
+        self.start()
+
+    @vmnet_test
+    def test_pubsub_1_pub_1_sub_mixed_auth_unauth_bad_actor(self):
+        def assert_sub(test_obj):
+            test_obj.handle_sub.assert_not_called()
+
+        msg = b'*falcon noise*'
+
+        pub = MPPubSubAuth(sk=PUB1_SK, name='PUB1')
+        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB')
+
+        pub.add_pub_socket(ip=pub.ip, secure=True)
+
+        sub.add_sub_socket(secure=False, socket_key='sub1')
+        sub.connect_sub(vk=PUB1_VK, socket_key='sub1')
+
+        time.sleep(5)  # Allow time for VK lookup
+
+        pub.send_pub(msg)
+        time.sleep(2)
+
+        self.start()
 
 
 if __name__ == '__main__':

@@ -59,10 +59,10 @@ class PubSubAuthTester(Worker):
 
         self.sub_sockets[socket_key] = sock
 
-    def connect_sub(self, key=SUB_SOCK_KEY, vk='', ip='', port=PORT, protocol=PROTOCOL):
-        assert key in self.sub_sockets, "Key {} not found in sub sockets {}".format(key, self.sub_sockets)
+    def connect_sub(self, socket_key=SUB_SOCK_KEY, vk='', ip='', port=PORT, protocol=PROTOCOL):
+        assert socket_key in self.sub_sockets, "Key {} not found in sub sockets {}".format(socket_key, self.sub_sockets)
 
-        sock = self.sub_sockets[key]
+        sock = self.sub_sockets[socket_key]
         sock.connect(port=port, protocol=protocol, vk=vk, ip=ip)
 
     def start_publishing(self, num_msgs=50, interval=1, filter=b''):
