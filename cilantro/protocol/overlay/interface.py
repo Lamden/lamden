@@ -14,7 +14,10 @@ CMD_URL = 'ipc://overlay-cmd-ipc-sock-{}'.format(os.getenv('HOST_IP', 'test'))
 def command(fn):
     def _command(self, *args, **kwargs):
         event_id = uuid.uuid4().hex
-        self.cmd_sock.send_multipart(['_{}'.format(fn.__name__).encode(), event_id.encode()] + [arg.encode() for arg in args])
+        self.cmd_sock.send_multipart(
+            ['_{}'.format(fn.__name__).encode(), event_id.encode()] + \
+            [arg.encode() for arg in args] + \
+            [kwargs[k].encode() for k in kwargs])
         return event_id
     return _command
 
@@ -41,7 +44,6 @@ class OverlayServer(object):
                        max_peers=MAX_PEERS, block=False, cmd_cli=False, wipe_certs=True)
 
         self._started = True
-        self.log.notice("OverlayServer started with EVENT_URL {} and CMD_URL {}".format(EVENT_URL, CMD_URL))
         self.evt_sock.send_json({
             'event': 'service_status',
             'status': 'ready'

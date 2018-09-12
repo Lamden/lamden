@@ -18,8 +18,7 @@ def client(i):
     log = get_logger('sub')
     async def connect(ih_ins):
         await asyncio.sleep(4)
-        # Dummy keys shared by masternodes
-        ctx, auth = Ironhouse.secure_context(True)
+        ctx, auth = Ironhouse.secure_context(None, True)
         ih_ins.reconfigure_curve(auth, 'pubsub')
         sock = Ironhouse.secure_socket(ctx.socket(zmq.SUB),
             ih_ins.secret, ih_ins.public_key)
@@ -52,7 +51,7 @@ def server(i):
     log = get_logger('pub')
     async def bind(ih_ins):
         # Dummy keys shared by masternodes
-        ctx, auth = Ironhouse.secure_context(True)
+        ctx, auth = Ironhouse.secure_context(None, True)
         sock = Ironhouse.secure_socket(ctx.socket(zmq.PUB),
             ih_ins.secret, ih_ins.public_key)
         log.critical('binding to {}'.format("tcp://*:{}".format(9999)))

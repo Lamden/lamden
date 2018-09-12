@@ -1,12 +1,14 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.overlay.ironhouse import Ironhouse
 from cilantro.logger.base import get_logger
-import zmq.asyncio, asyncio
+import zmq.asyncio, asyncio, os
 
 from collections import defaultdict, deque
 from functools import wraps
 from typing import List
+from os.path import join
 
 
 RDY_WAIT_INTERVAL = 0.2  # TODO move this to constants, and explain it
@@ -20,12 +22,13 @@ def vk_lookup(func):
         contains_ip = 'ip' in kwargs and kwargs['ip']
 
         if contains_vk and not contains_ip:
-            cmd_id = self.manager.overlay_client.get_node_from_vk(kwargs['vk'])
+            cmd_id = self.manager.overlay_client.get_node_from_vk(kwargs['vk'], domain=self.domain)
             assert cmd_id not in self.pending_lookups, "Collision! Uuid {} already in pending lookups {}".format(cmd_id, self.pending_lookups)
 
             self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.pending_lookups[cmd_id] = (func.__name__, args, kwargs)
             self.manager.pending_lookups[cmd_id] = self
+            self.manager.auth.configure_curve(domain=self.domain, location=self.location)
 
         # If the 'ip' key is already set in kwargs, no need to do a lookup
         else:
@@ -36,10 +39,22 @@ def vk_lookup(func):
 
 class LSocket:
 
-    def __init__(self, socket: zmq.asyncio.Socket, manager, name='LSocket'):
-        self.socket = socket
-        self.manager = manager
+    def __init__(self, socket: zmq.asyncio.Socket, manager, name='LSocket', secure=False, domain='*'):
         self.log = get_logger(name)
+        self.secure = secure
+        self.socket = socket
+        self.domain = domain
+
+        self.location = join(Ironhouse.base_dir, self.domain) if self.domain != '*' else Ironhouse.authorized_keys_dir
+        if secure:
+            self.socket = Ironhouse.secure_socket(self.socket, manager.secret, manager.public_key)
+            self.socket.curve_secretkey = manager.secret
+            self.socket.curve_publickey = manager.public_key
+            if self.domain != '*':
+                os.makedirs(self.location, exist_ok=True)
+                self.socket.zap_domain = self.domain.encode()
+
+        self.manager = manager
 
         self.pending_commands = deque()  # A list of defered commands that are flushed once this socket connects/binds
         self.pending_lookups = {}  # A dict of event_id to tuple, where the tuple again represents a command execution
@@ -70,8 +85,11 @@ class LSocket:
 
             while True:
                 if duration_waited > MAX_RDY_WAIT and not self.ready:
-                    raise Exception("Socket failed to bind/connect in {} seconds!")
+                    msg = "Socket failed to bind/connect in {} seconds!".format(MAX_RDY_WAIT)
+                    self.log.fatal(msg)
+                    raise Exception(msg)
 
+                # TODO not sure if we need this chunk. tests show we can start recv on a socket before .connect/.bind
                 if not self.ready:
                     self.log.spam("Socket not ready yet...waiting {} seconds".format(RDY_WAIT_INTERVAL))  # TODO remove this? it be hella noisy..
                     await asyncio.sleep(RDY_WAIT_INTERVAL)
@@ -132,8 +150,16 @@ class LSocket:
         self.log.socket("{} to URL {}".format('CONNECTING' if should_connect else 'BINDING', url))
 
         if should_connect:
+            if self.secure:
+                self.socket.curve_serverkey = Ironhouse.vk2pk(vk)
+                self.manager.auth.configure_curve(domain=self.domain, location=self.location)
+
             self.socket.connect(url)
         else:
+            if self.secure:
+                self.socket.curve_server = True
+                self.manager.auth.configure_curve(domain=self.domain, location=self.location)
+
             self.socket.bind(url)
 
         if len(self.pending_lookups) == 0:
@@ -141,7 +167,7 @@ class LSocket:
             self.ready = True
             self._flush_pending_commands()
         else:
-            self.log.debuv("Not flushing commands yet, pending lookups not empty: {}".format(self.pending_lookups))
+            self.log.debugv("Not flushing commands yet, pending lookups not empty: {}".format(self.pending_lookups))
 
     def _flush_pending_commands(self):
         assert len(self.pending_lookups) == 0, 'All lookups must be resolved before we can flush pending commands'
@@ -204,4 +230,3 @@ class LSocket:
             return self._defer_func(item)
         else:
             return underlying
-
