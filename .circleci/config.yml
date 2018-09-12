@@ -3,6 +3,7 @@ jobs:
   build:
     working_directory: ~/cilantro
     docker:
+      - image: circleci/classic:201808-01
       - image: circleci/python:3.6.5
       - image: lamden/cilantro
       - image: lamden/cilantro-db
@@ -32,7 +33,7 @@ jobs:
           name: Install Docker client
           command: |
             set -x
-            VER="17.03.0-ce"
+            VER="18.06.0-ce"
             curl -L -o /tmp/docker-$VER.tgz https://get.docker.com/builds/Linux/x86_64/docker-$VER.tgz
             tar -xz -C /tmp -f /tmp/docker-$VER.tgz
             sudo mv /tmp/docker/* /usr/bin
