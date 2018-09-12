@@ -17,7 +17,7 @@ from os.path import join, dirname
 
 
 def run_pub():
-    from cilantro.utils.test.delete_this_file import Tester
+    from cilantro.utils.test.pubsub_auth import PubSubAuthTester
     from cilantro.protocol.overlay.interface import OverlayServer
     from cilantro.constants.testnet import TESTNET_MASTERNODES
     from cilantro.utils.lprocess import LProcess
@@ -28,11 +28,16 @@ def run_pub():
     overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': sk})
     overlay_proc.start()
 
-    t = Tester(signing_key=sk, name='Pub')
-    t.start_pubbing(ip=os.getenv('HOST_IP'))
+    t = PubSubAuthTester(signing_key=sk, name='Pub')
+
+    # Create 1 pub and start publishing
+    t.add_pub_socket(ip=os.getenv('HOST_IP'))
+    t.start_publishing()
+
+    t.start()
 
 def run_sub():
-    from cilantro.utils.test.delete_this_file import Tester
+    from cilantro.utils.test.pubsub_auth import PubSubAuthTester
     from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
     from cilantro.utils.lprocess import LProcess
     from cilantro.constants.testnet import TESTNET_DELEGATES
@@ -45,8 +50,13 @@ def run_sub():
     overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': sk})
     overlay_proc.start()
 
-    t = Tester(signing_key=sk, name='SUB')
-    t.start_subbing(vk=pub_vk)
+    t = PubSubAuthTester(signing_key=sk, name='SUB')
+
+    # Create 1 sub
+    t.add_sub_socket()
+    t.connect_sub(vk=pub_vk)
+
+    t.start()
 
 
 class TestDump(BaseNetworkTestCase):
