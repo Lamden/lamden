@@ -3,7 +3,6 @@ jobs:
   build:
     working_directory: ~/cilantro
     docker:
-      - image: circleci/classic:201808-01
       - image: circleci/python:3.6.5
       - image: lamden/cilantro
       - image: lamden/cilantro-db
