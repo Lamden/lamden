@@ -2,9 +2,6 @@ version: 2
 jobs:
   build:
     working_directory: ~/cilantro
-    machine:
-        image: circleci/classic:201808-01
-        enable: true
     docker:
       - image: circleci/python:3.6.5
       - image: lamden/cilantro
@@ -30,22 +27,22 @@ jobs:
           command: |
              sudo apt install -y mysql-client
 
-      # # This should go into custom primary image, here's only for the sake of explanation
-      # - run:
-      #     name: Install Docker client
-      #     command: |
-      #       set -x
-      #       VER="18.06.0-ce"
-      #       curl -L -o /tmp/docker-$VER.tgz https://get.docker.com/builds/Linux/x86_64/docker-$VER.tgz
-      #       tar -xz -C /tmp -f /tmp/docker-$VER.tgz
-      #       sudo mv /tmp/docker/* /usr/bin
-      # # This should go into custom primary image, here's only for the sake of explanation
-      # - run:
-      #     name: Install Docker Compose
-      #     command: |
-      #       curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
-      #       chmod +x ~/docker-compose
-      #       sudo mv ~/docker-compose /usr/local/bin/docker-compose
+      # This should go into custom primary image, here's only for the sake of explanation
+      - run:
+          name: Install Docker client
+          command: |
+            set -x
+            VER="18.03.1-ce"
+            curl -L -o /tmp/docker-$VER.tgz https://get.docker.com/builds/Linux/x86_64/docker-$VER.tgz
+            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
+            sudo mv /tmp/docker/* /usr/bin
+      # This should go into custom primary image, here's only for the sake of explanation
+      - run:
+          name: Install Docker Compose
+          command: |
+            curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
+            chmod +x ~/docker-compose
+            sudo mv ~/docker-compose /usr/local/bin/docker-compose
 
       - setup_remote_docker
 
