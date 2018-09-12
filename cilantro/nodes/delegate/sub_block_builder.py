@@ -114,7 +114,7 @@ class SubBlockBuilder:
         self.witness_table = self._parse_witness_list(witness_list_list)
         self.url = url
         self.sbb_index = sbb_index
-        self.block_num = (int) sbb_index / 16       # hard code this for now
+        self.block_num = int(sbb_index / 16)       # hard code this for now
         self.sub_block_num = (int) sbb_index % 16
         self.num_txs = 0
         self.num_sub_blocks = 0
@@ -200,8 +200,9 @@ class SubBlockBuilder:
                     # new witness that will cover the master
                     # witness_vk, master_vk
 
-                if cmd_bin == SKIP_ROUND:
-                    # skip if don't have txns pending
+                # SKIP_ROUND behavior is captured by this guy receiving an empty bag
+                # if cmd_bin == SKIP_ROUND:
+                #     skip if don't have txns pending
 
                 if cmd_bin == CANCEL_SUBTREE:
                     if self._interpret:

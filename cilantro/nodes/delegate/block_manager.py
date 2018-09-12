@@ -33,15 +33,20 @@
        subs:  witnesses
 """
 
+from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder
 from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.logger.base import get_logger
 from cilantro.storage.db import VKBook
 from cilantro.protocol.multiprocessing.worker import Worker
-from cilantro.constants.ipc import BLOCK_MANAGER_ROUTER_IP, BLOCK_MANAGER_ROUTER_PORT
+from cilantro.utils.lprocess import LProcess
+
 from cilantro.constants.nodes import *
+from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
+from cilantro.constants.ports import INTER_DELEGATE_PORT, MN_NEW_BLOCK_PUB_PORT
 
 import asyncio
 import zmq
+import os
 
 # communication
 # From master:
@@ -56,6 +61,9 @@ import zmq
 #   Send sig for sub-tree(i)
 #   send Ready ??
 
+IPC_IP = 'IPC-block-manager'
+IPC_PORT = 6967
+
 
 class BlockManager(Worker):
 
@@ -66,7 +74,7 @@ class BlockManager(Worker):
         self.ip = ip
         self.current_hash = BlockStorageDriver.get_latest_block_hash()
         self.mn_indices = {vk: index for index, vk in enumerate(VKBook.get_masternodes())}  # MasternodeVK -> Index
-        self.sb_builders = {}  # index  process      # perhaps can be consolidated with the above ?
+        self.sb_builders = {}  # index -> process      # perhaps can be consolidated with the above ?
         self.tasks = []
 
         self.num_mnodes = len(VKBook.get_masternodes())
@@ -82,19 +90,47 @@ class BlockManager(Worker):
                                 num_blocks=self.num_blocks, sb_per_block=self.sub_blocks_per_block,
                                 num_sb_builders=self.num_sb_builders))
 
-        # Define Sockets
-        self.router, self.pub, self.sub = None, None, None
+        # Define Sockets (these get set in build_task_list)
+        self.ipc_router, self.pub, self.sub = None, None, None
+        self.ipc_ip = IPC_IP + '-' + str(os.getpid())
+
+        self.run()
 
     def run(self):
-        # build task list first
+        # build task list, and create necessary sockets
         self.build_task_list()
+
+        # create sub block builder processes
+        self.create_sbbs_procs()
+
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def build_task_list(self):
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
-        self.router = self.manager.create_socket(socket_type=zmq.ROUTER)
-        self.router.bind(port=BLOCK_MANAGER_ROUTER_PORT, protocol='ipc', ip=BLOCK_MANAGER_ROUTER_IP)
-        self.tasks.append(self.router.add_handler(self.handle_sbb_msg))
+        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER)  # TODO secure him
+        self.ipc_router.bind(port=IPC_PORT, protocol='ipc', ip=self.ipc_ip)
+        self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_router_msg))
+
+        # Create SUB socket to
+        # 1) listen for subblock contenders from other delegates
+        # 2) listen for NewBlockNotifications from masternodes
+        self.sub = self.manager.create_socket(socket_type=zmq.SUB)  # TODO secure him
+        self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
+
+        # Listen to other delegates over INTER_DELEGATE_PORT (with no filter currently?)
+        self.sub.setsocketopt(zmq.SUBSCRIBE, b'')
+        for vk in VKBook.get_delegates():
+            if vk != self.verifying_key:  # Do not SUB to itself
+                self.sub.connect(vk=vk, port=INTER_DELEGATE_PORT)
+
+        # Listen to Masternodes over MN_NEW_BLOCK_PUB_PORT with MASTERNODE_DELEGATE_FILTER
+        self.sub.setsocketopt(zmq.SUBSCRIBE, MASTERNODE_DELEGATE_FILTER.encode())
+        for vk in VKBook.get_masternodes():
+            self.sub.connect(vk=vk, port=MN_NEW_BLOCK_PUB_PORT)
+
+    def create_sbbs_procs(self):
+        for i in range(self.num_sb_builders):
+            sb_proc = LProcess(target=SubBlockBuilder, kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT, "signing_key": self.signing_key})
 
     def _build_task_list(self):
         # Add router socket - where do we listen to this ?? add
@@ -141,8 +177,11 @@ class BlockManager(Worker):
         # self.tasks.append(self._dealer_to_master(socket, vk, index))
 
 
-    def handle_sbb_msg(self, frames):
-        self.log.important("Got msg from subblock with frames {}".format(frames))  # TODO delete this
+    def handle_ipc_router_msg(self, frames):
+        # This callback should receive stuff from everything on self.ipc_router. Currently, this is just the SBB procs
+        self.log.important("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
+
+    def handle_sub_msg(self, frames):
 
 
     async def _sub_to_delegate(self, socket, vk):
