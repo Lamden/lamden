@@ -9,8 +9,8 @@ from functools import wraps
 from typing import List
 
 
-RDY_WAIT_INTERVAL = 0.2  # TODO move this to constants, and explain it
-MAX_RDY_WAIT = 10.0  # TODO move this to constants, and explain it
+RDY_WAIT_INTERVAL = 1.0  # TODO move this to constants, and explain it
+MAX_RDY_WAIT = 30.0  # TODO move this to constants, and explain it
 
 
 def vk_lookup(func):
@@ -23,6 +23,7 @@ def vk_lookup(func):
             cmd_id = self.manager.overlay_client.get_node_from_vk(kwargs['vk'])
             assert cmd_id not in self.pending_lookups, "Collision! Uuid {} already in pending lookups {}".format(cmd_id, self.pending_lookups)
 
+            self.log.important2("Looking up vk {}".format(kwargs['vk']))  # TODO remove
             self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.pending_lookups[cmd_id] = (func.__name__, args, kwargs)
             self.manager.pending_lookups[cmd_id] = self

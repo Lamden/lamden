@@ -3,6 +3,8 @@ from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.constants.nodes import BLOCK_SIZE
 from cilantro.protocol.states.decorators import input, enter_from_any, exit_to_any, exit_to, enter_from
+from cilantro.utils.lprocess import LProcess
+from cilantro.nodes.delegate.block_manager import BlockManager
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
@@ -21,6 +23,14 @@ class DelegateInterpretState(DelegateBaseState):
     def _general_entry(self):
         self.parent.current_hash = BlockStorageDriver.get_latest_block_hash()
         self.log.notice("Delegate entering interpret state with current block hash {}".format(self.parent.current_hash))
+
+        # TODO find a way to properly integrate the BlockManager in this state machine framework
+        # DEBUG TODO DELETE
+        self.log.important("Delegate starting BlockManager process and blocking!")
+        bm = LProcess(target=BlockManager, kwargs={'signing_key': self.parent.signing_key, 'ip': self.parent.ip})
+        bm.start()
+        bm.join()  # Block for now
+        # END DEBUG
 
     def _reset_queue(self):
         self.log.notice("Emptying transaction queue of {} items".format(len(self.parent.pending_txs)))
