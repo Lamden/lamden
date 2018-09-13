@@ -74,8 +74,7 @@ IPC_PORT = 6967
 class BlockManager(Worker):
 
     def __init__(self, ip, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
+        super().__init__(*args, name="BlockManager[{}]".format(self.verifying_key[:8]), **kwargs)
 
         self.ip = ip
         self.current_hash = BlockStorageDriver.get_latest_block_hash()
@@ -139,7 +138,9 @@ class BlockManager(Worker):
 
     def create_sbbs_procs(self):
         for i in range(self.num_sb_builders):
-            sb_proc = LProcess(target=SubBlockBuilder, kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT, "signing_key": self.signing_key, "sbb_map": self.sbb_map, "sbb_index": i})
+            sb_proc = LProcess(target=SubBlockBuilder,
+                               kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT, "signing_key": self.signing_key,
+                                       "sbb_map": self.sbb_map, "sbb_index": i, "num_sb_builders": self.num_sb_builders})
 
     def _get_my_index(self):
         for index, vk in enumerate(VKBook.get_delegates()):
@@ -189,7 +190,7 @@ class BlockManager(Worker):
         # is now) from Delegates
 
         # The first frame is the filter, and the last frame is the envelope binary
-        envelope = Envelope.from_bytes(frames[-1])
+        envelope = Envelope.from_bytes(frames[-1])  # TODO envelope validation
         msg = envelope.message
         msg_hash = envelope.message_hash
 

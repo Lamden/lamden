@@ -36,27 +36,26 @@
 #         thread2 -> take second batch and repeat
 
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
-import asyncio, os, logging
+import asyncio
 import zmq.asyncio
-from cilantro.protocol.structures import MerkleTree
-from cilantro.protocol import wallet
-from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.logger import get_logger
 import signal, sys
 from cilantro.storage.db import VKBook
 from cilantro.constants.protocol import DUPE_TABLE_SIZE
-from cilantro.protocol.interpreter import SenecaInterpreter
+from cilantro.constants.ports import SBB_PORT_START
+
 from cilantro.messages.envelope.envelope import Envelope
+from cilantro.messages.consensus.merkle_signature import MerkleSignature
+
+from cilantro.protocol.interpreter import SenecaInterpreter
+from cilantro.protocol import wallet
 from cilantro.protocol.structures import CappedSet
 from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
+from cilantro.protocol.structures import MerkleTree
+from cilantro.protocol.multiprocessing.worker import Worker
+
 from typing import Union
 from cilantro.utils.hasher import Hasher
-import time
-
-import types
-import uvloop
-import traceback
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 # need delegate communication class to describe events
 #  all currently known hand-shakes of block making
@@ -72,92 +71,106 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 class SubBlockBuilder(Worker):
-    def __init__(self, signing_key, master_list, url, sbb_index):
-        self.log = get_logger("SubBlockBuilder_{}".format(sbb_index))
-        # Comment out below for more granularity in debugging
-        # self.log.setLevel(logging.INFO)
+    def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int, sbb_map: dict,
+                 num_sb_builders: int, *args, **kwargs):
+        super().__init__(signing_key=signing_key, name="SubBlockBuilder_{}".format(sbb_index))
 
-        #self.log.important("SubBlockBuilder started with url {}".format(url))
+        self.ip = ip
+        self.sbb_index, self.sbb_map = sbb_index, sbb_map
 
-        # Register signal handler to teardown
-        signal.signal(signal.SIGTERM, self._signal_teardown)
-
-        # need to revisit this when threading strategy is clear
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-        self.signing_key = signing_key
-        self.master_list = master_list
-
-        # witness_list should be comma separated list of ip:vk  
-        self.witness_table = self._parse_witness_list(witness_list_list)
-        self.url = url
-        self.sbb_index = sbb_index
         self.block_num = int(sbb_index / 16)       # hard code this for now
-        self.sub_block_num = (int) sbb_index % 16
+        self.sub_block_num = int(sbb_index % 16)
+
         self.num_txs = 0
         self.num_sub_blocks = 0
         self.tasks = []
 
-        #SenecaInterpreter connect with BlockManager (parent process that spawned this one)
-        self.context = zmq.asyncio.Context()
-        self.socket = self.context.socket(zmq.PAIR)  # For communication with main process
-        self.socket.connect(self.url)
-
-        # do we need this still? or do we move it to a util methods
-        self.verifying_key = wallet.get_vk(self.signing_key)
-        skg = SigningKey(seed=bytes.fromhex(sk))
-        self.vk = skg.verify_key.encode().hex()
-        self.public_key = ZmqAPI.vk2pk(self.vk)
-        self.private_key = crypto_sign_ed25519_sk_to_curve25519(skg._signing_key).hex()
-        priv = PrivateKey(bytes.fromhex(self.private_key))
-        publ = priv.public_key
-        self.public_key = public_key = encode(publ._public_key)
-        self.secret = secret_key = encode(priv._private_key)
-
         self.pending_txs = LinkedHashTable()
         self.interpreter = SenecaInterpreter()
-        self._recently_seen = CappedSet(max_size=DUPE_TABLE_SIZE)
+        self._recently_seen = CappedSet(max_size=DUPE_TABLE_SIZE)  # TODO do we need this?
 
-        try:
-            self._subscribe_to_witnesses()
-            # start event loop and start listening witness sockets as well as mgr
-            self.run_loop_second_time()
-        except Exception as e:
-            err_msg = '\n' + '!' * 64 + '\nSBB terminating with exception:\n' + str(traceback.format_exc())
-            err_msg += '\n' + '!' * 64 + '\n'
-            self.log.error(err_msg)
-        finally:
-            self._teardown()
+        # Create DEALER socket to talk to the BlockManager process over IPC
+        self.dealer = None
+        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sbb_index).encode())
 
-    # will it receive the list from BM - no need to know upfront
-    # still need to figure out starting point where it has all the witnesses available - may not be up front
-    # also need to allow for the case where it will handle multiple masters (multiple sets of witnesses - format??)
-    def _parse_witness_list(self, witness_list_list):
-        witness_lists = witness_list_list.split(";")
-        for index, witness_list in enumerate(witness_lists):
-            witnesses = witness_list.split(",")
-            for witness in witnesses:
-                ip, vk = witness.split(":", 1)
-                self.witness_table[index][vk] = []
-                self.witness_table[index][vk].append(ip)
+        # BIND sub sockets to listen to witnesses
+        self.subs = []
+        self._create_sub_sockets(num_sb_builders=num_sb_builders, num_mnodes=len(VKBook.get_masternodes()))
+
+        # DEBUG TODO DELETE
+        self.tasks.append(self.test_dealer_ipc())
+        # END DEBUG
+
+        self.run()
+
+    def run(self):
+        self.loop.run_until_complete(asyncio.gather(*self.tasks))
+
+    async def test_dealer_ipc(self):
+        import random
+        self.log.info("Spamming BlockManager over IPC...")
+        while True:
+            msg = "hello from SBB number {}".format(self.sbb_index)
+            self.log.debug("Sending msg {}".format(msg))
+            self.dealer.send_multipart([msg.encode()])
+            asyncio.sleep(random.random() * 4)
+
+    def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
+        self.log.info("Connected to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
+                      .format(port, ip, identity))
+        self.dealer = self.manager.create_socket(socket_type=zmq.DEALER)
+        self.dealer.setsockopt(zmq.IDENTITY, str(self.sbb_index).encode())
+        self.dealer.connect(port=self.ip, protocol='ipc', ip=self.ipc_ip)
+        self.tasks.append(self.dealer.add_handler(handler_func=self.handle_ipc_dealer_msg))
+
+    def _create_sub_sockets(self, num_sb_builders, num_mnodes):
+        # First, determine the set of Masternodes this SBB is responsible for
+        num_mn_per_sbb = num_mnodes // num_sb_builders
+        mn_range = list(range(self.sbb_index * num_mn_per_sbb, self.sbb_index * num_mn_per_sbb + num_sb_builders))
+        self.log.info("This SBB is responsible for masternodes in index range {}".format(self.sbb_index, mn_range))
+
+        # We then BIND a sub socket to a port for each of these masternode indices
+        for mn_idx in mn_range:
+            port = SBB_PORT_START + mn_idx
+            self.log.info("SBB BINDing to port {} with no filter".format(port))
+            sub = self.manager.create_socket(socket_type=zmq.SUB)
+            sub.setsocketopt(zmq.SUBSCRIBE, b'')
+            sub.bind(port=port, ip=self.ip)  # TODO secure him
+            self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg))
+            self.subs.append(sub)
+
+    def handle_ipc_dealer_msg(self, frames):
+        self.log.important("Got msg over Router IPC from BlockManager with frames: {}".format(frames))
+        # TODO implement
+
+    def handle_sub_msg(self, frames):
+        self.log.important("Sub socket got frames {}".format(frames))
+
+    # # will it receive the list from BM - no need to know upfront
+    # # still need to figure out starting point where it has all the witnesses available - may not be up front
+    # # also need to allow for the case where it will handle multiple masters (multiple sets of witnesses - format??)
+    # def _parse_witness_list(self, witness_list_list):
+    #     witness_lists = witness_list_list.split(";")
+    #     for index, witness_list in enumerate(witness_lists):
+    #         witnesses = witness_list.split(",")
+    #         for witness in witnesses:
+    #             ip, vk = witness.split(":", 1)
+    #             self.witness_table[index][vk] = []
+    #             self.witness_table[index][vk].append(ip)
           
     # delegates bind to sub sockets on a fixed port. Each witness can open its pub socket and connect to all sub sockets??
-    def _subscribe_to_witnesses(self):
-        for index, tbl in enumerate(self.witness_table):
-            socket = ZmqAPI.get_socket(self.verifying_key, type=zmq.SUB)
-            for vk, value in self.witness_table:
-                ip = value[0]
-                url = "{}:{}".format(ip, PUB_SUB_PORT)
-                socket.connect(vk=vk, ip=ip)
-                self.log.debug("Connected to witness at ip:{} socket:{}"
-                               .format(ip, witness_vk))
-            self.witness_table[vk].append(socket)
-            self.tasks.append(self._listen_to_witness(socket, index))
+    # def _subscribe_to_witnesses(self):
+    #     for index, tbl in enumerate(self.witness_table):
+    #         socket = ZmqAPI.get_socket(self.verifying_key, type=zmq.SUB)
+    #         for vk, value in self.witness_table:
+    #             ip = value[0]
+    #             url = "{}:{}".format(ip, PUB_SUB_PORT)
+    #             socket.connect(vk=vk, ip=ip)
+    #             self.log.debug("Connected to witness at ip:{} socket:{}"
+    #                            .format(ip, witness_vk))
+    #         self.witness_table[vk].append(socket)
+    #         self.tasks.append(self._listen_to_witness(socket, index))
 
-    def run_loop_forever(self):
-        self.tasks.append(self._listen_to_block_manager())
-        self.loop.run_until_complete(asyncio.gather(*tasks))
 
     async def _listen_to_block_manager(self):
         try:
@@ -239,39 +252,6 @@ class SubBlockBuilder(Worker):
     def send_signature(self, merkle_sig):
         self.socket.send(merkle_sig.serialize())
 
-
-    def _validate_envelope(self, envelope_binary: bytes, header: str) -> Union[None, Envelope]:
-        # TODO return/raise custom exceptions in this instead of just logging stuff and returning none
-
-        # Deserialize envelope
-        env = None
-        try:
-            env = Envelope.from_bytes(envelope_binary)
-        except Exception as e:
-            self.log.error("Error deserializing envelope: {}".format(e))
-            return None
-
-        # Check seal
-        if not env.verify_seal():
-            self.log.error("Seal could not be verified for envelope {}".format(env))
-            return None
-
-        # If header is not none (meaning this is a ROUTE msg with an ID frame), then verify that the ID frame is
-        # the same as the vk on the seal
-        if header and (header != env.seal.verifying_key):
-            self.log.error("Header frame {} does not match seal's vk {}\nfor envelope {}"
-                           .format(header, env.seal.verifying_key, env))
-            return None
-
-        # Make sure we haven't seen this message before
-        if env.meta.uuid in self._recently_seen:
-            self.log.debug("Duplicate envelope detect with UUID {}. Ignoring.".format(env.meta.uuid))
-            return None
-
-        # TODO -- checks timestamp to ensure this envelope is recv'd in a somewhat reasonable time (within N seconds)
-
-        # If none of the above checks above return None, this envelope should be good
-        return env
 
     def _signal_teardown(self, signal, frame):
         self.log.important("Builder process got kill signal!")
