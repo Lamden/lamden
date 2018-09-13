@@ -106,7 +106,7 @@ class BlockManager(Worker):
 
     def run(self):
         self.build_task_list()
-        self.create_sbbs_procs()
+        self.start_sbb_procs()
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def build_task_list(self):
@@ -136,11 +136,14 @@ class BlockManager(Worker):
         self.sub = self.manager.create_socket(socket_type=zmq.SUB)  # TODO secure him
         self.sub.bind()
 
-    def create_sbbs_procs(self):
+    def start_sbb_procs(self):
         for i in range(self.num_sb_builders):
-            sb_proc = LProcess(target=SubBlockBuilder,
-                               kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT, "signing_key": self.signing_key,
-                                       "sbb_map": self.sbb_map, "sbb_index": i, "num_sb_builders": self.num_sb_builders})
+            self.sb_builders[i] = LProcess(target=SubBlockBuilder,
+                                           kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT,
+                                                   "signing_key": self.signing_key,
+                                                   "sbb_map": self.sbb_map, "sbb_index": i,
+                                                   "num_sb_builders": self.num_sb_builders})
+            self.sb_builders[i].start()
 
     def _get_my_index(self):
         for index, vk in enumerate(VKBook.get_delegates()):
@@ -177,13 +180,19 @@ class BlockManager(Worker):
 
         return MN_WITNESS_MAP[mn_vk]
 
-
     def handle_ipc_router_msg(self, frames):
         # This callback should receive stuff from everything on self.ipc_router. Currently, this is just the SBB procs
         self.log.important("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
 
         # First frame, frames[0], is the ID frame, last frame frames[-1] is the message binary. Since this is over IPC,
         # this does not necessarily have to be an Envelope.
+
+        # DEBUG TODO DELETE
+        # (Just for testing) we reply to that msg
+        id_frame, msg = frames[0], frames[-1].decode()
+        reply_msg = "Thanks for the msg {}".format(msg)
+        self.ipc_router.send_multipart(id_frame, reply_msg)
+        # END DEBUG
 
     def handle_sub_msg(self, frames):
         # This handle will get NewBlockNotifications from Masternodes, and BlockContenders (or whatever the equivalent

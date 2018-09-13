@@ -110,7 +110,7 @@ class SubBlockBuilder(Worker):
         import random
         self.log.info("Spamming BlockManager over IPC...")
         while True:
-            msg = "hello from SBB number {}".format(self.sbb_index)
+            msg = "hello from SBB {}".format(self.sbb_index)
             self.log.debug("Sending msg {}".format(msg))
             self.dealer.send_multipart([msg.encode()])
             asyncio.sleep(random.random() * 4)
