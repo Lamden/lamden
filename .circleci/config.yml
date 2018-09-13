@@ -2,15 +2,13 @@ version: 2
 jobs:
   build:
     machine: true
-    # working_directory: ~/cilantro
-    # docker:
-    #   - image: circleci/python:3.6.5
-    #   - image: lamden/cilantro
-    #   - image: lamden/cilantro-db
-    #     environment:
-    #       username: cilantro_user
-    #       password: buttcoins
-    #       database: cilantro_dev
+      - image: circleci/python:3.6.5
+      - image: lamden/cilantro
+      - image: lamden/cilantro-db
+        environment:
+          username: cilantro_user
+          password: buttcoins
+          database: cilantro_dev
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
