@@ -109,6 +109,7 @@ class BlockManager(Worker):
     def run(self):
         self.build_task_list()
         self.start_sbb_procs()
+        self.log.info("Block Manager starting...")
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def build_task_list(self):
@@ -145,6 +146,7 @@ class BlockManager(Worker):
                                                    "signing_key": self.signing_key, "ip": self.ip,
                                                    "sbb_map": self.sbb_map, "sbb_index": i,
                                                    "num_sb_builders": self.num_sb_builders})
+            self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
 
     def _build_mn_indices(self):
@@ -201,7 +203,7 @@ class BlockManager(Worker):
         # (Just for testing) we reply to that msg
         id_frame, msg = frames[0], frames[-1].decode()
         reply_msg = "Thanks for the msg {}".format(msg)
-        self.ipc_router.send_multipart(id_frame, reply_msg)
+        self.ipc_router.send_multipart([id_frame, reply_msg])
         # END DEBUG
 
     def handle_sub_msg(self, frames):

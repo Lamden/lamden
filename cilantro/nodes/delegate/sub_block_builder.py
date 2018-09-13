@@ -104,6 +104,7 @@ class SubBlockBuilder(Worker):
         self.run()
 
     def run(self):
+        self.log.notice("SBB {} starting...".format(self.sbb_index))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     async def test_dealer_ipc(self):
@@ -113,10 +114,10 @@ class SubBlockBuilder(Worker):
             msg = "hello from SBB {}".format(self.sbb_index)
             self.log.debug("Sending msg {}".format(msg))
             self.dealer.send_multipart([msg.encode()])
-            asyncio.sleep(random.random() * 4)
+            await asyncio.sleep(random.random() * 4)
 
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
-        self.log.info("Connected to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
+        self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
                       .format(port, ip, identity))
         self.dealer = self.manager.create_socket(socket_type=zmq.DEALER, name="SBB-IPC-Dealer[{}]".format(self.sbb_index))
         self.dealer.setsockopt(zmq.IDENTITY, identity)
@@ -134,7 +135,7 @@ class SubBlockBuilder(Worker):
             port = SBB_PORT_START + mn_idx
             self.log.info("SBB BINDing to port {} with no filter".format(port))
             sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, mn_idx))
-            sub.setsocketopt(zmq.SUBSCRIBE, b'')
+            sub.setsockopt(zmq.SUBSCRIBE, b'')
             sub.bind(port=port, ip=self.ip)  # TODO secure him
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg))
             self.subs.append(sub)
