@@ -43,10 +43,16 @@ from cilantro.utils.lprocess import LProcess
 from cilantro.constants.nodes import *
 from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.ports import INTER_DELEGATE_PORT, MN_NEW_BLOCK_PUB_PORT
+from cilantro.constants.testnet import WITNESS_MN_MAP
+
+from cilantro.messages.envelope.envelope import Envelope
+from cilantro.messages.consensus.block_contender import BlockContender
+from cilantro.messages.block_data.block_metadata import NewBlockNotification
 
 import asyncio
 import zmq
 import os
+from collections import defaultdict
 
 # communication
 # From master:
@@ -75,10 +81,11 @@ class BlockManager(Worker):
         self.current_hash = BlockStorageDriver.get_latest_block_hash()
         self.mn_indices = {vk: index for index, vk in enumerate(VKBook.get_masternodes())}  # MasternodeVK -> Index
         self.sb_builders = {}  # index -> process      # perhaps can be consolidated with the above ?
+        self.witness_map = self.build_witness_map()  # read docs on self.
         self.tasks = []
 
         self.num_mnodes = len(VKBook.get_masternodes())
-        self.num_blocks = MAX_BLOCKS if MAX_BLOCKS < self.num_mnodes else self.num_mnodes
+        self.num_blocks = min(MAX_BLOCKS, self.num_mnodes)
         self.sub_blocks_per_block = (self.num_mnodes + self.num_blocks - 1) // self.num_blocks
         self.num_sb_builders = min(MAX_SUB_BLOCK_BUILDERS, self.sub_blocks_per_block)
         self.my_sb_index = self.get_my_index() % self.sub_blocks_per_block
@@ -89,6 +96,13 @@ class BlockManager(Worker):
                         .format(vk=self.verifying_key, sb_index=self.my_sb_index, num_mn=self.num_mnodes,
                                 num_blocks=self.num_blocks, sb_per_block=self.sub_blocks_per_block,
                                 num_sb_builders=self.num_sb_builders))
+        assert self.num_mnodes >= self.num_blocks, "num_blocks cannot be created that num_masternodes"
+        assert self.num_sb_builders >= self.num_blocks, 'cannot have more blocks than sb builders'  # TODO or can we?
+
+        # TODO
+        # IRL it will not be possible for always have a # of masternodes that is not a perfect power of 2.
+        # Is this topology capable of handling that? I think we have to make some revisions, and consider the
+        # number of extra masternodes ...
 
         # Define Sockets (these get set in build_task_list)
         self.ipc_router, self.pub, self.sub = None, None, None
@@ -97,17 +111,13 @@ class BlockManager(Worker):
         self.run()
 
     def run(self):
-        # build task list, and create necessary sockets
         self.build_task_list()
-
-        # create sub block builder processes
         self.create_sbbs_procs()
-
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def build_task_list(self):
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
-        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER)  # TODO secure him
+        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER)
         self.ipc_router.bind(port=IPC_PORT, protocol='ipc', ip=self.ipc_ip)
         self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_router_msg))
 
@@ -117,13 +127,13 @@ class BlockManager(Worker):
         self.sub = self.manager.create_socket(socket_type=zmq.SUB)  # TODO secure him
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
-        # Listen to other delegates over INTER_DELEGATE_PORT (with no filter currently?)
+        # Listen to other delegates (NOTE: with no filter currently)
         self.sub.setsocketopt(zmq.SUBSCRIBE, b'')
         for vk in VKBook.get_delegates():
             if vk != self.verifying_key:  # Do not SUB to itself
                 self.sub.connect(vk=vk, port=INTER_DELEGATE_PORT)
 
-        # Listen to Masternodes over MN_NEW_BLOCK_PUB_PORT with MASTERNODE_DELEGATE_FILTER
+        # Listen to Masternodes
         self.sub.setsocketopt(zmq.SUBSCRIBE, MASTERNODE_DELEGATE_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MN_NEW_BLOCK_PUB_PORT)
@@ -132,147 +142,192 @@ class BlockManager(Worker):
         for i in range(self.num_sb_builders):
             sb_proc = LProcess(target=SubBlockBuilder, kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT, "signing_key": self.signing_key})
 
-    def _build_task_list(self):
-        # Add router socket - where do we listen to this ?? add
-        socket = ZmqAPI.add_router(ip=self.ip)
-        self.sockets.append(socket)
-        self.tasks.append(self._listen_to_router(socket))
+    # TODO maybe we can move this into 'utils' as a static method?
+    def build_witness_map(self) -> dict:
+         pass
 
-        socket = ZmqAPI.get_socket(self.verifying_key, type=zmq.SUB)
-        self.sockets.append(socket)
-        # now build listening task to other delegate(s)
-        for vk in VKBook.get_delegates():
-            if vk != self.verifying_key:  # not to itself
-                socket.connect(vk=vk)
-        self.tasks.append(self._sub_to_delegate(socket))
+    def _get_mn_block_map(self) -> dict:
+        """
+        Returns a mapping of Block Numbers (0 indexed) to a list Masternode VKs who are responsible for that block
+        number. For example, if self.num_blocks = 2, and there are 4 Masternodes with Vk1, Vk2, Vk3, Vk4,
+        this method will return a dict of form:
+        { 0 : [Vk1, Vk2],  1: [Vk3, Vk4] }
+        """
+        mn_block_map = {}
+        for block_index in range(self.num_blocks):
+            i = block_index * self.num_blocks
+            mn_block_map[block_index] = [self.mn_indices[n] for n in range(i, i + self.mn_per_block)]
 
-        # first build master(s) listening tasks
-        self.build_masternode_indices()  # builds mn_indices
-        mn_socket = ZmqAPI.get_socket(self.verifying_key, type=zmq.SUB)
-        self.dealer = ZmqAPI.get_socket(self.verifying_key, type=zmq.DEALER)
-        for vk, index in self.mn_indices:
-            # ip = OverlayInterface::get_node_from_vk(vk)
-            # sub connection
-            mn_socket.connect(vk=vk, filter=MASTERNODE_DELEGATE_FILTER, port=MN_NEW_BLOCK_PUB_PORT))
+        return mn_block_map
 
-            # dealer connection
-            self.dealers.connect(vk)
-
-            self.sockets.append(mn_socket)
-            self.tasks.append(self._sub_to_master(mn_socket, vk, index)
-
-        for index in range(self.num_sb_builders):
-            # create sbb processes and sockets
-            self.sbb_ports[index] = port = 6000 + index  # 6000 -> SBB_PORT
-            self.sb_builders[index] = Process(target=SubBlockBuilder,
-                                              args=(self.signing_key, self.url,
-                                                    self.sbb_ports[index],
-                                                    index))  # we probably don't need to pass port if we pass index
-            self.sb_builders[index].start()
-            socket = ZmqAPI.get_socket(self.verifying_key, socket_type=zmq.PAIR)
-            socket.connect("{}:{}".format(url, port)))
-            self.sockets.append(socket)
-            self.tasks.append(self._listen_to_sbb(socket, vk, index)
-
-        # self.tasks.append(self._dealer_to_master(socket, vk, index))
+    def _get_witnesses_for_mn(self, mn_vk) -> list:
+        """
+        Returns a list of witness VKs that are responsible for relays a given masternode's transactions
+        :param mn_vk: The verifying key of the masternode. Must exist in VKBook
+        """
+        # TODO implement
+        pass
 
 
     def handle_ipc_router_msg(self, frames):
         # This callback should receive stuff from everything on self.ipc_router. Currently, this is just the SBB procs
         self.log.important("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
 
+        # First frame, frames[0], is the ID frame, last frame frames[-1] is the message binary. Since this is over IPC,
+        # this does not necessarily have to be an Envelope.
+
     def handle_sub_msg(self, frames):
+        # This handle will get NewBlockNotifications from Masternodes, and BlockContenders (or whatever the equivalent
+        # is now) from Delegates
 
+        # The first frame is the filter, and the last frame is the envelope binary
+        envelope = Envelope.from_bytes(frames[-1])
+        msg = envelope.message
+        msg_hash = envelope.message_hash
 
-    async def _sub_to_delegate(self, socket, vk):
-        while True:
-            event = await socket->recv_event()
-
-            if event == MERKLE_SUB_BLOCK:
-                self.recv_merkle_tree(event)
-            # elif
-
-
-    async def _sub_to_master(self, socket, mn_vk, mn_index):
-        # Events:
-        # 1. recv new block notification
-        last_block_hash, last_timestamp = self.get_latest_block_hash_timestamp()
-        next_block = {}
-
-        while True:
-            event = await socket->recv_event()
-
-            if event == NEW_BLOCK:
-                block_hash, timestamp = self.fetch_hash_timestamp(event)
-                if (block_hash == last_block_hash) or (timestamp < last_timestamp):
-                    continue
-                num = next_block.get(block_hash, 0) + 1
-                if (num == self.quorum):
-                    self.update_db(event)
-                    next_block = {}
-                else:
-                    next_block[block_hash] = num
-
-
-    async def _listen_to_sbb(socket, vk, index):
-        # Events:
-        # 1. recv merkle sub-block from SB builders
-        while True:
-            event = await socket->recv_event()
-
-            if event == MERKLE_SUB_BLOCK:
-                if index == self.my_sb_index:  # responsbile for this sub-block
-                    self.handle_sub_block(event)  # verify and publish to masters and other delegates
-            # elif
-
-
-    def get_my_index(self):
-        for index, vk in enumerate(VKBook.get_delegates()):
-            if vk == self.verifying_key:
-                return index
-
-
-    def handle_sub_block(self, sub_block, index):
-        # resolve conflicts if any with previous sub_blocks
-        sub_block = self.resolve_conflicts(sub_block, index)
-        # keep it in
-        self.save_and_vote(sub_block, index)
-
-
-    def save_and_vote(self, sub_block, index):
-        if index == self.my_sb_index:
-            self.publish_sub_block(sub_block)  # to masters and other delegates
+        if type(msg) == NewBlockNotification:
+            # TODO implement
+            pass
+        elif type(msg) == BlockContender:
+            # TODO implement
+            pass
         else:
-            other_sb = self.pending_sigs.get(index, None)
-            if (other_sb == None):
-                self.my_sub_blocks[index] = sub_block
-            else:
-                status = self.vote(other_sb, sub_block)
-                if status:
-                    self.pending_sigs[index] = None
-                else:
-                    self.my_sub_blocks[index] = sub_block
+            raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
+                            .format(type(msg)))
+        # Last frame, frames[-1] will be the envelope binary
+
+    # def _build_task_list(self):
+    #     # Add router socket - where do we listen to this ?? add
+    #     socket = ZmqAPI.add_router(ip=self.ip)
+    #     self.sockets.append(socket)
+    #     self.tasks.append(self._listen_to_router(socket))
+    #
+    #     socket = ZmqAPI.get_socket(self.verifying_key, type=zmq.SUB)
+    #     self.sockets.append(socket)
+    #     # now build listening task to other delegate(s)
+    #     for vk in VKBook.get_delegates():
+    #         if vk != self.verifying_key:  # not to itself
+    #             socket.connect(vk=vk)
+    #     self.tasks.append(self._sub_to_delegate(socket))
+    #
+    #     # first build master(s) listening tasks
+    #     self.build_masternode_indices()  # builds mn_indices
+    #     mn_socket = ZmqAPI.get_socket(self.verifying_key, type=zmq.SUB)
+    #     self.dealer = ZmqAPI.get_socket(self.verifying_key, type=zmq.DEALER)
+    #     for vk, index in self.mn_indices:
+    #         # ip = OverlayInterface::get_node_from_vk(vk)
+    #         # sub connection
+    #         mn_socket.connect(vk=vk, filter=MASTERNODE_DELEGATE_FILTER, port=MN_NEW_BLOCK_PUB_PORT))
+    #
+    #         # dealer connection
+    #         self.dealers.connect(vk)
+    #
+    #         self.sockets.append(mn_socket)
+    #         self.tasks.append(self._sub_to_master(mn_socket, vk, index)
+    #
+    #     for index in range(self.num_sb_builders):
+    #         # create sbb processes and sockets
+    #         self.sbb_ports[index] = port = 6000 + index  # 6000 -> SBB_PORT
+    #         self.sb_builders[index] = Process(target=SubBlockBuilder,
+    #                                           args=(self.signing_key, self.url,
+    #                                                 self.sbb_ports[index],
+    #                                                 index))  # we probably don't need to pass port if we pass index
+    #         self.sb_builders[index].start()
+    #         socket = ZmqAPI.get_socket(self.verifying_key, socket_type=zmq.PAIR)
+    #         socket.connect("{}:{}".format(url, port)))
+    #         self.sockets.append(socket)
+    #         self.tasks.append(self._listen_to_sbb(socket, vk, index)
 
 
-    def vote(self, other_sb, sub_block):
-        bag_hash1 = other_sb.get_bag_hash()
-        bag_hash2 = sub_block.get_bag_hash()
-        if (bag_hash1 != bag_hash2):
-            return False
-        ms_hash1 = other_sb.get_root_hash()
-        ms_hash2 = sub_block.get_root_hash()
-        publish_vote(agree if ms_hash1 == ms_hash2 else disagree)  # to all masters
-        return True
-
-
-    def recv_merkle_tree(self, other_sb):
-        index = self.get_sub_block_index(other_sb)
-        sub_block = self.my_sub_blocks.get(index, None)
-        if (sub_block == None):
-            self.pending_sigs[index] = other_sb
-        else:
-            status = self.vote(other_sb, sub_block)
-            if status:
-                self.my_sub_blocks[index] = None
-            else:
-                self.pending_sigs[index] = other_sb
+    # async def _sub_to_delegate(self, socket, vk):
+    #     while True:
+    #         event = await socket->recv_event()
+    #
+    #         if event == MERKLE_SUB_BLOCK:
+    #             self.recv_merkle_tree(event)
+    #         # elif
+    #
+    #
+    # async def _sub_to_master(self, socket, mn_vk, mn_index):
+    #     # Events:
+    #     # 1. recv new block notification
+    #     last_block_hash, last_timestamp = self.get_latest_block_hash_timestamp()
+    #     next_block = {}
+    #
+    #     while True:
+    #         event = await socket->recv_event()
+    #
+    #         if event == NEW_BLOCK:
+    #             block_hash, timestamp = self.fetch_hash_timestamp(event)
+    #             if (block_hash == last_block_hash) or (timestamp < last_timestamp):
+    #                 continue
+    #             num = next_block.get(block_hash, 0) + 1
+    #             if (num == self.quorum):
+    #                 self.update_db(event)
+    #                 next_block = {}
+    #             else:
+    #                 next_block[block_hash] = num
+    #
+    #
+    # async def _listen_to_sbb(socket, vk, index):
+    #     # Events:
+    #     # 1. recv merkle sub-block from SB builders
+    #     while True:
+    #         event = await socket->recv_event()
+    #
+    #         if event == MERKLE_SUB_BLOCK:
+    #             if index == self.my_sb_index:  # responsbile for this sub-block
+    #                 self.handle_sub_block(event)  # verify and publish to masters and other delegates
+    #         # elif
+    #
+    #
+    # def get_my_index(self):
+    #     for index, vk in enumerate(VKBook.get_delegates()):
+    #         if vk == self.verifying_key:
+    #             return index
+    #
+    #
+    # def handle_sub_block(self, sub_block, index):
+    #     # resolve conflicts if any with previous sub_blocks
+    #     sub_block = self.resolve_conflicts(sub_block, index)
+    #     # keep it in
+    #     self.save_and_vote(sub_block, index)
+    #
+    #
+    # def save_and_vote(self, sub_block, index):
+    #     if index == self.my_sb_index:
+    #         self.publish_sub_block(sub_block)  # to masters and other delegates
+    #     else:
+    #         other_sb = self.pending_sigs.get(index, None)
+    #         if (other_sb == None):
+    #             self.my_sub_blocks[index] = sub_block
+    #         else:
+    #             status = self.vote(other_sb, sub_block)
+    #             if status:
+    #                 self.pending_sigs[index] = None
+    #             else:
+    #                 self.my_sub_blocks[index] = sub_block
+    #
+    #
+    # def vote(self, other_sb, sub_block):
+    #     bag_hash1 = other_sb.get_bag_hash()
+    #     bag_hash2 = sub_block.get_bag_hash()
+    #     if (bag_hash1 != bag_hash2):
+    #         return False
+    #     ms_hash1 = other_sb.get_root_hash()
+    #     ms_hash2 = sub_block.get_root_hash()
+    #     publish_vote(agree if ms_hash1 == ms_hash2 else disagree)  # to all masters
+    #     return True
+    #
+    #
+    # def recv_merkle_tree(self, other_sb):
+    #     index = self.get_sub_block_index(other_sb)
+    #     sub_block = self.my_sub_blocks.get(index, None)
+    #     if (sub_block == None):
+    #         self.pending_sigs[index] = other_sb
+    #     else:
+    #         status = self.vote(other_sb, sub_block)
+    #         if status:
+    #             self.my_sub_blocks[index] = None
+    #         else:
+    #             self.pending_sigs[index] = other_sb

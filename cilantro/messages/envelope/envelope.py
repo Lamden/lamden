@@ -129,6 +129,10 @@ class Envelope(MessageBase):
 
         return MessageBase.registry[self.meta.type].from_bytes(self.message_binary)
 
+    @lazy_property
+    def message_hash(self) -> str:
+        return Hasher.hash(self.message)
+
     def __repr__(self):
         """
         Printing the full capnp struct (which is the default MessageBase __repr__ behvaior) is way to verbose for
