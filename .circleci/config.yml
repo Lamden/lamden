@@ -1,15 +1,16 @@
 version: 2
 jobs:
   build:
-    working_directory: ~/cilantro
-    docker:
-      - image: circleci/python:3.6.5
-      - image: lamden/cilantro
-      - image: lamden/cilantro-db
-        environment:
-          username: cilantro_user
-          password: buttcoins
-          database: cilantro_dev
+    machine: true
+    # working_directory: ~/cilantro
+    # docker:
+    #   - image: circleci/python:3.6.5
+    #   - image: lamden/cilantro
+    #   - image: lamden/cilantro-db
+    #     environment:
+    #       username: cilantro_user
+    #       password: buttcoins
+    #       database: cilantro_dev
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
@@ -27,25 +28,25 @@ jobs:
           command: |
              sudo apt install -y mysql-client
 
-      # This should go into custom primary image, here's only for the sake of explanation
-      - run:
-          name: Install Docker client
-          command: |
-            set -x
-            VER="18.03.1-ce"
-            curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
-            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
-            sudo mv /tmp/docker/* /usr/bin
-      # This should go into custom primary image, here's only for the sake of explanation
-      - run:
-          name: Install Docker Compose
-          command: |
-            curl -L https://github.com/docker/compose/releases/download/1.21.1/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
-            chmod +x ~/docker-compose
-            sudo mv ~/docker-compose /usr/local/bin/docker-compose
-
-      - setup_remote_docker:
-          version: 18.03.1-ce
+      # # This should go into custom primary image, here's only for the sake of explanation
+      # - run:
+      #     name: Install Docker client
+      #     command: |
+      #       set -x
+      #       VER="18.03.1-ce"
+      #       curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
+      #       tar -xz -C /tmp -f /tmp/docker-$VER.tgz
+      #       sudo mv /tmp/docker/* /usr/bin
+      # # This should go into custom primary image, here's only for the sake of explanation
+      # - run:
+      #     name: Install Docker Compose
+      #     command: |
+      #       curl -L https://github.com/docker/compose/releases/download/1.21.1/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
+      #       chmod +x ~/docker-compose
+      #       sudo mv ~/docker-compose /usr/local/bin/docker-compose
+      #
+      # - setup_remote_docker:
+      #     version: 18.03.1-ce
 
       - run:
           name: set temp credentials file (aka db config stuff)
