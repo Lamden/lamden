@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     machine:
-        image: circleci/classic:edge
+        image: circleci/classic:201808-01
     # working_directory: ~/cilantro
     # docker:
     #   - image: circleci/python:3.6.5
@@ -15,9 +15,10 @@ jobs:
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
           key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}
+      - run: pyenv install 3.6.3
+      - run: pyenv local 3.6.3
       - run:
           name: Install Cilantro Requirements
           command: |
@@ -38,7 +39,7 @@ jobs:
       #       curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
       #       tar -xz -C /tmp -f /tmp/docker-$VER.tgz
       #       sudo mv /tmp/docker/* /usr/bin
-      # # This should go into custom primary image, here's only for the sake of explanation
+      # This should go into custom primary image, here's only for the sake of explanation
       # - run:
       #     name: Install Docker Compose
       #     command: |
