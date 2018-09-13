@@ -29,11 +29,11 @@
          6. Make and send subblock to blockMgr
 """
 
-each sbb:
-   - 16 processes -> each process with 4 threads ?? 4 master bins ??
-      rotate circularly
-        thread1 -> take first batch and interpret it and send it. do a small yield??
-        thread2 -> take second batch and repeat
+# each sbb:
+#    - 16 processes -> each process with 4 threads ?? 4 master bins ??
+#       rotate circularly
+#         thread1 -> take first batch and interpret it and send it. do a small yield??
+#         thread2 -> take second batch and repeat
 
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 import asyncio, os, logging
@@ -42,35 +42,14 @@ from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol import wallet
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.logger import get_logger
-from cilantro.protocol.reactor.executor import Executor
-from cilantro.messages.reactor.reactor_command import ReactorCommand
-from cilantro.protocol.overlay.dht import DHT
-from cilantro.protocol.overlay.node import Node
-from cilantro.protocol.overlay.utils import digest
-from cilantro.protocol.structures import CappedDict
-from cilantro.utils import IPUtils
-from cilantro.constants.zmq_filters import DELEGATE_DELEGATE_FILTER, WITNESS_DELEGATE_FILTER
 import signal, sys
-from cilantro.protocol.states.state import StateInput
-from cilantro.constants.overlay_network import ALPHA, KSIZE, MAX_PEERS
-import inspect
-from cilantro.storage.blocks import BlockStorageDriver
-from cilantro.messages.transaction.ordering import OrderingContainer
-from cilantro.constants.nodes import BLOCK_SIZE
-from cilantro.protocol.states.decorators import input, enter_from_any, exit_to_any, exit_to, enter_from
-from zmq.utils.z85 import decode, encode
-from nacl.public import PrivateKey, PublicKey
-from nacl.signing import SigningKey, VerifyKey
-from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 from cilantro.storage.db import VKBook
-from collections import defaultdict
 from cilantro.constants.protocol import DUPE_TABLE_SIZE
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.protocol.structures import CappedSet
 from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
 from typing import Union
-from cilantro.constants.ports import PUB_SUB_PORT
 from cilantro.utils.hasher import Hasher
 import time
 
@@ -92,7 +71,7 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 # witness can quit at a certain time interval ?? and delegates can kick it out once it has other 5/6 copies and no data from it??
 
 
-class SubBlockBuilder:
+class SubBlockBuilder(Worker):
     def __init__(self, signing_key, master_list, url, sbb_index):
         self.log = get_logger("SubBlockBuilder_{}".format(sbb_index))
         # Comment out below for more granularity in debugging

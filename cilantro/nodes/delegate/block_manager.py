@@ -43,7 +43,7 @@ from cilantro.utils.lprocess import LProcess
 from cilantro.constants.nodes import *
 from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.ports import INTER_DELEGATE_PORT, MN_NEW_BLOCK_PUB_PORT
-from cilantro.constants.testnet import WITNESS_MN_MAP
+from cilantro.constants.testnet import WITNESS_MN_MAP, MN_WITNESS_MAP
 
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.block_contender import BlockContender
@@ -81,14 +81,14 @@ class BlockManager(Worker):
         self.current_hash = BlockStorageDriver.get_latest_block_hash()
         self.mn_indices = {vk: index for index, vk in enumerate(VKBook.get_masternodes())}  # MasternodeVK -> Index
         self.sb_builders = {}  # index -> process      # perhaps can be consolidated with the above ?
-        self.witness_map = self.build_witness_map()  # read docs on self.
+        self.sbb_map = self._build_sbb_map()
         self.tasks = []
 
         self.num_mnodes = len(VKBook.get_masternodes())
         self.num_blocks = min(MAX_BLOCKS, self.num_mnodes)
         self.sub_blocks_per_block = (self.num_mnodes + self.num_blocks - 1) // self.num_blocks
         self.num_sb_builders = min(MAX_SUB_BLOCK_BUILDERS, self.sub_blocks_per_block)
-        self.my_sb_index = self.get_my_index() % self.sub_blocks_per_block
+        self.my_sb_index = self._get_my_index() % self.sub_blocks_per_block
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_masternodes={num_mn}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
@@ -98,11 +98,6 @@ class BlockManager(Worker):
                                 num_sb_builders=self.num_sb_builders))
         assert self.num_mnodes >= self.num_blocks, "num_blocks cannot be created that num_masternodes"
         assert self.num_sb_builders >= self.num_blocks, 'cannot have more blocks than sb builders'  # TODO or can we?
-
-        # TODO
-        # IRL it will not be possible for always have a # of masternodes that is not a perfect power of 2.
-        # Is this topology capable of handling that? I think we have to make some revisions, and consider the
-        # number of extra masternodes ...
 
         # Define Sockets (these get set in build_task_list)
         self.ipc_router, self.pub, self.sub = None, None, None
@@ -138,35 +133,48 @@ class BlockManager(Worker):
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MN_NEW_BLOCK_PUB_PORT)
 
+    def make_new_sub(self):
+        self.sub = self.manager.create_socket(socket_type=zmq.SUB)  # TODO secure him
+        self.sub.bind()
+
     def create_sbbs_procs(self):
         for i in range(self.num_sb_builders):
-            sb_proc = LProcess(target=SubBlockBuilder, kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT, "signing_key": self.signing_key})
+            sb_proc = LProcess(target=SubBlockBuilder, kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT, "signing_key": self.signing_key, "sbb_map": self.sbb_map, "sbb_index": i})
 
-    # TODO maybe we can move this into 'utils' as a static method?
-    def build_witness_map(self) -> dict:
-         pass
+    def _get_my_index(self):
+        for index, vk in enumerate(VKBook.get_delegates()):
+            if vk == self.verifying_key:
+                return index
 
-    def _get_mn_block_map(self) -> dict:
+        raise Exception("Delegate VK {} not found in VKBook {}".format(self.verifying_key, VKBook.get_delegates()))
+
+    def _build_sbb_map(self) -> dict:
         """
-        Returns a mapping of Block Numbers (0 indexed) to a list Masternode VKs who are responsible for that block
-        number. For example, if self.num_blocks = 2, and there are 4 Masternodes with Vk1, Vk2, Vk3, Vk4,
-        this method will return a dict of form:
-        { 0 : [Vk1, Vk2],  1: [Vk3, Vk4] }
+        The goal with this mapping is to tell each SBB process which witnesses it should be listening to. This builds a
+        mapping of SBB indices to another mapping of MN VKs to witness sets.
         """
-        mn_block_map = {}
-        for block_index in range(self.num_blocks):
-            i = block_index * self.num_blocks
-            mn_block_map[block_index] = [self.mn_indices[n] for n in range(i, i + self.mn_per_block)]
+        mn_per_sbb = self.num_mnodes // self.num_sb_builders
+        sbb_map = {}
 
-        return mn_block_map
+        for sbb_idx in range(self.num_sb_builders):
+            mn_map = {}
+            sbb_map[sbb_idx] = mn_map
+
+            for mn_idx in range(sbb_idx * mn_per_sbb, sbb_idx * mn_per_sbb + mn_per_sbb):
+                mn_vk = self.mn_indices[mn_idx]
+                mn_map[mn_vk] = self._get_witnesses_for_mn(mn_vk)
+
+        return sbb_map
 
     def _get_witnesses_for_mn(self, mn_vk) -> list:
         """
         Returns a list of witness VKs that are responsible for relays a given masternode's transactions
         :param mn_vk: The verifying key of the masternode. Must exist in VKBook
         """
-        # TODO implement
-        pass
+        assert mn_vk in VKBook.get_masternodes(), "mn_vk {} not in VKBook {}".format(mn_vk, VKBook.get_masternodes())
+        assert mn_vk in MN_WITNESS_MAP, "MN VK {} not in MN_WITNESS_MAP {}".format(mn_vk, MN_WITNESS_MAP)
+
+        return MN_WITNESS_MAP[mn_vk]
 
 
     def handle_ipc_router_msg(self, frames):
@@ -281,11 +289,7 @@ class BlockManager(Worker):
     #         # elif
     #
     #
-    # def get_my_index(self):
-    #     for index, vk in enumerate(VKBook.get_delegates()):
-    #         if vk == self.verifying_key:
-    #             return index
-    #
+
     #
     # def handle_sub_block(self, sub_block, index):
     #     # resolve conflicts if any with previous sub_blocks
