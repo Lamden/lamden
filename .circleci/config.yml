@@ -4,13 +4,14 @@ jobs:
     working_directory: ~/cilantro
     machine: true
     macos:
+        xcode: "9.0"
       # - image: circleci/python:3.6.5
       # - image: lamden/cilantro
       # - image: lamden/cilantro-db
-        environment:
-          username: cilantro_user
-          password: buttcoins
-          database: cilantro_dev
+    environment:
+      username: cilantro_user
+      password: buttcoins
+      database: cilantro_dev
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
