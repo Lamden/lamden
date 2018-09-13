@@ -125,7 +125,7 @@ class LSocket:
 
     def _connect_or_bind(self, should_connect: bool, port: int, protocol: str='tcp', ip: str='', vk: str=''):
         assert ip, "Expected ip arg to be present!"
-        assert protocol in ('tcp', 'icp'), "Only tcp/ipc protocol is supported, not {}".format(protocol)
+        assert protocol in ('tcp', 'ipc'), "Only tcp/ipc protocol is supported, not {}".format(protocol)
         # TODO validate other args (port is an int within some range, ip address is a valid, ect)
 
         url = "{}://{}:{}".format(protocol, ip, port)

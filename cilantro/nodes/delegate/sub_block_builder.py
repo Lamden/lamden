@@ -118,10 +118,10 @@ class SubBlockBuilder(Worker):
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
         self.log.info("Connected to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
                       .format(port, ip, identity))
-        self.dealer = self.manager.create_socket(socket_type=zmq.DEALER)
-        self.dealer.setsockopt(zmq.IDENTITY, str(self.sbb_index).encode())
-        self.dealer.connect(port=self.ip, protocol='ipc', ip=self.ipc_ip)
-        self.tasks.append(self.dealer.add_handler(handler_func=self.handle_ipc_dealer_msg))
+        self.dealer = self.manager.create_socket(socket_type=zmq.DEALER, name="SBB-IPC-Dealer[{}]".format(self.sbb_index))
+        self.dealer.setsockopt(zmq.IDENTITY, identity)
+        self.dealer.connect(port=port, protocol='ipc', ip=ip)
+        self.tasks.append(self.dealer.add_handler(handler_func=self.handle_ipc_msg))
 
     def _create_sub_sockets(self, num_sb_builders, num_mnodes):
         # First, determine the set of Masternodes this SBB is responsible for
@@ -133,13 +133,13 @@ class SubBlockBuilder(Worker):
         for mn_idx in mn_range:
             port = SBB_PORT_START + mn_idx
             self.log.info("SBB BINDing to port {} with no filter".format(port))
-            sub = self.manager.create_socket(socket_type=zmq.SUB)
+            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, mn_idx))
             sub.setsocketopt(zmq.SUBSCRIBE, b'')
             sub.bind(port=port, ip=self.ip)  # TODO secure him
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg))
             self.subs.append(sub)
 
-    def handle_ipc_dealer_msg(self, frames):
+    def handle_ipc_msg(self, frames):
         self.log.important("Got msg over Router IPC from BlockManager with frames: {}".format(frames))
         # TODO implement
 
@@ -172,37 +172,38 @@ class SubBlockBuilder(Worker):
     #         self.tasks.append(self._listen_to_witness(socket, index))
 
 
-    async def _listen_to_block_manager(self):
-        try:
-            self.log.debug(
-               "Sub-block builder {} listening to Block-manager process at {}"
-               .format(self.sbb_index, self.url))
-            while True:
-                cmd_bin = await self.socket.recv()
-                self.log.debug("Got cmd from BM: {}".format(cmd_bin))
-
-                # need to change logic here based on our communication protocols
-                if cmd_bin == KILL_SIG:
-                    self.log.debug("Sub-block builder {} got kill signal"
-                    .format(self.sbb_index))
-                    self._teardown()
-                    return
-
-                if cmd_bin == ADD_WITNESS:
-                    # new witness that will cover the master
-                    # witness_vk, master_vk
-
-                # SKIP_ROUND behavior is captured by this guy receiving an empty bag
-                # if cmd_bin == SKIP_ROUND:
-                #     skip if don't have txns pending
-
-                if cmd_bin == CANCEL_SUBTREE:
-                    if self._interpret:
-                        self._interpret = 0
-
-
-        except asyncio.CancelledError:
-            self.log.warning("Builder _recv_messages task canceled externally")
+    # TODO mimic this logic in handle_ipc_msg
+    # async def _listen_to_block_manager(self):
+    #     try:
+    #         self.log.debug(
+    #            "Sub-block builder {} listening to Block-manager process at {}"
+    #            .format(self.sbb_index, self.url))
+    #         while True:
+    #             cmd_bin = await self.socket.recv()
+    #             self.log.debug("Got cmd from BM: {}".format(cmd_bin))
+    #
+    #             # need to change logic here based on our communication protocols
+    #             if cmd_bin == KILL_SIG:
+    #                 self.log.debug("Sub-block builder {} got kill signal"
+    #                 .format(self.sbb_index))
+    #                 self._teardown()
+    #                 return
+    #
+    #             if cmd_bin == ADD_WITNESS:
+    #                 # new witness that will cover the master
+    #                 # witness_vk, master_vk
+    #
+    #             # SKIP_ROUND behavior is captured by this guy receiving an empty bag
+    #             # if cmd_bin == SKIP_ROUND:
+    #             #     skip if don't have txns pending
+    #
+    #             if cmd_bin == CANCEL_SUBTREE:
+    #                 if self._interpret:
+    #                     self._interpret = 0
+    #
+    #
+    #     except asyncio.CancelledError:
+    #         self.log.warning("Builder _recv_messages task canceled externally")
 
 
     # async def recv_multipart(self, socket, callback_fn: types.MethodType, ignore_first_frame=False):
@@ -225,7 +226,6 @@ class SubBlockBuilder(Worker):
                 txn_bag = event.fetch_bag()
                 self.pending_txs[index].append(bag_hash, txn_bag)
 
-
     async def _interpret_next_subtree(self, index):
         self.log.debug("Starting to make a new sub-block {} for block {}"
                        .format(self.sub_block_num, self.block_num))
@@ -247,7 +247,6 @@ class SubBlockBuilder(Worker):
                                             timestamp='now',
                                             sender=self.verifying_key)
         self.send_signature(merkle_sig)  # send signature to block manager
-
 
     def send_signature(self, merkle_sig):
         self.socket.send(merkle_sig.serialize())

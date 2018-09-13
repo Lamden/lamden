@@ -67,20 +67,20 @@ from collections import defaultdict
 #   Send sig for sub-tree(i)
 #   send Ready ??
 
-IPC_IP = 'IPC-block-manager'
+IPC_IP = 'ipc-sock-block-manager'
 IPC_PORT = 6967
 
 
 class BlockManager(Worker):
 
     def __init__(self, ip, *args, **kwargs):
-        super().__init__(*args, name="BlockManager[{}]".format(self.verifying_key[:8]), **kwargs)
+        super().__init__(*args, **kwargs)
+        self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
 
         self.ip = ip
         self.current_hash = BlockStorageDriver.get_latest_block_hash()
-        self.mn_indices = {vk: index for index, vk in enumerate(VKBook.get_masternodes())}  # MasternodeVK -> Index
+        self.mn_indices = self._build_mn_indices()
         self.sb_builders = {}  # index -> process      # perhaps can be consolidated with the above ?
-        self.sbb_map = self._build_sbb_map()
         self.tasks = []
 
         self.num_mnodes = len(VKBook.get_masternodes())
@@ -96,7 +96,9 @@ class BlockManager(Worker):
                                 num_blocks=self.num_blocks, sb_per_block=self.sub_blocks_per_block,
                                 num_sb_builders=self.num_sb_builders))
         assert self.num_mnodes >= self.num_blocks, "num_blocks cannot be created that num_masternodes"
-        assert self.num_sb_builders >= self.num_blocks, 'cannot have more blocks than sb builders'  # TODO or can we?
+
+        self.sbb_map = self._build_sbb_map()
+        self.log.info("Using sub-block builder map {}".format(self.sbb_map))
 
         # Define Sockets (these get set in build_task_list)
         self.ipc_router, self.pub, self.sub = None, None, None
@@ -111,24 +113,24 @@ class BlockManager(Worker):
 
     def build_task_list(self):
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
-        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER)
+        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
         self.ipc_router.bind(port=IPC_PORT, protocol='ipc', ip=self.ipc_ip)
-        self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_router_msg))
+        self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_msg))
 
         # Create SUB socket to
         # 1) listen for subblock contenders from other delegates
         # 2) listen for NewBlockNotifications from masternodes
-        self.sub = self.manager.create_socket(socket_type=zmq.SUB)  # TODO secure him
+        self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BM-Sub")  # TODO secure him
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
         # Listen to other delegates (NOTE: with no filter currently)
-        self.sub.setsocketopt(zmq.SUBSCRIBE, b'')
+        self.sub.setsockopt(zmq.SUBSCRIBE, b'')
         for vk in VKBook.get_delegates():
             if vk != self.verifying_key:  # Do not SUB to itself
                 self.sub.connect(vk=vk, port=INTER_DELEGATE_PORT)
 
         # Listen to Masternodes
-        self.sub.setsocketopt(zmq.SUBSCRIBE, MASTERNODE_DELEGATE_FILTER.encode())
+        self.sub.setsockopt(zmq.SUBSCRIBE, MASTERNODE_DELEGATE_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MN_NEW_BLOCK_PUB_PORT)
 
@@ -140,10 +142,18 @@ class BlockManager(Worker):
         for i in range(self.num_sb_builders):
             self.sb_builders[i] = LProcess(target=SubBlockBuilder,
                                            kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT,
-                                                   "signing_key": self.signing_key,
+                                                   "signing_key": self.signing_key, "ip": self.ip,
                                                    "sbb_map": self.sbb_map, "sbb_index": i,
                                                    "num_sb_builders": self.num_sb_builders})
             self.sb_builders[i].start()
+
+    def _build_mn_indices(self):
+        # For convenience, we define a bidirectional mapping between Masternode indices and their VKs
+        idxs = {vk: index for index, vk in enumerate(VKBook.get_masternodes())}
+        reverse_map = dict([reversed(i) for i in idxs.items()])
+        idxs.update(reverse_map)
+
+        return idxs
 
     def _get_my_index(self):
         for index, vk in enumerate(VKBook.get_delegates()):
@@ -180,7 +190,7 @@ class BlockManager(Worker):
 
         return MN_WITNESS_MAP[mn_vk]
 
-    def handle_ipc_router_msg(self, frames):
+    def handle_ipc_msg(self, frames):
         # This callback should receive stuff from everything on self.ipc_router. Currently, this is just the SBB procs
         self.log.important("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
 
