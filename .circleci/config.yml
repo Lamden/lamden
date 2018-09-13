@@ -3,7 +3,7 @@ jobs:
   build:
     machine:
         image: circleci/classic:201808-01
-    # working_directory: ~/cilantro
+    working_directory: ~/cilantro
     # docker:
     #   - image: circleci/python:3.6.5
     #   - image: lamden/cilantro
@@ -17,14 +17,16 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/bin
       # - restore_cache:
       #     key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}
+      - run: docker pull lamden/cilantro-db
       - run: pyenv install 3.6.3
       - run: pyenv local 3.6.3
+      - run: export PYTHONPATH=~/cilantro
       - run:
           name: Install Cilantro Requirements
           command: |
+             sudo apt-get install libmysqlclient-dev
              pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
              pip install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
-
       - run:
           name: Install Mysql Client
           command: |
