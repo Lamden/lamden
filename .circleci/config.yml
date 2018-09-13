@@ -1,7 +1,8 @@
 version: 2
 jobs:
   build:
-    machine: true
+    machine:
+        image: circleci/classic:edge
     # working_directory: ~/cilantro
     # docker:
     #   - image: circleci/python:3.6.5
@@ -13,7 +14,6 @@ jobs:
     #       database: cilantro_dev
     steps:
       - checkout
-      - run: pyenv install 3.6.3
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
