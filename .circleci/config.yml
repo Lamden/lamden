@@ -64,6 +64,7 @@ jobs:
           name: Wait For mysqld
           command: |
             make start-db
+            sleep 10
 
       - run:
           name: Run Tests
