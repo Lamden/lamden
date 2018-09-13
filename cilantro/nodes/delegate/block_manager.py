@@ -67,7 +67,7 @@ from collections import defaultdict
 #   Send sig for sub-tree(i)
 #   send Ready ??
 
-IPC_IP = 'ipc-sock-block-manager'
+IPC_IP = 'block-manager-ipc-sock'
 IPC_PORT = 6967
 
 
