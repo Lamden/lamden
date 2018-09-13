@@ -4,9 +4,9 @@ jobs:
     working_directory: ~/cilantro
     machine: true
     macos:
-      - image: circleci/python:3.6.5
-      - image: lamden/cilantro
-      - image: lamden/cilantro-db
+      # - image: circleci/python:3.6.5
+      # - image: lamden/cilantro
+      # - image: lamden/cilantro-db
         environment:
           username: cilantro_user
           password: buttcoins
