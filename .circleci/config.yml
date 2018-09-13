@@ -2,9 +2,6 @@ version: 2
 jobs:
   build:
     working_directory: ~/cilantro
-    machine: true
-    macos:
-        xcode: "9.0"
     docker:
       - image: circleci/python:3.6.5
       - image: lamden/cilantro
