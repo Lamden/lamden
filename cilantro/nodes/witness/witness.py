@@ -5,6 +5,7 @@ from cilantro.constants.testnet import *
 
 from cilantro.protocol.states.state import State
 from cilantro.protocol.states.decorators import input, enter_from_any, input_connection_dropped, input_socket_connected
+from cilantro.protocol.reactor.socket_manager import SocketManager
 
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.envelope.envelope import Envelope
@@ -25,7 +26,11 @@ from cilantro.storage.db import VKBook
 
 
 class Witness(NodeBase):
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # TODO refactor all other use of Executors for sockets. use manager instead
+        self.manager = SocketManager(signing_key=self.signing_key, loop=self.loop)
 
 
 class WitnessBaseState(State):
@@ -68,7 +73,7 @@ class WitnessBootState(WitnessBaseState):
             .format(self.parent.verifying_key, WITNESS_MN_MAP)
 
         # Create publisher socket
-        self.parent.composer.add_pub(ip=self.parent.ip)
+        # self.parent.composer.add_pub(ip=self.parent.ip)
 
         # Sub to assigned Masternode
         mn_vk = WITNESS_MN_MAP[self.parent.verifying_key]
@@ -92,7 +97,7 @@ class WitnessRunState(WitnessBaseState):
     def recv_ordered_tx(self, tx: OrderingContainer, envelope: Envelope):
         self.log.spam("witness got tx: {}, with env {}".format(tx, envelope))
         raise Exception("Sending OrderingContainers directly to Witnesses should be deprecated! "
-                        "We should be sending TransactionBatches")
+                        "We should be sending TransactionBatch messages")
         # self.parent.composer.send_pub_env(envelope=envelope, filter=WITNESS_DELEGATE_FILTER)
 
     @input(TransactionBatch)

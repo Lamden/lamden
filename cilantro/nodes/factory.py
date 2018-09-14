@@ -38,13 +38,14 @@ class NodeFactory:
         mn.start()
 
     @staticmethod
+    def _build_node(loop, signing_key, ip, node_cls, name) -> NodeBase:
+
+    @staticmethod
     def run_witness(signing_key, ip, name='Witness', reset_db=False):
         with DB(should_reset=reset_db) as db:
             pass
-        loop = asyncio.new_event_loop()
 
-        w = NodeFactory._build_node(loop=loop, signing_key=signing_key, ip=ip, node_cls=Witness, name=name)
-
+        w = Witness(ip=ip, name=name, signing_key=signing_key)
         w.start()
 
     @staticmethod

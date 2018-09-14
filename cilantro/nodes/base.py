@@ -8,6 +8,35 @@ import asyncio
 import os
 from cilantro.protocol import wallet
 
+
+class NewNodeBase(StateMachine):
+
+    def __init__(self, ip, signing_key, name='Node'):
+        super().__init__()
+
+        self.log = get_logger(name)
+        self.ip = ip
+        self.name = name
+
+        self.signing_key = signing_key
+        self.verifying_key = wallet.get_vk(self.signing_key)
+
+        self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, os.getenv("HOST_IP")))
+
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+        self.log.notice("Starting overlay service")
+        self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key})
+        self.overlay_proc.start()
+
+        # DEBUG TODO DELETE
+        self.log.important3("OVERLAY SERVICE STARTED")
+        # END DEBUG
+
+        self.tasks = []
+
+
 class NodeBase(StateMachine):
 
     def __init__(self, ip, signing_key, loop, name='Node'):
