@@ -10,7 +10,7 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}-integration
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
       - run: pyenv local 3.6.5
       - run: sudo apt-get install libmysqlclient-dev
       - run:
@@ -45,7 +45,7 @@ jobs:
              ./scripts/make_test_config.py --password buttcoins --username cilantro_user --database cilantro_dev --hostname 127.0.0.1
 
       - save_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}-integration
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
           paths:
             - "/usr/local/bin"
             - "/opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages"
@@ -72,7 +72,7 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}-unit
+          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
       - run:
           name: Install Cilantro Requirements
           command: |
@@ -87,7 +87,7 @@ jobs:
           command: |
              ./scripts/make_test_config.py --password buttcoins --username cilantro_user --database cilantro_dev --hostname 127.0.0.1
       - save_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}-unit
+          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
           paths:
             - "/usr/local/bin"
             - "/usr/local/lib/python3.6/site-packages"
