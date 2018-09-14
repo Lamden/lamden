@@ -20,7 +20,7 @@ PROTOCOL = 'tcp'
 
 PUB_SOCK_KEY = 'default_pub'
 SUB_SOCK_KEY = 'default_sub'
-DEFAULT_DOMAIN = 'wonderland'
+DEFAULT_DOMAIN = '*'
 
 
 def wrap_func(fn, *args, **kwargs):
