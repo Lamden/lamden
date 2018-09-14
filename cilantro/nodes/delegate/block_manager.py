@@ -74,6 +74,9 @@ IPC_PORT = 6967
 class BlockManager(Worker):
 
     def __init__(self, ip, *args, **kwargs):
+        _l = get_logger("BlockManager DEBUG")
+        _l.critical("type of Worker: {}".format(Worker))
+
         super().__init__(*args, **kwargs)
         self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
 
@@ -203,7 +206,7 @@ class BlockManager(Worker):
         # (Just for testing) we reply to that msg
         id_frame, msg = frames[0], frames[-1].decode()
         reply_msg = "Thanks for the msg {}".format(msg)
-        self.ipc_router.send_multipart([id_frame, reply_msg])
+        self.ipc_router.send_multipart([id_frame, reply_msg.encode()])
         # END DEBUG
 
     def handle_sub_msg(self, frames):
