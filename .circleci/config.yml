@@ -3,7 +3,6 @@ jobs:
   integration_tests:
     machine:
         image: circleci/classic:201808-01
-    parallelism: 2
     working_directory: ~/cilantro
     steps:
       - checkout
@@ -11,13 +10,6 @@ jobs:
       - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
-      - run:
-          name: Overcome CircleCI pkg lock bug
-          command: |
-            sudo rm /var/lib/apt/lists/lock
-            sudo rm /var/cache/apt/archives/lock
-            sudo rm /var/lib/dpkg/lock
-            sudo dpkg --configure -a
       - run: pyenv local 3.6.5
       - run: sudo apt install libmysqlclient-dev
       - run:
@@ -62,7 +54,7 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            python3.6 -m unittest $(circleci tests glob tests/integration/**/test_*.py)
+            python3.6 -m unittest tests/integration/**/test_*.py
 
   unit_tests:
     working_directory: ~/cilantro
@@ -73,7 +65,7 @@ jobs:
           username: cilantro_user
           password: buttcoins
           database: cilantro_dev
-    parallelism: 3
+    parallelism: 4
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
@@ -107,7 +99,7 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            python3.6 -m unittest $(circleci tests glob tests/unit/**/**/test_*.py)
+            python3.6 -m unittest $(circleci tests glob tests/unit/**/**/test_*.py | circleci tests split)
 
 workflows:
   version: 2
