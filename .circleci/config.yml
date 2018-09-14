@@ -3,7 +3,7 @@ jobs:
   integration_tests:
     machine:
         image: circleci/classic:201808-01
-    parallelism: 4
+    parallelism: 2
     working_directory: ~/cilantro
     steps:
       - checkout
@@ -66,7 +66,7 @@ jobs:
           username: cilantro_user
           password: buttcoins
           database: cilantro_dev
-    parallelism: 4
+    parallelism: 3
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
