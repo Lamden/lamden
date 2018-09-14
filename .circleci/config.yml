@@ -11,9 +11,13 @@ jobs:
       - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
-      - run: sudo pkill apt* 2>/dev/null
-      - run: sudo apt install libmysqlclient-dev
-      - run: pyenv local 3.6.5
+      - run:
+          name: Overcome CircleCI pkg lock bug
+          command: |
+            sudo rm /var/lib/apt/lists/lock
+            sudo rm /var/cache/apt/archives/lock
+            sudo rm /var/lib/dpkg/lock
+            sudo dpkg --configure -a
       - run:
           name: Install Cilantro Requirements
           command: |
