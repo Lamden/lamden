@@ -17,14 +17,6 @@ def stop(self):
     self.evil_net.stop()
     self.loop.call_soon_threadsafe(self.loop.stop)
 
-class DaemonMock(Mock):
-    @property
-    def socket():
-        class SocketMock(Mock):
-            def send(self):
-                pass
-        return SocketMock
-
 class TestNetwork(TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -36,18 +28,15 @@ class TestNetwork(TestCase):
         self.a_net = Network(sk=self.a['sk'],
                             network_port=13321,
                             keyname='a', wipe_certs=True,
-                            loop=self.loop,
-                            daemon=DaemonMock())
+                            loop=self.loop)
         self.b_net = Network(sk=self.b['sk'],
                             network_port=14321,
                             keyname='b', wipe_certs=True,
-                            loop=self.loop,
-                            daemon=DaemonMock())
+                            loop=self.loop)
         self.evil_net = Network(sk=self.evil['sk'],
                             network_port=15321,
                             keyname='evil', wipe_certs=True,
-                            loop=self.loop,
-                            daemon=DaemonMock())
+                            loop=self.loop)
         self.off_node = Node(
             digest(self.off['vk']), ip='127.0.0.1', port=16321, public_key=self.off['curve_key']
         )

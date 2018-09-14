@@ -8,17 +8,17 @@ class TestIP(TestCase):
     def setUp(self):
         pass
 
-    @patch('requests.get')
-    def test_get_public_ip_failed(self, requests_get):
-        def mock_req(*args, **kwargs):
-            raise Exception()
-
-        requests_get.side_effect = mock_req
-        with self.assertRaises(Exception) as context:
-            get_public_ip()
-
-    def test_get_public_ip(self):
-        self.assertIsNotNone(get_public_ip(), 'cannot find public ip, make sure you have internet')
+    # @patch('requests.get')
+    # def test_get_public_ip_failed(self, requests_get):
+    #     def mock_req(*args, **kwargs):
+    #         raise Exception()
+    #
+    #     requests_get.side_effect = mock_req
+    #     with self.assertRaises(Exception) as context:
+    #         get_public_ip()
+    #
+    # def test_get_public_ip(self):
+    #     self.assertIsNotNone(get_public_ip(), 'cannot find public ip, make sure you have internet')
 
     def test_decimal_to_ip(self):
         self.assertEqual(decimal_to_ip(2130904064), '127.3.4.0')
