@@ -11,11 +11,16 @@ jobs:
       - restore_cache:
           key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}-integration
       - run: pyenv local 3.6.5
+      - run: sudo apt-get install libmysqlclient-dev
       - run:
           name: Install Cilantro Requirements
           command: |
              pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
              pip install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
+      - run:
+          name: Install Mysql Client
+          command: |
+             sudo apt install -y mysql-client
 
       - run:
           name: Install Docker client
