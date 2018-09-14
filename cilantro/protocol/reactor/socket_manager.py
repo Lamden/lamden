@@ -26,8 +26,7 @@ class SocketManager:
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
         self.public_key = Ironhouse.vk2pk(self.verifying_key)
-        self.secret = crypto_sign_ed25519_sk_to_curve25519(
-            SigningKey(seed=bytes.fromhex(signing_key))._signing_key)
+        self.secret = crypto_sign_ed25519_sk_to_curve25519(SigningKey(seed=bytes.fromhex(signing_key))._signing_key)
 
         self.loop = loop or asyncio.get_event_loop()
         self.context = context or zmq.asyncio.Context()
@@ -39,7 +38,7 @@ class SocketManager:
 
     def create_socket(self, socket_type, secure=False, domain='*', *args, **kwargs) -> LSocket:
         assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)
-        if not secure: domain = '*'
+
         ctx = self.secure_context if secure else self.context
         zmq_socket = ctx.socket(socket_type, *args, **kwargs)
 
@@ -49,8 +48,8 @@ class SocketManager:
         return socket
 
     def _handle_overlay_event(self, e):
-        self.log.spam("SocketManager got overlay event {}".format(e))
-        self.log.important2("SocketManager got overlay event {}".format(e))  # TODO remove
+        self.log.debugv("SocketManager got overlay event {}".format(e))
+        # self.log.important2("SocketManager got overlay event {}".format(e))  # TODO remove
 
         if e['event'] == 'got_ip':
             assert e['event_id'] in self.pending_lookups, "Overlay returned event {} that is not in pending_lookups {}!"\

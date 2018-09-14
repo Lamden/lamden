@@ -44,6 +44,7 @@ class LSocket:
         self.secure = secure
         self.socket = socket
         self.domain = domain
+
         self.location = join(Ironhouse.base_dir, self.domain) if self.domain != '*' else Ironhouse.authorized_keys_dir
         if secure:
             self.socket = Ironhouse.secure_socket(self.socket, manager.secret, manager.public_key)
@@ -54,7 +55,6 @@ class LSocket:
                 self.socket.zap_domain = self.domain.encode()
 
         self.manager = manager
-
 
         self.pending_commands = deque()  # A list of defered commands that are flushed once this socket connects/binds
         self.pending_lookups = {}  # A dict of event_id to tuple, where the tuple again represents a command execution
@@ -85,8 +85,11 @@ class LSocket:
 
             while True:
                 if duration_waited > MAX_RDY_WAIT and not self.ready:
-                    raise Exception("Socket failed to bind/connect in {} seconds!")
+                    msg = "Socket failed to bind/connect in {} seconds!".format(MAX_RDY_WAIT)
+                    self.log.fatal(msg)
+                    raise Exception(msg)
 
+                # TODO not sure if we need this chunk. tests show we can start recv on a socket before .connect/.bind
                 if not self.ready:
                     self.log.spam("Socket not ready yet...waiting {} seconds".format(RDY_WAIT_INTERVAL))  # TODO remove this? it be hella noisy..
                     await asyncio.sleep(RDY_WAIT_INTERVAL)
@@ -145,18 +148,19 @@ class LSocket:
 
         url = "{}://{}:{}".format(protocol, ip, port)
         self.log.socket("{} to URL {}".format('CONNECTING' if should_connect else 'BINDING', url))
+
         if should_connect:
             if self.secure:
                 self.socket.curve_serverkey = Ironhouse.vk2pk(vk)
                 self.manager.auth.configure_curve(domain=self.domain, location=self.location)
+
             self.socket.connect(url)
         else:
             if self.secure:
                 self.socket.curve_server = True
                 self.manager.auth.configure_curve(domain=self.domain, location=self.location)
-            self.socket.bind(url)
 
-        self.log.critical('!!!')
+            self.socket.bind(url)
 
         if len(self.pending_lookups) == 0:
             self.log.debugv("Pending lookups empty. Flushing commands")

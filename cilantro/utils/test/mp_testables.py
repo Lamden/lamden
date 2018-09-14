@@ -10,6 +10,7 @@ from cilantro.nodes import Masternode, Witness, Delegate, NodeFactory
 from cilantro.protocol.overlay.interface import OverlayServer
 from cilantro.utils.lprocess import LProcess
 from cilantro.storage.db import DB
+from cilantro.utils.test.pubsub_auth import PubSubAuthTester
 import asyncio
 import zmq.asyncio
 import os
@@ -33,6 +34,22 @@ def _build_node(signing_key, name='', node_cls=None) -> tuple:
     tasks = node.tasks + [node.composer.interface._recv_messages()]
 
     return node, loop, tasks
+
+
+@mp_testable(PubSubAuthTester)
+class MPPubSubAuth(MPTesterBase):
+    @classmethod
+    def build_obj(cls, sk, name='') -> tuple:
+        loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(loop)
+
+        # Start Overlay Process
+        overlay_proc = LProcess(target=OverlayServer, args=(sk,))
+        overlay_proc.start()
+
+        obj = PubSubAuthTester(sk, name=name, loop=loop)
+
+        return obj, loop, []
 
 
 @mp_testable(Composer)

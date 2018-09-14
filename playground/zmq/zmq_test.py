@@ -50,6 +50,7 @@ def start_sub():
         log.socket("Starting listener on socket {}".format(socket))
         while True:
             try:
+                log.socket("Socket {} awaiting a msg...".format(socket))
                 msg = await socket.recv_multipart()
             except Exception as e:
                 if type(e) is asyncio.CancelledError:
@@ -74,8 +75,14 @@ def start_sub():
     # time.sleep(4)
     # log.important3("done wit dat nap")
 
-    sub.connect(URL)
-    sub.setsockopt(zmq.SUBSCRIBE, b'')
+    def connect_sub(sub_socket):
+        log.important2("CONNECTING SUB SOCKET")
+        sub_socket.connect(URL)
+        sub_socket.setsockopt(zmq.SUBSCRIBE, b'')
+
+    # sub.connect(URL)
+    # sub.setsockopt(zmq.SUBSCRIBE, b'')
+    loop.call_later(5, connect_sub, sub)
 
     # log.important3("taking dat nap")
     # time.sleep(4)

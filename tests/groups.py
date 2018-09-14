@@ -70,8 +70,7 @@ UNIT_TESTS = [
 """
 
 NODE_INTEGRATION_TESTS = [
-    'tests.nodes.integration',
-    'tests.protocol.transport'
+    'tests.integration'
 ]
 
 # All integration tests
