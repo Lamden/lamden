@@ -9,7 +9,7 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}-integration
       - run: docker pull lamden/cilantro-db
       - run: pyenv local 3.6.5
       - run: sudo apt-get install libmysqlclient-dev
@@ -45,7 +45,7 @@ jobs:
              ./scripts/make_test_config.py --password buttcoins --username cilantro_user --database cilantro_dev --hostname 127.0.0.1
 
       - save_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}-integration
           paths:
             - "/usr/local/bin"
             - "/opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages"
@@ -76,7 +76,7 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}-unit
       - run:
           name: Install Cilantro Requirements
           command: |
@@ -91,7 +91,7 @@ jobs:
           command: |
              ./scripts/make_test_config.py --password buttcoins --username cilantro_user --database cilantro_dev --hostname 127.0.0.1
       - save_cache:
-          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}-unit
           paths:
             - "/usr/local/bin"
             - "/usr/local/lib/python3.6/site-packages"
@@ -104,7 +104,7 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            python3.6 ~/cilantro/tests/run_tests.py --integration 0
+            python3.6 ~/cilantro/tests/run_tests.py --integration 0 --unit 1
 
 workflows:
   version: 2
