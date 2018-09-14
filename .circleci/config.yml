@@ -12,6 +12,7 @@ jobs:
           key: cilantro-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run: docker pull lamden/cilantro-db
       - run: pyenv local 3.6.5
+      - run: sudo apt-get install libmysqlclient-dev
       - run:
           name: Install Cilantro Requirements
           command: |
