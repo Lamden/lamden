@@ -147,6 +147,7 @@ class SubBlockBuilder(Worker):
     def handle_sub_msg(self, frames):
         self.log.important("Sub socket got frames {}".format(frames))
 
+
     # # will it receive the list from BM - no need to know upfront
     # # still need to figure out starting point where it has all the witnesses available - may not be up front
     # # also need to allow for the case where it will handle multiple masters (multiple sets of witnesses - format??)
@@ -171,7 +172,6 @@ class SubBlockBuilder(Worker):
     #                            .format(ip, witness_vk))
     #         self.witness_table[vk].append(socket)
     #         self.tasks.append(self._listen_to_witness(socket, index))
-
 
     # TODO mimic this logic in handle_ipc_msg
     # async def _listen_to_block_manager(self):
@@ -253,18 +253,3 @@ class SubBlockBuilder(Worker):
         self.socket.send(merkle_sig.serialize())
 
 
-    def _signal_teardown(self, signal, frame):
-        self.log.important("Builder process got kill signal!")
-        self._teardown()
-
-    def _teardown(self):
-        """
-        Close sockets. Teardown executors. Close Event Loop.
-        """
-        #self.log.info("[DEAMON PROC] Tearing down Reactor Builder process")
-
-        self.log.warning("Closing pair socket")
-        self.socket.close()
-
-        self.log.warning("Closing event loop")
-        self.loop.call_soon_threadsafe(self.loop.stop)
