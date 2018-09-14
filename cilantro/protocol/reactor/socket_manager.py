@@ -12,7 +12,6 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.protocol.structures import EnvelopeAuth
 
 
-
 # TODO Better name for SocketManager? SocketManager is also responsible for handling the OverlayClient, so maybe we
 # should name it something that makes that more obvious
 class SocketManager:
@@ -30,6 +29,8 @@ class SocketManager:
 
         self.sockets = []
         self.pending_lookups = {}   # A dict of 'event_id' to socket instance
+
+        # Instantiating an OverlayClient blocks until the OverlayServer is ready
         self.overlay_client = OverlayClient(self._handle_overlay_event, loop=self.loop, ctx=self.context)
 
     def create_socket(self, socket_type, *args, name='LSocket', **kwargs) -> LSocket:
