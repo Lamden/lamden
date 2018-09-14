@@ -99,7 +99,7 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            python3.6 -m unittest $(circleci tests glob tests/unit/**/**/test_*.py | circleci tests split)
+            python3.6 -m unittest $(circleci tests glob tests/unit/**/**/**/test_*.py | circleci tests split)
 
 workflows:
   version: 2
