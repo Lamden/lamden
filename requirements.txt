@@ -24,6 +24,6 @@ wheel
 vprof
 docker
 dill
-
+# change checksum
 -e git://github.com/Lamden/vmnet.git#egg=vmnet
 -e git://github.com/Lamden/seneca.git#egg=seneca
