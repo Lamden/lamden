@@ -3,6 +3,7 @@ jobs:
   integration_tests:
     machine:
         image: circleci/classic:201808-01
+    parallelism: 4
     working_directory: ~/cilantro
     steps:
       - checkout
@@ -54,7 +55,7 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            python3.6 ~/cilantro/tests/run_tests.py --integration 1 --unit 0
+            python3.6 -m unittest $(circleci tests glob tests/integration/**/test_*.py)
 
   unit_tests:
     working_directory: ~/cilantro
@@ -65,6 +66,7 @@ jobs:
           username: cilantro_user
           password: buttcoins
           database: cilantro_dev
+    parallelism: 4
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
@@ -98,7 +100,7 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            python3.6 ~/cilantro/tests/run_tests.py --integration 0 --unit 1
+            python3.6 -m unittest $(circleci tests glob tests/unit/**/**/test_*.py)
 
 workflows:
   version: 2
