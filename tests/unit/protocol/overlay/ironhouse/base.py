@@ -12,6 +12,10 @@ import asyncio, shutil
 from cilantro.utils.test.overlay import *
 from cilantro.constants.testnet import *
 
+def auth_validate(vk):
+    print('Test: Received on validation: {}'.format(vk))
+    return True
+
 class TestIronhouseBase(TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()

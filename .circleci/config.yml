@@ -12,23 +12,16 @@ jobs:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
       - run: pyenv local 3.6.5
       - run:
-          name: Overcome CircleCI pkg lock bug
+          name: Install MySQL Client
           command: |
-            sudo rm /var/lib/apt/lists/lock
-            sudo rm /var/cache/apt/archives/lock
-            sudo rm /var/lib/dpkg/lock
+            sudo rm /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock
             sudo dpkg --configure -a
-      - run: sudo apt install libmysqlclient-dev
+            sudo apt install -y libmysqlclient-dev mysql-client
       - run:
           name: Install Cilantro Requirements
           command: |
              pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
              pip install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
-      - run:
-          name: Install Mysql Client
-          command: |
-             sudo apt install -y mysql-client
-
       - run:
           name: Install Docker client
           command: |
