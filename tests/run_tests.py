@@ -5,6 +5,7 @@ import unittest
 import sys
 import time
 import os
+import re
 from cilantro.logger import get_logger, overwrite_logger_level
 import logging
 import argparse
