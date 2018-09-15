@@ -17,7 +17,7 @@ def stop(self):
     self.evil_net.stop()
     self.loop.call_soon_threadsafe(self.loop.stop)
 
-class TestConnection(TestCase):
+class TestLookup(TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)

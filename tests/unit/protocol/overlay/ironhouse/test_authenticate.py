@@ -11,6 +11,7 @@ from threading import Timer
 import asyncio, shutil
 from cilantro.utils.test.overlay import *
 from cilantro.constants.testnet import *
+from tests.unit.protocol.overlay.ironhouse.base import TestIronhouseBase
 
 class TestAuthenticate(TestIronhouseBase):
     def test_secure_server(self):
