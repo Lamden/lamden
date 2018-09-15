@@ -13,10 +13,6 @@ from cilantro.utils.test.overlay import *
 from cilantro.constants.testnet import *
 from tests.unit.protocol.overlay.ironhouse.base import TestIronhouseBase
 
-def auth_validate(vk):
-    print('Test: Received on validation: {}'.format(vk))
-    return True
-
 class TestConsts(TestIronhouseBase):
     def test_assert_paths(self):
         self.assertEqual(self.ironhouse.base_dir, 'certs/{}'.format(self.ironhouse.keyname), 'key folder is incorrect')

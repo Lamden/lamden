@@ -13,6 +13,10 @@ from cilantro.utils.test.overlay import *
 from cilantro.constants.testnet import *
 from tests.unit.protocol.overlay.ironhouse.base import TestIronhouseBase
 
+def auth_validate(vk):
+    print('Test: Received on validation: {}'.format(vk))
+    return True
+
 class TestValidate(TestIronhouseBase):
     def test_secure_server(self):
         ip = '127.0.0.1'
