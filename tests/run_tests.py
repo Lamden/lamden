@@ -76,7 +76,7 @@ def skip_circle_ci_modules(module_to_skip='tests/integration') -> list:
             if re.search(r'^test_.*.py$', name):
                 if int(container_idx) != idx % int(total_containers):
                     print('Removing {}...'.format(name))
-                    os.remove(name)
+                    os.remove(os.path.join(root, name))
     return skips
 
 def main(args):
