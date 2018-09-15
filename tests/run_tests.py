@@ -69,7 +69,7 @@ def _should_skip_module(module_name: str, modules_to_skip: list) -> bool:
 def skip_circle_ci_modules(module_to_skip='tests/integration') -> list:
     assert os.getenv('CIRCLECI'), 'Not using CIRCLECI, this operation is Dangerous Davis approved'
     total_containers = os.getenv("CIRCLE_NODE_TOTAL")
-    container_idx = os.getenv("CIRLCE_NODE_INDEX")
+    container_idx = os.getenv("CIRCLE_NODE_INDEX")
     skips = []
     for root, dirs, files in os.walk(module_to_skip, topdown=False):
         for idx, name in enumerate(files):
