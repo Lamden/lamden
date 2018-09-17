@@ -110,10 +110,6 @@ class BlockManager(Worker):
         self.ipc_router, self.pub, self.sub = None, None, None
         self.ipc_ip = IPC_IP + '-' + str(os.getpid())
 
-        # DEBUG TODO DELETE
-        self.log.critical("RUN METHOD IS {}".format(BlockManager.run))
-        # END DEBUG
-
         self.run()
         self.log.critical("just called run!".format())
 
