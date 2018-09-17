@@ -35,8 +35,6 @@ class SubBlockContender(MessageBase):
         # assert SubBlockContender.NODES in self._data, "nodes field missing from data {}".format(self._data)
         assert SubBlockContender.TXNS in self._data, "Raw transactions field missing from data {}".format(self._data)
 
-        assert is_valid_hex(self.prev_block_hash, length=64), "Invalid previous block hash {} .. " \
-                                                              "expected 64 char hex string".format(self.prev_block_hash)
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
                                                           "expected 64 char hex string".format(self.prev_block_hash)
         assert is_valid_hex(self.input_hash, length=64), "Invalid input sub-block hash {} .. " \
