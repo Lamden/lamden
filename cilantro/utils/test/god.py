@@ -18,7 +18,7 @@ if os.getenv('HOST_IP'):
     else:
         ips = [ips]
 
-    urls = ["http://{}:8080" for ip in ips]
+    urls = ["http://{}:8080".format(ip) for ip in ips]
     _MN_URLs = urls
 
 # If this is not getting run on a container, set MN URL to 0.0.0.0
@@ -143,10 +143,10 @@ class God:
             mn_url = cls.mn_urls[0]
 
         try:
-            r = requests.post(cls.mn_urls, data=TransactionContainer.create(tx).serialize())
-            cls.log.spam("POST request to MN at URL {} has status code: {}".format(cls.mn_urls, r.status_code))
+            r = requests.post(mn_url, data=TransactionContainer.create(tx).serialize())
+            cls.log.spam("POST request to MN at URL {} has status code: {}".format(mn_url, r.status_code))
         except Exception as e:
-            cls.log.warning("Error attempt to send transaction to Masternode at URL {}\nerror={}".format(cls.mn_urls, e))
+            cls.log.warning("Error attempt to send transaction to Masternode at URL {}\nerror={}".format(mn_url, e))
 
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True):

@@ -74,7 +74,6 @@ IPC_PORT = 6967
 class BlockManager(Worker):
 
     def __init__(self, ip, *args, **kwargs):
-        _l.critical("(INSIDE INIT) type of Worker: {}".format(Worker))
         super().__init__(*args, **kwargs)
         self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
 
