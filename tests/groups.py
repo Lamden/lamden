@@ -12,52 +12,43 @@ TODO -- better documentation on whats going on here
 """
 
 PROTOCOL_TESTS = [
-    'tests.protocol.interpreter',
-    'tests.protocol.structures',
-    'tests.protocol.states',
-    'tests.protocol.wallets'
+    'tests.unit.protocol.overlay',
+    'tests.unit.protocol.interpreter',
+    'tests.unit.protocol.structures',
+    'tests.unit.protocol.states',
+    'tests.unit.protocol.wallets'
     ]
 
 NODE_TESTS = [
-    'tests.nodes.masternode',
-    'tests.nodes.delegate',
+    'tests.unit.nodes.masternode',
+    'tests.unit.nodes.delegate',
 ]
 
 MESSAGE_TESTS = [
-    'tests.messages.consensus',
-    'tests.messages.envelope',
-    'tests.messages.reactor',
-    'tests.messages.transactions',
-    'tests.messages.block_data',
-]
-
-CONSTANTS_TESTS = [
-    'tests.constants'
+    'tests.unit.messages.consensus',
+    'tests.unit.messages.envelope',
+    'tests.unit.messages.reactor',
+    'tests.unit.messages.transactions',
+    'tests.unit.messages.block_data',
 ]
 
 UTIL_TESTS = [
-    'tests.utils'
-]
-
-OVERLAY_TESTS = [
-    'tests.overlay'
+    'tests.unit.utils'
 ]
 
 DB_TESTS = [
-    'tests.storage'
+    'tests.unit.storage'
 ]
 
 SMART_CONTRACT_TESTS = [
-    'tests.contracts'
+    'tests.unit.contracts'
 ]
 
 # All unit tests
 UNIT_TESTS = [
-    OVERLAY_TESTS,
-    NODE_TESTS,
     PROTOCOL_TESTS,
+    NODE_TESTS,
     MESSAGE_TESTS,
-    CONSTANTS_TESTS,
     UTIL_TESTS,
     DB_TESTS,
     SMART_CONTRACT_TESTS,
@@ -70,8 +61,7 @@ UNIT_TESTS = [
 """
 
 NODE_INTEGRATION_TESTS = [
-    'tests.nodes.integration',
-    'tests.protocol.transport'
+    'tests.integration'
 ]
 
 # All integration tests
@@ -87,7 +77,7 @@ INTEGRATION_TESTS = [
 """
 
 # Tests to skip on the CI.
-CI_DISABLED_TESTS = []#[OVERLAY_TESTS] #+ DB_TESTS + SMART_CONTRACT_TESTS
+CI_DISABLED_TESTS = []#+ DB_TESTS + SMART_CONTRACT_TESTS
 
 # Tests that are skipped if the environment variable $CILANTRO_DEBUG is set
-DEBUG_DISABLED_TESTS = [OVERLAY_TESTS] # SMART_CONTRACT_TESTS
+DEBUG_DISABLED_TESTS = [] # SMART_CONTRACT_TESTS

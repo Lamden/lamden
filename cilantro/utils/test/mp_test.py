@@ -107,7 +107,8 @@ class MPTesterProcess:
         self.log = get_logger("TesterProc-{}".format(name))
 
         # Speculation: New processes has to start with a new event loop
-        asyncio.set_event_loop(asyncio.new_event_loop())
+        self._new_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._new_loop)
 
         self.tester_obj, self.loop, self.tasks = self._build_components(build_fn)
 
@@ -136,7 +137,7 @@ class MPTesterProcess:
         except Exception as e:
             # If the tasks were canceled internally, then do not run teardown() again
             if type(e) is asyncio.CancelledError:
-                self.log.debug("Task(s) cancel detected. Closing event loop.")
+                self.log.warning("Task(s) cancel detected. Closing event loop.")
                 self.loop.stop()
                 return
 
@@ -156,16 +157,14 @@ class MPTesterProcess:
         # Validate loop
         assert isinstance(loop, asyncio.AbstractEventLoop), \
             "Got {} that isn't an instance of asyncio.AbstractEventLoop".format(loop)
+        assert self._new_loop == loop, "Builder object returned new loop {} that does not match MPTesterProcess's event " \
+                                       "loop {}".format(loop, self._new_loop)
         asyncio.set_event_loop(loop)
 
         # Validate tasks
         assert type(tasks) is list or type(tasks) is tuple, \
             "3rd return val of build_obj must be a list/tuple of tasks... got {} instead".format(tasks)
         # assert len(tasks) >= 1, "Expected at least one task"
-
-        # TODO investigate why this is not always working...soemtimes assert raises error for valid coro's
-        # for t in tasks:
-        #     assert inspect.iscoroutine(t), "Tasks must be a list of coroutines. Element {} is not a coro.".format(t)
 
         return tester_obj, loop, tasks
 

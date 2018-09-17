@@ -66,7 +66,7 @@ class OverlayServer(object):
             if vk in VKBook.get_all():
                 try:
                     node, cached = await asyncio.wait_for(self.dht.network.lookup_ip(vk, domain), timeout)
-                except:
+                except asyncio.TimeoutError:
                     self.log.notice('Did not find an ip for VK {} in {}s'.format(vk, timeout))
 
             if node:
@@ -83,6 +83,7 @@ class OverlayServer(object):
                     'event_id': event_id
                 }).encode()
 
+            self.log.debugv("OverlayServer replying to id {} with data {}".format(id_frame, data))
             self.cmd_sock.send_multipart([id_frame, data])
 
         asyncio.ensure_future(coro())
@@ -136,7 +137,7 @@ class OverlayClient(object):
         try:
             self.loop.run_until_complete(self.block_until_ready())
         except:
-            self.log.info('Overlay Interface is not ready after {}s...'.format(CLIENT_SETUP_TIMEOUT))
+            self.log.fatal('Overlay Interface is not ready after {}s...'.format(CLIENT_SETUP_TIMEOUT))
 
         if block:
             self.loop.run_forever()
@@ -168,6 +169,7 @@ class OverlayClient(object):
         self.log.info("Listening for overlay replies over {}".format(CMD_URL))
         while True:
             msg = await self.cmd_sock.recv_multipart()
+            self.log.spam("OverlayClient received event {}".format(msg))
             event = json.loads(msg[-1])
             if event.get('event') == 'service_status' and event.get('status') == 'ready':
                 self._ready = True
