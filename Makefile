@@ -17,7 +17,7 @@ stop: stop-db
 restart-db: stop-db start-db
 
 test: restart-db
-	./tests/run_tests.py --integration 0 -v
+	./tests/run_tests.py -v
 
 install:
 	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir
