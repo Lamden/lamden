@@ -92,12 +92,12 @@ class WitnessBootState(WitnessBaseState):
 
     def _create_sub_socket(self):
         # Sub to assigned Masternode
-        self.parent.sub = self.parent.manager.create_socket(socket_type=zmq.SUB, name='MN-Subscriber')
-
         mn_vk = WITNESS_MN_MAP[self.parent.verifying_key]
         self.log.notice("Witness w/ vk {} subscribing to MN with vk {}".format(self.parent.verifying_key, mn_vk))
-        # self.parent.composer.add_sub(filter=WITNESS_MASTERNODE_FILTER, vk=mn_vk, port=MN_TX_PUB_PORT)
+
+        self.parent.sub = self.parent.manager.create_socket(socket_type=zmq.SUB, name='MN-Subscriber')
         self.parent.sub.connect(vk=mn_vk, port=MN_TX_PUB_PORT)
+        self.parent.sub.setsockopt(zmq.SUBSCRIBE, WITNESS_MASTERNODE_FILTER.encode())
 
     def _create_pub_socket(self):
         # Connect PUB socket to SBBs

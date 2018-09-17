@@ -70,11 +70,6 @@ from collections import defaultdict
 IPC_IP = 'block-manager-ipc-sock'
 IPC_PORT = 6967
 
-# DEBUG TODO DELETE
-_l = get_logger("BlockManager DEBUG")
-_l.critical("(OUTSIDE OF CLASS) type of Worker: {}".format(Worker))
-# END DEBUG
-
 
 class BlockManager(Worker):
 
@@ -235,7 +230,6 @@ class BlockManager(Worker):
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
         # Last frame, frames[-1] will be the envelope binary
-
 
     def handle_new_block(self, envelope: Envelope):
         cur_block_hash, cur_timestamp = self.get_latest_block_hash_timestamp()

@@ -114,7 +114,7 @@ class SubBlockBuilder(Worker):
             msg = "hello from SBB {}".format(self.sbb_index)
             self.log.debug("Sending msg {}".format(msg))
             self.dealer.send_multipart([msg.encode()])
-            await asyncio.sleep(random.random() * 4)
+            await asyncio.sleep(10)
 
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
         self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
