@@ -241,7 +241,9 @@ class BlockManager(Worker):
         cur_block_hash, cur_timestamp = self.get_latest_block_hash_timestamp()
         block_hash, timestamp = self.fetch_hash_timestamp(envelope)
         if (block_hash == self.cur_block_hash) or (timestamp < self.cur_timestamp):
-            continue
+            # TODO log something
+            pass
+
         num = self.next_block.get(block_hash, 0) + 1
         if (num == self.quorum):
             self.update_db(envelope.message)
