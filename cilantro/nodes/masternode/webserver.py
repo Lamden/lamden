@@ -12,12 +12,6 @@ import traceback, multiprocessing, os, asyncio
 from multiprocessing import Queue
 from os import getenv as env
 
-import cython
-if cython.compiled:
-    print("Yep, I'm compiled.")
-else:
-    print("Just a lowly interpreted script.")
-
 app = Sanic(__name__)
 log = get_logger(__name__)
 
