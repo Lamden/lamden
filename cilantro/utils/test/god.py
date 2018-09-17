@@ -10,10 +10,20 @@ from cilantro.utils.test.mp_test_case import MPTestCase
 import os, requests, time, random
 
 
-if os.getenv('HOST_IP', '127.0.0.1'):
-    _MN_URL = "http://{}:8080".format(os.getenv('MASTERNODE', '0.0.0.0'))
+if os.getenv('HOST_IP'):
+    ips = os.getenv('MASTERNODE')
+    # Set _MN_URL to be a list of IPs if we are in multimaster setting
+    if ',' in ips:
+        ips = ips.split(',')
+    else:
+        ips = [ips]
+
+    urls = ["http://{}:8080" for ip in ips]
+    _MN_URLs = urls
+
+# If this is not getting run on a container, set MN URL to 0.0.0.0
 else:
-    _MN_URL = "http://0.0.0.0:8080"
+    _MN_URLs = ["http://0.0.0.0:8080"]
 
 STU = ('db929395f15937f023b4682995634b9dc19b1a2b32799f1f67d6f080b742cdb1',
  '324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502')
@@ -56,8 +66,9 @@ class God:
 
     log = get_logger("GOD")
 
-    # Masternode URL
-    mn_url = _MN_URL
+    mn_urls = _MN_URLs
+    multi_master = type(mn_urls) is list  # If True, outgoing transactions will be round-robined to all masternodes
+    _current_mn_idx = 0
 
     def __init__(self, loop=None):
         raise NotImplementedError("use class methods. __init__ does not work rn")
@@ -93,9 +104,10 @@ class God:
 
     @classmethod
     def set_mn_url(cls, ip='localhost', port=8080):
-        url = "http://{}:{}".format(ip, port)
-        cls.log.info("Setting masternode URL to {}".format(url))
-        cls.mn_url = url
+        raise NotImplementedError("This is deprecated!!!")
+        # url = "http://{}:{}".format(ip, port)
+        # cls.log.notice("Setting masternode URL to {}".format(url))
+        # cls.mn_urls = url
 
     @classmethod
     def create_std_tx(cls, sender: tuple, receiver: tuple, amount: int) -> StandardTransaction:
@@ -123,11 +135,18 @@ class God:
 
     @classmethod
     def send_tx(cls, tx: TransactionBase):
+        if cls.multi_master:
+            mn_url = cls.mn_urls[cls._current_mn_idx]
+            cls._current_mn_idx = (cls._current_mn_idx + 1) % len(cls.mn_urls)
+            cls.log.debug("Multi-master detected. Using Masternode at IP {}".format(mn_url))
+        else:
+            mn_url = cls.mn_urls[0]
+
         try:
-            r = requests.post(cls.mn_url, data=TransactionContainer.create(tx).serialize())
-            cls.log.spam("POST request to MN at URL {} has status code: {}".format(cls.mn_url, r.status_code))
+            r = requests.post(cls.mn_urls, data=TransactionContainer.create(tx).serialize())
+            cls.log.spam("POST request to MN at URL {} has status code: {}".format(cls.mn_urls, r.status_code))
         except Exception as e:
-            cls.log.warning("Error attempt to send transaction to Masternode at URL {}\nerror={}".format(cls.mn_url, e))
+            cls.log.warning("Error attempt to send transaction to Masternode at URL {}\nerror={}".format(cls.mn_urls, e))
 
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
