@@ -70,13 +70,16 @@ from collections import defaultdict
 IPC_IP = 'block-manager-ipc-sock'
 IPC_PORT = 6967
 
+# DEBUG TODO DELETE
+_l = get_logger("BlockManager DEBUG")
+_l.critical("(OUTSIDE OF CLASS) type of Worker: {}".format(Worker))
+# END DEBUG
+
 
 class BlockManager(Worker):
 
     def __init__(self, ip, *args, **kwargs):
-        _l = get_logger("BlockManager DEBUG")
-        _l.critical("type of Worker: {}".format(Worker))
-
+        _l.critical("(INSIDE INIT) type of Worker: {}".format(Worker))
         super().__init__(*args, **kwargs)
         self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
 
@@ -107,9 +110,17 @@ class BlockManager(Worker):
         self.ipc_router, self.pub, self.sub = None, None, None
         self.ipc_ip = IPC_IP + '-' + str(os.getpid())
 
+        # DEBUG TODO DELETE
+        self.log.critical("RUN METHOD IS {}".format(BlockManager.run))
+        # END DEBUG
+
         self.run()
+        self.log.critical("just called run!".format())
 
     def run(self):
+        # DEBUG TODO DELETE
+        self.log.critical("\n!!!! RUN CALLED !!!!!\n")
+        # END DEBUG
         self.build_task_list()
         self.start_sbb_procs()
         self.log.info("Block Manager starting...")

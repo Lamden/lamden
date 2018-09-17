@@ -20,7 +20,7 @@ class Worker:
         asyncio.set_event_loop(self.loop)
         self.context = context or zmq.asyncio.Context()
 
-        self.signing_key = signing_key
+        self.signing_key =signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
 
         self.manager = SocketManager(signing_key=signing_key, context=self.context, loop=self.loop)
