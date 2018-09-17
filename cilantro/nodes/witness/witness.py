@@ -104,7 +104,7 @@ class WitnessBootState(WitnessBaseState):
         self.parent.pub = self.parent.manager.create_socket(socket_type=zmq.PUB, name='SBB-Publisher')
 
         mn_vk = WITNESS_MN_MAP[self.parent.verifying_key]
-        mn_idx = VKBook.get_masternodes().find(mn_vk)
+        mn_idx = VKBook.get_masternodes().index(mn_vk)
         port = SBB_PORT_START + mn_idx
 
         self.log.notice("Witness /w vk {} BINDING sub socket to port {}".format(self.parent.verifying_key, port))
@@ -127,7 +127,9 @@ class WitnessRunState(WitnessBaseState):
         assert self.parent.pub, "Pub socket should have been created"
 
         self.parent.tasks.append(self.parent.sub.add_handler(handler_func=self.handle_sub_msg))
-        self.loop.run_until_complete(asyncio.gather(*self.tasks))
+
+        self.log.important("Witness starting main event loop!")
+        self.parent.loop.run_until_complete(asyncio.gather(*self.parent.tasks))
 
     def handle_sub_msg(self, frames):
         self.log.spam("Witness got SUB data with frames {}".format(frames))

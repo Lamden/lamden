@@ -30,6 +30,8 @@ class NewNodeBase(StateMachine, Worker):
 
         self.tasks = []
 
+        super().start()  # Start the state machine
+
 
 class NodeBase(StateMachine):
 
