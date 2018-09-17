@@ -11,22 +11,27 @@ PROTOCOL = 'tcp'
 
 URL = "{}://{}:{}".format(PROTOCOL, IP, PORT)
 
+SUB_URL = "{}://{}:{}".format(PROTOCOL, IP, 9090)
+SUB2_URL = "{}://{}:{}".format(PROTOCOL, IP, 9091)
 
-def start_pub():
+
+def start_pub(urls, name):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     ctx = zmq.asyncio.Context()
 
-    log = get_logger("Pub")
+    log = get_logger(name)
 
     pub = ctx.socket(zmq.PUB)
-    pub.bind(URL)
+    for url in urls:
+        log.socket("pub connecting to url {}".format(url))
+        pub.connect(url)
 
     log.important3("Starting publishing")
 
     for i in range(1000):
-        log.info("pub sending msg {}".format(i))
-        pub.send_multipart([b'', str(i).encode()])
+        log.info("pub sending msg {} FROM PUB {}".format(i, name))
+        pub.send_multipart([b'', str('from ' + name + ' ' + str(i)).encode()])
         time.sleep(1)
 
     # async def _pub():
@@ -38,9 +43,9 @@ def start_pub():
     # loop.run_until_complete(_pub())
 
 
-def start_sub():
+def start_sub(url, name):
     def handler_func(frames):
-        log.important("handler func got frames: {}".format(frames))
+        log.important("[{}] handler func got frames: {}".format(name, frames))
 
     async def listen(socket, handler_func):
         # log.important3("taking dat nap")
@@ -67,7 +72,7 @@ def start_sub():
     asyncio.set_event_loop(loop)
     ctx = zmq.asyncio.Context()
 
-    log = get_logger("Sub")
+    log = get_logger(name)
 
     sub = ctx.socket(zmq.SUB)
 
@@ -75,14 +80,8 @@ def start_sub():
     # time.sleep(4)
     # log.important3("done wit dat nap")
 
-    def connect_sub(sub_socket):
-        log.important2("CONNECTING SUB SOCKET")
-        sub_socket.connect(URL)
-        sub_socket.setsockopt(zmq.SUBSCRIBE, b'')
-
-    # sub.connect(URL)
-    # sub.setsockopt(zmq.SUBSCRIBE, b'')
-    loop.call_later(5, connect_sub, sub)
+    sub.bind(url)
+    sub.setsockopt(zmq.SUBSCRIBE, b'')
 
     # log.important3("taking dat nap")
     # time.sleep(4)
@@ -93,8 +92,12 @@ def start_sub():
 
 
 if __name__ == '__main__':
-    pub = Process(target=start_pub)
-    sub = Process(target=start_sub)
+    pub = Process(target=start_pub, args=([SUB_URL, SUB2_URL], 'PUB 1'))
+    pub2 = Process(target=start_pub, args=([SUB_URL, SUB2_URL], 'PUB 2'))
+    # pub2 = Process(target=start_pub, args=([URL],))
 
-    for p in (pub, sub):
+    sub = Process(target=start_sub, args=(SUB_URL, 'SUB 1'))
+    sub2 = Process(target=start_sub, args=(SUB2_URL, 'SUB 2'))
+
+    for p in (pub, pub2, sub2, sub):
         p.start()

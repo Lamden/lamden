@@ -41,11 +41,8 @@ class NodeFactory:
     def run_witness(signing_key, ip, name='Witness', reset_db=False):
         with DB(should_reset=reset_db) as db:
             pass
-        loop = asyncio.new_event_loop()
 
-        w = NodeFactory._build_node(loop=loop, signing_key=signing_key, ip=ip, node_cls=Witness, name=name)
-
-        w.start()
+        w = Witness(ip=ip, name=name, signing_key=signing_key)
 
     @staticmethod
     def run_delegate(signing_key, ip, name='Delegate', reset_db=False):

@@ -11,8 +11,8 @@ from typing import List
 from os.path import join
 
 
-RDY_WAIT_INTERVAL = 0.2  # TODO move this to constants, and explain it
-MAX_RDY_WAIT = 10.0  # TODO move this to constants, and explain it
+RDY_WAIT_INTERVAL = 1.0  # TODO move this to constants, and explain it
+MAX_RDY_WAIT = 30.0  # TODO move this to constants, and explain it
 
 
 def vk_lookup(func):
@@ -25,6 +25,7 @@ def vk_lookup(func):
             cmd_id = self.manager.overlay_client.get_node_from_vk(kwargs['vk'], domain=self.domain)
             assert cmd_id not in self.pending_lookups, "Collision! Uuid {} already in pending lookups {}".format(cmd_id, self.pending_lookups)
 
+            self.log.important2("Looking up vk {}".format(kwargs['vk']))  # TODO remove
             self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.pending_lookups[cmd_id] = (func.__name__, args, kwargs)
             self.manager.pending_lookups[cmd_id] = self
@@ -85,7 +86,7 @@ class LSocket:
 
             while True:
                 if duration_waited > MAX_RDY_WAIT and not self.ready:
-                    msg = "Socket failed to bind/connect in {} seconds!".format(MAX_RDY_WAIT)
+                    msg = "Socket failed to bind/connect in {} seconds! Pending lookups={}".format(MAX_RDY_WAIT, self.pending_lookups)
                     self.log.fatal(msg)
                     raise Exception(msg)
 
@@ -143,7 +144,7 @@ class LSocket:
 
     def _connect_or_bind(self, should_connect: bool, port: int, protocol: str='tcp', ip: str='', vk: str=''):
         assert ip, "Expected ip arg to be present!"
-        assert protocol in ('tcp', 'icp'), "Only tcp/ipc protocol is supported, not {}".format(protocol)
+        assert protocol in ('tcp', 'ipc'), "Only tcp/ipc protocol is supported, not {}".format(protocol)
         # TODO validate other args (port is an int within some range, ip address is a valid, ect)
 
         url = "{}://{}:{}".format(protocol, ip, port)

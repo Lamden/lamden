@@ -153,26 +153,28 @@ class DelegateBootState(DelegateBaseState):
 
         self.log.notice("Delegate connecting to other nodes ..")
         # Sub to other delegates
-        for delegate_vk in VKBook.get_delegates():
-            if delegate_vk == self.parent.verifying_key:  # Do not sub to yourself
-                continue
+        # for delegate_vk in VKBook.get_delegates():
+        #     if delegate_vk == self.parent.verifying_key:  # Do not sub to yourself
+        #         continue
 
-            self.parent.composer.add_sub(vk=delegate_vk, filter=DELEGATE_DELEGATE_FILTER)
+            # self.parent.composer.add_sub(vk=delegate_vk, filter=DELEGATE_DELEGATE_FILTER)
 
         # Sub to witnesses
-        for witness_vk in VKBook.get_witnesses():
-            self.parent.composer.add_sub(vk=witness_vk, filter=WITNESS_DELEGATE_FILTER)
+        # for witness_vk in VKBook.get_witnesses():
+        #     self.parent.composer.add_sub(vk=witness_vk, filter=WITNESS_DELEGATE_FILTER)
 
         # Pub on our own url
-        self.parent.composer.add_pub(ip=self.parent.ip)
+        # self.parent.composer.add_pub(ip=self.parent.ip)
 
         # Add router socket
-        self.parent.composer.add_router(ip=self.parent.ip)
+        self.parent.composer.add_router(ip=self.parent.ip)  # We need this currently for catchup state
 
         # Add dealer and sub socket for Masternodes
         for mn_vk in VKBook.get_masternodes():
-            self.parent.composer.add_dealer(vk=mn_vk)
-            self.parent.composer.add_sub(vk=mn_vk, filter=MASTERNODE_DELEGATE_FILTER, port=MN_NEW_BLOCK_PUB_PORT)
+            self.parent.composer.add_dealer(vk=mn_vk)  # We need this currently for catchup state
+            # self.parent.composer.add_sub(vk=mn_vk, filter=MASTERNODE_DELEGATE_FILTER, port=MN_NEW_BLOCK_PUB_PORT)
+
+        self.parent.transition(DelegateCatchupState)
 
     def _check_ready(self):
         """

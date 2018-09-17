@@ -15,7 +15,7 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 
-def run_mn():
+def run_mn(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.nodes import NodeFactory
     from cilantro.constants.testnet import TESTNET_MASTERNODES
@@ -26,7 +26,7 @@ def run_mn():
     # overwrite_logger_level(21)
 
     ip = os.getenv('HOST_IP')
-    sk = TESTNET_MASTERNODES[0]['sk']
+    sk = TESTNET_MASTERNODES[slot_num]['sk']
     NodeFactory.run_masternode(ip=ip, signing_key=sk, reset_db=True)
 
 
@@ -74,7 +74,7 @@ def dump_it(volume, delay=0):
 class TestManualDump(BaseNetworkTestCase):
 
     VOLUME = 10  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-bootstrap.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-4-4-bootstrap.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)
@@ -83,7 +83,8 @@ class TestManualDump(BaseNetworkTestCase):
         log.important3("DUMPATRON REPORTING FOR DUTY")
 
         # Bootstrap master
-        self.execute_python('masternode', run_mn, async=True, profiling=self.PROFILE_TYPE)
+        for i, nodename in enumerate(self.groups['masternode']):
+            self.execute_python(nodename, wrap_func(run_mn, i), async=True, profiling=self.PROFILE_TYPE)
 
         # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):

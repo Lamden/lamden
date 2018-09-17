@@ -207,6 +207,7 @@ class MNStagingState(MNBaseState):
     @enter_from_any
     def enter_any(self):
         self.reset_attrs()
+        self._check_ready()
 
     # TODO remove this. keeping it for dev purposes for a bit
     @input(TransactionBase)
@@ -229,19 +230,26 @@ class MNStagingState(MNBaseState):
         Checks if the system is 'ready' (as described in the MNStagingState docstring). If all conditions are met,
         this function will transition to MNRunState.
         """
+
+        # TODO do this for real. this doesn't work right now in a multi-master situation
+        self.log.important("Masternode skipping staging state (not correctly implemented yet for multimaster), and "
+                           "transitioning to Runstate")
+        self.parent.transition(MNRunState)
+        return
+
         # TODO for dev we require all delegates online. IRL a 2/3 majority should suffice
         # majority = VKBook.get_delegate_majority()
-        majority = len(VKBook.get_delegates())
-
-        num_ready = len(self.ready_delegates)
-
-        if num_ready >= majority:
-            self.log.important("{}/{} Delegates are at the latest blockchain state! MN exiting StagingState."
-                               "\n(Ready Delegates = {})".format(num_ready, len(VKBook.get_delegates()), self.ready_delegates))
-            self.parent.transition(MNRunState)
-            return
-        else:
-            self.log.notice("Only {} of {} required delegate majority ready. MN remaining in StagingState".format(num_ready, majority))
+        # majority = len(VKBook.get_delegates())
+        #
+        # num_ready = len(self.ready_delegates)
+        #
+        # if num_ready >= majority:
+        #     self.log.important("{}/{} Delegates are at the latest blockchain state! MN exiting StagingState."
+        #                        "\n(Ready Delegates = {})".format(num_ready, len(VKBook.get_delegates()), self.ready_delegates))
+        #     self.parent.transition(MNRunState)
+        #     return
+        # else:
+        #     self.log.notice("Only {} of {} required delegate majority ready. MN remaining in StagingState".format(num_ready, majority))
 
 
 @Masternode.register_state

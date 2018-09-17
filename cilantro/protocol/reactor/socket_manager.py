@@ -10,6 +10,7 @@ from cilantro.protocol import wallet
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.base.base import MessageBase
 from cilantro.protocol.structures import EnvelopeAuth
+
 from cilantro.protocol.overlay.ironhouse import Ironhouse
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 from nacl.signing import SigningKey
@@ -34,15 +35,17 @@ class SocketManager:
 
         self.sockets = []
         self.pending_lookups = {}   # A dict of 'event_id' to socket instance
+
+        # Instantiating an OverlayClient blocks until the OverlayServer is ready
         self.overlay_client = OverlayClient(self._handle_overlay_event, loop=self.loop, ctx=self.context)
 
-    def create_socket(self, socket_type, secure=False, domain='*', *args, **kwargs) -> LSocket:
+    def create_socket(self, socket_type, secure=False, domain='*', *args, name='LSocket', **kwargs) -> LSocket:
         assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)
 
         ctx = self.secure_context if secure else self.context
         zmq_socket = ctx.socket(socket_type, *args, **kwargs)
 
-        socket = LSocket(zmq_socket, manager=self, secure=secure, domain=domain)
+        socket = LSocket(zmq_socket, manager=self, secure=secure, domain=domain, name=name)
         self.sockets.append(socket)
 
         return socket
