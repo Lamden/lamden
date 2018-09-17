@@ -219,12 +219,12 @@ class BlockManager(Worker):
         msg = envelope.message
         msg_hash = envelope.message_hash
 
-        if type(msg) == NewBlockNotification:
+        if isinstance(msg, NewBlockNotification):
             self.handle_new_block(envelope)
-        elif type(msg) == BlockContender:
+        elif isinstance(msg, BlockContender):
             # TODO implement
             # self.recv_merkle_tree(event)
-            self.recv_sub_block(event)
+            self.recv_sub_block(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))

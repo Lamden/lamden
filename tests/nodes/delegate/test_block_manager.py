@@ -6,6 +6,9 @@ from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
 
+from cilantro.messages.envelope.envelope import Envelope
+from cilantro.messages.block_data.block_metadata import NewBlockNotification
+
 _log = get_logger("TestBlockManager")
 
 TEST_IP = '127.0.0.1'
@@ -61,6 +64,40 @@ class TestBlockManager(TestCase):
         bm.handle_ipc_msg(frames)
 
         # TODO assert handle_ipc_msg does what expected
+
+    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
+    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
+    @mock.patch("cilantro.nodes.delegate.block_manager.SubBlockBuilder", autospec=True)
+    @mock.patch("cilantro.nodes.delegate.block_manager.asyncio", autospec=True)
+    @mock.patch("cilantro.nodes.delegate.block_manager.BlockManager.run", autospec=True)
+    def test_sub_msg_with_new_block_notification_calls_handle_new_block(self, mock_run_method, mock_bm_asyncio,
+                                                                        mock_sbb, mock_manager, mock_worker_asyncio):
+        """
+        Tests handle_sub_msg correctly calls handle_new_block when a NewBlockNotification is received
+        """
+        bm = BlockManager(ip=TEST_IP, signing_key=TEST_SK)
+        bm.manager = MagicMock()
+        bm.handle_new_block = MagicMock()  # Mock out .handle_new_block
+        bm.build_task_list()
+
+        # Mock Envelope.from_bytes to return a mock envelope of our choosing
+        mock_env = MagicMock()
+        mock_block_notif = MagicMock(spec=NewBlockNotification)
+        fake_hash = 'DEADBEEF' * 8
+        mock_env.message = mock_block_notif
+        mock_env.message_hash = fake_hash
+
+        with mock.patch.object(Envelope, 'from_bytes', return_value=mock_env):
+            # It doesnt actually matter what we pass in to bm.handle_sub_msg, since we've fixed Envelope.from_bytes
+            # to return mock_env
+            bm.handle_sub_msg([b'filter doesnt matter', b'envelope binary also doesnt matter'])
+
+        # Now, actually assert handle_new_block was called with mock_env as an arg
+        bm.handle_new_block.assert_called_with(mock_env)
+
+
+
+
 
 
 if __name__ == "__main__":
