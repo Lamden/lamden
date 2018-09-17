@@ -45,7 +45,7 @@ class SocketManager:
         ctx = self.secure_context if secure else self.context
         zmq_socket = ctx.socket(socket_type, *args, **kwargs)
 
-        socket = LSocket(zmq_socket, manager=self, secure=secure, domain=domain)
+        socket = LSocket(zmq_socket, manager=self, secure=secure, domain=domain, name=name)
         self.sockets.append(socket)
 
         return socket

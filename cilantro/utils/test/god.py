@@ -11,7 +11,7 @@ import os, requests, time, random
 
 
 if os.getenv('HOST_IP'):
-    ips = os.getenv('MASTERNODE')
+    ips = os.getenv('MASTERNODE', '0.0.0.0')
     # Set _MN_URL to be a list of IPs if we are in multimaster setting
     if ',' in ips:
         ips = ips.split(',')

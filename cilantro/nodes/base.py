@@ -16,6 +16,10 @@ class NewNodeBase(StateMachine, Worker):
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
+        self.log.notice("Starting overlay service")
+        self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key})
+        self.overlay_proc.start()
+
         StateMachine.__init__(self)
         Worker.__init__(self, signing_key=signing_key, loop=loop, name=name)
 
@@ -23,10 +27,6 @@ class NewNodeBase(StateMachine, Worker):
         self.name = name
 
         self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
-
-        self.log.notice("Starting overlay service")
-        self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key})
-        self.overlay_proc.start()
 
         self.tasks = []
 
