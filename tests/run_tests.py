@@ -5,6 +5,7 @@ import unittest
 import sys
 import time
 import os
+import re
 from cilantro.logger import get_logger, overwrite_logger_level
 import logging
 import argparse
@@ -65,6 +66,18 @@ def _should_skip_module(module_name: str, modules_to_skip: list) -> bool:
             return True
     return False
 
+def skip_circle_ci_modules(module_to_skip='tests/integration') -> list:
+    assert os.getenv('CIRCLECI'), 'Not using CIRCLECI, this operation is Dangerous Davis approved'
+    total_containers = os.getenv("CIRCLE_NODE_TOTAL")
+    container_idx = os.getenv("CIRCLE_NODE_INDEX")
+    skips = []
+    for root, dirs, files in os.walk(module_to_skip, topdown=False):
+        for idx, name in enumerate(files):
+            if re.search(r'^test_.*.py$', name):
+                if int(container_idx) != idx % int(total_containers):
+                    print('Removing {}...'.format(name))
+                    os.remove(os.path.join(root, name))
+    return skips
 
 def main(args):
     log.debug("\nRunning test suites with args\n\nrun unit tests={}\nrun integration tests={}\nverbosity={}\n"
@@ -77,6 +90,9 @@ def main(args):
         all_tests += UNIT_TESTS
     if args.integration:
         all_tests += INTEGRATION_TESTS
+
+    if args.integration and os.getenv("CIRCLECI"):
+        skip_circle_ci_modules('tests/integration')
 
     skip_test_names = args.skip_tests
 
