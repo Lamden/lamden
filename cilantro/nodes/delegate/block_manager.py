@@ -20,9 +20,9 @@
     need to decide whether this code will live in delegate.py under Delegate class or 
     Delegate class will contain this class as a data structure and manage this and other stuff
     
-    1. open my pub sockets
-    2. create my sub sockets
-    3. sub-block builder processes and socket pairs
+    1. open my pub sockets: 1 -> publishes sub-blocks (master_delegate_filter), votes (master filter)
+    2. create my sub sockets: 2 -> 1. master (gets new block) 2. delegates (gets sub-blocks - master_delegate_filter) initiates votes
+    3. sub-block builder processes and socket pairs -> gets new sub-blocks made
     4. router / dealer sockets ?? 
     5. bind sub sockets to proper pubs
        main:
@@ -101,7 +101,7 @@ class BlockManager(Worker):
                         .format(vk=self.verifying_key, sb_index=self.my_sb_index, num_mn=self.num_mnodes,
                                 num_blocks=self.num_blocks, sb_per_block=self.sub_blocks_per_block,
                                 num_sb_builders=self.num_sb_builders))
-        assert self.num_mnodes >= self.num_blocks, "num_blocks cannot be created that num_masternodes"
+        assert self.num_mnodes >= self.num_blocks, "num_blocks cannot be more than num_masternodes"
 
         self.sbb_map = self._build_sbb_map()
         self.log.info("Using sub-block builder map {}".format(self.sbb_map))
@@ -230,15 +230,29 @@ class BlockManager(Worker):
         msg_hash = envelope.message_hash
 
         if type(msg) == NewBlockNotification:
-            # TODO implement
-            pass
+            self.handle_new_block(envelope)
         elif type(msg) == BlockContender:
             # TODO implement
-            pass
+            # self.recv_merkle_tree(event)
+            self.recv_sub_block(event)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
         # Last frame, frames[-1] will be the envelope binary
+
+
+    def handle_new_block(self, envelope: Envelope):
+        cur_block_hash, cur_timestamp = self.get_latest_block_hash_timestamp()
+        block_hash, timestamp = self.fetch_hash_timestamp(envelope)
+        if (block_hash == self.cur_block_hash) or (timestamp < self.cur_timestamp):
+            continue
+        num = self.next_block.get(block_hash, 0) + 1
+        if (num == self.quorum):
+            self.update_db(envelope.message)
+            self.next_block.remove(block_hash)
+        else:
+            self.next_block[block_hash] = num
+
 
     # def _build_task_list(self):
     #     # Add router socket - where do we listen to this ?? add
@@ -349,25 +363,28 @@ class BlockManager(Worker):
     #                 self.my_sub_blocks[index] = sub_block
     #
     #
-    # def vote(self, other_sb, sub_block):
-    #     bag_hash1 = other_sb.get_bag_hash()
-    #     bag_hash2 = sub_block.get_bag_hash()
-    #     if (bag_hash1 != bag_hash2):
-    #         return False
-    #     ms_hash1 = other_sb.get_root_hash()
-    #     ms_hash2 = sub_block.get_root_hash()
-    #     publish_vote(agree if ms_hash1 == ms_hash2 else disagree)  # to all masters
-    #     return True
-    #
-    #
-    # def recv_merkle_tree(self, other_sb):
-    #     index = self.get_sub_block_index(other_sb)
-    #     sub_block = self.my_sub_blocks.get(index, None)
-    #     if (sub_block == None):
-    #         self.pending_sigs[index] = other_sb
-    #     else:
-    #         status = self.vote(other_sb, sub_block)
-    #         if status:
-    #             self.my_sub_blocks[index] = None
-    #         else:
-    #             self.pending_sigs[index] = other_sb
+
+    def vote(self, other_sb, sub_block):
+        # check first if they have same input txns
+        bag_hash1 = other_sb.get_bag_hash()
+        bag_hash2 = sub_block.get_bag_hash()
+        if (bag_hash1 != bag_hash2):
+            return False
+        ms_hash1 = other_sb.get_root_hash()
+        ms_hash2 = sub_block.get_root_hash()
+        agreed = (ms_hash1 == ms_hash2)
+        publish_vote(agree if agreed else disagree)  # to all masters
+        return agreed
+    
+   
+    def recv_sub_block(self, other_sb):
+        index = self.get_sub_block_index(other_sb)
+        sub_block = self.my_sub_blocks.get(index, None)
+        if (sub_block == None):
+            self.pending_sigs[index] = other_sb
+        else:
+            status = self.vote(other_sb, sub_block)
+            if status:
+                self.my_sub_blocks[index] = None
+            else:
+                self.pending_sigs[index] = other_sb
