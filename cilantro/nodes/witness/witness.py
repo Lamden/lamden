@@ -40,29 +40,7 @@ class Witness(NewNodeBase):
 
 
 class WitnessBaseState(State):
-
-    @input(KillSignal)
-    def handle_kill_sig(self, msg: KillSignal):
-        # TODO - make sure this is secure (from a KillSignal)
-        self.log.important("Node got received remote kill signal from network!")
-        self.parent.teardown()
-
-    @input_socket_connected
-    def socket_connected(self, socket_type: int, vk: str, url: str):
-        self.log.warning("Witness state {} not configured to handle socket_connected event".format(type(self)))
-
-    @input_connection_dropped
-    def conn_dropped(self, vk, ip):
-        self.log.important2('vk {} with ip {} has dropped'.format(vk, ip))
-
-    @input(TransactionBase)
-    def recv_tx(self, tx: TransactionBase, envelope: Envelope):
-        self.log.error("Witness not configured to recv tx: {} with env {}".format(tx, envelope))
-
-    @input(OrderingContainer)
-    def recv_ordered_tx(self, tx: OrderingContainer, envelope: Envelope):
-        self.log.error("Witness not configured to recv ordered tx: {} with env {}".format(tx, envelope))
-
+    pass
 
 @Witness.register_init_state
 class WitnessBootState(WitnessBaseState):
@@ -82,17 +60,6 @@ class WitnessBootState(WitnessBaseState):
         self._create_pub_socket()
 
         self.parent.transition(WitnessRunState)
-
-        # Create a publisher socket to each delegate SBB process
-        # self.parent.composer.add_pub(ip=self.parent.ip)
-
-        # Sub to assigned Masternode
-        # mn_vk = WITNESS_MN_MAP[self.parent.verifying_key]
-        # self.log.notice("Witness with vk {} subscribing to masternode with vk {}".format(self.parent.verifying_key, mn_vk))
-        # self.parent.composer.add_sub(filter=WITNESS_MASTERNODE_FILTER, vk=mn_vk, port=MN_TX_PUB_PORT)
-
-        # Once done setting up sockets, transition to RunState
-        # self.parent.transition(WitnessRunState)
 
     def _create_sub_socket(self):
         # Sub to assigned Masternode
