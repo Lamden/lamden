@@ -16,7 +16,7 @@ BOOT_DELAY = 8  # MANDATORY NAP TIME (How long each node sleeps after starting i
 def take_a_nice_relaxing_nap(log):
     log.important("Taking a nice relaxing {} second nap while I wait for everybody to boot".format(BOOT_DELAY))
     time.sleep(BOOT_DELAY)
-    log.imporant("Done with my boot nap. Time to get to get work.")
+    log.important("Done with my boot nap. Time to get to get work.")
 
 
 class NewNodeBase(StateMachine, Worker):
