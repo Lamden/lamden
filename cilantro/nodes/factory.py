@@ -43,7 +43,6 @@ class NodeFactory:
             pass
 
         w = Witness(ip=ip, name=name, signing_key=signing_key)
-        w.start()
 
     @staticmethod
     def run_delegate(signing_key, ip, name='Delegate', reset_db=False):

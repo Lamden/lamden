@@ -86,7 +86,7 @@ class LSocket:
 
             while True:
                 if duration_waited > MAX_RDY_WAIT and not self.ready:
-                    msg = "Socket failed to bind/connect in {} seconds!".format(MAX_RDY_WAIT)
+                    msg = "Socket failed to bind/connect in {} seconds! Pending lookups={}".format(MAX_RDY_WAIT, self.pending_lookups)
                     self.log.fatal(msg)
                     raise Exception(msg)
 

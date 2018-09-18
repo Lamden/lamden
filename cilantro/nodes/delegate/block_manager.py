@@ -70,16 +70,10 @@ from collections import defaultdict
 IPC_IP = 'block-manager-ipc-sock'
 IPC_PORT = 6967
 
-# DEBUG TODO DELETE
-_l = get_logger("BlockManager DEBUG")
-_l.critical("(OUTSIDE OF CLASS) type of Worker: {}".format(Worker))
-# END DEBUG
-
 
 class BlockManager(Worker):
 
     def __init__(self, ip, *args, **kwargs):
-        _l.critical("(INSIDE INIT) type of Worker: {}".format(Worker))
         super().__init__(*args, **kwargs)
         self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
 
@@ -109,10 +103,6 @@ class BlockManager(Worker):
         # Define Sockets (these get set in build_task_list)
         self.ipc_router, self.pub, self.sub = None, None, None
         self.ipc_ip = IPC_IP + '-' + str(os.getpid())
-
-        # DEBUG TODO DELETE
-        self.log.critical("RUN METHOD IS {}".format(BlockManager.run))
-        # END DEBUG
 
         self.run()
         self.log.critical("just called run!".format())
@@ -240,12 +230,13 @@ class BlockManager(Worker):
                             .format(type(msg)))
         # Last frame, frames[-1] will be the envelope binary
 
-
     def handle_new_block(self, envelope: Envelope):
         cur_block_hash, cur_timestamp = self.get_latest_block_hash_timestamp()
         block_hash, timestamp = self.fetch_hash_timestamp(envelope)
         if (block_hash == self.cur_block_hash) or (timestamp < self.cur_timestamp):
-            continue
+            # TODO log something
+            pass
+
         num = self.next_block.get(block_hash, 0) + 1
         if (num == self.quorum):
             self.update_db(envelope.message)
