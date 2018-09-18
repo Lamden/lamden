@@ -79,8 +79,9 @@ class LSocket:
             self.log.spam("Executing pending command {} with args {} and kwargs {}".format(cmd_name, args, kwargs))
             getattr(self, cmd_name)(*args, **kwargs)
 
-    def add_handler(self, handler_func, msg_types: List[MessageBase]=None, start_listening=False) -> asyncio.Future or asyncio.coroutine:
-        async def _listen(socket, handler_func):
+    def add_handler(self, handler_func, handler_key=None, msg_types: List[MessageBase] = None,
+                    start_listening=False) -> asyncio.Future or asyncio.coroutine:
+        async def _listen(socket, handler_func, handler_key):
             self.log.socket("Starting listener on socket {}".format(socket))
             duration_waited = 0
 
@@ -100,12 +101,17 @@ class LSocket:
                 try:
                     self.log.spam("Socket waiting for multipart msg...")
                     msg = await socket.recv_multipart()
-                    self.log.spam("Socket recv multipart msg:\n{}".format(msg))
                 except asyncio.CancelledError:
                     self.log.warning("Socket got asyncio.CancelledError. Breaking from lister loop.")
                     break
 
-                handler_func(msg)
+                self.log.spam("Socket recv multipart msg:\n{}".format(msg))
+
+                # TODO this is where i was --davis 
+                if handler_key:
+                    handler_func(handler_key, msg)
+                else:
+                    handler_func(msg)
 
         if start_listening:
             return asyncio.ensure_future(_listen(self.socket, handler_func))
