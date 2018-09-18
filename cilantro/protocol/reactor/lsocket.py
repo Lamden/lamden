@@ -107,16 +107,16 @@ class LSocket:
 
                 self.log.spam("Socket recv multipart msg:\n{}".format(msg))
 
-                # TODO this is where i was --davis 
                 if handler_key:
-                    handler_func(handler_key, msg)
+                    handler_func(msg, handler_key)
                 else:
                     handler_func(msg)
 
+        coro = _listen(self.socket, handler_func, handler_key=handler_key)
         if start_listening:
-            return asyncio.ensure_future(_listen(self.socket, handler_func))
+            return asyncio.ensure_future(coro)
         else:
-            return _listen(self.socket, handler_func)
+            return coro
 
     def send_msg(self, msg: MessageBase, header: bytes=None):
         """
