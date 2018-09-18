@@ -58,9 +58,8 @@ class SubBlockContender(MessageBase):
         return pickle.dumps(self._data)
 
     @classmethod
-    def create(cls, result_hash: str, input_hash: str, mrkel_leaves: List[str],
-               signature: MerkleSignature, raw_txns: List[bytes]):
-        # raw_txns -> list of (hash: raw_txns) pairs
+    def create(cls, result_hash: str, input_hash: str, mrkle_leaves: List[str],
+               signature: MerkleSignature, txns: List[bytes]):
         """
         Delegages create a new sub-block contender and propose to master nodes
         :param result_hash: The hash of the root of this sub-block
@@ -70,14 +69,12 @@ class SubBlockContender(MessageBase):
         :param raw_txns: Partial set of raw transactions with the result state included.
         :return: A SubBlockContender object
         """
-        # Serialize list of signatures
-        sigs_binary = []
-
-        for sig in signatures:
-            sigs_binary.append(sig.serialize())
+        # Serialize signature
+        sig_binary = signature.serialize()
 
         assert isinstance(signature, MerkleSignature), "signature must be of MerkleSignature"
-        data = {cls.SIGS: sigs_binary, cls.LEAVES: merkle_leaves, cls.PREV_BLOCK: prev_block_hash}
+        data = {cls.RESULT_HASH: result_hash, cls.INPUT_HASH: input_hash,
+                cls.LEAVES: mrkle_leaves, cls.SIGS: sig_binary, cls.TXNS: txns}
         obj = cls.from_data(data)
 
         set_lazy_property(obj, 'signature', signature)
