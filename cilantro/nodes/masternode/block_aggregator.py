@@ -6,13 +6,14 @@ from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.utils.lprocess import LProcess
 
 from cilantro.constants.nodes import *
-from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
-from cilantro.constants.ports import MN_SUB_BLOCK_PORT
+from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MASTER_FILTER
+from cilantro.constants.ports import MN_SUB_BLOCK_PORT, INTER_MASTER_PORT
 from cilantro.constants.delegate import NODES_REQUIRED_CONSENSUS, TOP_DELEGATES
 
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
+from cilantro.messages.block_data.main_block import MainBlock
 from cilantro.utils.hasher import Hasher
 
 import asyncio, zmq, os, heapq
@@ -39,6 +40,12 @@ class BlockAggregator(Worker):
             secure=True,
             domain="sb-contender"
         )
+        self.pub = self.manager.create_socket(
+            socket_type=zmq.PUB,
+            name="BA-Pub-{}".format(vk),
+            secure=True,
+            domain="sb-contender"
+        )
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
         # Listen to delegates for sub block contenders
@@ -46,6 +53,13 @@ class BlockAggregator(Worker):
         for vk in VKBook.get_delegates():
             if vk != self.verifying_key:  # Do not SUB to itself
                 self.sub.connect(vk=vk, port=MN_SUB_BLOCK_PORT)
+
+        self.sub.setsockopt(zmq.SUBSCRIBE, MASTER_MASTER_FILTER.encode())
+        for vk in VKBook.get_masternodes():
+            if vk != self.verifying_key:  # Do not SUB to itself
+                self.sub.connect(vk=vk, port=INTER_MASTER_PORT)
+
+        self.pub.bind(vk=vk, port=INTER_MASTER_PORT)
 
     def flush(self):
         self.contenders = {}
@@ -56,6 +70,8 @@ class BlockAggregator(Worker):
 
         if type(msg) == SubBlockContender:
             self.recv_sub_block_contender(msg)
+        elif type(msg) == MainBlock:
+            self.prepare_main_block(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
@@ -89,3 +105,9 @@ class BlockAggregator(Worker):
         if len(self.contenders['signatures']) >= NODES_REQUIRED_CONSENSUS and \
             len(self.contenders['transactions_received']) == self.contenders['transactions_count']:
             self.log.critical('##TODO## PREPARING BLOCK: {}'.format(self.contenders))
+            # TODO MainBlock.create()...
+            # send main block
+
+    def recv_main_block(self, mb: MainBlock):
+        # TODO Check input_hash
+        pass
