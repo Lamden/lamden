@@ -137,7 +137,9 @@ class OverlayClient(object):
         try:
             self.loop.run_until_complete(self.block_until_ready())
         except:
-            self.log.fatal('Overlay Interface is not ready after {}s...'.format(CLIENT_SETUP_TIMEOUT))
+            msg = '\nOverlayServer is not ready after {}s...\n'.format(CLIENT_SETUP_TIMEOUT)
+            self.log.fatal(msg)
+            raise Exception(msg)
 
         if block:
             self.loop.run_forever()

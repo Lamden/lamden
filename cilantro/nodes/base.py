@@ -13,6 +13,8 @@ from cilantro.protocol import wallet
 class NewNodeBase(StateMachine, Worker):
 
     def __init__(self, ip, signing_key, loop=None, name='Node'):
+        self.log = get_logger(name)
+
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
@@ -20,15 +22,14 @@ class NewNodeBase(StateMachine, Worker):
         self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key})
         self.overlay_proc.start()
 
-        StateMachine.__init__(self)
+        # Init Super Classes (we had to start the Overlay Server first)
         Worker.__init__(self, signing_key=signing_key, loop=loop, name=name)
+        StateMachine.__init__(self)
 
         self.ip = ip
         self.name = name
 
         self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
-
-        self.tasks = []
 
         super().start()  # Start the state machine
 
