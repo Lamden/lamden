@@ -25,7 +25,6 @@ class SubBlockContender(MessageBase):
         # leaves can be empty list from some delegates that only intend to vote (not propose it)
         assert self._data.merkleLeaves, "leaves field missing from data {}".format(self._data)
         assert self._data.signature, "Signature field missing from data {}".format(self._data)
-        # assert SubBlockContender.NODES in self._data, "nodes field missing from data {}".format(self._data)
         assert self._data.transactions, "Raw transactions field missing from data {}".format(self._data)
 
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
