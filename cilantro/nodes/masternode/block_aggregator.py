@@ -1,26 +1,18 @@
-from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder
-from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.logger.base import get_logger
 from cilantro.storage.db import VKBook
 from cilantro.protocol.multiprocessing.worker import Worker
-from cilantro.utils.lprocess import LProcess
 
-from cilantro.constants.nodes import *
 from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MASTER_FILTER
 from cilantro.constants.ports import MN_SUB_BLOCK_PORT, INTER_MASTER_PORT
 from cilantro.constants.delegate import NODES_REQUIRED_CONSENSUS, TOP_DELEGATES
 
 from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.consensus.block_contender import BlockContender
-from cilantro.messages.block_data.block_metadata import NewBlockNotification
-from cilantro.messages.block_data.main_block import MainBlock
+from cilantro.messages.consensus.full_block_hash import FullBlockHash
+from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.utils.hasher import Hasher
 
 import asyncio, zmq, os, heapq
 from collections import defaultdict
-
-class ResultHash(bytes):
-    pass
 
 class BlockAggregator(Worker):
 
@@ -69,6 +61,7 @@ class BlockAggregator(Worker):
         self.merkle_hashes_required = 0
         self.signatures_received = set()
         self.merkle_hashes_received = set()
+        self.full_block_hashes = {}
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -76,7 +69,7 @@ class BlockAggregator(Worker):
 
         if isinstance(msg, SubBlockContender):
             self.recv_sub_block_contender(msg)
-        elif isinstance(msg, ResultHash):
+        elif isinstance(msg, FullBlockHash):
             self.recv_result_hash(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
@@ -103,19 +96,21 @@ class BlockAggregator(Worker):
         for tx in sbc._data.transactions:
             self.merkle_hashes_received.add(Hasher.hash(tx))
             self.signatures_received.add(sbc._data.signature)
-        self.prepare_main_block()
+        self.combine_result_hash()
 
-    def prepare_main_block(self):
+    def combine_result_hash(self):
         self.log.info('Received {}/{} ({} required) signatures and {}/{} total transactions'.format(
             self.total_signatures, TOP_DELEGATES, NODES_REQUIRED_CONSENSUS,
             len(self.merkle_hashes_received), self.merkle_hashes_required
         ))
         if self.total_signatures >= NODES_REQUIRED_CONSENSUS and \
             self.merkle_hashes_received == self.merkle_hashes_required:
-            contender_hashes = ''.join(self.contenders.keys().sort()).encode()
-            self.log.critical('##TODO## PREPARING RESULT HASH: {}'.format(self.contenders))
-            # send result_hash
+            crh = FullBlockHash.create(''.join(self.contenders.keys().sort()))
+            self.log.important('Created resultant block-hash: {}'.format(full_block_hash))
+            self.pub.send_msg(msg=full_block_hash, header=MASTER_MASTER_FILTER.encode())
 
-    def recv_result_hash(self, result_hash: ResultHash):
-        # TODO Check result_hash
-        pass
+    def recv_result_hash(self, result_hash: FullBlockHash):
+        if not self.full_block_hashes.get(result_hash):
+            self.full_block_hashes[result_hash] = 1
+        else:
+            self.full_block_hashes[result_hash] += 1

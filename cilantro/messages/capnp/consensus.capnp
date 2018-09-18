@@ -7,3 +7,7 @@ struct SubBlockContender {
     signature @3 :Data;
     transactions @4: List(Data);
 }
+
+struct FullBlockHash {
+    fullBlockHash @0 :Data;
+}
