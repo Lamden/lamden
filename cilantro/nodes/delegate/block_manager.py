@@ -244,6 +244,29 @@ class BlockManager(Worker):
         else:
             self.next_block[block_hash] = num
 
+    def vote(self, other_sb, sub_block):
+        # check first if they have same input txns
+        bag_hash1 = other_sb.get_bag_hash()
+        bag_hash2 = sub_block.get_bag_hash()
+        if (bag_hash1 != bag_hash2):
+            return False
+        ms_hash1 = other_sb.get_root_hash()
+        ms_hash2 = sub_block.get_root_hash()
+        agreed = (ms_hash1 == ms_hash2)
+        publish_vote(agree if agreed else disagree)  # to all masters
+        return agreed
+
+    def recv_sub_block(self, other_sb):
+        index = self.get_sub_block_index(other_sb)
+        sub_block = self.my_sub_blocks.get(index, None)
+        if (sub_block == None):
+            self.pending_sigs[index] = other_sb
+        else:
+            status = self.vote(other_sb, sub_block)
+            if status:
+                self.my_sub_blocks[index] = None
+            else:
+                self.pending_sigs[index] = other_sb
 
     # def _build_task_list(self):
     #     # Add router socket - where do we listen to this ?? add
@@ -355,27 +378,3 @@ class BlockManager(Worker):
     #
     #
 
-    def vote(self, other_sb, sub_block):
-        # check first if they have same input txns
-        bag_hash1 = other_sb.get_bag_hash()
-        bag_hash2 = sub_block.get_bag_hash()
-        if (bag_hash1 != bag_hash2):
-            return False
-        ms_hash1 = other_sb.get_root_hash()
-        ms_hash2 = sub_block.get_root_hash()
-        agreed = (ms_hash1 == ms_hash2)
-        publish_vote(agree if agreed else disagree)  # to all masters
-        return agreed
-    
-   
-    def recv_sub_block(self, other_sb):
-        index = self.get_sub_block_index(other_sb)
-        sub_block = self.my_sub_blocks.get(index, None)
-        if (sub_block == None):
-            self.pending_sigs[index] = other_sb
-        else:
-            status = self.vote(other_sb, sub_block)
-            if status:
-                self.my_sub_blocks[index] = None
-            else:
-                self.pending_sigs[index] = other_sb
