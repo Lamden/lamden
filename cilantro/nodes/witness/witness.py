@@ -29,10 +29,14 @@ import zmq, asyncio
 
 class Witness(NewNodeBase):
     def __init__(self, *args, **kwargs):
+        # Put all variables shared between states here
+        self.tasks = []
+        self.sub, self.pub = None, None
+
+        # Call super after since we need to define these variables before we kick off into boot state
+        # this is shitty and confusing i am v sorry --davis
         super().__init__(*args, **kwargs)
 
-        # Put all variables shared between states here
-        self.sub, self.pub = None, None
 
 
 class WitnessBaseState(State):
