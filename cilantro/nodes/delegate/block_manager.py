@@ -217,6 +217,13 @@ raghu
 
         # TODO handle sbc.... publish to Masternode
 
+        # Send the msg b'hi' to the SBB at index 1
+        id_frame = '0'.encode()
+        msg = 'hey, its me Router'.encode()
+        self.ipc_router.send_multipart([id_frame, msg])
+
+
+
     def handle_sub_msg(self, frames):
         # This handle will get NewBlockNotifications from Masternodes, and BlockContenders (or whatever the equivalent
         # is now) from Delegates

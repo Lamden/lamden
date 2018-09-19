@@ -188,10 +188,12 @@ class SubBlockBuilder(Worker):
         # Otherwise, interpret everything in the bag and build a SBC. Then send this SBC to BlockManager processes
         else:
             sbc = self._create_sbc_from_batch(batch)
+            # TODO add a middle frame to denote the 'type' of the SBC
             self.dealer.send_multipart([sbc.serialize()])
             # TODO do we need to set a flag on this SBB, marking that he just sent off a SBC? I think so
 
         # Increment our current working sub block index, and try and build the next subtree
+        # TODO reset tx timestamp on current sb_manager object
         self.current_sbm_idx = (self.current_sbm_idx + 1) % len(self.sb_managers)
         return self._interpret_next_sb()
 
@@ -213,6 +215,8 @@ class SubBlockBuilder(Worker):
         merkle_sig = MerkleSignature.create(sig_hex=signature,
                                             timestamp=str(int(time.time())),
                                             sender=self.verifying_key)
+
+        # TODO add subblock index to the SBC
         sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=Hasher.hash(batch),
                                        merkle_leaves=merkle.leaves, signature=merkle_sig, raw_txs=all_tx)
         return sbc
