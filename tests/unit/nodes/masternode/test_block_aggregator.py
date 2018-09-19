@@ -117,7 +117,7 @@ class TestBlockAggregator(TestCase):
 
         ba.recv_sub_block_contender(sbc)
 
-        self.assertEqual(ba.contenders[RESULT_HASH]['input_hash'], INPUT_PUSH)
+        self.assertEqual(ba.contenders[RESULT_HASH]['sbc']._data.inputHash, INPUT_PUSH)
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
@@ -172,8 +172,8 @@ class TestBlockAggregator(TestCase):
             sbc = SubBlockContender.create(RESULT_HASH, INPUT_PUSH, MERKLE_LEAVES, signature, RAWTXS[:3])
             ba.recv_sub_block_contender(sbc)
 
-        self.assertEqual(len(ba.signatures_received), NODES_REQUIRED_CONSENSUS)
-        self.assertEqual(len(ba.merkle_hashes_received), 3)
+        self.assertEqual(len(ba.contenders[RESULT_HASH]['signatures_received']), NODES_REQUIRED_CONSENSUS)
+        self.assertEqual(len(ba.contenders[RESULT_HASH]['merkle_hashes_received']), 3)
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
