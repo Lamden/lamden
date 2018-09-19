@@ -41,6 +41,7 @@ from cilantro.constants.ports import SBB_PORT_START
 
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
+from cilantro.messages.transaction.batch import TransactionBatch
 
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.protocol import wallet
@@ -65,7 +66,10 @@ from cilantro.utils.hasher import Hasher
 # witness can quit at a certain time interval ?? and delegates can kick it out once it has other 5/6 copies and no data from it??
 
 class SubBlockManager:
-    pass
+    def __init__(self, sub_block_index: int, sub_socket, processed_txs_timestamp: int=0):
+        self.processed_txs_timestamp, self.sub_block_index = processed_txs_timestamp, sub_block_index
+        self.pending_txs = LinkedHashTable()
+        self.sub_socket = sub_socket
 
 class SubBlockBuilder(Worker):
     def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int,
@@ -76,6 +80,7 @@ class SubBlockBuilder(Worker):
         self.sbb_index = sbb_index
         self.num_sub_blocks_per_block = num_sb_per_block
         self.num_blocks = num_blocks
+        self.current_sbm_idx = 0  # The index of the sb_manager whose transactions we are trying to build a SB for
 
         self.tasks = []
 
@@ -84,8 +89,7 @@ class SubBlockBuilder(Worker):
         self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sbb_index).encode())
 
         # BIND sub sockets to listen to witnesses
-        self.subs = []
-        self.sub_blocks = []
+        self.sb_managers = []
         self._create_sub_sockets(num_sb_builders=num_sb_builders)
 
         # Create a Seneca interpreter for this SBB
@@ -118,46 +122,50 @@ class SubBlockBuilder(Worker):
         self.tasks.append(self.dealer.add_handler(handler_func=self.handle_ipc_msg))
 
     def _create_sub_sockets(self, num_sb_builders):
-        # First, determine the set of Masternodes this SBB is responsible for
         num_sub_blocks = self.num_sub_blocks_per_block * self.num_blocks
-        self.log.info("This SBB is responsible for masternodes at index multiples of {}".format(self.sbb_index))
 
         # We then BIND a sub socket to a port for each of these masternode indices
-        for idx in num_sub_blocks:
-            sb_idx = idx * self.num_sb_builders + self.sbb_index
-            self.sub_blocks.append(new SubBlockManager())
-            self.sub_blocks[idx].pending_txs = LinkedHashTable()
-            self.sub_blocks[idx].processed_txs_timestamp = 0
-            self.sub_blocks[idx].sub_block_index = sb_idx
+        for idx in range(num_sub_blocks):
+            sb_idx = idx * num_sb_builders + self.sbb_index
             port = SBB_PORT_START + sb_idx
-            self.log.info("SBB BINDing to port {} with no filter".format(port))
+
             sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx))
             sub.setsockopt(zmq.SUBSCRIBE, b'')
             sub.bind(port=port, ip=self.ip)  # TODO secure him
+            self.log.info("SBB BINDing to port {} with no filter".format(port))
+
+            self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
-            self.subs.append(sub)
 
     def handle_ipc_msg(self, frames):
         self.log.important("Got msg over Router IPC from BlockManager with frames: {}".format(frames))
         # TODO implement
 
     def handle_sub_msg(self, frames, index):
-        self.log.info("Sub socket got frames {}".format(frames))
+        self.log.info("Sub socket got frames {} with handler_index {}".format(frames, index))
+        assert 0 <= index < len(self.sb_managers), "Got index {} out of range of sb_managers array {}".format(
+            index, self.sb_managers)
 
-        # The first frame is the filter, and the last frame is the envelope binary
         envelope = Envelope.from_bytes(frames[-1])
         timestamp = envelope.meta.timestamp
-        if timestamp < self.sub_blocks[index].processed_txs_timestamp:
+        assert isinstance(envelope.message, TransactionBatch), "Handler expected TransactionBatch but got {}".format(envelope.messages)
+
+        if timestamp < self.sb_managers[index].processed_txs_timestamp:
+            self.log.critical("Got timestamp {} that is prior to the most recent timestamp {} for sb_manager {}! BRUH"
+                              .format(timestamp, self.sb_managers[index].processed_txs_timestamp, index))
             return
 
         msg = envelope.message
         msg_hash = envelope.message_hash
-        if self.sub_blocks[index].pending_txs.find(msg_hash):
+        # if the sb_manager already has this bag, ignore it
+        # if self.sb_managers[index].pending_txs.find(msg_hash):
+        if msg_hash in self.sb_managers[index]:
+            self.log.debugv("Msg hash {} already found in sb_manager at index {}".format(msg_hash, index))
             return
 
         # now do envelope validation here - TODO
 
-        self.sub_blocks[index].pending_txs.append(msg_hash, msg)
+        self.sb_managers[index].pending_txs.append(msg_hash, msg)
 
 
     # TODO mimic this logic in handle_ipc_msg
@@ -181,13 +189,17 @@ class SubBlockBuilder(Worker):
     #         self.log.warning("Builder _recv_messages task canceled externally")
 
 
-    async def _interpret_next_subtree(self, index):
-        self.log.debug("Starting to make a new sub-block {} for block {}"
-                       .format(self.sub_block_num, self.block_num))
+    async def _interpret_next_subtree(self):
+        self.log.debug("SBB {} attempting to build sub block with sub block manager index {}".format(self.sbb_index, self.current_sbm_idx))
         # get next batch of txns ??  still need to decide whether to unpack a bag or check for end of txn batch
-        txn_bag = self.sub_blocks[index].pending_txs.popleft()
-        if txn_bag.empty():
-            return false
+
+        txn_bag = self.sb_managers[self.current_sbm_idx].pending_txs.popleft()
+        if not txn_bag:
+            self.log.debugv("Subblock manager at index {} has no TransactionBatches to process".format(self.current_sbm_idx))
+        if txn_bag.is_empty:
+            self.log.debugv("Subblock manager at index {} got an empty transaction bag!".format(self.current_sbm_idx))
+            self.current_sbm_idx = (self.current_sbm_idx + 1) % len(self.sb_managers)
+
         
         for txn in txn_bag:
             self.interpreter.interpret(txn)  # this is a blocking call. either async or threads??
