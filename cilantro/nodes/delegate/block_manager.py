@@ -48,6 +48,7 @@ from cilantro.constants.testnet import WITNESS_MN_MAP, MN_WITNESS_MAP
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
+from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 
 import asyncio
 import zmq
@@ -203,17 +204,18 @@ raghu
 
     def handle_ipc_msg(self, frames):
         # This callback should receive stuff from everything on self.ipc_router. Currently, this is just the SBB procs
-        self.log.important("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
+        self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
 
         # First frame, frames[0], is the ID frame, last frame frames[-1] is the message binary. Since this is over IPC,
         # this does not necessarily have to be an Envelope.
 
-        # DEBUG TODO DELETE
-        # (Just for testing) we reply to that msg
-        id_frame, msg = frames[0], frames[-1].decode()
-        reply_msg = "Thanks for the msg {}".format(msg)
-        self.ipc_router.send_multipart([id_frame, reply_msg.encode()])
-        # END DEBUG
+        # We assume that we are only getting Sub-block Contender objects from the SBB procs
+        sbb_index = int(frames[0].decode())
+        sbc = SubBlockContender.from_bytes(frames[-1])
+
+        self.log.important("SBB index {} just sent  SB Contender {}".format(sbb_index, sbc))
+
+        # TODO handle sbc.... publish to Masternode
 
     def handle_sub_msg(self, frames):
         # This handle will get NewBlockNotifications from Masternodes, and BlockContenders (or whatever the equivalent

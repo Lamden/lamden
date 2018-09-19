@@ -100,7 +100,7 @@ class SubBlockBuilder(Worker):
         self.interpreter = SenecaInterpreter()
 
         # DEBUG TODO DELETE
-        self.tasks.append(self.test_dealer_ipc())
+        # self.tasks.append(self.test_dealer_ipc())
         # END DEBUG
 
         self.run()
