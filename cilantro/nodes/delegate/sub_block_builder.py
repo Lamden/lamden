@@ -75,6 +75,7 @@ class SubBlockManager:
         self.pending_txs = LinkedHashTable()
         self.merkle = None
 
+
 class SubBlockBuilder(Worker):
     def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int,
                  num_sb_builders: int, num_sb_per_block: int, num_blocks: int, *args, **kwargs):
@@ -144,6 +145,7 @@ class SubBlockBuilder(Worker):
     def handle_ipc_msg(self, frames):
         self.log.important("Got msg over Router IPC from BlockManager with frames: {}".format(frames))
         # TODO implement
+        # raghu TODO listen to updated DB message from BM and start conflict resolution if any
 
     def handle_sub_msg(self, frames, index):
         self.log.info("Sub socket got frames {} with handler_index {}".format(frames, index))
@@ -220,5 +222,15 @@ class SubBlockBuilder(Worker):
         sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=Hasher.hash(batch),
                                        merkle_leaves=merkle.leaves, signature=merkle_sig, raw_txs=all_tx)
         return sbc
+
+    # TODO raghu - tie with new block notifications so we are only 1 or 2 steps ahead
+    async def interpret_next_block(self, block_index):
+        self.num_blocks = num_blocks
+        if block_index >= self.num_blocks:
+            # TODO - log error
+            return
+        sb_index_start = block_index * self.num_sub_blocks_per_block
+        foreach i in self.num_sub_blocks_per_block:
+            await self._interpret_next_sub_block(sb_index_start + i)
 
 
