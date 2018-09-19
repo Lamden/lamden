@@ -30,6 +30,9 @@ class LinkedHashTable:
         self._table.clear()
         self._first, self._last = None, None
 
+    def find(self, key):
+        return True if key in self._table else False
+
     def append(self, key, value):
         assert key not in self._table, "Attempted to insert key {} that is already in hash table keys {}".format(key, self._table)
 

@@ -85,15 +85,16 @@ class BlockManager(Worker):
 
         self.num_mnodes = len(VKBook.get_masternodes())
         self.num_blocks = min(MAX_BLOCKS, self.num_mnodes)
-        self.sub_blocks_per_block = (self.num_mnodes + self.num_blocks - 1) // self.num_blocks
-        self.num_sb_builders = min(MAX_SUB_BLOCK_BUILDERS, self.sub_blocks_per_block)
-        self.my_sb_index = self._get_my_index() % self.sub_blocks_per_block
+        self.max_sub_blocks_per_block = (self.num_mnodes + self.num_blocks - 1) // self.num_blocks
+        self.num_sb_builders = min(MAX_SUB_BLOCK_BUILDERS, self.max_sub_blocks_per_block)
+        self.num_sb_per_block = (self.max_sub_blocks_per_block + self.num_sb_builders - 1) // self.num_sb_builders
+        self.my_sb_index = self._get_my_index() % self.num_sb_builders
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_masternodes={num_mn}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
                         "num_sb_builders={num_sb_builders}\n"
                         .format(vk=self.verifying_key, sb_index=self.my_sb_index, num_mn=self.num_mnodes,
-                                num_blocks=self.num_blocks, sb_per_block=self.sub_blocks_per_block,
+                                num_blocks=self.num_blocks, sb_per_block=self.max_sub_blocks_per_block,
                                 num_sb_builders=self.num_sb_builders))
         assert self.num_mnodes >= self.num_blocks, "num_blocks cannot be more than num_masternodes"
 
@@ -144,12 +145,16 @@ class BlockManager(Worker):
         self.sub.bind()
 
     def start_sbb_procs(self):
+        self.num_blocks = min(MAX_BLOCKS, self.num_mnodes)
+        self.num_sb_per_block = (self.max_sub_blocks_per_block + self.num_sb_builders - 1) // self.num_sb_builders
         for i in range(self.num_sb_builders):
             self.sb_builders[i] = LProcess(target=SubBlockBuilder,
                                            kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT,
                                                    "signing_key": self.signing_key, "ip": self.ip,
-                                                   "sbb_map": self.sbb_map, "sbb_index": i,
-                                                   "num_sb_builders": self.num_sb_builders})
+                                                   "sbb_index": i, "num_sb_builders": self.num_sb_builders,
+                                                   "num_sb_per_block": self.num_sb_per_block
+raghu
+                                                   "num_blocks": self.num_blocks})
             self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
 
