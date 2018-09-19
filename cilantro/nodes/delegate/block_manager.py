@@ -98,8 +98,6 @@ class BlockManager(Worker):
                                 num_sb_builders=self.num_sb_builders))
         assert self.num_mnodes >= self.num_blocks, "num_blocks cannot be more than num_masternodes"
 
-        self.sbb_map = self._build_sbb_map()
-        self.log.info("Using sub-block builder map {}".format(self.sbb_map))
 
         # Define Sockets (these get set in build_task_list)
         self.ipc_router, self.pub, self.sub = None, None, None
@@ -140,6 +138,7 @@ class BlockManager(Worker):
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MN_NEW_BLOCK_PUB_PORT)
 
+    # davis? do we need this at BM?
     def make_new_sub(self):
         self.sub = self.manager.create_socket(socket_type=zmq.SUB)  # TODO secure him
         self.sub.bind()
@@ -153,7 +152,6 @@ class BlockManager(Worker):
                                                    "signing_key": self.signing_key, "ip": self.ip,
                                                    "sbb_index": i, "num_sb_builders": self.num_sb_builders,
                                                    "num_sb_per_block": self.num_sb_per_block
-raghu
                                                    "num_blocks": self.num_blocks})
             self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
@@ -161,6 +159,7 @@ raghu
     def _build_mn_indices(self):
         # For convenience, we define a bidirectional mapping between Masternode indices and their VKs
         idxs = {vk: index for index, vk in enumerate(VKBook.get_masternodes())}
+        # davis?? why can't we build reversed dict in the first place??
         reverse_map = dict([reversed(i) for i in idxs.items()])
         idxs.update(reverse_map)
 
@@ -173,33 +172,6 @@ raghu
 
         raise Exception("Delegate VK {} not found in VKBook {}".format(self.verifying_key, VKBook.get_delegates()))
 
-    def _build_sbb_map(self) -> dict:
-        """
-        The goal with this mapping is to tell each SBB process which witnesses it should be listening to. This builds a
-        mapping of SBB indices to another mapping of MN VKs to witness sets.
-        """
-        mn_per_sbb = self.num_mnodes // self.num_sb_builders
-        sbb_map = {}
-
-        for sbb_idx in range(self.num_sb_builders):
-            mn_map = {}
-            sbb_map[sbb_idx] = mn_map
-
-            for mn_idx in range(sbb_idx * mn_per_sbb, sbb_idx * mn_per_sbb + mn_per_sbb):
-                mn_vk = self.mn_indices[mn_idx]
-                mn_map[mn_vk] = self._get_witnesses_for_mn(mn_vk)
-
-        return sbb_map
-
-    def _get_witnesses_for_mn(self, mn_vk) -> list:
-        """
-        Returns a list of witness VKs that are responsible for relays a given masternode's transactions
-        :param mn_vk: The verifying key of the masternode. Must exist in VKBook
-        """
-        assert mn_vk in VKBook.get_masternodes(), "mn_vk {} not in VKBook {}".format(mn_vk, VKBook.get_masternodes())
-        assert mn_vk in MN_WITNESS_MAP, "MN VK {} not in MN_WITNESS_MAP {}".format(mn_vk, MN_WITNESS_MAP)
-
-        return MN_WITNESS_MAP[mn_vk]
 
     def handle_ipc_msg(self, frames):
         # This callback should receive stuff from everything on self.ipc_router. Currently, this is just the SBB procs
@@ -211,8 +183,11 @@ raghu
         # DEBUG TODO DELETE
         # (Just for testing) we reply to that msg
         id_frame, msg = frames[0], frames[-1].decode()
+        # id_frame is index of SB 
         reply_msg = "Thanks for the msg {}".format(msg)
+        # davis? do we need to reply always? (or can read zmq doc??)
         self.ipc_router.send_multipart([id_frame, reply_msg.encode()])
+        # may need to sync with new block notification here that updates the db with conflict resolution part in SBB
         # END DEBUG
 
     def handle_sub_msg(self, frames):
@@ -226,6 +201,7 @@ raghu
 
         if isinstance(msg, NewBlockNotification):
             self.handle_new_block(envelope)
+        # not needed anymore ?? raghu TODO
         elif isinstance(msg, BlockContender):
             # TODO implement
             # self.recv_merkle_tree(event)
@@ -236,6 +212,7 @@ raghu
         # Last frame, frames[-1] will be the envelope binary
 
     def handle_new_block(self, envelope: Envelope):
+        # raghu/davis - need to fix this data structure and handling it 
         cur_block_hash, cur_timestamp = self.get_latest_block_hash_timestamp()
         block_hash, timestamp = self.fetch_hash_timestamp(envelope)
         if (block_hash == self.cur_block_hash) or (timestamp < self.cur_timestamp):
@@ -246,6 +223,8 @@ raghu
         if (num == self.quorum):
             self.update_db(envelope.message)
             self.next_block.remove(block_hash)
+            # raghu TODO - need to update cur_block_hash and cur_timestamp and need to sync with SBB to do next block conflict resolution steps
+            # davis? how do we send a msg to all SBB using router/dealer. Do we need to listen to reply too? see comment on recv side
         else:
             self.next_block[block_hash] = num
 

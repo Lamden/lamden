@@ -140,6 +140,7 @@ class SubBlockBuilder(Worker):
     def handle_ipc_msg(self, frames):
         self.log.important("Got msg over Router IPC from BlockManager with frames: {}".format(frames))
         # TODO implement
+        # raghu TODO listen to updated DB message from BM and start conflict resolution if any
 
     def handle_sub_msg(self, frames, index):
         self.log.info("Sub socket got frames {}".format(frames))
@@ -180,8 +181,7 @@ class SubBlockBuilder(Worker):
     #     except asyncio.CancelledError:
     #         self.log.warning("Builder _recv_messages task canceled externally")
 
-
-    async def _interpret_next_subtree(self, index):
+    async def _interpret_next_sub_block(self, index):
         self.log.debug("Starting to make a new sub-block {} for block {}"
                        .format(self.sub_block_num, self.block_num))
         # get next batch of txns ??  still need to decide whether to unpack a bag or check for end of txn batch
@@ -202,6 +202,17 @@ class SubBlockBuilder(Worker):
                                             timestamp='now',
                                             sender=self.verifying_key)
         self.send_signature(merkle_sig)  # send signature to block manager
+
+
+    # TODO raghu - tie with new block notifications so we are only 1 or 2 steps ahead
+    async def interpret_next_block(self, block_index):
+        self.num_blocks = num_blocks
+        if block_index >= self.num_blocks:
+            # TODO - log error
+            return
+        sb_index_start = block_index * self.num_sub_blocks_per_block
+        foreach i in self.num_sub_blocks_per_block:
+            await self._interpret_next_sub_block(sb_index_start + i)
 
     def send_signature(self, merkle_sig):
         self.socket.send(merkle_sig.serialize())
