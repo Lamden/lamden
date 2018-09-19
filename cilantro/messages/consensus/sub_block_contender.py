@@ -7,7 +7,7 @@ import pickle
 from typing import List
 
 import capnp
-import consensus_capnp
+import subblock_capnp
 
 class SubBlockContender(MessageBase):
     # TODO switch underlying data struct for this guy to Capnp (or at least JSON)
@@ -54,7 +54,7 @@ class SubBlockContender(MessageBase):
         """
         assert isinstance(signature, MerkleSignature), "signature must be of MerkleSignature"
 
-        struct = consensus_capnp.SubBlockContender.new_message()
+        struct = subblock_capnp.SubBlockContender.new_message()
         struct.init('merkleLeaves', len(merkle_leaves))
         struct.init('transactions', len(raw_txs))
         struct.resultHash = result_hash
@@ -72,11 +72,11 @@ class SubBlockContender(MessageBase):
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return consensus_capnp.SubBlockContender.from_bytes_packed(data)
+        return subblock_capnp.SubBlockContender.from_bytes_packed(data)
 
     @property
     def result_hash(self) -> str:
-        return self._data.resultHash.decode()
+        return self._data.resultHash.hex()
 
     @property
     def input_hash(self) -> str:
@@ -96,7 +96,7 @@ class SubBlockContender(MessageBase):
         The Merkle Tree leaves associated with the block (a binary tree stored implicitly as a list).
         Each element is hex string representing a node's hash.
         """
-        return [leaf.decode() for leaf in self._data.merkleLeaves]
+        return [leaf.hex() for leaf in self._data.merkleLeaves]
 
     @property
     def transactions(self) -> List[ContractTransaction]:

@@ -11,18 +11,17 @@ from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MA
 from cilantro.constants.ports import MN_SUB_BLOCK_PORT, INTER_MASTER_PORT
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro.messages.consensus.full_block_hash import FullBlockHash
+from cilantro.messages.consensus.sub_block import SubBlockHashes
 from cilantro.messages.consensus.merkle_signature import build_test_merkle_sig
 from cilantro.constants.delegate import NODES_REQUIRED_CONSENSUS
 from cilantro.utils.hasher import Hasher
+from cilantro.protocol.structures.merkle_tree import MerkleTree
 
 TEST_IP = '127.0.0.1'
 TEST_SK = TESTNET_MASTERNODES[0]['sk']
 TEST_VK = TESTNET_MASTERNODES[0]['vk']
-INPUT_PUSH = b'1111111111111111111111111111111111111111111111111111111111111111'
-INPUT_PUSH_1 = b'2222222222222222222222222222222222222222222222222222222222222222'
-RESULT_HASH = b'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
-RESULT_HASH_1 = b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+INPUT_HASH = b'1111111111111111111111111111111111111111111111111111111111111111'
+INPUT_HASH_1 = b'2222222222222222222222222222222222222222222222222222222222222222'
 RAWTXS = [
     b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
     b'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
@@ -30,9 +29,19 @@ RAWTXS = [
     b'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
     b'EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE'
 ]
-MERKLE_LEAVES = [
-    Hasher.hash(tx) for tx in RAWTXS
+RAWTXS_1 = [
+    b'1AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    b'2BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+    b'3CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+    b'4DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
+    b'5EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE'
 ]
+mt = MerkleTree.from_raw_transactions(RAWTXS)
+mt_1 = MerkleTree.from_raw_transactions(RAWTXS_1)
+MERKLE_LEAVES = mt.leaves
+MERKLE_LEAVES_1 = mt_1.leaves
+RESULT_HASH = mt.root
+RESULT_HASH_1 = mt_1.root
 
 class TestBlockAggregator(TestCase):
 
@@ -95,7 +104,7 @@ class TestBlockAggregator(TestCase):
         ba.build_task_list()
 
         mock_env = MagicMock()
-        mock_env.message = MagicMock(spec=FullBlockHash)
+        mock_env.message = MagicMock(spec=SubBlockHashes)
 
         with mock.patch.object(Envelope, 'from_bytes', return_value=mock_env):
             ba.handle_sub_msg([b'filter doesnt matter', b'envelope binary also doesnt matter'])
@@ -113,11 +122,10 @@ class TestBlockAggregator(TestCase):
         ba.build_task_list()
 
         signature = build_test_merkle_sig()
-        sbc = SubBlockContender.create(RESULT_HASH, INPUT_PUSH, MERKLE_LEAVES, signature, RAWTXS)
+        sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
 
         ba.recv_sub_block_contender(sbc)
-
-        self.assertEqual(ba.contenders[RESULT_HASH]['sbc']._data.inputHash, INPUT_PUSH)
+        self.assertTrue(sbc._data.signature in ba.contenders[RESULT_HASH]['signatures_received'])
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
@@ -130,7 +138,7 @@ class TestBlockAggregator(TestCase):
         ba.build_task_list()
 
         signature = build_test_merkle_sig()
-        sbc = SubBlockContender.create(RESULT_HASH, INPUT_PUSH, MERKLE_LEAVES, signature, RAWTXS)
+        sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
 
         sbc._data.resultHash = b'A' * 63
 
@@ -151,11 +159,11 @@ class TestBlockAggregator(TestCase):
 
         for i in range(NODES_REQUIRED_CONSENSUS):
             signature = build_test_merkle_sig()
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_PUSH, MERKLE_LEAVES, signature, RAWTXS)
+            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
             ba.recv_sub_block_contender(sbc)
 
-        fbh = FullBlockHash.create(RESULT_HASH)
-        ba.pub.send_msg.assert_called_with(msg=fbh._data.fullBlockHash, header=MASTER_MASTER_FILTER.encode())
+        sbh = SubBlockHashes.create([RESULT_HASH])
+        ba.pub.send_msg.assert_called_with(msg=sbh, header=MASTER_MASTER_FILTER.encode())
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
@@ -169,7 +177,7 @@ class TestBlockAggregator(TestCase):
 
         for i in range(NODES_REQUIRED_CONSENSUS):
             signature = build_test_merkle_sig()
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_PUSH, MERKLE_LEAVES, signature, RAWTXS[:3])
+            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS[:3])
             ba.recv_sub_block_contender(sbc)
 
         self.assertEqual(len(ba.contenders[RESULT_HASH]['signatures_received']), NODES_REQUIRED_CONSENSUS)
@@ -188,17 +196,66 @@ class TestBlockAggregator(TestCase):
         # Sub block 0
         for i in range(NODES_REQUIRED_CONSENSUS):
             signature = build_test_merkle_sig()
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_PUSH, MERKLE_LEAVES, signature, RAWTXS)
+            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
             ba.recv_sub_block_contender(sbc)
 
         # Sub block 1
         for i in range(NODES_REQUIRED_CONSENSUS):
             signature = build_test_merkle_sig()
-            sbc = SubBlockContender.create(RESULT_HASH_1, INPUT_PUSH_1, MERKLE_LEAVES, signature, RAWTXS)
+            sbc = SubBlockContender.create(RESULT_HASH_1, INPUT_HASH_1, MERKLE_LEAVES_1, signature, RAWTXS_1)
             ba.recv_sub_block_contender(sbc)
 
-        fbh = FullBlockHash.create(b''.join(sorted(ba.contenders.keys())))
-        self.assertEqual(ba.full_block_hashes.get(fbh._data.fullBlockHash), 1)
+
+        sbh = SubBlockHashes.create(ba.contenders.keys())
+        self.assertEqual(ba.full_block_hashes.get(sbh.full_block_hash)['sub_block_hashes'], sbh.sub_block_hashes)
+        self.assertEqual(ba.total_valid_sub_blocks, 2)
+
+    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
+    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
+    @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
+    @mock.patch("cilantro.nodes.masternode.block_aggregator.SUBBLOCKS_REQUIRED", 2)
+    @mock.patch("cilantro.nodes.masternode.block_aggregator.MASTERNODE_REQUIRED_CONSENSUS", 3)
+    def test_recv_result_hash_multiple_subblocks_consensus(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba.manager = MagicMock()
+        ba.build_task_list()
+
+        # Sub block 0
+        for i in range(NODES_REQUIRED_CONSENSUS):
+            signature = build_test_merkle_sig()
+            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
+            ba.recv_sub_block_contender(sbc)
+
+        # Sub block 1
+        for i in range(NODES_REQUIRED_CONSENSUS):
+            signature = build_test_merkle_sig()
+            sbc = SubBlockContender.create(RESULT_HASH_1, INPUT_HASH_1, MERKLE_LEAVES_1, signature, RAWTXS_1)
+            ba.recv_sub_block_contender(sbc)
+
+        self.assertEqual(ba.total_valid_sub_blocks, 2)
+        sbh = SubBlockHashes.create(ba.contenders.keys())
+        for i in range(3):
+            ba.recv_result_hash(sbh)
+        full_block_hash = sbh.full_block_hash
+        self.assertEqual(ba.full_block_hashes[full_block_hash]['consensus_count'], 3)
+        self.assertEqual(len(ba.full_block_hashes[full_block_hash]['sub_block_hashes']), 2)
+        self.assertEqual(ba.total_valid_sub_blocks, 0)
+
+    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
+    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
+    @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
+    def test_recv_ignore_extra_sub_block_contenders(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba.manager = MagicMock()
+        ba.build_task_list()
+
+        for i in range(NODES_REQUIRED_CONSENSUS + 5):
+            signature = build_test_merkle_sig()
+            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
+            ba.recv_sub_block_contender(sbc)
+
+        sbh = SubBlockHashes.create([RESULT_HASH])
+        ba.pub.send_msg.assert_called_once_with(msg=sbh, header=MASTER_MASTER_FILTER.encode())
 
 if __name__ == '__main__':
     unittest.main()
