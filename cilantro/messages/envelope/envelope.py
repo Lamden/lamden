@@ -96,6 +96,7 @@ class Envelope(MessageBase):
         assert self.seal
         assert self.meta
         assert self.message
+        assert self.verify_seal(), "Seal is invalid!"
 
     def verify_seal(self) -> bool:
         """

@@ -97,6 +97,9 @@ class SubBlockBuilder(Worker):
         self.subs = []
         self._create_sub_sockets(num_sb_builders=num_sb_builders, num_mnodes=len(VKBook.get_masternodes()))
 
+        # Create a Seneca interpretter for this SBB
+        self.interpreter = SenecaInterpreter()
+
         # DEBUG TODO DELETE
         self.tasks.append(self.test_dealer_ipc())
         # END DEBUG
