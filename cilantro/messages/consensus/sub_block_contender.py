@@ -29,9 +29,9 @@ class SubBlockContender(MessageBase):
         assert self._data.transactions, "Raw transactions field missing from data {}".format(self._data)
 
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
-                                                          "expected 64 char hex string".format(self.prev_block_hash)
+                                                          "expected 64 char hex string".format(self.result_hash)
         assert is_valid_hex(self.input_hash, length=64), "Invalid input sub-block hash {} .. " \
-                                                         "expected 64 char hex string".format(self.prev_block_hash)
+                                                         "expected 64 char hex string".format(self.input_hash)
 
         # Ensure merkle leaves are valid hex - this may not be present in all cases
         for leaf in self.merkle_leaves:

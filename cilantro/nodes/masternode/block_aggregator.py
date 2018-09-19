@@ -5,6 +5,7 @@ from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MASTER_FILTER
 from cilantro.constants.ports import MN_SUB_BLOCK_PORT, INTER_MASTER_PORT
 from cilantro.constants.delegate import NODES_REQUIRED_CONSENSUS, TOP_DELEGATES
+from cilantro.constants.masternode import NODES_REQUIRED_CONSENSUS as MASTERNODE_REQUIRED_CONSENSUS, SUBBLOCKS_REQUIRED
 
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.full_block_hash import FullBlockHash
@@ -58,9 +59,6 @@ class BlockAggregator(Worker):
 
     def reset(self):
         self.contenders = {}
-        self.merkle_hashes_required = 0
-        self.signatures_received = set()
-        self.merkle_hashes_received = set()
         self.full_block_hashes = {}
 
     def handle_sub_msg(self, frames):
@@ -77,40 +75,51 @@ class BlockAggregator(Worker):
         # Last frame, frames[-1] will be the envelope binary
 
     def recv_sub_block_contender(self, sbc: SubBlockContender):
-        cached_sbc = self.contenders.get(sbc._data.resultHash)
-        if not cached_sbc:
-            self.contenders[sbc._data.resultHash] = {
-                'result_hash': sbc._data.resultHash,
-                'input_hash': sbc._data.inputHash,
-                'merkle_leaves': sbc._data.merkleLeaves,
-                'signatures': [sbc._data.signature],
-                'transactions': sbc._data.transactions
+        sbc.validate()
+        result_hash = sbc._data.resultHash
+        cached = self.contenders.get(result_hash)
+        if not cached:
+            self.contenders[result_hash] = {
+                'signatures_received': set(),
+                'merkle_hashes_received': set(),
+                'sbc': sbc,
+                'merkle_hashes_required': len(sbc._data.merkleLeaves)
             }
-            self.merkle_hashes_required = len(sbc._data.merkleLeaves)
-            self.log.important('Validated and stored SubBlockContender {}'.format(sbc))
-        elif sbc == cached_sbc:
-            self.contenders[sbc._data.resultHash]['signatures'].append(sbc._data.signature)
-            self.log.important('Received from another delegate for SubBlockContender {}'.format(sbc))
+            self.log.spam('Validated and stored SubBlockContender {}'.format(sbc))
+        elif sbc == cached['sbc']:
+            self.contenders[result_hash]['signatures_received'].add(sbc._data.signature)
+            self.log.spam('Received from another delegate for SubBlockContender {}'.format(sbc))
         else:
             return
         for tx in sbc._data.transactions:
-            self.merkle_hashes_received.add(Hasher.hash(tx))
-            self.signatures_received.add(sbc._data.signature)
-        self.combine_result_hash()
+            self.contenders[result_hash]['merkle_hashes_received'].add(Hasher.hash(tx))
+            self.contenders[result_hash]['signatures_received'].add(sbc._data.signature)
+        self.combine_result_hash(result_hash)
 
-    def combine_result_hash(self):
+    def combine_result_hash(self, result_hash):
         self.log.info('Received {}/{} ({} required) signatures and {}/{} total transactions'.format(
-            self.total_signatures, TOP_DELEGATES, NODES_REQUIRED_CONSENSUS,
-            len(self.merkle_hashes_received), self.merkle_hashes_required
+            len(self.contenders[result_hash]['signatures_received']), TOP_DELEGATES, NODES_REQUIRED_CONSENSUS,
+            len(self.contenders[result_hash]['merkle_hashes_received']), self.contenders[result_hash]['merkle_hashes_required']
         ))
-        if self.total_signatures >= NODES_REQUIRED_CONSENSUS and \
-            self.merkle_hashes_received == self.merkle_hashes_required:
-            crh = FullBlockHash.create(''.join(self.contenders.keys().sort()))
+        if len(self.contenders[result_hash]['signatures_received']) >= NODES_REQUIRED_CONSENSUS and \
+            len(self.contenders[result_hash]['merkle_hashes_received']) == self.contenders[result_hash]['merkle_hashes_required'] and \
+            len(self.contenders) >= SUBBLOCKS_REQUIRED:
+            fbh = FullBlockHash.create(b''.join(sorted(self.contenders.keys())))
+            full_block_hash = fbh._data.fullBlockHash
             self.log.important('Created resultant block-hash: {}'.format(full_block_hash))
+            self.full_block_hashes[full_block_hash] = 1
             self.pub.send_msg(msg=full_block_hash, header=MASTER_MASTER_FILTER.encode())
 
-    def recv_result_hash(self, result_hash: FullBlockHash):
-        if not self.full_block_hashes.get(result_hash):
-            self.full_block_hashes[result_hash] = 1
+    def recv_result_hash(self, full_block_hash: FullBlockHash):
+        full_block_hash.validate()
+        if not self.full_block_hashes.get(full_block_hash):
+            self.full_block_hashes[full_block_hash] = 1
         else:
-            self.full_block_hashes[result_hash] += 1
+            self.full_block_hashes[full_block_hash] += 1
+            if self.full_block_hashes[full_block_hash] >= MASTERNODE_REQUIRED_CONSENSUS:
+                # TODO
+                # 1. build merkle tree
+                # 2. commit the block to db
+                # 3. Delete it from self.contenders
+                # 4. Delete it from self.full_block_hashes
+                pass
