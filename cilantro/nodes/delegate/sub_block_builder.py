@@ -33,22 +33,24 @@
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 import asyncio
 import zmq.asyncio
+import time
+from typing import List
+
 from cilantro.logger import get_logger
-import signal, sys
 from cilantro.storage.db import VKBook
-from cilantro.constants.protocol import DUPE_TABLE_SIZE
 from cilantro.constants.ports import SBB_PORT_START
 
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
+from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.transaction.batch import TransactionBatch
 
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.protocol import wallet
-from cilantro.protocol.structures import CappedSet
-from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
-from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.multiprocessing.worker import Worker
+
+from cilantro.protocol.structures import MerkleTree
+from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
 
 from typing import Union
 from cilantro.utils.hasher import Hasher
@@ -65,11 +67,13 @@ from cilantro.utils.hasher import Hasher
 # master will publish it once it accepts
 # witness can quit at a certain time interval ?? and delegates can kick it out once it has other 5/6 copies and no data from it??
 
+
 class SubBlockManager:
     def __init__(self, sub_block_index: int, sub_socket, processed_txs_timestamp: int=0):
         self.processed_txs_timestamp, self.sub_block_index = processed_txs_timestamp, sub_block_index
-        self.pending_txs = LinkedHashTable()
         self.sub_socket = sub_socket
+        self.pending_txs = LinkedHashTable()
+        self.merkle = None
 
 class SubBlockBuilder(Worker):
     def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int,
@@ -151,71 +155,66 @@ class SubBlockBuilder(Worker):
         assert isinstance(envelope.message, TransactionBatch), "Handler expected TransactionBatch but got {}".format(envelope.messages)
 
         if timestamp < self.sb_managers[index].processed_txs_timestamp:
-            self.log.critical("Got timestamp {} that is prior to the most recent timestamp {} for sb_manager {}! BRUH"
+            self.log.critical("Got timestamp {} that is prior to the most recent timestamp {} for sb_manager {}! y tho"
                               .format(timestamp, self.sb_managers[index].processed_txs_timestamp, index))
             return
 
-        msg = envelope.message
         msg_hash = envelope.message_hash
         # if the sb_manager already has this bag, ignore it
-        # if self.sb_managers[index].pending_txs.find(msg_hash):
-        if msg_hash in self.sb_managers[index]:
+        if msg_hash in self.sb_managers[index].pending_txs:
             self.log.debugv("Msg hash {} already found in sb_manager at index {}".format(msg_hash, index))
             return
 
-        # now do envelope validation here - TODO
+        # TODO properly wrap below in try/except. Leaving it as an assertion just for dev
+        assert envelope.verify_seal(), "Could not validate seal for envelope {}!!!".format(envelope)
 
-        self.sb_managers[index].pending_txs.append(msg_hash, msg)
+        self.sb_managers[index].pending_txs.append(msg_hash, envelope.message)
 
-
-    # TODO mimic this logic in handle_ipc_msg
-    # async def _listen_to_block_manager(self):
-    #     try:
-    #         self.log.debug(
-    #            "Sub-block builder {} listening to Block-manager process at {}"
-    #            .format(self.sbb_index, self.url))
-    #         while True:
-    #             cmd_bin = await self.socket.recv()
-    #             self.log.debug("Got cmd from BM: {}".format(cmd_bin))
-    #
-    #             # need to change logic here based on our communication protocols
-    #             if cmd_bin == KILL_SIG:
-    #                 self.log.debug("Sub-block builder {} got kill signal"
-    #                 .format(self.sbb_index))
-    #                 self._teardown()
-    #                 return
-    #
-    #     except asyncio.CancelledError:
-    #         self.log.warning("Builder _recv_messages task canceled externally")
-
-
-    async def _interpret_next_subtree(self):
+    async def _interpret_next_sb(self):
         self.log.debug("SBB {} attempting to build sub block with sub block manager index {}".format(self.sbb_index, self.current_sbm_idx))
         # get next batch of txns ??  still need to decide whether to unpack a bag or check for end of txn batch
 
-        txn_bag = self.sb_managers[self.current_sbm_idx].pending_txs.popleft()
-        if not txn_bag:
-            self.log.debugv("Subblock manager at index {} has no TransactionBatches to process".format(self.current_sbm_idx))
-        if txn_bag.is_empty:
-            self.log.debugv("Subblock manager at index {} got an empty transaction bag!".format(self.current_sbm_idx))
-            self.current_sbm_idx = (self.current_sbm_idx + 1) % len(self.sb_managers)
+        batch = self.sb_managers[self.current_sbm_idx].pending_txs.popleft()
 
-        
-        for txn in txn_bag:
+        # If there is no bag for the current SB we are trying to build, just return
+        if not batch:
+            self.log.debugv("Subblock manager at index {} has no TransactionBatches to process".format(self.current_sbm_idx))
+            return
+
+        # If the bag is empty for the current SB, just log it and move on to the next SB in round-robin fashion
+        if batch.is_empty:
+            self.log.debugv("Subblock manager at index {} got an empty transaction bag".format(self.current_sbm_idx))
+
+        # Otherwise, interpret everything in the bag and build a SBC. Then send this SBC to BlockManager processes
+        else:
+            sbc = self._create_sbc_from_batch(batch)
+            self.dealer.send_multipart([sbc.serialize()])
+            # TODO do we need to set a flag on this SBB, marking that he just sent off a SBC? I think so
+
+        # Increment our current working sub block index, and try and build the next subtree
+        self.current_sbm_idx = (self.current_sbm_idx + 1) % len(self.sb_managers)
+        return self._interpret_next_sb()
+
+    def _create_sbc_from_batch(self, batch: TransactionBatch) -> SubBlockContender:
+        """
+        Creates a Sub Block Contender from a TransactionBatch
+        """
+        # We assume if we are trying to create a SBC, our interpreter is empty and in a fresh state
+        assert self.interpreter.queue_size == 0, "Expected an empty interpreter queue before building a SBC"
+
+        for txn in batch.transactions:
             self.interpreter.interpret(txn)  # this is a blocking call. either async or threads??
 
         # Merkle-ize transaction queue and create signed merkle hash
         all_tx = self.interpreter.queue_binary
-        self.merkle = MerkleTree.from_raw_transactions(all_tx)
-        self.signature = wallet.sign(self.signing_key, self.merkle.root)
+        merkle = MerkleTree.from_raw_transactions(all_tx)
+        signature = wallet.sign(self.signing_key, merkle.root)
 
-        # Create merkle signature message and publish it
-        merkle_sig = MerkleSignature.create(sig_hex=self.signature,
-                                            timestamp='now',
+        merkle_sig = MerkleSignature.create(sig_hex=signature,
+                                            timestamp=str(int(time.time())),
                                             sender=self.verifying_key)
-        self.send_signature(merkle_sig)  # send signature to block manager
-
-    def send_signature(self, merkle_sig):
-        self.socket.send(merkle_sig.serialize())
+        sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=Hasher.hash(batch),
+                                       merkle_leaves=merkle.leaves, signature=merkle_sig, raw_txs=all_tx)
+        return sbc
 
 
