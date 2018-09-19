@@ -51,6 +51,8 @@ class BlockMetaData(MessageBase):
     @classmethod
     def create(cls, hash: str, merkle_root: str, merkle_leaves: str, prev_block_hash: str, timestamp: int,
                masternode_signature: str, masternode_vk: str, block_contender: BlockContender):
+
+        assert type(block_contender) == BlockContender, 'Not a block contender'
         struct = blockdata_capnp.BlockMetaData.new_message()
         struct.hash = hash
         struct.merkleRoot = merkle_root
@@ -59,7 +61,6 @@ class BlockMetaData(MessageBase):
         struct.timestamp = timestamp
         struct.masternodeSignature = masternode_signature
         struct.masternodeVk = masternode_vk
-        assert type(block_contender) == BlockContender, 'Not a block contender'
         struct.blockContender = block_contender.serialize()
         return cls.from_data(struct)
 

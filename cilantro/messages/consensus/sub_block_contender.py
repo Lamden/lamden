@@ -1,10 +1,13 @@
 from cilantro.messages.base.base import MessageBase
+from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.utils import lazy_property, set_lazy_property, is_valid_hex
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 from cilantro.protocol.structures import MerkleTree
 import pickle
 from typing import List
 
+import capnp
+import consensus_capnp
 
 class SubBlockContender(MessageBase):
     # TODO switch underlying data struct for this guy to Capnp (or at least JSON)
@@ -15,78 +18,69 @@ class SubBlockContender(MessageBase):
     signagure of the delegate and some raw transactions
     """
 
-    RESULT_HASH = 'result_hash'     # root hash
-    INPUT_HASH = 'input_hash'       # hash of input txn bag ??
-    LEAVES = 'leaves'               # set of txn_hashes ?  presence of this could be block contender or vote only
-    SIG = 'signature'               # set of signatures 
-    TXNS = 'raw_txns'               # partial set of raw txns
- 
-    # NODES = 'nodes'      # do we need intermediate nodes ?? if so, it could double the data?
-    
-
     def validate(self):
         # Validate field types and existence
-        assert type(self._data) == dict, "SubBlockContender's _data must be a dict"
-        assert SubBlockContender.RESULT_HASH in self._data, "result hash field missing from data {}".format(self._data)
-        assert SubBlockContender.INPUT_HASH in self._data, "input hash field missing from data {}".format(self._data)
+        assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
+        assert self._data.inputHash, "input hash field missing from data {}".format(self._data)
         # leaves can be empty list from some delegates that only intend to vote (not propose it)
-        assert SubBlockContender.LEAVES in self._data, "leaves field missing from data {}".format(self._data)
-        assert SubBlockContender.SIG in self._data, "Signature field missing from data {}".format(self._data)
+        assert self._data.merkleLeaves, "leaves field missing from data {}".format(self._data)
+        assert self._data.signature, "Signature field missing from data {}".format(self._data)
         # assert SubBlockContender.NODES in self._data, "nodes field missing from data {}".format(self._data)
-        assert SubBlockContender.TXNS in self._data, "Raw transactions field missing from data {}".format(self._data)
+        assert self._data.transactions, "Raw transactions field missing from data {}".format(self._data)
 
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
-                                                          "expected 64 char hex string".format(self.prev_block_hash)
+                                                          "expected 64 char hex string".format(self.result_hash)
         assert is_valid_hex(self.input_hash, length=64), "Invalid input sub-block hash {} .. " \
-                                                         "expected 64 char hex string".format(self.prev_block_hash)
+                                                         "expected 64 char hex string".format(self.input_hash)
 
         # Ensure merkle leaves are valid hex - this may not be present in all cases
         for leaf in self.merkle_leaves:
             assert is_valid_hex(leaf, length=64), "Invalid Merkle leaf {} ... expected 64 char hex string".format(leaf)
 
         # Attempt to deserialize signatures by reading property (will raise exception if can't)
-        self.signature
-
-    def validate_signature(self):
-        """
-        Validates the signature in the block contender.
-        :return: True if the signature is valid; False otherwise
-        """
-        return self.signature.verify(self.result_hash)
-
-    def serialize(self):
-        return pickle.dumps(self._data)
+        self.signature.verify(self.result_hash)
 
     @classmethod
-    def create(cls, result_hash: str, input_hash: str, mrkel_leaves: List[str],
-               signature: MerkleSignature, raw_txns: List[bytes]):
-        # raw_txns -> list of (hash: raw_txns) pairs
+    def create(cls, result_hash: str, input_hash: str, merkle_leaves: List[bytes],
+               signature: MerkleSignature, raw_txs: List[bytes]):
         """
         Delegages create a new sub-block contender and propose to master nodes
         :param result_hash: The hash of the root of this sub-block
         :param input_hash: The hash of input bag containing raw txns in order
         :param merkle_leaves: A list merkle leaves contained within this proposed block. Each leaf is a byte string
         :param signature: MerkleSignature of the delegate proposing this sub-block
-        :param raw_txns: Partial set of raw transactions with the result state included.
+        :param raw_txs: Partial set of raw transactions with the result state included.
         :return: A SubBlockContender object
         """
-        # Serialize list of signatures
-        sigs_binary = []
-
-        for sig in signatures:
-            sigs_binary.append(sig.serialize())
-
         assert isinstance(signature, MerkleSignature), "signature must be of MerkleSignature"
-        data = {cls.SIGS: sigs_binary, cls.LEAVES: merkle_leaves, cls.PREV_BLOCK: prev_block_hash}
-        obj = cls.from_data(data)
 
-        set_lazy_property(obj, 'signature', signature)
+        struct = consensus_capnp.SubBlockContender.new_message()
+        struct.init('merkleLeaves', len(merkle_leaves))
+        struct.init('transactions', len(raw_txs))
+        struct.resultHash = result_hash
+        struct.inputHash = input_hash
+        struct.merkleLeaves = merkle_leaves
+        struct.signature = signature.serialize()
+        struct.transactions = raw_txs
 
-        return obj
+        return cls.from_data(struct)
+
+    @classmethod
+    def _chunks(cls, l, n=64):
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return pickle.loads(data)
+        return consensus_capnp.SubBlockContender.from_bytes_packed(data)
+
+    @property
+    def result_hash(self) -> str:
+        return self._data.resultHash.decode()
+
+    @property
+    def input_hash(self) -> str:
+        return self._data.inputHash.decode()
 
     @lazy_property
     def signature(self) -> MerkleSignature:
@@ -94,15 +88,7 @@ class SubBlockContender(MessageBase):
         MerkleSignature of the delegate that proposed this sub-block
         """
         # Deserialize signatures
-        return MerkleSignature.from_bytes(self._data[SubBlockContender.SIG])
-
-    @property
-    def input_hash(self) -> str:
-        return self._data[self.INPUT_HASH]
-
-    @property
-    def result_hash(self) -> str:
-        return self._data[self.RESULT_HASH]
+        return MerkleSignature.from_bytes(self._data.signature)
 
     @property
     def merkle_leaves(self) -> List[str]:
@@ -110,13 +96,17 @@ class SubBlockContender(MessageBase):
         The Merkle Tree leaves associated with the block (a binary tree stored implicitly as a list).
         Each element is hex string representing a node's hash.
         """
-        return self._data[self.LEAVES]
+        return [leaf.decode() for leaf in self._data.merkleLeaves]
+
+    @property
+    def transactions(self) -> List[ContractTransaction]:
+        """
+        The Merkle Tree leaves associated with the block (a binary tree stored implicitly as a list).
+        Each element is hex string representing a node's hash.
+        """
+        return [ContractTransaction.from_bytes(tx) for tx in self._data.transactions]
 
     def __eq__(self, other):
         assert isinstance(other, SubBlockContender), "Attempted to compare a BlockContender with a non-BlockContender"
-
-        # Compare sub-block hash
-        if self.input_hash != other.input_hash:
-            return False
-        # Compare result (sub-root) hash
-        return self.result_hash == other.result_hash
+        return self.input_hash == other.input_hash and \
+            self.result_hash == other.result_hash

@@ -15,7 +15,7 @@ jobs:
       - run:
           name: Install MySQL Client
           command: |
-            sudo rm /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock
+            sudo rm /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock 2>/dev/null
             sudo dpkg --configure -a
             sudo apt install -y libmysqlclient-dev mysql-client
       - run:
