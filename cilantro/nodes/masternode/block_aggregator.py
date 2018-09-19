@@ -60,6 +60,7 @@ class BlockAggregator(Worker):
     def reset(self):
         self.contenders = {}
         self.full_block_hashes = {}
+        self.total_valid_sub_blocks = 0
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -102,13 +103,14 @@ class BlockAggregator(Worker):
             len(self.contenders[result_hash]['merkle_hashes_received']), self.contenders[result_hash]['merkle_hashes_required']
         ))
         if len(self.contenders[result_hash]['signatures_received']) >= NODES_REQUIRED_CONSENSUS and \
-            len(self.contenders[result_hash]['merkle_hashes_received']) == self.contenders[result_hash]['merkle_hashes_required'] and \
-            len(self.contenders) >= SUBBLOCKS_REQUIRED:
-            fbh = FullBlockHash.create(b''.join(sorted(self.contenders.keys())))
-            full_block_hash = fbh._data.fullBlockHash
-            self.log.important('Created resultant block-hash: {}'.format(full_block_hash))
-            self.full_block_hashes[full_block_hash] = 1
-            self.pub.send_msg(msg=full_block_hash, header=MASTER_MASTER_FILTER.encode())
+            len(self.contenders[result_hash]['merkle_hashes_received']) == self.contenders[result_hash]['merkle_hashes_required']:
+            self.total_valid_sub_blocks += 1
+            if self.total_valid_sub_blocks >= SUBBLOCKS_REQUIRED:
+                fbh = FullBlockHash.create(b''.join(sorted(self.contenders.keys())))
+                full_block_hash = fbh._data.fullBlockHash
+                self.log.important('Created resultant block-hash: {}'.format(full_block_hash))
+                self.full_block_hashes[full_block_hash] = 1
+                self.pub.send_msg(msg=full_block_hash, header=MASTER_MASTER_FILTER.encode())
 
     def recv_result_hash(self, full_block_hash: FullBlockHash):
         full_block_hash.validate()
@@ -122,4 +124,4 @@ class BlockAggregator(Worker):
                 # 2. commit the block to db
                 # 3. Delete it from self.contenders
                 # 4. Delete it from self.full_block_hashes
-                pass
+                self.total_valid_sub_blocks = 0
