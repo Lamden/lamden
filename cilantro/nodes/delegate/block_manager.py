@@ -39,12 +39,14 @@ from cilantro.logger.base import get_logger
 from cilantro.storage.db import VKBook
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.utils.lprocess import LProcess
+from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro.constants.nodes import *
 from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.ports import INTER_DELEGATE_PORT, MN_NEW_BLOCK_PUB_PORT
 from cilantro.constants.testnet import WITNESS_MN_MAP, MN_WITNESS_MAP
 
+from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
@@ -88,7 +90,8 @@ class BlockManager(Worker):
         self.num_blocks = min(MAX_BLOCKS, self.num_mnodes)
         self.total_sub_blocks_per_block = (self.num_mnodes + self.num_blocks - 1) // self.num_blocks
         self.num_sb_builders = min(MAX_SUB_BLOCK_BUILDERS, self.total_sub_blocks_per_block)
-        self.total_sb_per_block_per_builder = (self.total_sub_blocks_per_block + self.num_sb_builders - 1) // self.num_sb_builders
+        self.total_sb_per_block_per_builder = (
+                                                      self.total_sub_blocks_per_block + self.num_sb_builders - 1) // self.num_sb_builders
         self.total_sb_per_builder = (self.num_mnodes + self.num_blocks - 1) // self.num_sb_builders
         self.my_sb_index = self._get_my_index() % self.num_sb_builders
 
@@ -99,7 +102,6 @@ class BlockManager(Worker):
                                 num_blocks=self.num_blocks, sb_per_block=self.total_sub_blocks_per_block,
                                 num_sb_builders=self.num_sb_builders))
         assert self.num_mnodes >= self.num_blocks, "num_blocks cannot be more than num_masternodes"
-
 
         # Define Sockets (these get set in build_task_list)
         self.ipc_router, self.pub, self.sub = None, None, None
@@ -160,26 +162,27 @@ class BlockManager(Worker):
 
         raise Exception("Delegate VK {} not found in VKBook {}".format(self.verifying_key, VKBook.get_delegates()))
 
-
     def handle_ipc_msg(self, frames):
-        # This callback should receive stuff from everything on self.ipc_router. Currently, this is just the SBB procs
         self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
+        assert len(frames) == 3, "Expected 3 frames: (id, msg_type, msg_blob). Got {} instead.".format(frames)
 
-        # First frame, frames[0], is the ID frame, last frame frames[-1] is the message binary. Since this is over IPC,
-        # this does not necessarily have to be an Envelope.
+        sbb_index = bytes_to_int(frames[0])
+        assert sbb_index in self.sb_builders, "Got IPC message with ID {} that is not in sb_builders {}" \
+            .format(sbb_index, self.sb_builders)
 
-        # We assume that we are only getting Sub-block Contender objects from the SBB procs
-        sbb_index = int(frames[0].decode())
-        sbc = SubBlockContender.from_bytes(frames[-1])
+        msg_type = bytes_to_int(frames[1])
+        msg_blob = frames[2]
 
-        self.log.important("SBB index {} just sent  SB Contender {}".format(sbb_index, sbc))
+        msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
+        self.log.debugv("BlockManager received an IPC message from sbb_index {} with message {}".format(sbb_index, msg))
 
-        # TODO handle sbc.... publish to Masternode
-
-        # Send the msg b'hi' to the SBB at index 1
-        id_frame = '0'.encode()
-        msg = 'hey, its me Router'.encode()
-        self.ipc_router.send_multipart([id_frame, msg])
+        if isinstance(msg, SubBlockContender):
+            self._handle_sbc(msg)
+        # elif isinstance(msg, SomeOtherType):
+        #     self._handle_some_other_type_of_msg(msg)
+        else:
+            raise Exception("BlockManager got unexpected Message type {} over IPC that it does not know how to handle!"
+                            .format(type(msg)))
 
     def handle_sub_msg(self, frames):
         # This handle will get NewBlockNotifications from Masternodes, and BlockContenders (or whatever the equivalent
@@ -201,6 +204,21 @@ class BlockManager(Worker):
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
         # Last frame, frames[-1] will be the envelope binary
+
+    def _handle_sbc(self, sbc: SubBlockContender):
+        # TODO implement
+        # publish to Masternode?
+        pass
+
+    def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
+        """
+        Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
+        frame to identify the type of message
+        """
+        assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
+        id_frame = int_to_bytes(sb_index)
+        message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
+        self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
     def handle_new_block(self, envelope: Envelope):
         # raghu/davis - need to fix this data structure and handling it
@@ -285,7 +303,6 @@ class BlockManager(Worker):
     #         self.sockets.append(socket)
     #         self.tasks.append(self._listen_to_sbb(socket, vk, index)
 
-
     # async def _sub_to_delegate(self, socket, vk):
     #     while True:
     #         event = await socket->recv_event()
@@ -352,4 +369,3 @@ class BlockManager(Worker):
     #                 self.my_sub_blocks[index] = sub_block
     #
     #
-

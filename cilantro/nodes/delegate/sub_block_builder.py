@@ -40,6 +40,7 @@ from cilantro.logger import get_logger
 from cilantro.storage.db import VKBook
 from cilantro.constants.ports import SBB_PORT_START
 
+from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
@@ -52,8 +53,8 @@ from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
 
-from typing import Union
 from cilantro.utils.hasher import Hasher
+from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
 # need delegate communication class to describe events
 #  all currently known hand-shakes of block making
@@ -91,7 +92,7 @@ class SubBlockBuilder(Worker):
 
         # Create DEALER socket to talk to the BlockManager process over IPC
         self.dealer = None
-        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sbb_index).encode())
+        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=int_to_bytes(self.sbb_index))
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
@@ -101,7 +102,7 @@ class SubBlockBuilder(Worker):
         self.interpreter = SenecaInterpreter()
 
         # DEBUG TODO DELETE
-        # self.tasks.append(self.test_dealer_ipc())
+        self.tasks.append(self.test_dealer_ipc())
         # END DEBUG
 
         self.run()
@@ -115,7 +116,7 @@ class SubBlockBuilder(Worker):
         while True:
             msg = "hello from SBB {}".format(self.sbb_index)
             self.log.debug("Sending msg {}".format(msg))
-            self.dealer.send_multipart([msg.encode()])
+            self.dealer.send_multipart([b'this should be the type, as a binarized int', msg.encode()])
             await asyncio.sleep(16)
 
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
@@ -143,9 +144,24 @@ class SubBlockBuilder(Worker):
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
     def handle_ipc_msg(self, frames):
-        self.log.important("Got msg over Router IPC from BlockManager with frames: {}".format(frames))
-        # TODO implement
+        self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
+        assert len(frames) == 2, "Expected 3 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
+
+        msg_type = bytes_to_int(frames[0])
+        msg_blob = frames[1]
+
+        msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
+        self.log.debugv("SBB received an IPC message {}".format(msg))
+
         # raghu TODO listen to updated DB message from BM and start conflict resolution if any
+
+        if isinstance(msg, SomeType):
+            self.handle_some_type(msg)
+        elif isinstance(msg, AnotherType):
+            self.handle_another_type(msg)
+        else:
+            raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
+                            .format(type(msg)))
 
     def handle_sub_msg(self, frames, index):
         self.log.info("Sub socket got frames {} with handler_index {}".format(frames, index))
@@ -186,16 +202,14 @@ class SubBlockBuilder(Worker):
         # If the bag is empty for the current SB, just log it and move on to the next SB in round-robin fashion
         if batch.is_empty:
             self.log.debugv("Subblock manager at index {} got an empty transaction bag".format(self.current_sbm_idx))
-
         # Otherwise, interpret everything in the bag and build a SBC. Then send this SBC to BlockManager processes
         else:
-            sbc = self._create_sbc_from_batch(batch)
-            # TODO add a middle frame to denote the 'type' of the SBC
-            self.dealer.send_multipart([sbc.serialize()])
             # TODO do we need to set a flag on this SBB, marking that he just sent off a SBC? I think so
+            sbc = self._create_sbc_from_batch(batch)
+            self._send_msg_over_ipc(sbc)
 
         # Increment our current working sub block index, and try and build the next subtree
-        # TODO reset tx timestamp on current sb_manager object
+        self.sb_managers[self.current_sbm_idx].processed_txs_timestamp = int(time.time())
         self.current_sbm_idx = (self.current_sbm_idx + 1) % len(self.sb_managers)
         return self._interpret_next_sb()
 
@@ -218,19 +232,30 @@ class SubBlockBuilder(Worker):
                                             timestamp=str(int(time.time())),
                                             sender=self.verifying_key)
 
-        # TODO add subblock index to the SBC
+        # TODO add subblock index to the SBC struct
         sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=Hasher.hash(batch),
                                        merkle_leaves=merkle.leaves, signature=merkle_sig, raw_txs=all_tx)
         return sbc
 
+    def _send_msg_over_ipc(self, message: MessageBase):
+        """
+        Convenience method to send a MessageBase instance over IPC dealer socket. Includes a frame to identify the
+        type of message
+        """
+        assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
+        message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
+        self.dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
+
+
     # TODO raghu - tie with new block notifications so we are only 1 or 2 steps ahead
-    async def interpret_next_block(self, block_index):
-        self.num_blocks = num_blocks
-        if block_index >= self.num_blocks:
-            # TODO - log error
-            return
-        sb_index_start = block_index * self.num_sub_blocks_per_block
-        foreach i in self.num_sub_blocks_per_block:
-            await self._interpret_next_sub_block(sb_index_start + i)
+    # I commented this out temporarily b/c of compiler errors --davis
+    # async def interpret_next_block(self, block_index):
+    #     self.num_blocks = num_blocks
+    #     if block_index >= self.num_blocks:
+    #         # TODO - log error
+    #         return
+    #     sb_index_start = block_index * self.num_sub_blocks_per_block
+    #     foreach i in self.num_sub_blocks_per_block:
+    #         await self._interpret_next_sub_block(sb_index_start + i)
 
 

@@ -9,7 +9,7 @@
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.masternode import STAGING_TIMEOUT
 from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
-from cilantro.constants.nodes import BLOCK_SIZE
+from cilantro.constants.nodes import TRANSACTIONS_PER_SUB_BLOCK
 from cilantro.constants.testnet import MAJORITY
 
 
@@ -135,9 +135,9 @@ class MNBaseState(State):
             "Received a block contender with only {} signatures (which is less than a MAJORITY of {}"\
             .format(len(block.signatures), MAJORITY)
 
-        assert len(block.merkle_leaves) == BLOCK_SIZE, \
+        assert len(block.merkle_leaves) == TRANSACTIONS_PER_SUB_BLOCK, \
             "Block contender has {} merkle leaves, but block size is {}!!!\nmerkle_leaves={}"\
-            .format(len(block.merkle_leaves), BLOCK_SIZE, block.merkle_leaves)
+            .format(len(block.merkle_leaves), TRANSACTIONS_PER_SUB_BLOCK, block.merkle_leaves)
 
         # TODO validate the sigs are actually from the top N delegates
 
