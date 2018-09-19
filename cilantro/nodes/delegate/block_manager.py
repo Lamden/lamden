@@ -215,7 +215,7 @@ class BlockManager(Worker):
         # is now) from Delegates
 
         # The first frame is the filter, and the last frame is the envelope binary
-        envelope = Envelope.from_bytes(frames[-1])  # TODO envelope validation
+        envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         msg_hash = envelope.message_hash
 

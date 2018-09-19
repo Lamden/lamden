@@ -97,7 +97,7 @@ class SubBlockBuilder(Worker):
         self.subs = []
         self._create_sub_sockets(num_sb_builders=num_sb_builders, num_mnodes=len(VKBook.get_masternodes()))
 
-        # Create a Seneca interpretter for this SBB
+        # Create a Seneca interpreter for this SBB
         self.interpreter = SenecaInterpreter()
 
         # DEBUG TODO DELETE
@@ -139,15 +139,18 @@ class SubBlockBuilder(Worker):
             sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, mn_idx))
             sub.setsockopt(zmq.SUBSCRIBE, b'')
             sub.bind(port=port, ip=self.ip)  # TODO secure him
-            self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg))
+            self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=mn_idx))
             self.subs.append(sub)
 
     def handle_ipc_msg(self, frames):
         self.log.important("Got msg over Router IPC from BlockManager with frames: {}".format(frames))
         # TODO implement
 
-    def handle_sub_msg(self, frames):
-        self.log.important("Sub socket got frames {}".format(frames))
+    def handle_sub_msg(self, frames, handler_key):
+        self.log.important("Sub socket got frames {} from handler key {}".format(frames, handler_key))
+
+        envelope = Envelope.from_bytes(frames[-1])
+        msg = envelope.message
 
 
     # # will it receive the list from BM - no need to know upfront
