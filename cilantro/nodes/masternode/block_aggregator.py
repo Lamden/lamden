@@ -108,7 +108,6 @@ class BlockAggregator(Worker):
         result_hash = sbc.result_hash
         input_hash = sbc.input_hash
         cached = self.contenders.get(input_hash)
-        print(self.contenders.keys())
         if not cached:
             if MerkleTree.verify_tree(leaves=sbc._data.merkleLeaves, root=sbc._data.resultHash):
                 self.contenders[input_hash] = {
@@ -162,9 +161,10 @@ class BlockAggregator(Worker):
                                     'sub_block_hashes': sub_block_hashes
                                 }
                             self.contenders[input_hash]['consensus_reached'] = True
+                            # sbmd = self.construct_sub_blocks(sub_block_hashes)
                             self.pub.send_msg(msg=sbh, header=DEFAULT_FILTER.encode())
-                            # valid_sub_blocks = self.construct_sub_blocks(sub_block_hashes)
-                            # full_block = self.construct_full_block(sub_block_hashes)
+                            fbmd = self.construct_full_block(sub_block_hashes)
+                            self.pub.send_msg(msg=fbmd, header=DEFAULT_FILTER.encode())
 
     def recv_result_hash(self, sbh: SubBlockHashes):
         sbh.validate()
@@ -186,10 +186,6 @@ class BlockAggregator(Worker):
                     # TODO Request blocks from other masternodes
                     pass
                 else:
-                    valid_sub_blocks = self.construct_sub_blocks(sub_block_hashes)
-                    full_block = self.construct_full_block(sub_block_hashes)
-                    print(valid_sub_blocks)
-                    print(full_block)
                     # TODO Store sub-blocks, block and transactions in DB
                     # SubBlocks: (merkle_root, signatures, merkle_leaves, index)
                     # Block: (block_hash, merkle_roots, prev_block_hash, timestamp, signature)

@@ -7,7 +7,7 @@ import unittest
 from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
-from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MASTER_FILTER
+from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MASTER_FILTER, DEFAULT_FILTER
 from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
@@ -156,14 +156,18 @@ class TestBlockAggregator(TestCase):
         ba.build_task_list()
         ba.pub = MagicMock()
         ba.pub.send_msg = MagicMock()
+        bh = ba.curr_block_hash
 
         for i in range(NODES_REQUIRED_CONSENSUS):
             signature = build_test_merkle_sig()
             sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
             ba.recv_sub_block_contender(sbc)
 
+
         sbh = SubBlockHashes.create([INPUT_HASH])
-        ba.pub.send_msg.assert_called_with(msg=sbh, header=MASTER_MASTER_FILTER.encode())
+        ba.curr_block_hash = bh
+        fbmd = ba.construct_full_block(sbh.sub_block_hashes)
+        ba.pub.send_msg.assert_called_with(msg=fbmd, header=DEFAULT_FILTER.encode())
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
@@ -185,6 +189,7 @@ class TestBlockAggregator(TestCase):
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
     @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
     @mock.patch("cilantro.nodes.masternode.block_aggregator.SUBBLOCKS_REQUIRED", 2)
+    @mock.patch("cilantro.messages.block_data.block_metadata.SUBBLOCKS_REQUIRED", 2)
     def test_recv_result_hash_multiple_subblocks(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
 
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
@@ -202,7 +207,6 @@ class TestBlockAggregator(TestCase):
             signature = build_test_merkle_sig()
             sbc = SubBlockContender.create(RESULT_HASH_1, INPUT_HASH_1, MERKLE_LEAVES_1, signature, RAWTXS_1)
             ba.recv_sub_block_contender(sbc)
-
 
         sbh = SubBlockHashes.create(ba.contenders.keys())
         self.assertEqual(ba.full_block_hashes.get(sbh.full_block_hash)['sub_block_hashes'], sbh.sub_block_hashes)
@@ -247,14 +251,16 @@ class TestBlockAggregator(TestCase):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
         ba.manager = MagicMock()
         ba.build_task_list()
-
+        bh = ba.curr_block_hash
         for i in range(NODES_REQUIRED_CONSENSUS + 5):
             signature = build_test_merkle_sig()
             sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
             ba.recv_sub_block_contender(sbc)
 
         sbh = SubBlockHashes.create([INPUT_HASH])
-        ba.pub.send_msg.assert_called_once_with(msg=sbh, header=MASTER_MASTER_FILTER.encode())
+        ba.curr_block_hash = bh
+        fbmd = ba.construct_full_block(sbh.sub_block_hashes)
+        ba.pub.send_msg.assert_called_with(msg=fbmd, header=DEFAULT_FILTER.encode())
 
 if __name__ == '__main__':
     unittest.main()
