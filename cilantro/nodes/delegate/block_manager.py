@@ -73,6 +73,14 @@ from collections import defaultdict
 IPC_IP = 'block-manager-ipc-sock'
 IPC_PORT = 6967
 
+# convenience struct to maintain db snapshot state data in one place
+Class DBState:
+    def __init__(self, block_hash: int=0):
+    # def __init__(self, block_hash: int=0, timestamp: int=0):
+        self.cur_block_hash = block_hash
+        # self.cur_timestamp = timestamp   ?? probably not needed
+        self.next_block = {}
+
 
 class BlockManager(Worker):
 
@@ -86,22 +94,24 @@ class BlockManager(Worker):
         self.sb_builders = {}  # index -> process      # perhaps can be consolidated with the above ?
         self.tasks = []
 
-        self.num_mnodes = len(VKBook.get_masternodes())
-        self.num_blocks = min(MAX_BLOCKS, self.num_mnodes)
-        self.total_sub_blocks_per_block = (self.num_mnodes + self.num_blocks - 1) // self.num_blocks
-        self.num_sb_builders = min(MAX_SUB_BLOCK_BUILDERS, self.total_sub_blocks_per_block)
-        self.total_sb_per_block_per_builder = (
-                                                      self.total_sub_blocks_per_block + self.num_sb_builders - 1) // self.num_sb_builders
-        self.total_sb_per_builder = (self.num_mnodes + self.num_blocks - 1) // self.num_sb_builders
+        self.num_sub_blocks = len(VKBook.get_masternodes())  # same as num masternodes right now
+        self.num_blocks = min(MAX_BLOCKS, self.num_sub_blocks)
+        self.sub_blocks_per_block = (self.num_sub_blocks + self.num_blocks - 1) // self.num_blocks
+        self.num_sb_builders = min(MAX_SUB_BLOCK_BUILDERS, self.sub_blocks_per_block)
+        # self.sub_blocks_per_builder = (self.num_sub_blocks + self.num_sb_builders - 1) // self.num_sb_builders
+        # self.sb_per_builder_per_block = self.sub_blocks_per_builder // self.num_blocks
         self.my_sb_index = self._get_my_index() % self.num_sb_builders
 
+        # raghu todo tie to initial catch up logic as well as right place to do this
+        self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
+
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
-                        "num_masternodes={num_mn}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
+                        "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
                         "num_sb_builders={num_sb_builders}\n"
-                        .format(vk=self.verifying_key, sb_index=self.my_sb_index, num_mn=self.num_mnodes,
-                                num_blocks=self.num_blocks, sb_per_block=self.total_sub_blocks_per_block,
+                        .format(vk=self.verifying_key, sb_index=self.my_sb_index, num_sb=self.num_sub_blocks,
+                                num_blocks=self.num_blocks, sb_per_block=self.sub_blocks_per_block,
                                 num_sb_builders=self.num_sb_builders))
-        assert self.num_mnodes >= self.num_blocks, "num_blocks cannot be more than num_masternodes"
+        assert self.num_sub_blocks >= self.num_blocks, "num_blocks cannot be more than num_sub_blocks"
 
         # Define Sockets (these get set in build_task_list)
         self.ipc_router, self.pub, self.sub = None, None, None
@@ -115,6 +125,7 @@ class BlockManager(Worker):
         self.log.critical("\n!!!! RUN CALLED !!!!!\n")
         # END DEBUG
         self.build_task_list()
+        # self.update_db_state()
         self.start_sbb_procs()
         self.log.info("Block Manager starting...")
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
@@ -142,15 +153,27 @@ class BlockManager(Worker):
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MN_NEW_BLOCK_PUB_PORT)
 
+    def update_db_state(self):
+        # do catch up logic here
+        # only when one can connect to quorum masters and get db update, move to next step
+        # at the end, it has updated its db state to consensus latest
+        # latest_block_hash, list of mn vks
+        msg = BlockMetaDataRequest.create(current_block_hash=self.db_state.cur_block_hash)
+        # send msg to each of the connected masters and wait for their message
+        # use self.db_state.next_block to keep track of latest db states. once you got a quorum db state 
+        # update to that state and clear self.db_state.next_block
+        # next_block is key, list pair where list is a list of master vks
+
+
+
+
     def start_sbb_procs(self):
-        self.num_blocks = min(MAX_BLOCKS, self.num_mnodes)
-        self.total_sb_per_builder = (self.total_sub_blocks_per_block + self.num_sb_builders - 1) // self.num_sb_builders
         for i in range(self.num_sb_builders):
             self.sb_builders[i] = LProcess(target=SubBlockBuilder,
                                            kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT,
                                                    "signing_key": self.signing_key, "ip": self.ip,
                                                    "sbb_index": i, "num_sb_builders": self.num_sb_builders,
-                                                   "num_sb_per_block": self.total_sb_per_builder,
+                                                   "total_sub_blocks": self.num_sub_blocks,
                                                    "num_blocks": self.num_blocks})
             self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
@@ -185,8 +208,7 @@ class BlockManager(Worker):
                             .format(type(msg)))
 
     def handle_sub_msg(self, frames):
-        # This handle will get NewBlockNotifications from Masternodes, and BlockContenders (or whatever the equivalent
-        # is now) from Delegates
+        # This handle will get NewBlockNotifications from Masternodes, and whatever additional stuff??
 
         # The first frame is the filter, and the last frame is the envelope binary
         envelope = Envelope.from_bytes(frames[-1])
@@ -206,8 +228,9 @@ class BlockManager(Worker):
         # Last frame, frames[-1] will be the envelope binary
 
     def _handle_sbc(self, sbc: SubBlockContender):
-        # TODO implement
+        # TODO implement     raghu
         # publish to Masternode?
+        # need to put it in an envelope and publish to master
         pass
 
     def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
@@ -220,10 +243,15 @@ class BlockManager(Worker):
         message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
+    # raghu todo - need to hook up catch logic with db_state
+    # db state - initialize
+    # ask for catch up
+    # new blocks keep update
     def handle_new_block(self, envelope: Envelope):
         # raghu/davis - need to fix this data structure and handling it
-        cur_block_hash, cur_timestamp = self.get_latest_block_hash_timestamp()
-        block_hash, timestamp = self.fetch_hash_timestamp(envelope)
+        cur_block_hash = self.db_state.cur_block_hash
+        self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
+        block_hash, prev_block_hash = self.fetch_hash_timestamp(envelope)
         if (block_hash == self.cur_block_hash) or (timestamp < self.cur_timestamp):
             # TODO log something
             pass
@@ -237,29 +265,6 @@ class BlockManager(Worker):
         else:
             self.next_block[block_hash] = num
 
-    def vote(self, other_sb, sub_block):
-        # check first if they have same input txns
-        bag_hash1 = other_sb.get_bag_hash()
-        bag_hash2 = sub_block.get_bag_hash()
-        if (bag_hash1 != bag_hash2):
-            return False
-        ms_hash1 = other_sb.get_root_hash()
-        ms_hash2 = sub_block.get_root_hash()
-        agreed = (ms_hash1 == ms_hash2)
-        publish_vote(agree if agreed else disagree)  # to all masters
-        return agreed
-
-    def recv_sub_block(self, other_sb):
-        index = self.get_sub_block_index(other_sb)
-        sub_block = self.my_sub_blocks.get(index, None)
-        if (sub_block == None):
-            self.pending_sigs[index] = other_sb
-        else:
-            status = self.vote(other_sb, sub_block)
-            if status:
-                self.my_sub_blocks[index] = None
-            else:
-                self.pending_sigs[index] = other_sb
 
     # def _build_task_list(self):
     #     # Add router socket - where do we listen to this ?? add

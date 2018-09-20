@@ -79,13 +79,15 @@ class SubBlockManager:
 
 class SubBlockBuilder(Worker):
     def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int,
-                 num_sb_builders: int, num_sb_per_block: int, num_blocks: int, *args, **kwargs):
+                 num_sb_builders: int, total_sub_blocks: int, num_blocks: int, *args, **kwargs):
         super().__init__(signing_key=signing_key, name="SubBlockBuilder_{}".format(sbb_index))
 
         self.ip = ip
         self.sbb_index = sbb_index
-        self.num_sub_blocks_per_block = num_sb_per_block
+        self.total_sub_blocks = total_sub_blocks
         self.num_blocks = num_blocks
+        num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
+        self.num_sb_per_block = (num_sb_per_builder + num_blocks - 1) // num_blocks
         self.current_sbm_idx = 0  # The index of the sb_manager whose transactions we are trying to build a SB for
 
         self.tasks = []
@@ -96,7 +98,8 @@ class SubBlockBuilder(Worker):
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
-        self._create_sub_sockets(num_sb_builders=num_sb_builders)
+        self._create_sub_sockets(num_sb_per_builder=num_sb_per_builder,
+                                 num_sb_builders=num_sb_builders)
 
         # Create a Seneca interpreter for this SBB
         self.interpreter = SenecaInterpreter()
@@ -127,14 +130,14 @@ class SubBlockBuilder(Worker):
         self.dealer.connect(port=port, protocol='ipc', ip=ip)
         self.tasks.append(self.dealer.add_handler(handler_func=self.handle_ipc_msg))
 
-    def _create_sub_sockets(self, num_sb_builders):
-        num_sub_blocks = self.num_sub_blocks_per_block * self.num_blocks
-
+    def _create_sub_sockets(self, num_sb_per_builder, num_sb_builders):
         # We then BIND a sub socket to a port for each of these masternode indices
-        for idx in range(num_sub_blocks):
-            sb_idx = idx * num_sb_builders + self.sbb_index
-            port = SBB_PORT_START + sb_idx
+        for idx in range(num_sb_per_builder):
+            sb_idx = idx * num_sb_builders + self.sbb_index  # actual SB index in global index space
+            if sb_idx >= self.num_sub_blocks:    # out of range already
+                return
 
+            port = SBB_PORT_START + sb_idx
             sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx))
             sub.setsockopt(zmq.SUBSCRIBE, b'')
             sub.bind(port=port, ip=self.ip)  # TODO secure him
