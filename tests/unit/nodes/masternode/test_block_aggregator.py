@@ -125,7 +125,7 @@ class TestBlockAggregator(TestCase):
         sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
 
         ba.recv_sub_block_contender(sbc)
-        self.assertTrue(sbc._data.signature in ba.contenders[RESULT_HASH]['signatures_received'])
+        self.assertTrue(sbc._data.signature in ba.contenders[INPUT_HASH]['result_hashes'][RESULT_HASH]['signatures_received'])
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
@@ -162,7 +162,7 @@ class TestBlockAggregator(TestCase):
             sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
             ba.recv_sub_block_contender(sbc)
 
-        sbh = SubBlockHashes.create([RESULT_HASH])
+        sbh = SubBlockHashes.create([INPUT_HASH])
         ba.pub.send_msg.assert_called_with(msg=sbh, header=MASTER_MASTER_FILTER.encode())
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
@@ -175,13 +175,11 @@ class TestBlockAggregator(TestCase):
         ba.manager = MagicMock()
         ba.build_task_list()
 
-        for i in range(NODES_REQUIRED_CONSENSUS):
-            signature = build_test_merkle_sig()
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS[:3])
+        signature = build_test_merkle_sig()
+        sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
+        sbc._data.transactions = RAWTXS[:3]
+        with self.assertRaises(AssertionError):
             ba.recv_sub_block_contender(sbc)
-
-        self.assertEqual(len(ba.contenders[RESULT_HASH]['signatures_received']), NODES_REQUIRED_CONSENSUS)
-        self.assertEqual(len(ba.contenders[RESULT_HASH]['merkle_hashes_received']), 3)
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
@@ -254,7 +252,7 @@ class TestBlockAggregator(TestCase):
             sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
             ba.recv_sub_block_contender(sbc)
 
-        sbh = SubBlockHashes.create([RESULT_HASH])
+        sbh = SubBlockHashes.create([INPUT_HASH])
         ba.pub.send_msg.assert_called_once_with(msg=sbh, header=MASTER_MASTER_FILTER.encode())
 
 if __name__ == '__main__':

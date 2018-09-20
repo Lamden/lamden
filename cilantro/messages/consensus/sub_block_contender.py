@@ -37,6 +37,9 @@ class SubBlockContender(MessageBase):
         for leaf in self.merkle_leaves:
             assert is_valid_hex(leaf, length=64), "Invalid Merkle leaf {} ... expected 64 char hex string".format(leaf)
 
+        assert len(list(set(self._data.transactions))) == len(self._data.merkleLeaves), \
+            'Delegate did not include all transactions!'
+
         # Attempt to deserialize signatures by reading property (will raise exception if can't)
         self.signature.verify(self.result_hash)
 

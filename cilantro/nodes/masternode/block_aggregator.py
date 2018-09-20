@@ -79,12 +79,12 @@ class BlockAggregator(Worker):
     def recv_sub_block_contender(self, sbc: SubBlockContender):
         sbc.validate()
         result_hash = sbc._data.resultHash
-        cached = self.contenders.get(result_hash)
+        input_hash = sbc._data.inputHash
+        cached = self.contenders.get(input_hash)
         if not cached:
             if MerkleTree.verify_tree(leaves=sbc._data.merkleLeaves, root=result_hash):
-                self.contenders[result_hash] = {
-                    'signatures_received': set(),
-                    'merkle_hashes_received': set(),
+                self.contenders[input_hash] = {
+                    'result_hashes': {},
                     'merkle_leaves': sbc._data.merkleLeaves
                 }
                 self.log.spam('Received and validated SubBlockContender {}'.format(sbc))
@@ -96,39 +96,44 @@ class BlockAggregator(Worker):
             return
         else:
             self.log.spam('Received from another delegate for SubBlockContender {}'.format(sbc))
-        self.contenders[result_hash]['signatures_received'].add(sbc._data.signature)
+
+        if not self.contenders[input_hash]['result_hashes'].get(result_hash):
+            self.contenders[input_hash]['result_hashes'][result_hash] = {'signatures_received': set()}
+        self.contenders[input_hash]['result_hashes'][result_hash]['signatures_received'].add(sbc._data.signature)
+
         for tx in sbc._data.transactions:
             merkle_hash = MerkleTree.hash(tx)
-            if merkle_hash in self.contenders[result_hash]['merkle_leaves']:
-                self.contenders[result_hash]['merkle_hashes_received'].add(merkle_hash)
-            else:
+            if not merkle_hash in self.contenders[input_hash]['merkle_leaves']:
                 self.log.warning('Received malicious transactions that does not match any merkle leaves!')
-        self.combine_result_hash(result_hash)
+                return
+        self.combine_result_hash(input_hash)
 
-    def combine_result_hash(self, result_hash):
-        self.log.info('Received {}/{} ({} required) signatures and {}/{} total transactions'.format(
-            len(self.contenders[result_hash]['signatures_received']), TOP_DELEGATES, NODES_REQUIRED_CONSENSUS,
-            len(self.contenders[result_hash]['merkle_hashes_received']), len(self.contenders[result_hash]['merkle_leaves'])
-        ))
-        if len(self.contenders[result_hash]['signatures_received']) >= NODES_REQUIRED_CONSENSUS and \
-            len(self.contenders[result_hash]['merkle_hashes_received']) == len(self.contenders[result_hash]['merkle_leaves']):
-            self.total_valid_sub_blocks += 1
-            if self.total_valid_sub_blocks >= SUBBLOCKS_REQUIRED:
-                sbh = SubBlockHashes.create(self.contenders.keys())
-                sub_block_hashes = sbh.sub_block_hashes
-                full_block_hash = sbh.full_block_hash
-                if self.full_block_hashes.get(full_block_hash):
-                    self.log.info('Already received block hash "{}", adding to consensus count.'.format(full_block_hash))
-                    self.full_block_hashes[full_block_hash]['consensus_count'] += 1
-                else:
-                    self.log.important('Created resultant block-hash "{}"'.format(full_block_hash))
-                    self.full_block_hashes[full_block_hash] = {
-                        'valid_sub_blocks': self.contenders,
-                        'consensus_count': 1,
-                        'sub_block_hashes': sub_block_hashes
-                    }
-                self.contenders[result_hash]['consensus_reached'] = True
-                self.pub.send_msg(msg=sbh, header=MASTER_MASTER_FILTER.encode())
+    def combine_result_hash(self, input_hash):
+        if self.contenders.get(input_hash):
+            result_hashes = self.contenders[input_hash]['result_hashes']
+            for result_hash in result_hashes:
+                signatures = self.contenders[input_hash]['result_hashes'][result_hash]['signatures_received']
+                self.log.info('Received {}/{} ({} required) signatures'.format(
+                    len(signatures), TOP_DELEGATES, NODES_REQUIRED_CONSENSUS
+                ))
+                if len(signatures) >= NODES_REQUIRED_CONSENSUS:
+                    self.total_valid_sub_blocks += 1
+                    if self.total_valid_sub_blocks >= SUBBLOCKS_REQUIRED:
+                        sbh = SubBlockHashes.create(self.contenders.keys())
+                        sub_block_hashes = sbh.sub_block_hashes
+                        full_block_hash = sbh.full_block_hash
+                        if self.full_block_hashes.get(full_block_hash):
+                            self.log.info('Already received block hash "{}", adding to consensus count.'.format(full_block_hash))
+                            self.full_block_hashes[full_block_hash]['consensus_count'] += 1
+                        else:
+                            self.log.important('Created resultant block-hash "{}"'.format(full_block_hash))
+                            self.full_block_hashes[full_block_hash] = {
+                                'valid_sub_blocks': self.contenders[input_hash],
+                                'consensus_count': 1,
+                                'sub_block_hashes': sub_block_hashes
+                            }
+                        self.contenders[input_hash]['consensus_reached'] = True
+                        self.pub.send_msg(msg=sbh, header=MASTER_MASTER_FILTER.encode())
 
     def recv_result_hash(self, sbh: SubBlockHashes):
         sbh.validate()
