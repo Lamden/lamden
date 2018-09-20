@@ -8,7 +8,7 @@ from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
 from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MASTER_FILTER
-from cilantro.constants.ports import MN_SUB_BLOCK_PORT, INTER_MASTER_PORT
+from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.sub_block import SubBlockHashes
@@ -54,8 +54,8 @@ class TestBlockAggregator(TestCase):
         mock_manager = MagicMock()
         ba.manager = mock_manager
 
-        mock_pub, mock_sub = MagicMock(), MagicMock()
-        mock_manager.create_socket = MagicMock(side_effect=[mock_sub, mock_pub])
+        mock_pub, mock_sub, mock_server_router, mock_client_router = MagicMock(), MagicMock(), MagicMock(), MagicMock()
+        mock_manager.create_socket = MagicMock(side_effect=[mock_sub, mock_pub, mock_server_router, mock_client_router])
 
         mock_sub_handler_task = MagicMock()
         mock_sub.add_handler = MagicMock(return_value=mock_sub_handler_task)
@@ -71,7 +71,7 @@ class TestBlockAggregator(TestCase):
             len([vk for vk in VKBook.get_masternodes() if TEST_VK != vk]) + \
                 len([vk for vk in VKBook.get_delegates() if TEST_VK != vk]))
 
-        mock_pub.bind.assert_called_with(ip=TEST_IP, port=INTER_MASTER_PORT)
+        mock_pub.bind.assert_called_with(ip=TEST_IP, port=MASTER_PUB_PORT)
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
@@ -125,7 +125,7 @@ class TestBlockAggregator(TestCase):
         sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS)
 
         ba.recv_sub_block_contender(sbc)
-        self.assertTrue(sbc._data.signature in ba.contenders[INPUT_HASH]['result_hashes'][RESULT_HASH]['signatures_received'])
+        self.assertTrue(sbc._data.signature in ba.result_hashes[RESULT_HASH.hex()]['signatures'])
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
@@ -212,6 +212,7 @@ class TestBlockAggregator(TestCase):
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
     @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
     @mock.patch("cilantro.nodes.masternode.block_aggregator.SUBBLOCKS_REQUIRED", 2)
+    @mock.patch("cilantro.messages.block_data.block_metadata.SUBBLOCKS_REQUIRED", 2)
     @mock.patch("cilantro.nodes.masternode.block_aggregator.MASTERNODE_REQUIRED_CONSENSUS", 3)
     def test_recv_result_hash_multiple_subblocks_consensus(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)

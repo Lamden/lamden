@@ -14,6 +14,14 @@ struct BlockMetaData {
     blockContender @7 :Data;
 }
 
+struct FullBlockMetaData {
+    blockHash @0 :Data;
+    merkleRoots @1 :List(Data);
+    prevBlockHash @2 :Data;
+    timestamp @3 :UInt64;
+    masternodeSignature @4 :Data;
+}
+
 struct BlockMetaDataReply {
     blocks :union {
         isLatest @0 :Void;

@@ -1,12 +1,59 @@
 from cilantro.messages.base.base import MessageBase
+from cilantro.constants.masternode import SUBBLOCKS_REQUIRED
 # from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.utils import validate_hex
 from cilantro.utils import lazy_property
 from typing import List
+from datetime import datetime
 
 import capnp
 import blockdata_capnp
+
+class FullBlockMetaData(MessageBase):
+    """
+    This class is the metadata for combined validated sub blocks.
+    """
+
+    def validate(self):
+        assert validate_hex(self._data.blockHash, 64), 'Invalid hash'
+        assert validate_hex(self._data.prevBlockHash, 64), 'Invalid previous block hash'
+        assert len(self._data.merkleRoots) == SUBBLOCKS_REQUIRED, 'Invalid merkle roots'
+        assert validate_hex(self._data.masternodeSignature, 128), 'Invalid masternode signature'
+        assert type(self._data.timestamp) == int, 'Invalid timestamp'
+
+    @classmethod
+    def _deserialize_data(cls, data: bytes):
+        return blockdata_capnp.BlockMetaData.from_bytes_packed(data)
+
+    @classmethod
+    def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str, timestamp,
+               masternode_signature: str):
+
+        struct = blockdata_capnp.FullBlockMetaData.new_message()
+        struct.init('merkleRoots', len(merkle_roots))
+        struct.blockHash = block_hash
+        struct.merkleRoots = merkle_roots
+        struct.prevBlockHash = prev_block_hash
+        struct.timestamp = int(timestamp)
+        struct.masternodeSignature = masternode_signature
+        return cls.from_data(struct)
+
+    @property
+    def block_hash(self) -> str:
+        return self._data.blockHash.decode()
+
+    @property
+    def merkle_roots(self) -> List[str]:
+        return [root.decode() for root in self._data.merkleRoots]
+
+    @property
+    def previous_block_hash(self) -> str:
+        return self._data.prevBlockHash.decode()
+
+    @property
+    def timestamp(self) -> int:
+        return self._data.timestamp
 
 
 class BlockMetaData(MessageBase):
