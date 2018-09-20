@@ -114,7 +114,7 @@ class BlockManager(Worker):
         assert self.num_sub_blocks >= self.num_blocks, "num_blocks cannot be more than num_sub_blocks"
 
         # Define Sockets (these get set in build_task_list)
-        self.ipc_router, self.pub, self.sub = None, None, None
+        self.out_router, self.in_router, self.ipc_router, self.pub, self.sub = None, None, None, None, None
         self.ipc_ip = IPC_IP + '-' + str(os.getpid())
 
         self.run()
@@ -131,10 +131,25 @@ class BlockManager(Worker):
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def build_task_list(self):
+        # Create ROUTER socket for bidirectional communication with masters over tcp
+        self.in_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IN-Router")
+        self.in_router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
+        self.tasks.append(self.in_router.add_handler(self.handle_router))
+
+        self.out_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-OUT-Router")
+        # self.tcp_router.bind(port=ROUTER_PORT, protocol='tcp', ip=self.ip)
+        # self.tasks.append(self.in_router.add_handler(self.handle_router))
+
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
         self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
         self.ipc_router.bind(port=IPC_PORT, protocol='ipc', ip=self.ipc_ip)
         self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_msg))
+
+        # Create PUB socket to publish new sub_block_contenders to all masters
+        # Falcon - is it secure and has a different pub port ??
+        #          do we have a corresponding sub at master that handles this properly ?
+        self.pub = self.manager.create_socket(socket_type=zmq.PUB, name='SB Publisher')
+        self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
 
         # Create SUB socket to
         # 1) listen for subblock contenders from other delegates
@@ -142,16 +157,17 @@ class BlockManager(Worker):
         self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BM-Sub")  # TODO secure him
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
-        # Listen to other delegates (NOTE: with no filter currently)
-        self.sub.setsockopt(zmq.SUBSCRIBE, b'')
-        for vk in VKBook.get_delegates():
-            if vk != self.verifying_key:  # Do not SUB to itself
-                self.sub.connect(vk=vk, port=INTER_DELEGATE_PORT)
+        # Listen to other delegates (NOTE: with no filter currently) - disable this for now
+        # self.sub.setsockopt(zmq.SUBSCRIBE, b'')
+        # for vk in VKBook.get_delegates():
+            # if vk != self.verifying_key:  # Do not SUB to itself
+                # self.sub.connect(vk=vk, port=INTER_DELEGATE_PORT)
 
         # Listen to Masternodes
         self.sub.setsockopt(zmq.SUBSCRIBE, MASTERNODE_DELEGATE_FILTER.encode())
         for vk in VKBook.get_masternodes():
-            self.sub.connect(vk=vk, port=MN_NEW_BLOCK_PUB_PORT)
+            self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
+            self.out_router.connect(vk=vk, port=MASTER_ROUTER_PORT)
 
     def update_db_state(self):
         # do catch up logic here
@@ -163,7 +179,6 @@ class BlockManager(Worker):
         # use self.db_state.next_block to keep track of latest db states. once you got a quorum db state 
         # update to that state and clear self.db_state.next_block
         # next_block is key, list pair where list is a list of master vks
-
 
 
 
@@ -250,21 +265,23 @@ class BlockManager(Worker):
     def handle_new_block(self, envelope: Envelope):
         # raghu/davis - need to fix this data structure and handling it
         cur_block_hash = self.db_state.cur_block_hash
-        self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
-        block_hash, prev_block_hash = self.fetch_hash_timestamp(envelope)
-        if (block_hash == self.cur_block_hash) or (timestamp < self.cur_timestamp):
+        block_hash = get_block_hash(Envelope) # TODO
+        if (block_hash == self.cur_block_hash):
             # TODO log something
-            pass
+            return
 
-        num = self.next_block.get(block_hash, 0) + 1
-        if (num == self.quorum):
+        count = self.db_state.next_block.get(block_hash, 0) + 1
+        if (count == some_quorum):      # TODO
             self.update_db(envelope.message)
-            self.next_block.remove(block_hash)
-            # raghu TODO - need to update cur_block_hash and cur_timestamp and need to sync with SBB to do next block conflict resolution steps
-            # davis? how do we send a msg to all SBB using router/dealer. Do we need to listen to reply too? see comment on recv side
+            self.db_state.cur_block_hash = block_hash
+            self.db_state.next_block.clear()
+            self.send_updated_db_msg()
         else:
             self.next_block[block_hash] = num
 
+    def send_updated_db_msg(self):
+        pass
+        # TODO send a msg to all SBB using router that DB updated 
 
     # def _build_task_list(self):
     #     # Add router socket - where do we listen to this ?? add

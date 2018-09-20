@@ -71,8 +71,9 @@ from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
 class SubBlockManager:
     def __init__(self, sub_block_index: int, sub_socket, processed_txs_timestamp: int=0):
-        self.processed_txs_timestamp, self.sub_block_index = processed_txs_timestamp, sub_block_index
+        self.sub_block_index = sub_block_index
         self.sub_socket = sub_socket
+        self.processed_txs_timestamp = processed_txs_timestamp
         self.pending_txs = LinkedHashTable()
         self.merkle = None
 
@@ -88,7 +89,7 @@ class SubBlockBuilder(Worker):
         self.num_blocks = num_blocks
         num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
         self.num_sb_per_block = (num_sb_per_builder + num_blocks - 1) // num_blocks
-        self.current_sbm_idx = 0  # The index of the sb_manager whose transactions we are trying to build a SB for
+        self.cur_block_index = 0
 
         self.tasks = []
 
@@ -146,7 +147,7 @@ class SubBlockBuilder(Worker):
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
-    def handle_ipc_msg(self, frames):
+    async def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
         assert len(frames) == 2, "Expected 3 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
@@ -157,6 +158,9 @@ class SubBlockBuilder(Worker):
         self.log.debugv("SBB received an IPC message {}".format(msg))
 
         # raghu TODO listen to updated DB message from BM and start conflict resolution if any
+        # call to make sub-block(s) for next block
+        # tie with messages below
+        await self._interpret_next_block()
 
         if isinstance(msg, SomeType):
             self.handle_some_type(msg)
@@ -191,32 +195,31 @@ class SubBlockBuilder(Worker):
 
         self.sb_managers[index].pending_txs.append(msg_hash, envelope.message)
 
-    async def _interpret_next_sb(self):
-        self.log.debug("SBB {} attempting to build sub block with sub block manager index {}".format(self.sbb_index, self.current_sbm_idx))
+    async def _interpret_next_sb(self, sb_idx: int):
+        self.log.debug("SBB {} attempting to build sub block with sub block manager index {}".format(self.sbb_index, sb_idx))
         # get next batch of txns ??  still need to decide whether to unpack a bag or check for end of txn batch
 
-        batch = self.sb_managers[self.current_sbm_idx].pending_txs.popleft()
+        batch = self.sb_managers[sb_idx].pending_txs.popleft()
+        sb_idx = self.sb_managers[sb_idx].sub_block_index
 
         # If there is no bag for the current SB we are trying to build, just return
         if not batch:
-            self.log.debugv("Subblock manager at index {} has no TransactionBatches to process".format(self.current_sbm_idx))
+            self.log.debugv("Subblock manager at index {} has no TransactionBatches to process".format(sb_idx))
             return
 
         # If the bag is empty for the current SB, just log it and move on to the next SB in round-robin fashion
         if batch.is_empty:
-            self.log.debugv("Subblock manager at index {} got an empty transaction bag".format(self.current_sbm_idx))
+            self.log.debugv("Subblock manager at index {} got an empty transaction bag".format(sb_idx))
         # Otherwise, interpret everything in the bag and build a SBC. Then send this SBC to BlockManager processes
         else:
             # TODO do we need to set a flag on this SBB, marking that he just sent off a SBC? I think so
-            sbc = self._create_sbc_from_batch(batch)
+            sbc = self._create_sbc_from_batch(sb_idx, batch)
             self._send_msg_over_ipc(sbc)
 
         # Increment our current working sub block index, and try and build the next subtree
-        self.sb_managers[self.current_sbm_idx].processed_txs_timestamp = int(time.time())
-        self.current_sbm_idx = (self.current_sbm_idx + 1) % len(self.sb_managers)
-        return self._interpret_next_sb()
+        self.sb_managers[sb_idx].processed_txs_timestamp = int(time.time())
 
-    def _create_sbc_from_batch(self, batch: TransactionBatch) -> SubBlockContender:
+    def _create_sbc_from_batch(self, sb_idx: int, batch: TransactionBatch) -> SubBlockContender:
         """
         Creates a Sub Block Contender from a TransactionBatch
         """
@@ -250,15 +253,14 @@ class SubBlockBuilder(Worker):
         self.dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
 
-    # TODO raghu - tie with new block notifications so we are only 1 or 2 steps ahead
+    # raghu - tie with new block notifications so we are only 1 or 2 steps ahead
     # I commented this out temporarily b/c of compiler errors --davis
-    # async def interpret_next_block(self, block_index):
-    #     self.num_blocks = num_blocks
-    #     if block_index >= self.num_blocks:
-    #         # TODO - log error
-    #         return
-    #     sb_index_start = block_index * self.num_sub_blocks_per_block
-    #     foreach i in self.num_sub_blocks_per_block:
-    #         await self._interpret_next_sub_block(sb_index_start + i)
+    async def _interpret_next_block(self):
+        if self.cur_block_index >= self.num_blocks:
+            self.cur_block_index = 0
+        sb_index_start = self.cur_block_index * self.num_sb_per_block
+        foreach i in self.num_sub_blocks_per_block:
+            await self._interpret_next_sub_block(sb_index_start + i)
+        self.cur_block_index = self.cur_block_index + 1
 
 
