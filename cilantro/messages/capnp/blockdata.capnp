@@ -1,6 +1,5 @@
 @0xa61eafaff944c2b3;
 
-
 struct BlockMetaData {
     # Hash of the block
     hash @0 :Data;
@@ -15,14 +14,12 @@ struct BlockMetaData {
     blockContender @7 :Data;
 }
 
-
 struct BlockMetaDataReply {
     blocks :union {
         isLatest @0 :Void;
         data @1 :List(BlockMetaData);
     }
 }
-
 
 struct BlockMetaDataRequest {
     currentBlockHash @0 :Data;

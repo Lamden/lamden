@@ -7,7 +7,7 @@ import pickle
 from typing import List
 
 import capnp
-import consensus_capnp
+import subblock_capnp
 
 class SubBlockContender(MessageBase):
     # TODO switch underlying data struct for this guy to Capnp (or at least JSON)
@@ -28,13 +28,16 @@ class SubBlockContender(MessageBase):
         assert self._data.transactions, "Raw transactions field missing from data {}".format(self._data)
 
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
-                                                          "expected 64 char hex string".format(self.prev_block_hash)
+                                                          "expected 64 char hex string".format(self.result_hash)
         assert is_valid_hex(self.input_hash, length=64), "Invalid input sub-block hash {} .. " \
-                                                         "expected 64 char hex string".format(self.prev_block_hash)
+                                                         "expected 64 char hex string".format(self.input_hash)
 
         # Ensure merkle leaves are valid hex - this may not be present in all cases
         for leaf in self.merkle_leaves:
             assert is_valid_hex(leaf, length=64), "Invalid Merkle leaf {} ... expected 64 char hex string".format(leaf)
+
+        assert len(list(set(self._data.transactions))) == len(self._data.merkleLeaves), \
+            'Delegate did not include all transactions!'
 
         # Attempt to deserialize signatures by reading property (will raise exception if can't)
         self.signature.verify(self.result_hash)
@@ -53,7 +56,7 @@ class SubBlockContender(MessageBase):
         """
         assert isinstance(signature, MerkleSignature), "signature must be of MerkleSignature"
 
-        struct = consensus_capnp.SubBlockContender.new_message()
+        struct = subblock_capnp.SubBlockContender.new_message()
         struct.init('merkleLeaves', len(merkle_leaves))
         struct.init('transactions', len(raw_txs))
         struct.resultHash = result_hash
@@ -64,6 +67,7 @@ class SubBlockContender(MessageBase):
 
         return cls.from_data(struct)
 
+
     @classmethod
     def _chunks(cls, l, n=64):
         for i in range(0, len(l), n):
@@ -71,11 +75,11 @@ class SubBlockContender(MessageBase):
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return consensus_capnp.SubBlockContender.from_bytes_packed(data)
+        return subblock_capnp.SubBlockContender.from_bytes_packed(data)
 
     @property
     def result_hash(self) -> str:
-        return self._data.resultHash.decode()
+        return self._data.resultHash.hex()
 
     @property
     def input_hash(self) -> str:
@@ -95,7 +99,7 @@ class SubBlockContender(MessageBase):
         The Merkle Tree leaves associated with the block (a binary tree stored implicitly as a list).
         Each element is hex string representing a node's hash.
         """
-        return [leaf.decode() for leaf in self._data.merkleLeaves]
+        return [leaf.hex() for leaf in self._data.merkleLeaves]
 
     @property
     def transactions(self) -> List[ContractTransaction]:

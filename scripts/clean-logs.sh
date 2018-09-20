@@ -1,4 +1,2 @@
 cd ..
-find . -name '*.log' -delete
-find . -name '*.log_color' -delete
-
+find . -name 'logs' -exec rm -r "{}" 2>/dev/null \;
