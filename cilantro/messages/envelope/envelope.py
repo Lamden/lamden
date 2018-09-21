@@ -3,12 +3,12 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.message_meta import MessageMeta
 from cilantro.messages.envelope.seal import Seal
 from cilantro.protocol.structures import EnvelopeAuth
-from cilantro.utils import Hasher  # Just for debugging (used in __repr__)
 import time
 
 import envelope_capnp
 
 from cilantro.protocol import wallet
+from cilantro.utils import Hasher  # Just for debugging (used in __repr__)
 
 
 class Envelope(MessageBase):
@@ -93,9 +93,11 @@ class Envelope(MessageBase):
         return obj
 
     def validate(self):
-        assert self.seal
-        assert self.meta
-        assert self.message
+        pass
+        # assert self.seal
+        # assert self.meta
+        # assert self.message
+        # assert self.verify_seal(), "Seal is invalid!"
 
     def verify_seal(self) -> bool:
         """

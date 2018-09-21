@@ -11,7 +11,7 @@ from cilantro.messages.block_data.transaction_data import TransactionReply, Tran
 
 from cilantro.constants.zmq_filters import DELEGATE_DELEGATE_FILTER
 from cilantro.constants.testnet import MAJORITY, TESTNET_DELEGATES
-from cilantro.constants.nodes import BLOCK_SIZE
+from cilantro.constants.nodes import TRANSACTIONS_PER_SUB_BLOCK
 from cilantro.constants.delegate import CONSENSUS_TIMEOUT
 
 from cilantro.storage.db import VKBook
@@ -52,9 +52,9 @@ class DelegateConsensusState(DelegateBaseState):
     @enter_from(DelegateInterpretState)
     def enter_from_interpret(self):
         assert self.parent.interpreter.queue_size > 0, "Entered consensus state, but interpreter queue is empty!"
-        assert self.parent.interpreter.queue_size == BLOCK_SIZE, \
-            "Consensus state entered with {} transactions in queue, but the BLOCK_SIZE is {}!"\
-            .format(self.parent.interpreter.queue_size, BLOCK_SIZE)
+        assert self.parent.interpreter.queue_size == TRANSACTIONS_PER_SUB_BLOCK, \
+            "Consensus state entered with {} transactions in queue, but the TRANSACTIONS_PER_SUB_BLOCK is {}!"\
+            .format(self.parent.interpreter.queue_size, TRANSACTIONS_PER_SUB_BLOCK)
 
         # Merkle-ize transaction queue and create signed merkle hash
         all_tx = self.parent.interpreter.queue_binary

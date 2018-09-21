@@ -25,7 +25,6 @@ class SubBlockContender(MessageBase):
         # leaves can be empty list from some delegates that only intend to vote (not propose it)
         assert self._data.merkleLeaves, "leaves field missing from data {}".format(self._data)
         assert self._data.signature, "Signature field missing from data {}".format(self._data)
-        # assert SubBlockContender.NODES in self._data, "nodes field missing from data {}".format(self._data)
         assert self._data.transactions, "Raw transactions field missing from data {}".format(self._data)
 
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
@@ -45,7 +44,7 @@ class SubBlockContender(MessageBase):
 
     @classmethod
     def create(cls, result_hash: str, input_hash: str, merkle_leaves: List[bytes],
-               signature: MerkleSignature, raw_txs: List[bytes]):
+               sb_index, signature: MerkleSignature, raw_txs: List[bytes]):
         """
         Delegages create a new sub-block contender and propose to master nodes
         :param result_hash: The hash of the root of this sub-block
@@ -62,11 +61,13 @@ class SubBlockContender(MessageBase):
         struct.init('transactions', len(raw_txs))
         struct.resultHash = result_hash
         struct.inputHash = input_hash
+        struct.sb_index = sb_index
         struct.merkleLeaves = merkle_leaves
         struct.signature = signature.serialize()
         struct.transactions = raw_txs
 
         return cls.from_data(struct)
+
 
     @classmethod
     def _chunks(cls, l, n=64):

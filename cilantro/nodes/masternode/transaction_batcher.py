@@ -1,4 +1,5 @@
 # TODO this file could perhaps be named better
+from cilantro.constants.nodes import *
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
 from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
 from cilantro.constants.masternode import BATCH_INTERVAL
@@ -9,7 +10,6 @@ from cilantro.messages.transaction.batch import TransactionBatch
 
 import zmq.asyncio
 import asyncio
-
 
 class TransactionBatcher(Worker):
 
@@ -30,17 +30,25 @@ class TransactionBatcher(Worker):
         self.log.important("Starting TransactionBatcher with a batch interval of {} seconds".format(BATCH_INTERVAL))
         self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
 
+        max_skip_turns = 4      # could be a configurable constant.
+        skip_turns = max_skip_turns
         while True:
             self.log.spam("Batcher resting for {} seconds".format(BATCH_INTERVAL))
             await asyncio.sleep(BATCH_INTERVAL)
 
+            num_txns = self.queue.qsize()
             tx_list = []
-            self.log.debug("Sending {} transactions in batch".format(self.queue.qsize()))
-            for _ in range(self.queue.qsize()):
-                tx = self.queue.get()
-                self.log.spam("masternode bagging transaction from sender {}".format(tx.sender))
+            if ((num_txns >= TRANSACTIONS_PER_SUB_BLOCK) or (skip_turns < 1)):
+                for _ in range(num_txns):
+                    tx = self.queue.get()
+                    self.log.spam("masternode bagging transaction from sender {}".format(tx.sender))
 
-                tx_list.append(OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key))
+                    tx_list.append(OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key))
+                    skip_turns = max_skip_turns        # reset to max again
+            else:
+                skip_turns = skip_turns - 1
 
+            # send either empty or some txns capping at TRANSACTIONS_PER_SUB_BLOCK
+            self.log.debug("Sending {} transactions in batch".format(len(tx_list)))
             batch = TransactionBatch.create(transactions=tx_list)
             self.pub_sock.send_msg(msg=batch, header=WITNESS_MASTERNODE_FILTER.encode())

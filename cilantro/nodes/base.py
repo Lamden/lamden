@@ -7,12 +7,23 @@ from cilantro.utils.lprocess import LProcess
 
 import asyncio
 import os
+import time
 from cilantro.protocol import wallet
+
+
+BOOT_DELAY = 8  # MANDATORY NAP TIME (How long each node sleeps after starting its overlay server)
+
+def take_a_nice_relaxing_nap(log):
+    log.important("Taking a nice relaxing {} second nap while I wait for everybody to boot".format(BOOT_DELAY))
+    time.sleep(BOOT_DELAY)
+    log.important("Done with my boot nap. Time to get to get work.")
 
 
 class NewNodeBase(StateMachine, Worker):
 
     def __init__(self, ip, signing_key, loop=None, name='Node'):
+        self.log = get_logger(name)
+
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
@@ -20,15 +31,17 @@ class NewNodeBase(StateMachine, Worker):
         self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key})
         self.overlay_proc.start()
 
-        StateMachine.__init__(self)
+        # TODO remove this once we implement a 'Staging' state for all nodes
+        take_a_nice_relaxing_nap(self.log)
+
+        # Init Super Classes (we had to start the Overlay Server first)
         Worker.__init__(self, signing_key=signing_key, loop=loop, name=name)
+        StateMachine.__init__(self)
 
         self.ip = ip
         self.name = name
 
         self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
-
-        self.tasks = []
 
         super().start()  # Start the state machine
 
@@ -53,6 +66,9 @@ class NodeBase(StateMachine):
         self.log.notice("Starting overlay service")
         self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk':signing_key})
         self.overlay_proc.start()
+
+        # TODO remove this once we implement a 'Staging' state for all nodes
+        take_a_nice_relaxing_nap(self.log)
 
         self._composer = None
 
