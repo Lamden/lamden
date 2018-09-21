@@ -74,9 +74,9 @@ IPC_IP = 'block-manager-ipc-sock'
 IPC_PORT = 6967
 
 # convenience struct to maintain db snapshot state data in one place
-Class DBState:
-    def __init__(self, block_hash: int=0):
+class DBState:
     # def __init__(self, block_hash: int=0, timestamp: int=0):
+    def __init__(self, block_hash: int=0):
         self.cur_block_hash = block_hash
         # self.cur_timestamp = timestamp   ?? probably not needed
         self.next_block = {}
@@ -89,8 +89,9 @@ class BlockManager(Worker):
         self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
 
         self.ip = ip
-        self.current_hash = BlockStorageDriver.get_latest_block_hash()
-        self.mn_indices = self._build_mn_indices()
+        # self.current_hash = BlockStorageDriver.get_latest_block_hash()
+        self.current_hash = 0
+        # self.mn_indices = self._build_mn_indices()
         self.sb_builders = {}  # index -> process      # perhaps can be consolidated with the above ?
         self.tasks = []
 
@@ -103,7 +104,7 @@ class BlockManager(Worker):
         self.my_sb_index = self._get_my_index() % self.num_sb_builders
 
         # raghu todo tie to initial catch up logic as well as right place to do this
-        self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
+        self.db_state = DBState(self.current_hash)
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"

@@ -259,7 +259,7 @@ class SubBlockBuilder(Worker):
         if self.cur_block_index >= self.num_blocks:
             self.cur_block_index = 0
         sb_index_start = self.cur_block_index * self.num_sb_per_block
-        foreach i in self.num_sub_blocks_per_block:
+        for i in self.num_sub_blocks_per_block:
             await self._interpret_next_sub_block(sb_index_start + i)
         self.cur_block_index = self.cur_block_index + 1
 
