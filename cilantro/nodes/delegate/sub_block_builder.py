@@ -87,7 +87,7 @@ class SubBlockBuilder(Worker):
         self.sbb_index = sbb_index
         self.total_sub_blocks = total_sub_blocks
         self.num_blocks = num_blocks
-        num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
+        self.num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
         self.num_sb_per_block = (num_sb_per_builder + num_blocks - 1) // num_blocks
         self.cur_block_index = 0
 
@@ -135,7 +135,7 @@ class SubBlockBuilder(Worker):
         # We then BIND a sub socket to a port for each of these masternode indices
         for idx in range(num_sb_per_builder):
             sb_idx = idx * num_sb_builders + self.sbb_index  # actual SB index in global index space
-            if sb_idx >= self.num_sub_blocks:    # out of range already
+            if sb_idx >= self.total_sub_blocks:    # out of range already
                 return
 
             port = SBB_PORT_START + sb_idx

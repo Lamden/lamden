@@ -43,7 +43,7 @@ from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro.constants.nodes import *
 from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
-from cilantro.constants.ports import INTER_DELEGATE_PORT, MN_NEW_BLOCK_PUB_PORT
+from cilantro.constants.ports import *
 from cilantro.constants.testnet import WITNESS_MN_MAP, MN_WITNESS_MAP
 
 from cilantro.messages.base.base import MessageBase
@@ -74,12 +74,11 @@ IPC_IP = 'block-manager-ipc-sock'
 IPC_PORT = 6967
 
 # convenience struct to maintain db snapshot state data in one place
-Class DBState:
-    def __init__(self, block_hash: int=0):
-    # def __init__(self, block_hash: int=0, timestamp: int=0):
-        self.cur_block_hash = block_hash
-        # self.cur_timestamp = timestamp   ?? probably not needed
+class DBState:
+    def __init__(self, cur_block_hash):
+        self.cur_block_hash = cur_block_hash
         self.next_block = {}
+        # self.cur_timestamp = timestamp   ?? probably not needed
 
 
 class BlockManager(Worker):
@@ -121,9 +120,6 @@ class BlockManager(Worker):
         self.log.critical("just called run!".format())
 
     def run(self):
-        # DEBUG TODO DELETE
-        self.log.critical("\n!!!! RUN CALLED !!!!!\n")
-        # END DEBUG
         self.build_task_list()
         # self.update_db_state()
         self.start_sbb_procs()
@@ -166,8 +162,11 @@ class BlockManager(Worker):
         # Listen to Masternodes
         self.sub.setsockopt(zmq.SUBSCRIBE, MASTERNODE_DELEGATE_FILTER.encode())
         for vk in VKBook.get_masternodes():
-            self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
-            self.out_router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+            self.sub.connect(vk=vk, port=MASTERNODE_PUB_PORT)
+            self.out_router.connect(vk=vk, port=MASTERNODE_PUB_PORT)
+
+        # TODO -- think we can start using Router-Router for N-N comm patterns
+        # I thought this was tricky at first, because for a Router to send a message, it needs to know
 
     def update_db_state(self):
         # do catch up logic here
