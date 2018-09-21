@@ -162,8 +162,8 @@ class BlockManager(Worker):
         # Listen to Masternodes
         self.sub.setsockopt(zmq.SUBSCRIBE, MASTERNODE_DELEGATE_FILTER.encode())
         for vk in VKBook.get_masternodes():
-            self.sub.connect(vk=vk, port=MASTERNODE_PUB_PORT)
-            self.out_router.connect(vk=vk, port=MASTERNODE_PUB_PORT)
+            self.sub.connect(vk=vk, port=MASTERNODE_ROUTER_PORT)
+            self.out_router.connect(vk=vk, port=MASTERNODE_ROUTER_PORT)
 
         # TODO -- think we can start using Router-Router for N-N comm patterns
         # I thought this was tricky at first, because for a Router to send a message, it needs to know
