@@ -4,7 +4,7 @@ struct SubBlock {
     merkleRoot @0 :Data;
     signatures @1: List(Data);
     merkleLeaves @2: List(Data);
-    subBlockIndex @3: UInt8;
+    subBlockIdx @3: UInt8;
 }
 
 struct SubBlockContender {

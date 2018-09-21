@@ -9,6 +9,8 @@ class StateUpdateRequest(MessageBaseJson):
      1) out of consensus
      2) bootstrapping their application
      3) any connection issues that result in missed transactions (which will likely lead to case 1, but not exclusively)
+    Additionally, a master may need to do this if it is:
+     1) out of consensus with other masternodes
     """
 
     B_NUM = 'block_num'
@@ -91,6 +93,3 @@ class StateUpdateReply(MessageBaseJson):
         The block transaction payload. This is a list of transactions, which represented the leaves of a merkle tree.
         """
         return self._data[self.B_PAYLOAD]
-
-
-
