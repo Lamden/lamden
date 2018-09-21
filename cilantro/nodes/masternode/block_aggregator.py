@@ -86,8 +86,8 @@ class BlockAggregator(Worker):
 
         if isinstance(msg, SubBlockContender):
             self.recv_sub_block_contender(msg)
-        elif isinstance(msg, SubBlockHashes):
-            self.recv_result_hash(msg)
+        elif isinstance(msg, FullBlockMetaData):
+            self.recv_full_block_hash_metadata(msg)
         else:
             raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
@@ -148,41 +148,37 @@ class BlockAggregator(Worker):
                     if len(signatures) >= NODES_REQUIRED_CONSENSUS:
                         self.total_valid_sub_blocks += 1
                         if self.total_valid_sub_blocks >= SUBBLOCKS_REQUIRED:
-                            sbh = SubBlockHashes.create(self.contenders.keys())
-                            sub_block_hashes = sbh.sub_block_hashes
-                            full_block_hash = sbh.full_block_hash
-                            if self.full_block_hashes.get(full_block_hash):
-                                self.log.info('Already received block hash "{}", adding to consensus count.'.format(full_block_hash))
-                                self.full_block_hashes[full_block_hash]['consensus_count'] += 1
+                            fbmd = self.construct_full_block(self.contenders.keys())
+                            block_hash = fbmd.block_hash
+                            if self.full_block_hashes.get(block_hash):
+                                self.log.info('Already received block hash "{}", adding to consensus count.'.format(block_hash))
+                                self.full_block_hashes[block_hash]['consensus_count'] += 1
                             else:
-                                self.log.important('Created resultant block-hash "{}"'.format(full_block_hash))
-                                self.full_block_hashes[full_block_hash] = {
+                                self.log.important('Created resultant block-hash "{}"'.format(block_hash))
+                                self.full_block_hashes[block_hash] = {
                                     'consensus_count': 1,
-                                    'sub_block_hashes': sub_block_hashes
+                                    'full_block_metadata': fbmd
                                 }
                             self.contenders[input_hash]['consensus_reached'] = True
-                            # sbmd = self.construct_sub_blocks(sub_block_hashes)
-                            self.pub.send_msg(msg=sbh, header=DEFAULT_FILTER.encode())
-                            fbmd = self.construct_full_block(sub_block_hashes)
                             self.pub.send_msg(msg=fbmd, header=DEFAULT_FILTER.encode())
 
-    def recv_result_hash(self, sbh: SubBlockHashes):
-        sbh.validate()
-        full_block_hash = sbh.full_block_hash
-        if not self.full_block_hashes.get(full_block_hash):
-            self.log.info('Received NEW block hash "{}", did not yet receive valid sub blocks from delegates.'.format(full_block_hash))
-            self.full_block_hashes[full_block_hash] = {
+    def recv_full_block_hash_metadata(self, fbmd: FullBlockMetaData):
+        fbmd.validate()
+        block_hash = fbmd.block_hash
+        if not self.full_block_hashes.get(block_hash):
+            self.log.info('Received NEW block hash "{}", did not yet receive valid sub blocks from delegates.'.format(block_hash))
+            self.full_block_hashes[block_hash] = {
                 'consensus_count': 1,
-                'sub_block_hashes': sbh.sub_block_hashes
+                'full_block_metadata': fbmd
             }
-        elif self.full_block_hashes[full_block_hash].get('consensus_reached') != True:
+        elif self.full_block_hashes[block_hash].get('consensus_reached') != True:
             self.total_valid_sub_blocks = 0
-            self.log.info('Received KNOWN block hash "{}", adding to consensus count.'.format(full_block_hash))
-            self.full_block_hashes[full_block_hash]['consensus_count'] += 1
-            if self.full_block_hashes[full_block_hash]['consensus_count'] >= MASTERNODE_REQUIRED_CONSENSUS:
-                self.full_block_hashes[full_block_hash]['consensus_reached'] = True
-                sub_block_hashes = self.full_block_hashes[full_block_hash].get('sub_block_hashes')
-                if not len(sub_block_hashes) == SUBBLOCKS_REQUIRED:
+            self.log.info('Received KNOWN block hash "{}", adding to consensus count.'.format(block_hash))
+            self.full_block_hashes[block_hash]['consensus_count'] += 1
+            if self.full_block_hashes[block_hash]['consensus_count'] >= MASTERNODE_REQUIRED_CONSENSUS:
+                self.full_block_hashes[block_hash]['consensus_reached'] = True
+                fbmd = self.full_block_hashes[block_hash].get('full_block_metadata')
+                if not len(fbmd.merkle_roots) == SUBBLOCKS_REQUIRED:
                     # TODO Request blocks from other masternodes
                     pass
                 else:
@@ -192,7 +188,7 @@ class BlockAggregator(Worker):
                     # Transactions: (tx_hash, blob, status, state)
                     pass
         else:
-            self.log.info('Received KNOWN block hash "{}" but consensus already reached.'.format(full_block_hash))
+            self.log.info('Received KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
 
     def construct_sub_blocks(self, sub_block_hashes):
         sub_blocks = []
@@ -207,12 +203,13 @@ class BlockAggregator(Worker):
                     sub_block_idx=idx))
         return sub_blocks
 
-    def construct_full_block(self, sub_block_hashes):
-        block_hash = Hasher.hash_iterable([*sub_block_hashes, self.curr_block_hash])
+    def construct_full_block(self, hash_list):
+        merkle_roots = sorted(hash_list)
+        block_hash = Hasher.hash_iterable([*merkle_roots, self.curr_block_hash])
         signature = wallet.sign(self.signing_key, block_hash.encode())
         block = FullBlockMetaData.create(
             block_hash=block_hash,
-            merkle_roots=sub_block_hashes,
+            merkle_roots=merkle_roots,
             prev_block_hash=self.curr_block_hash,
             timestamp=time.time(),
             masternode_signature=signature
