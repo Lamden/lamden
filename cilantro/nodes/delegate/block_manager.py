@@ -128,13 +128,12 @@ class BlockManager(Worker):
 
     def build_task_list(self):
         # Create ROUTER socket for bidirectional communication with masters over tcp
-        self.in_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IN-Router")
+        self.in_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IN-Router")  # TODO secure him
         self.in_router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
-        self.tasks.append(self.in_router.add_handler(self.handle_router))
+        self.tasks.append(self.in_router.add_handler(self.handle_router_msg))
 
         self.out_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-OUT-Router")
-        # self.tcp_router.bind(port=ROUTER_PORT, protocol='tcp', ip=self.ip)
-        # self.tasks.append(self.in_router.add_handler(self.handle_router))
+        self.out_router.setsocketopt(zmq.IDENTITY, self.verifying_key.encode())
 
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
         self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
@@ -152,12 +151,6 @@ class BlockManager(Worker):
         # 2) listen for NewBlockNotifications from masternodes
         self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BM-Sub")  # TODO secure him
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
-
-        # Listen to other delegates (NOTE: with no filter currently) - disable this for now
-        # self.sub.setsockopt(zmq.SUBSCRIBE, b'')
-        # for vk in VKBook.get_delegates():
-            # if vk != self.verifying_key:  # Do not SUB to itself
-                # self.sub.connect(vk=vk, port=INTER_DELEGATE_PORT)
 
         # Listen to Masternodes
         self.sub.setsockopt(zmq.SUBSCRIBE, MASTERNODE_DELEGATE_FILTER.encode())
@@ -178,8 +171,6 @@ class BlockManager(Worker):
         # use self.db_state.next_block to keep track of latest db states. once you got a quorum db state 
         # update to that state and clear self.db_state.next_block
         # next_block is key, list pair where list is a list of master vks
-
-
 
     def start_sbb_procs(self):
         for i in range(self.num_sb_builders):
@@ -222,7 +213,7 @@ class BlockManager(Worker):
                             .format(type(msg)))
 
     def handle_sub_msg(self, frames):
-        # This handle will get NewBlockNotifications from Masternodes, and whatever additional stuff??
+        # TODO filter out duplicates
 
         # The first frame is the filter, and the last frame is the envelope binary
         envelope = Envelope.from_bytes(frames[-1])
@@ -231,15 +222,15 @@ class BlockManager(Worker):
 
         if isinstance(msg, NewBlockNotification):
             self.handle_new_block(envelope)
-        # not needed anymore ?? raghu TODO
-        elif isinstance(msg, BlockContender):
-            # TODO implement
-            # self.recv_merkle_tree(event)
-            self.recv_sub_block(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
         # Last frame, frames[-1] will be the envelope binary
+
+    def handle_router_msg(self, frames):
+        self.log.important("Got msg over tcp ROUTER socket with frames: {}".format(frames))
+        # TODO implement
+        # TODO verify that the first frame (identity frame) matches the verifying key on the Envelope's seal
 
     def _handle_sbc(self, sbc: SubBlockContender):
         # TODO implement     raghu
