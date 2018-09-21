@@ -1,32 +1,17 @@
 """
     SubBlockBuilder
 
+    If Block is viewed as consists of a merkle tree of transactions, then sub-block refers to the sub-tree of the block.
     Conceptually Sub Block could form whole block or part of block. This lets us scale things horizontally.
-    Each of this builder will be started on a separate process and will assume BlockManager would be 
-    responsible to resolve db conflicts (due to ordering of these sub-blocks at block level) and 
-    send resolved subtree to master (and other delegates).
-    it will send its vote on other subblocks to master directly.
+    Each of this SB builder will be started on a separate process and will coordinate with BlockManager 
+    to resolve db conflicts between sub-blocks and send resolved sub-block to master.
+    It also sends in partial data of transactions along with the sub-block
     
-    We will make each SubBlockBuilder responsible for one master and so in our case, we will have 64 processes,
-    each producing a sub-block. We can form one block with 8/16 sub-blocks so we will have 8/4 independent blocks.
-    1 master    -> 1 subblcok
-    2 subblocks -> 1 subtree
-    8 subtrees  -> 1 block
-    64 masters -> 64 sub-blocks -> 32 subtrees -> 4 blocks
+    We typically take all transactions from a single master to form a sub-block,
+    but a sub-block builder can be responsible for more than one master and so can make more than one sub-block.
+    This ensures our ordering guarantees that transactions entered at a master is executed in that order, 
+    but we will decide the order of transactions between different masters.
     
-    SubBlockBuilder
-      Input: set of witnesses that provide transactions from a single master
-             need to use proxies for zmq communication as witnesses are dynamically rotated to help different masters
-             connection port to BlockManager
-      0. Opens a subscribe connection to witness pool (thread1)
-         just put them in a queue 
-      1. Initialization: establish connections to blockmgr (the main process that launched this one)
-         when asked to start making a new subblock (blkMgr)
-         2. pull next batch from queue (Seneca interface and cost of db access is included here)
-         3. Failed contracts have to be in pending state to be resolved
-         4. if some failed contracts, resolve or reject them or push them to next block (communication cost to BlkMgr here)
-         5. Also BlockMgr may send in new failures (communication cost)
-         6. Make and send subblock to blockMgr
 """
 
 
@@ -56,19 +41,8 @@ from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
 from cilantro.utils.hasher import Hasher
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
-# need delegate communication class to describe events
-#  all currently known hand-shakes of block making
-#  get # of txns
-#  move to block state. may skip some due to low vol of txns there.
-# need block state events
-#    for 4 blocks:
-#       blocks in 1 and 2 stages, just do io (no cpu - to make sure cpu is available for other proceses)
-#                just txns from witness and drop it in queue  - may keep a count of # of txns
-# witness will use master router/dealer to communicate it is going to cover it. can master accept/reject it?
-# master will publish it once it accepts
-# witness can quit at a certain time interval ?? and delegates can kick it out once it has other 5/6 copies and no data from it??
-
-
+# This is a convenience struct to hold all data related to a sub-block in one place.
+# Since we have more than one sub-block per process, SBB'er will hold an array of SubBlockManager objects
 class SubBlockManager:
     def __init__(self, sub_block_index: int, sub_socket, processed_txs_timestamp: int=0):
         self.sub_block_index = sub_block_index
