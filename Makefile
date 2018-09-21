@@ -10,7 +10,7 @@ console-db:
 	./scripts/connect-mysql-client.sh
 
 stop-db:
-	docker kill `docker ps --format "table {{.Names}}" --filter "ancestor=lamden/cilantro-db"| tail -n +2` || true; sleep 2
+	docker kill `docker ps --format "table {{.Names}}" --filter "ancestor=lamden/cilantro-db"| tail -n +2` 2>/dev/null; sleep 2
 
 stop: stop-db
 
