@@ -43,7 +43,7 @@ dump:
 	python3 ./tests/vmnet/test_dump.py
 
 kill-docker:
-	docker kill $(docker ps -q)
+	docker kill `docker ps -q` || true; sleep 2
 
 build-testnet-json:
 	python3 -c "from cilantro.utils.test.testnet_nodes import *; generate_testnet_json()"
