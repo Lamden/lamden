@@ -42,8 +42,8 @@ from cilantro.utils.lprocess import LProcess
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro.constants.nodes import *
-from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
-from cilantro.constants.ports import INTER_DELEGATE_PORT, MN_NEW_BLOCK_PUB_PORT
+from cilantro.constants.zmq_filters import DEFAULT_FILTER
+from cilantro.constants.ports import DELEGATE_ROUTER_PORT, DELEGATE_PUB_PORT, MASTER_PUB_PORT, MASTER_ROUTER_PORT 
 from cilantro.constants.testnet import WITNESS_MN_MAP, MN_WITNESS_MAP
 
 from cilantro.messages.base.base import MessageBase
@@ -135,7 +135,7 @@ class BlockManager(Worker):
         # Create ROUTER socket for bidirectional communication with masters over tcp
         self.in_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IN-Router")
         self.in_router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
-        self.tasks.append(self.in_router.add_handler(self.handle_router))
+        self.tasks.append(self.in_router.add_handler(self.handle_router_msg))
 
         self.out_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-OUT-Router")
         # self.tcp_router.bind(port=ROUTER_PORT, protocol='tcp', ip=self.ip)
@@ -165,7 +165,7 @@ class BlockManager(Worker):
                 # self.sub.connect(vk=vk, port=INTER_DELEGATE_PORT)
 
         # Listen to Masternodes
-        self.sub.setsockopt(zmq.SUBSCRIBE, MASTERNODE_DELEGATE_FILTER.encode())
+        self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
             self.out_router.connect(vk=vk, port=MASTER_ROUTER_PORT)
@@ -200,6 +200,10 @@ class BlockManager(Worker):
                 return index
 
         raise Exception("Delegate VK {} not found in VKBook {}".format(self.verifying_key, VKBook.get_delegates()))
+
+    def handle_router_msg(self, frames):     # ? is it frames or envelope
+        pass
+
 
     def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
