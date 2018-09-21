@@ -47,4 +47,3 @@ if __name__ == '__main__':
 
     for p in (sender_1, sender_2, receiver):
         p.start()
-
