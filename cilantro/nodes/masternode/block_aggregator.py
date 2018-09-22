@@ -11,7 +11,9 @@ from cilantro.constants.masternode import NODES_REQUIRED_CONSENSUS as MASTERNODE
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block import SubBlockMetaData, SubBlockHashes
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
+from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.block_metadata import FullBlockMetaData
+from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
 
@@ -88,6 +90,8 @@ class BlockAggregator(Worker):
             self.recv_sub_block_contender(msg)
         elif isinstance(msg, FullBlockMetaData):
             self.recv_full_block_hash_metadata(msg)
+        # elif isinstance(msg, StateUpdateRequest):
+        #     self.recv_state_update_request(msg)
         else:
             raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
@@ -111,7 +115,7 @@ class BlockAggregator(Worker):
         if not cached:
             if MerkleTree.verify_tree(leaves=sbc._data.merkleLeaves, root=sbc._data.resultHash):
                 self.contenders[input_hash] = {
-                    'merkle_leaves': sbc._data.merkleLeaves,
+                    'merkle_leaves': sbc.merkle_leaves,
                     'transactions': sbc._data.transactions
                 }
                 self.log.spam('Received and validated SubBlockContender {}'.format(sbc))
@@ -125,12 +129,12 @@ class BlockAggregator(Worker):
             self.log.spam('Received from another delegate for SubBlockContender {}'.format(sbc))
 
         if not self.result_hashes.get(result_hash):
-            self.result_hashes[result_hash] = {'signatures': set(), 'input_hash': input_hash}
-        self.result_hashes[result_hash]['signatures'].add(sbc._data.signature)
+            self.result_hashes[result_hash] = {'signatures': {}, 'input_hash': input_hash}
+        self.result_hashes[result_hash]['signatures'][sbc._data.signature] = sbc.signature
 
         for tx in sbc._data.transactions:
-            merkle_hash = MerkleTree.hash(tx)
-            if not merkle_hash in self.contenders[input_hash]['merkle_leaves']:
+            merkle_leaf = MerkleTree.hash(tx).hex()
+            if not merkle_leaf in self.contenders[input_hash]['merkle_leaves']:
                 self.log.warning('Received malicious transactions that does not match any merkle leaves!')
                 if len(self.result_hashes[result_hash]['signatures']) == 1:
                     del self.result_hashes[result_hash] # Remove bad actor to save space
@@ -148,18 +152,8 @@ class BlockAggregator(Worker):
                     if len(signatures) >= NODES_REQUIRED_CONSENSUS:
                         self.total_valid_sub_blocks += 1
                         if self.total_valid_sub_blocks >= SUBBLOCKS_REQUIRED:
-                            fbmd = self.construct_full_block(self.contenders.keys())
-                            block_hash = fbmd.block_hash
-                            if self.full_block_hashes.get(block_hash):
-                                self.log.info('Already received block hash "{}", adding to consensus count.'.format(block_hash))
-                                self.full_block_hashes[block_hash]['consensus_count'] += 1
-                            else:
-                                self.log.important('Created resultant block-hash "{}"'.format(block_hash))
-                                self.full_block_hashes[block_hash] = {
-                                    'consensus_count': 1,
-                                    'full_block_metadata': fbmd
-                                }
                             self.contenders[input_hash]['consensus_reached'] = True
+                            block, fbmd, sbmd = self.store_full_block(self.contenders.keys())
                             self.pub.send_msg(msg=fbmd, header=DEFAULT_FILTER.encode())
 
     def recv_full_block_hash_metadata(self, fbmd: FullBlockMetaData):
@@ -181,38 +175,62 @@ class BlockAggregator(Worker):
                 if not len(fbmd.merkle_roots) == SUBBLOCKS_REQUIRED:
                     # TODO Request blocks from other masternodes
                     pass
-                else:
-                    # TODO Store sub-blocks, block and transactions in DB
-                    # SubBlocks: (merkle_root, signatures, merkle_leaves, index)
-                    # Block: (block_hash, merkle_roots, prev_block_hash, timestamp, signature)
-                    # Transactions: (tx_hash, blob, status, state)
-                    pass
         else:
             self.log.info('Received KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
 
-    def construct_sub_blocks(self, sub_block_hashes):
-        sub_blocks = []
-        for idx, result_hash in enumerate(sub_block_hashes): # NOTE: sub block hashes are automatically sorted on deserialization
+    def combine_sub_blocks(self, merkle_roots):
+        sub_block_metadata = []
+        all_merkle_leaves = []
+        all_signatures = []
+        all_transactions = []
+        for idx, input_hash in enumerate(merkle_roots):
             for result_hash in self.result_hashes:
-                signatures = self.result_hashes[result_hash]['signatures']
-                merkle_leaves = self.contenders[self.result_hashes[result_hash]['input_hash']]['merkle_leaves']
-                sub_blocks.append(SubBlockMetaData.create(
+                if not input_hash == self.result_hashes[result_hash]['input_hash']: continue
+                merkle_leaves = self.contenders[input_hash]['merkle_leaves']
+                all_transactions += self.contenders[input_hash]['transactions']
+                all_merkle_leaves += merkle_leaves
+                all_signatures += list(self.result_hashes[result_hash]['signatures'].values())
+                sub_block_metadata.append(SubBlockMetaData.create(
                     merkle_root=result_hash,
-                    signatures=signatures,
+                    signatures=list(self.result_hashes[result_hash]['signatures'].keys()),
                     merkle_leaves=merkle_leaves,
                     sub_block_idx=idx))
-        return sub_blocks
+        return sub_block_metadata, all_signatures, all_merkle_leaves, all_transactions
 
-    def construct_full_block(self, hash_list):
+    def store_full_block(self, hash_list):
         merkle_roots = sorted(hash_list)
-        block_hash = Hasher.hash_iterable([*merkle_roots, self.curr_block_hash])
-        signature = wallet.sign(self.signing_key, block_hash.encode())
-        block = FullBlockMetaData.create(
+        sub_block_metadata, all_signatures, all_merkle_leaves, all_transactions = self.combine_sub_blocks(merkle_roots)
+
+        prev_block_hash = self.curr_block_hash
+        block = BlockContender.create(
+            signatures=all_signatures,
+            merkle_leaves=all_merkle_leaves,
+            prev_block_hash=prev_block_hash
+        )
+        block_hash, signature = BlockStorageDriver.store_pre_validated_block(
+            block_contender=block,
+            raw_transactions=all_transactions,
+            publisher_sk=self.signing_key
+        )
+        block_metadata = FullBlockMetaData.create(
             block_hash=block_hash,
             merkle_roots=merkle_roots,
             prev_block_hash=self.curr_block_hash,
-            timestamp=time.time(),
             masternode_signature=signature
         )
         self.curr_block_hash = block_hash
-        return block
+
+        if self.full_block_hashes.get(block_hash):
+            self.log.info('Already received block hash "{}", adding to consensus count.'.format(block_hash))
+            self.full_block_hashes[block_hash]['consensus_count'] += 1
+        else:
+            self.log.important('Created resultant block-hash "{}"'.format(block_hash))
+            self.full_block_hashes[block_hash] = {
+                'consensus_count': 1,
+                'full_block_metadata': block_metadata
+            }
+
+        return block, block_metadata, sub_block_metadata
+
+    def recv_state_update_request(self):
+        pass

@@ -26,6 +26,7 @@ class SubBlockContender(MessageBase):
         assert self._data.merkleLeaves, "leaves field missing from data {}".format(self._data)
         assert self._data.signature, "Signature field missing from data {}".format(self._data)
         assert self._data.transactions, "Raw transactions field missing from data {}".format(self._data)
+        assert hasattr(self._data, 'subBlockIdx'), "Sub-block index field missing from data {}".format(self._data)
 
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
                                                           "expected 64 char hex string".format(self.result_hash)
@@ -44,7 +45,7 @@ class SubBlockContender(MessageBase):
 
     @classmethod
     def create(cls, result_hash: str, input_hash: str, merkle_leaves: List[bytes],
-               sb_index, signature: MerkleSignature, raw_txs: List[bytes]):
+                    signature: MerkleSignature, raw_txs: List[bytes], sub_block_index: int):
         """
         Delegages create a new sub-block contender and propose to master nodes
         :param result_hash: The hash of the root of this sub-block
@@ -61,10 +62,10 @@ class SubBlockContender(MessageBase):
         struct.init('transactions', len(raw_txs))
         struct.resultHash = result_hash
         struct.inputHash = input_hash
-        struct.sb_index = sb_index
         struct.merkleLeaves = merkle_leaves
         struct.signature = signature.serialize()
         struct.transactions = raw_txs
+        struct.subBlockIdx = sub_block_index
 
         return cls.from_data(struct)
 
@@ -85,6 +86,10 @@ class SubBlockContender(MessageBase):
     @property
     def input_hash(self) -> str:
         return self._data.inputHash.decode()
+
+    @property
+    def sb_index(self) -> int:
+        return self._data.subBlockIdx
 
     @lazy_property
     def signature(self) -> MerkleSignature:

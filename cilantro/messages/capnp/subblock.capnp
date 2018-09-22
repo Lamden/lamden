@@ -13,6 +13,7 @@ struct SubBlockContender {
     merkleLeaves @2: List(Data);
     signature @3 :Data;
     transactions @4: List(Data);
+    subBlockIdx @5: UInt8;
 }
 
 struct SubBlockHashes {

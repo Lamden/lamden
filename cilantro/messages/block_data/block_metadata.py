@@ -6,7 +6,7 @@ from cilantro.messages.utils import validate_hex
 from cilantro.utils import lazy_property
 from typing import List
 from datetime import datetime
-
+import time
 import capnp
 import blockdata_capnp
 
@@ -27,8 +27,11 @@ class FullBlockMetaData(MessageBase):
         return blockdata_capnp.BlockMetaData.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str, timestamp,
-               masternode_signature: str):
+    def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str,
+                    masternode_signature: str, timestamp: int = 0):
+
+        if not timestamp:
+            timestamp = int(time.time())
 
         struct = blockdata_capnp.FullBlockMetaData.new_message()
         struct.init('merkleRoots', len(merkle_roots))
