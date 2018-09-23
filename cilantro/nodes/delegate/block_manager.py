@@ -220,7 +220,6 @@ class BlockManager(Worker):
         # not needed anymore ?? raghu TODO
         elif isinstance(msg, BlockContender):
             # TODO implement
-            # self.recv_merkle_tree(event)
             self.recv_sub_block(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
@@ -231,6 +230,10 @@ class BlockManager(Worker):
         # TODO implement     raghu
         # publish to Masternode?
         # need to put it in an envelope and publish to master
+        
+        # envelope = BlockMetaDataRequest.create(current_block_hash=self.db_state.cur_block_hash)
+        # frames = ''
+        # self.pub.send_multipart(frames)
         pass
 
     def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
