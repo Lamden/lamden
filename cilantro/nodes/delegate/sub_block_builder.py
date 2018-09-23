@@ -76,11 +76,13 @@ class SubBlockBuilder(Worker):
         self._create_sub_sockets(num_sb_per_builder=num_sb_per_builder,
                                  num_sb_builders=num_sb_builders)
 
+        self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {}"
+                        .format(sbb_index, total_sub_blocks, num_blocks, num_sb_per_builder, self.num_sb_per_block))
         # Create a Seneca interpreter for this SBB
         self.interpreter = SenecaInterpreter()
 
         # DEBUG TODO DELETE
-        self.tasks.append(self.test_dealer_ipc())
+        # await self.tasks.append(self.test_dealer_ipc())
         # END DEBUG
 
         self.run()
@@ -109,7 +111,7 @@ class SubBlockBuilder(Worker):
         # We then BIND a sub socket to a port for each of these masternode indices
         for idx in range(num_sb_per_builder):
             sb_idx = idx * num_sb_builders + self.sbb_index  # actual SB index in global index space
-            if sb_idx >= self.num_sub_blocks:    # out of range already
+            if sb_idx >= self.total_sub_blocks:    # out of range already
                 return
 
             port = SBB_PORT_START + sb_idx
