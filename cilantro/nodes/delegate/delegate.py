@@ -89,7 +89,7 @@ class DelegateBootState(DelegateBaseState):
 
         self.log.notice("Delegate connecting to other nodes ..")
 
-        self.parent.transition(DelegateCatchupState)
+        self.parent.transition(DelegateRunState)
 
     def _check_ready(self):
         """
@@ -115,7 +115,7 @@ class DelegateRunState(DelegateBaseState):
 
     @enter_from_any
     def enter_any(self):
-        # Start the BlockManager
+        # Start the BlockManager. Instantiating this object starts an event loop and blocks
         self.bm = BlockManager(ip=self.parent.ip, signing_key=self.parent.signing_key)
 
 
