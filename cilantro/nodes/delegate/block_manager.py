@@ -231,7 +231,7 @@ class BlockManager(Worker):
         cur_block_hash = self.db_state.cur_block_hash
         # block_hash = get_block_hash(Envelope) # TODO
         block_hash = cur_block_hash + 1
-        if (block_hash == self.cur_block_hash):
+        if block_hash == self.db_state.cur_block_hash:
             # TODO log something
             return
 
@@ -242,14 +242,10 @@ class BlockManager(Worker):
             self.db_state.next_block.clear()
             self.send_updated_db_msg()
         else:
-            self.next_block[block_hash] = num
+            self.db_state.next_block[block_hash] = count
 
     def send_updated_db_msg(self):
         message = MakeNextBlock.create()
-        message_type = MessageBase.registry[message]
-        msg = message.serialize()
-        msg_type = int_to_bytes(message_type)
         for idx in range(self.num_sb_builders):
-            id_frame = int_to_bytes(idx)
-            self.ipc_router.send_multipart([id_frame, msg_type, msg])
+            self._send_msg_over_ipc(sb_index=idx, message=message)
 
