@@ -108,7 +108,8 @@ class BlockAggregator(Worker):
                 self.contenders[input_hash] = {
                     'merkle_leaves': sbc.merkle_leaves,
                     'transactions': set(),
-                    'sb_index': sbc.sb_index
+                    'sb_index': sbc.sb_index,
+                    'received_count': 0
                 }
                 self.log.spam('Received and validated SubBlockContender {}'.format(sbc))
             else:
@@ -120,6 +121,7 @@ class BlockAggregator(Worker):
         else:
             self.log.spam('Received from another delegate for SubBlockContender {}'.format(sbc))
 
+        self.contenders[input_hash]['received_count'] += 1
         if not self.result_hashes.get(result_hash):
             self.result_hashes[result_hash] = {'signatures': {}, 'input_hash': input_hash}
         self.result_hashes[result_hash]['signatures'][sbc._data.signature] = sbc.signature
@@ -130,6 +132,7 @@ class BlockAggregator(Worker):
                 self.log.warning('Received malicious transactions that does not match any merkle leaves!')
                 if len(self.result_hashes[result_hash]['signatures']) == 1:
                     del self.result_hashes[result_hash] # Remove bad actor to save space
+                    # TODO: Log bad actor info
                 return
             else:
                 self.contenders[input_hash]['transactions'].add(tx)
@@ -154,9 +157,9 @@ class BlockAggregator(Worker):
                                 self.contenders[input_hash]['consensus_reached'] = True
                                 block, fbmd, sbmd = self.store_full_block(self.contenders.keys())
                                 self.pub.send_msg(msg=fbmd, header=DEFAULT_FILTER.encode())
-                        elif len(signatures) == TOP_DELEGATES:
-                            self.log.error('Received state from all delegates and still have missing transactions!')
-                            raise Exception('Received state from all delegates and still have missing transactions!') # DEBUG
+                        elif self.contenders[input_hash]['received_count'] == TOP_DELEGATES:
+                            self.log.error('Received sub blocks from all delegates and still have missing transactions!')
+                            raise Exception('Received sub blocks from all delegates and still have missing transactions!') # DEBUG
 
     def recv_full_block_hash_metadata(self, fbmd: FullBlockMetaData):
         fbmd.validate()
