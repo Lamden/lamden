@@ -102,7 +102,7 @@ class MPTestCase(BaseNetworkTestCase):
 
         start_msg = '\n' + '#' * 80 + '\n' + '#' * 80
         start_msg += '\n{} STARTING\n'.format(self.id()) + '#' * 80 + '\n' + '#' * 80
-        self.log.debug(start_msg)
+        self.log.test(start_msg)
 
     def tearDown(self):
         super().tearDown()
@@ -141,14 +141,14 @@ class MPTestCase(BaseNetworkTestCase):
 
         # If there are no active testers left and none of them failed, we win
         if len(actives) + len(fails) == 0:
-            self.log.debug("\n\n{0}\n\n{2} SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
+            self.log.test("\n\n{0}\n\n{2} SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
                            .format('$' * 120, round(timeout, 2), self.id()))
         else:
             fail_msg = "\n\nfail_msg:\n{0}\nASSERTIONS TIMED OUT FOR TESTERS: \n\n".format('-' * 120)
             for t in fails + actives:
                 fail_msg += "{}\n".format(t)
             fail_msg += "{0}\n".format('-' * 120)
-            self.log.error(fail_msg)
+            self.log.test(fail_msg)
             time.sleep(0.2)  # block while this message has time to log correctly
             raise Exception("Test(s) did not pass. See log.")
 
@@ -157,7 +157,7 @@ class MPTestCase(BaseNetworkTestCase):
         start_msg += '\nPolling testers procs every {} seconds, with test timeout of {} seconds\n'\
             .format(TESTER_POLL_FREQ, timeout)
         start_msg += '~' * 80
-        self.log.debug(start_msg)
+        self.log.test(start_msg)
 
         actives = [t for t in MPTestCase.testers if t.assert_fn]
         passives = [t for t in MPTestCase.testers if not t.assert_fn]
