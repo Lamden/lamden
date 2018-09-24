@@ -203,14 +203,7 @@ class BlockManager(Worker):
                             .format(type(msg)))
 
     def _handle_sbc(self, sbc: SubBlockContender):
-        # TODO implement     raghu
-        # publish to Masternode?
-        # need to put it in an envelope and publish to master
-
-        # envelope = BlockMetaDataRequest.create(current_block_hash=self.db_state.cur_block_hash)
-        # frames = ''
-        # self.pub.send_multipart(frames)
-        pass
+        self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
 
     def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
         """
