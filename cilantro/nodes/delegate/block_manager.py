@@ -102,7 +102,7 @@ class BlockManager(Worker):
         self.tasks.append(self.in_router.add_handler(self.handle_router_msg))
 
         self.out_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-OUT-Router")
-        self.out_router.setsocketopt(zmq.IDENTITY, self.verifying_key.encode())
+        self.out_router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
 
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
         self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
