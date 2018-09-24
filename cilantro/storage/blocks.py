@@ -103,69 +103,8 @@ class BlockStorageDriver:
         raise NotImplementedError("Do not instantiate this class! Instead, use the class methods.")
 
     @classmethod
-    def store_pre_validated_block(cls, block_contender: BlockContender, raw_transactions: List[bytes], publisher_sk: str,
-                    timestamp: int = 0) -> str:
-        assert isinstance(block_contender, BlockContender), "Expected block_contender arg to be BlockContender instance"
-        assert is_valid_hex(publisher_sk, 64), "Invalid signing key {}. Expected 64 char hex str".format(publisher_sk)
-
-
-
-        if not timestamp:
-            timestamp = int(time.time())
-
-        tree = MerkleTree.from_raw_transactions(raw_transactions)
-
-        publisher_vk = wallet.get_vk(publisher_sk)
-        publisher_sig = wallet.sign(publisher_sk, tree.root)
-
-        # Build and validate block_data
-        block_data = {
-            'block_contender': block_contender,
-            'timestamp': timestamp,
-            'merkle_root': tree.root_as_hex,
-            'merkle_leaves': tree.leaves_as_concat_hex_str,
-            'prev_block_hash': cls.get_latest_block_hash(),
-            'masternode_signature': publisher_sig,
-            'masternode_vk': publisher_vk,
-        }
-
-        # NOTE: Each sub-block must already be validated during aggregation
-
-        # Compute block hash
-        block_hash = cls.compute_block_hash(block_data)
-
-        # Encode block data for serialization
-        log.info("Attempting to persist new block with hash {}".format(block_hash))
-        block_data = cls._encode_block(block_data)
-
-        # Finally, persist the data
-
-        with DB() as db:
-            # Store block
-            res = db.tables.blocks.insert([{'hash': block_hash, **block_data}]).run(db.ex)
-            if res:
-                log.success2("Successfully inserted new block with number {} and hash {}".format(res['last_row_id'], block_hash))
-            else:
-                raise BlockStorageDatabaseException("Error inserting block! Got None/False result back "
-                                                    "from insert query. Result={}".format(res))
-
-            # Store raw transactions
-            log.info("Attempting to store {} raw transactions associated with block hash {}"
-                     .format(len(raw_transactions), block_hash))
-            tx_rows = [{'hash': Hasher.hash(raw_tx), 'data': encode_tx(raw_tx), 'block_hash': block_hash}
-                       for raw_tx in raw_transactions]
-
-            res = db.tables.transactions.insert(tx_rows).run(db.ex)
-            if res:
-                log.info("Successfully inserted {} transactions".format(res['row_count']))
-            else:
-                log.error("Error inserting raw transactions! Got None from insert query. Result={}".format(res))
-
-            return block_hash, publisher_sig
-
-    @classmethod
     def store_block(cls, block_contender: BlockContender, raw_transactions: List[bytes], publisher_sk: str,
-                    timestamp: int = 0) -> str:
+                    timestamp: int = 0, no_validate: bool = False) -> str:
         """
         Persist a new block to the blockchain, along with the raw transactions associated with the block. An exception
         will be raised if an error occurs either validating the new block data, or storing the block. Thus, it is
@@ -206,7 +145,8 @@ class BlockStorageDriver:
             'masternode_signature': publisher_sig,
             'masternode_vk': publisher_vk,
         }
-        cls.validate_block_data(block_data)
+        if not no_validate:
+            cls.validate_block_data(block_data)
 
         # Compute block hash
         block_hash = cls.compute_block_hash(block_data)
@@ -237,6 +177,8 @@ class BlockStorageDriver:
             else:
                 log.error("Error inserting raw transactions! Got None from insert query. Result={}".format(res))
 
+            if no_validate:
+                return block_hash, publisher_sig
             return block_hash
 
     @classmethod

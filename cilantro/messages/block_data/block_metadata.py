@@ -58,6 +58,9 @@ class FullBlockMetaData(MessageBase):
     def timestamp(self) -> int:
         return self._data.timestamp
 
+    def __eq__(self, other):
+        return self._data.blockHash == other._data.blockHash and \
+            self.merkle_roots == other.merkle_roots
 
 class BlockMetaData(MessageBase):
     """

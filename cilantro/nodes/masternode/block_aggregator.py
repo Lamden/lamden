@@ -107,7 +107,8 @@ class BlockAggregator(Worker):
             if MerkleTree.verify_tree(leaves=sbc._data.merkleLeaves, root=sbc._data.resultHash):
                 self.contenders[input_hash] = {
                     'merkle_leaves': sbc.merkle_leaves,
-                    'transactions': set()
+                    'transactions': set(),
+                    'sb_index': sbc.sb_index
                 }
                 self.log.spam('Received and validated SubBlockContender {}'.format(sbc))
             else:
@@ -179,27 +180,8 @@ class BlockAggregator(Worker):
         else:
             self.log.info('Received KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
 
-    def combine_sub_blocks(self, merkle_roots):
-        sub_block_metadatas = []
-        all_merkle_leaves = []
-        all_signatures = []
-        all_transactions = []
-        for idx, input_hash in enumerate(merkle_roots):
-            for result_hash in self.result_hashes:
-                if not input_hash == self.result_hashes[result_hash]['input_hash']: continue
-                merkle_leaves = self.contenders[input_hash]['merkle_leaves']
-                all_transactions += self.contenders[input_hash]['transactions']
-                all_merkle_leaves += merkle_leaves
-                all_signatures += list(self.result_hashes[result_hash]['signatures'].values())
-                sub_block_metadatas.append(SubBlockMetaData.create(
-                    merkle_root=result_hash,
-                    signatures=list(self.result_hashes[result_hash]['signatures'].keys()),
-                    merkle_leaves=merkle_leaves,
-                    sub_block_idx=idx))
-        return sub_block_metadatas, all_signatures, all_merkle_leaves, all_transactions
-
     def store_full_block(self, hash_list):
-        merkle_roots = sorted(hash_list)
+        merkle_roots = sorted(hash_list, key=lambda input_hash: self.contenders[input_hash]['sb_index'])
         sub_block_metadatas, all_signatures, all_merkle_leaves, all_transactions = self.combine_sub_blocks(merkle_roots)
 
         prev_block_hash = self.curr_block_hash
@@ -208,10 +190,11 @@ class BlockAggregator(Worker):
             merkle_leaves=all_merkle_leaves,
             prev_block_hash=prev_block_hash
         )
-        block_hash, signature = BlockStorageDriver.store_pre_validated_block(
+        block_hash, signature = BlockStorageDriver.store_block(
             block_contender=block,
             raw_transactions=all_transactions,
-            publisher_sk=self.signing_key
+            publisher_sk=self.signing_key,
+            no_validate=True
         )
         block_metadata = FullBlockMetaData.create(
             block_hash=block_hash,
@@ -232,6 +215,25 @@ class BlockAggregator(Worker):
             }
 
         return block, block_metadata, sub_block_metadatas
+
+    def combine_sub_blocks(self, merkle_roots):
+        sub_block_metadatas = []
+        all_merkle_leaves = []
+        all_signatures = []
+        all_transactions = []
+        for idx, input_hash in enumerate(merkle_roots):
+            for result_hash in self.result_hashes:
+                if not input_hash == self.result_hashes[result_hash]['input_hash']: continue
+                merkle_leaves = self.contenders[input_hash]['merkle_leaves']
+                all_transactions += self.contenders[input_hash]['transactions']
+                all_merkle_leaves += merkle_leaves
+                all_signatures += list(self.result_hashes[result_hash]['signatures'].values())
+                sub_block_metadatas.append(SubBlockMetaData.create(
+                    merkle_root=result_hash,
+                    signatures=list(self.result_hashes[result_hash]['signatures'].keys()),
+                    merkle_leaves=merkle_leaves,
+                    sub_block_idx=idx))
+        return sub_block_metadatas, all_signatures, all_merkle_leaves, all_transactions
 
     def recv_state_update_request(self):
         pass
