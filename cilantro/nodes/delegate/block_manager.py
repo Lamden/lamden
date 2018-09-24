@@ -1,7 +1,7 @@
 """
     BlockManager  (main process of delegate)
 
-    This is the main workhorse for managing inter node communication as well as 
+    This is the main workhorse for managing inter node communication as well as
     coordinating the interpreting and creation of sub-block contenders that form part of new block.
     It creates sub-block builder processes to manage the parallel execution of different sub-blocks.
     It will also participate in conflict resolution of sub-blocks
@@ -22,7 +22,7 @@ from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro.constants.nodes import *
 from cilantro.constants.zmq_filters import DEFAULT_FILTER
-from cilantro.constants.ports import DELEGATE_ROUTER_PORT, DELEGATE_PUB_PORT, MASTER_PUB_PORT, MASTER_ROUTER_PORT 
+from cilantro.constants.ports import *
 
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
@@ -41,11 +41,10 @@ IPC_PORT = 6967
 
 # convenience struct to maintain db snapshot state data in one place
 class DBState:
-    # def __init__(self, block_hash: int=0, timestamp: int=0):
-    def __init__(self, block_hash: int=0):
-        self.cur_block_hash = block_hash
-        # self.cur_timestamp = timestamp   ?? probably not needed
+    def __init__(self, cur_block_hash):
+        self.cur_block_hash = cur_block_hash
         self.next_block = {}
+        # self.cur_timestamp = timestamp   ?? probably not needed
 
 
 class BlockManager(Worker):
@@ -86,9 +85,6 @@ class BlockManager(Worker):
         self.log.critical("just called run!".format())
 
     def run(self):
-        # DEBUG TODO DELETE
-        self.log.critical("\n!!!! RUN CALLED !!!!!\n")
-        # END DEBUG
         self.build_task_list()
         self.log.info("Block Manager starting...")
         self.start_sbb_procs()
@@ -101,12 +97,12 @@ class BlockManager(Worker):
         # can master nodes are the ones that bind their routers while delegates and witnesses connect only?
         # this works well if only all nodes connect to masters and masters don't need to connect to other masters??
         # Create ROUTER socket for bidirectional communication with masters over tcp
-        self.in_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IN-Router")
+        self.in_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IN-Router")  # TODO secure him
         self.in_router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
-        self.tasks.append(self.in_router.add_handler(self.handle_in_router_msg))
+        self.tasks.append(self.in_router.add_handler(self.handle_router_msg))
 
         self.out_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-OUT-Router")
-        self.tasks.append(self.out_router.add_handler(self.handle_out_router_msg))
+        self.out_router.setsocketopt(zmq.IDENTITY, self.verifying_key.encode())
 
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
         self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
@@ -125,12 +121,6 @@ class BlockManager(Worker):
         self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BM-Sub")  # TODO secure him
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
-        # Listen to other delegates (NOTE: with no filter currently) - disable this for now
-        # self.sub.setsockopt(zmq.SUBSCRIBE, b'')
-        # for vk in VKBook.get_delegates():
-            # if vk != self.verifying_key:  # Do not SUB to itself
-                # self.sub.connect(vk=vk, port=INTER_DELEGATE_PORT)
-
         # Listen to Masternodes
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
@@ -147,8 +137,6 @@ class BlockManager(Worker):
         for vk in VKBook.get_masternodes():
             self.out_router.send_multipart([vk.encode(), envelope])
         # no need to wait for the replys as we have added a handler
-
-
 
     def start_sbb_procs(self):
         for i in range(self.num_sb_builders):
@@ -208,7 +196,7 @@ class BlockManager(Worker):
                             .format(type(msg)))
 
     def handle_sub_msg(self, frames):
-        # This handle will get NewBlockNotifications from Masternodes, and whatever additional stuff??
+        # TODO filter out duplicates
 
         # The first frame is the filter, and the last frame is the envelope binary
         envelope = Envelope.from_bytes(frames[-1])
@@ -226,11 +214,16 @@ class BlockManager(Worker):
                             .format(type(msg)))
         # Last frame, frames[-1] will be the envelope binary
 
+    def handle_router_msg(self, frames):
+        self.log.important("Got msg over tcp ROUTER socket with frames: {}".format(frames))
+        # TODO implement
+        # TODO verify that the first frame (identity frame) matches the verifying key on the Envelope's seal
+
     def _handle_sbc(self, sbc: SubBlockContender):
         # TODO implement     raghu
         # publish to Masternode?
         # need to put it in an envelope and publish to master
-        
+
         # envelope = BlockMetaDataRequest.create(current_block_hash=self.db_state.cur_block_hash)
         # frames = ''
         # self.pub.send_multipart(frames)

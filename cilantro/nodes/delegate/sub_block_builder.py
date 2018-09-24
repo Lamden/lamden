@@ -61,7 +61,7 @@ class SubBlockBuilder(Worker):
         self.sbb_index = sbb_index
         self.total_sub_blocks = total_sub_blocks
         self.num_blocks = num_blocks
-        num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
+        self.num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
         self.num_sb_per_block = (num_sb_per_builder + num_blocks - 1) // num_blocks
         self.cur_block_index = 0
 
