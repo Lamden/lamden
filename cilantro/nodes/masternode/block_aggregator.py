@@ -52,35 +52,28 @@ class BlockAggregator(Worker):
             secure=True,
             domain="sb-contender"
         )
-        self.server_router = self.manager.create_socket(
+        self.router = self.manager.create_socket(
             socket_type=zmq.ROUTER,
-            name="BA-ServerRouter-{}".format(self.verifying_key),
-            secure=True,
-            domain="sb-contender"
-        )
-        self.client_router = self.manager.create_socket(
-            socket_type=zmq.ROUTER,
-            name="BA-ClientRouter-{}".format(self.verifying_key),
+            name="BA-Router-{}".format(self.verifying_key),
             secure=True,
             domain="sb-contender"
         )
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
-        self.tasks.append(self.server_router.add_handler(self.handle_router_msg))
+        self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
-        self.server_router.bind(ip=self.ip, port=MASTER_ROUTER_PORT)
+        self.router.bind(ip=self.ip, port=MASTER_ROUTER_PORT)
         self.pub.bind(ip=self.ip, port=MASTER_PUB_PORT)
 
         # Listen to delegates for sub block contenders
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_delegates():
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
-            self.client_router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
+            self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
 
-        self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
-            if vk != self.verifying_key:  # Do not SUB to itself
+            if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
-                self.client_router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -90,8 +83,6 @@ class BlockAggregator(Worker):
             self.recv_sub_block_contender(msg)
         elif isinstance(msg, FullBlockMetaData):
             self.recv_full_block_hash_metadata(msg)
-        # elif isinstance(msg, StateUpdateRequest):
-        #     self.recv_state_update_request(msg)
         else:
             raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
@@ -102,7 +93,7 @@ class BlockAggregator(Worker):
         msg = envelope.message
 
         if isinstance(msg, StateUpdateRequest):
-            pass
+            raise Exception('Received StateUpdateRequest but NOT IMPLEMENTED')
         else:
             raise Exception("BlockAggregator got message type {} from ROUTER socket that it does not know how to handle"
                             .format(type(msg)))
@@ -116,7 +107,7 @@ class BlockAggregator(Worker):
             if MerkleTree.verify_tree(leaves=sbc._data.merkleLeaves, root=sbc._data.resultHash):
                 self.contenders[input_hash] = {
                     'merkle_leaves': sbc.merkle_leaves,
-                    'transactions': sbc._data.transactions
+                    'transactions': set()
                 }
                 self.log.spam('Received and validated SubBlockContender {}'.format(sbc))
             else:
@@ -139,6 +130,11 @@ class BlockAggregator(Worker):
                 if len(self.result_hashes[result_hash]['signatures']) == 1:
                     del self.result_hashes[result_hash] # Remove bad actor to save space
                 return
+            else:
+                self.contenders[input_hash]['transactions'].add(tx)
+                self.log.warning('Received {}/{} transactions!'.format(
+                    len(self.contenders[input_hash]['transactions']), len(self.contenders[input_hash]['merkle_leaves'])
+                ))
         self.combine_result_hash(input_hash)
 
     def combine_result_hash(self, input_hash):
@@ -150,11 +146,16 @@ class BlockAggregator(Worker):
                         len(signatures), TOP_DELEGATES, NODES_REQUIRED_CONSENSUS
                     ))
                     if len(signatures) >= NODES_REQUIRED_CONSENSUS:
-                        self.total_valid_sub_blocks += 1
-                        if self.total_valid_sub_blocks >= SUBBLOCKS_REQUIRED:
-                            self.contenders[input_hash]['consensus_reached'] = True
-                            block, fbmd, sbmd = self.store_full_block(self.contenders.keys())
-                            self.pub.send_msg(msg=fbmd, header=DEFAULT_FILTER.encode())
+                        if len(self.contenders[input_hash]['transactions']) == len(self.contenders[input_hash]['merkle_leaves']):
+                            self.log.info('Sub block consensus reached, all transactions present.')
+                            self.total_valid_sub_blocks += 1
+                            if self.total_valid_sub_blocks >= SUBBLOCKS_REQUIRED:
+                                self.contenders[input_hash]['consensus_reached'] = True
+                                block, fbmd, sbmd = self.store_full_block(self.contenders.keys())
+                                self.pub.send_msg(msg=fbmd, header=DEFAULT_FILTER.encode())
+                        elif len(signatures) == TOP_DELEGATES:
+                            self.log.error('Received state from all delegates and still have missing transactions!')
+                            raise Exception('Received state from all delegates and still have missing transactions!') # DEBUG
 
     def recv_full_block_hash_metadata(self, fbmd: FullBlockMetaData):
         fbmd.validate()
@@ -179,7 +180,7 @@ class BlockAggregator(Worker):
             self.log.info('Received KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
 
     def combine_sub_blocks(self, merkle_roots):
-        sub_block_metadata = []
+        sub_block_metadatas = []
         all_merkle_leaves = []
         all_signatures = []
         all_transactions = []
@@ -190,16 +191,16 @@ class BlockAggregator(Worker):
                 all_transactions += self.contenders[input_hash]['transactions']
                 all_merkle_leaves += merkle_leaves
                 all_signatures += list(self.result_hashes[result_hash]['signatures'].values())
-                sub_block_metadata.append(SubBlockMetaData.create(
+                sub_block_metadatas.append(SubBlockMetaData.create(
                     merkle_root=result_hash,
                     signatures=list(self.result_hashes[result_hash]['signatures'].keys()),
                     merkle_leaves=merkle_leaves,
                     sub_block_idx=idx))
-        return sub_block_metadata, all_signatures, all_merkle_leaves, all_transactions
+        return sub_block_metadatas, all_signatures, all_merkle_leaves, all_transactions
 
     def store_full_block(self, hash_list):
         merkle_roots = sorted(hash_list)
-        sub_block_metadata, all_signatures, all_merkle_leaves, all_transactions = self.combine_sub_blocks(merkle_roots)
+        sub_block_metadatas, all_signatures, all_merkle_leaves, all_transactions = self.combine_sub_blocks(merkle_roots)
 
         prev_block_hash = self.curr_block_hash
         block = BlockContender.create(
@@ -230,7 +231,7 @@ class BlockAggregator(Worker):
                 'full_block_metadata': block_metadata
             }
 
-        return block, block_metadata, sub_block_metadata
+        return block, block_metadata, sub_block_metadatas
 
     def recv_state_update_request(self):
         pass

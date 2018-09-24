@@ -100,7 +100,7 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            python3.6 -m unittest $(circleci tests glob tests/unit/**/test_*.py tests/unit/**/**/test_*.py tests/unit/**/**/**/test_*.py | circleci tests split --split-by=timings)
+            python3.6 -m unittest $(find tests/unit/ -name 'test_*.py' | circleci tests split --split-by=timings)
       - run:
           mkdir -p unit-test-results
       - store_test_results:
