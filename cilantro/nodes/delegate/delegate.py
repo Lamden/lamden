@@ -17,30 +17,15 @@
         another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
 """
 
-from cilantro.nodes import NodeBase
+from cilantro.nodes.base import NewNodeBase
+from cilantro.nodes.delegate.block_manager import BlockManager
 from cilantro.storage.db import VKBook
-from cilantro.storage.blocks import BlockStorageDriver
 
 from cilantro.protocol.states.decorators import *
 from cilantro.protocol.states.state import State
-from cilantro.protocol.interpreter import SenecaInterpreter
-from cilantro.utils.hasher import Hasher
 
-from cilantro.messages.transaction.base import TransactionBase
-from cilantro.messages.consensus.merkle_signature import MerkleSignature
-from cilantro.messages.transaction.ordering import OrderingContainer
-from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.block_data.block_metadata import BlockMetaDataReply, NewBlockNotification
-from cilantro.messages.signals.kill_signal import KillSignal
-
-from cilantro.constants.zmq_filters import DELEGATE_DELEGATE_FILTER, WITNESS_DELEGATE_FILTER, MASTERNODE_DELEGATE_FILTER
 from cilantro.constants.delegate import BOOT_TIMEOUT, BOOT_REQUIRED_MASTERNODES, BOOT_REQUIRED_WITNESSES
-from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT
 
-from collections import deque
-from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
-import time
 
 DelegateBootState = "DelegateBootState"
 DelegateInterpretState = "DelegateInterpretState"
@@ -48,7 +33,7 @@ DelegateConsensusState = "DelegateConsensusState"
 DelegateCatchupState = "DelegateCatchupState"
 
 
-class Delegate(NodeBase):
+class Delegate(NewNodeBase):
     """
     Here we define 'global' properties shared among all Delegate states. Within a Delegate state, 'self.parent' refers
     to this instance.
@@ -56,59 +41,10 @@ class Delegate(NodeBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Properties shared among all states (ie via self.parent.some_prop)
-        self.pending_sigs, self.pending_txs = deque(), LinkedHashTable()
-        self.interpreter = SenecaInterpreter()
-        self.current_hash = BlockStorageDriver.get_latest_block_hash()
 
 
 class DelegateBaseState(State):
-
-    @input(KillSignal)
-    def handle_kill_sig(self, msg: KillSignal):
-        # TODO - make sure this is secure (from a legit Masternode)
-        self.log.important("Node got received remote kill signal from network!")
-        self.parent.teardown()
-
-    def reset_attrs(self):
-        pass
-
-    @input_connection_dropped
-    def conn_dropped(self, vk, ip):
-        self.log.important2('({}:{}) has dropped'.format(vk, ip))
-        pass
-
-    @input(OrderingContainer)
-    def handle_tx(self, tx: OrderingContainer):
-        self.log.debugv("Delegate not interpreting transactions, adding {} to queue".format(tx))
-        self.parent.pending_txs.append(Hasher.hash(tx.transaction), tx)
-        self.log.debugv("{} transactions pending interpretation".format(len(self.parent.pending_txs)))
-
-    @input(MerkleSignature)
-    def handle_sig(self, sig: MerkleSignature):
-        self.log.info("Received signature with data {} but not in consensus, adding it to queue"
-                       .format(sig._data))
-        self.parent.pending_sigs.append(sig)
-
-    @input(NewBlockNotification)
-    def handle_new_block_notif(self, notif: NewBlockNotification):
-        self.log.critical("Delegate got new block notification with hash {}\nprev_hash {}]\nand our current hash = {}"
-                          .format(notif.block_hash, notif.prev_block_hash, self.parent.current_hash))
-        self.parent.transition(DelegateCatchupState)
-
-    @input(TransactionReply)
-    def handle_tx_reply(self, reply: TransactionReply, envelope: Envelope):
-        self.log.warning("Delegate current state {} not configured to handle"
-                       "transaction replies".format(self))
-
-    @input_request(TransactionRequest)
-    def handle_tx_request(self, request: TransactionRequest):
-        self.log.warning("Delegate current state {} not configured to handle"
-                        "transaction requests".format(self))
-
-    @input(BlockMetaDataReply)
-    def handle_blockmeta_reply(self, reply: BlockMetaDataReply):
-        self.log.warning("Delegate current state {} not configured to handle block"
-                       "meta replies".format(self))
+    pass
 
 
 @Delegate.register_init_state
@@ -152,27 +88,6 @@ class DelegateBootState(DelegateBaseState):
         self.reset_attrs()
 
         self.log.notice("Delegate connecting to other nodes ..")
-        # Sub to other delegates
-        # for delegate_vk in VKBook.get_delegates():
-        #     if delegate_vk == self.parent.verifying_key:  # Do not sub to yourself
-        #         continue
-
-            # self.parent.composer.add_sub(vk=delegate_vk, filter=DELEGATE_DELEGATE_FILTER)
-
-        # Sub to witnesses
-        # for witness_vk in VKBook.get_witnesses():
-        #     self.parent.composer.add_sub(vk=witness_vk, filter=WITNESS_DELEGATE_FILTER)
-
-        # Pub on our own url
-        # self.parent.composer.add_pub(ip=self.parent.ip)
-
-        # Add router socket
-        self.parent.composer.add_router(ip=self.parent.ip)  # We need this currently for catchup state
-
-        # Add dealer and sub socket for Masternodes
-        for mn_vk in VKBook.get_masternodes():
-            self.parent.composer.add_dealer(vk=mn_vk)  # We need this currently for catchup state
-            # self.parent.composer.add_sub(vk=mn_vk, filter=MASTERNODE_DELEGATE_FILTER, port=MN_NEW_BLOCK_PUB_PORT)
 
         self.parent.transition(DelegateCatchupState)
 
@@ -189,6 +104,19 @@ class DelegateBootState(DelegateBaseState):
             return
 
         self.log.important("Delegate connected to sufficient nodes! Transitioning to CatchupState")
-        self.parent.transition(DelegateCatchupState)
+        self.parent.transition(DelegateRunState)
+
+
+@Delegate.register_state
+class DelegateRunState(DelegateBaseState):
+
+    def reset_attrs(self):
+        pass
+
+    @enter_from_any
+    def enter_any(self):
+        # Start the BlockManager
+        self.bm = BlockManager(ip=self.parent.ip, signing_key=self.parent.signing_key)
+
 
 
