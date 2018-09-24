@@ -46,6 +46,7 @@ CUSTOM_LEVELS = {
     'IMPORTANT2': 57,
     'IMPORTANT3': 58,
     'FATAL': 9001,
+    'TEST': 9002,
     }
 
 for log_name, log_level in CUSTOM_LEVELS.items():
@@ -69,6 +70,7 @@ coloredlogs.DEFAULT_LEVEL_STYLES = {
     'error': {'color': 'red'},
     'info': {'color': 'white'},
     'notice': {'color': 'magenta'},
+    'test': {'color': 'magenta'},
     'socket': {'color': 216},
     'important': {'color': 'cyan', 'bold': True, 'background': 'magenta'},
     'important2': {'color': 'magenta', 'bold': True, 'background': 'cyan'},
