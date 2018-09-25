@@ -32,6 +32,7 @@ from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.transaction.batch import TransactionBatch
 from cilantro.messages.signals.make_next_block import MakeNextBlock
+from cilantro.messages.consensus.empty_sub_block_contender import EmptySubBlockContender
 
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.protocol import wallet
@@ -180,17 +181,13 @@ class SubBlockBuilder(Worker):
                   sbc = self._create_sbc_from_batch(input_hash, sb_idx, batch)
         self._send_msg_over_ipc(sbc)
 
-
-    def _create_empty_sbc(self, input_hash: str, sbb_idx: int, signature: MerkleSignature)
-                                          -> SubBlockContender:
+    def _create_empty_sbc(self, input_hash: str, sbb_idx: int, signature: MerkleSignature) -> SubBlockContender:
         """
         Creates an Empty Sub Block Contender from a TransactionBatch
         """
-
-        sbc = EmptySubBlockContender.create(input_hash=input_hash,              \
+        sbc = EmptySubBlockContender.create(input_hash=input_hash,
                                             sb_idx=sbb_idx, signature=signature)
         return sbc
-
 
     def _create_sbc_from_batch(self, input_hash: str, sbb_idx: int,
                                batch: TransactionBatch) -> SubBlockContender:
@@ -230,7 +227,7 @@ class SubBlockBuilder(Worker):
         # TODO this needs to be revisited as we may have uneven sb per block
         sb_index_start = self.cur_block_index * self.num_sb_per_block
         pending_sb = []
-        for i in self.num_sub_blocks_per_block:
+        for i in range(self.num_sb_per_block):
             sb_idx = sb_index_start + i
             # TODO needs a check here for overflowing (in case uneven sbs)
 
@@ -247,6 +244,5 @@ class SubBlockBuilder(Worker):
                 # and may need to tie with moving on when master sent a new block transaction ??
             await self._make_next_sb(sb_idx)
 
-        sbb_idx = self.sb_managers[sb_idx].sub_block_index
         self.cur_block_index = (self.cur_block_index + 1) % self.num_blocks
 
