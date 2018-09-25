@@ -1,12 +1,12 @@
 from unittest import TestCase
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.message_meta import MessageMeta
-from cilantro.messages.transaction.standard import StandardTransaction
+from cilantro.messages.transaction.contract import ContractTransaction
 
 class TestMessageMeta(TestCase):
 
     def _standard_type(self) -> int:
-        return MessageBase.registry[StandardTransaction]
+        return MessageBase.registry[ContractTransaction]
 
     def test_create(self):
         """

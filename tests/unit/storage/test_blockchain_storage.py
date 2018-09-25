@@ -16,6 +16,9 @@ import random
 
 class TestBlockStorageDriver(TestCase):
 
+    def setUp(self):
+        reset_db()
+
     def _build_block_data(self, num_transactions=4, ref_prev_block=False) -> dict:
         """
         Utility method to build a dictionary with all the params needed to invoke store_block

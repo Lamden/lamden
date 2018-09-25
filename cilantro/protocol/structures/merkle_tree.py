@@ -138,7 +138,7 @@ class MerkleTree:
         return self.raw_leaves[self.leaves_as_hex.index(h)]
 
     @staticmethod
-    def verify_tree(leaves: list, root: bytes, hash_leaves=False) -> bool:
+    def verify_tree(leaves: List[bytes], root: bytes, hash_leaves=False) -> bool:
         """
         Attempts to verify merkle tree by building a Merkle tree from the list of leaves, and then comparing the root
         of that resulting tree to the root passed into this function
