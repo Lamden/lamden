@@ -78,11 +78,10 @@ class BlockManager(Worker):
         assert self.num_sub_blocks >= self.num_blocks, "num_blocks cannot be more than num_sub_blocks"
 
         # Define Sockets (these get set in build_task_list)
-        self.out_router, self.in_router, self.ipc_router, self.pub, self.sub = None, None, None, None, None
+        self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
         self.ipc_ip = IPC_IP + '-' + str(os.getpid())
 
         self.run()
-        self.log.critical("just called run!".format())
 
     def run(self):
         self.build_task_list()
@@ -93,16 +92,11 @@ class BlockManager(Worker):
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def build_task_list(self):
-        # davis ? do we need this many router sockets ??
-        # can master nodes are the ones that bind their routers while delegates and witnesses connect only?
-        # this works well if only all nodes connect to masters and masters don't need to connect to other masters??
-        # Create ROUTER socket for bidirectional communication with masters over tcp
-        self.in_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IN-Router")  # TODO secure him
-        self.in_router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
-        self.tasks.append(self.in_router.add_handler(self.handle_router_msg))
-
-        self.out_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-OUT-Router")
-        self.out_router.setsocketopt(zmq.IDENTITY, self.verifying_key.encode())
+        # Create a TCP Router socket for comm with other nodes
+        self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-Router")
+        self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
+        self.router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
+        self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
         self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
@@ -125,7 +119,7 @@ class BlockManager(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
-            self.out_router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+            self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
 
     def update_db_state(self):
         # do catch up logic here
@@ -135,7 +129,7 @@ class BlockManager(Worker):
         envelope = BlockMetaDataRequest.create(current_block_hash=self.db_state.cur_block_hash)
         # send msg to each of the connected masters. Do we need to maintain a list of connected vks ??
         for vk in VKBook.get_masternodes():
-            self.out_router.send_multipart([vk.encode(), envelope])
+            self.router.send_multipart([vk.encode(), envelope])
         # no need to wait for the replys as we have added a handler
 
     def start_sbb_procs(self):
@@ -155,23 +149,6 @@ class BlockManager(Worker):
                 return index
 
         raise Exception("Delegate VK {} not found in VKBook {}".format(self.verifying_key, VKBook.get_delegates()))
-
-
-    def handle_in_router_msg(self, frames):     # ? is it frames or envelope
-        pass
-
-
-    def handle_out_router_msg(self, frames):     # ? is it frames or envelope
-        envelope = Envelope.from_bytes(frames[-1])
-        msg = envelope.message
-        msg_hash = envelope.message_hash
-
-        if isinstance(msg, BlockMetaDataRequest):
-            self.handle_new_block(envelope)
-        else:
-            raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
-                            .format(type(msg)))
-
 
     def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
@@ -205,10 +182,6 @@ class BlockManager(Worker):
 
         if isinstance(msg, NewBlockNotification):
             self.handle_new_block(envelope)
-        # not needed anymore ?? raghu TODO
-        elif isinstance(msg, BlockContender):
-            # TODO implement
-            self.recv_sub_block(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
@@ -219,15 +192,18 @@ class BlockManager(Worker):
         # TODO implement
         # TODO verify that the first frame (identity frame) matches the verifying key on the Envelope's seal
 
-    def _handle_sbc(self, sbc: SubBlockContender):
-        # TODO implement     raghu
-        # publish to Masternode?
-        # need to put it in an envelope and publish to master
+        envelope = Envelope.from_bytes(frames[-1])
+        msg = envelope.message
+        msg_hash = envelope.message_hash
 
-        # envelope = BlockMetaDataRequest.create(current_block_hash=self.db_state.cur_block_hash)
-        # frames = ''
-        # self.pub.send_multipart(frames)
-        pass
+        if isinstance(msg, BlockMetaDataRequest):
+            self.handle_new_block(envelope)
+        else:
+            raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
+                            .format(type(msg)))
+
+    def _handle_sbc(self, sbc: SubBlockContender):
+        self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
 
     def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
         """
@@ -248,7 +224,7 @@ class BlockManager(Worker):
         cur_block_hash = self.db_state.cur_block_hash
         # block_hash = get_block_hash(Envelope) # TODO
         block_hash = cur_block_hash + 1
-        if (block_hash == self.cur_block_hash):
+        if block_hash == self.db_state.cur_block_hash:
             # TODO log something
             return
 
@@ -259,14 +235,10 @@ class BlockManager(Worker):
             self.db_state.next_block.clear()
             self.send_updated_db_msg()
         else:
-            self.next_block[block_hash] = num
+            self.db_state.next_block[block_hash] = count
 
     def send_updated_db_msg(self):
         message = MakeNextBlock.create()
-        message_type = MessageBase.registry[message]
-        msg = message.serialize()
-        msg_type = int_to_bytes(message_type)
         for idx in range(self.num_sb_builders):
-            id_frame = int_to_bytes(idx)
-            self.ipc_router.send_multipart([id_frame, msg_type, msg])
+            self._send_msg_over_ipc(sb_index=idx, message=message)
 

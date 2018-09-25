@@ -30,6 +30,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.transaction.batch import TransactionBatch
+from cilantro.messages.signals.make_next_block import MakeNextBlock
 
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.protocol import wallet
@@ -61,8 +62,8 @@ class SubBlockBuilder(Worker):
         self.sbb_index = sbb_index
         self.total_sub_blocks = total_sub_blocks
         self.num_blocks = num_blocks
-        self.num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
-        self.num_sb_per_block = (self.num_sb_per_builder + num_blocks - 1) // num_blocks
+        num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
+        self.num_sb_per_block = (num_sb_per_builder + num_blocks - 1) // num_blocks
         self.cur_block_index = 0
 
         self.tasks = []
@@ -73,31 +74,19 @@ class SubBlockBuilder(Worker):
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
-        self._create_sub_sockets(num_sb_per_builder=self.num_sb_per_builder,
+        self._create_sub_sockets(num_sb_per_builder=num_sb_per_builder,
                                  num_sb_builders=num_sb_builders)
 
         self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {}"
-                        .format(sbb_index, total_sub_blocks, num_blocks, self.num_sb_per_builder, self.num_sb_per_block))
+                        .format(sbb_index, total_sub_blocks, num_blocks, num_sb_per_builder, self.num_sb_per_block))
         # Create a Seneca interpreter for this SBB
         self.interpreter = SenecaInterpreter()
-
-        # DEBUG TODO DELETE
-        # await self.tasks.append(self.test_dealer_ipc())
-        # END DEBUG
 
         self.run()
 
     def run(self):
         self.log.notice("SBB {} starting...".format(self.sbb_index))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
-
-    async def test_dealer_ipc(self):
-        self.log.info("Spamming BlockManager over IPC...")
-        while True:
-            msg = "hello from SBB {}".format(self.sbb_index)
-            self.log.debug("Sending msg {}".format(msg))
-            self.dealer.send_multipart([b'this should be the type, as a binarized int', msg.encode()])
-            await asyncio.sleep(16)
 
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
         self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
@@ -133,15 +122,8 @@ class SubBlockBuilder(Worker):
         msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
         self.log.debugv("SBB received an IPC message {}".format(msg))
 
-        # raghu TODO listen to updated DB message from BM and start conflict resolution if any
-        # call to make sub-block(s) for next block
-        # tie with messages below
-        await self._interpret_next_block()
-
-        if isinstance(msg, SomeType):
-            self.handle_some_type(msg)
-        elif isinstance(msg, AnotherType):
-            self.handle_another_type(msg)
+        if isinstance(msg, MakeNextBlock):
+            self._interpret_next_block()
         else:
             raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                             .format(type(msg)))
@@ -228,15 +210,14 @@ class SubBlockBuilder(Worker):
         message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
         self.dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
-
-    # raghu - tie with new block notifications so we are only 1 or 2 steps ahead
-    # I commented this out temporarily b/c of compiler errors --davis
     async def _interpret_next_block(self):
-        if self.cur_block_index >= self.num_blocks:
-            self.cur_block_index = 0
         sb_index_start = self.cur_block_index * self.num_sb_per_block
-        for i in self.num_sub_blocks_per_block:
-            await self._interpret_next_sub_block(sb_index_start + i)
-        self.cur_block_index = self.cur_block_index + 1
+        self.log.info("SBB interpreting next block with start index {}".format(sb_index_start))
+
+        for i in range(self.num_sb_per_block):
+            self._interpret_next_sb(sb_index_start + i)
+
+        self.cur_block_index = (self.cur_block_index + 1) % self.num_blocks
+
 
 
