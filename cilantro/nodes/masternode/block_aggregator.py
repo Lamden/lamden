@@ -9,7 +9,7 @@ from cilantro.constants.delegate import NODES_REQUIRED_CONSENSUS, TOP_DELEGATES
 from cilantro.constants.masternode import NODES_REQUIRED_CONSENSUS as MASTERNODE_REQUIRED_CONSENSUS, SUBBLOCKS_REQUIRED
 
 from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.consensus.sub_block import SubBlockMetaData, SubBlockHashes
+from cilantro.messages.consensus.sub_block import SubBlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.block_metadata import FullBlockMetaData
@@ -104,7 +104,8 @@ class BlockAggregator(Worker):
         input_hash = sbc.input_hash
         cached = self.contenders.get(input_hash)
         if not cached:
-            if MerkleTree.verify_tree(leaves=sbc._data.merkleLeaves, root=sbc._data.resultHash):
+            # if MerkleTree.verify_tree(leaves=sbc.merkle_leaves, root=sbc.result_hash, hash_leaves=False):
+            if MerkleTree.verify_tree_from_hex_str(''.join(sbc.merkle_leaves), root=sbc.result_hash):
                 self.contenders[input_hash] = {
                     'merkle_leaves': sbc.merkle_leaves,
                     'transactions': set(),
@@ -126,8 +127,8 @@ class BlockAggregator(Worker):
             self.result_hashes[result_hash] = {'signatures': {}, 'input_hash': input_hash}
         self.result_hashes[result_hash]['signatures'][sbc._data.signature] = sbc.signature
 
-        for tx in sbc._data.transactions:
-            merkle_leaf = MerkleTree.hash(tx).hex()
+        for tx in sbc.transactions:
+            merkle_leaf = tx.hash
             if not merkle_leaf in self.contenders[input_hash]['merkle_leaves']:
                 self.log.warning('Received malicious transactions that does not match any merkle leaves!')
                 if len(self.result_hashes[result_hash]['signatures']) == 1:

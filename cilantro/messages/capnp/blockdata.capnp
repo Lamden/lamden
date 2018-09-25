@@ -1,5 +1,31 @@
 @0xa61eafaff944c2b3;
 
+using T = import "transaction.capnp";
+
+struct BlockData {
+    blockHash @0 :Data;
+    blockNum @1 :UInt32;
+    transactions @2 :List(T.Transactions);
+    masternodeSignature @3 :Data;
+}
+
+struct FullBlockMetaData {
+    blockHash @0 :Data;
+    merkleRoots @1 :List(Data);
+    prevBlockHash @2 :Data;
+    timestamp @3 :UInt64;
+    masternodeSignature @4 :Data;
+}
+
+struct StateUpdateRequest {
+    blockHash @0 :Data;
+}
+
+struct StateUpdateReply {
+    blocks @0 :List(BlockData);
+}
+
+
 struct BlockMetaData {
     # Hash of the block
     hash @0 :Data;
@@ -12,14 +38,6 @@ struct BlockMetaData {
     masternodeSignature @5 :Data;
     masternodeVk @6 :Data;
     blockContender @7 :Data;
-}
-
-struct FullBlockMetaData {
-    blockHash @0 :Data;
-    merkleRoots @1 :List(Data);
-    prevBlockHash @2 :Data;
-    timestamp @3 :UInt64;
-    masternodeSignature @4 :Data;
 }
 
 struct BlockMetaDataReply {

@@ -1,7 +1,8 @@
 from cilantro.logger.base import get_logger
-from cilantro.constants.testnet import TESTNET_MASTERNODES
+from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro.storage.db import VKBook
+from cilantro.storage.db import reset_db
 
 import unittest
 from unittest import TestCase
@@ -11,9 +12,10 @@ from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MA
 from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro.messages.consensus.sub_block import SubBlockHashes
 from cilantro.messages.consensus.merkle_signature import build_test_merkle_sig
 from cilantro.messages.block_data.block_metadata import FullBlockMetaData
+from cilantro.messages.transaction.contract import ContractTransactionBuilder
+from cilantro.messages.transaction.data import TransactionData
 from cilantro.constants.delegate import NODES_REQUIRED_CONSENSUS
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
@@ -25,8 +27,10 @@ from cilantro.protocol import wallet
 TEST_IP = '127.0.0.1'
 TEST_SK = TESTNET_MASTERNODES[0]['sk']
 TEST_VK = TESTNET_MASTERNODES[0]['vk']
-INPUT_HASH = b'1111111111111111111111111111111111111111111111111111111111111111'
-INPUT_HASH_1 = b'2222222222222222222222222222222222222222222222222222222222222222'
+DEL_SK = TESTNET_DELEGATES[0]['sk']
+DEL_VK = TESTNET_DELEGATES[0]['vk']
+INPUT_HASH = '1111111111111111111111111111111111111111111111111111111111111111'
+INPUT_HASH_1 = '2222222222222222222222222222222222222222222222222222222222222222'
 RAWTXS = [
     b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
     b'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
@@ -41,12 +45,18 @@ RAWTXS_1 = [
     b'4DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
     b'5EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE'
 ]
-mt = MerkleTree.from_raw_transactions(RAWTXS)
-mt_1 = MerkleTree.from_raw_transactions(RAWTXS_1)
-MERKLE_LEAVES = mt.leaves
-MERKLE_LEAVES_1 = mt_1.leaves
-RESULT_HASH = mt.root
-RESULT_HASH_1 = mt_1.root
+TXS = [TransactionData.create(
+    contract_tx=ContractTransactionBuilder.create_contract_tx(sender_sk=TEST_SK, code_str=raw_tx.decode()),
+    status='SUCCESS', state='blah'
+    ) for raw_tx in RAWTXS]
+TXS_1 = [TransactionData.create(
+    contract_tx=ContractTransactionBuilder.create_contract_tx(sender_sk=TEST_SK, code_str=raw_tx.decode()),
+    status='SUCCESS', state='blah'
+    ) for raw_tx in RAWTXS_1]
+MERKLE_LEAVES = [tx.hash for tx in TXS]
+MERKLE_LEAVES_1 = [tx.hash for tx in TXS_1]
+RESULT_HASH = MerkleTree.from_hex_leaves(MERKLE_LEAVES).root_as_hex
+RESULT_HASH_1 = MerkleTree.from_hex_leaves(MERKLE_LEAVES).root_as_hex
 
 log = get_logger('BlockAggregator')
 
@@ -128,11 +138,11 @@ class TestBlockAggregator(TestCase):
         ba.manager = MagicMock()
         ba.build_task_list()
 
-        signature = build_test_merkle_sig()
-        sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS, 0)
+        signature = build_test_merkle_sig(sk=DEL_SK, vk=DEL_VK)
+        sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
 
         ba.recv_sub_block_contender(sbc)
-        self.assertTrue(sbc._data.signature in ba.result_hashes[RESULT_HASH.hex()]['signatures'])
+        self.assertTrue(sbc._data.signature in ba.result_hashes[RESULT_HASH]['signatures'])
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
@@ -144,8 +154,8 @@ class TestBlockAggregator(TestCase):
         ba.manager = MagicMock()
         ba.build_task_list()
 
-        signature = build_test_merkle_sig()
-        sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS, 0)
+        signature = build_test_merkle_sig(sk=DEL_SK, vk=DEL_VK)
+        sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
 
         sbc._data.resultHash = b'A' * 63
 
@@ -163,24 +173,25 @@ class TestBlockAggregator(TestCase):
         ba.build_task_list()
 
         for i in range(NODES_REQUIRED_CONSENSUS):
-            signature = build_test_merkle_sig()
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS, 0)
-            sbc._data.transactions = RAWTXS[:3]
+            signature = build_test_merkle_sig(sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
+            sbc._data.transactions = [tx._data for tx in TXS[:3]]
             ba.recv_sub_block_contender(sbc)
 
-        self.assertEqual(len(ba.result_hashes[RESULT_HASH.hex()]['signatures']), NODES_REQUIRED_CONSENSUS)
-        self.assertEqual(len(ba.contenders[INPUT_HASH.decode()]['transactions']), 3)
+        self.assertEqual(len(ba.result_hashes[RESULT_HASH]['signatures']), NODES_REQUIRED_CONSENSUS)
+        self.assertEqual(len(ba.contenders[INPUT_HASH]['transactions']), 3)
         self.assertEqual(len(ba.full_block_hashes), 0)
 
 class TestBlockAggregatorStorage(TestCase):
 
     def setUp(self):
-        self.ex = Executer(**DB_SETTINGS)
-        self.tables = build_tables(self.ex, should_drop=True)
+        reset_db()
+        # self.ex = Executer(**DB_SETTINGS)
+        # self.tables = build_tables(self.ex, should_drop=True)
 
-    def tearDown(self):
-        self.ex.cur.close()
-        self.ex.conn.close()
+    # def tearDown(self):
+    #     self.ex.cur.close()
+    #     self.ex.conn.close()
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
@@ -196,11 +207,11 @@ class TestBlockAggregatorStorage(TestCase):
         bh = ba.curr_block_hash
 
         for i in range(NODES_REQUIRED_CONSENSUS):
-            signature = build_test_merkle_sig()
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS, 0)
+            signature = build_test_merkle_sig(sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
             ba.recv_sub_block_contender(sbc)
 
-        tree = MerkleTree.from_raw_transactions(RAWTXS)
+        tree = MerkleTree.from_hex_leaves(MERKLE_LEAVES)
         signature = wallet.sign(TEST_SK, tree.root)
         fbmd = FullBlockMetaData.create(
             block_hash=ba.curr_block_hash,
@@ -220,11 +231,11 @@ class TestBlockAggregatorStorage(TestCase):
         ba.build_task_list()
         bh = ba.curr_block_hash
         for i in range(NODES_REQUIRED_CONSENSUS + 5):
-            signature = build_test_merkle_sig()
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS, 0)
+            signature = build_test_merkle_sig(sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
             ba.recv_sub_block_contender(sbc)
 
-        tree = MerkleTree.from_raw_transactions(RAWTXS)
+        tree = MerkleTree.from_hex_leaves(MERKLE_LEAVES)
         signature = wallet.sign(TEST_SK, tree.root)
         fbmd = FullBlockMetaData.create(
             block_hash=ba.curr_block_hash,
@@ -249,18 +260,18 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(NODES_REQUIRED_CONSENSUS):
-            signature = build_test_merkle_sig()
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS, 0)
+            signature = build_test_merkle_sig(sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
             ba.recv_sub_block_contender(sbc)
 
         # Sub block 1
         for i in range(NODES_REQUIRED_CONSENSUS):
-            signature = build_test_merkle_sig()
-            sbc = SubBlockContender.create(RESULT_HASH_1, INPUT_HASH_1, MERKLE_LEAVES_1, signature, RAWTXS_1, 1)
+            signature = build_test_merkle_sig(sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH_1, INPUT_HASH_1, MERKLE_LEAVES_1, signature, TXS_1, 1)
             ba.recv_sub_block_contender(sbc)
 
         self.assertEqual(ba.total_valid_sub_blocks, 2)
-        tree = MerkleTree.from_raw_transactions(RAWTXS+RAWTXS_1)
+        tree = MerkleTree.from_hex_leaves(MERKLE_LEAVES+MERKLE_LEAVES_1)
         signature = wallet.sign(TEST_SK, tree.root)
         fbmd = FullBlockMetaData.create(
             block_hash=ba.curr_block_hash,
@@ -288,14 +299,14 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(NODES_REQUIRED_CONSENSUS):
-            signature = build_test_merkle_sig()
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, RAWTXS, 0)
+            signature = build_test_merkle_sig(sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
             ba.recv_sub_block_contender(sbc)
 
         # Sub block 1
         for i in range(NODES_REQUIRED_CONSENSUS):
-            signature = build_test_merkle_sig()
-            sbc = SubBlockContender.create(RESULT_HASH_1, INPUT_HASH_1, MERKLE_LEAVES_1, signature, RAWTXS_1, 1)
+            signature = build_test_merkle_sig(sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH_1, INPUT_HASH_1, MERKLE_LEAVES_1, signature, TXS_1, 1)
             ba.recv_sub_block_contender(sbc)
 
         # sub_block_hashes = sorted(ba.contenders.keys(), key=lambda input_hash: ba.contenders[input_hash]['sb_index'])

@@ -2,19 +2,19 @@ import mysql, mysql.connector, cilantro
 from ConfigParser import SafeConfigParser
 
 path = cilantro.__path__._path[0]
-parser = SafeConfigParser()
-parser.read('{}/db_conf.ini'.format(path))
+config = SafeConfigParser()
+config.read('{}/db_conf.ini'.format(path))
 
 class SQLDB():
     connection = mysql.connector.connect(
-        host=parser.get('hostname'),
-        user=parser.get('username'),
-        passwd=parser.get('password'),
+        host=config.get('hostname'),
+        user=config.get('username'),
+        passwd=config.get('password'),
         unix_socket='/tmp/mysql.sock',
         charset='utf8'
     )
     cursor = connection.cursor()
-    database = parser.get('database')
+    database = config.get('database')
     def __enter__(self, database=None, reset=False):
         database = database or cls.database
         if reset:
@@ -42,11 +42,29 @@ class SQLDB():
     @classmethod
     def build_tables(cls):
         cls.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS subblocks (
+            CREATE TABLE IF NOT EXISTS subblock (
                 merkle_root VARCHAR(32) PRIMARY KEY,
                 signatures BLOB NOT NULL,
                 merkle_leaves BLOB NOT NULL,
                 sb_index INT NOT NULL
+            )
+        """)
+        cls.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS block (
+                block_hash VARCHAR(32) PRIMARY KEY,
+                merkle_roots BLOB NOT NULL,
+                prev_block_hash BLOB NOT NULL,
+                mn_signature VARCHAR(32) NOT NULL,
+                ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        """)
+        cls.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS transaction (
+                tx_hash VARCHAR(32) PRIMARY KEY,
+                raw_tx_hash VARCHAR(32) NOT NULL,
+                tx_blob BLOB NOT NULL,
+                status VARCHAR(16) NOT NULL,
+                state VARCHAR(16) NOT NULL,
             )
         """)
 

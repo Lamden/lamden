@@ -1,8 +1,10 @@
 from cilantro.messages.base.base import MessageBase
-from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.utils import lazy_property, set_lazy_property, is_valid_hex
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 from cilantro.protocol.structures import MerkleTree
+from cilantro.messages.transaction.data import TransactionData
+from cilantro.storage.db import VKBook
+
 import pickle
 from typing import List
 
@@ -19,6 +21,8 @@ class SubBlockContender(MessageBase):
     """
 
     def validate(self):
+
+        assert self.signature.sender in VKBook.get_delegates(), 'Not a valid delegate'
         # Validate field types and existence
         assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
         assert self._data.inputHash, "input hash field missing from data {}".format(self._data)
@@ -42,26 +46,26 @@ class SubBlockContender(MessageBase):
 
     @classmethod
     def create(cls, result_hash: str, input_hash: str, merkle_leaves: List[bytes],
-                    signature: MerkleSignature, raw_txs: List[bytes], sub_block_index: int):
+                    signature: MerkleSignature, transactions: List[TransactionData], sub_block_index: int):
         """
         Delegages create a new sub-block contender and propose to master nodes
         :param result_hash: The hash of the root of this sub-block
         :param input_hash: The hash of input bag containing raw txns in order
         :param merkle_leaves: A list merkle leaves contained within this proposed block. Each leaf is a byte string
         :param signature: MerkleSignature of the delegate proposing this sub-block
-        :param raw_txs: Partial set of raw transactions with the result state included.
+        :param transactions: Partial set of raw transactions with the result state included.
         :return: A SubBlockContender object
         """
         assert isinstance(signature, MerkleSignature), "signature must be of MerkleSignature"
 
         struct = subblock_capnp.SubBlockContender.new_message()
         struct.init('merkleLeaves', len(merkle_leaves))
-        struct.init('transactions', len(raw_txs))
+        struct.init('transactions', len(transactions))
         struct.resultHash = result_hash
         struct.inputHash = input_hash
         struct.merkleLeaves = merkle_leaves
         struct.signature = signature.serialize()
-        struct.transactions = raw_txs
+        struct.transactions = [tx._data for tx in transactions]
         struct.subBlockIdx = sub_block_index
 
         return cls.from_data(struct)
@@ -76,11 +80,11 @@ class SubBlockContender(MessageBase):
     def _deserialize_data(cls, data: bytes):
         return subblock_capnp.SubBlockContender.from_bytes_packed(data)
 
-    @property
+    @lazy_property
     def result_hash(self) -> str:
-        return self._data.resultHash.hex()
+        return self._data.resultHash.decode()
 
-    @property
+    @lazy_property
     def input_hash(self) -> str:
         return self._data.inputHash.decode()
 
@@ -102,15 +106,11 @@ class SubBlockContender(MessageBase):
         The Merkle Tree leaves associated with the block (a binary tree stored implicitly as a list).
         Each element is hex string representing a node's hash.
         """
-        return [leaf.hex() for leaf in self._data.merkleLeaves]
+        return [leaf.decode() for leaf in self._data.merkleLeaves]
 
     @property
-    def transactions(self) -> List[ContractTransaction]:
-        """
-        The Merkle Tree leaves associated with the block (a binary tree stored implicitly as a list).
-        Each element is hex string representing a node's hash.
-        """
-        return [ContractTransaction.from_bytes(tx) for tx in self._data.transactions]
+    def transactions(self) -> List[TransactionData]:
+        return [TransactionData.from_data(tx) for tx in self._data.transactions]
 
     def __eq__(self, other):
         assert isinstance(other, SubBlockContender), "Attempted to compare a BlockContender with a non-BlockContender"
