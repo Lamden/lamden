@@ -119,7 +119,7 @@ class BlockManager(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
-            self.out_router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+            self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
 
     def update_db_state(self):
         # do catch up logic here
