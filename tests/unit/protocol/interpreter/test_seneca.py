@@ -24,8 +24,9 @@ class TestSenecaInterpreter(TestCase):
         reset_db()
 
     def tearDown(self):
-        self.interpreter.ex.cur.close()
-        self.interpreter.ex.conn.close()
+        if hasattr(self, 'interpreter'):
+            self.interpreter.ex.cur.close()
+            self.interpreter.ex.conn.close()
 
     def ordered_tx(self, contract):
         return OrderingContainer.create(contract, MN_VK)

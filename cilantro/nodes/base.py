@@ -11,7 +11,7 @@ import time
 from cilantro.protocol import wallet
 
 
-BOOT_DELAY = 8  # MANDATORY NAP TIME (How long each node sleeps after starting its overlay server)
+BOOT_DELAY = 16  # MANDATORY NAP TIME (How long each node sleeps after starting its overlay server)
 
 def take_a_nice_relaxing_nap(log):
     log.important("Taking a nice relaxing {} second nap while I wait for everybody to boot".format(BOOT_DELAY))
@@ -34,8 +34,14 @@ class NewNodeBase(StateMachine, Worker):
         # TODO remove this once we implement a 'Staging' state for all nodes
         take_a_nice_relaxing_nap(self.log)
 
+        # TODO -- block here until the OverlayServer is ready. That way Workers never have to wait
+
         # Init Super Classes (we had to start the Overlay Server first)
+
+        self.log.important3("NewNodeBase instantiating Worker superclass! (blocking call)")
         Worker.__init__(self, signing_key=signing_key, loop=loop, name=name)
+        self.log.important3("NewNodeBase finished instantiating Worker superclass.")
+
         StateMachine.__init__(self)
 
         self.ip = ip

@@ -122,10 +122,10 @@ def build_test_contender(tree: MerkleTree=None, prev_block_hash=''):
     Method to build a 'test' block contender. Used exclusively in unit tests.
     """
     from cilantro.storage.blocks import BlockStorageDriver
-    from cilantro.constants.nodes import BLOCK_SIZE
+    from cilantro.constants.nodes import TRANSACTIONS_PER_SUB_BLOCK
 
     if not tree:
-        nodes = [str(i).encode() for i in range(BLOCK_SIZE)]
+        nodes = [str(i).encode() for i in range(TRANSACTIONS_PER_SUB_BLOCK)]
         tree = MerkleTree(leaves=nodes)
 
     if not prev_block_hash:

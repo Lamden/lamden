@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 from cilantro.messages.envelope.envelope import Envelope, MessageMeta, Seal
 from cilantro.messages.base.base import MessageBase
-from cilantro.messages.transaction.standard import StandardTransactionBuilder
+from cilantro.messages.transaction.contract import ContractTransactionBuilder
 
 from cilantro.protocol.structures import EnvelopeAuth
 from cilantro.protocol import wallet
@@ -36,7 +36,7 @@ class TestEnvelopefromObjects(TestCase):
         # TODO -- write default TestMessage class
         # We should really have a default TestMessage object that is a bare-minimum subclass of MessageBase
         # instead of using other live objects for these kinds of tests
-        message = StandardTransactionBuilder.random_tx()
+        message = ContractTransactionBuilder.random_currency_tx()
         return message
 
     def test_lazy_serialize(self):
@@ -197,7 +197,7 @@ class TestEnvelopefromMessage(TestCase):
         # TODO -- write default TestMessage class
         # We should really have a default TestMessage object that is a bare-minimum subclass of MessageBase
         # instead of using other live objects for these kinds of tests
-        message = StandardTransactionBuilder.random_tx()
+        message = ContractTransactionBuilder.random_currency_tx()
         return message
 
     def test_create_from_message(self):
@@ -273,8 +273,3 @@ class TestEnvelopefromMessage(TestCase):
         env = Envelope.create_from_message(message=message, signing_key=sk, verifying_key=vk)
 
         self.assertTrue(env.verify_seal())
-
-
-
-
-
