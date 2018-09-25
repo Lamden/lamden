@@ -56,7 +56,9 @@ def build_blocks_table(ex, should_drop=True):
 
 
 def seed_blocks(ex, blocks_table):
+    log.debugv("Inserting genesis block into blocks table.")
     blocks_table.insert([{'hash': GENESIS_HASH, **GENESIS_BLOCK_DATA}]).run(ex)
+    log.debugv("Genesis block inserted.")
 
 
 """

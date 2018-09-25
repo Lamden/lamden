@@ -35,6 +35,7 @@ def seed_contracts(ex, contracts_table):
     """
     Seeds the contracts table with all contracts found in cilantro/contracts
     """
+    log.debugv("Creating contracts table...")
     # Insert contract code from files in file system into database table
     for contract_id, code_str in _read_contract_files():
         contracts_table.insert([{
@@ -45,9 +46,11 @@ def seed_contracts(ex, contracts_table):
             'execution_status': 'pending',
         }]).run(ex)
 
+    log.debugv("Seeding contracts...")
     # Run contracts
     for contract_id, code_str in _read_contract_files():
         run_contract(ex, contracts_table, contract_id)
+    log.debugv("Done seeding contracts.")
 
 
 def module_loader_fn(ex, contract_table):
