@@ -178,7 +178,7 @@ class SubBlockBuilder(Worker):
         batch = TransactionBatch.from_data(msg_bag)
         input_hash = Hasher.hash(bag_key)
         sbc = self._create_empty_sbc(input_hash, sb_idx) if batch.is_empty else \
-                  sbc = self._create_sbc_from_batch(input_hash, sb_idx, batch)
+            self._create_sbc_from_batch(input_hash, sb_idx, batch)
         self._send_msg_over_ipc(sbc)
 
     def _create_empty_sbc(self, input_hash: str, sbb_idx: int, signature: MerkleSignature) -> SubBlockContender:
