@@ -66,7 +66,7 @@ jobs:
           username: cilantro_user
           password: buttcoins
           database: cilantro_dev
-    parallelism: 3
+    parallelism: 1
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
