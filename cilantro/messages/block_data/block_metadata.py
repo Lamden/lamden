@@ -67,6 +67,11 @@ class FullBlockMetaData(MessageBase):
         return self._data.timestamp
 
 
+class NewBlockNotification(FullBlockMetaData):
+    pass
+
+
+# TODO deprecate
 class BlockMetaData(MessageBase):
     """
     This class acts a structure that holds all information necessary to validate and build a block. In particular, this
@@ -184,10 +189,7 @@ class BlockMetaData(MessageBase):
         return BlockContender.from_bytes(self._data.blockContender)
 
 
-class NewBlockNotification(BlockMetaData):
-    pass
-
-
+# TODO deprecate
 class BlockMetaDataRequest(MessageBase):
     """
     This class represents a request message, likely targeted at a Masternode, to retrieve a list of BlockMetadata
@@ -212,7 +214,7 @@ class BlockMetaDataRequest(MessageBase):
     def current_block_hash(self):
         return self._data.currentBlockHash.decode()
 
-
+# TODO deprecate
 class BlockMetaDataReply(MessageBase):
     """
     The counterpart to BlockMetaDataRequest, this message contains a list of BlockMetaData that are descendants to the
