@@ -3,6 +3,7 @@ from cilantro.constants.masternode import SUBBLOCKS_REQUIRED
 # from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.utils import validate_hex
+from cilantro.messages.transaction.data import TransactionData
 from cilantro.storage.db import VKBook
 from cilantro.utils import lazy_property
 from typing import List
@@ -47,18 +48,17 @@ class FullBlockMetaData(MessageBase):
 
     @lazy_property
     def transactions(self) -> List[TransactionData]:
-        # TODO this
-        pass
+        return [TransactionData.from_bytes(tx_blob) for tx_blob in self.raw_transactions]
 
     @property
     def block_hash(self) -> str:
         return self._data.blockHash.decode()
 
-    @property
+    @lazy_property
     def merkle_roots(self) -> List[str]:
         return [root.decode() for root in self._data.merkleRoots]
 
-    @property
+    @lazy_property
     def previous_block_hash(self) -> str:
         return self._data.prevBlockHash.decode()
 
