@@ -19,6 +19,7 @@ GENESIS_DATE = datetime.datetime(datetime.MINYEAR, 1, 1)
 
 
 def build_contracts_table(ex, should_drop=True):
+    log.debugv("Building contracts table...")
     contracts = t.Table('smart_contracts',
                         t.Column('contract_id', t.str_len(64), True),
                         [
@@ -35,7 +36,7 @@ def seed_contracts(ex, contracts_table):
     """
     Seeds the contracts table with all contracts found in cilantro/contracts
     """
-    log.debugv("Creating contracts table...")
+    log.debugv("Inserting contract code...")
     # Insert contract code from files in file system into database table
     for contract_id, code_str in _read_contract_files():
         contracts_table.insert([{

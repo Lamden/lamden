@@ -9,6 +9,7 @@ Methods to create and seed the transactions table
 
 
 def build_transactions_table(ex, should_drop=True):
+    self.log.debugv("Building transactions table...")
     transactions = t.Table('transactions',
                            t.Column('hash', t.str_len(64), True),
                            [

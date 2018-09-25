@@ -49,6 +49,7 @@ Methods to create and seed the 'blocks' table
 
 
 def build_blocks_table(ex, should_drop=True):
+    log.debugv("Building blocks table...")
     blocks = t.Table('blocks', t.AutoIncrementColumn('number'), [t.Column('hash', t.str_len(64), True)] +
                      [t.Column(field_name, field_type) for field_name, field_type in BLOCK_DATA_COLS.items()])
 
