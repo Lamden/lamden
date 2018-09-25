@@ -26,10 +26,10 @@ from cilantro.constants.ports import *
 
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.signals.make_next_block import MakeNextBlock
+from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
 
 import asyncio
 import zmq
@@ -126,8 +126,9 @@ class BlockManager(Worker):
         # only when one can connect to quorum masters and get db update, move to next step
         # at the end, it has updated its db state to consensus latest
         # latest_block_hash, list of mn vks
-        envelope = BlockMetaDataRequest.create(current_block_hash=self.db_state.cur_block_hash)
+        envelope = StateUpdateRequest.create(block_hash=self.db_state.cur_block_hash)
         # send msg to each of the connected masters. Do we need to maintain a list of connected vks ??
+        # TODO send this over PUB to all masternodes instead of Router
         for vk in VKBook.get_masternodes():
             self.router.send_multipart([vk.encode(), envelope])
         # no need to wait for the replys as we have added a handler
@@ -154,7 +155,7 @@ class BlockManager(Worker):
         self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
         assert len(frames) == 3, "Expected 3 frames: (id, msg_type, msg_blob). Got {} instead.".format(frames)
 
-        sbb_index = bytes_to_int(frames[0])
+        sbb_index = int(frames[0].decode())
         assert sbb_index in self.sb_builders, "Got IPC message with ID {} that is not in sb_builders {}" \
             .format(sbb_index, self.sb_builders)
 
@@ -196,11 +197,21 @@ class BlockManager(Worker):
         msg = envelope.message
         msg_hash = envelope.message_hash
 
-        if isinstance(msg, BlockMetaDataRequest):
+        if isinstance(msg, NewBlockNotification):
             self.handle_new_block(envelope)
+        elif isinstance(msg, StateUpdateReply):
+            self.handle_state_update_reply(envelope)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
+
+    def handle_state_update_reply(self, envelope: Envelope):
+        sender = envelope.sender
+        sup = envelope.message
+        assert isinstance(sup, StateUpdateReply), "handle_state_update_reply must be called with StateUpdateReply"
+
+        self.log.important("Got StateUpdateReply from sender {} ... reply=\n{}".format(sender, sup))
+        # TODO implement
 
     def _handle_sbc(self, sbc: SubBlockContender):
         self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
@@ -211,7 +222,7 @@ class BlockManager(Worker):
         frame to identify the type of message
         """
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
-        id_frame = int_to_bytes(sb_index)
+        id_frame = str(sb_index).encode()
         message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 

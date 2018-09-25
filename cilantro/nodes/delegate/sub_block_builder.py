@@ -72,7 +72,7 @@ class SubBlockBuilder(Worker):
 
         # Create DEALER socket to talk to the BlockManager process over IPC
         self.dealer = None
-        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=int_to_bytes(self.sbb_index))
+        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sbb_index).encode())
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
