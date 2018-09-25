@@ -4,7 +4,7 @@ jobs:
     machine:
         image: circleci/classic:201808-01
     working_directory: ~/cilantro
-    parallelism: 3
+    parallelism: 4
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
