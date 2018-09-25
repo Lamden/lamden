@@ -4,6 +4,7 @@ from cilantro.storage.blocks import *
 from cilantro.storage.contracts import *
 from cilantro.storage.contracts import _read_contract_files, _contract_id_for_filename, _lookup_contract_info
 from cilantro.storage.db import DBSingletonMeta
+from cilantro.storage.db import reset_db
 from cilantro.storage.tables import build_tables
 import unittest
 import time
@@ -22,7 +23,7 @@ class TestBuildTables(TestCase):
 
     def setUp(self):
         super().setUp()
-
+        reset_db()
         self.ex = Executer(**DB_SETTINGS)
 
     def tearDown(self):

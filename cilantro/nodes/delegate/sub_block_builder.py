@@ -62,7 +62,7 @@ class SubBlockBuilder(Worker):
         self.total_sub_blocks = total_sub_blocks
         self.num_blocks = num_blocks
         self.num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
-        self.num_sb_per_block = (num_sb_per_builder + num_blocks - 1) // num_blocks
+        self.num_sb_per_block = (self.num_sb_per_builder + num_blocks - 1) // num_blocks
         self.cur_block_index = 0
 
         self.tasks = []
@@ -73,11 +73,11 @@ class SubBlockBuilder(Worker):
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
-        self._create_sub_sockets(num_sb_per_builder=num_sb_per_builder,
+        self._create_sub_sockets(num_sb_per_builder=self.num_sb_per_builder,
                                  num_sb_builders=num_sb_builders)
 
         self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {}"
-                        .format(sbb_index, total_sub_blocks, num_blocks, num_sb_per_builder, self.num_sb_per_block))
+                        .format(sbb_index, total_sub_blocks, num_blocks, self.num_sb_per_builder, self.num_sb_per_block))
         # Create a Seneca interpreter for this SBB
         self.interpreter = SenecaInterpreter()
 
