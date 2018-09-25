@@ -29,7 +29,7 @@ class FullBlockMetaData(MessageBase):
 
     @classmethod
     def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str, timestamp,
-               masternode_signature: str):
+               masternode_signature: str, raw_transactions: List[bytes]=None):
 
         struct = blockdata_capnp.FullBlockMetaData.new_message()
         struct.init('merkleRoots', len(merkle_roots))
@@ -38,7 +38,17 @@ class FullBlockMetaData(MessageBase):
         struct.prevBlockHash = prev_block_hash
         struct.timestamp = int(timestamp)
         struct.masternodeSignature = masternode_signature
+        struct.transactions = raw_transactions or []
         return cls.from_data(struct)
+
+    @property
+    def raw_transactions(self) -> List[bytes]:
+        return self._data.transactions
+
+    @lazy_property
+    def transactions(self) -> List[TransactionData]:
+        TODO this
+        pass
 
     @property
     def block_hash(self) -> str:

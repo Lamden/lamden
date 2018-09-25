@@ -20,6 +20,7 @@ struct FullBlockMetaData {
     prevBlockHash @2 :Data;
     timestamp @3 :UInt64;
     masternodeSignature @4 :Data;
+    transactions @5 :List(Data);
 }
 
 struct BlockMetaDataReply {
