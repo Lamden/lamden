@@ -4,7 +4,7 @@ jobs:
     machine:
         image: circleci/classic:201808-01
     working_directory: ~/cilantro
-    parallelism: 2
+    parallelism: 3
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
@@ -100,7 +100,7 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            python3.6 -m unittest $(circleci tests glob tests/unit/**/**/**/test_*.py | circleci tests split --split-by=timings)
+            python3.6 -m unittest $(find tests/unit/ -name 'test_*.py' | circleci tests split --split-by=timings)
       - run:
           mkdir -p unit-test-results
       - store_test_results:

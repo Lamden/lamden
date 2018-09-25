@@ -27,7 +27,6 @@ NODE_TESTS = [
 MESSAGE_TESTS = [
     'tests.unit.messages.consensus',
     'tests.unit.messages.envelope',
-    'tests.unit.messages.reactor',
     'tests.unit.messages.transactions',
     'tests.unit.messages.block_data',
 ]
