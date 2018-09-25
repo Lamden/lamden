@@ -44,7 +44,7 @@ class SubBlockContender(MessageBase):
 
     @classmethod
     def create(cls, result_hash: str, input_hash: str, merkle_leaves: List[bytes],
-               sb_index, signature: MerkleSignature, raw_txs: List[bytes]):
+               sb_index: int, signature: MerkleSignature, raw_txs: List[bytes]):
         """
         Delegages create a new sub-block contender and propose to master nodes
         :param result_hash: The hash of the root of this sub-block
