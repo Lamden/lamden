@@ -138,19 +138,31 @@ class MerkleTree:
         return self.raw_leaves[self.leaves_as_hex.index(h)]
 
     @staticmethod
-    def verify_tree(leaves: List[bytes], root: bytes, hash_leaves=False) -> bool:
+    def verify_tree_from_bytes(leaves: List[bytes], root: bytes, hash_leaves=False) -> bool:
         """
         Attempts to verify merkle tree by building a Merkle tree from the list of leaves, and then comparing the root
         of that resulting tree to the root passed into this function
-        :param leaves: The leaves of the merkle tree. Expected to be bytes or hex strings
-        :param root: The alleged root of the merkle tree formed by 'leaves' arg
+        :param leaves: The leaves of the merkle tree. List of bytes
+        :param root: The alleged root of the merkle tree formed by 'leaves' arg. Must be bytes
         :return: True if the tree is valid; False otherwise
         """
         nodes = MerkleTree.merklize(leaves, hash_leaves=hash_leaves)
         return nodes[0] == root
 
     @staticmethod
-    def verify_tree_from_hex_str(leaves: str, root: str) -> bool:
+    def verify_tree_from_str(leaves: List[str], root: str):
+        """
+        Attempts to verify the Merkle tree from a list of hex strings representing the merkle leaves (which are expected
+        to be hashed already)
+        :param leaves: A list of hex strings, 64 chars each
+        :param root: The root hash, a 64 char hex str
+        :return: True if the tree is valid; False otherwise
+        """
+        tree = MerkleTree.from_hex_leaves(leaves)
+        return tree.root_as_hex == root
+
+    @staticmethod
+    def verify_tree_from_concat_str(leaves: str, root: str) -> bool:
         """
         Attempts to verify the Merkle tree from a concatenated hex string represeting the leaves.
         :param leaves: A concatenated hex string represeting the leaves (ie return value of .leaves_as_concat_hex_str)

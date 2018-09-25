@@ -3,51 +3,64 @@ from cilantro.constants.masternode import SUBBLOCKS_REQUIRED
 # from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.utils import validate_hex
-from cilantro.utils import lazy_property
+from cilantro.messages.transaction.data import TransactionData
+from cilantro.protocol.structures.merkle_tree import MerkleTree
+from cilantro.storage.db import VKBook
+from cilantro.utils import lazy_property, lazy_func
 from typing import List
 from datetime import datetime
 
 import capnp
 import blockdata_capnp
 
-class FullBlockMetaData(MessageBase):
+class FullBlockData(MessageBase):
     """
-    This class is the metadata for combined validated sub blocks.
+    This class is the data structure to transfer data for new Full Blocks (not sub-blocks). It contains all of the
+    block's metadata fields, as well as optionally the raw transactions associated with the block.
     """
 
     def validate(self):
-        assert validate_hex(self._data.blockHash, 64), 'Invalid hash'
-        assert validate_hex(self._data.prevBlockHash, 64), 'Invalid previous block hash'
-        assert len(self._data.merkleRoots) == SUBBLOCKS_REQUIRED, 'Invalid merkle roots'
-        assert validate_hex(self._data.masternodeSignature, 128), 'Invalid masternode signature'
-        assert type(self._data.timestamp) == int, 'Invalid timestamp'
+        assert validate_hex(self.block_hash, 64), 'Invalid hash'
+        assert validate_hex(self.previous_block_hash, 64), 'Invalid previous block hash'
+        assert len(self.merkle_roots) == SUBBLOCKS_REQUIRED, 'Invalid merkle roots'
+        assert validate_hex(self.masternode_signature, 128), 'Invalid masternode signature'
+        assert type(self.timestamp) == int, 'Invalid timestamp'
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return blockdata_capnp.BlockMetaData.from_bytes_packed(data)
+        return blockdata_capnp.FullBlockData.from_bytes_packed(data)
 
     @classmethod
     def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str, timestamp,
-               masternode_signature: str):
+               masternode_signature: str, raw_transactions: List[bytes]=None):
 
-        struct = blockdata_capnp.FullBlockMetaData.new_message()
+        struct = blockdata_capnp.FullBlockData.new_message()
         struct.init('merkleRoots', len(merkle_roots))
         struct.blockHash = block_hash
         struct.merkleRoots = merkle_roots
         struct.prevBlockHash = prev_block_hash
         struct.timestamp = int(timestamp)
         struct.masternodeSignature = masternode_signature
+        struct.transactions = raw_transactions or []
         return cls.from_data(struct)
+
+    @lazy_property
+    def raw_transactions(self) -> List[bytes]:
+        return [b for b in self._data.transactions]
+
+    @lazy_property
+    def transactions(self) -> List[TransactionData]:
+        return [TransactionData.from_bytes(tx_blob) for tx_blob in self.raw_transactions]
 
     @property
     def block_hash(self) -> str:
         return self._data.blockHash.decode()
 
-    @property
+    @lazy_property
     def merkle_roots(self) -> List[str]:
         return [root.decode() for root in self._data.merkleRoots]
 
-    @property
+    @lazy_property
     def previous_block_hash(self) -> str:
         return self._data.prevBlockHash.decode()
 
@@ -55,7 +68,16 @@ class FullBlockMetaData(MessageBase):
     def timestamp(self) -> int:
         return self._data.timestamp
 
+    @property
+    def masternode_signature(self):
+        return self._data.masternodeSignature.decode()
 
+
+class NewBlockNotification(FullBlockData):
+    pass
+
+
+# TODO deprecate
 class BlockMetaData(MessageBase):
     """
     This class acts a structure that holds all information necessary to validate and build a block. In particular, this
@@ -173,10 +195,7 @@ class BlockMetaData(MessageBase):
         return BlockContender.from_bytes(self._data.blockContender)
 
 
-class NewBlockNotification(BlockMetaData):
-    pass
-
-
+# TODO deprecate
 class BlockMetaDataRequest(MessageBase):
     """
     This class represents a request message, likely targeted at a Masternode, to retrieve a list of BlockMetadata
@@ -201,7 +220,7 @@ class BlockMetaDataRequest(MessageBase):
     def current_block_hash(self):
         return self._data.currentBlockHash.decode()
 
-
+# TODO deprecate
 class BlockMetaDataReply(MessageBase):
     """
     The counterpart to BlockMetaDataRequest, this message contains a list of BlockMetaData that are descendants to the

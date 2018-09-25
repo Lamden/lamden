@@ -79,29 +79,29 @@ class TestMerkleTree(TestCase):
         self.assertEqual(m.children(1), [test_merkle[3], test_merkle[4]])
         self.assertEqual(m.children(2), [test_merkle[5], test_merkle[6]])
 
-    def test_verify_tree(self):
+    def test_verify_tree_from_bytes(self):
         raw_leaves = [secrets.token_bytes(16) for _ in range(16)]
 
         m = MerkleTree(raw_leaves)
 
-        self.assertTrue(MerkleTree.verify_tree(m.leaves, m.root))
+        self.assertTrue(MerkleTree.verify_tree_from_bytes(m.leaves, m.root))
 
-    def test_verify_tree_from_hex_str(self):
+    def test_verify_tree_from_concat_str(self):
         raw_leaves = [secrets.token_bytes(16) for _ in range(16)]
 
         m = MerkleTree(raw_leaves)
 
-        self.assertTrue(MerkleTree.verify_tree_from_hex_str(m.leaves_as_concat_hex_str, m.root_as_hex))
+        self.assertTrue(MerkleTree.verify_tree_from_concat_str(m.leaves_as_concat_hex_str, m.root_as_hex))
 
-    def test_verify_tree_from_hex_str_invalid(self):
+    def test_verify_tree_from_concat_str_invalid(self):
         raw_leaves = [secrets.token_bytes(16) for _ in range(16)]
         random_hash = MerkleTree.hash(secrets.token_bytes(16))
 
         m = MerkleTree(raw_leaves)
 
-        self.assertFalse(MerkleTree.verify_tree_from_hex_str(m.leaves_as_concat_hex_str, random_hash))
+        self.assertFalse(MerkleTree.verify_tree_from_concat_str(m.leaves_as_concat_hex_str, random_hash))
 
-    def test_verify_tree_invalid(self):
+    def test_verify_tree_from_bytes_invalid(self):
         raw_leaves = [secrets.token_bytes(16) for _ in range(16)]
 
         m = MerkleTree(raw_leaves)
@@ -111,7 +111,7 @@ class TestMerkleTree(TestCase):
         bad_leaves = m.leaves
         bad_leaves[-1] = secrets.token_bytes(16)
 
-        self.assertFalse(MerkleTree.verify_tree(bad_leaves, m.root))
+        self.assertFalse(MerkleTree.verify_tree_from_bytes(bad_leaves, m.root))
 
     def test_leaves_as_hex(self):
         leaves = [1, 2, 3, 4]
@@ -184,6 +184,20 @@ class TestMerkleTree(TestCase):
         m = MerkleTree.from_raw_transactions(leaves)
 
         self.assertRaises(AssertionError, m.data_for_hash, '0' * 64)
+
+    def test_very_tree_from_str(self):
+        leaves = ['A' * 64, 'B' * 64, 'C' * 64]
+        tree = MerkleTree.from_hex_leaves(leaves)
+        root = tree.root_as_hex
+
+        self.assertTrue(MerkleTree.verify_tree_from_str(leaves, root))
+
+    def test_very_tree_from_str_invalid(self):
+        leaves = ['A' * 64, 'B' * 64, 'C' * 64]
+        tree = MerkleTree.from_hex_leaves(leaves)
+        bad_root = 'DEADBEEF' * 8
+
+        self.assertFalse(MerkleTree.verify_tree_from_str(leaves, bad_root))
 
     # TODO test from raw leaves
 

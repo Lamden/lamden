@@ -32,3 +32,13 @@ struct TransactionBatch {
     transactions @0 :List(OrderingContainer);
 }
 
+struct TransactionData {
+    contractTransaction @0 :ContractTransaction;
+    status @1: UInt8;
+    state @2: Text;
+}
+
+struct Transactions {
+    transactions @0 :List(Data);
+}
+
