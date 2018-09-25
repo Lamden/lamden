@@ -1,6 +1,7 @@
 from cilantro.messages.base.base_json import MessageBaseJson
 from cilantro.messages.base.base import MessageBase
-from cilantro.messages.block_data.block_metadata import FullBlockMetaData
+from cilantro.messages.block_data.block_metadata import FullBlockData
+from cilantro.utils import lazy_property
 from typing import List
 
 import capnp
@@ -61,10 +62,14 @@ class StateUpdateReply(MessageBase):
         return blockdata_capnp.StateUpdateReply.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, block_data: List[FullBlockMetaData]):
+    def create(cls, block_data: List[FullBlockData]):
         struct = blockdata_capnp.StateUpdateReply.new_message()
         struct.blockData = [b._data for b in block_data]
-        
+
         return cls.from_data(struct)
+
+    @lazy_property
+    def block_data(self) -> List[FullBlockData]:
+        return [FullBlockData.from_data(d) for d in self._data.blockData]
 
 

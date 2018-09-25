@@ -13,27 +13,28 @@ from datetime import datetime
 import capnp
 import blockdata_capnp
 
-class FullBlockMetaData(MessageBase):
+class FullBlockData(MessageBase):
     """
-    This class is the metadata for combined validated sub blocks.
+    This class is the data structure to transfer data for new Full Blocks (not sub-blocks). It contains all of the
+    block's metadata fields, as well as optionally the raw transactions associated with the block.
     """
 
     def validate(self):
-        assert validate_hex(self._data.blockHash, 64), 'Invalid hash'
-        assert validate_hex(self._data.prevBlockHash, 64), 'Invalid previous block hash'
-        assert len(self._data.merkleRoots) == SUBBLOCKS_REQUIRED, 'Invalid merkle roots'
-        assert validate_hex(self._data.masternodeSignature, 128), 'Invalid masternode signature'
-        assert type(self._data.timestamp) == int, 'Invalid timestamp'
+        assert validate_hex(self.block_hash, 64), 'Invalid hash'
+        assert validate_hex(self.previous_block_hash, 64), 'Invalid previous block hash'
+        assert len(self.merkle_roots) == SUBBLOCKS_REQUIRED, 'Invalid merkle roots'
+        assert validate_hex(self.masternode_signature, 128), 'Invalid masternode signature'
+        assert type(self.timestamp) == int, 'Invalid timestamp'
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return blockdata_capnp.BlockMetaData.from_bytes_packed(data)
+        return blockdata_capnp.FullBlockData.from_bytes_packed(data)
 
     @classmethod
     def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str, timestamp,
                masternode_signature: str, raw_transactions: List[bytes]=None):
 
-        struct = blockdata_capnp.FullBlockMetaData.new_message()
+        struct = blockdata_capnp.FullBlockData.new_message()
         struct.init('merkleRoots', len(merkle_roots))
         struct.blockHash = block_hash
         struct.merkleRoots = merkle_roots
@@ -67,8 +68,12 @@ class FullBlockMetaData(MessageBase):
     def timestamp(self) -> int:
         return self._data.timestamp
 
+    @property
+    def masternode_signature(self):
+        return self._data.masternodeSignature.decode()
 
-class NewBlockNotification(FullBlockMetaData):
+
+class NewBlockNotification(FullBlockData):
     pass
 
 

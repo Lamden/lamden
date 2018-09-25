@@ -14,7 +14,7 @@ struct BlockMetaData {
     blockContender @7 :Data;
 }
 
-struct FullBlockMetaData {
+struct FullBlockData {
     blockHash @0 :Data;
     merkleRoots @1 :List(Data);
     prevBlockHash @2 :Data;
@@ -35,7 +35,7 @@ struct BlockMetaDataRequest {
 }
 
 struct StateUpdateReply {
-    blockData @0 :List(FullBlockMetaData);
+    blockData @0 :List(FullBlockData);
 }
 
 struct TransactionRequest {

@@ -13,7 +13,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.sub_block import SubBlockHashes
 from cilantro.messages.consensus.merkle_signature import build_test_merkle_sig
-from cilantro.messages.block_data.block_metadata import FullBlockMetaData
+from cilantro.messages.block_data.block_metadata import FullBlockData
 from cilantro.constants.delegate import NODES_REQUIRED_CONSENSUS
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
@@ -105,7 +105,7 @@ class TestBlockAggregator(TestCase):
         ba.build_task_list()
 
         mock_env = MagicMock()
-        mock_env.message = MagicMock(spec=FullBlockMetaData)
+        mock_env.message = MagicMock(spec=FullBlockData)
 
         with mock.patch.object(Envelope, 'from_bytes', return_value=mock_env):
             ba.handle_sub_msg([b'filter doesnt matter', b'envelope binary also doesnt matter'])

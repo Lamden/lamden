@@ -11,7 +11,7 @@ from cilantro.constants.masternode import NODES_REQUIRED_CONSENSUS as MASTERNODE
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block import SubBlockMetaData, SubBlockHashes
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro.messages.block_data.block_metadata import FullBlockMetaData
+from cilantro.messages.block_data.block_metadata import FullBlockData
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
 
@@ -86,7 +86,7 @@ class BlockAggregator(Worker):
 
         if isinstance(msg, SubBlockContender):
             self.recv_sub_block_contender(msg)
-        elif isinstance(msg, FullBlockMetaData):
+        elif isinstance(msg, FullBlockData):
             self.recv_full_block_hash_metadata(msg)
         else:
             raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
@@ -162,7 +162,7 @@ class BlockAggregator(Worker):
                             self.contenders[input_hash]['consensus_reached'] = True
                             self.pub.send_msg(msg=fbmd, header=DEFAULT_FILTER.encode())
 
-    def recv_full_block_hash_metadata(self, fbmd: FullBlockMetaData):
+    def recv_full_block_hash_metadata(self, fbmd: FullBlockData):
         fbmd.validate()
         block_hash = fbmd.block_hash
         if not self.full_block_hashes.get(block_hash):
@@ -207,7 +207,7 @@ class BlockAggregator(Worker):
         merkle_roots = sorted(hash_list)
         block_hash = Hasher.hash_iterable([*merkle_roots, self.curr_block_hash])
         signature = wallet.sign(self.signing_key, block_hash.encode())
-        block = FullBlockMetaData.create(
+        block = FullBlockData.create(
             block_hash=block_hash,
             merkle_roots=merkle_roots,
             prev_block_hash=self.curr_block_hash,
