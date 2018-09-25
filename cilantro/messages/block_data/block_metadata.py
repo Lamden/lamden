@@ -47,7 +47,7 @@ class FullBlockMetaData(MessageBase):
 
     @lazy_property
     def transactions(self) -> List[TransactionData]:
-        TODO this
+        # TODO this
         pass
 
     @property
