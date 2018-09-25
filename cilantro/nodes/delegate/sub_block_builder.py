@@ -176,7 +176,7 @@ class SubBlockBuilder(Worker):
         sbb_idx = self.sb_managers[sb_idx].sub_block_index
         batch = TransactionBatch.from_data(msg_bag)
         input_hash = Hasher.hash(bag_key)
-        sbc = self._create_empty_sbc(input_hash, sb_idx) if batch.is_empty else
+        sbc = self._create_empty_sbc(input_hash, sb_idx) if batch.is_empty else \
                   sbc = self._create_sbc_from_batch(input_hash, sb_idx, batch)
         self._send_msg_over_ipc(sbc)
 
@@ -187,7 +187,7 @@ class SubBlockBuilder(Worker):
         Creates an Empty Sub Block Contender from a TransactionBatch
         """
 
-        sbc = EmptySubBlockContender.create(input_hash=input_hash,
+        sbc = EmptySubBlockContender.create(input_hash=input_hash,              \
                                             sb_idx=sbb_idx, signature=signature)
         return sbc
 
@@ -243,7 +243,7 @@ class SubBlockBuilder(Worker):
             # TODO we need to come back to it, with sleep until we have something in the queue
             # 
             while len(self.sb_managers[sb_idx].pending_txs) == 0:
-                asyncio.sleep(1)
+                await asyncio.sleep(1)
                 # and may need to tie with moving on when master sent a new block transaction ??
             await self._make_next_sb(sb_idx)
 
