@@ -4,8 +4,9 @@ from cilantro.constants.masternode import SUBBLOCKS_REQUIRED
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.utils import validate_hex
 from cilantro.messages.transaction.data import TransactionData
+from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.storage.db import VKBook
-from cilantro.utils import lazy_property
+from cilantro.utils import lazy_property, lazy_func
 from typing import List
 from datetime import datetime
 
@@ -42,9 +43,9 @@ class FullBlockMetaData(MessageBase):
         struct.transactions = raw_transactions or []
         return cls.from_data(struct)
 
-    @property
+    @lazy_property
     def raw_transactions(self) -> List[bytes]:
-        return self._data.transactions
+        return [b for b in self._data.transactions]
 
     @lazy_property
     def transactions(self) -> List[TransactionData]:
