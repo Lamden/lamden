@@ -33,15 +33,14 @@ class TestBlockManager(TestCase):
 
         # Mock manager.create_socket(...) to return a predictable list of mock objects that we can further assert on.
         # Relies on the sockets being created in EXACTLY the same order they are specified here in 'side_effect=[...]'
-        mock_in_router = MagicMock()
-        mock_out_router = MagicMock()
+        mock_tcp_router = MagicMock()
         mock_ipc_router = MagicMock()
         mock_pub = MagicMock()
         mock_sub = MagicMock()
-        mock_manager.create_socket = MagicMock(side_effect=[mock_in_router, mock_out_router, mock_ipc_router, mock_pub, mock_sub])
+        mock_manager.create_socket = MagicMock(side_effect=[mock_tcp_router, mock_ipc_router, mock_pub, mock_sub])
 
         mock_router_handler_task = MagicMock()
-        mock_in_router.add_handler = MagicMock(return_value=mock_router_handler_task)
+        mock_tcp_router.add_handler = MagicMock(return_value=mock_router_handler_task)
         mock_ipc_router.add_handler = MagicMock(return_value=mock_router_handler_task)
         mock_pub.add_handler = MagicMock(return_value=mock_router_handler_task)
         mock_sub.add_handler = MagicMock(return_value=mock_router_handler_task)
@@ -51,6 +50,7 @@ class TestBlockManager(TestCase):
 
         # Assert 'bind' was called on ipc_router with the expected args
         self.assertEqual(bm.ipc_router, mock_ipc_router)
+        self.assertEqual(bm.router, mock_tcp_router)
         mock_ipc_router.bind.assert_called_with(port=IPC_PORT, protocol='ipc', ip=bm.ipc_ip)
         mock_ipc_router.add_handler.assert_called()
         self.assertTrue(mock_router_handler_task in bm.tasks)

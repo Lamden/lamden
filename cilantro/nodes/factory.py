@@ -1,4 +1,7 @@
-from cilantro.nodes import Masternode, Witness, Delegate, NodeBase
+from cilantro.nodes.base import NodeBase, NewNodeBase
+from cilantro.nodes.masternode.masternode import Masternode
+from cilantro.nodes.delegate.delegate import Delegate
+from cilantro.nodes.witness.witness import Witness
 from cilantro.protocol.executors.manager import ExecutorManager
 from cilantro.protocol.transport import Router, Composer
 

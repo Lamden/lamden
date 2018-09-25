@@ -1,4 +1,3 @@
-from cilantro.messages.transaction.standard import StandardTransaction, StandardTransactionBuilder
 from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.messages.transaction.contract import *
 from cilantro.messages.signals.kill_signal import KillSignal
@@ -108,13 +107,6 @@ class God:
         # url = "http://{}:{}".format(ip, port)
         # cls.log.notice("Setting masternode URL to {}".format(url))
         # cls.mn_urls = url
-
-    @classmethod
-    def create_std_tx(cls, sender: tuple, receiver: tuple, amount: int) -> StandardTransaction:
-        if type(receiver) is tuple:
-            receiver = receiver[1]
-
-        return StandardTransactionBuilder.create_tx(sender[0], sender[1], receiver, amount)
 
     @classmethod
     def create_currency_tx(cls, sender: tuple, receiver: tuple, amount: int):

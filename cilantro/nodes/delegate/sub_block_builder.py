@@ -31,6 +31,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.transaction.batch import TransactionBatch
+from cilantro.messages.signals.make_next_block import MakeNextBlock
 
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.protocol import wallet
@@ -62,7 +63,7 @@ class SubBlockBuilder(Worker):
         self.sbb_index = sbb_index
         self.total_sub_blocks = total_sub_blocks
         self.num_blocks = num_blocks
-        self.num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
+        num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
         self.num_sb_per_block = (num_sb_per_builder + num_blocks - 1) // num_blocks
         self.cur_block_index = 0
 
@@ -82,23 +83,11 @@ class SubBlockBuilder(Worker):
         # Create a Seneca interpreter for this SBB
         self.interpreter = SenecaInterpreter()
 
-        # DEBUG TODO DELETE
-        # await self.tasks.append(self.test_dealer_ipc())
-        # END DEBUG
-
         self.run()
 
     def run(self):
         self.log.notice("SBB {} starting...".format(self.sbb_index))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
-
-    async def test_dealer_ipc(self):
-        self.log.info("Spamming BlockManager over IPC...")
-        while True:
-            msg = "hello from SBB {}".format(self.sbb_index)
-            self.log.debug("Sending msg {}".format(msg))
-            self.dealer.send_multipart([b'this should be the type, as a binarized int', msg.encode()])
-            await asyncio.sleep(16)
 
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
         self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
@@ -237,7 +226,6 @@ class SubBlockBuilder(Worker):
         message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
         self.dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
-
     async def _make_next_sub_block(self):
         # TODO this needs to be revisited as we may have uneven sb per block
         sb_index_start = self.cur_block_index * self.num_sb_per_block
@@ -261,5 +249,4 @@ class SubBlockBuilder(Worker):
 
         sbb_idx = self.sb_managers[sb_idx].sub_block_index
         self.cur_block_index = (self.cur_block_index + 1) % self.num_blocks
-
 
