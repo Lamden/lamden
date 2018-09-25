@@ -14,12 +14,13 @@ struct BlockMetaData {
     blockContender @7 :Data;
 }
 
-struct FullBlockMetaData {
+struct FullBlockData {
     blockHash @0 :Data;
     merkleRoots @1 :List(Data);
     prevBlockHash @2 :Data;
     timestamp @3 :UInt64;
     masternodeSignature @4 :Data;
+    transactions @5 :List(Data);
 }
 
 struct BlockMetaDataReply {
@@ -33,6 +34,9 @@ struct BlockMetaDataRequest {
     currentBlockHash @0 :Data;
 }
 
+struct StateUpdateReply {
+    blockData @0 :List(FullBlockData);
+}
 
 struct TransactionRequest {
     transactions @0: List(Data);  # List of transaction hashes
