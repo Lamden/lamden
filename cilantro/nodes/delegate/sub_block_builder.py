@@ -169,8 +169,8 @@ class SubBlockBuilder(Worker):
 
  
         # Increment timestamp first before popping the item from queue
-        self.sb_managers[sb_idx].processed_txs_timestamp = BATCH_INTERVAL
-                             + self.sb_managers[sb_idx].processed_txs_timestamp
+        self.sb_managers[sb_idx].processed_txs_timestamp = BATCH_INTERVAL + \
+                             self.sb_managers[sb_idx].processed_txs_timestamp
         bag_key, msg_bag = self.sb_managers[sb_idx].pending_txs.pop_front()
 
         sbb_idx = self.sb_managers[sb_idx].sub_block_index
