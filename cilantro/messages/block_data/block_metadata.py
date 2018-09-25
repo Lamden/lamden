@@ -3,6 +3,7 @@ from cilantro.constants.masternode import SUBBLOCKS_REQUIRED
 # from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.utils import validate_hex
+from cilantro.storage.db import VKBook
 from cilantro.utils import lazy_property
 from typing import List
 from datetime import datetime
