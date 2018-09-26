@@ -5,6 +5,7 @@ from cilantro.utils import lazy_property, Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.messages.utils import validate_hex
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
+from cilantro.messages.block_data.block_metadata import FullBlockMetaData
 from typing import List
 from cilantro.logger import get_logger
 from cilantro.storage.db import VKBook
@@ -24,6 +25,7 @@ class BlockData(MessageBase):
         assert self._data.masternodeSignature, 'No field "masternodeSignature"'
         assert self.masternode_signature.sender in VKBook.get_masternodes(), 'Not a valid masternode'
         assert self.masternode_signature.verify(self.block_hash.encode()), 'Cannot verify signature'
+        self.metadata # creates the timestamp for the metadata
 
     @classmethod
     def _deserialize_data(cls, data):
@@ -65,6 +67,16 @@ class BlockData(MessageBase):
     @lazy_property
     def merkle_roots(self) -> List[str]:
         return [mr.decode() for mr in self._data.merkleRoots]
+
+    @lazy_property # It is created only ONCE
+    def metadata(self) -> FullBlockMetaData:
+        return FullBlockMetaData.create(
+            block_hash=self.block_hash,
+            merkle_roots=self.merkle_roots,
+            prev_block_hash=self.prev_block_hash,
+            masternode_signature=self.masternode_signature,
+            block_num=self.block_num
+        )
 
 MN_SK = TESTNET_MASTERNODES[0]['sk']
 MN_VK = TESTNET_MASTERNODES[0]['vk']

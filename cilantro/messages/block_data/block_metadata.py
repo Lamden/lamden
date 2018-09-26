@@ -69,7 +69,7 @@ class BlockMetaData(MessageBase):
         return self._data.blockHash == other._data.blockHash and \
             self.merkle_roots == other.merkle_roots
 
-class FullBlockMetaData(BlockMetaData):
+class FullBlockMetaData(BlockMetaData): # NOTE This one includes block number and timestamp
     @classmethod
     def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str,
                     masternode_signature: MerkleSignature, timestamp: int = 0, block_num: int = 0):
