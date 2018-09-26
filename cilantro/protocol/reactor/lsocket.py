@@ -112,7 +112,7 @@ class LSocket:
                 else:
                     func(msg)
 
-        self.log.debug("Socket adding handler func named {} with handler key {}".format(handler_func.__name__, handler_key))
+        self.log.debug("Socket adding handler func named {} with handler key {}".format(handler_func, handler_key))
         coro = _listen(self.socket, handler_func, handler_key)
 
         if start_listening:
