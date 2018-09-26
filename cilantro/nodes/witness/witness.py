@@ -1,4 +1,4 @@
-from cilantro.nodes.base import NewNodeBase
+from cilantro.nodes.base import NodeBase
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, WITNESS_DELEGATE_FILTER
 from cilantro.constants.ports import MN_TX_PUB_PORT, SBB_PORT_START
 from cilantro.constants.testnet import *
@@ -27,7 +27,7 @@ import zmq, asyncio
 """
 
 
-class Witness(NewNodeBase):
+class Witness(NodeBase):
     def __init__(self, *args, **kwargs):
         # Put all variables shared between states here
         self.tasks = []

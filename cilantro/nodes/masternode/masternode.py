@@ -13,13 +13,13 @@ from cilantro.protocol.states.state import State
 from multiprocessing import Queue
 from cilantro.utils.lprocess import LProcess
 
-from cilantro.nodes.base import NewNodeBase
+from cilantro.nodes.base import NodeBase
 from cilantro.nodes.masternode.webserver import start_webserver
 from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 
 
-class Masternode(NewNodeBase):
+class Masternode(NodeBase):
     pass
 
 
@@ -48,21 +48,23 @@ class MNRunState(MNBaseState):
     @enter_from_any
     def enter_any(self):
         # Create and start web server
-        self.log.debug("Masternode creating REST server on port 8080")
+        self.log.debug("Masternode starting REST server on port 8080")
         self.parent.tx_queue = q = Queue()
-        self.parent.server = LProcess(target=start_webserver, args=(q,))
+        self.parent.server = LProcess(target=start_webserver, name='WebServerProc', args=(q,))
         self.parent.server.start()
 
         # Create a worker to do transaction batching
-        self.log.debug("Masternode creating transaction batcher process")
-        self.parent.batcher = LProcess(target=TransactionBatcher,
+        self.log.debug("Masternode starting transaction batcher process")
+        self.parent.batcher = LProcess(target=TransactionBatcher, name='TxBatcherProc',
                                        kwargs={'queue': q, 'signing_key': self.parent.signing_key,
                                                'ip': self.parent.ip})
         self.parent.batcher.start()
 
         # Start the BlockAggregator in this process
-        self.log.notice("Masternode Starting BlockAggregator Process")
-        self.block_agg_proc = LProcess(target=BlockAggregator, kwargs={'ip': self.parent.ip, 'signing_key':self.parent.signing_key})
+        self.log.notice("Masternode starting BlockAggregator Process")
+        self.block_agg_proc = LProcess(target=BlockAggregator,
+                                       kwargs={'ip': self.parent.ip, 'signing_key': self.parent.signing_key},
+                                       name='BlockAggProc')
         self.block_agg_proc.start()
 
 

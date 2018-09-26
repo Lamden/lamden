@@ -17,7 +17,7 @@ def wrap_func(fn, *args, **kwargs):
 
 def run_mn(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes import NodeFactory
+    from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_MASTERNODES
     import os
     import logging
@@ -32,7 +32,7 @@ def run_mn(slot_num):
 
 def run_witness(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes import NodeFactory
+    from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_WITNESSES
     import os
     import logging
@@ -48,7 +48,7 @@ def run_witness(slot_num):
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes import NodeFactory
+    from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_DELEGATES
     import os
     import logging
