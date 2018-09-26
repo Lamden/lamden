@@ -70,7 +70,7 @@ def vmnet_test(*args, **kwargs):
         return _vmnet_test
 
 class MPTestCase(BaseNetworkTestCase):
-    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes.json'.format(CILANTRO_PATH)
+    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
     testers = []
     curr_tester_index = 1
     vmnet_test_active = False

@@ -72,7 +72,7 @@ class SubBlockBuilder(Worker):
 
         # Create DEALER socket to talk to the BlockManager process over IPC
         self.dealer = None
-        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=int_to_bytes(self.sbb_index))
+        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sbb_index).encode())
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
@@ -106,15 +106,16 @@ class SubBlockBuilder(Worker):
                 return
 
             port = SBB_PORT_START + sb_idx
-            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx))
+            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
+                                             secure=True)
             sub.setsockopt(zmq.SUBSCRIBE, b'')
-            sub.bind(port=port, ip=self.ip)  # TODO secure him
+            sub.bind(port=port, ip=self.ip)
             self.log.info("SBB BINDing to port {} with no filter".format(port))
 
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
-    async def handle_ipc_msg(self, frames):
+    def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
         assert len(frames) == 2, "Expected 3 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
@@ -129,7 +130,7 @@ class SubBlockBuilder(Worker):
         # tie with messages below
 
         if isinstance(msg, MakeNextBlock):
-            await self._make_next_sub_block()
+            self._make_next_sub_block()
         else:
             raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                             .format(type(msg)))
@@ -163,11 +164,10 @@ class SubBlockBuilder(Worker):
             self.sb_managers[index].processed_txs_timestamp = timestamp
         self.sb_managers[index].pending_txs.append(msg_hash, envelope.message)
 
-    async def _make_next_sb(self, sb_idx: int):
+    def _make_next_sb(self, sb_idx: int):
         self.log.debug("SBB {} attempting to build sub block with sub block manager index {}".format(self.sbb_index, sb_idx))
         # get next batch of txns ??  still need to decide whether to unpack a bag or check for end of txn batch
         assert len(self.sb_managers[sb_idx].pending_txs) > 0, "called this with empty queue"
-
  
         # Increment timestamp first before popping the item from queue
         self.sb_managers[sb_idx].processed_txs_timestamp = BATCH_INTERVAL + \
@@ -176,7 +176,7 @@ class SubBlockBuilder(Worker):
 
         sbb_idx = self.sb_managers[sb_idx].sub_block_index
         batch = TransactionBatch.from_data(msg_bag)
-        input_hash = Hasher.hash(bag_key)
+        input_hash = bag_key
         sbc = self._create_empty_sbc(input_hash, sb_idx) if batch.is_empty else \
             self._create_sbc_from_batch(input_hash, sb_idx, batch)
         self._send_msg_over_ipc(sbc)
@@ -223,7 +223,7 @@ class SubBlockBuilder(Worker):
         message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
         self.dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
-    async def _make_next_sub_block(self):
+    def _make_next_sub_block(self):
         # TODO this needs to be revisited as we may have uneven sb per block
         sb_index_start = self.cur_block_index * self.num_sb_per_block
         pending_sb = []
@@ -232,17 +232,9 @@ class SubBlockBuilder(Worker):
             # TODO needs a check here for overflowing (in case uneven sbs)
 
             if len(self.sb_managers[sb_idx].pending_txs) > 0:
-                await self._make_next_sb(sb_idx)
+                self._make_next_sb(sb_idx)
             else:
                 pending_sb.append(sb_idx)
-
-        for sb_idx in pending_sb:
-            # TODO we need to come back to it, with sleep until we have something in the queue
-            # 
-            while len(self.sb_managers[sb_idx].pending_txs) == 0:
-                await asyncio.sleep(1)
-                # and may need to tie with moving on when master sent a new block transaction ??
-            await self._make_next_sb(sb_idx)
 
         self.cur_block_index = (self.cur_block_index + 1) % self.num_blocks
 

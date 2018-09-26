@@ -12,9 +12,10 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block import SubBlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.block_contender import BlockContender
-from cilantro.messages.block_data.block_metadata import BlockMetaData
 from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.block_data.block_metadata import BlockMetaData
+from cilantro.messages.block_data.block_metadata import FullBlockData
+from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
 
@@ -43,19 +44,19 @@ class BlockAggregator(Worker):
     def build_task_list(self):
         self.sub = self.manager.create_socket(
             socket_type=zmq.SUB,
-            name="BA-Sub-{}".format(self.verifying_key),
+            name="BA-Sub-{}".format(self.verifying_key[-8:]),
             secure=True,
             domain="sb-contender"
         )
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
-            name="BA-Pub-{}".format(self.verifying_key),
+            name="BA-Pub-{}".format(self.verifying_key[-8:]),
             secure=True,
             domain="sb-contender"
         )
         self.router = self.manager.create_socket(
             socket_type=zmq.ROUTER,
-            name="BA-Router-{}".format(self.verifying_key),
+            name="BA-Router-{}".format(self.verifying_key[-8:]),
             secure=True,
             domain="sb-contender"
         )
@@ -74,7 +75,7 @@ class BlockAggregator(Worker):
         for vk in VKBook.get_masternodes():
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
-
+                self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])

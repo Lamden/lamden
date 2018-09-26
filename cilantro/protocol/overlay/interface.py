@@ -153,7 +153,7 @@ class OverlayClient(object):
         await asyncio.wait_for(wait_until_ready(), CLIENT_SETUP_TIMEOUT)
 
     @command
-    def get_node_from_vk(self, *args, **kwargs): passkk
+    def get_node_from_vk(self, *args, **kwargs): pass
 
     @command
     def get_service_status(self, *args, **kwargs): pass

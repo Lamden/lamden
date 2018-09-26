@@ -15,6 +15,7 @@ NUM_WORKERS = 2  # Number of Sanic worker procs
 
 # Transaction Batcher
 BATCH_INTERVAL = 1
+MAX_SKIP_TURNS = 4
 
 # Storage
 REP_FACTOR = 3

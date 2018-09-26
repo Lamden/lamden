@@ -135,6 +135,13 @@ class Envelope(MessageBase):
     def message_hash(self) -> str:
         return Hasher.hash(self.message)
 
+    @property
+    def sender(self) -> str:
+        """
+        Returns the verifying key of the sender of this envelope
+        """
+        return self.seal.verifying_key
+
     def __repr__(self):
         """
         Printing the full capnp struct (which is the default MessageBase __repr__ behvaior) is way to verbose for

@@ -6,7 +6,9 @@ from unittest.mock import MagicMock
 from cilantro.protocol.transport.composer import Composer
 from cilantro.protocol.executors.manager import ExecutorManager
 from cilantro.protocol.states.statemachine import StateMachine
-from cilantro.nodes import Masternode, Witness, Delegate, NodeFactory
+from cilantro.nodes.masternode.masternode import Masternode
+from cilantro.nodes.delegate.delegate import Delegate
+from cilantro.nodes.witness.witness import Witness
 from cilantro.protocol.overlay.interface import OverlayServer
 from cilantro.utils.lprocess import LProcess
 from cilantro.storage.db import DB

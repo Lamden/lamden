@@ -1,0 +1,12 @@
+{
+    "services": [
+        {
+            "name": "node",
+            "image": "lamden/cilantro",
+            "count": 8,
+            "ports": [
+                10200, 8080, 4319
+            ]
+        }
+    ]
+}
