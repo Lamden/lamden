@@ -20,10 +20,10 @@ class BlockMetaSQL:
     def unpack(cls, sql_obj):
         fbmd = FullBlockMetaData.create(
             block_num=sql_obj[0],
-            block_hash=sql_obj[1].decode(),
-            merkle_roots=textwrap.wrap(sql_obj[2].decode(), 64),
-            prev_block_hash=sql_obj[3].decode(),
-            masternode_signature=MerkleSignature.from_bytes(sql_obj[4]),
+            block_hash=sql_obj[1],
+            merkle_roots=textwrap.wrap(sql_obj[2], 64),
+            prev_block_hash=sql_obj[3],
+            masternode_signature=MerkleSignature.from_bytes(sql_obj[4].encode()),
             timestamp=sql_obj[5].timestamp()
         )
         return fbmd
