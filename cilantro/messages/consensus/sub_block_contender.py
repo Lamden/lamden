@@ -69,7 +69,6 @@ class SubBlockContender(MessageBase):
 
         return cls.from_data(struct)
 
-
     @classmethod
     def _chunks(cls, l, n=64):
         for i in range(0, len(l), n):

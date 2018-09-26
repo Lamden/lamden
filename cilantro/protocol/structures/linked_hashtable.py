@@ -58,6 +58,18 @@ class LinkedHashTable:
         self._table.pop(item.key)
         return item.value
 
+    def pop_front(self):
+        if not self._first:
+            return None, None
+
+        item = self._first
+        if item.next:
+            item.next.previous = None
+        self._first = item.next
+
+        self._table.pop(item.key)
+        return item.key, item.value
+
     def pop(self):
         if not self._last:
             return None

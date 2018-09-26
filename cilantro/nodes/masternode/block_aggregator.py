@@ -14,6 +14,7 @@ from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.block_metadata import BlockMetaData
 from cilantro.storage.blocks import BlockStorageDriver
+from cilantro.messages.block_data.block_metadata import BlockMetaData
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
 
@@ -156,20 +157,20 @@ class BlockAggregator(Worker):
                             self.total_valid_sub_blocks += 1
                             if self.total_valid_sub_blocks >= SUBBLOCKS_REQUIRED:
                                 self.contenders[input_hash]['consensus_reached'] = True
-                                block, fbmd, sbmd = self.store_full_block(self.contenders.keys())
-                                self.pub.send_msg(msg=fbmd, header=DEFAULT_FILTER.encode())
+                                block, bmd, sbmd = self.store_full_block(self.contenders.keys())
+                                self.pub.send_msg(msg=bmd, header=DEFAULT_FILTER.encode())
                         elif self.contenders[input_hash]['received_count'] == TOP_DELEGATES:
                             self.log.error('Received sub blocks from all delegates and still have missing transactions!')
                             raise Exception('Received sub blocks from all delegates and still have missing transactions!') # DEBUG
 
-    def recv_full_block_hash_metadata(self, fbmd: BlockMetaData):
-        fbmd.validate()
-        block_hash = fbmd.block_hash
+    def recv_full_block_hash_metadata(self, bmd: BlockMetaData):
+        bmd.validate()
+        block_hash = bmd.block_hash
         if not self.full_block_hashes.get(block_hash):
             self.log.info('Received NEW block hash "{}", did not yet receive valid sub blocks from delegates.'.format(block_hash))
             self.full_block_hashes[block_hash] = {
                 'consensus_count': 1,
-                'full_block_metadata': fbmd
+                'full_block_metadata': bmd
             }
         elif self.full_block_hashes[block_hash].get('consensus_reached') != True:
             self.total_valid_sub_blocks = 0
@@ -177,8 +178,8 @@ class BlockAggregator(Worker):
             self.full_block_hashes[block_hash]['consensus_count'] += 1
             if self.full_block_hashes[block_hash]['consensus_count'] >= MASTERNODE_REQUIRED_CONSENSUS:
                 self.full_block_hashes[block_hash]['consensus_reached'] = True
-                fbmd = self.full_block_hashes[block_hash].get('full_block_metadata')
-                if not len(fbmd.merkle_roots) == SUBBLOCKS_REQUIRED:
+                bmd = self.full_block_hashes[block_hash].get('full_block_metadata')
+                if not len(bmd.merkle_roots) == SUBBLOCKS_REQUIRED:
                     # TODO Request blocks from other masternodes
                     pass
         else:

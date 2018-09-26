@@ -27,7 +27,7 @@ def build_tables(ex, should_drop=True):
         ex.raw('CREATE DATABASE IF NOT EXISTS {};'.format(DB_NAME))
         ex.raw('USE {};'.format(DB_NAME))
 
-    log.debug("Creating DB tables")
+    log.info("Creating DB tables")
     contracts = build_contracts_table(ex, should_drop)
     blocks = build_blocks_table(ex, should_drop)
     transactions = build_transactions_table(ex, should_drop)

@@ -1,5 +1,11 @@
 from cilantro.messages.base.base_json import MessageBaseJson
+from cilantro.messages.base.base import MessageBase
+from cilantro.messages.block_data.block_metadata import BlockMetaData
+from cilantro.utils import lazy_property
 from typing import List
+
+import capnp
+import blockdata_capnp
 
 
 class StateUpdateRequest(MessageBaseJson):
@@ -46,50 +52,22 @@ class StateUpdateRequest(MessageBaseJson):
         return self._data.get(self.B_HASH)
 
 
-# TODO -- write unit tests for this guy
-class StateUpdateReply(MessageBaseJson):
-    """
-    A StateUpdateReply contains all the transactions in a particular block. This information is stored in the 'payload'
-    property, which represents the leaves of the block's merkle tree (stored as transaction binaries).
-    """
-
-    B_NUM = 'block_num'
-    B_HASH = 'block_hash'
-    B_PAYLOAD = 'block_payload'
+class StateUpdateReply(MessageBase):
 
     def validate(self):
         pass
 
     @classmethod
-    def create(cls, payload: list, block_num=None, block_hash=None):
-        assert block_hash or block_num, "StateUpdateReply must be created with a block hash or block number"
+    def _deserialize_data(cls, data: bytes):
+        return blockdata_capnp.StateUpdateReply.from_bytes_packed(data)
 
-        data = {cls.B_PAYLOAD: payload}
+    @classmethod
+    def create(cls, block_data: List[BlockMetaData]):
+        struct = blockdata_capnp.StateUpdateReply.new_message()
+        struct.blockData = [b._data for b in block_data]
 
-        if block_num:
-            data[cls.B_NUM] = block_num
-        if block_hash:
-            data[cls.B_HASH] = block_hash
+        return cls.from_data(struct)
 
-        return cls.from_data(data)
-
-    @property
-    def block_num(self) -> int:
-        """
-        The block number to request data for
-        """
-        return self._data.get(self.B_NUM)
-
-    @property
-    def block_hash(self) -> str:
-        """
-        The block hash to request data for
-        """
-        return self._data.get(self.B_HASH)
-
-    @property
-    def payload(self) -> List[bytes]:
-        """
-        The block transaction payload. This is a list of transactions, which represented the leaves of a merkle tree.
-        """
-        return self._data[self.B_PAYLOAD]
+    @lazy_property
+    def block_data(self) -> List[BlockMetaData]:
+        return [BlockMetaData.from_data(d) for d in self._data.blockData]

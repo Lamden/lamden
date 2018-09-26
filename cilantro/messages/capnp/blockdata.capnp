@@ -32,11 +32,6 @@ struct StateUpdateRequest {
     blockHash @0 :Data;
 }
 
-struct StateUpdateReply {
-    blocks @0 :List(Data);
-}
-
-
 struct OldBlockMetaData {
     # Hash of the block
     hash @0 :Data;
@@ -62,6 +57,9 @@ struct BlockMetaDataRequest {
     currentBlockHash @0 :Data;
 }
 
+struct StateUpdateReply {
+    blockData @0 :List(BlockMetaData);
+}
 
 struct TransactionRequest {
     transactions @0: List(Data);  # List of transaction hashes

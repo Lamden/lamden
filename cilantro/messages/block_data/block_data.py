@@ -75,11 +75,11 @@ PREV_BLOCK_HASH = Hasher.hash('0' * 64)
 class BlockDataBuilder:
     block_num = 0
     @classmethod
-    def create_block(cls, prev_block_hash=PREV_BLOCK_HASH, merkle_roots=None, transactions=None, tx_count=5, block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK):
+    def create_block(cls, prev_block_hash=PREV_BLOCK_HASH, merkle_roots=None, transactions=None, tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK):
         if not transactions:
             merkle_roots = []
             transactions = []
-            for i in range(block_count):
+            for i in range(sub_block_count):
                 transactions += [TransactionDataBuilder.create_random_tx(sk=del_sk) for i in range(tx_count)]
                 merkle_leaves = [Hasher.hash(tx) for tx in transactions]
                 merkle_roots.append(MerkleTree.from_hex_leaves(merkle_leaves).root_as_hex)

@@ -14,7 +14,7 @@ class Status(Enum):
 class TransactionData(MessageBase):
 
     def validate(self):
-        self.contract_tx # validates the ContractTransaction
+        self.contract_tx  # validates the ContractTransaction
 
     @classmethod
     def _deserialize_data(cls, data: bytes):

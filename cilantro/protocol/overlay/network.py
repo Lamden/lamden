@@ -9,14 +9,11 @@ import os
 import socket, select, ujson
 
 from cilantro.logger import get_logger
-from cilantro.protocol.structures import Bidict
 from cilantro.protocol.overlay.protocol import KademliaProtocol
 from cilantro.protocol.overlay.utils import digest
 from cilantro.protocol.overlay.node import Node
 from cilantro.protocol.overlay.crawling import NodeSpiderCrawl
 from cilantro.protocol.overlay.ironhouse import Ironhouse
-from cilantro.messages.reactor.reactor_command import ReactorCommand
-from cilantro.protocol.states.state import StateInput
 
 try: poll = select.epoll
 except: poll = select.poll
@@ -124,11 +121,6 @@ class Network(object):
 
     def connection_drop(self, node):
         if self.event_sock: self.event_sock.send_json({'event':'disconect', 'ip':node.ip, 'vk': self.ironhouse.pk2vk.get(node.public_key) })
-        callback = ReactorCommand.create_callback(
-            callback=StateInput.CONN_DROPPED,
-            ip=node.ip
-        )
-        log.debug("Sending callback failure to mainthread {}".format(callback))
 
     def connect_to_neighbor(self, node):
         if self.node.id == node.id: return
