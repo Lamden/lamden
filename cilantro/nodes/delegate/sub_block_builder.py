@@ -52,6 +52,7 @@ class SubBlockManager:
         self.sub_socket = sub_socket
         self.processed_txs_timestamp = processed_txs_timestamp
         self.pending_txs = LinkedHashTable()
+        self.num_pending_sb = 0
         self.merkle = None
 
 
@@ -66,7 +67,8 @@ class SubBlockBuilder(Worker):
         self.num_blocks = num_blocks
         num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
         self.num_sb_per_block = (num_sb_per_builder + num_blocks - 1) // num_blocks
-        self.cur_block_index = 0
+        self.cur_block_index = num_blocks - 1     # so it will start at block 0
+        self.pending_block_index = 0
 
         self.tasks = []
 
@@ -79,8 +81,8 @@ class SubBlockBuilder(Worker):
         self._create_sub_sockets(num_sb_per_builder=num_sb_per_builder,
                                  num_sb_builders=num_sb_builders)
 
-        self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {}"
-                        .format(sbb_index, total_sub_blocks, num_blocks, num_sb_per_builder, self.num_sb_per_block))
+        # self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {}"
+                     # .format(sbb_index, total_sub_blocks, num_blocks, num_sb_per_builder, self.num_sb_per_block))
         # Create a Seneca interpreter for this SBB
         self.interpreter = SenecaInterpreter()
 
@@ -144,42 +146,38 @@ class SubBlockBuilder(Worker):
         timestamp = round(float(envelope.meta.timestamp))
         assert isinstance(envelope.message, TransactionBatch), "Handler expected TransactionBatch but got {}".format(envelope.messages)
 
-        if timestamp < self.sb_managers[index].processed_txs_timestamp:
-            self.log.critical("Got timestamp {} that is prior to the most recent timestamp {} for sb_manager {} tho"
-                              .format(timestamp, self.sb_managers[index].processed_txs_timestamp, index))
+        if timestamp <= self.sb_managers[index].processed_txs_timestamp:
+            self.log.debug("Got timestamp {} that is prior to the most recent timestamp {} for sb_manager {} tho"
+                           .format(timestamp, self.sb_managers[index].processed_txs_timestamp, index))
             return
 
-        msg_hash = envelope.message_hash
+        input_hash = Hasher.hash(envelope)
         # if the sb_manager already has this bag, ignore it
-        if msg_hash in self.sb_managers[index].pending_txs:
-            self.log.debugv("Msg hash {} already found in sb_manager at index {}".format(msg_hash, index))
+        if input_hash in self.sb_managers[index].pending_txs:
+            self.log.debugv("Input hash {} already found in sb_manager at index {}".format(input_hash, index))
             return
 
         # TODO properly wrap below in try/except. Leaving it as an assertion just for dev
         assert envelope.verify_seal(), "Could not validate seal for envelope {}!!!".format(envelope)
         # TODO if verification fails, log and return here ?
 
-        # first item in the queue, initialize processed_txs_timestamp to envelope timestamp
-        if len(self.sb_managers[index].pending_txs) == 0:
-            self.sb_managers[index].processed_txs_timestamp = timestamp
-        self.sb_managers[index].pending_txs.append(msg_hash, envelope.message)
+        # keep updating timestamp as they are increasing from a master
+        self.sb_managers[index].processed_txs_timestamp = timestamp
+        if self.sb_managers[index].num_pending_sb > 0:
+            if ((self.sb_managers[index].num_pending_sb == 1) and
+                (self.pending_block_index == self.cur_block_index)):
+                sbb_idx = self.sb_managers[index].sub_block_index
+                self._make_next_sb(input_hash, envelope.message, sbb_idx)
+            self.sb_managers[index].num_pending_sb = self.sb_managers[index].num_pending_sb - 1
+        else:
+            self.sb_managers[index].pending_txs.append(input_hash, envelope.message)
 
-    def _make_next_sb(self, sb_idx: int):
-        self.log.debug("SBB {} attempting to build sub block with sub block manager index {}".format(self.sbb_index, sb_idx))
-        # get next batch of txns ??  still need to decide whether to unpack a bag or check for end of txn batch
-        assert len(self.sb_managers[sb_idx].pending_txs) > 0, "called this with empty queue"
-
+    def _make_next_sb(self, input_hash: str, txs_bag: MessageBase, sbb_idx: int):
+        self.log.debug("SBB {} attempting to build sub block with sub block index {}".format(self.sbb_index, sbb_idx))
  
-        # Increment timestamp first before popping the item from queue
-        self.sb_managers[sb_idx].processed_txs_timestamp = BATCH_INTERVAL + \
-                             self.sb_managers[sb_idx].processed_txs_timestamp
-        bag_key, msg_bag = self.sb_managers[sb_idx].pending_txs.pop_front()
-
-        sbb_idx = self.sb_managers[sb_idx].sub_block_index
-        batch = TransactionBatch.from_data(msg_bag)
-        input_hash = Hasher.hash(bag_key)
-        sbc = self._create_empty_sbc(input_hash, sb_idx) if batch.is_empty else \
-            self._create_sbc_from_batch(input_hash, sb_idx, batch)
+        batch = TransactionBatch.from_data(txs_bag)
+        sbc = self._create_empty_sbc(input_hash, sbb_idx) if batch.is_empty \
+                  else self._create_sbc_from_batch(input_hash, sbb_idx, batch)
         self._send_msg_over_ipc(sbc)
 
     def _create_empty_sbc(self, input_hash: str, sbb_idx: int) -> SubBlockContender:
@@ -231,25 +229,19 @@ class SubBlockBuilder(Worker):
         self.dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
     def _make_next_sub_block(self):
-        # TODO this needs to be revisited as we may have uneven sb per block
+        self.cur_block_index = (self.cur_block_index + 1) % self.num_blocks
         sb_index_start = self.cur_block_index * self.num_sb_per_block
-        pending_sb = []
         for i in range(self.num_sb_per_block):
             sb_idx = sb_index_start + i
-            # TODO needs a check here for overflowing (in case uneven sbs)
+            if sb_idx >= len(self.sb_managers):    # out of range already
+                return
 
             if len(self.sb_managers[sb_idx].pending_txs) > 0:
-                self._make_next_sb(sb_idx)
+                input_hash, txs_bag = self.sb_managers[sb_idx].pending_txs.pop_front()
+                sbb_idx = self.sb_managers[sb_idx].sub_block_index
+                self._make_next_sb(input_hash, txs_bag, sbb_idx)
             else:
-                pending_sb.append(sb_idx)
+                self.sb_managers[sb_idx].num_pending_sb = self.sb_managers[sb_idx].num_pending_sb + 1
+                self.pending_block_index = self.cur_block_index
 
-        for sb_idx in pending_sb:
-            # TODO we need to come back to it, with sleep until we have something in the queue
-            # 
-            while len(self.sb_managers[sb_idx].pending_txs) == 0:
-                time.sleep(1)
-                # and may need to tie with moving on when master sent a new block transaction ??
-            self._make_next_sb(sb_idx)
-
-        self.cur_block_index = (self.cur_block_index + 1) % self.num_blocks
 

@@ -4,6 +4,8 @@ from cilantro.nodes.delegate.block_manager import IPC_IP, IPC_PORT
 from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder, SubBlockManager
 from cilantro.utils import int_to_bytes
 from cilantro.messages.transaction.batch import TransactionBatch
+from cilantro.messages.base.base import MessageBase
+from cilantro.messages.consensus.empty_sub_block_contender import EmptySubBlockContender
 
 from unittest import TestCase
 from unittest import mock
@@ -62,7 +64,8 @@ class TestSubBlockBuilder(TestCase):
         sbb._send_msg_over_ipc.assert_called()
 
 	# see what it was called with
-        # call_args = sbb._create_empty_sbc.call_args_list
+        msg = sbb._send_msg_over_ipc.call_args[0][0]
+        assert isinstance(msg, EmptySubBlockContender), "Must pass in an EmptySubBlockContender instance"
         # print("sbb._create_empty_sbc called with: {}".format(call_args))
 
 

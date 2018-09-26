@@ -15,16 +15,10 @@ class EmptySubBlockContender(MessageBase):
 
     def validate(self):
         # Validate field types and existence
-        assert self._data.input_hash, "input hash field missing from data {}".format(self._data)
-        # leaves can be empty list from some delegates that only intend to vote (not propose it)
+        assert self._data.inputHash, "input hash field missing from data {}".format(self._data)
         assert self._data.signature, "Signature field missing from data {}".format(self._data)
-
-        assert is_valid_hex(self.input_hash, length=64), "Invalid input sub-block hash {} .. " \
-                                                         "expected 64 char hex string".format(self.input_hash)
         assert hasattr(self._data, 'subBlockIdx'), "Sub-block index field missing from data {}".format(self._data)
 
-        # Attempt to deserialize signatures by reading property (will raise exception if can't)
-        # self.signature.verify(self.input_hash)   # do we need this ??
 
     @classmethod
     def create(cls, input_hash: str, sb_index: int, signature: MerkleSignature):
@@ -39,7 +33,7 @@ class EmptySubBlockContender(MessageBase):
         struct = subblock_capnp.EmptySubBlockContender.new_message()
         struct.inputHash = input_hash
         struct.signature = signature.serialize()
-        struct.subBlockIdx = sub_block_index
+        struct.subBlockIdx = sb_index
 
         return cls.from_data(struct)
 
@@ -53,9 +47,9 @@ class EmptySubBlockContender(MessageBase):
     def _deserialize_data(cls, data: bytes):
         return subblock_capnp.SubBlockContender.from_bytes_packed(data)
 
-    @property
+    @lazy_property
     def input_hash(self) -> str:
-        return self._data.input_hash.decode()
+        return self._data.inputHash.decode()
 
     @lazy_property
     def signature(self) -> MerkleSignature:
