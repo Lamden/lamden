@@ -28,14 +28,8 @@ class TestLargeNetwork(MPTestCase):
         each other.
         """
         def assert_sub(test_obj):
-            from cilantro.logger.base import get_logger
-            log = get_logger("Asserter")
-            call_args_list = test_obj.handle_sub.call_args_list
-            log.important("call args list: {}".format(call_args_list))
-
-            raise Exception("get rekt")
-            # expected_frames = [b'', msg]  # Filter is b''
-            # test_obj.handle_sub.assert_called_with(expected_frames)
+            c_args = test_obj.handle_sub.call_args_list
+            assert len(c_args) == 7, "Expected 7 messages (one from each node). Instead, got {}".format(c_args)
 
         mn_0 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='MN_0', config_fn=config_sub, assert_fn=assert_sub)
         mn_1 = MPPubSubAuth(sk=TESTNET_MASTERNODES[1]['sk'], name='MN_1', config_fn=config_sub, assert_fn=assert_sub)
@@ -47,6 +41,8 @@ class TestLargeNetwork(MPTestCase):
         del_1 = MPPubSubAuth(sk=TESTNET_DELEGATES[1]['sk'], name='DELEGATE_1', config_fn=config_sub, assert_fn=assert_sub)
         del_2 = MPPubSubAuth(sk=TESTNET_DELEGATES[2]['sk'], name='DELEGATE_2', config_fn=config_sub, assert_fn=assert_sub)
         del_3 = MPPubSubAuth(sk=TESTNET_DELEGATES[3]['sk'], name='DELEGATE_3', config_fn=config_sub, assert_fn=assert_sub)
+
+        time.sleep(10)  # Nap while nodes hookup
 
         all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0, del_1, del_2, del_3)
         all_vks = (TESTNET_MASTERNODES[0]['vk'], TESTNET_MASTERNODES[1]['vk'], TESTNET_WITNESSES[0]['vk'],
@@ -60,8 +56,9 @@ class TestLargeNetwork(MPTestCase):
         # Each node SUBs to everyone else (except themselves)
         for i, n in enumerate(all_nodes):
             n.add_sub_socket(secure=True)
-            for j, vk in enumerate(VKBook.get_all()):
-                if j == i: continue
+            node_vk = all_vks[i]
+            for vk in VKBook.get_all():
+                if vk == node_vk: continue
                 n.connect_sub(vk=vk)
 
         time.sleep(8)  # Allow time for VK lookups
