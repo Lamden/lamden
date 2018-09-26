@@ -5,9 +5,7 @@ aioprocessing==1.0.1
 coloredlogs
 Cython
 idna==2.6
-setuptools
-wheel
-mysql-connector-python-rf
+mysql-connector-python
 ntplib==0.3.3
 pycapnp==0.6.3
 #PyNaCl==1.2.1
