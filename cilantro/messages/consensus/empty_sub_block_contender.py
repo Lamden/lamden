@@ -26,7 +26,7 @@ class EmptySubBlockContender(MessageBase):
         # self.signature.verify(self.input_hash)   # do we need this ??
 
     @classmethod
-    def create(cls, input_hash: str, sb_idx: int, signature: MerkleSignature):
+    def create(cls, input_hash: str, sb_index: int, signature: MerkleSignature):
         """
         :param input_hash: The hash of input bag containing raw txns in order
         :param sb_idx: Index of this sub-block 
@@ -36,8 +36,8 @@ class EmptySubBlockContender(MessageBase):
         assert isinstance(signature, MerkleSignature), "signature must be of MerkleSignature"
 
         struct = subblock_capnp.EmptySubBlockContender.new_message()
-        struct.input_hash = input_hash
-        struct.sb_index = sb_idx
+        struct.inputHash = input_hash
+        struct.sbIndex = sb_index
         struct.signature = signature.serialize()
 
         return cls.from_data(struct)

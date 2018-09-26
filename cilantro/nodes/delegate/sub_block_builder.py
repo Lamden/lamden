@@ -100,6 +100,7 @@ class SubBlockBuilder(Worker):
 
     def _create_sub_sockets(self, num_sb_per_builder, num_sb_builders):
         # We then BIND a sub socket to a port for each of these masternode indices
+        self.log.important("CREATING SUB SOCKETS")  # TODO remove
         for idx in range(num_sb_per_builder):
             sb_idx = idx * num_sb_builders + self.sbb_index  # actual SB index in global index space
             if sb_idx >= self.total_sub_blocks:    # out of range already
@@ -114,7 +115,7 @@ class SubBlockBuilder(Worker):
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
-    async def handle_ipc_msg(self, frames):
+    def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
         assert len(frames) == 2, "Expected 3 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
@@ -129,7 +130,7 @@ class SubBlockBuilder(Worker):
         # tie with messages below
 
         if isinstance(msg, MakeNextBlock):
-            await self._make_next_sub_block()
+            self._make_next_sub_block()
         else:
             raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                             .format(type(msg)))
@@ -140,7 +141,7 @@ class SubBlockBuilder(Worker):
             index, self.sb_managers)
 
         envelope = Envelope.from_bytes(frames[-1])
-        timestamp = envelope.meta.timestamp
+        timestamp = round(float(envelope.meta.timestamp))
         assert isinstance(envelope.message, TransactionBatch), "Handler expected TransactionBatch but got {}".format(envelope.messages)
 
         if timestamp < self.sb_managers[index].processed_txs_timestamp:
@@ -163,7 +164,7 @@ class SubBlockBuilder(Worker):
             self.sb_managers[index].processed_txs_timestamp = timestamp
         self.sb_managers[index].pending_txs.append(msg_hash, envelope.message)
 
-    async def _make_next_sb(self, sb_idx: int):
+    def _make_next_sb(self, sb_idx: int):
         self.log.debug("SBB {} attempting to build sub block with sub block manager index {}".format(self.sbb_index, sb_idx))
         # get next batch of txns ??  still need to decide whether to unpack a bag or check for end of txn batch
         assert len(self.sb_managers[sb_idx].pending_txs) > 0, "called this with empty queue"
@@ -181,12 +182,16 @@ class SubBlockBuilder(Worker):
             self._create_sbc_from_batch(input_hash, sb_idx, batch)
         self._send_msg_over_ipc(sbc)
 
-    def _create_empty_sbc(self, input_hash: str, sbb_idx: int, signature: MerkleSignature) -> SubBlockContender:
+    def _create_empty_sbc(self, input_hash: str, sbb_idx: int) -> SubBlockContender:
         """
         Creates an Empty Sub Block Contender from a TransactionBatch
         """
+        signature = wallet.sign(self.signing_key, input_hash.encode())
+        merkle_sig = MerkleSignature.create(sig_hex=signature,
+                                            timestamp=str(int(time.time())),
+                                            sender=self.verifying_key)
         sbc = EmptySubBlockContender.create(input_hash=input_hash,
-                                            sb_idx=sbb_idx, signature=signature)
+                                            sb_index=sbb_idx, signature=merkle_sig)
         return sbc
 
     def _create_sbc_from_batch(self, input_hash: str, sbb_idx: int,
@@ -219,11 +224,13 @@ class SubBlockBuilder(Worker):
         Convenience method to send a MessageBase instance over IPC dealer socket. Includes a frame to identify the
         type of message
         """
+        self.log.important("Message is an instance of {}".format(type(message)))
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
+        # assert issubclass(MessageBase, message), "Must pass in a MessageBase instance"
         message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
         self.dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
-    async def _make_next_sub_block(self):
+    def _make_next_sub_block(self):
         # TODO this needs to be revisited as we may have uneven sb per block
         sb_index_start = self.cur_block_index * self.num_sb_per_block
         pending_sb = []
@@ -232,7 +239,7 @@ class SubBlockBuilder(Worker):
             # TODO needs a check here for overflowing (in case uneven sbs)
 
             if len(self.sb_managers[sb_idx].pending_txs) > 0:
-                await self._make_next_sb(sb_idx)
+                self._make_next_sb(sb_idx)
             else:
                 pending_sb.append(sb_idx)
 
@@ -240,9 +247,9 @@ class SubBlockBuilder(Worker):
             # TODO we need to come back to it, with sleep until we have something in the queue
             # 
             while len(self.sb_managers[sb_idx].pending_txs) == 0:
-                await asyncio.sleep(1)
+                time.sleep(1)
                 # and may need to tie with moving on when master sent a new block transaction ??
-            await self._make_next_sb(sb_idx)
+            self._make_next_sb(sb_idx)
 
         self.cur_block_index = (self.cur_block_index + 1) % self.num_blocks
 

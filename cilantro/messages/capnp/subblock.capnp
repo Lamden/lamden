@@ -15,6 +15,12 @@ struct SubBlockContender {
     transactions @4: List(Data);
 }
 
+struct EmptySubBlockContender {
+    inputHash @0 :Data;
+    sbIndex @1 :Data;
+    signature @2 :Data;
+}
+
 struct SubBlockHashes {
     subBlockHashes @0: List(Data);
 }
