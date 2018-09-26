@@ -46,6 +46,7 @@ class BlockTransactionsSQL:
 class SubBlockMetaSQL:
     @classmethod
     def pack(cls, subblock):
+        print()
         pass
 
 class StorageDriver(object):
@@ -72,7 +73,10 @@ class StorageDriver(object):
     @classmethod
     def store_sub_blocks(cls, sbc: SubBlockContender):
         with SQLDB() as (connection, cursor):
-            pass
+            cursor.execute("""
+                INSERT INTO subblock (merkle_root, signatures, merkle_leaves, sb_index)
+                    VALUES (%s,%s,%s,%s)
+            """, SubBlockMetaSQL.pack(sbc))
 
     @classmethod
     def get_block_meta(cls, block_hash):

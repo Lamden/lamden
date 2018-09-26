@@ -19,6 +19,8 @@ class SQLDB():
         if reset:
             self.drop_db(database)
             self.setup_db(database)
+        elif not cls.connection.open:
+            cls.force_start()
         return self.connection, self.cursor
     def __exit__(self, type, value, traceback):
         self.connection.commit()

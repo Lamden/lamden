@@ -5,6 +5,7 @@ from cilantro.protocol.structures import MerkleTree
 from cilantro.messages.transaction.data import TransactionData
 from cilantro.storage.db import VKBook
 from cilantro.utils.hasher import Hasher
+from cilantro.constants.testnet import TESTNET_DELEGATES
 
 import pickle
 from typing import List
@@ -114,3 +115,13 @@ class SubBlockContender(MessageBase):
         assert isinstance(other, SubBlockContender), "Attempted to compare a BlockContender with a non-BlockContender"
         return self.input_hash == other.input_hash and \
             self.result_hash == other.result_hash
+
+class SubBlockContenderBuilder():
+    def create_subblock(cls, transactions=None, tx_count=5, txs_for_input_hash=[i for in range(5)], sb_index=0):
+        if not transactions:
+            transactions = [TransactionDataBuilder.create_random_tx(sk=del_sk) for i in range(tx_count)]
+            merkle_leaves = [Hasher.hash(tx) for tx in transactions]
+            merkle_root = MerkleTree.from_hex_leaves(merkle_leaves).root_as_hex
+        input_hash = Hasher.hash_iterable([transactions[i] for i in txs_for_input_hash])
+        print(sbc)
+        return sbc
