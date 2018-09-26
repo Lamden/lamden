@@ -5,6 +5,8 @@ aioprocessing==1.0.1
 coloredlogs
 Cython
 idna==2.6
+setuptools
+wheel
 mysql-connector-python-rf
 ntplib==0.3.3
 pycapnp==0.6.3
@@ -19,7 +21,6 @@ SQLAlchemy==1.2.6
 urllib3==1.22
 uvloop==0.9.1
 yarl==1.1.0
-wheel
 vprof
 docker
 dill
