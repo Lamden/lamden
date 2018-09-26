@@ -64,5 +64,3 @@ class MNRunState(MNBaseState):
         self.log.notice("Masternode Starting BlockAggregator Process")
         self.block_agg_proc = LProcess(target=BlockAggregator, kwargs={'ip': self.parent.ip, 'signing_key':self.parent.signing_key})
         self.block_agg_proc.start()
-
-
