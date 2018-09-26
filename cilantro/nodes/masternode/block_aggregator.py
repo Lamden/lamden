@@ -51,35 +51,29 @@ class BlockAggregator(Worker):
             secure=True,
             domain="sb-contender"
         )
-        self.server_router = self.manager.create_socket(
+        self.router = self.manager.create_socket(
             socket_type=zmq.ROUTER,
-            name="BA-ServerRouter-{}".format(self.verifying_key[-8:]),
-            secure=True,
-            domain="sb-contender"
-        )
-        self.client_router = self.manager.create_socket(
-            socket_type=zmq.ROUTER,
-            name="BA-ClientRouter-{}".format(self.verifying_key[-8:]),
+            name="BA-Router-{}".format(self.verifying_key[-8:]),
             secure=True,
             domain="sb-contender"
         )
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
-        self.tasks.append(self.server_router.add_handler(self.handle_router_msg))
+        self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
-        self.server_router.bind(ip=self.ip, port=MASTER_ROUTER_PORT)
+        self.router.bind(ip=self.ip, port=MASTER_ROUTER_PORT)
         self.pub.bind(ip=self.ip, port=MASTER_PUB_PORT)
 
         # Listen to delegates for sub block contenders
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_delegates():
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
-            self.client_router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
+            self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
 
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             if vk != self.verifying_key:  # Do not SUB to itself
                 self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
-                self.client_router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+                self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
