@@ -1,4 +1,4 @@
-from cilantro.messages.block_data.block_metadata import BlockMetaDataRequest, BlockMetaDataReply, BlockMetaData
+from cilantro.messages.block_data.block_metadata import BlockMetaDataRequest, BlockMetaDataReply, OldBlockMetaData
 from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.utils.test.block_metas import build_valid_block_data
 from unittest import TestCase
@@ -31,7 +31,7 @@ class TestBlockMetaDataReply(TestCase):
         for i in range(5):
             block_data = build_valid_block_data()
             hash = BlockStorageDriver.compute_block_hash(block_data)
-            bmd = BlockMetaData.create(
+            bmd = OldBlockMetaData.create(
                 hash=hash,
                 merkle_root=block_data['merkle_root'],
                 merkle_leaves=block_data['merkle_leaves'],
@@ -46,7 +46,7 @@ class TestBlockMetaDataReply(TestCase):
     def _bad_block(self):
         block_data = build_valid_block_data()
         hash = BlockStorageDriver.compute_block_hash(block_data)
-        bmd = BlockMetaData.create(
+        bmd = OldBlockMetaData.create(
             hash=hash,
             merkle_root=block_data['merkle_root'],
             merkle_leaves=block_data['merkle_leaves'],
@@ -61,7 +61,7 @@ class TestBlockMetaDataReply(TestCase):
     def test_create_fails_with_invalid_blockmetas(self):
         """
         Tests that an assertion is raised if BlockMetaDataReply.create(...) is called with a list that contains a
-        non BlockMetaData instance
+        non OldBlockMetaData instance
         """
         with self.assertRaises(Exception) as e:
             reply = BlockMetaDataReply.create(block_metas=[b'ack'])
@@ -111,7 +111,7 @@ class TestBlockMetaData(TestCase):
 
     @_wrap_create()
     def test_create(self, block_data, hash):
-        bmd = BlockMetaData.create(
+        bmd = OldBlockMetaData.create(
             hash=hash,
             merkle_root=block_data['merkle_root'],
             merkle_leaves=block_data['merkle_leaves'],
@@ -132,7 +132,7 @@ class TestBlockMetaData(TestCase):
     @_wrap_create()
     @_wrap_assert_fail()
     def test_validate_hash_fail(self, block_data, hash):
-        return BlockMetaData.create(
+        return OldBlockMetaData.create(
             hash=b'16246',
             merkle_root=block_data['merkle_root'],
             merkle_leaves=block_data['merkle_leaves'],
@@ -146,7 +146,7 @@ class TestBlockMetaData(TestCase):
     @_wrap_create()
     @_wrap_assert_fail()
     def test_validate_prevBlockHash_fail(self, block_data, hash):
-        return BlockMetaData.create(
+        return OldBlockMetaData.create(
             hash=hash,
             merkle_root=block_data['merkle_root'],
             merkle_leaves=block_data['merkle_leaves'],
@@ -160,7 +160,7 @@ class TestBlockMetaData(TestCase):
     @_wrap_create()
     @_wrap_assert_fail()
     def test_validate_merkleRoot_fail(self, block_data, hash):
-        return BlockMetaData.create(
+        return OldBlockMetaData.create(
             hash=hash,
             merkle_root=b'5642353',
             merkle_leaves=block_data['merkle_leaves'],
@@ -174,7 +174,7 @@ class TestBlockMetaData(TestCase):
     @_wrap_create()
     @_wrap_assert_fail()
     def test_validate_merkleLeaves_fail(self, block_data, hash):
-        return BlockMetaData.create(
+        return OldBlockMetaData.create(
             hash=hash,
             merkle_root=block_data['merkle_root'],
             merkle_leaves=b'22222',
@@ -188,7 +188,7 @@ class TestBlockMetaData(TestCase):
     @_wrap_create()
     @_wrap_assert_fail()
     def test_validate_masternodeSignature_fail(self, block_data, hash):
-        return BlockMetaData.create(
+        return OldBlockMetaData.create(
             hash=hash,
             merkle_root=block_data['merkle_root'],
             merkle_leaves=block_data['merkle_leaves'],
@@ -202,7 +202,7 @@ class TestBlockMetaData(TestCase):
     @_wrap_create()
     @_wrap_assert_fail()
     def test_validate_masternodeVk_fail(self, block_data, hash):
-        return BlockMetaData.create(
+        return OldBlockMetaData.create(
             hash=hash,
             merkle_root=block_data['merkle_root'],
             merkle_leaves=block_data['merkle_leaves'],
@@ -216,7 +216,7 @@ class TestBlockMetaData(TestCase):
     @_wrap_create()
     @_wrap_assert_fail()
     def test_validate_timestamp_fail(self, block_data, hash):
-        return BlockMetaData.create(
+        return OldBlockMetaData.create(
             hash=hash,
             merkle_root=block_data['merkle_root'],
             merkle_leaves=block_data['merkle_leaves'],
@@ -231,7 +231,7 @@ class TestBlockMetaData(TestCase):
     def test_validate_block_contender_fail(self, block_data, hash):
         new_block = build_valid_block_data()
         with self.assertRaises(Exception) as e:
-            bmd = BlockMetaData.create(
+            bmd = OldBlockMetaData.create(
                 hash=hash,
                 merkle_root=block_data['merkle_root'],
                 merkle_leaves=block_data['merkle_leaves'],
@@ -245,7 +245,7 @@ class TestBlockMetaData(TestCase):
     def test_serialize_deserialize(self):
         block_data = build_valid_block_data()
         hash = BlockStorageDriver.compute_block_hash(block_data)
-        req = BlockMetaData.create(
+        req = OldBlockMetaData.create(
             hash=hash,
             merkle_root=block_data['merkle_root'],
             merkle_leaves=block_data['merkle_leaves'],
@@ -255,7 +255,7 @@ class TestBlockMetaData(TestCase):
             masternode_vk=block_data['masternode_vk'],
             block_contender=block_data['block_contender']
         )
-        clone = BlockMetaData.from_bytes(req.serialize())
+        clone = OldBlockMetaData.from_bytes(req.serialize())
 
         self.assertEqual(clone, req)
 

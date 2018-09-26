@@ -21,6 +21,7 @@ class EmptySubBlockContender(MessageBase):
 
         assert is_valid_hex(self.input_hash, length=64), "Invalid input sub-block hash {} .. " \
                                                          "expected 64 char hex string".format(self.input_hash)
+        assert hasattr(self._data, 'subBlockIdx'), "Sub-block index field missing from data {}".format(self._data)
 
         # Attempt to deserialize signatures by reading property (will raise exception if can't)
         # self.signature.verify(self.input_hash)   # do we need this ??
@@ -37,8 +38,8 @@ class EmptySubBlockContender(MessageBase):
 
         struct = subblock_capnp.EmptySubBlockContender.new_message()
         struct.inputHash = input_hash
-        struct.sbIndex = sb_index
         struct.signature = signature.serialize()
+        struct.subBlockIdx = sub_block_index
 
         return cls.from_data(struct)
 
@@ -63,6 +64,10 @@ class EmptySubBlockContender(MessageBase):
         """
         # Deserialize signatures
         return MerkleSignature.from_bytes(self._data.signature)
+
+    @property
+    def sb_index(self) -> int:
+        return self._data.subBlockIdx
 
     def __eq__(self, other):
         assert isinstance(other, EmptySubBlockContender), "Attempted to compare a EmptySubBlockContender with a non-EmptySubBlockContender"

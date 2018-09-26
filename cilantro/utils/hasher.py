@@ -31,6 +31,7 @@ class Hasher:
         """
         # MessageBase imported here to fix cyclic imports...TODO -- fix dependencies
         from cilantro.messages.base.base import MessageBase
+        from cilantro.messages.transaction.data import TransactionData
         from cilantro.utils import int_to_bytes
 
         t = type(data)
@@ -114,4 +115,3 @@ class Hasher:
         hasher.update(data)
 
         return Hasher._read_hasher(hasher, return_bytes=return_bytes)
-

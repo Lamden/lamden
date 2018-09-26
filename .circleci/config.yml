@@ -101,7 +101,6 @@ jobs:
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
             python3.6 ~/cilantro/tests/run_tests.py --integration 0 --unit 1 --skip_modules tests.unit.protocol.overlay
-#            python3.6 -m unittest $(find tests/unit/ -name 'test_*.py' | circleci tests split --split-by=timings) -v
       - run:
           mkdir -p unit-test-results
       - store_test_results:
