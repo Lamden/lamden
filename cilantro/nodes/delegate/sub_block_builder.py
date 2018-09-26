@@ -106,9 +106,10 @@ class SubBlockBuilder(Worker):
                 return
 
             port = SBB_PORT_START + sb_idx
-            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx))
+            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
+                                             secure=True)
             sub.setsockopt(zmq.SUBSCRIBE, b'')
-            sub.bind(port=port, ip=self.ip)  # TODO secure him
+            sub.bind(port=port, ip=self.ip)
             self.log.info("SBB BINDing to port {} with no filter".format(port))
 
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))

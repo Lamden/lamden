@@ -107,13 +107,13 @@ class LSocket:
 
                 self.log.spam("Socket recv multipart msg:\n{}".format(msg))
 
-                if key:
+                if key is not None:
                     func(msg, key)
                 else:
                     func(msg)
 
         self.log.debug("Socket adding handler func named {} with handler key {}".format(handler_func.__name__, handler_key))
-        coro = _listen(self.socket, handler_func, key=handler_key)
+        coro = _listen(self.socket, handler_func, handler_key)
 
         if start_listening:
             return asyncio.ensure_future(coro)
