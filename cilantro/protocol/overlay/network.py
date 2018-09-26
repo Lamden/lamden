@@ -149,8 +149,7 @@ class Network(object):
         cache_node = self.lookup_ip_in_cache(node_id)
 
         if cache_node:
-            if not await self.authenticate(cache_node, domain):
-                return None, True
+            # NOTE already authenticated previously
             return cache_node, True
         if node_id == self.node.id: return self.node, False
 

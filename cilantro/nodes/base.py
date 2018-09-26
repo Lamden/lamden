@@ -11,7 +11,7 @@ import time
 from cilantro.protocol import wallet
 
 
-BOOT_DELAY = 32  # MANDATORY NAP TIME (How long each node sleeps after starting its overlay server)
+BOOT_DELAY = 5  # MANDATORY NAP TIME (How long each node sleeps after starting its overlay server)
 
 def take_a_nice_relaxing_nap(log):
     log.important("Taking a nice relaxing {} second nap while I wait for everybody to boot".format(BOOT_DELAY))
@@ -50,4 +50,3 @@ class NodeBase(StateMachine, Worker):
         self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
 
         super().start()  # Start the state machine
-
