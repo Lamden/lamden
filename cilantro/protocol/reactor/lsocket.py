@@ -81,8 +81,8 @@ class LSocket:
 
     def add_handler(self, handler_func, handler_key=None, msg_types: List[MessageBase] = None,
                     start_listening=False) -> asyncio.Future or asyncio.coroutine:
-        async def _listen(socket, handler_func, handler_key):
-            self.log.socket("Starting listener on socket {}".format(socket))
+        async def _listen(socket, func, key):
+            self.log.socket("Starting listener on socket {} with handler key {}".format(socket, key))
             duration_waited = 0
 
             while True:
@@ -107,12 +107,14 @@ class LSocket:
 
                 self.log.spam("Socket recv multipart msg:\n{}".format(msg))
 
-                if handler_key:
-                    handler_func(msg, handler_key)
+                if key:
+                    func(msg, key)
                 else:
-                    handler_func(msg)
+                    func(msg)
 
-        coro = _listen(self.socket, handler_func, handler_key=handler_key)
+        self.log.debug("Socket adding handler func named {} with handler key {}".format(handler_func.__name__, handler_key))
+        coro = _listen(self.socket, handler_func, key=handler_key)
+
         if start_listening:
             return asyncio.ensure_future(coro)
         else:

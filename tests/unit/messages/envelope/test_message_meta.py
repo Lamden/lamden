@@ -13,14 +13,14 @@ class TestMessageMeta(TestCase):
         Tests that create(...) returns a MessageMeta object with the expected properties
         """
         type = self._standard_type()
-        timestamp = 'now'
+        timestamp = '1337.126'
         sender = 'me'
         uuid = 1260
 
         mm = MessageMeta.create(type=type, timestamp=timestamp, uuid=uuid)
 
         self.assertEqual(mm.type, type)
-        self.assertEqual(mm.timestamp, timestamp)
+        self.assertEqual(mm.timestamp, float(timestamp))
         self.assertEqual(mm.uuid, uuid)
 
     def test_create_random_uuid(self):
@@ -28,7 +28,7 @@ class TestMessageMeta(TestCase):
         Test a random UUID is created if create does not have a uuid in kwargs
         """
         type = self._standard_type()
-        timestamp = 'now'
+        timestamp = '1337.1260'
 
         mm = MessageMeta.create(type=type, timestamp=timestamp)
 
@@ -39,7 +39,7 @@ class TestMessageMeta(TestCase):
         Tests __eq__
         """
         type = self._standard_type()
-        timestamp = 'now'
+        timestamp = '1337.126'
         uuid = 1260
 
         mm = MessageMeta.create(type=type, timestamp=timestamp, uuid=uuid)
@@ -52,7 +52,7 @@ class TestMessageMeta(TestCase):
         Tests that serialize/deserialize are inverse operations
         """
         type = self._standard_type()
-        timestamp = 'now'
+        timestamp = '1337.123'
         uuid = 1260
 
         mm = MessageMeta.create(type=type, timestamp=timestamp, uuid=uuid)

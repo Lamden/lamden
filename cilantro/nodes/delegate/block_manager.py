@@ -64,9 +64,8 @@ class BlockManager(Worker):
         self.my_sb_index = self._get_my_index() % self.num_sb_builders
 
         # raghu todo tie to initial catch up logic as well as right place to do this
-        # self.current_hash = BlockStorageDriver.get_latest_block_hash()
-        current_hash = 0  # Falcon needs to add db interface modifications
-        self.db_state = DBState(current_hash)
+        # Falcon needs to add db interface modifications
+        self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
         self.master_quorum = 1  # TODO
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
@@ -130,7 +129,7 @@ class BlockManager(Worker):
         # send msg to each of the connected masters. Do we need to maintain a list of connected vks ??
         # TODO send this over PUB to all masternodes instead of Router
         for vk in VKBook.get_masternodes():
-            self.router.send_multipart([vk.encode(), envelope])
+            self.router.send_msg(envelope, header=vk.encode())
         # no need to wait for the replys as we have added a handler
 
     def start_sbb_procs(self):
