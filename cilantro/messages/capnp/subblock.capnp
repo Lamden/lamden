@@ -14,6 +14,6 @@ struct SubBlockContender {
     inputHash @1 :Data;
     merkleLeaves @2: List(Data);
     signature @3 :Data;
-    transactions @4: List(T.TransactionData);
+    transactions @4: List(Data);
     subBlockIdx @5: UInt8;
 }

@@ -10,9 +10,8 @@ from cilantro.storage.db import DB
 from cilantro.storage.transactions import encode_tx, decode_tx
 from typing import List
 import time
+from cilantro.messages.block_data.block_metadata import OldBlockMetaData, NewBlockNotification
 
-from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
-# import cilantro.messages.block_data.block_metadata.BlockMetaData
 
 log = get_logger("BlocksStorage")
 
@@ -182,14 +181,14 @@ class BlockStorageDriver:
             return block_hash
 
     @classmethod
-    def store_block_from_meta(cls, block: BlockMetaData or NewBlockNotification) -> str:
+    def store_block_from_meta(cls, block: OldBlockMetaData or NewBlockNotification) -> str:
         """
-        Stores a block from a BlockMetaData object. This block must be the child of the current lastest block.
-        :param block: The BlockMetaData object containing all of the block's data (excluding the raw transactions)
+        Stores a block from a OldBlockMetaData object. This block must be the child of the current lastest block.
+        :param block: The OldBlockMetaData object containing all of the block's data (excluding the raw transactions)
         :return: The hash of the stored block (as a string)
         :raises: A BlockStorageException (or specific subclass) if any validation or storage fails
         """
-        assert issubclass(type(block), BlockMetaData), "Can only store BlockMetaData objects or subclasses"
+        assert issubclass(type(block), OldBlockMetaData), "Can only store OldBlockMetaData objects or subclasses"
 
         # Ensure this block's previous hash matches the latest block hash in the DB
         if block.prev_block_hash != cls.get_latest_block_hash():

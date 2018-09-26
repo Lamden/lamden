@@ -1,7 +1,8 @@
 from cilantro.messages.base.base import MessageBase
-from cilantro.messages.transaction.contract import ContractTransaction
+from cilantro.messages.transaction.contract import ContractTransaction, ContractTransactionBuilder
 from cilantro.utils.lazy_property import lazy_property
 from cilantro.utils.hasher import Hasher
+import uuid
 from enum import Enum, auto
 import capnp
 import transaction_capnp
@@ -13,7 +14,7 @@ class Status(Enum):
 class TransactionData(MessageBase):
 
     def validate(self):
-        self.contract_tx
+        self.contract_tx # validates the ContractTransaction
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
@@ -46,7 +47,17 @@ class TransactionData(MessageBase):
 
     @lazy_property
     def hash(self):
-        return Hasher.hash(self.contract_tx.__str__() + Status(self._data.status).name + self._data.state)
+        return Hasher.hash(self)
 
     def __hash__(self):
-        return int(self.hash, 16)
+        return int(self.hash,16)
+
+class TransactionDataBuilder:
+    @classmethod
+    def create_random_tx(cls, sk, status='SUCCESS', state='blah'):
+        return TransactionData.create(
+            contract_tx=ContractTransactionBuilder.create_contract_tx(
+                sender_sk=sk,
+                code_str=uuid.uuid4().hex
+            ), status=status, state=state
+        )

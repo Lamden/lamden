@@ -23,7 +23,7 @@ struct TransactionData {
 }
 
 struct Transactions {
-    transactions @0 :List(TransactionData);
+    transactions @0 :List(Data);
 }
 
 struct TransactionContainer {

@@ -3,7 +3,7 @@ from cilantro.nodes.delegate.catchup import DelegateCatchupState, DelegateInterp
 from cilantro.messages.block_data.transaction_data import TransactionRequest
 from cilantro.messages.transaction import build_test_transaction
 from cilantro.protocol.structures import MerkleTree
-from cilantro.messages.block_data.block_metadata import BlockMetaData, BlockMetaDataRequest, BlockMetaDataReply
+from cilantro.messages.block_data.block_metadata import OldBlockMetaData, BlockMetaDataRequest, BlockMetaDataReply
 from unittest import TestCase
 from unittest.mock import MagicMock
 
@@ -26,8 +26,8 @@ class TestCatchupState(TestCase):
         state = DelegateCatchupState(state_machine=mock_sm)
         state._update_next_block = MagicMock()
 
-        mock_block1 = MagicMock(spec=BlockMetaData)
-        mock_block2 = MagicMock(spec=BlockMetaData)
+        mock_block1 = MagicMock(spec=OldBlockMetaData)
+        mock_block2 = MagicMock(spec=OldBlockMetaData)
 
         mock_block_reply = MagicMock(spec=BlockMetaDataReply, block_metas=[mock_block1, mock_block2])
 

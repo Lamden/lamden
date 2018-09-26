@@ -20,7 +20,7 @@ from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 from cilantro.messages.block_data.block_metadata import BlockMetaDataRequest, BlockMetaDataReply
 from cilantro.messages.envelope.envelope import Envelope
-from cilantro.storage.blocks import BlockStorageDriver, BlockMetaData
+from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.messages.transaction.base import TransactionBase

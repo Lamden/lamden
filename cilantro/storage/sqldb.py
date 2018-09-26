@@ -1,22 +1,21 @@
-import mysql, mysql.connector, cilantro
-from ConfigParser import SafeConfigParser
+import mysql, mysql.connector, cilantro, os
+from configparser import SafeConfigParser
 
-path = cilantro.__path__._path[0]
+path = os.path.dirname(cilantro.__path__[0])
 config = SafeConfigParser()
 config.read('{}/db_conf.ini'.format(path))
 
 class SQLDB():
     connection = mysql.connector.connect(
-        host=config.get('hostname'),
-        user=config.get('username'),
-        passwd=config.get('password'),
-        unix_socket='/tmp/mysql.sock',
+        host=config.get('DB','hostname'),
+        user=config.get('DB','username'),
+        passwd=config.get('DB','password'),
         charset='utf8'
     )
     cursor = connection.cursor()
-    database = config.get('database')
+    database = config.get('DB','database')
     def __enter__(self, database=None, reset=False):
-        database = database or cls.database
+        database = database or self.database
         if reset:
             self.drop_db(database)
             self.setup_db(database)
@@ -24,6 +23,16 @@ class SQLDB():
     def __exit__(self, type, value, traceback):
         self.connection.commit()
         return False
+    @classmethod
+    def force_start(cls):
+        cls.connection = mysql.connector.connect(
+            host=config.get('DB','hostname'),
+            user=config.get('DB','username'),
+            passwd=config.get('DB','password'),
+            charset='utf8'
+        )
+        cls.cursor = cls.connection.cursor()
+        cls.setup_db()
     @classmethod
     def setup_db(cls, database=None):
         database = database or cls.database
@@ -40,6 +49,16 @@ class SQLDB():
             DROP DATABASE IF EXISTS {}
             """.format(database or cls.database))
     @classmethod
+    def reset_db(cls, database=None):
+        cls.drop_db(database)
+        cls.setup_db(database)
+    @classmethod
+    def truncate_tables(cls, *tables):
+        for table in tables:
+            cls.cursor.execute("""
+                TRUNCATE TABLE {}
+            """.format(table))
+    @classmethod
     def build_tables(cls):
         cls.cursor.execute("""
             CREATE TABLE IF NOT EXISTS subblock (
@@ -51,20 +70,22 @@ class SQLDB():
         """)
         cls.cursor.execute("""
             CREATE TABLE IF NOT EXISTS block (
-                block_hash VARCHAR(32) PRIMARY KEY,
-                merkle_roots BLOB NOT NULL,
-                prev_block_hash BLOB NOT NULL,
-                mn_signature VARCHAR(32) NOT NULL,
+                block_num INT PRIMARY KEY AUTO_INCREMENT,
+                block_hash VARCHAR(64) NOT NULL UNIQUE,
+                merkle_roots TEXT NOT NULL,
+                prev_block_hash VARCHAR(64) NOT NULL UNIQUE,
+                mn_signature BLOB NOT NULL,
                 ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
         """)
         cls.cursor.execute("""
             CREATE TABLE IF NOT EXISTS transaction (
-                tx_hash VARCHAR(32) PRIMARY KEY,
-                raw_tx_hash VARCHAR(32) NOT NULL,
+                tx_hash VARCHAR(64) PRIMARY KEY,
+                block_hash VARCHAR(64) NOT NULL,
+                raw_tx_hash VARCHAR(64) NOT NULL,
                 tx_blob BLOB NOT NULL,
                 status VARCHAR(16) NOT NULL,
-                state VARCHAR(16) NOT NULL,
+                state BLOB NOT NULL
             )
         """)
 

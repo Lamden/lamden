@@ -2,15 +2,17 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.constants.masternode import SUBBLOCKS_REQUIRED
 # from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.consensus.block_contender import BlockContender
+from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.utils import validate_hex
 from cilantro.utils import lazy_property
+from cilantro.storage.db import VKBook
 from typing import List
 from datetime import datetime
 import time
 import capnp
 import blockdata_capnp
 
-class FullBlockMetaData(MessageBase):
+class BlockMetaData(MessageBase):
     """
     This class is the metadata for combined validated sub blocks.
     """
@@ -19,8 +21,9 @@ class FullBlockMetaData(MessageBase):
         assert validate_hex(self._data.blockHash, 64), 'Invalid hash'
         assert validate_hex(self._data.prevBlockHash, 64), 'Invalid previous block hash'
         assert len(self._data.merkleRoots) == SUBBLOCKS_REQUIRED, 'Invalid merkle roots'
-        assert validate_hex(self._data.masternodeSignature, 128), 'Invalid masternode signature'
         assert type(self._data.timestamp) == int, 'Invalid timestamp'
+        assert self.masternode_signature.sender in VKBook.get_masternodes(), 'Not a valid masternode'
+        assert self.masternode_signature.verify(self.block_hash.encode()), 'Cannot verify signature'
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
@@ -28,18 +31,18 @@ class FullBlockMetaData(MessageBase):
 
     @classmethod
     def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str,
-                    masternode_signature: str, timestamp: int = 0):
+                    masternode_signature: MerkleSignature, timestamp: int = 0):
 
         if not timestamp:
             timestamp = int(time.time())
 
-        struct = blockdata_capnp.FullBlockMetaData.new_message()
+        struct = blockdata_capnp.BlockMetaData.new_message()
         struct.init('merkleRoots', len(merkle_roots))
         struct.blockHash = block_hash
         struct.merkleRoots = merkle_roots
         struct.prevBlockHash = prev_block_hash
         struct.timestamp = int(timestamp)
-        struct.masternodeSignature = masternode_signature
+        struct.masternodeSignature = masternode_signature.serialize()
         return cls.from_data(struct)
 
     @property
@@ -51,7 +54,11 @@ class FullBlockMetaData(MessageBase):
         return [root.decode() for root in self._data.merkleRoots]
 
     @property
-    def previous_block_hash(self) -> str:
+    def masternode_signature(self) -> MerkleSignature:
+        return MerkleSignature.from_bytes(self._data.masternodeSignature)
+
+    @property
+    def prev_block_hash(self) -> str:
         return self._data.prevBlockHash.decode()
 
     @property
@@ -62,7 +69,35 @@ class FullBlockMetaData(MessageBase):
         return self._data.blockHash == other._data.blockHash and \
             self.merkle_roots == other.merkle_roots
 
-class BlockMetaData(MessageBase):
+class FullBlockMetaData(BlockMetaData):
+    @classmethod
+    def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str,
+                    masternode_signature: MerkleSignature, timestamp: int = 0, block_num: int = 0):
+
+        if not timestamp:
+            timestamp = int(time.time())
+
+        struct = blockdata_capnp.FullBlockMetaData.new_message()
+        struct.init('merkleRoots', len(merkle_roots))
+        struct.blockHash = block_hash
+        struct.merkleRoots = merkle_roots
+        struct.prevBlockHash = prev_block_hash
+        struct.timestamp = int(timestamp)
+        struct.blockNum = block_num
+        struct.masternodeSignature = masternode_signature.serialize()
+        return cls.from_data(struct)
+
+    @classmethod
+    def _deserialize_data(cls, data: bytes):
+        return blockdata_capnp.FullBlockMetaData.from_bytes_packed(data)
+
+    @property
+    def block_num(self) -> int:
+        return self._data.blockNum
+
+
+
+class OldBlockMetaData(MessageBase):
     """
     This class acts a structure that holds all information necessary to validate and build a block. In particular, this
     means the information carried in this class provide everything an actor needs to insert a new entry into the
@@ -99,14 +134,14 @@ class BlockMetaData(MessageBase):
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return blockdata_capnp.BlockMetaData.from_bytes_packed(data)
+        return blockdata_capnp.OldBlockMetaData.from_bytes_packed(data)
 
     @classmethod
     def create(cls, hash: str, merkle_root: str, merkle_leaves: str, prev_block_hash: str, timestamp: int,
                masternode_signature: str, masternode_vk: str, block_contender: BlockContender):
 
         assert type(block_contender) == BlockContender, 'Not a block contender'
-        struct = blockdata_capnp.BlockMetaData.new_message()
+        struct = blockdata_capnp.OldBlockMetaData.new_message()
         struct.hash = hash
         struct.merkleRoot = merkle_root
         struct.merkleLeaves = merkle_leaves
@@ -156,7 +191,7 @@ class BlockMetaData(MessageBase):
 
     @lazy_property
     def merkle_leaves(self) -> List[str]:
-        return [leaf.decode() for leaf in BlockMetaData._chunks(self._data.merkleLeaves)]
+        return [leaf.decode() for leaf in OldBlockMetaData._chunks(self._data.merkleLeaves)]
 
     @property
     def prev_block_hash(self) -> str:
@@ -179,13 +214,13 @@ class BlockMetaData(MessageBase):
         return BlockContender.from_bytes(self._data.blockContender)
 
 
-class NewBlockNotification(BlockMetaData):
+class NewBlockNotification(OldBlockMetaData):
     pass
 
 
 class BlockMetaDataRequest(MessageBase):
     """
-    This class represents a request message, likely targeted at a Masternode, to retrieve a list of BlockMetadata
+    This class represents a request message, likely targeted at a Masternode, to retrieve a list of OldBlockMetaData
     instances. It specifies one field, the requester's current block hash, and expects a list of descendant blocks
     in the BlockMetadataReply.
     """
@@ -210,21 +245,21 @@ class BlockMetaDataRequest(MessageBase):
 
 class BlockMetaDataReply(MessageBase):
     """
-    The counterpart to BlockMetaDataRequest, this message contains a list of BlockMetaData that are descendants to the
+    The counterpart to BlockMetaDataRequest, this message contains a list of OldBlockMetaData that are descendants to the
     requested block hash.
     """
 
     def validate(self):
-        self.block_metas  # this will throw an error if any of the BlockMetaData's cannot be deserialized
+        self.block_metas  # this will throw an error if any of the OldBlockMetaData's cannot be deserialized
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
         return blockdata_capnp.BlockMetaDataReply.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, block_metas: List[BlockMetaData] or None):
+    def create(cls, block_metas: List[OldBlockMetaData] or None):
         """
-        Creates a BlockMetaDataReply instance from a list of BlockMetaData objects. If block_metas is empty/None,
+        Creates a BlockMetaDataReply instance from a list of OldBlockMetaData objects. If block_metas is empty/None,
         then this indicates that there are no additional blocks to request.
         # TODO docstring
         :param block_metas:
@@ -234,7 +269,7 @@ class BlockMetaDataReply(MessageBase):
 
         if block_metas:
             for b in block_metas:
-                assert isinstance(b, BlockMetaData), "create must be called with a list of BlockMetaData instances, but " \
+                assert isinstance(b, OldBlockMetaData), "create must be called with a list of OldBlockMetaData instances, but " \
                                                      "found an inconsistent element {} in block_metas arg".format(b)
 
             metas_list = struct.blocks.init('data', len(block_metas))
@@ -246,7 +281,7 @@ class BlockMetaDataReply(MessageBase):
         return cls.from_data(struct)
 
     @lazy_property
-    def block_metas(self) -> List[BlockMetaData] or None:
+    def block_metas(self) -> List[OldBlockMetaData] or None:
         """
         # TODO docstring
         :return:
@@ -254,4 +289,4 @@ class BlockMetaDataReply(MessageBase):
         if self._data.blocks.which() == 'isLatest':
             return None
         else:
-            return [BlockMetaData.from_data(block_meta) for block_meta in self._data.blocks.data]
+            return [OldBlockMetaData.from_data(block_meta) for block_meta in self._data.blocks.data]

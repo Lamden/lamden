@@ -12,7 +12,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block import SubBlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.block_contender import BlockContender
-from cilantro.messages.block_data.block_metadata import FullBlockMetaData
+from cilantro.messages.block_data.block_metadata import BlockMetaData
 from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
@@ -81,7 +81,7 @@ class BlockAggregator(Worker):
 
         if isinstance(msg, SubBlockContender):
             self.recv_sub_block_contender(msg)
-        elif isinstance(msg, FullBlockMetaData):
+        elif isinstance(msg, BlockMetaData):
             self.recv_full_block_hash_metadata(msg)
         else:
             raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
@@ -162,7 +162,7 @@ class BlockAggregator(Worker):
                             self.log.error('Received sub blocks from all delegates and still have missing transactions!')
                             raise Exception('Received sub blocks from all delegates and still have missing transactions!') # DEBUG
 
-    def recv_full_block_hash_metadata(self, fbmd: FullBlockMetaData):
+    def recv_full_block_hash_metadata(self, fbmd: BlockMetaData):
         fbmd.validate()
         block_hash = fbmd.block_hash
         if not self.full_block_hashes.get(block_hash):
@@ -200,7 +200,7 @@ class BlockAggregator(Worker):
             publisher_sk=self.signing_key,
             no_validate=True
         )
-        block_metadata = FullBlockMetaData.create(
+        block_metadata = BlockMetaData.create(
             block_hash=block_hash,
             merkle_roots=merkle_roots,
             prev_block_hash=self.curr_block_hash,
