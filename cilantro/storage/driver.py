@@ -81,9 +81,9 @@ class StorageDriver(object):
                 SELECT * FROM block
                     WHERE block_hash = %s
             """, (block_hash,))
-            res = cursor.fetchall()
-            if len(res) == 1:
-                return BlockMetaSQL.unpack(res[0])
+            res = cursor.fetchone()
+            if res:
+                return BlockMetaSQL.unpack(res)
 
     @classmethod
     def get_latest_blocks(cls, start_block_hash):
