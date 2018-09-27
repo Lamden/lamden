@@ -175,7 +175,6 @@ class Ironhouse:
         server_url = 'tcp://{}:{}'.format(ip, port or self.auth_port)
         log.debug('{} sending handshake to {}...'.format(os.getenv('HOST_IP', '127.0.0.1'), server_url))
         client = self.ctx.socket(zmq.REQ)
-        client.setsockopt(zmq.LINGER, 0)
         client = self.secure_socket(client, self.secret, self.public_key, target_public_key)
         client.connect(server_url)
         client.send_multipart([self.vk.encode(), os.getenv('HOST_IP', '127.0.0.1').encode(), domain.encode()])

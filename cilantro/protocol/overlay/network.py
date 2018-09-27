@@ -67,6 +67,10 @@ class Network(object):
         self.saveStateRegularly('state.tmp')
 
     async def authenticate(self, node, domain='*'):
+        # NOTE make sure it is uncommented later
+        # if self.vkcache.get(node.id) and self.vkcache[node.id] in self.ironhouse.authorized_nodes:
+        #     authorization = 'authorized'
+        # else:
         authorization = await self.ironhouse.authenticate(node.public_key, node.ip, node.port+AUTH_PORT_OFFSET, domain=domain)
         log.debug('{}:{}\'s authorization is {}'.format(node.ip, node.port, authorization))
         if authorization == 'authorized':

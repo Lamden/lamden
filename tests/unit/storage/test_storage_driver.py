@@ -7,6 +7,7 @@ from cilantro.storage.driver import StorageDriver
 from cilantro.storage.sqldb import SQLDB
 from cilantro.messages.block_data.block_data import BlockData, BlockDataBuilder
 from cilantro.utils.hasher import Hasher
+from cilantro.messages.consensus.sub_block_contender import SubBlockContenderBuilder
 
 
 TEST_IP = '127.0.0.1'
@@ -40,6 +41,11 @@ class TestStorageDriver(TestCase):
         self.assertEqual(block_meta.merkle_roots, block.merkle_roots)
         self.assertEqual(block_meta.prev_block_hash, block.prev_block_hash)
         self.assertEqual(block_meta.masternode_signature, block.masternode_signature)
+
+    def test_store_sub_block(self):
+        sub_block = SubBlockContenderBuilder.create_sub_block()
+        # StorageDriver.store_sub_block(block, validate=False)
+        # block_meta = StorageDriver.get_block_meta(block.block_hash)
 
 if __name__ == '__main__':
     unittest.main()

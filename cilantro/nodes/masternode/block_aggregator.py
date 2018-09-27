@@ -14,7 +14,6 @@ from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.block_contender import BlockContender
 from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.block_data.block_metadata import BlockMetaData
-from cilantro.messages.block_data.block_metadata import FullBlockData
 from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
