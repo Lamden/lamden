@@ -1,4 +1,4 @@
-from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test
+from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
 import unittest, time
 

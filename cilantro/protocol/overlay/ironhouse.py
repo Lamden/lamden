@@ -241,6 +241,9 @@ class Ironhouse:
                     self.sec_sock.send(self.vk.encode())
                 else:
                     log.warning('Unauthorized user {}({})'.format(received_ip, received_vk))
+        except Exception as e:
+            log.fatal("Got exception in secure server!!! Err={}".format(e))
+            raise e
         finally:
             self.cleanup()
 
