@@ -101,8 +101,8 @@ class MPTestCase(BaseNetworkTestCase):
         assert len(MPTestCase.testers) == 0, "setUp called but God._testers is not empty ({})" \
             .format(MPTestCase.testers)
 
-        start_msg = '\n' + '#' * 80 + '\n\n'
-        start_msg += '\n{} STARTING\n'.format(self.id()) + '\n\n' + '#' * 80
+        start_msg = '\n' + '#' * 80 + '\n'
+        start_msg += '\n{} STARTING\n'.format(self.id()) + '\n' + '#' * 80
         self.log.test(start_msg)
 
     def tearDown(self):
@@ -110,14 +110,6 @@ class MPTestCase(BaseNetworkTestCase):
 
         MPTestCase.testers.clear()
         MPTestCase.curr_tester_index = 1
-
-        # if MPTestCase.vmnet_test_active:
-        #     self.log.important3("ayyyy im clearing the containers good sir")
-        #     self._reset_containers()
-        # else:
-        #     self.log.fatal("VMNET TEST NOT ACTIVE! NOT CLEARING ANYTHING!")
-
-        # MPTestCase.vmnet_test_active = False
 
     def start(self, timeout=TEST_TIMEOUT):
         """
@@ -184,6 +176,8 @@ class MPTestCase(BaseNetworkTestCase):
                     if msg == SIG_SUCC:
                         passives.append(t)
                     else:
+                        self.log.fatal("Got non success signal {} from Tester named {}. Marking him as a failure."
+                                       .format(msg, t.name))
                         fails.append(t)
                 except Exception as e:
                     pass
