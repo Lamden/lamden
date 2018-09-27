@@ -66,5 +66,3 @@ class MNRunState(MNBaseState):
                                        kwargs={'ip': self.parent.ip, 'signing_key': self.parent.signing_key},
                                        name='BlockAggProc')
         self.block_agg_proc.start()
-
-
