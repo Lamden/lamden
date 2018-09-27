@@ -1,4 +1,4 @@
-from cilantro.nodes.base import NewNodeBase
+from cilantro.nodes.base import NodeBase
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, WITNESS_DELEGATE_FILTER
 from cilantro.constants.ports import MN_TX_PUB_PORT, SBB_PORT_START
 from cilantro.constants.testnet import *
@@ -27,7 +27,7 @@ import zmq, asyncio
 """
 
 
-class Witness(NewNodeBase):
+class Witness(NodeBase):
     def __init__(self, *args, **kwargs):
         # Put all variables shared between states here
         self.tasks = []
@@ -66,13 +66,13 @@ class WitnessBootState(WitnessBaseState):
         mn_vk = WITNESS_MN_MAP[self.parent.verifying_key]
         self.log.notice("Witness w/ vk {} subscribing to MN with vk {}".format(self.parent.verifying_key, mn_vk))
 
-        self.parent.sub = self.parent.manager.create_socket(socket_type=zmq.SUB, name='MN-Subscriber')
+        self.parent.sub = self.parent.manager.create_socket(socket_type=zmq.SUB, name='MN-Subscriber', secure=True)
         self.parent.sub.connect(vk=mn_vk, port=MN_TX_PUB_PORT)
         self.parent.sub.setsockopt(zmq.SUBSCRIBE, WITNESS_MASTERNODE_FILTER.encode())
 
     def _create_pub_socket(self):
         # Connect PUB socket to SBBs
-        self.parent.pub = self.parent.manager.create_socket(socket_type=zmq.PUB, name='SBB-Publisher')
+        self.parent.pub = self.parent.manager.create_socket(socket_type=zmq.PUB, name='SBB-Publisher', secure=True)
 
         mn_vk = WITNESS_MN_MAP[self.parent.verifying_key]
         mn_idx = VKBook.get_masternodes().index(mn_vk)

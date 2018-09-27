@@ -43,19 +43,19 @@ class BlockAggregator(Worker):
     def build_task_list(self):
         self.sub = self.manager.create_socket(
             socket_type=zmq.SUB,
-            name="BA-Sub-{}".format(self.verifying_key),
+            name="BA-Sub-{}".format(self.verifying_key[-8:]),
             secure=True,
             domain="sb-contender"
         )
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
-            name="BA-Pub-{}".format(self.verifying_key),
+            name="BA-Pub-{}".format(self.verifying_key[-8:]),
             secure=True,
             domain="sb-contender"
         )
         self.router = self.manager.create_socket(
             socket_type=zmq.ROUTER,
-            name="BA-Router-{}".format(self.verifying_key),
+            name="BA-Router-{}".format(self.verifying_key[-8:]),
             secure=True,
             domain="sb-contender"
         )

@@ -17,7 +17,7 @@
         another option is to use ZMQ stream to have the tcp sockets talk to one another outside zmq
 """
 
-from cilantro.nodes.base import NewNodeBase
+from cilantro.nodes.base import NodeBase
 from cilantro.nodes.delegate.block_manager import BlockManager
 from cilantro.storage.db import VKBook
 
@@ -34,7 +34,7 @@ DelegateConsensusState = "DelegateConsensusState"
 DelegateCatchupState = "DelegateCatchupState"
 
 
-class Delegate(NewNodeBase):
+class Delegate(NodeBase):
     """
     Here we define 'global' properties shared among all Delegate states. Within a Delegate state, 'self.parent' refers
     to this instance.

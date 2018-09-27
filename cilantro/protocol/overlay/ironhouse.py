@@ -22,6 +22,7 @@ from cilantro.storage.db import VKBook
 from cilantro.constants.overlay_network import AUTH_TIMEOUT
 from cilantro.protocol.overlay.utils import digest
 from cilantro.logger import get_logger
+import traceback
 
 log = get_logger(__name__)
 
@@ -241,6 +242,13 @@ class Ironhouse:
                     self.sec_sock.send(self.vk.encode())
                 else:
                     log.warning('Unauthorized user {}({})'.format(received_ip, received_vk))
+        except Exception as e:
+            if isinstance(e, asyncio.CancelledError):
+                log.warning("Got CancelledError in secure server!")
+            else:
+                traceback.format_exc()
+                log.fatal("Got exception in secure server!!! Err={}".format(traceback.format_exc()))
+                raise e
         finally:
             self.cleanup()
 

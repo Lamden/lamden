@@ -34,6 +34,7 @@ def vmnet_test(*args, **kwargs):
                 "a BaseNetworkTestCase subclass instance)".format(self)
 
             klass = self.__class__
+            config_file = klass.config_file
             parent_klass = self.__class__.__bases__[0]  # In Cilantro, this should be MPTestCase
 
             # Horrible hack to get MPTestCase to work
@@ -41,7 +42,7 @@ def vmnet_test(*args, **kwargs):
                 klass = parent_klass
 
             klass.test_name = klass.__name__
-            config_dict = launch(klass.config_file, klass.test_name)
+            config_dict = launch(config_file, klass.test_name)
             klass._set_configs(klass, config_dict)
 
             # Create log directory for test name
@@ -70,7 +71,7 @@ def vmnet_test(*args, **kwargs):
         return _vmnet_test
 
 class MPTestCase(BaseNetworkTestCase):
-    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes.json'.format(CILANTRO_PATH)
+    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
     testers = []
     curr_tester_index = 1
     vmnet_test_active = False

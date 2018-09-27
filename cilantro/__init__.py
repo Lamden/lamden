@@ -6,8 +6,8 @@ from os.path import dirname, abspath
 from cilantro.constants.protocol import SIG_FLAGS
 
 import cython
-if cython.compiled: print("Yep, I'm compiled.")
-else: print("Just a lowly interpreted script.")
+# if cython.compiled: print("Yep, I'm compiled.")
+# else: print("Just a lowly interpreted script.")
 
 os.environ['LOCAL_PATH'] = abspath(dirname(dirname(dirname(__file__))))
 

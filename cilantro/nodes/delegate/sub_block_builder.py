@@ -74,15 +74,15 @@ class SubBlockBuilder(Worker):
 
         # Create DEALER socket to talk to the BlockManager process over IPC
         self.dealer = None
-        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=int_to_bytes(self.sbb_index))
+        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sbb_index).encode())
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
         self._create_sub_sockets(num_sb_per_builder=num_sb_per_builder,
                                  num_sb_builders=num_sb_builders)
 
-        # self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {}"
-                     # .format(sbb_index, total_sub_blocks, num_blocks, num_sb_per_builder, self.num_sb_per_block))
+        self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {}"
+                        .format(sbb_index, total_sub_blocks, num_blocks, num_sb_per_builder, self.num_sb_per_block))
         # Create a Seneca interpreter for this SBB
         self.interpreter = SenecaInterpreter()
 
@@ -102,16 +102,16 @@ class SubBlockBuilder(Worker):
 
     def _create_sub_sockets(self, num_sb_per_builder, num_sb_builders):
         # We then BIND a sub socket to a port for each of these masternode indices
-        self.log.important("CREATING SUB SOCKETS")  # TODO remove
         for idx in range(num_sb_per_builder):
             sb_idx = idx * num_sb_builders + self.sbb_index  # actual SB index in global index space
             if sb_idx >= self.total_sub_blocks:    # out of range already
                 return
 
             port = SBB_PORT_START + sb_idx
-            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx))
+            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
+                                             secure=True)
             sub.setsockopt(zmq.SUBSCRIBE, b'')
-            sub.bind(port=port, ip=self.ip)  # TODO secure him
+            sub.bind(port=port, ip=self.ip)
             self.log.info("SBB BINDing to port {} with no filter".format(port))
 
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
@@ -143,7 +143,7 @@ class SubBlockBuilder(Worker):
             index, self.sb_managers)
 
         envelope = Envelope.from_bytes(frames[-1])
-        timestamp = round(float(envelope.meta.timestamp))
+        timestamp = envelope.meta.timestamp
         assert isinstance(envelope.message, TransactionBatch), "Handler expected TransactionBatch but got {}".format(envelope.messages)
 
         if timestamp <= self.sb_managers[index].processed_txs_timestamp:
@@ -212,8 +212,9 @@ class SubBlockBuilder(Worker):
                                             timestamp=str(int(time.time())),
                                             sender=self.verifying_key)
 
+        # TODO fix interpreter ... must pass in TransactionData object into SBC, not raw binaries
         sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=input_hash,
-                                       merkle_leaves=merkle.leaves, sb_index=sbb_idx,
+                                       merkle_leaves=merkle.leaves, sub_block_index=sbb_idx,
                                        signature=merkle_sig, raw_txs=all_tx)
         return sbc
 
@@ -222,9 +223,7 @@ class SubBlockBuilder(Worker):
         Convenience method to send a MessageBase instance over IPC dealer socket. Includes a frame to identify the
         type of message
         """
-        self.log.important("Message is an instance of {}".format(type(message)))
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
-        # assert issubclass(MessageBase, message), "Must pass in a MessageBase instance"
         message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
         self.dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
