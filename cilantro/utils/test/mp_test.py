@@ -273,7 +273,8 @@ class MPTesterBase:
     """
     tester_cls = 'UNSET'
 
-    def __init__(self, config_fn=None, assert_fn=None, name='TestableProcess', always_run_as_subproc=False, *args, **kwargs):
+    def __init__(self, config_fn=None, assert_fn=None,  name='TestableProcess', block_until_rdy=True,
+                 always_run_as_subproc=False, *args, **kwargs):
         super().__init__()
         self.log = get_logger(name)
         self.name = name
@@ -298,7 +299,8 @@ class MPTesterBase:
         self.socket.connect(self.url)
 
         # Block this process until we get a ready signal from the subprocess/VM
-        self.wait_for_test_object()
+        if block_until_rdy:
+            self.wait_for_test_object()
 
     def _config_url_and_test_proc(self, build_fn, always_run_as_subproc):
         # Add this object to the registry of testers
