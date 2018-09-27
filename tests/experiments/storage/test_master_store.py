@@ -33,17 +33,12 @@ for i in range(mn_set):
 '''
 
 class MasterOps:
-    def __init__(self,signing_key, name='MN_Store', MN_id):
 
+    def get_mn_id(self, sk):
         # verify current node before init
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
 
-        # TODO verify type of node to ensure capabilities
-        init_store(mn_set)
-
-
-    def get_mn_id(self, sk):
         mn_count = len(TESTNET_MASTERNODES)
         self.signing_key = sk
         for i in range(mn_count):
