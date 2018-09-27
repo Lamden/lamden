@@ -14,7 +14,7 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 
-def start_client(signing_key):
+def start_mn(signing_key):
     import os
     import zmq, time
     from cilantro.logger.base import get_logger
@@ -22,26 +22,57 @@ def start_client(signing_key):
 
     log = get_logger(os.getenv('MN'))
 
-    mcount = len(TESTNET_MASTERNODES)
-    log.info(mcount)
-    log.info(signing_key)
+    count = MasterOps.get_master_set()
+    log.info(count)
+
+    mn_id = MasterOps.get_mn_id(sk = signing_key)
+    rep_fact = MasterOps.get_rep_factor()
+
+
+    # find master idx in pool
+    pool_sz = MasterOps.rep_pool_sz(rep_fact,count)
+    log.info(pool_sz)
+    idx = MasterOps.mn_pool_idx(pool_sz,mn_id)
+    log.info(idx)
+    log.info(mn_id)
 
 
     ctx = zmq.Context()
     socket = ctx.socket(socket_type=zmq.PAIR)
-    url = "tcp://{}:10200".format(os.getenv('HOST_IP').split(',')[0])
+    url = "tcp://{}:10200".format(os.getenv('MGMT'))
 
+    time.sleep(1)
     log.info("CLIENT CONNECTING TO {}".format(url))
     socket.connect(url)
 
 
-
     log.debug("waiting for msg...")
-    msg = socket.recv_pyobj()
+    msg = socket.recv()
+    log.debug("msg = {}".format(msg))
+
+    blk_num = 1
+    while blk_num <= 5:
+        permit_wr = False
+        log.debug("waiting for msg...")
+        msg = socket.recv()
+        log.info("got msg {}".format(msg))
+
+        permit_wr = MasterOps.check_min_mn_wr(count, mn_id)
+        if permit_wr == False:
+            permit_wr = MasterOps.evaluate_wr(mn_idx=idx, blk_id=msg, pool_sz=pool_sz)
+            log.info(permit_wr)
+
+        log.info(permit_wr)
+        log.info(msg)
+        time.sleep(1)
+        blk_num += 1
+
+
+    log.info('end!')
 
     socket.close()
 
-def start_server():
+def start_mgmt():
     import os
     import asyncio
     import zmq.asyncio
@@ -54,7 +85,7 @@ def start_server():
 
     log = get_logger("ZMQ Server")
     log.info("server host ip is {}".format(os.getenv('HOST_IP')))
-    ctx = zmq.asyncio.Context()
+    ctx = zmq.Context()
     socket = ctx.socket(socket_type=zmq.PAIR)
 
     url = "tcp://{}:10200".format(os.getenv('HOST_IP'))
@@ -64,8 +95,16 @@ def start_server():
     time.sleep(2)
 
     log.info("sending first msg")
-    socket.send_pyobj("hello for the first time")
 
+    socket.send(b"hello for the first time")
+
+    blk_num = 1
+    while blk_num <= 5:
+        msg = blk_num
+        log.debug("sending msg {}".format(msg))
+        socket.send('{}'.format(msg).encode())
+        time.sleep(1)
+        blk_num += 1
 
     socket.close()
 
@@ -77,14 +116,14 @@ class TestZMQPair(BaseNetworkTestCase):
     @vmnet_test
     def test_store(self):
 
-        self.execute_python('mgmt', start_server)
+        self.execute_python('mgmt', start_mgmt)
         time.sleep(1)
         key = TESTNET_MASTERNODES[0]['sk']
      #   self.execute_python('mn', start_client())
 
         for node in self.groups['mn']:
         #    key = TESTNET_MASTERNODES[i]['sk']
-            self.execute_python(node,wrap_func(start_client, signing_key = key))
+            self.execute_python(node,wrap_func(start_mn, signing_key = key))
 
 
         input("\n\nEnter any key to terminate")
