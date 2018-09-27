@@ -3,6 +3,7 @@ from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.block_data.block_metadata import FullBlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 import dill, ujson as json, textwrap
+from typing import List
 from cilantro.utils import Hasher
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 
@@ -45,9 +46,17 @@ class BlockTransactionsSQL:
 
 class SubBlockMetaSQL:
     @classmethod
-    def pack(cls, subblock):
-        print()
-        pass
+    def pack(cls, sub_block, signatures):
+        return (
+            sub_block.result_hash,
+            b''.join([sig.serialize() for sig in signatures]),
+            ''.join(sub_block.merkle_leaves),
+            sub_block.sb_index
+        )
+
+    @classmethod
+    def unpack(cls, sql_obj):
+        return sql_obj
 
 class StorageDriver(object):
     @classmethod
@@ -71,12 +80,12 @@ class StorageDriver(object):
                 raise Exception('Unable to commit the block to the database!')
 
     @classmethod
-    def store_sub_blocks(cls, sbc: SubBlockContender):
+    def store_sub_block(cls, sbc: SubBlockContender, signatures: List[MerkleSignature]):
         with SQLDB() as (connection, cursor):
             cursor.execute("""
-                INSERT INTO subblock (merkle_root, signatures, merkle_leaves, sb_index)
+                INSERT INTO sub_block (merkle_root, signatures, merkle_leaves, sb_index)
                     VALUES (%s,%s,%s,%s)
-            """, SubBlockMetaSQL.pack(sbc))
+            """, SubBlockMetaSQL.pack(sbc, signatures))
 
     @classmethod
     def get_block_meta(cls, block_hash):
@@ -88,6 +97,18 @@ class StorageDriver(object):
             res = cursor.fetchone()
             if res:
                 return BlockMetaSQL.unpack(res)
+
+    @classmethod
+    def get_sub_block_meta(cls, merkle_root):
+        with SQLDB() as (connection, cursor):
+            print(merkle_root)
+            cursor.execute("""
+                SELECT * FROM sub_block
+                    WHERE merkle_root = %s
+            """, (merkle_root,))
+            res = cursor.fetchone()
+            if res:
+                return SubBlockMetaSQL.unpack(res)
 
     @classmethod
     def get_latest_blocks(cls, start_block_hash):

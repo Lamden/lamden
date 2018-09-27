@@ -8,7 +8,7 @@ from cilantro.storage.sqldb import SQLDB
 from cilantro.messages.block_data.block_data import BlockData, BlockDataBuilder
 from cilantro.utils.hasher import Hasher
 from cilantro.messages.consensus.sub_block_contender import SubBlockContenderBuilder
-
+from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 
 TEST_IP = '127.0.0.1'
 MN_SK = TESTNET_MASTERNODES[0]['sk']
@@ -20,16 +20,14 @@ class TestStorageDriver(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        try: SQLDB.connection.close()
-        except: print('Already not connected.')
-        SQLDB.force_start()
+        SQLDB.reset_db()
 
     @classmethod
     def tearDownClass(cls):
         SQLDB.connection.close()
 
     def setUp(self):
-        SQLDB.truncate_tables('subblock', 'block', 'transaction')
+        SQLDB.truncate_tables('sub_block', 'block', 'transaction')
 
     @mock.patch("cilantro.messages.block_data.block_metadata.SUBBLOCKS_REQUIRED", 2)
     def test_store_block(self):
@@ -44,8 +42,10 @@ class TestStorageDriver(TestCase):
 
     def test_store_sub_block(self):
         sub_block = SubBlockContenderBuilder.create_sub_block()
-        # StorageDriver.store_sub_block(block, validate=False)
-        # block_meta = StorageDriver.get_block_meta(block.block_hash)
+        signatures = [build_test_merkle_sig() for _ in range(len(sub_block.merkle_leaves))]
+        StorageDriver.store_sub_block(sub_block, signatures)
+        sub_block_meta = StorageDriver.get_sub_block_meta(sub_block.result_hash)
+        print(sub_block_meta)
 
 if __name__ == '__main__':
     unittest.main()

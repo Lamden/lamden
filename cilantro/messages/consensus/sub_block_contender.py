@@ -129,5 +129,4 @@ class SubBlockContenderBuilder():
         input_hash = Hasher.hash_iterable([transactions[i] for i in txs_for_input_hash])
         signature = build_test_merkle_sig(msg=result_hash.encode(), sk=del_sk, vk=del_vk)
         sbc = SubBlockContender.create(result_hash, input_hash, merkle_leaves, signature, transactions, sb_index)
-        print(sbc)
         return sbc

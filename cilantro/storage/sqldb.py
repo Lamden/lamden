@@ -19,8 +19,8 @@ class SQLDB():
         if reset:
             self.drop_db(database)
             self.setup_db(database)
-        elif not cls.connection.open:
-            cls.force_start()
+        elif not self.connection.is_connected():
+            self.force_start()
         return self.connection, self.cursor
     def __exit__(self, type, value, traceback):
         self.connection.commit()
@@ -63,8 +63,8 @@ class SQLDB():
     @classmethod
     def build_tables(cls):
         cls.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS subblock (
-                merkle_root VARCHAR(32) PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS sub_block (
+                merkle_root VARCHAR(64) PRIMARY KEY,
                 signatures BLOB NOT NULL,
                 merkle_leaves BLOB NOT NULL,
                 sb_index INT NOT NULL
