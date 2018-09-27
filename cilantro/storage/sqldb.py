@@ -10,7 +10,7 @@ class SQLDB():
         host=config.get('DB','hostname'),
         user=config.get('DB','username'),
         passwd=config.get('DB','password'),
-        charset='utf8'
+        charset='binary'
     )
     cursor = connection.cursor()
     database = config.get('DB','database')
@@ -85,7 +85,7 @@ class SQLDB():
                 tx_hash VARCHAR(64) PRIMARY KEY,
                 block_hash VARCHAR(64) NOT NULL,
                 raw_tx_hash VARCHAR(64) NOT NULL,
-                tx_blob BLOB NOT NULL,
+                contract_tx BLOB NOT NULL,
                 status VARCHAR(16) NOT NULL,
                 state BLOB NOT NULL
             )

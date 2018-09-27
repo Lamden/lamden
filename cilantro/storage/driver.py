@@ -6,8 +6,14 @@ import dill, ujson as json, textwrap
 from typing import List
 from cilantro.utils import Hasher
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
+from cilantro.messages.transaction.contract import ContractTransaction
+
+def chunk(s):
+    assert len(s) % 64 == 0, 'Malformed'
+    return [s[i*64:(i+1)*64].decode() for i in range(int(len(s)/64))]
 
 class BlockMetaSQL:
+
     @classmethod
     def pack(cls, block):
         return (
@@ -19,15 +25,14 @@ class BlockMetaSQL:
 
     @classmethod
     def unpack(cls, sql_obj):
-        fbmd = FullBlockMetaData.create(
-            block_num=sql_obj[0],
-            block_hash=sql_obj[1],
-            merkle_roots=textwrap.wrap(sql_obj[2], 64),
-            prev_block_hash=sql_obj[3],
-            masternode_signature=MerkleSignature.from_bytes(sql_obj[4].encode()),
-            timestamp=sql_obj[5].timestamp()
-        )
-        return fbmd
+        return {
+            'block_num': sql_obj[0],
+            'block_hash': sql_obj[1].decode(),
+            'merkle_roots': chunk(sql_obj[2]),
+            'prev_block_hash': sql_obj[3].decode(),
+            'masternode_signature': MerkleSignature.from_bytes(sql_obj[4]),
+            'timestamp': sql_obj[5].timestamp()
+        }
 
 class BlockTransactionsSQL:
     @classmethod
@@ -40,8 +45,22 @@ class BlockTransactionsSQL:
                 Hasher.hash(tx.contract_tx),
                 tx.contract_tx.serialize(),
                 'SUCCESS', # WARNING change this
-                'i am at an unstable state'
+                'i am at an unstable state' # WARNING change this
             ))
+        return txs
+
+    @classmethod
+    def unpack(cls, sql_obj):
+        txs = []
+        for tx in sql_obj:
+            txs.append({
+                'tx_hash': tx[0],
+                'block_hash': tx[1],
+                'raw_tx_hash': tx[2],
+                'contract_tx': ContractTransaction.from_bytes(tx[3]),
+                'status': tx[4],
+                'state': tx[5]
+            })
         return txs
 
 class SubBlockMetaSQL:
@@ -49,14 +68,19 @@ class SubBlockMetaSQL:
     def pack(cls, sub_block, signatures):
         return (
             sub_block.result_hash,
-            b''.join([sig.serialize() for sig in signatures]),
+            json.dumps([sig.serialize() for sig in signatures]),
             ''.join(sub_block.merkle_leaves),
             sub_block.sb_index
         )
 
     @classmethod
     def unpack(cls, sql_obj):
-        return sql_obj
+        return {
+            'merkle_root': sql_obj[0].decode(),
+            'signatures': [MerkleSignature.from_bytes(sig.encode()) for sig in json.loads(sql_obj[1])],
+            'merkle_leaves': chunk(sql_obj[2]),
+            'sb_index': sql_obj[3]
+        }
 
 class StorageDriver(object):
     @classmethod
@@ -71,7 +95,7 @@ class StorageDriver(object):
                 """, BlockMetaSQL.pack(block))
 
                 cursor.executemany("""
-                    INSERT INTO transaction (block_hash, tx_hash, raw_tx_hash, tx_blob, status, state)
+                    INSERT INTO transaction (block_hash, tx_hash, raw_tx_hash, contract_tx, status, state)
                         VALUES (%s, %s, %s, %s, %s, %s)
                 """, BlockTransactionsSQL.pack(block))
 
@@ -101,7 +125,6 @@ class StorageDriver(object):
     @classmethod
     def get_sub_block_meta(cls, merkle_root):
         with SQLDB() as (connection, cursor):
-            print(merkle_root)
             cursor.execute("""
                 SELECT * FROM sub_block
                     WHERE merkle_root = %s
@@ -109,6 +132,27 @@ class StorageDriver(object):
             res = cursor.fetchone()
             if res:
                 return SubBlockMetaSQL.unpack(res)
+
+    @classmethod
+    def get_transactions(cls, block_hash=None, raw_tx_hash=None, status=None):
+        with SQLDB() as (connection, cursor):
+            conds = []
+            params = ()
+            if block_hash:
+                conds.append('block_hash = %s')
+                params += (block_hash,)
+            if raw_tx_hash:
+                conds.append('raw_tx_hash = %s')
+                params += (raw_tx_hash,)
+            if status:
+                conds.append('status = %s')
+                params += (status,)
+            q_str = 'WHERE {}'.format(' AND '.join(conds)) if len(conds) > 0 else ''
+            cursor.execute("SELECT * FROM transaction {}".format(
+                q_str), params)
+            res = cursor.fetchall()
+            if res:
+                return BlockTransactionsSQL.unpack(res)
 
     @classmethod
     def get_latest_blocks(cls, start_block_hash):

@@ -34,18 +34,31 @@ class TestStorageDriver(TestCase):
         block = BlockDataBuilder.create_block()
         StorageDriver.store_block(block, validate=False)
         block_meta = StorageDriver.get_block_meta(block.block_hash)
-        self.assertEqual(block_meta.block_num, 1)
-        self.assertEqual(block_meta.block_hash, block.block_hash)
-        self.assertEqual(block_meta.merkle_roots, block.merkle_roots)
-        self.assertEqual(block_meta.prev_block_hash, block.prev_block_hash)
-        self.assertEqual(block_meta.masternode_signature, block.masternode_signature)
+        self.assertEqual(block_meta['block_num'], 1)
+        self.assertEqual(block_meta['block_hash'], block.block_hash)
+        self.assertEqual(block_meta['merkle_roots'], block.merkle_roots)
+        self.assertEqual(block_meta['prev_block_hash'], block.prev_block_hash)
+        self.assertEqual(block_meta['masternode_signature'], block.masternode_signature)
 
     def test_store_sub_block(self):
         sub_block = SubBlockContenderBuilder.create_sub_block()
         signatures = [build_test_merkle_sig() for _ in range(len(sub_block.merkle_leaves))]
         StorageDriver.store_sub_block(sub_block, signatures)
         sub_block_meta = StorageDriver.get_sub_block_meta(sub_block.result_hash)
-        print(sub_block_meta)
+        self.assertEqual(sub_block_meta['merkle_root'], sub_block.result_hash)
+        self.assertEqual(sub_block_meta['signatures'], signatures)
+        self.assertEqual(sub_block_meta['merkle_leaves'], sub_block.merkle_leaves)
+        self.assertEqual(sub_block_meta['sb_index'], sub_block.sb_index)
+
+    @mock.patch("cilantro.messages.block_data.block_metadata.SUBBLOCKS_REQUIRED", 2)
+    def test_get_transactions_by_block_hash(self):
+        block = BlockDataBuilder.create_block()
+        StorageDriver.store_block(block, validate=False)
+        txs = StorageDriver.get_transactions(block_hash=block.block_hash)
+        self.assertEqual(
+            set([tx.contract_tx.serialize() for tx in block.transactions]),
+            set([tx['contract_tx'].serialize() for tx in txs])
+        )
 
 if __name__ == '__main__':
     unittest.main()
