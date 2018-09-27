@@ -1,0 +1,9 @@
+{
+    "max-concurrent-indexers" : 2,
+    "dbpath" : "cilantro",
+    "repos" : {
+      "SomeGitRepo": {
+        "url": "https://github.com/Lamden/cilantro.git"
+      },
+    }
+}
