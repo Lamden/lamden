@@ -101,8 +101,8 @@ class MPTestCase(BaseNetworkTestCase):
         assert len(MPTestCase.testers) == 0, "setUp called but God._testers is not empty ({})" \
             .format(MPTestCase.testers)
 
-        start_msg = '\n' + '#' * 80 + '\n' + '#' * 80
-        start_msg += '\n{} STARTING\n'.format(self.id()) + '#' * 80 + '\n' + '#' * 80
+        start_msg = '\n' + '#' * 80 + '\n'
+        start_msg += '\n{} STARTING\n'.format(self.id()) + '\n' + '#' * 80
         self.log.test(start_msg)
 
     def tearDown(self):
@@ -110,14 +110,6 @@ class MPTestCase(BaseNetworkTestCase):
 
         MPTestCase.testers.clear()
         MPTestCase.curr_tester_index = 1
-
-        # if MPTestCase.vmnet_test_active:
-        #     self.log.important3("ayyyy im clearing the containers good sir")
-        #     self._reset_containers()
-        # else:
-        #     self.log.fatal("VMNET TEST NOT ACTIVE! NOT CLEARING ANYTHING!")
-
-        # MPTestCase.vmnet_test_active = False
 
     def start(self, timeout=TEST_TIMEOUT):
         """
@@ -143,13 +135,13 @@ class MPTestCase(BaseNetworkTestCase):
         # If there are no active testers left and none of them failed, we win
         if len(actives) + len(fails) == 0:
             self.log.test("\n\n{0}\n\n{2} SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
-                           .format('$' * 120, round(timeout, 2), self.id()))
+                          .format('$' * 120, round(timeout, 2), self.id()))
         else:
             fail_msg = "\n\nfail_msg:\n{0}\nASSERTIONS TIMED OUT FOR TESTERS: \n\n".format('-' * 120)
             for t in fails + actives:
                 fail_msg += "{}\n".format(t)
             fail_msg += "{0}\n".format('-' * 120)
-            self.log.test(fail_msg)
+            self.log.fatal(fail_msg)
             time.sleep(0.2)  # block while this message has time to log correctly
             raise Exception("Test(s) did not pass. See log.")
 
@@ -184,6 +176,8 @@ class MPTestCase(BaseNetworkTestCase):
                     if msg == SIG_SUCC:
                         passives.append(t)
                     else:
+                        self.log.fatal("Got non success signal {} from Tester named {}. Marking him as a failure."
+                                       .format(msg, t.name))
                         fails.append(t)
                 except Exception as e:
                     pass
