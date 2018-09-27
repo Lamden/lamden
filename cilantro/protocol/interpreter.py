@@ -1,17 +1,27 @@
+from cilantro.logger import get_logger
+
 from cilantro.storage.contracts import run_contract
+from cilantro.storage.db import DB
+
+from cilantro.constants.protocol import MAX_QUEUE_DELAY_MS
+from cilantro.constants.db import DB_SETTINGS
+
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.ordering import OrderingContainer
-from cilantro.logger import get_logger
-from collections import deque
+from cilantro.messages.block_data.block_data import TransactionData
+
 from seneca.engine.storage.mysql_spits_executer import Executer
-from cilantro.constants.protocol import MAX_QUEUE_DELAY_MS
-from cilantro.storage.tables import DB_NAME
-from cilantro.storage.db import DB
-from typing import List
+
+from collections import deque
 from heapq import heappush, heappop
+from typing import List
 import time
 import asyncio
-from cilantro.constants.db import DB_SETTINGS
+
+
+class ContractResult:
+    def __init__(self, contract: ContractTransaction, status: str, state: str):
+        self.contract, self.status, self.state = contract, status, state
 
 
 class SenecaInterpreter:
@@ -52,6 +62,9 @@ class SenecaInterpreter:
     def interpret(self, contract, async=False):
         assert isinstance(contract, OrderingContainer), \
             "Seneca Interpreter can only interpret OrderingContainer instances"
+        assert isinstance(contract.transaction, ContractTransaction), "OrderingContainer {} has a non " \
+                                                                      "ContractTransaction payload".format(contract)
+
         if async:
             time_hash = '%11x' % (contract.utc_time)
             contract_hash = '{}{}'.format(time_hash, contract.masternode_vk)
@@ -76,12 +89,13 @@ class SenecaInterpreter:
 
     def _rerun_contracts(self):
         self.ex.rollback()
-        for c in self.queue:
+        for data in self.queue:
+            c = data.contract
             r = self._run_contract(c, rerun=True)
             if not r:
                 raise Exception("Previously successul contract {} failed during recovery with code: {}".format(c.sender, c.code))
         if len(self.queue) > 0:
-            self.log.debug("Recovered to code with sender {}".format(self.queue[-1].sender))
+            self.log.debug("Recovered to code with sender {}".format(self.queue[-1].contract.sender))
         else:
             self.log.debug("Restoring to beginning of block")
 
@@ -93,12 +107,19 @@ class SenecaInterpreter:
             self._rerun_contracts()
         else:
             self.log.debug("Successfully executing use_contracts from sender {}".format(contract.sender))
-            if rerun: return res
-            else: self.queue.append(contract)
+            # TODO get 'status' and 'state' from res
+            if rerun:
+                return res
+            else:
+                self.queue.append(ContractResult(contract=contract, status='SUCCESS', state='over9000!!!'))
 
     @property
     def queue_binary(self) -> List[bytes]:
-        return [contract.serialize() for contract in self.queue]
+        self.log.warning("WARNING -- queue_binary should be deprecated. Use get_tx_queue()")
+        return [data.contract.serialize() for data in self.queue]
+
+    def get_tx_queue(self) -> List[TransactionData]:
+        return list(self.queue)
 
     @property
     def queue_size(self):
