@@ -93,7 +93,7 @@ class SenecaInterpreter:
             c = data.contract
             r = self._run_contract(c, rerun=True)
             if not r:
-                raise Exception("Previously successul contract {} failed during recovery with code: {}".format(c.sender, c.code))
+                raise Exception("Previously successful contract {} failed during recovery with code: {}".format(c.sender, c.code))
         if len(self.queue) > 0:
             self.log.debug("Recovered to code with sender {}".format(self.queue[-1].contract.sender))
         else:
