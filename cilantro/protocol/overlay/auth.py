@@ -1,3 +1,4 @@
+import os
 from cilantro.protocol import wallet
 from os.path import basename, splitext, join, exists
 from zmq.auth.thread import ThreadAuthenticator
@@ -13,9 +14,17 @@ from cilantro.utils import lazy_property
 class Auth:
 
     @classmethod
-    def set_keys(cls, sk_hex):
+    def set_keys(cls, sk_hex, reset_auth_folder=False):
         cls.sk = sk_hex
         cls.vk = cls._sk.verify_key.encode().hex()
+        cls.keyname = decode(cls.public_key).hex()
+        cls.base_dir = 'certs/{}'.format(cls.keyname)
+        cls.default_domain_dir = 'authorized_keys'
+        cls.authorized_keys_dir = join(base_dir, cls.default_domain_dir)
+        if reset_auth_folder and exists(cls.base_dir):
+            shutil.rmtree(cls.base_dir)
+        os.makedirs(cls.authorized_keys_dir, exist_ok=True)
+        cls.add_public_key(public_key=cls.public_key)
 
     @classmethod
     def vk2pk(cls, vk):
@@ -30,30 +39,21 @@ class Auth:
         return crypto_sign_ed25519_sk_to_curve25519(cls.sk._signing_key).hex()
 
     @classmethod
-    def generate_certificates():
-        sk = SigningKey(seed=bytes.fromhex(cls.sk))
-        vk = cls.vk
-        public_key = cls.vk2pk(vk)
-        keyname = decode(public_key).hex()
-        private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key).hex()
-        authorized_keys_dir = custom_folder or cls.authorized_keys_dir
-        for d in [cls.keys_dir, authorized_keys_dir]:
-            if exists(d):
-                shutil.rmtree(d)
-            os.makedirs(d, exist_ok=True)
+    def add_public_key(cls, public_key=None, vk=None, domain=None):
+        assert public_key or vk, 'No public key or vk provided'
+        if vk: public_key = cls.vk2pk(vk)
+        public_key_filename = "{0}.key".format(decode(public_key).hex())
+        public_key_file = join(cls.base_dir, domain or cls.default_domain_dir, public_key_filename)
+        now = datetime.datetime.now()
+        zmq.auth.certs._write_key_file(public_key_file,
+                        zmq.auth.certs._cert_public_banner.format(now),
+                        public_key)
 
-        secret = None
-
-        _, secret = cls.create_from_private_key(private_key, keyname)
-
-        for key_file in os.listdir(cls.keys_dir):
-            if key_file.endswith(".key"):
-                shutil.move(join(cls.keys_dir, key_file),
-                            join(authorized_keys_dir, '.'))
-
-        if exists(cls.keys_dir):
-            shutil.rmtree(cls.keys_dir)
-
-        log.info('Generated CURVE certificate files!')
-
-        return vk, public_key, secret
+    @classmethod
+    def remove_public_key(cls, public_key=None, vk=None, domain=None):
+        assert public_key or vk, 'No public key or vk provided'
+        if vk: public_key = cls.vk2pk(vk)
+        public_key_filename = "{0}.key".format(decode(public_key).hex())
+        public_key_file = join(cls.base_dir, domain or cls.default_domain_dir, public_key_filename)
+        if exists(public_key_file):
+            os.remove(public_key_file)
