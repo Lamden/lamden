@@ -4,7 +4,6 @@ from seneca.engine.storage.mysql_executer import Executer
 from cilantro.constants.db import DB_SETTINGS
 
 
-
 log = get_logger("DB Creator")
 
 DB_NAME = DB_SETTINGS['db']

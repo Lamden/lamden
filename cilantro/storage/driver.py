@@ -1,6 +1,5 @@
 from cilantro.storage.sqldb import SQLDB
 from cilantro.messages.block_data.block_data import BlockData
-from cilantro.messages.block_data.block_metadata import FullBlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 import dill, ujson as json, textwrap
 from typing import List

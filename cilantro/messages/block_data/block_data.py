@@ -5,7 +5,7 @@ from cilantro.utils import lazy_property, Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.messages.utils import validate_hex
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
-from cilantro.messages.block_data.block_metadata import FullBlockMetaData
+from cilantro.messages.block_data.block_metadata import BlockMetaData
 from typing import List
 from cilantro.logger import get_logger
 from cilantro.storage.db import VKBook
@@ -69,8 +69,8 @@ class BlockData(MessageBase):
         return [mr.decode() for mr in self._data.merkleRoots]
 
     @lazy_property # It is created only ONCE
-    def metadata(self) -> FullBlockMetaData:
-        return FullBlockMetaData.create(
+    def metadata(self) -> BlockMetaData:
+        return BlockMetaData.create(
             block_hash=self.block_hash,
             merkle_roots=self.merkle_roots,
             prev_block_hash=self.prev_block_hash,

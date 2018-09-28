@@ -30,7 +30,7 @@ class BlockMetaData(MessageBase):
 
     @classmethod
     def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str,
-                    masternode_signature: MerkleSignature, timestamp: int = 0):
+                    masternode_signature: MerkleSignature, timestamp: int=0, block_num: int=0):
 
         if not timestamp:
             timestamp = int(time.time())
@@ -41,6 +41,7 @@ class BlockMetaData(MessageBase):
         struct.merkleRoots = merkle_roots
         struct.prevBlockHash = prev_block_hash
         struct.timestamp = int(timestamp)
+        struct.blockNum = block_num
         struct.masternodeSignature = masternode_signature.serialize()
         return cls.from_data(struct)
 
@@ -64,38 +65,15 @@ class BlockMetaData(MessageBase):
     def timestamp(self) -> int:
         return self._data.timestamp
 
+    @property
+    def block_num(self) -> int:
+        return self._data.blockNum
+
     def __eq__(self, other):
         return self._data.blockHash == other._data.blockHash and \
             self.merkle_roots == other.merkle_roots
 
 
-class FullBlockMetaData(BlockMetaData): # NOTE This one includes block number and timestamp
-    @classmethod
-    def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str,
-                    masternode_signature: MerkleSignature, timestamp: int = 0, block_num: int = 0):
-
-        if not timestamp:
-            timestamp = int(time.time())
-
-        struct = blockdata_capnp.FullBlockMetaData.new_message()
-        struct.init('merkleRoots', len(merkle_roots))
-        struct.blockHash = block_hash
-        struct.merkleRoots = merkle_roots
-        struct.prevBlockHash = prev_block_hash
-        struct.timestamp = int(timestamp)
-        struct.blockNum = block_num
-        struct.masternodeSignature = masternode_signature.serialize()
-        return cls.from_data(struct)
-
-    @classmethod
-    def _deserialize_data(cls, data: bytes):
-        return blockdata_capnp.FullBlockMetaData.from_bytes_packed(data)
-
-    @property
-    def block_num(self) -> int:
-        return self._data.blockNum
-
-
-class NewBlockNotification(FullBlockMetaData):
+class NewBlockNotification(BlockMetaData):
     pass
 
