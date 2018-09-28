@@ -23,7 +23,6 @@ class SQLDB():
             self.force_start()
         return self.connection, self.cursor
     def __exit__(self, type, value, traceback):
-        self.connection.commit()
         return False
     @classmethod
     def force_start(cls):
@@ -31,7 +30,7 @@ class SQLDB():
             host=config.get('DB','hostname'),
             user=config.get('DB','username'),
             passwd=config.get('DB','password'),
-            charset='utf8'
+            charset='binary'
         )
         cls.cursor = cls.connection.cursor()
         cls.setup_db()

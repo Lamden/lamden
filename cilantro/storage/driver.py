@@ -98,7 +98,7 @@ class StorageDriver(object):
                     INSERT INTO transaction (block_hash, tx_hash, raw_tx_hash, contract_tx, status, state)
                         VALUES (%s, %s, %s, %s, %s, %s)
                 """, BlockTransactionsSQL.pack(block))
-
+                connection.commit()
             except:
                 connection.rollback()
                 raise Exception('Unable to commit the block to the database!')

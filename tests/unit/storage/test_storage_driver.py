@@ -20,6 +20,8 @@ class TestStorageDriver(TestCase):
 
     @classmethod
     def setUpClass(cls):
+        if not SQLDB.connection.is_connected():
+            SQLDB.force_start()
         SQLDB.reset_db()
 
     @classmethod
@@ -49,16 +51,6 @@ class TestStorageDriver(TestCase):
         self.assertEqual(sub_block_meta['signatures'], signatures)
         self.assertEqual(sub_block_meta['merkle_leaves'], sub_block.merkle_leaves)
         self.assertEqual(sub_block_meta['sb_index'], sub_block.sb_index)
-
-    @mock.patch("cilantro.messages.block_data.block_metadata.SUBBLOCKS_REQUIRED", 2)
-    def test_get_transactions_by_block_hash(self):
-        block = BlockDataBuilder.create_block()
-        StorageDriver.store_block(block, validate=False)
-        txs = StorageDriver.get_transactions(block_hash=block.block_hash)
-        self.assertEqual(
-            set([tx.contract_tx.serialize() for tx in block.transactions]),
-            set([tx['contract_tx'].serialize() for tx in txs])
-        )
 
     @mock.patch("cilantro.messages.block_data.block_metadata.SUBBLOCKS_REQUIRED", 2)
     def test_get_transactions_by_block_hash(self):
