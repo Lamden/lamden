@@ -8,9 +8,14 @@ from cilantro.utils import Hasher
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.transaction.contract import ContractTransaction
 
+
+GENESIS_HASH = '0' * 64
+
+
 def chunk(s):
     assert len(s) % 64 == 0, 'Malformed'
     return [s[i*64:(i+1)*64].decode() for i in range(int(len(s)/64))]
+
 
 class BlockMetaSQL:
 
@@ -155,13 +160,14 @@ class StorageDriver(object):
                 return BlockTransactionsSQL.unpack(res)
 
     @classmethod
-    def get_lastest_block_hash(cls, block_hash):
+    def get_latest_block_hash(cls):
         with SQLDB() as (connection, cursor):
             cursor.execute("""
-                SELECT MAX(block_num) FROM block
-                    WHERE block_hash = %s
-            """, (block_hash,))
-            res = cursor.fetchone()
+                SELECT block_hash FROM block
+                  ORDER BY block_num DESC
+                  LIMIT 1
+            """)
+            res = cursor.fetchone() or GENESIS_HASH
             return res
 
     @classmethod

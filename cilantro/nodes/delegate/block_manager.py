@@ -13,7 +13,7 @@
 """
 
 from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder
-from cilantro.storage.blocks import BlockStorageDriver
+from cilantro.storage.driver import StorageDriver
 from cilantro.logger.base import get_logger
 from cilantro.storage.db import VKBook
 from cilantro.protocol.multiprocessing.worker import Worker
@@ -66,7 +66,7 @@ class BlockManager(Worker):
 
         # raghu todo tie to initial catch up logic as well as right place to do this
         # Falcon needs to add db interface modifications
-        self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
+        self.db_state = DBState(StorageDriver.get_latest_block_hash())
         self.master_quorum = 1  # TODO
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"

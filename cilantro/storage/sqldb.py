@@ -24,6 +24,7 @@ class SQLDB():
         return self.connection, self.cursor
     def __exit__(self, type, value, traceback):
         return False
+
     @classmethod
     def force_start(cls):
         cls.connection = mysql.connector.connect(
@@ -34,6 +35,7 @@ class SQLDB():
         )
         cls.cursor = cls.connection.cursor()
         cls.setup_db()
+
     @classmethod
     def setup_db(cls, database=None):
         database = database or cls.database
@@ -44,21 +46,25 @@ class SQLDB():
             USE {}
             """.format(database))
         cls.build_tables()
+
     @classmethod
     def drop_db(cls, database=None):
         cls.cursor.execute("""
             DROP DATABASE IF EXISTS {}
             """.format(database or cls.database))
+
     @classmethod
     def reset_db(cls, database=None):
         cls.drop_db(database)
         cls.setup_db(database)
+
     @classmethod
     def truncate_tables(cls, *tables):
         for table in tables:
             cls.cursor.execute("""
                 TRUNCATE TABLE {}
             """.format(table))
+
     @classmethod
     def build_tables(cls):
         cls.cursor.execute("""
@@ -89,6 +95,7 @@ class SQLDB():
                 state BLOB NOT NULL
             )
         """)
+
 
 if __name__ == '__main__':
     import argparse

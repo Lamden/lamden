@@ -10,11 +10,11 @@ from cilantro.constants.testnet import TESTNET_DELEGATES
 from cilantro.constants.testnet import TESTNET_DELEGATES
 DEL_SK = TESTNET_DELEGATES[0]['sk']
 DEL_VK = TESTNET_DELEGATES[0]['vk']
-import pickle
 from typing import List
 
 import capnp
 import subblock_capnp
+
 
 class SubBlockContender(MessageBase):
     # TODO switch underlying data struct for this guy to Capnp (or at least JSON)
@@ -44,9 +44,6 @@ class SubBlockContender(MessageBase):
         # Ensure merkle leaves are valid hex - this may not be present in all cases
         for leaf in self.merkle_leaves:
             assert is_valid_hex(leaf, length=64), "Invalid Merkle leaf {} ... expected 64 char hex string".format(leaf)
-
-
-
 
     @classmethod
     def create(cls, result_hash: str, input_hash: str, merkle_leaves: List[bytes],
@@ -119,7 +116,8 @@ class SubBlockContender(MessageBase):
         return self.input_hash == other.input_hash and \
             self.result_hash == other.result_hash
 
-class SubBlockContenderBuilder():
+
+class SubBlockContenderBuilder:
     @classmethod
     def create_sub_block(cls, transactions=None, tx_count=5, txs_for_input_hash=[i for i in range(5)], sb_index=0, del_sk=DEL_SK, del_vk=DEL_VK):
         if not transactions:

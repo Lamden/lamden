@@ -11,8 +11,6 @@ from cilantro.constants.masternode import NODES_REQUIRED_CONSENSUS as MASTERNODE
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block import SubBlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro.messages.consensus.block_contender import BlockContender
-from cilantro.storage.blocks import BlockStorageDriver
 from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.block_data.block_metadata import BlockMetaData
 from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
@@ -187,6 +185,7 @@ class BlockAggregator(Worker):
             self.log.info('Received KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
 
     def store_full_block(self, hash_list):
+        # TODO fix
         merkle_roots = sorted(hash_list, key=lambda input_hash: self.contenders[input_hash]['sb_index'])
         sub_block_metadatas, all_signatures, all_merkle_leaves, all_transactions = self.combine_sub_blocks(merkle_roots)
 
@@ -219,8 +218,6 @@ class BlockAggregator(Worker):
                 'consensus_count': 1,
                 'full_block_metadata': block_metadata
             }
-
-        # SHOULD RETURN (FullBlockMetaData,
 
         return block, block_metadata, sub_block_metadatas
 

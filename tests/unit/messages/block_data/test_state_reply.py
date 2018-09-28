@@ -5,6 +5,7 @@ from unittest import TestCase
 import secrets
 from unittest import mock
 
+
 # TODO delete this once we remove it from MN
 class StateReplyTest(TestCase):
 
