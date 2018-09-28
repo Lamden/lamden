@@ -6,14 +6,15 @@ import pickle
 import asyncio
 import logging
 
-from kademlia.protocol import KademliaProtocol
-from kademlia.utils import digest
-from kademlia.storage import ForgetfulStorage
-from kademlia.node import Node
-from kademlia.crawling import ValueSpiderCrawl
-from kademlia.crawling import NodeSpiderCrawl
+from cilantro.protocol.overlay.kademlia.protocol import KademliaProtocol
+from cilantro.protocol.overlay.kademlia.utils import digest
+from cilantro.protocol.overlay.kademlia.storage import ForgetfulStorage
+from cilantro.protocol.overlay.kademlia.node import Node
+from cilantro.protocol.overlay.kademlia.crawling import ValueSpiderCrawl
+from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
 
-log = logging.getLogger(__name__)
+from cilantro.logger.base import get_logger
+log = get_logger(__name__)
 
 class Network(object):
     """

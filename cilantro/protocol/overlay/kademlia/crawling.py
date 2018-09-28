@@ -1,10 +1,10 @@
 from collections import Counter
 import logging
 
-from kademlia.node import Node, NodeHeap
-from kademlia.utils import gather_dict
-
-log = logging.getLogger(__name__)
+from cilantro.protocol.overlay.kademlia.node import Node, NodeHeap
+from cilantro.protocol.overlay.kademlia.utils import gather_dict
+from cilantro.logger.base import get_logger
+log = get_logger(__name__)
 
 
 class SpiderCrawl(object):

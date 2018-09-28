@@ -4,7 +4,7 @@ import operator
 import asyncio
 
 from collections import OrderedDict
-from kademlia.utils import OrderedSet, sharedPrefix, bytesToBitString
+from cilantro.protocol.overlay.kademlia.utils import OrderedSet, sharedPrefix, bytesToBitString
 
 
 class KBucket(object):

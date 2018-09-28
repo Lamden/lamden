@@ -4,11 +4,12 @@ import logging
 
 from rpcudp.protocol import RPCProtocol
 
-from kademlia.node import Node
-from kademlia.routing import RoutingTable
-from kademlia.utils import digest
+from cilantro.protocol.overlay.kademlia.node import Node
+from cilantro.protocol.overlay.kademlia.routing import RoutingTable
+from cilantro.protocol.overlay.kademlia.utils import digest
 
-log = logging.getLogger(__name__)
+from cilantro.logger.base import get_logger
+log = get_logger(__name__)
 
 
 class KademliaProtocol(RPCProtocol):
