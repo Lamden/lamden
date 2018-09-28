@@ -4,7 +4,7 @@ import operator
 import asyncio
 
 from collections import OrderedDict
-from kademlia.utils import OrderedSet, sharedPrefix, bytesToBitString
+from cilantro.protocol.overlay.utils import OrderedSet, sharedPrefix, bytesToBitString
 
 
 class KBucket(object):
@@ -36,9 +36,12 @@ class KBucket(object):
 
         # delete node, and see if we can add a replacement
         del self.nodes[node.id]
-        if len(self.replacementNodes) > 0:
+
+        newnode = None
+        while len(self.replacementNodes) > 0:
             newnode = self.replacementNodes.pop()
-            self.nodes[newnode.id] = newnode
+            if node.id == newnode.id: continue
+        if newnode: self.nodes[newnode.id] = newnode
 
     def hasInRange(self, node):
         return self.range[0] <= node.long_id <= self.range[1]
@@ -104,7 +107,7 @@ class TableTraverser(object):
             return next(self)
 
         if len(self.rightBuckets) > 0:
-            self.currentNodes = self.rightBuckets.pop(0).getNodes()
+            self.currentNodes = self.rightBuckets.pop().getNodes()
             self.left = True
             return next(self)
 
@@ -180,5 +183,4 @@ class RoutingTable(object):
                 heapq.heappush(nodes, (node.distanceTo(neighbor), neighbor))
             if len(nodes) == k:
                 break
-
         return list(map(operator.itemgetter(1), heapq.nsmallest(k, nodes)))

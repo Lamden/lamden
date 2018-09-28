@@ -5,16 +5,15 @@ import hashlib
 import operator
 import asyncio
 
-
 async def gather_dict(d):
     cors = list(d.values())
     results = await asyncio.gather(*cors)
     return dict(zip(d.keys(), results))
 
-
 def digest(s):
     if not isinstance(s, bytes):
         s = str(s).encode('utf8')
+    assert type(s) == bytes, 'Cannot digest non-byte string'
     return hashlib.sha1(s).digest()
 
 

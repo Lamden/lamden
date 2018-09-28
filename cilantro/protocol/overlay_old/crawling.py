@@ -1,10 +1,9 @@
 from collections import Counter
-import logging
+from cilantro.logger import get_logger
+from cilantro.protocol.overlay.node import Node, NodeHeap
+from cilantro.protocol.overlay.utils import gather_dict
 
-from kademlia.node import Node, NodeHeap
-from kademlia.utils import gather_dict
-
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 class SpiderCrawl(object):
@@ -16,13 +15,13 @@ class SpiderCrawl(object):
         Create a new C{SpiderCrawl}er.
 
         Args:
-            protocol: A :class:`~kademlia.protocol.KademliaProtocol` instance.
-            node: A :class:`~kademlia.node.Node` representing the key we're
+            protocol: A :class:`~cilantro.protocol.overlay.protocol.KademliaProtocol` instance.
+            node: A :class:`~cilantro.protocol.overlay.node.Node` representing the key we're
                   looking for
-            peers: A list of :class:`~kademlia.node.Node` instances that
+            peers: A list of :class:`~cilantro.protocol.overlay.node.Node` instances that
                    provide the entry point for the network
             ksize: The value for k based on the paper
-            alpha: The value for alpha based on the paper
+            alpha: The value for ALPHA based on the paper
         """
         self.protocol = protocol
         self.ksize = ksize
@@ -65,69 +64,20 @@ class SpiderCrawl(object):
     async def _nodesFound(self, responses):
         raise NotImplementedError
 
-
-class ValueSpiderCrawl(SpiderCrawl):
+class NodeSpiderCrawl(SpiderCrawl):
     def __init__(self, protocol, node, peers, ksize, alpha):
         SpiderCrawl.__init__(self, protocol, node, peers, ksize, alpha)
-        # keep track of the single nearest node without value - per
-        # section 2.3 so we can set the key there if found
-        self.nearestWithoutValue = NodeHeap(self.node, 1)
 
-    async def find(self):
-        """
-        Find either the closest nodes or the value requested.
-        """
-        return await self._find(self.protocol.callFindValue)
-
-    async def _nodesFound(self, responses):
-        """
-        Handle the result of an iteration in _find.
-        """
-        toremove = []
-        foundValues = []
-        for peerid, response in responses.items():
-            response = RPCFindResponse(response)
-            if not response.happened():
-                toremove.append(peerid)
-            elif response.hasValue():
-                foundValues.append(response.getValue())
-            else:
-                peer = self.nearest.getNodeById(peerid)
-                self.nearestWithoutValue.push(peer)
-                self.nearest.push(response.getNodeList())
-        self.nearest.remove(toremove)
-
-        if len(foundValues) > 0:
-            return await self._handleFoundValues(foundValues)
-        if self.nearest.allBeenContacted():
-            # not found!
-            return None
-        return await self.find()
-
-    async def _handleFoundValues(self, values):
-        """
-        We got some values!  Exciting.  But let's make sure
-        they're all the same or freak out a little bit.  Also,
-        make sure we tell the nearest node that *didn't* have
-        the value to store it.
-        """
-        valueCounts = Counter(values)
-        if len(valueCounts) != 1:
-            log.warning("Got multiple values for key %i: %s",
-                        self.node.long_id, str(values))
-        value = valueCounts.most_common(1)[0][0]
-
-        peerToSaveTo = self.nearestWithoutValue.popleft()
-        if peerToSaveTo is not None:
-            await self.protocol.callStore(peerToSaveTo, self.node.id, value)
-        return value
-
-
-class NodeSpiderCrawl(SpiderCrawl):
-    async def find(self):
+    async def find(self, node_id=None):
         """
         Find the closest nodes.
         """
+        if node_id: self.target_node_id = node_id
+        if hasattr(self, 'target_node_id'):
+            for peer in list(self.nearest):
+                if peer.id == self.target_node_id:
+                    del self.target_node_id
+                    return peer
         return await self._find(self.protocol.callFindNode)
 
     async def _nodesFound(self, responses):
@@ -142,7 +92,6 @@ class NodeSpiderCrawl(SpiderCrawl):
             else:
                 self.nearest.push(response.getNodeList())
         self.nearest.remove(toremove)
-
         if self.nearest.allBeenContacted():
             return list(self.nearest)
         return await self.find()
@@ -165,12 +114,6 @@ class RPCFindResponse(object):
         Did the other host actually respond?
         """
         return self.response[0]
-
-    def hasValue(self):
-        return isinstance(self.response[1], dict)
-
-    def getValue(self):
-        return self.response[1]['value']
 
     def getNodeList(self):
         """
