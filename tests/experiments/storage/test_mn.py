@@ -23,7 +23,6 @@ def start_mn(signing_key):
     log = get_logger(os.getenv('MN'))
 
     count = MasterOps.get_master_set()
-    log.info(count)
 
     mn_id = MasterOps.get_mn_id(sk = signing_key)
     rep_fact = MasterOps.get_rep_factor()
@@ -31,11 +30,8 @@ def start_mn(signing_key):
 
     # find master idx in pool
     pool_sz = MasterOps.rep_pool_sz(rep_fact,count)
-    log.info(pool_sz)
+    log.info("pool size {}".format(pool_sz))
     idx = MasterOps.mn_pool_idx(pool_sz,mn_id)
-    log.info(idx)
-    log.info(mn_id)
-
 
     ctx = zmq.Context()
     socket = ctx.socket(socket_type=zmq.PAIR)
@@ -47,23 +43,36 @@ def start_mn(signing_key):
 
 
     log.debug("waiting for msg...")
-    msg = socket.recv()
-    log.debug("msg = {}".format(msg))
+    msg = socket.recv_pyobj()
+
+    log.info("total masters {}".format(count))
+    log.info("master index {}".format(idx))
+    log.info("master id {}".format(mn_id))
 
     blk_num = 1
     while blk_num <= 5:
-        permit_wr = False
         log.debug("waiting for msg...")
-        msg = socket.recv()
+        msg = socket.recv_pyobj()
         log.info("got msg {}".format(msg))
 
-        permit_wr = MasterOps.check_min_mn_wr(count, mn_id)
+        # check for every time if we have
+        permit_wr = MasterOps.check_min_mn_wr(rep_fact=rep_fact,mn_set=count,id=mn_id)
+        log.info("1")
+        log.info(permit_wr)
+
         if permit_wr == False:
             permit_wr = MasterOps.evaluate_wr(mn_idx=idx, blk_id=msg, pool_sz=pool_sz)
+            log.info("2")
             log.info(permit_wr)
 
+        if permit_wr == True:
+            # write to store
+            log.info("committing msg {}".format(msg))
+            log.info("3")
+            permit_wr = False
+
+        log.info("4")
         log.info(permit_wr)
-        log.info(msg)
         time.sleep(1)
         blk_num += 1
 
@@ -96,13 +105,13 @@ def start_mgmt():
 
     log.info("sending first msg")
 
-    socket.send(b"hello for the first time")
+    socket.send_pyobj("hello for the first time")
 
     blk_num = 1
     while blk_num <= 5:
         msg = blk_num
         log.debug("sending msg {}".format(msg))
-        socket.send('{}'.format(msg).encode())
+        socket.send_pyobj(msg)
         time.sleep(1)
         blk_num += 1
 

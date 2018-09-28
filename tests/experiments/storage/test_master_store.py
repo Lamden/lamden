@@ -47,10 +47,11 @@ class MasterOps:
         return rep_fact
 
     @staticmethod
-    def check_min_mn_wr(mn_set, id):
-        if mn_set>0 and id!=-1:
+    def check_min_mn_wr(rep_fact,mn_set, id):
+        if mn_set<=rep_fact and id!=-1:
             # always wr
             return True
+        return False
 
     @staticmethod
     def get_mn_id(sk):
