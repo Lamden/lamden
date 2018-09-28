@@ -1,120 +1,96 @@
 """
     SubBlockBuilder
 
+    If Block is viewed as consists of a merkle tree of transactions, then sub-block refers to the sub-tree of the block.
     Conceptually Sub Block could form whole block or part of block. This lets us scale things horizontally.
-    Each of this builder will be started on a separate process and will assume BlockManager would be 
-    responsible to resolve db conflicts (due to ordering of these sub-blocks at block level) and 
-    send resolved subtree to master (and other delegates).
-    it will send its vote on other subblocks to master directly.
+    Each of this SB builder will be started on a separate process and will coordinate with BlockManager 
+    to resolve db conflicts between sub-blocks and send resolved sub-block to master.
+    It also sends in partial data of transactions along with the sub-block
     
-    We will make each SubBlockBuilder responsible for one master and so in our case, we will have 64 processes,
-    each producing a sub-block. We can form one block with 8/16 sub-blocks so we will have 8/4 independent blocks.
-    1 master    -> 1 subblcok
-    2 subblocks -> 1 subtree
-    8 subtrees  -> 1 block
-    64 masters -> 64 sub-blocks -> 32 subtrees -> 4 blocks
+    We typically take all transactions from a single master to form a sub-block,
+    but a sub-block builder can be responsible for more than one master and so can make more than one sub-block.
+    This ensures our ordering guarantees that transactions entered at a master is executed in that order, 
+    but we will decide the order of transactions between different masters.
     
-    SubBlockBuilder
-      Input: set of witnesses that provide transactions from a single master
-             need to use proxies for zmq communication as witnesses are dynamically rotated to help different masters
-             connection port to BlockManager
-      0. Opens a subscribe connection to witness pool (thread1)
-         just put them in a queue 
-      1. Initialization: establish connections to blockmgr (the main process that launched this one)
-         when asked to start making a new subblock (blkMgr)
-         2. pull next batch from queue (Seneca interface and cost of db access is included here)
-         3. Failed contracts have to be in pending state to be resolved
-         4. if some failed contracts, resolve or reject them or push them to next block (communication cost to BlkMgr here)
-         5. Also BlockMgr may send in new failures (communication cost)
-         6. Make and send subblock to blockMgr
 """
 
-# each sbb:
-#    - 16 processes -> each process with 4 threads ?? 4 master bins ??
-#       rotate circularly
-#         thread1 -> take first batch and interpret it and send it. do a small yield??
-#         thread2 -> take second batch and repeat
 
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 import asyncio
 import zmq.asyncio
-from cilantro.logger import get_logger
-import signal, sys
-from cilantro.storage.db import VKBook
-from cilantro.constants.protocol import DUPE_TABLE_SIZE
-from cilantro.constants.ports import SBB_PORT_START
+import time
+from typing import List
 
+from cilantro.logger import get_logger
+from cilantro.storage.db import VKBook
+from cilantro.constants.ports import SBB_PORT_START
+from cilantro.constants.masternode import BATCH_INTERVAL
+
+from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
+from cilantro.messages.consensus.sub_block_contender import SubBlockContender
+from cilantro.messages.transaction.batch import TransactionBatch
+from cilantro.messages.signals.make_next_block import MakeNextBlock
+from cilantro.messages.consensus.empty_sub_block_contender import EmptySubBlockContender
 
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.protocol import wallet
-from cilantro.protocol.structures import CappedSet
-from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
-from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol.multiprocessing.worker import Worker
 
-from typing import Union
-from cilantro.utils.hasher import Hasher
+from cilantro.protocol.structures import MerkleTree
+from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
 
-# need delegate communication class to describe events
-#  all currently known hand-shakes of block making
-#  get # of txns
-#  move to block state. may skip some due to low vol of txns there.
-# need block state events
-#    for 4 blocks:
-#       blocks in 1 and 2 stages, just do io (no cpu - to make sure cpu is available for other proceses)
-#                just txns from witness and drop it in queue  - may keep a count of # of txns
-# witness will use master router/dealer to communicate it is going to cover it. can master accept/reject it?
-# master will publish it once it accepts
-# witness can quit at a certain time interval ?? and delegates can kick it out once it has other 5/6 copies and no data from it??
+from cilantro.utils.hasher import Hasher
+from cilantro.utils.utils import int_to_bytes, bytes_to_int
+
+# This is a convenience struct to hold all data related to a sub-block in one place.
+# Since we have more than one sub-block per process, SBB'er will hold an array of SubBlockManager objects
+class SubBlockManager:
+    def __init__(self, sub_block_index: int, sub_socket, processed_txs_timestamp: int=0):
+        self.sub_block_index = sub_block_index
+        self.sub_socket = sub_socket
+        self.processed_txs_timestamp = processed_txs_timestamp
+        self.pending_txs = LinkedHashTable()
+        self.num_pending_sb = 0
+        self.merkle = None
 
 
 class SubBlockBuilder(Worker):
-    def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int, sbb_map: dict,
-                 num_sb_builders: int, *args, **kwargs):
+    def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int,
+                 num_sb_builders: int, total_sub_blocks: int, num_blocks: int, *args, **kwargs):
         super().__init__(signing_key=signing_key, name="SubBlockBuilder_{}".format(sbb_index))
 
         self.ip = ip
-        self.sbb_index, self.sbb_map = sbb_index, sbb_map
+        self.sbb_index = sbb_index
+        self.total_sub_blocks = total_sub_blocks
+        self.num_blocks = num_blocks
+        num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
+        self.num_sb_per_block = (num_sb_per_builder + num_blocks - 1) // num_blocks
+        self.cur_block_index = num_blocks - 1     # so it will start at block 0
+        self.pending_block_index = 0
 
-        self.block_num = int(sbb_index / 16)       # hard code this for now
-        self.sub_block_num = int(sbb_index % 16)
-
-        self.num_txs = 0
-        self.num_sub_blocks = 0
         self.tasks = []
-
-        self.pending_txs = LinkedHashTable()
-        self.interpreter = SenecaInterpreter()
-        self._recently_seen = CappedSet(max_size=DUPE_TABLE_SIZE)  # TODO do we need this?
 
         # Create DEALER socket to talk to the BlockManager process over IPC
         self.dealer = None
         self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sbb_index).encode())
 
         # BIND sub sockets to listen to witnesses
-        self.subs = []
-        self._create_sub_sockets(num_sb_builders=num_sb_builders, num_mnodes=len(VKBook.get_masternodes()))
+        self.sb_managers = []
+        self._create_sub_sockets(num_sb_per_builder=num_sb_per_builder,
+                                 num_sb_builders=num_sb_builders)
 
-        # DEBUG TODO DELETE
-        self.tasks.append(self.test_dealer_ipc())
-        # END DEBUG
+        self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {}"
+                        .format(sbb_index, total_sub_blocks, num_blocks, num_sb_per_builder, self.num_sb_per_block))
+        # Create a Seneca interpreter for this SBB
+        self.interpreter = SenecaInterpreter()
 
         self.run()
 
     def run(self):
         self.log.notice("SBB {} starting...".format(self.sbb_index))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
-
-    async def test_dealer_ipc(self):
-        import random
-        self.log.info("Spamming BlockManager over IPC...")
-        while True:
-            msg = "hello from SBB {}".format(self.sbb_index)
-            self.log.debug("Sending msg {}".format(msg))
-            self.dealer.send_multipart([msg.encode()])
-            await asyncio.sleep(10)
 
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
         self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
@@ -124,132 +100,147 @@ class SubBlockBuilder(Worker):
         self.dealer.connect(port=port, protocol='ipc', ip=ip)
         self.tasks.append(self.dealer.add_handler(handler_func=self.handle_ipc_msg))
 
-    def _create_sub_sockets(self, num_sb_builders, num_mnodes):
-        # First, determine the set of Masternodes this SBB is responsible for
-        num_mn_per_sbb = num_mnodes // num_sb_builders
-        mn_range = list(range(self.sbb_index * num_mn_per_sbb, self.sbb_index * num_mn_per_sbb + num_sb_builders))
-        self.log.info("This SBB is responsible for masternodes in index range {}".format(self.sbb_index, mn_range))
-
+    def _create_sub_sockets(self, num_sb_per_builder, num_sb_builders):
         # We then BIND a sub socket to a port for each of these masternode indices
-        for mn_idx in mn_range:
-            port = SBB_PORT_START + mn_idx
-            self.log.info("SBB BINDing to port {} with no filter".format(port))
-            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, mn_idx))
+        for idx in range(num_sb_per_builder):
+            sb_idx = idx * num_sb_builders + self.sbb_index  # actual SB index in global index space
+            if sb_idx >= self.total_sub_blocks:    # out of range already
+                return
+
+            port = SBB_PORT_START + sb_idx
+            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
+                                             secure=True)
             sub.setsockopt(zmq.SUBSCRIBE, b'')
-            sub.bind(port=port, ip=self.ip)  # TODO secure him
-            self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg))
-            self.subs.append(sub)
+            sub.bind(port=port, ip=self.ip)
+            self.log.info("SBB BINDing to port {} with no filter".format(port))
+
+            self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
+            self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
     def handle_ipc_msg(self, frames):
-        self.log.important("Got msg over Router IPC from BlockManager with frames: {}".format(frames))
-        # TODO implement
+        self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
+        assert len(frames) == 2, "Expected 3 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
-    def handle_sub_msg(self, frames):
-        self.log.important("Sub socket got frames {}".format(frames))
+        msg_type = bytes_to_int(frames[0])
+        msg_blob = frames[1]
 
+        msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
+        self.log.debugv("SBB received an IPC message {}".format(msg))
 
-    # # will it receive the list from BM - no need to know upfront
-    # # still need to figure out starting point where it has all the witnesses available - may not be up front
-    # # also need to allow for the case where it will handle multiple masters (multiple sets of witnesses - format??)
-    # def _parse_witness_list(self, witness_list_list):
-    #     witness_lists = witness_list_list.split(";")
-    #     for index, witness_list in enumerate(witness_lists):
-    #         witnesses = witness_list.split(",")
-    #         for witness in witnesses:
-    #             ip, vk = witness.split(":", 1)
-    #             self.witness_table[index][vk] = []
-    #             self.witness_table[index][vk].append(ip)
-          
-    # delegates bind to sub sockets on a fixed port. Each witness can open its pub socket and connect to all sub sockets??
-    # def _subscribe_to_witnesses(self):
-    #     for index, tbl in enumerate(self.witness_table):
-    #         socket = ZmqAPI.get_socket(self.verifying_key, type=zmq.SUB)
-    #         for vk, value in self.witness_table:
-    #             ip = value[0]
-    #             url = "{}:{}".format(ip, PUB_SUB_PORT)
-    #             socket.connect(vk=vk, ip=ip)
-    #             self.log.debug("Connected to witness at ip:{} socket:{}"
-    #                            .format(ip, witness_vk))
-    #         self.witness_table[vk].append(socket)
-    #         self.tasks.append(self._listen_to_witness(socket, index))
+        # raghu TODO listen to updated DB message from BM and start conflict resolution if any
+        # call to make sub-block(s) for next block
+        # tie with messages below
 
-    # TODO mimic this logic in handle_ipc_msg
-    # async def _listen_to_block_manager(self):
-    #     try:
-    #         self.log.debug(
-    #            "Sub-block builder {} listening to Block-manager process at {}"
-    #            .format(self.sbb_index, self.url))
-    #         while True:
-    #             cmd_bin = await self.socket.recv()
-    #             self.log.debug("Got cmd from BM: {}".format(cmd_bin))
-    #
-    #             # need to change logic here based on our communication protocols
-    #             if cmd_bin == KILL_SIG:
-    #                 self.log.debug("Sub-block builder {} got kill signal"
-    #                 .format(self.sbb_index))
-    #                 self._teardown()
-    #                 return
-    #
-    #             if cmd_bin == ADD_WITNESS:
-    #                 # new witness that will cover the master
-    #                 # witness_vk, master_vk
-    #
-    #             # SKIP_ROUND behavior is captured by this guy receiving an empty bag
-    #             # if cmd_bin == SKIP_ROUND:
-    #             #     skip if don't have txns pending
-    #
-    #             if cmd_bin == CANCEL_SUBTREE:
-    #                 if self._interpret:
-    #                     self._interpret = 0
-    #
-    #
-    #     except asyncio.CancelledError:
-    #         self.log.warning("Builder _recv_messages task canceled externally")
+        if isinstance(msg, MakeNextBlock):
+            self._make_next_sub_block()
+        else:
+            raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
+                            .format(type(msg)))
 
+    def handle_sub_msg(self, frames, index):
+        self.log.info("Sub socket got frames {} with handler_index {}".format(frames, index))
+        assert 0 <= index < len(self.sb_managers), "Got index {} out of range of sb_managers array {}".format(
+            index, self.sb_managers)
 
-    # async def recv_multipart(self, socket, callback_fn: types.MethodType, ignore_first_frame=False):
-    async def _listen_to_witness(self, socket, index):
-        self.log.debug("Sub-block builder {} listening to witness set {}"
-                       .format(self.sbb_index, index))
-        last_bag_hash = 0
-        last_time_stamp = 0
+        envelope = Envelope.from_bytes(frames[-1])
+        timestamp = envelope.meta.timestamp
+        assert isinstance(envelope.message, TransactionBatch), "Handler expected TransactionBatch but got {}".format(envelope.messages)
 
-        while True:
+        if timestamp <= self.sb_managers[index].processed_txs_timestamp:
+            self.log.debug("Got timestamp {} that is prior to the most recent timestamp {} for sb_manager {} tho"
+                           .format(timestamp, self.sb_managers[index].processed_txs_timestamp, index))
+            return
 
-            event = await socket.recv_event()
+        input_hash = Hasher.hash(envelope)
+        # if the sb_manager already has this bag, ignore it
+        if input_hash in self.sb_managers[index].pending_txs:
+            self.log.debugv("Input hash {} already found in sb_manager at index {}".format(input_hash, index))
+            return
 
-            if event == TXN_BAG:
-                bag_hash, timestamp = self.fetch_hash_timestamp(event)
-                if (bag_hash == last_bag_hash) or (timestamp < last_timestamp):
-                    continue
-                last_bag_hash = bag_hash
-                last_time_stamp = timestamp
-                txn_bag = event.fetch_bag()
-                self.pending_txs[index].append(bag_hash, txn_bag)
+        # TODO properly wrap below in try/except. Leaving it as an assertion just for dev
+        assert envelope.verify_seal(), "Could not validate seal for envelope {}!!!".format(envelope)
+        # TODO if verification fails, log and return here ?
 
-    async def _interpret_next_subtree(self, index):
-        self.log.debug("Starting to make a new sub-block {} for block {}"
-                       .format(self.sub_block_num, self.block_num))
-        # get next batch of txns ??  still need to decide whether to unpack a bag or check for end of txn batch
-        txn_bag = self.pending_txs[index].popleft()
-        if txn_bag.empty():
-            return false
-        
-        for txn in txn_bag:
+        # keep updating timestamp as they are increasing from a master
+        self.sb_managers[index].processed_txs_timestamp = timestamp
+        if self.sb_managers[index].num_pending_sb > 0:
+            if ((self.sb_managers[index].num_pending_sb == 1) and
+                (self.pending_block_index == self.cur_block_index)):
+                sbb_idx = self.sb_managers[index].sub_block_index
+                self._make_next_sb(input_hash, envelope.message, sbb_idx)
+            self.sb_managers[index].num_pending_sb = self.sb_managers[index].num_pending_sb - 1
+        else:
+            self.sb_managers[index].pending_txs.append(input_hash, envelope.message)
+
+    def _make_next_sb(self, input_hash: str, txs_bag: MessageBase, sbb_idx: int):
+        self.log.debug("SBB {} attempting to build sub block with sub block index {}".format(self.sbb_index, sbb_idx))
+ 
+        batch = TransactionBatch.from_data(txs_bag)
+        sbc = self._create_empty_sbc(input_hash, sbb_idx) if batch.is_empty \
+                  else self._create_sbc_from_batch(input_hash, sbb_idx, batch)
+        self._send_msg_over_ipc(sbc)
+
+    def _create_empty_sbc(self, input_hash: str, sbb_idx: int) -> SubBlockContender:
+        """
+        Creates an Empty Sub Block Contender from a TransactionBatch
+        """
+        signature = wallet.sign(self.signing_key, input_hash.encode())
+        merkle_sig = MerkleSignature.create(sig_hex=signature,
+                                            timestamp=str(int(time.time())),
+                                            sender=self.verifying_key)
+        sbc = EmptySubBlockContender.create(input_hash=input_hash,
+                                            sb_index=sbb_idx, signature=merkle_sig)
+        return sbc
+
+    def _create_sbc_from_batch(self, input_hash: str, sbb_idx: int,
+                               batch: TransactionBatch) -> SubBlockContender:
+        """
+        Creates a Sub Block Contender from a TransactionBatch
+        """
+        # We assume if we are trying to create a SBC, our interpreter is empty and in a fresh state
+        assert self.interpreter.queue_size == 0, "Expected an empty interpreter queue before building a SBC"
+
+        for txn in batch.transactions:
             self.interpreter.interpret(txn)  # this is a blocking call. either async or threads??
 
         # Merkle-ize transaction queue and create signed merkle hash
         all_tx = self.interpreter.queue_binary
-        self.merkle = MerkleTree.from_raw_transactions(all_tx)
-        self.signature = wallet.sign(self.signing_key, self.merkle.root)
+        merkle = MerkleTree.from_raw_transactions(all_tx)
+        signature = wallet.sign(self.signing_key, merkle.root)
 
-        # Create merkle signature message and publish it
-        merkle_sig = MerkleSignature.create(sig_hex=self.signature,
-                                            timestamp='now',
+        merkle_sig = MerkleSignature.create(sig_hex=signature,
+                                            timestamp=str(int(time.time())),
                                             sender=self.verifying_key)
-        self.send_signature(merkle_sig)  # send signature to block manager
 
-    def send_signature(self, merkle_sig):
-        self.socket.send(merkle_sig.serialize())
+        # TODO fix interpreter ... must pass in TransactionData object into SBC, not raw binaries
+        sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=input_hash,
+                                       merkle_leaves=merkle.leaves, sub_block_index=sbb_idx,
+                                       signature=merkle_sig, raw_txs=all_tx)
+        return sbc
+
+    def _send_msg_over_ipc(self, message: MessageBase):
+        """
+        Convenience method to send a MessageBase instance over IPC dealer socket. Includes a frame to identify the
+        type of message
+        """
+        assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
+        message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
+        self.dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
+
+    def _make_next_sub_block(self):
+        self.cur_block_index = (self.cur_block_index + 1) % self.num_blocks
+        sb_index_start = self.cur_block_index * self.num_sb_per_block
+        for i in range(self.num_sb_per_block):
+            sb_idx = sb_index_start + i
+            if sb_idx >= len(self.sb_managers):    # out of range already
+                return
+
+            if len(self.sb_managers[sb_idx].pending_txs) > 0:
+                input_hash, txs_bag = self.sb_managers[sb_idx].pending_txs.pop_front()
+                sbb_idx = self.sb_managers[sb_idx].sub_block_index
+                self._make_next_sb(input_hash, txs_bag, sbb_idx)
+            else:
+                self.sb_managers[sb_idx].num_pending_sb = self.sb_managers[sb_idx].num_pending_sb + 1
+                self.pending_block_index = self.cur_block_index
 
 

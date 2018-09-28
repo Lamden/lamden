@@ -10,7 +10,7 @@ console-db:
 	./scripts/connect-mysql-client.sh
 
 stop-db:
-	docker kill `docker ps --format "table {{.Names}}" --filter "ancestor=lamden/cilantro-db"| tail -n +2` || true; sleep 2
+	docker kill `docker ps --format "table {{.Names}}" --filter "ancestor=lamden/cilantro-db"| tail -n +2` 2>/dev/null; sleep 2
 
 stop: stop-db
 
@@ -43,7 +43,7 @@ dump:
 	python3 ./tests/vmnet/test_dump.py
 
 kill-docker:
-	docker kill $(docker ps -q)
+	docker kill `docker ps -q` || true; sleep 2
 
 build-testnet-json:
 	python3 -c "from cilantro.utils.test.testnet_nodes import *; generate_testnet_json()"

@@ -1,4 +1,3 @@
-import cilantro.protocol.states.state
 from cilantro.logger import get_logger
 import inspect
 

@@ -119,7 +119,6 @@ class TestValidate(TestIronhouseBase):
         self.validated = False
         async def send_async_sec():
             authorized = await self.ironhouse.authenticate(self.fake['curve_key'], '127.0.0.1', port)
-            print('!!!', self.ironhouse.daemon_auth.certs)
             self.assertTrue(self.ironhouse.daemon_auth.certs['*'].get(self.fake['curve_key'], False))
             self.assertTrue(authorized)
             self.assertTrue(self.validated)

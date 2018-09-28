@@ -14,12 +14,10 @@ from cilantro.constants.testnet import TESTNET_MASTERNODES
 Pre config values for test
 '''
 
-
-
-
 '''
     TEST ONLY :Following is storage class to simulate storage pool capabilities
 '''
+
 #mn_buckets = defaultdict(list)
 #for i in range(mn_set):
 #    mn_buckets[i].append(None)
@@ -73,6 +71,7 @@ class MasterOps:
         pool_sz = round(mn_set/rep_fact);
         return pool_sz
 
+
     @staticmethod
     def mn_pool_idx(pool_sz, mn_id):
         return (mn_id % pool_sz)
@@ -89,3 +88,4 @@ class MasterOps:
     @staticmethod
     def wr_to_bucket(mn_id, blk_id):
         mn_buckets[mn_id].append(blk_id)
+

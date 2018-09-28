@@ -56,7 +56,7 @@ class MessageMeta(MessageBase):
         return self._data.uuid
 
     @property
-    def timestamp(self) -> str:
-        return self._data.timestamp
+    def timestamp(self) -> float:
+        return float(self._data.timestamp)
 
 

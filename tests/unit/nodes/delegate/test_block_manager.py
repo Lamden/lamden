@@ -1,6 +1,7 @@
 from cilantro.logger.base import get_logger
 from cilantro.constants.testnet import TESTNET_DELEGATES
 from cilantro.nodes.delegate.block_manager import BlockManager, IPC_PORT
+from cilantro.utils import int_to_bytes
 
 from unittest import TestCase
 from unittest import mock
@@ -32,19 +33,26 @@ class TestBlockManager(TestCase):
 
         # Mock manager.create_socket(...) to return a predictable list of mock objects that we can further assert on.
         # Relies on the sockets being created in EXACTLY the same order they are specified here in 'side_effect=[...]'
-        mock_router, mock_sub = MagicMock(), MagicMock()
-        mock_manager.create_socket = MagicMock(side_effect=[mock_router, mock_sub])
+        mock_tcp_router = MagicMock()
+        mock_ipc_router = MagicMock()
+        mock_pub = MagicMock()
+        mock_sub = MagicMock()
+        mock_manager.create_socket = MagicMock(side_effect=[mock_tcp_router, mock_ipc_router, mock_pub, mock_sub])
 
         mock_router_handler_task = MagicMock()
-        mock_router.add_handler = MagicMock(return_value=mock_router_handler_task)
+        mock_tcp_router.add_handler = MagicMock(return_value=mock_router_handler_task)
+        mock_ipc_router.add_handler = MagicMock(return_value=mock_router_handler_task)
+        mock_pub.add_handler = MagicMock(return_value=mock_router_handler_task)
+        mock_sub.add_handler = MagicMock(return_value=mock_router_handler_task)
 
         # Since we mocked out the .run method, we must invoke build_task_list manually
         bm.build_task_list()
 
         # Assert 'bind' was called on ipc_router with the expected args
-        self.assertEqual(bm.ipc_router, mock_router)
-        mock_router.bind.assert_called_with(port=IPC_PORT, protocol='ipc', ip=bm.ipc_ip)
-        mock_router.add_handler.assert_called()
+        self.assertEqual(bm.ipc_router, mock_ipc_router)
+        self.assertEqual(bm.router, mock_tcp_router)
+        mock_ipc_router.bind.assert_called_with(port=IPC_PORT, protocol='ipc', ip=bm.ipc_ip)
+        mock_ipc_router.add_handler.assert_called()
         self.assertTrue(mock_router_handler_task in bm.tasks)
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
@@ -57,11 +65,11 @@ class TestBlockManager(TestCase):
         bm.manager = MagicMock()
         bm.ipc_router = MagicMock()
 
-        bm.build_task_list()
+        bm.start_sbb_procs()
 
-        frames = [b'identity frame', b'this should be a real message binary']
+        frames = [b'', b'', b'this should be a real message binary']
 
-        bm.handle_ipc_msg(frames)
+        # bm.handle_ipc_msg(frames)
 
         # TODO assert handle_ipc_msg does what expected
 

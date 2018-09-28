@@ -18,14 +18,16 @@ ALICE_SK, ALICE_VK = "20b577e71e0c3bddd3ae78c0df8f7bb42b29b0c0ce9ca42a44e6afea29
 BOB_SK, BOB_VK = "5664ec7306cc22e56820ae988b983bdc8ebec8246cdd771cfee9671299e98e3c", "ab59a17868980051cc846804e49c154829511380c119926549595bf4b48e2f85"
 CARLOS_SK, CARLOS_VK = "8ddaf072b9108444e189773e2ddcb4cbd2a76bbf3db448e55d0bfc131409a197", "3dd5291906dca320ab4032683d97f5aa285b6491e59bba25c958fc4b0de2efc8"
 
+
 class TestSenecaInterpreter(TestCase):
 
     def setUp(self):
         reset_db()
 
     def tearDown(self):
-        self.interpreter.ex.cur.close()
-        self.interpreter.ex.conn.close()
+        if hasattr(self, 'interpreter'):
+            self.interpreter.ex.cur.close()
+            self.interpreter.ex.conn.close()
 
     def ordered_tx(self, contract):
         return OrderingContainer.create(contract, MN_VK)
@@ -61,7 +63,7 @@ class TestSenecaInterpreter(TestCase):
 
         # Assert the contract was added to the queue
         self.assertEqual(self.interpreter.queue_size, 1)
-        self.assertEqual(self.interpreter.queue[0], contract_tx.transaction)
+        self.assertEqual(self.interpreter.queue[0].contract, contract_tx.transaction)
 
     def test_run_bad_contract_reverts_to_last_successful_contract(self):
         """

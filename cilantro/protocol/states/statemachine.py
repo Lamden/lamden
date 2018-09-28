@@ -35,7 +35,7 @@ class StateMachine:
         an infinite event loop This is necessary for loop-using functionality like
         state timeouts.
 
-        However, run_in_loop should always be false for Cilantro in production! This is because NodeBase, which is a
+        However, run_in_loop should always be false for Cilantro in production! This is because OldNodeBase, which is a
         StateMachine subclass, manages its own event loop, that is gaurenteed to run_forever once StateMachine.start()
         relinquishes control. run_in_loop=True should only be used in unit tests, or if the StateMachine class is intended
         to be used as a standalone library (outside of Cilantro).

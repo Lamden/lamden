@@ -1,13 +1,16 @@
 from cilantro.messages.base.base import MessageBase
-from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.utils import lazy_property, set_lazy_property, is_valid_hex
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 from cilantro.protocol.structures import MerkleTree
+from cilantro.messages.transaction.data import TransactionData
+from cilantro.storage.db import VKBook
+from cilantro.utils.hasher import Hasher
+
 import pickle
 from typing import List
 
 import capnp
-import consensus_capnp
+import subblock_capnp
 
 class SubBlockContender(MessageBase):
     # TODO switch underlying data struct for this guy to Capnp (or at least JSON)
@@ -19,14 +22,15 @@ class SubBlockContender(MessageBase):
     """
 
     def validate(self):
-        # Validate field types and existence
+
+        assert self.signature.sender in VKBook.get_delegates(), 'Not a valid delegate'
+        assert self.signature.verify(self.result_hash.encode()), 'Cannot verify signature'
         assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
         assert self._data.inputHash, "input hash field missing from data {}".format(self._data)
-        # leaves can be empty list from some delegates that only intend to vote (not propose it)
         assert self._data.merkleLeaves, "leaves field missing from data {}".format(self._data)
         assert self._data.signature, "Signature field missing from data {}".format(self._data)
-        # assert SubBlockContender.NODES in self._data, "nodes field missing from data {}".format(self._data)
         assert self._data.transactions, "Raw transactions field missing from data {}".format(self._data)
+        assert hasattr(self._data, 'subBlockIdx'), "Sub-block index field missing from data {}".format(self._data)
 
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
                                                           "expected 64 char hex string".format(self.result_hash)
@@ -37,31 +41,31 @@ class SubBlockContender(MessageBase):
         for leaf in self.merkle_leaves:
             assert is_valid_hex(leaf, length=64), "Invalid Merkle leaf {} ... expected 64 char hex string".format(leaf)
 
-        # Attempt to deserialize signatures by reading property (will raise exception if can't)
-        self.signature.verify(self.result_hash)
+
+
 
     @classmethod
     def create(cls, result_hash: str, input_hash: str, merkle_leaves: List[bytes],
-               signature: MerkleSignature, raw_txs: List[bytes]):
+                    signature: MerkleSignature, transactions: List[TransactionData], sub_block_index: int):
         """
         Delegages create a new sub-block contender and propose to master nodes
         :param result_hash: The hash of the root of this sub-block
         :param input_hash: The hash of input bag containing raw txns in order
         :param merkle_leaves: A list merkle leaves contained within this proposed block. Each leaf is a byte string
         :param signature: MerkleSignature of the delegate proposing this sub-block
-        :param raw_txs: Partial set of raw transactions with the result state included.
+        :param transactions: Partial set of raw transactions with the result state included.
         :return: A SubBlockContender object
         """
         assert isinstance(signature, MerkleSignature), "signature must be of MerkleSignature"
-
-        struct = consensus_capnp.SubBlockContender.new_message()
+        struct = subblock_capnp.SubBlockContender.new_message()
         struct.init('merkleLeaves', len(merkle_leaves))
-        struct.init('transactions', len(raw_txs))
+        struct.init('transactions', len(transactions))
         struct.resultHash = result_hash
         struct.inputHash = input_hash
         struct.merkleLeaves = merkle_leaves
         struct.signature = signature.serialize()
-        struct.transactions = raw_txs
+        struct.transactions = [tx.serialize() for tx in transactions]
+        struct.subBlockIdx = sub_block_index
 
         return cls.from_data(struct)
 
@@ -72,15 +76,19 @@ class SubBlockContender(MessageBase):
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return consensus_capnp.SubBlockContender.from_bytes_packed(data)
+        return subblock_capnp.SubBlockContender.from_bytes_packed(data)
 
-    @property
+    @lazy_property
     def result_hash(self) -> str:
         return self._data.resultHash.decode()
 
-    @property
+    @lazy_property
     def input_hash(self) -> str:
         return self._data.inputHash.decode()
+
+    @property
+    def sb_index(self) -> int:
+        return self._data.subBlockIdx
 
     @lazy_property
     def signature(self) -> MerkleSignature:
@@ -99,12 +107,8 @@ class SubBlockContender(MessageBase):
         return [leaf.decode() for leaf in self._data.merkleLeaves]
 
     @property
-    def transactions(self) -> List[ContractTransaction]:
-        """
-        The Merkle Tree leaves associated with the block (a binary tree stored implicitly as a list).
-        Each element is hex string representing a node's hash.
-        """
-        return [ContractTransaction.from_bytes(tx) for tx in self._data.transactions]
+    def transactions(self) -> List[TransactionData]:
+        return [TransactionData.from_bytes(tx) for tx in self._data.transactions]
 
     def __eq__(self, other):
         assert isinstance(other, SubBlockContender), "Attempted to compare a BlockContender with a non-BlockContender"
