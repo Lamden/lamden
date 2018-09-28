@@ -10,7 +10,7 @@ class SQLDB():
         host=config.get('DB','hostname'),
         user=config.get('DB','username'),
         passwd=config.get('DB','password'),
-        charset='utf8'
+        charset='binary'
     )
     cursor = connection.cursor()
     database = config.get('DB','database')
@@ -19,9 +19,10 @@ class SQLDB():
         if reset:
             self.drop_db(database)
             self.setup_db(database)
+        elif not self.connection.is_connected():
+            self.force_start()
         return self.connection, self.cursor
     def __exit__(self, type, value, traceback):
-        self.connection.commit()
         return False
     @classmethod
     def force_start(cls):
@@ -29,7 +30,7 @@ class SQLDB():
             host=config.get('DB','hostname'),
             user=config.get('DB','username'),
             passwd=config.get('DB','password'),
-            charset='utf8'
+            charset='binary'
         )
         cls.cursor = cls.connection.cursor()
         cls.setup_db()
@@ -61,8 +62,8 @@ class SQLDB():
     @classmethod
     def build_tables(cls):
         cls.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS subblock (
-                merkle_root VARCHAR(32) PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS sub_block (
+                merkle_root VARCHAR(64) PRIMARY KEY,
                 signatures BLOB NOT NULL,
                 merkle_leaves BLOB NOT NULL,
                 sb_index INT NOT NULL
@@ -83,7 +84,7 @@ class SQLDB():
                 tx_hash VARCHAR(64) PRIMARY KEY,
                 block_hash VARCHAR(64) NOT NULL,
                 raw_tx_hash VARCHAR(64) NOT NULL,
-                tx_blob BLOB NOT NULL,
+                contract_tx BLOB NOT NULL,
                 status VARCHAR(16) NOT NULL,
                 state BLOB NOT NULL
             )

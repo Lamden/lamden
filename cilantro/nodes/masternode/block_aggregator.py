@@ -12,9 +12,10 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block import SubBlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.block_contender import BlockContender
-from cilantro.messages.block_data.block_metadata import BlockMetaData
 from cilantro.storage.blocks import BlockStorageDriver
+from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.block_data.block_metadata import BlockMetaData
+from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
 
@@ -74,7 +75,7 @@ class BlockAggregator(Worker):
         for vk in VKBook.get_masternodes():
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
-
+                self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
