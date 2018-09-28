@@ -9,7 +9,7 @@ import unittest, time
 !!! NOTE  !!!
 these tests require a 2 MN / 2 WITNESS / 4 DELEGATE config in testnet.json
 
-In the future, we need to develop a way to swap out testnet.json depending on what integration test we are running 
+In the future, we need to develop a way to swap out testnet.json depending on what integration test we are running
 """
 
 def config_sub(test_obj):
@@ -29,20 +29,22 @@ class TestLargeNetwork(MPTestCase):
         """
         def assert_sub(test_obj):
             c_args = test_obj.handle_sub.call_args_list
-            assert len(c_args) == 7, "Expected 7 messages (one from each node). Instead, got {}".format(c_args)
+            assert len(c_args) == 7, "Expected 7 messages (one from each node). Instead, got:\n{}".format(c_args)
 
-        mn_0 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='MN_0', config_fn=config_sub, assert_fn=assert_sub)
-        mn_1 = MPPubSubAuth(sk=TESTNET_MASTERNODES[1]['sk'], name='MN_1', config_fn=config_sub, assert_fn=assert_sub)
+        BLOCK = False
 
-        wit_0 = MPPubSubAuth(sk=TESTNET_WITNESSES[0]['sk'], name='WITNESS_0', config_fn=config_sub, assert_fn=assert_sub)
-        wit_1 = MPPubSubAuth(sk=TESTNET_WITNESSES[1]['sk'], name='WITNESS_1', config_fn=config_sub, assert_fn=assert_sub)
+        mn_0 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='[node_1]MN_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+        mn_1 = MPPubSubAuth(sk=TESTNET_MASTERNODES[1]['sk'], name='[node_2]MN_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
 
-        del_0 = MPPubSubAuth(sk=TESTNET_DELEGATES[0]['sk'], name='DELEGATE_0', config_fn=config_sub, assert_fn=assert_sub)
-        del_1 = MPPubSubAuth(sk=TESTNET_DELEGATES[1]['sk'], name='DELEGATE_1', config_fn=config_sub, assert_fn=assert_sub)
-        del_2 = MPPubSubAuth(sk=TESTNET_DELEGATES[2]['sk'], name='DELEGATE_2', config_fn=config_sub, assert_fn=assert_sub)
-        del_3 = MPPubSubAuth(sk=TESTNET_DELEGATES[3]['sk'], name='DELEGATE_3', config_fn=config_sub, assert_fn=assert_sub)
+        wit_0 = MPPubSubAuth(sk=TESTNET_WITNESSES[0]['sk'], name='[node_3]WITNESS_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+        wit_1 = MPPubSubAuth(sk=TESTNET_WITNESSES[1]['sk'], name='[node_4]WITNESS_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
 
-        time.sleep(10)  # Nap while nodes hookup
+        del_0 = MPPubSubAuth(sk=TESTNET_DELEGATES[0]['sk'], name='[node_5]DELEGATE_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+        del_1 = MPPubSubAuth(sk=TESTNET_DELEGATES[1]['sk'], name='[node_6]DELEGATE_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+        del_2 = MPPubSubAuth(sk=TESTNET_DELEGATES[2]['sk'], name='[node_7]DELEGATE_2', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+        del_3 = MPPubSubAuth(sk=TESTNET_DELEGATES[3]['sk'], name='[node_8]DELEGATE_3', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+
+        time.sleep(16)  # Nap while nodes hookup
 
         all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0, del_1, del_2, del_3)
         all_vks = (TESTNET_MASTERNODES[0]['vk'], TESTNET_MASTERNODES[1]['vk'], TESTNET_WITNESSES[0]['vk'],

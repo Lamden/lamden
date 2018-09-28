@@ -75,7 +75,11 @@ class BlockAggregator(Worker):
         for vk in VKBook.get_masternodes():
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
+<<<<<<< HEAD
                 self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+=======
+
+>>>>>>> 00f2d2d2a0a900bbc2c109be81a454329ed9d6af
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
