@@ -58,7 +58,7 @@ struct BlockMetaDataRequest {
 }
 
 struct StateUpdateReply {
-    blockData @0 :List(FullBlockMetaData);
+    blockData @0 :List(BlockData);
 }
 
 struct TransactionRequest {

@@ -1,6 +1,10 @@
 import json, math
-from cilantro.utils.test.testnet_nodes import TESTNET_JSON_PATH
+from cilantro.utils.test.testnet_nodes import get_testnet_json_path
+TESTNET_JSON_PATH = get_testnet_json_path()
 
+# DEBUG -- TODO DELETE
+# print("\n\n\n\n\n TESTNET JSON PATH: {} \n\n\n\n\n".format(TESTNET_JSON_PATH))
+# END DEBUG
 
 with open(TESTNET_JSON_PATH, 'r') as f:
     _dat_good_json = json.load(f)

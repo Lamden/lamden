@@ -99,7 +99,6 @@ class MPTesterProcess:
 
     def __init__(self, name, url, build_fn, config_fn, assert_fn):
         self.url = url
-        # self.profname = profname
         self.name = name
         self.config_fn = config_fn
         self.assert_fn = assert_fn
@@ -129,7 +128,7 @@ class MPTesterProcess:
         self.gathered_tasks = asyncio.gather(self._recv_cmd(), *self.tasks)
 
         self.log.debug("sending ready sig to parent")
-        self.socket.send_pyobj(SIG_RDY)
+        self.socket.send(SIG_RDY)
 
         try:
             self.log.debug("starting tester proc event loop")
@@ -211,7 +210,7 @@ class MPTesterProcess:
             # If something blows up, teardown and send a FAIL_SIG to orchestration process
             except Exception as e:
                 self.log.error("\n\n TESTER GOT EXCEPTION FROM EXECUTING CMD {}: {}\n\n".format(cmd, traceback.format_exc()))
-                self.socket.send_pyobj(SIG_FAIL)
+                self.socket.send(SIG_FAIL)
                 self._teardown()
                 return
 
@@ -273,7 +272,8 @@ class MPTesterBase:
     """
     tester_cls = 'UNSET'
 
-    def __init__(self, config_fn=None, assert_fn=None, name='TestableProcess', always_run_as_subproc=False, *args, **kwargs):
+    def __init__(self, config_fn=None, assert_fn=None,  name='TestableProcess', block_until_rdy=True,
+                 always_run_as_subproc=False, *args, **kwargs):
         super().__init__()
         self.log = get_logger(name)
         self.name = name
@@ -298,7 +298,8 @@ class MPTesterBase:
         self.socket.connect(self.url)
 
         # Block this process until we get a ready signal from the subprocess/VM
-        self.wait_for_test_object()
+        if block_until_rdy:
+            self.wait_for_test_object()
 
     def _config_url_and_test_proc(self, build_fn, always_run_as_subproc):
         # Add this object to the registry of testers
@@ -342,7 +343,7 @@ class MPTesterBase:
 
     def wait_for_test_object(self):
         self.log.info("Tester waiting for rdy sig from test process...")
-        msg = self.socket.recv_pyobj()
+        msg = self.socket.recv()
         assert msg == SIG_RDY, "Got msg from child thread {} but expected SIG_RDY".format(msg)
         self.log.info("GOT RDY SIG: {}".format(msg))
 
