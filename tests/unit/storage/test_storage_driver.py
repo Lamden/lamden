@@ -60,5 +60,15 @@ class TestStorageDriver(TestCase):
             set([tx['contract_tx'].serialize() for tx in txs])
         )
 
+    @mock.patch("cilantro.messages.block_data.block_metadata.SUBBLOCKS_REQUIRED", 2)
+    def test_get_transactions_by_block_hash(self):
+        block = BlockDataBuilder.create_block()
+        StorageDriver.store_block(block, validate=False)
+        txs = StorageDriver.get_transactions(block_hash=block.block_hash)
+        self.assertEqual(
+            set([tx.contract_tx.serialize() for tx in block.transactions]),
+            set([tx['contract_tx'].serialize() for tx in txs])
+        )
+
 if __name__ == '__main__':
     unittest.main()

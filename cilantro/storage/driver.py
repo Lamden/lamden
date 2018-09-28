@@ -155,5 +155,15 @@ class StorageDriver(object):
                 return BlockTransactionsSQL.unpack(res)
 
     @classmethod
+    def get_lastest_block_hash(cls, block_hash):
+        with SQLDB() as (connection, cursor):
+            cursor.execute("""
+                SELECT MAX(block_num) FROM block
+                    WHERE block_hash = %s
+            """, (block_hash,))
+            res = cursor.fetchone()
+            return res
+
+    @classmethod
     def get_latest_blocks(cls, start_block_hash):
         pass
