@@ -15,8 +15,7 @@ from kademlia.crawling import NodeSpiderCrawl
 
 log = logging.getLogger(__name__)
 
-
-class Server(object):
+class Network(object):
     """
     High level view of a node instance.  This is the object that should be
     created to start listening as an active node on the network.
@@ -218,7 +217,7 @@ class Server(object):
         log.info("Loading state from %s", fname)
         with open(fname, 'rb') as f:
             data = pickle.load(f)
-        s = Server(data['ksize'], data['alpha'], data['id'])
+        s = Network(data['ksize'], data['alpha'], data['id'])
         if len(data['neighbors']) > 0:
             s.bootstrap(data['neighbors'])
         return s
