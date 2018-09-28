@@ -1,5 +1,6 @@
 import zmq, zmq.asyncio, asyncio
 from os import getenv as env
+from cilantro.overlay.auth import Auth
 
 class DiscoveryMsg:
     @classmethod
@@ -22,5 +23,10 @@ class Discovery:
         cls.sock.bind('tcp://{}:{}'.format(cls.host_ip, cls.port))
         while True:
             try:
-                msg = await cls.sock.recv()
-                
+                msg = await cls.sock.recv_multipart()
+
+    @classmethod
+    async def discovery_nodes(cls, ips):
+        for ip in ips:
+            cls.sock.connect('tcp://{}:{}'.format(ip, cls.port))
+            cls.sock.send_multipart([Auth.verifying_key])
