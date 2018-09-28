@@ -12,9 +12,9 @@ log = get_logger("TestnetNodeBuilder")
 DEFAULT_TESTNET_FILE_NAME = '2-2-4.json'
 TESTNET_JSON_DIR = cilantro.__path__[0] + '/../testnet_configs/'
 
-NUM_MASTERS = 2
-NUM_WITNESSES = 2
-NUM_DELEGATES = 4
+NUM_MASTERS = 4
+NUM_WITNESSES = 4
+NUM_DELEGATES = 8
 
 
 def get_testnet_json_path(file_name=DEFAULT_TESTNET_FILE_NAME):
@@ -48,5 +48,5 @@ def generate_testnet_json(num_masters=NUM_MASTERS, num_witnesses=NUM_WITNESSES, 
     testnet = {'masternodes': build_masternodes(num_masters), 'witnesses': build_witnesses(num_witnesses),
                'delegates': build_delegate(num_delegates)}
 
-    with open(TESTNET_JSON_DIR, 'w') as fp:
+    with open(TESTNET_JSON_DIR + 'new.json', 'w') as fp:
         json.dump(testnet, fp, indent=4)
