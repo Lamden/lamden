@@ -101,16 +101,3 @@ class SQLDB():
                 state BLOB NOT NULL
             )
         """)
-
-
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--drop', action='store_true', default=False)
-    parser.add_argument('-b', '--build-tables', action='store_true', default=False)
-    args = parser.parse_args()
-    if args.drop:
-        SQLDB.drop_db()
-    SQLDB.setup_db()
-else:
-    SQLDB.setup_db()

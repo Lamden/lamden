@@ -20,6 +20,10 @@ from cilantro.messages.consensus.merkle_signature import build_test_merkle_sig
 from cilantro.messages.transaction.contract import ContractTransactionBuilder
 from cilantro.messages.transaction.data import TransactionData
 
+from cilantro.messages.block_data.block_data import *
+from cilantro.messages.block_data.state_update import *
+from cilantro.messages.block_data.block_metadata import *
+
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from seneca.engine.storage.mysql_executer import Executer
