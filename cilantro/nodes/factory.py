@@ -25,7 +25,6 @@ class NodeFactory:
     def run_witness(signing_key, ip, name='Witness', reset_db=False):
         with DB(should_reset=reset_db) as db:
             pass
-        _build_block_schema(reset_db)
 
         w = Witness(ip=ip, name=name, signing_key=signing_key)
 
@@ -33,7 +32,6 @@ class NodeFactory:
     def run_delegate(signing_key, ip, name='Delegate', reset_db=False):
         with DB(should_reset=reset_db) as db:
             pass
-        _build_block_schema(reset_db)
 
         d = Delegate(ip=ip, name=name, signing_key=signing_key)
 
