@@ -44,6 +44,7 @@ class DBState:
     def __init__(self, cur_block_hash):
         self.cur_block_hash = cur_block_hash
         self.next_block = {}
+        # maintain a mapping of sbb_index -> root hash?
         # self.cur_timestamp = timestamp   ?? probably not needed
 
 
@@ -160,7 +161,6 @@ class BlockManager(Worker):
 
         msg_type = bytes_to_int(frames[1])
         msg_blob = frames[2]
-
         msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
         self.log.debugv("BlockManager received an IPC message from sbb_index {} with message {}".format(sbb_index, msg))
 
@@ -207,12 +207,14 @@ class BlockManager(Worker):
     def handle_state_update_reply(self, envelope: Envelope):
         sender = envelope.sender
         sup = envelope.message
-        assert isinstance(sup, StateUpdateReply), "handle_state_update_reply must be called with StateUpdateReply"
+        assert isinstance(sup, StateUpdateReply), "handle_state_update_reply must be called /w an envelope " \
+                                                  "StateUpdateReply not {}".format(envelope)
 
         self.log.important("Got StateUpdateReply from sender {} ... reply=\n{}".format(sender, sup))
         # TODO implement
 
     def _handle_sbc(self, sbc: SubBlockContender):
+        # Need to keep track of this so we know when all our SBBs have submitted their SBCs
         self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
 
     def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
@@ -231,6 +233,9 @@ class BlockManager(Worker):
     # new blocks keep update
     def handle_new_block(self, envelope: Envelope):
         # raghu/davis - need to fix this data structure and handling it
+
+        # GET prev block hash from env, compare against ours
+
         cur_block_hash = self.db_state.cur_block_hash
         # block_hash = get_block_hash(Envelope) # TODO
         block_hash = cur_block_hash + 1
@@ -240,6 +245,8 @@ class BlockManager(Worker):
 
         count = self.db_state.next_block.get(block_hash, 0) + 1
         if (count == self.master_quorum):      # TODO
+            # Signal to SBBs to commit their state, start on next block(s)
+            # Set db_state.cur_block_hash to the new block hash of the notification
             self.update_db(envelope.message)
             self.db_state.cur_block_hash = block_hash
             self.db_state.next_block.clear()

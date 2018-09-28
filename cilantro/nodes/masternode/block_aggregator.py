@@ -107,7 +107,7 @@ class BlockAggregator(Worker):
         cached = self.contenders.get(input_hash)
         if not cached:
             # if MerkleTree.verify_tree(leaves=sbc.merkle_leaves, root=sbc.result_hash, hash_leaves=False):
-            if MerkleTree.verify_tree_from_hex_str(''.join(sbc.merkle_leaves), root=sbc.result_hash):
+            if MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash):
                 self.contenders[input_hash] = {
                     'merkle_leaves': sbc.merkle_leaves,
                     'transactions': set(),
@@ -219,6 +219,8 @@ class BlockAggregator(Worker):
                 'consensus_count': 1,
                 'full_block_metadata': block_metadata
             }
+
+        # SHOULD RETURN (FullBlockMetaData,
 
         return block, block_metadata, sub_block_metadatas
 

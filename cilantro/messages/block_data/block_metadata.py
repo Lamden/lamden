@@ -12,6 +12,7 @@ import time
 import capnp
 import blockdata_capnp
 
+
 class BlockMetaData(MessageBase):
     """
     This class is the metadata for combined validated sub blocks.
@@ -68,6 +69,7 @@ class BlockMetaData(MessageBase):
     def __eq__(self, other):
         return self._data.blockHash == other._data.blockHash and \
             self.merkle_roots == other.merkle_roots
+
 
 class FullBlockMetaData(BlockMetaData): # NOTE This one includes block number and timestamp
     @classmethod
