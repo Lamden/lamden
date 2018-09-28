@@ -6,16 +6,20 @@ config = SafeConfigParser()
 config.read('{}/db_conf.ini'.format(path))
 
 class SQLDB():
-    connection = mysql.connector.connect(
-        host=config.get('DB','hostname'),
-        user=config.get('DB','username'),
-        passwd=config.get('DB','password'),
-        charset='binary'
-    )
-    cursor = connection.cursor()
+    # connection = mysql.connector.connect(
+    #     host=config.get('DB','hostname'),
+    #     user=config.get('DB','username'),
+    #     passwd=config.get('DB','password'),
+    #     charset='binary'
+    # )
+    # cursor = connection.cursor()
+    connection = None
+    cursor = None
     database = config.get('DB','database')
     def __enter__(self, database=None, reset=False):
         database = database or self.database
+        if self.connection == None:
+            self.force_start()
         if reset:
             self.drop_db(database)
             self.setup_db(database)
@@ -38,6 +42,8 @@ class SQLDB():
 
     @classmethod
     def setup_db(cls, database=None):
+        if cls.connection == None:
+            cls.force_start()
         database = database or cls.database
         cls.cursor.execute("""
             CREATE DATABASE IF NOT EXISTS {}

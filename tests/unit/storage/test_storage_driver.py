@@ -16,6 +16,7 @@ MN_VK = TESTNET_MASTERNODES[0]['vk']
 DEL_SK = TESTNET_DELEGATES[0]['sk']
 DEL_VK = TESTNET_DELEGATES[0]['vk']
 
+
 class TestStorageDriver(TestCase):
 
     @classmethod
