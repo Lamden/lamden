@@ -12,7 +12,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block import SubBlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.block_data.block_data import BlockData
-from cilantro.messages.block_data.block_metadata import BlockMetaData
+from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
 from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
@@ -81,8 +81,8 @@ class BlockAggregator(Worker):
 
         if isinstance(msg, SubBlockContender):
             self.recv_sub_block_contender(msg)
-        elif isinstance(msg, BlockMetaData):
-            self.recv_full_block_hash_metadata(msg)
+        elif isinstance(msg, NewBlockNotification):
+            self.recv_new_block_notif(msg)
         else:
             raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
@@ -162,14 +162,14 @@ class BlockAggregator(Worker):
                             self.log.error('Received sub blocks from all delegates and still have missing transactions!')
                             raise Exception('Received sub blocks from all delegates and still have missing transactions!') # DEBUG
 
-    def recv_full_block_hash_metadata(self, bmd: BlockMetaData):
-        bmd.validate()
-        block_hash = bmd.block_hash
+    def recv_new_block_notif(self, nbc: NewBlockNotification):
+        block_hash = nbc.block_hash
+
         if not self.full_block_hashes.get(block_hash):
             self.log.info('Received NEW block hash "{}", did not yet receive valid sub blocks from delegates.'.format(block_hash))
             self.full_block_hashes[block_hash] = {
                 'consensus_count': 1,
-                'full_block_metadata': bmd
+                'full_block_metadata': nbc
             }
         elif self.full_block_hashes[block_hash].get('consensus_reached') != True:
             self.total_valid_sub_blocks = 0

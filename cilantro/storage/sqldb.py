@@ -1,4 +1,4 @@
-import mysql, mysql.connector, cilantro, os
+import mysql.connector, cilantro, os
 from configparser import SafeConfigParser
 
 path = os.path.dirname(cilantro.__path__[0])

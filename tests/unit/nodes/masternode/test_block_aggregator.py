@@ -120,21 +120,21 @@ class TestBlockAggregator(TestCase):
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
     @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
-    def test_handle_recv_result_hash(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
+    def test_handle_sub_msg_with_new_block_notif(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
 
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
 
         ba.manager = MagicMock()
-        ba.recv_full_block_hash_metadata = MagicMock()
+        ba.recv_new_block_notif = MagicMock()
         ba.build_task_list()
 
         mock_env = MagicMock()
-        mock_env.message = MagicMock(spec=BlockMetaData)
+        mock_env.message = MagicMock(spec=NewBlockNotification)
 
         with mock.patch.object(Envelope, 'from_bytes', return_value=mock_env):
             ba.handle_sub_msg([b'filter doesnt matter', b'envelope binary also doesnt matter'])
 
-        ba.recv_full_block_hash_metadata.assert_called_with(mock_env.message)
+        ba.recv_new_block_notif.assert_called_with(mock_env.message)
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
@@ -155,24 +155,6 @@ class TestBlockAggregator(TestCase):
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
     @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
-    def test_recv_sub_block_contender_fail(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
-
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
-
-        ba.manager = MagicMock()
-        ba.build_task_list()
-
-        signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-        sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
-
-        sbc._data.resultHash = b'A' * 63
-
-        with self.assertRaises(AssertionError):
-            ba.recv_sub_block_contender(sbc)
-
-    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
     def test_combine_result_hash_transactions_missing(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
 
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
@@ -183,7 +165,7 @@ class TestBlockAggregator(TestCase):
         for i in range(NODES_REQUIRED_CONSENSUS):
             signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
             sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
-            sbc._data.transactions = [tx._data for tx in TXS[:3]]
+            # sbc._data.transactions = [tx._data for tx in TXS[:3]]
             ba.recv_sub_block_contender(sbc)
 
         self.assertEqual(len(ba.result_hashes[RESULT_HASH]['signatures']), NODES_REQUIRED_CONSENSUS)
@@ -288,7 +270,7 @@ class TestBlockAggregatorStorage(TestCase):
             masternode_signature=signature
         )
         for i in range(3):
-            ba.recv_full_block_hash_metadata(fbmd)
+            ba.recv_new_block_notif(fbmd)
         self.assertEqual(ba.full_block_hashes[ba.curr_block_hash]['consensus_count'], 3)
         self.assertEqual(ba.full_block_hashes[ba.curr_block_hash]['full_block_metadata'], fbmd)
         self.assertEqual(ba.total_valid_sub_blocks, 0)
