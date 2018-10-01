@@ -92,7 +92,7 @@ class TestBlockManager(TestCase):
         mock_env = MagicMock()
         mock_block_notif = MagicMock(spec=NewBlockNotification)
         fake_hash = 'DEADBEEF' * 8
-        mock_env.message = NewBlockNotification()
+        mock_env.message = mock_block_notif
         mock_env.message_hash = fake_hash
 
         with mock.patch.object(Envelope, 'from_bytes', return_value=mock_env):
@@ -101,7 +101,7 @@ class TestBlockManager(TestCase):
             bm.handle_sub_msg([b'filter doesnt matter', b'envelope binary also doesnt matter'])
 
         # Now, actually assert handle_new_block was called with mock_env as an arg
-        bm.handle_new_block.assert_called_with(mock_env)
+        bm.handle_new_block.assert_called_with(mock_env.message)
 
 
 
