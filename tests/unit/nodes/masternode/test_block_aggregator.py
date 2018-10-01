@@ -293,5 +293,6 @@ class TestBlockAggregator(TestCase):
 #         # self.assertEqual(ba.full_block_hashes[block_hash]['full_block_metadata'].merkle_roots, sub_block_hashes)
 #         self.assertEqual(ba.total_valid_sub_blocks, 2)
 
+
 if __name__ == '__main__':
     unittest.main()
