@@ -19,6 +19,9 @@ from cilantro.storage.db import VKBook
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.utils.lprocess import LProcess
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
+from cilantro.protocol.interpreter import SenecaInterpreter
+from cilantro.messages.block_data.block_data import BlockData
+from typing import List
 
 from cilantro.constants.nodes import *
 from cilantro.constants.zmq_filters import DEFAULT_FILTER
@@ -43,7 +46,9 @@ IPC_PORT = 6967
 class DBState:
     def __init__(self, cur_block_hash):
         self.cur_block_hash = cur_block_hash
+        self.next_block_hash = cur_block_hash
         self.next_block = {}
+        self.sub_block_hash_map = {}
         # self.cur_timestamp = timestamp   ?? probably not needed
 
 
@@ -66,7 +71,8 @@ class BlockManager(Worker):
         # raghu todo tie to initial catch up logic as well as right place to do this
         # Falcon needs to add db interface modifications
         self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
-        self.master_quorum = 1  # TODO
+        self.min_new_block_quorum = 1  # TODO
+        self.interpreter = SenecaInterpreter()
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
@@ -87,7 +93,7 @@ class BlockManager(Worker):
         self.log.info("Block Manager starting...")
         self.start_sbb_procs()
         self.log.info("Catching up...")
-        self.update_db_state()
+        self.catchup_db_state()
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def build_task_list(self):
@@ -120,7 +126,7 @@ class BlockManager(Worker):
             self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
             self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
 
-    def update_db_state(self):
+    def catchup_db_state(self):
         # do catch up logic here
         # only when one can connect to quorum masters and get db update, move to next step
         # at the end, it has updated its db state to consensus latest
@@ -181,7 +187,7 @@ class BlockManager(Worker):
         msg_hash = envelope.message_hash
 
         if isinstance(msg, NewBlockNotification):
-            self.handle_new_block(envelope)
+            self.handle_new_block(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
@@ -196,24 +202,43 @@ class BlockManager(Worker):
         msg = envelope.message
         msg_hash = envelope.message_hash
 
-        if isinstance(msg, NewBlockNotification):
-            self.handle_new_block(envelope)
-        elif isinstance(msg, StateUpdateReply):
-            self.handle_state_update_reply(envelope)
+        if isinstance(msg, StateUpdateReply):
+            self.handle_state_update_reply(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
 
-    def handle_state_update_reply(self, envelope: Envelope):
-        sender = envelope.sender
-        sup = envelope.message
-        assert isinstance(sup, StateUpdateReply), "handle_state_update_reply must be called with StateUpdateReply"
+    def update_db_state(self, block_data: BlockData):
+        txs_list = block_data.transactions
+        for txn in txs_list:
+            self.interpreter.interpret(txn)
+        self.interpreter.flush()      # save and reset
+        self.db_state.cur_block_hash = block_data.block_hash
+        self.log.important("Caught up to block with hash {}".format(self.db_state.cur_block_hash))
 
-        self.log.important("Got StateUpdateReply from sender {} ... reply=\n{}".format(sender, sup))
-        # TODO implement
+
+    def handle_state_update_reply(self, bd_list: List[BlockData]):
+        # TODO need to handle the duplicates from a single sender (intentional attack?)
+        # sender = envelope.sender
+        # TODO also need to worry about quorum, etc
+        # bd_map = {}
+        for block_data in bd_list:
+            prev_block_hash = block_data.prev_block_hash
+            if self.db_state.cur_block_hash == prev_block_hash:
+                self.update_db_state(block_data)
+            else:
+                # bd_map[prev_block_hash] = block_data
+                # ignore right now - just log
+                self.log.important("Ignore block data with prev block hash {}".format(prev_block_hash))
+
 
     def _handle_sbc(self, sbc: SubBlockContender):
+        self.db_state.sub_block_hash_map[sbc.result_hash] = sbc.sb_index
         self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
+        if self.db_state.next_block_hash != self.db_state.cur_block_hash:
+            num_sb = len(self.db_state.sub_block_hash_map)
+            if (num_sb == self.sub_blocks_per_block):  # got all sub_block
+                self.update_db()
 
     def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
         """
@@ -225,25 +250,47 @@ class BlockManager(Worker):
         message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
-    # raghu todo - need to hook up catch logic with db_state
-    # db state - initialize
-    # ask for catch up
-    # new blocks keep update
-    def handle_new_block(self, envelope: Envelope):
-        # raghu/davis - need to fix this data structure and handling it
-        cur_block_hash = self.db_state.cur_block_hash
-        # block_hash = get_block_hash(Envelope) # TODO
-        block_hash = cur_block_hash + 1
-        if block_hash == self.db_state.cur_block_hash:
+
+    def update_db(self):
+        # first sort the sb result hashes based on sub block index
+        sorted_sb_hashes = sorted(self.db_state.sub_block_hash_map.keys(),
+                                  key=lambda result_hash: self.db_state.sub_block_hash_map[result_hash])
+        # append prev block hash 
+        sorted_sb_hashes.append(self.db_state.cur_block_hash)
+        our_block_hash = Hasher.hash_iterable(sorted_sb_hashes)
+        if (our_block_hash == self.db_state.next_block_hash):
+            # we have consensus
+            self.send_updated_db_msg()
+            self.db_state.cur_block_hash = our_block_hash
+            self.db_state.sub_block_hash_map.clear()
+            self.db_state.next_block.clear()
+        else:
+            # we can't handle this with current Seneca. TODO
+            self.log.important("Error: mismatch between current db state with masters!!")
+
+
+    def update_db_if_ready(self, block_data: NewBlockNotification):
+        self.db_state.next_block_hash = block_data.block_hash
+        # check if we have all sub_blocks
+        num_sb = len(self.db_state.sub_block_hash_map)
+        if (num_sb < self.sub_blocks_per_block):  # don't have all sub-blocks
+            return                                # since we don't have a way to sync Seneca with full data from master, just wait for sub-blocks done
+        self.update_db()
+
+
+    # update current db state to the new block
+    def handle_new_block(self, block_data: NewBlockNotification):
+        # cur_block_hash = self.db_state.cur_block_hash
+        # our_next_block_hash = self.get_our_next_block_hash()
+        new_block_hash = block_data.block_hash
+        
+        if new_block_hash == self.db_state.cur_block_hash:
             # TODO log something
             return
 
-        count = self.db_state.next_block.get(block_hash, 0) + 1
-        if (count == self.master_quorum):      # TODO
-            self.update_db(envelope.message)
-            self.db_state.cur_block_hash = block_hash
-            self.db_state.next_block.clear()
-            self.send_updated_db_msg()
+        count = self.db_state.next_block.get(new_block_hash, 0) + 1
+        if (count >= self.min_new_block_quorum):      # TODO
+            self.update_db_if_ready(block_data)
         else:
             self.db_state.next_block[block_hash] = count
 
