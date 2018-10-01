@@ -292,5 +292,6 @@ class TestBlockAggregatorStorage(TestCase):
 
         self.assertEqual(ba.total_valid_sub_blocks, 2)
 
+
 if __name__ == '__main__':
     unittest.main()
