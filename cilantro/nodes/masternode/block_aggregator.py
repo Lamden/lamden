@@ -188,7 +188,6 @@ class BlockAggregator(Worker):
             self.log.info('Received KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
 
     def store_full_block(self, hash_list: List[str]) -> NewBlockNotification:
-
         merkle_roots = sorted(hash_list, key=lambda input_hash: self.contenders[input_hash]['sb_index'])
         sub_block_metadatas, all_signatures, all_merkle_leaves, all_transactions = self.combine_sub_blocks(merkle_roots)
         prev_block_hash = StorageDriver.get_latest_block_hash()
