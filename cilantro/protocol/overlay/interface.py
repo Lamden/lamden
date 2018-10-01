@@ -60,7 +60,7 @@ class OverlayServer(object):
             data = [b.decode() for b in msg[2:]]
             getattr(self, msg[1].decode())(msg[0], *data)
 
-    def _get_node_from_vk(self, id_frame, event_id, vk: str, domain='*', timeout=5):
+    def _get_node_from_vk(self, id_frame, event_id, vk: str, domain='*', timeout=30):
         async def coro():
             node = None
             if vk in VKBook.get_all():
