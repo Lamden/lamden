@@ -1,0 +1,72 @@
+{
+    "masternodes": [
+        {
+            "sk": "2a1307ad75607e2601d071bc421ff30421cc9022184bcce75981cd4c2a1d4081",
+            "vk": "cb24e8534ea5545c1dc37ffa21903eb724f7e0cf32b669609156c421f879f624"
+        },
+        {
+            "sk": "737d4a284317c9823ae9aa09b822722f4bd79a686751bae74ca97326bb846571",
+            "vk": "ab6fb3acbb610b3a5aee6cbcf648b3912c8fcd6c8e5f07fe823a975f8e51bb97"
+        },
+        {
+            "sk": "6c5af6c6a47220c9a68fc1b1668b39bbb3aee1a0e8933a5ef69ac6d0e603f1b8",
+            "vk": "f362ddddb6f95eab56b6d866ea8fccb55645915f830e4154d25f57f32878d29e"
+        },
+        {
+            "sk": "8c21097c5707448ed236b489c3c190e6c237c7f6771267c7b74efaf75ca0d231",
+            "vk": "99a056cc40020b561402f03ce9aada8bc420481b52f8047aed19c29627da974e"
+        }
+    ],
+    "witnesses": [
+        {
+            "sk": "444fdddd43f5842184530add7a556c7db6d761fc0282bbc04600460b0eee62d0",
+            "vk": "e18214b72cc02297b1a6cbfd513cf3258c6afa92fe8646b5c696bbd6d423b134"
+        },
+        {
+            "sk": "2267dbb1a58686bfcaaa6d24b5df0220aba68e3099744b2d938a3d141f8b3058",
+            "vk": "297b726aad0ace4e634d61eb627eeb028a81e6171d5f2b630bd0a19864e32817"
+        },
+        {
+            "sk": "f66953b75074311f3f7f17f9c739224bf96bd08c3e2ba9f188a755f459ddfcb9",
+            "vk": "669bd05433b13420be70898e8a52706f63db73b2f48c93995ba32ef2acdb3644"
+        },
+        {
+            "sk": "9f5a12103cb4cf5076272e80fcccbb7fff27ac941173e349b65cf84e60ddbdfd",
+            "vk": "d367e9fe0f8f6732ecc8f839d6564ed67f6d7fd122943e0209d04889930b86a8"
+        }
+    ],
+    "delegates": [
+        {
+            "sk": "359b082373751fe6af3f2571f5c4d5e9d452217d8d3bc11d79cbc7cbddd56788",
+            "vk": "9d371a5e2a39a6e6f161c2b91b1d246168d176ebfd82948b22ee8fcc8d2f68c1"
+        },
+        {
+            "sk": "c35e4e404f62ffdc6105d56ffa25191282599d093b07990626420f1f17b4a878",
+            "vk": "2dfe29a7cef5f00b44c7c7631d8f2dbcd12948b64e01b7fa675573a9812dffd1"
+        },
+        {
+            "sk": "9de43a491cbe825547d4e1d130c4da526beae58e58ed8c0da8647553a397a706",
+            "vk": "525796220331885bbe9fc08e5a0047b36633a050075f24924c0d62dc81be1bed"
+        },
+        {
+            "sk": "3efa8b495b318b1ece8e073e3354f62bbf43cbc7c562f62c635222c208abf1d3",
+            "vk": "9baa5457c597ed0367f77e492dea79443db37f0c81c13ad05f8298546fee8296"
+        },
+        {
+            "sk": "fb30276b4cd1eaaf79f4ff282061a0da899d63022079e703fe1dbf043524c6a8",
+            "vk": "d01dad9f67e6c2c64ab30e5bc933098b674b4d01b1adc3d2b7e310cfbb86fb78"
+        },
+        {
+            "sk": "78ed393b2165d4e6afbea387431aee3c0e325d654cfbc9a44664003b9820e8d5",
+            "vk": "36109d0711861daf822ba3bd0a3c42264da9d0ef03a14fd0d549dd2a75094a0f"
+        },
+        {
+            "sk": "aef2018a3b177ba148fdc9a90d5cd93f7e9f6a75416df8c43669b91468c8b4fc",
+            "vk": "797b7730a27f3dde238155a7e1418664274c9cfc778f3ce1b47f5c58bacbb4e2"
+        },
+        {
+            "sk": "3a06452d967d6fc9a97b74146b4cc659d89ede1f6ff1faa11c51fc34c64d9d16",
+            "vk": "b10c70097389bc94eacc8493f4877703fc29f06fbaeeab0ef108dad871d38e9e"
+        }
+    ]
+}

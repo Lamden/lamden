@@ -1,11 +1,11 @@
 from cilantro.messages.block_data.state_update import StateUpdateReply
 from cilantro.messages.block_data.block_data import BlockDataBuilder
-from cilantro.constants.masternode import SUBBLOCKS_REQUIRED
+from cilantro.constants.system_config import NUM_SUB_BLOCKS
 from unittest import TestCase
 import secrets
 from unittest import mock
 
-# TODO delete this once we remove it from MN
+
 class StateReplyTest(TestCase):
 
     def test_init(self):

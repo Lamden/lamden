@@ -1,6 +1,5 @@
 from cilantro.messages.base.base_json import MessageBaseJson
 from cilantro.messages.base.base import MessageBase
-from cilantro.messages.block_data.block_metadata import FullBlockMetaData
 from cilantro.messages.block_data.block_data import BlockData
 from cilantro.utils import lazy_property
 from typing import List

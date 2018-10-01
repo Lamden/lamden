@@ -1,6 +1,5 @@
 from cilantro.storage.sqldb import SQLDB
 from cilantro.messages.block_data.block_data import BlockData
-from cilantro.messages.block_data.block_metadata import FullBlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 import dill, ujson as json, textwrap
 from typing import List
@@ -8,12 +7,16 @@ from cilantro.utils import Hasher
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.transaction.contract import ContractTransaction
 
+
+GENESIS_HASH = '0' * 64
+
+
 def chunk(s):
     assert len(s) % 64 == 0, 'Malformed'
     return [s[i*64:(i+1)*64].decode() for i in range(int(len(s)/64))]
 
-class BlockMetaSQL:
 
+class BlockMetaSQL:
     @classmethod
     def pack(cls, block):
         return (
@@ -63,6 +66,7 @@ class BlockTransactionsSQL:
             })
         return txs
 
+
 class SubBlockMetaSQL:
     @classmethod
     def pack(cls, sub_block, signatures):
@@ -84,7 +88,7 @@ class SubBlockMetaSQL:
 
 class StorageDriver(object):
     @classmethod
-    def store_block(cls, block: BlockData, validate: bool):
+    def store_block(cls, block: BlockData, validate: bool=False):
         if validate:
             block.validate()
         with SQLDB() as (connection, cursor):
@@ -155,15 +159,17 @@ class StorageDriver(object):
                 return BlockTransactionsSQL.unpack(res)
 
     @classmethod
-    def get_lastest_block_hash(cls, block_hash):
+    def get_latest_block_hash(cls):
         with SQLDB() as (connection, cursor):
             cursor.execute("""
-                SELECT MAX(block_num) FROM block
-                    WHERE block_hash = %s
-            """, (block_hash,))
-            res = cursor.fetchone()
+                SELECT block_hash FROM block
+                  ORDER BY block_num DESC
+                  LIMIT 1
+            """)
+            res = cursor.fetchone() or GENESIS_HASH
             return res
 
     @classmethod
     def get_latest_blocks(cls, start_block_hash):
+        # TODO falcon implement pls
         pass
