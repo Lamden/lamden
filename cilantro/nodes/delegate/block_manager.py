@@ -13,14 +13,14 @@
 """
 
 from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder
-from cilantro.storage.blocks import BlockStorageDriver
+from cilantro.storage.driver import StorageDriver
 from cilantro.logger.base import get_logger
 from cilantro.storage.db import VKBook
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.utils.lprocess import LProcess
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
-from cilantro.constants.nodes import *
+from cilantro.constants.system_config import *
 from cilantro.constants.zmq_filters import DEFAULT_FILTER
 from cilantro.constants.ports import *
 
@@ -44,6 +44,7 @@ class DBState:
     def __init__(self, cur_block_hash):
         self.cur_block_hash = cur_block_hash
         self.next_block = {}
+        # maintain a mapping of sbb_index -> root hash?
         # self.cur_timestamp = timestamp   ?? probably not needed
 
 
@@ -57,24 +58,19 @@ class BlockManager(Worker):
         self.sb_builders = {}  # index -> process      # perhaps can be consolidated with the above ?
         self.tasks = []
 
-        self.num_sub_blocks = len(VKBook.get_masternodes())  # same as num masternodes right now
-        self.num_blocks = min(MAX_BLOCKS, self.num_sub_blocks)
-        self.sub_blocks_per_block = (self.num_sub_blocks + self.num_blocks - 1) // self.num_blocks
-        self.num_sb_builders = min(MAX_SUB_BLOCK_BUILDERS, self.sub_blocks_per_block)
-        self.my_sb_index = self._get_my_index() % self.num_sb_builders
+        self.my_sb_index = self._get_my_index() % NUM_SB_BUILDERS
 
         # raghu todo tie to initial catch up logic as well as right place to do this
         # Falcon needs to add db interface modifications
-        self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
+        self.db_state = DBState(StorageDriver.get_latest_block_hash())
         self.master_quorum = 1  # TODO
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
                         "num_sb_builders={num_sb_builders}\n"
-                        .format(vk=self.verifying_key, sb_index=self.my_sb_index, num_sb=self.num_sub_blocks,
-                                num_blocks=self.num_blocks, sb_per_block=self.sub_blocks_per_block,
-                                num_sb_builders=self.num_sb_builders))
-        assert self.num_sub_blocks >= self.num_blocks, "num_blocks cannot be more than num_sub_blocks"
+                        .format(vk=self.verifying_key, sb_index=self.my_sb_index, num_sb=NUM_SUB_BLOCKS,
+                                num_blocks=NUM_BLOCKS, sb_per_block=NUM_SB_PER_BLOCK,
+                                num_sb_builders=NUM_SB_BUILDERS))
 
         # Define Sockets (these get set in build_task_list)
         self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
@@ -133,13 +129,11 @@ class BlockManager(Worker):
         # no need to wait for the replys as we have added a handler
 
     def start_sbb_procs(self):
-        for i in range(self.num_sb_builders):
+        for i in range(NUM_SB_BUILDERS):
             self.sb_builders[i] = LProcess(target=SubBlockBuilder,
                                            kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT,
                                                    "signing_key": self.signing_key, "ip": self.ip,
-                                                   "sbb_index": i, "num_sb_builders": self.num_sb_builders,
-                                                   "total_sub_blocks": self.num_sub_blocks,
-                                                   "num_blocks": self.num_blocks})
+                                                   "sbb_index": i})
             self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
 
@@ -160,7 +154,6 @@ class BlockManager(Worker):
 
         msg_type = bytes_to_int(frames[1])
         msg_blob = frames[2]
-
         msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
         self.log.debugv("BlockManager received an IPC message from sbb_index {} with message {}".format(sbb_index, msg))
 
@@ -207,12 +200,14 @@ class BlockManager(Worker):
     def handle_state_update_reply(self, envelope: Envelope):
         sender = envelope.sender
         sup = envelope.message
-        assert isinstance(sup, StateUpdateReply), "handle_state_update_reply must be called with StateUpdateReply"
+        assert isinstance(sup, StateUpdateReply), "handle_state_update_reply must be called /w an envelope " \
+                                                  "StateUpdateReply not {}".format(envelope)
 
         self.log.important("Got StateUpdateReply from sender {} ... reply=\n{}".format(sender, sup))
         # TODO implement
 
     def _handle_sbc(self, sbc: SubBlockContender):
+        # Need to keep track of this so we know when all our SBBs have submitted their SBCs
         self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
 
     def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
@@ -231,6 +226,9 @@ class BlockManager(Worker):
     # new blocks keep update
     def handle_new_block(self, envelope: Envelope):
         # raghu/davis - need to fix this data structure and handling it
+
+        # GET prev block hash from env, compare against ours
+
         cur_block_hash = self.db_state.cur_block_hash
         # block_hash = get_block_hash(Envelope) # TODO
         block_hash = cur_block_hash + 1
@@ -240,6 +238,8 @@ class BlockManager(Worker):
 
         count = self.db_state.next_block.get(block_hash, 0) + 1
         if (count == self.master_quorum):      # TODO
+            # Signal to SBBs to commit their state, start on next block(s)
+            # Set db_state.cur_block_hash to the new block hash of the notification
             self.update_db(envelope.message)
             self.db_state.cur_block_hash = block_hash
             self.db_state.next_block.clear()
@@ -249,6 +249,6 @@ class BlockManager(Worker):
 
     def send_updated_db_msg(self):
         message = MakeNextBlock.create()
-        for idx in range(self.num_sb_builders):
+        for idx in range(NUM_SB_BUILDERS):
             self._send_msg_over_ipc(sb_index=idx, message=message)
 
