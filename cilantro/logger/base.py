@@ -113,6 +113,7 @@ class ColoredStreamHandler(logging.StreamHandler):
             coloredlogs.ColoredFormatter(format)
         )
 
+
 def get_logger(name=''):
 
     filedir = "logs/{}".format(os.getenv('TEST_NAME', 'test'))
@@ -141,6 +142,7 @@ def get_logger(name=''):
         apply_custom_level(log, log_name, log_level)
 
     return log
+
 
 def overwrite_logger_level(level):
     global _LOG_LVL
