@@ -4,7 +4,6 @@ from seneca.engine.storage.mysql_executer import Executer
 from cilantro.constants.db import DB_SETTINGS
 
 
-
 log = get_logger("DB Creator")
 
 DB_NAME = DB_SETTINGS['db']
@@ -15,8 +14,8 @@ constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'cons
 
 def build_tables(ex, should_drop=True):
     from cilantro.storage.contracts import build_contracts_table, seed_contracts
-    from cilantro.storage.blocks import build_blocks_table, seed_blocks
-    from cilantro.storage.transactions import build_transactions_table, seed_transactions
+    # from cilantro.storage.blocks import build_blocks_table, seed_blocks
+    # from cilantro.storage.transactions import build_transactions_table, seed_transactions
 
     log.debug("Building tables with should_drop={}".format(should_drop))
 
@@ -29,18 +28,19 @@ def build_tables(ex, should_drop=True):
 
     log.info("Creating DB tables")
     contracts = build_contracts_table(ex, should_drop)
-    blocks = build_blocks_table(ex, should_drop)
-    transactions = build_transactions_table(ex, should_drop)
+    # blocks = build_blocks_table(ex, should_drop)
+    # transactions = build_transactions_table(ex, should_drop)
 
     # Only seed database if we just dropped it, or if storage is empty
-    if should_drop or not blocks.select().run(ex):
+    if should_drop or not contracts.select().run(ex):
         log.info("Seeding database...")
         seed_contracts(ex, contracts)
-        seed_blocks(ex, blocks)
-        seed_transactions(ex, blocks)
+        # seed_blocks(ex, blocks)
+        # seed_transactions(ex, blocks)
         log.info("Done seeding database.")
 
-    tables = type('Tables', (object,), {'contracts': contracts, 'blocks': blocks, 'transactions': transactions})
+    # tables = type('Tables', (object,), {'contracts': contracts, 'blocks': blocks, 'transactions': transactions})
+    tables = type('Tables', (object,), {'contracts': contracts})
 
     return tables
 
