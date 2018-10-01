@@ -1,6 +1,6 @@
 {
     "masternodes": [
-        {
+	{
             "sk": "c62212982a97947da16df71df30589547e49bdc93ce45f04455565694d997efc",
             "vk": "7fed90e37de48736901a3640eda2a2e5837ba23b8dc5993f1bd04733b8e23ca9"
         },
@@ -11,30 +11,30 @@
     ],
     "witnesses": [
         {
-            "sk": "94a595ff1b0443a9ff44e0538cab44fb6ffec4a19b85ed6dd104b344402f4d16",
-            "vk": "5ee1f247087d72716e71e27486327242a158836e1668f20ed8d2f59624983d21"
+            "sk": "b93a4270dc782b552e559ab2d60c616bfe1fcc4ce43f290bb9a7126ba70f5eb7",
+            "vk": "f6a237b07376a4252bc4af21ce5e76fad9e7c180334559d7899a3d9d9dd532ca"
         },
         {
-            "sk": "bab6eb6f61a2543e7f59380e5867e7017006d412ab3d94464409bdbdc142371a",
-            "vk": "9e7afde728aa8f96f2ec8241d081c13682855e3612dc825d4816a336c384f1ff"
+            "sk": "ef8e738dffc333ca85ef61a1a3a0148c0fa4ed4488d309e55a562402988b83f1",
+            "vk": "82367654d8959521992ebc8603676102a5c346f6b2f748f661d160be7610c015"
         }
     ],
     "delegates": [
         {
-            "sk": "da5c615983757b810cac63e00b925bfef5e0a0b66535a84d31ce8ca64bd5aa60",
-            "vk": "18f0066a9a6e583b9d1ea850191e999ee16cde083a64083da3549b7ce3291fcc"
+            "sk": "bc970c5ce7e882aa3d3397e9fc6528660a128fa7d43da711c21be6b683369004",
+            "vk": "d764144c27ac13f3ed7bddced956cca2f7fee26f5cbe8229772d225cfaa6ab8c"
         },
         {
-            "sk": "cdb9da571303e9d80f9abde6743cee73fbbb5b0f30f39ad6044a5c6f60636b43",
-            "vk": "cf59a8b6ee38e12a11e83f211833d76891b16794bc6fae015bb8e63791ba7337"
+            "sk": "4632b54ad2dbbf10b03026ed4f3dbc0cd89d1af338cf24fdeae9a803485f6b2a",
+            "vk": "d0710fa4e289ba7f3446639f396465f2665650e01909781afd39d6a82aed7efb"
         },
         {
-            "sk": "1e38091fce89148dda9e0565794f798d67491ab229d8324202a742bb21a781e9",
-            "vk": "69637c1fb24643480907fdebb7617b1d35983b0fa24c54772731a0c630ae25c4"
+            "sk": "032c4242cee472790821c395b93902fb6916abf769ecd0ed64906e9a68d0c093",
+            "vk": "2da817afd26fda406205f7dd7f6e483e3fe039da34bc2163387cd53fd33a539b"
         },
         {
-            "sk": "b29e4ae53057fd191bf1e741d8d64d27fffc2e2e9558f5e6f4e0088ab20b4125",
-            "vk": "0259fdd5eb2c716c93937250bf7c2ea97d62241d957ec5e514b4159b13831338"
+            "sk": "78035fe51f82249cedb85447827896f00fc37cecc8c795401549266c96a60e13",
+            "vk": "ab13af7649a58cf1e2b1306f492f12a9845b9a586c48ef2da38dd20871c6f153"
         }
     ]
 }

@@ -1,0 +1,20 @@
+{
+    "services": [
+        {
+            "name": "mn",
+            "image": "lamden/cilantro",
+            "count": 1,
+            "ports": [
+                10200, 8080, 4319
+            ]
+        },
+        {
+            "name": "mgmt",
+            "image": "lamden/cilantro",
+            "count": 1,
+            "ports": [
+                10200, 8080, 4319
+            ]
+        }
+    ]
+}
