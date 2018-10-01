@@ -14,7 +14,7 @@ WEB_SERVER_PORT = 8080
 NUM_WORKERS = 2  # Number of Sanic worker procs
 
 # Transaction Batcher
-BATCH_INTERVAL = 1
+BATCH_INTERVAL = 10
 MAX_SKIP_TURNS = 4
 
 # Storage
