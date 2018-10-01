@@ -20,7 +20,7 @@ from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.utils.lprocess import LProcess
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
-from cilantro.constants.nodes import *
+from cilantro.constants.system_config import *
 from cilantro.constants.zmq_filters import DEFAULT_FILTER
 from cilantro.constants.ports import *
 
@@ -58,11 +58,7 @@ class BlockManager(Worker):
         self.sb_builders = {}  # index -> process      # perhaps can be consolidated with the above ?
         self.tasks = []
 
-        self.num_sub_blocks = len(VKBook.get_masternodes())  # same as num masternodes right now
-        self.num_blocks = min(MAX_BLOCKS, self.num_sub_blocks)
-        self.sub_blocks_per_block = (self.num_sub_blocks + self.num_blocks - 1) // self.num_blocks
-        self.num_sb_builders = min(MAX_SUB_BLOCK_BUILDERS, self.sub_blocks_per_block)
-        self.my_sb_index = self._get_my_index() % self.num_sb_builders
+        self.my_sb_index = self._get_my_index() % NUM_SB_BUILDERS
 
         # raghu todo tie to initial catch up logic as well as right place to do this
         # Falcon needs to add db interface modifications
@@ -72,10 +68,9 @@ class BlockManager(Worker):
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
                         "num_sb_builders={num_sb_builders}\n"
-                        .format(vk=self.verifying_key, sb_index=self.my_sb_index, num_sb=self.num_sub_blocks,
-                                num_blocks=self.num_blocks, sb_per_block=self.sub_blocks_per_block,
-                                num_sb_builders=self.num_sb_builders))
-        assert self.num_sub_blocks >= self.num_blocks, "num_blocks cannot be more than num_sub_blocks"
+                        .format(vk=self.verifying_key, sb_index=self.my_sb_index, num_sb=NUM_SUB_BLOCKS,
+                                num_blocks=NUM_BLOCKS, sb_per_block=NUM_SB_PER_BLOCK,
+                                num_sb_builders=NUM_SB_BUILDERS))
 
         # Define Sockets (these get set in build_task_list)
         self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
@@ -134,13 +129,11 @@ class BlockManager(Worker):
         # no need to wait for the replys as we have added a handler
 
     def start_sbb_procs(self):
-        for i in range(self.num_sb_builders):
+        for i in range(NUM_SB_BUILDERS):
             self.sb_builders[i] = LProcess(target=SubBlockBuilder,
                                            kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT,
                                                    "signing_key": self.signing_key, "ip": self.ip,
-                                                   "sbb_index": i, "num_sb_builders": self.num_sb_builders,
-                                                   "total_sub_blocks": self.num_sub_blocks,
-                                                   "num_blocks": self.num_blocks})
+                                                   "sbb_index": i})
             self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
 
@@ -256,6 +249,6 @@ class BlockManager(Worker):
 
     def send_updated_db_msg(self):
         message = MakeNextBlock.create()
-        for idx in range(self.num_sb_builders):
+        for idx in range(NUM_SB_BUILDERS):
             self._send_msg_over_ipc(sb_index=idx, message=message)
 

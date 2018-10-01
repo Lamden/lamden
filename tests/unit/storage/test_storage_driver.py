@@ -21,8 +21,7 @@ class TestStorageDriver(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        if not SQLDB.connection.is_connected():
-            SQLDB.force_start()
+        SQLDB.force_start()
         SQLDB.reset_db()
 
     @classmethod
@@ -32,7 +31,7 @@ class TestStorageDriver(TestCase):
     def setUp(self):
         SQLDB.truncate_tables('sub_block', 'block', 'transaction')
 
-    @mock.patch("cilantro.messages.block_data.block_metadata.SUBBLOCKS_REQUIRED", 2)
+    @mock.patch("cilantro.constants.system_config.NUM_SUB_BLOCKS", 2)
     def test_store_block(self):
         block = BlockDataBuilder.create_block()
         StorageDriver.store_block(block, validate=False)
@@ -53,7 +52,7 @@ class TestStorageDriver(TestCase):
         self.assertEqual(sub_block_meta['merkle_leaves'], sub_block.merkle_leaves)
         self.assertEqual(sub_block_meta['sb_index'], sub_block.sb_index)
 
-    @mock.patch("cilantro.messages.block_data.block_metadata.SUBBLOCKS_REQUIRED", 2)
+    @mock.patch("cilantro.constants.system_config.NUM_SUB_BLOCKS", 2)
     def test_get_transactions_by_block_hash(self):
         block = BlockDataBuilder.create_block()
         StorageDriver.store_block(block, validate=False)

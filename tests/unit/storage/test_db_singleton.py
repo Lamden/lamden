@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.storage.db import DB, DBSingletonMeta
+from cilantro.storage.db import DB, DBSingletonMeta, reset_db
 import os
 import multiprocessing
 
@@ -9,6 +9,10 @@ class TestDBSingleton(TestCase):
     def setUp(self):
         # Clear all DB instances between tests
         DBSingletonMeta._instances.clear()
+
+    @classmethod
+    def tearDownClass(cls):
+        reset_db()
 
     @staticmethod
     def _run_db_proc(shared_mem):

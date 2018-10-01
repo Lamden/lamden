@@ -44,6 +44,8 @@ from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
 from cilantro.utils.hasher import Hasher
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
+from cilantro.constants.system_config import *
+
 # This is a convenience struct to hold all data related to a sub-block in one place.
 # Since we have more than one sub-block per process, SBB'er will hold an array of SubBlockManager objects
 class SubBlockManager:
@@ -57,18 +59,14 @@ class SubBlockManager:
 
 
 class SubBlockBuilder(Worker):
-    def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int,
-                 num_sb_builders: int, total_sub_blocks: int, num_blocks: int, *args, **kwargs):
+    def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int, *args, **kwargs):
         super().__init__(signing_key=signing_key, name="SubBlockBuilder_{}".format(sbb_index))
 
         self.ip = ip
         self.sbb_index = sbb_index
-        self.total_sub_blocks = total_sub_blocks
-        self.num_blocks = num_blocks
-        num_sb_per_builder = (total_sub_blocks + num_sb_builders - 1) // num_sb_builders
-        self.num_sb_per_block = (num_sb_per_builder + num_blocks - 1) // num_blocks
-        self.cur_block_index = num_blocks - 1     # so it will start at block 0
+        self.cur_block_index = NUM_BLOCKS - 1  # so it will start at block 0
         self.pending_block_index = 0
+        self.interpreter = SenecaInterpreter()
 
         self.tasks = []
 
@@ -78,13 +76,10 @@ class SubBlockBuilder(Worker):
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
-        self._create_sub_sockets(num_sb_per_builder=num_sb_per_builder,
-                                 num_sb_builders=num_sb_builders)
+        self._create_sub_sockets()
 
-        self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {}"
-                        .format(sbb_index, total_sub_blocks, num_blocks, num_sb_per_builder, self.num_sb_per_block))
-        # Create a Seneca interpreter for this SBB
-        self.interpreter = SenecaInterpreter()
+        self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {} num_sb_per_builder {}"
+                        .format(sbb_index, NUM_SUB_BLOCKS, NUM_BLOCKS, NUM_SB_BUILDERS, NUM_SB_PER_BLOCK, NUM_SB_PER_BUILDER))
 
         self.run()
 
@@ -100,11 +95,11 @@ class SubBlockBuilder(Worker):
         self.dealer.connect(port=port, protocol='ipc', ip=ip)
         self.tasks.append(self.dealer.add_handler(handler_func=self.handle_ipc_msg))
 
-    def _create_sub_sockets(self, num_sb_per_builder, num_sb_builders):
+    def _create_sub_sockets(self):
         # We then BIND a sub socket to a port for each of these masternode indices
-        for idx in range(num_sb_per_builder):
-            sb_idx = idx * num_sb_builders + self.sbb_index  # actual SB index in global index space
-            if sb_idx >= self.total_sub_blocks:    # out of range already
+        for idx in range(NUM_SB_PER_BUILDER):
+            sb_idx = idx * NUM_SB_BUILDERS + self.sbb_index  # actual SB index in global index space
+            if sb_idx >= NUM_SUB_BLOCKS:    # out of range already
                 return
 
             port = SBB_PORT_START + sb_idx
@@ -228,9 +223,9 @@ class SubBlockBuilder(Worker):
         self.dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
     def _make_next_sub_block(self):
-        self.cur_block_index = (self.cur_block_index + 1) % self.num_blocks
-        sb_index_start = self.cur_block_index * self.num_sb_per_block
-        for i in range(self.num_sb_per_block):
+        self.cur_block_index = (self.cur_block_index + 1) % NUM_BLOCKS
+        sb_index_start = self.cur_block_index * NUM_SB_PER_BLOCK
+        for i in range(NUM_SB_PER_BLOCK):
             sb_idx = sb_index_start + i
             if sb_idx >= len(self.sb_managers):    # out of range already
                 return

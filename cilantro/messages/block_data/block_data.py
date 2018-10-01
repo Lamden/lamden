@@ -5,7 +5,7 @@ from cilantro.utils import lazy_property, Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.messages.utils import validate_hex
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
-from cilantro.messages.block_data.block_metadata import BlockMetaData
+from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
 from typing import List
 from cilantro.logger import get_logger
 from cilantro.storage.db import VKBook
@@ -17,6 +17,13 @@ import blockdata_capnp
 log = get_logger(__name__)
 
 class BlockData(MessageBase):
+
+    # TODO find this method a better home. Maybe in utils or something?
+    @staticmethod
+    def compute_block_hash(sbc_roots: List[str], prev_block_hash: str):
+        # TODO validate input (valid 64 char hex str)
+        return Hasher.hash_iterable(sbc_roots + [prev_block_hash])
+
     def validate(self):
         assert self._data.blockHash, 'No field "blockHash"'
         assert hasattr(self._data, 'blockNum'), 'No field "blockNum"'
@@ -25,14 +32,14 @@ class BlockData(MessageBase):
         assert self._data.masternodeSignature, 'No field "masternodeSignature"'
         assert self.masternode_signature.sender in VKBook.get_masternodes(), 'Not a valid masternode'
         assert self.masternode_signature.verify(self.block_hash.encode()), 'Cannot verify signature'
-        self.metadata # creates the timestamp for the metadata
 
     @classmethod
     def _deserialize_data(cls, data):
         return blockdata_capnp.BlockData.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, block_hash: str, prev_block_hash: str, block_num: int, transactions: List[TransactionData], masternode_signature: MerkleSignature, merkle_roots: List[str]):
+    def create(cls, block_hash: str, prev_block_hash: str, transactions: List[TransactionData],
+               masternode_signature: MerkleSignature, merkle_roots: List[str], block_num: int=0):
         struct = blockdata_capnp.BlockData.new_message()
         struct.init('transactions', len(transactions))
         struct.init('merkleRoots', len(merkle_roots))
@@ -68,14 +75,14 @@ class BlockData(MessageBase):
     def merkle_roots(self) -> List[str]:
         return [mr.decode() for mr in self._data.merkleRoots]
 
-    @lazy_property # It is created only ONCE
-    def metadata(self) -> BlockMetaData:
-        return BlockMetaData.create(
+    @lazy_property
+    def create_new_block_notif(self, block_num=0) -> NewBlockNotification:
+        return NewBlockNotification.create(
             block_hash=self.block_hash,
             merkle_roots=self.merkle_roots,
             prev_block_hash=self.prev_block_hash,
             masternode_signature=self.masternode_signature,
-            block_num=self.block_num
+            block_num=block_num or self.block_num
         )
 
 MN_SK = TESTNET_MASTERNODES[0]['sk']
@@ -98,8 +105,7 @@ class BlockDataBuilder:
         block_hash = Hasher.hash_iterable([*merkle_roots, prev_block_hash])
         block_num = cls.block_num
         signature = build_test_merkle_sig(msg=block_hash.encode(), sk=mn_sk, vk=mn_vk)
-        block = BlockData.create(
-            block_hash, prev_block_hash, block_num, transactions, signature, merkle_roots
-        )
+        block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, transactions=transactions,
+                                 masternode_signature=signature, merkle_roots=merkle_roots, block_num=block_num)
         cls.block_num += 1
         return block

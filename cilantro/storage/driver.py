@@ -17,7 +17,6 @@ def chunk(s):
 
 
 class BlockMetaSQL:
-
     @classmethod
     def pack(cls, block):
         return (
@@ -67,6 +66,7 @@ class BlockTransactionsSQL:
             })
         return txs
 
+
 class SubBlockMetaSQL:
     @classmethod
     def pack(cls, sub_block, signatures):
@@ -88,7 +88,7 @@ class SubBlockMetaSQL:
 
 class StorageDriver(object):
     @classmethod
-    def store_block(cls, block: BlockData, validate: bool):
+    def store_block(cls, block: BlockData, validate: bool=False):
         if validate:
             block.validate()
         with SQLDB() as (connection, cursor):
@@ -171,4 +171,5 @@ class StorageDriver(object):
 
     @classmethod
     def get_latest_blocks(cls, start_block_hash):
+        # TODO falcon implement pls
         pass

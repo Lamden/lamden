@@ -1,5 +1,5 @@
 # TODO this file could perhaps be named better
-from cilantro.constants.nodes import *
+from cilantro.constants.system_config import TRANSACTIONS_PER_SUB_BLOCK
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
 from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
 from cilantro.constants.masternode import BATCH_INTERVAL, MAX_SKIP_TURNS

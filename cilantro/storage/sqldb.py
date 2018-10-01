@@ -6,13 +6,6 @@ config = SafeConfigParser()
 config.read('{}/db_conf.ini'.format(path))
 
 class SQLDB():
-    # connection = mysql.connector.connect(
-    #     host=config.get('DB','hostname'),
-    #     user=config.get('DB','username'),
-    #     passwd=config.get('DB','password'),
-    #     charset='binary'
-    # )
-    # cursor = connection.cursor()
     connection = None
     cursor = None
     database = config.get('DB','database')
@@ -55,9 +48,10 @@ class SQLDB():
 
     @classmethod
     def drop_db(cls, database=None):
-        cls.cursor.execute("""
-            DROP DATABASE IF EXISTS {}
-            """.format(database or cls.database))
+        if cls.cursor:
+            cls.cursor.execute("""
+                DROP DATABASE IF EXISTS {}
+                """.format(database or cls.database))
 
     @classmethod
     def reset_db(cls, database=None):
