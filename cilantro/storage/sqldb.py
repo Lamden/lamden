@@ -5,6 +5,7 @@ path = os.path.dirname(cilantro.__path__[0])
 config = SafeConfigParser()
 config.read('{}/db_conf.ini'.format(path))
 
+
 class SQLDB():
     connection = None
     cursor = None
