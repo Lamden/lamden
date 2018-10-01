@@ -1,8 +1,12 @@
 {
     "masternodes": [
+	{
+            "sk": "c62212982a97947da16df71df30589547e49bdc93ce45f04455565694d997efc",
+            "vk": "7fed90e37de48736901a3640eda2a2e5837ba23b8dc5993f1bd04733b8e23ca9"
+        },
         {
-            "sk": "0f0c654e4f58ed1a6bd32b7f68b228c02a7973149c58c40f962ef074baf2cc08",
-            "vk": "b35526cc50397fcf93ff1bdd1874e6d34988d92a976d7f62849470b1cc14b02f"
+            "sk": "a05c2a30ef0c41e0934e702481698cb1cbd76f337c2c49c2ac4234c4944032b6",
+            "vk": "4d09a915a0b4cac25f5e427fb5e347e0d102697502283bdbc4771b846aaff9e8"
         }
     ],
     "witnesses": [
