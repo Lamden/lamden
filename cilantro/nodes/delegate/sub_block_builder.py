@@ -180,7 +180,7 @@ class SubBlockBuilder(Worker):
         # keep updating timestamp as they are increasing from a master
 
         # DEBUG -- TODO DELETE
-        self.log.important("Recv tx batch with input hash {}".format(input_hash))
+        self.log.important("Recv tx batch w/ {} transactions, and input hash {}".format(len(envelope.message.transactions), input_hash))
         # END DEBUG
 
         self.sb_managers[index].processed_txs_timestamp = timestamp
