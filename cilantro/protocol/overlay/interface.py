@@ -14,7 +14,7 @@ class OverlayInterface:
         self.log = get_logger('OverlayInterface')
         Auth.setup_certs_dirs(sk_hex=sk_hex)
         self.loop = asyncio.get_event_loop()
-        self.network = Network(node_id=digest(Auth.vk), storage=None)
+        self.network = Network(vk=Auth.vk, storage=None)
         self.loop.run_until_complete(asyncio.gather(
             Discovery.listen(),
             Handshake.listen(),
@@ -72,8 +72,11 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
     async def authorize(self):
         self.log.critical(self.neighbors)
-        await asyncio.gather(*[
-            Handshake.initiate_handshake() for neighbor in self.neighbors
-        ])
+        # await asyncio.gather(*[
+        #     Handshake.initiate_handshake() for neighbor in self.neighbors
+        # ])
 
         await asyncio.sleep(1)
+
+    async def lookup_vks(self):
+        pass

@@ -25,21 +25,21 @@ class Network(object):
     port = os.getenv('DHT_PORT', 20003)
     protocol_class = KademliaProtocol
 
-    def __init__(self, ksize=20, alpha=3, node_id=None, storage=None):
+    def __init__(self, ksize=20, alpha=3, vk=None, storage=None):
         """
         Create a server instance.  This will start listening on the given port.
 
         Args:
             ksize (int): The k parameter from the paper
             alpha (int): The alpha parameter from the paper
-            node_id: The id for this node on the network.
+            vk: The vk for this node on the network.
             storage: An instance that implements
                      :interface:`~kademlia.storage.IStorage`
         """
         self.ksize = ksize
         self.alpha = alpha
         self.storage = storage or ForgetfulStorage()
-        self.node = Node(node_id or digest(random.getrandbits(255)))
+        self.node = Node(node_id=digest(vk), vk=vk)
         self.transport = None
         self.protocol = None
         self.refresh_loop = None
@@ -106,7 +106,7 @@ class Network(object):
         back up, the list of nodes can be used to bootstrap.
         """
         neighbors = self.protocol.router.findNeighbors(self.node)
-        return [tuple(n)[-2:] for n in neighbors]
+        return [tuple(n)[1:] for n in neighbors]
 
     async def bootstrap(self, addrs):
         """
@@ -126,17 +126,17 @@ class Network(object):
         return await spider.find()
 
     async def bootstrap_node(self, addr):
-        result = await self.protocol.ping(addr, self.node.id)
-        return Node(result[1], addr[0], addr[1]) if result[0] else None
+        result = await self.protocol.ping(addr, self.node.id, self.node.vk)
+        nodeid, vk = result[1]
+        return Node(nodeid, addr[0], addr[1], vk) if result[0] else None
 
     async def vk_lookup(self, vk):
-        log.debug('Attempting to look up node with vk="{}" initial contacts'.format(vk))
-        cos = list(map(self.bootstrap_node, self.bootstrappableNeighbors()))
-        gathered = await asyncio.gather(*cos)
-        nodes = [node for node in gathered if node is not None]
+        log.debug('Attempting to look up node with vk="{}"'.format(vk))
+        nodes = self.bootstrappableNeighbors()
         spider = NodeSpiderCrawl(self.protocol, self.node, nodes,
                                  self.ksize, self.alpha)
-        return await spider.find()
+        node = await spider.find()
+        # TODO validate here
 
     async def get(self, key):
         """

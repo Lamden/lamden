@@ -32,30 +32,30 @@ class KademliaProtocol(RPCProtocol):
     def rpc_stun(self, sender):
         return sender
 
-    def rpc_ping(self, sender, nodeid):
-        source = Node(nodeid, sender[0], sender[1])
+    def rpc_ping(self, sender, nodeid, vk):
+        source = Node(nodeid, sender[0], sender[1], vk)
         self.welcomeIfNewNode(source)
-        return self.sourceNode.id
+        return self.sourceNode.id, self.sourceNode.vk
 
-    def rpc_store(self, sender, nodeid, key, value):
-        source = Node(nodeid, sender[0], sender[1])
+    def rpc_store(self, sender, nodeid, vk, key, value):
+        source = Node(nodeid, sender[0], sender[1], vk)
         self.welcomeIfNewNode(source)
         log.debug("got a store request from %s, storing '%s'='%s'",
                   sender, key.hex(), value)
         self.storage[key] = value
         return True
 
-    def rpc_find_node(self, sender, nodeid, key):
+    def rpc_find_node(self, sender, nodeid, vk, key):
         log.info("finding neighbors of %i in local table",
                  int(nodeid.hex(), 16))
-        source = Node(nodeid, sender[0], sender[1])
+        source = Node(nodeid, sender[0], sender[1], vk)
         self.welcomeIfNewNode(source)
         node = Node(key)
         neighbors = self.router.findNeighbors(node, exclude=source)
         return list(map(tuple, neighbors))
 
-    def rpc_find_value(self, sender, nodeid, key):
-        source = Node(nodeid, sender[0], sender[1])
+    def rpc_find_value(self, sender, nodeid, vk, key):
+        source = Node(nodeid, sender[0], sender[1], vk)
         self.welcomeIfNewNode(source)
         value = self.storage.get(key, None)
         if value is None:
@@ -65,23 +65,25 @@ class KademliaProtocol(RPCProtocol):
     async def callFindNode(self, nodeToAsk, nodeToFind):
         address = (nodeToAsk.ip, nodeToAsk.port)
         result = await self.find_node(address, self.sourceNode.id,
+                                      self.sourceNode.vk,
                                       nodeToFind.id)
         return self.handleCallResponse(result, nodeToAsk)
 
     async def callFindValue(self, nodeToAsk, nodeToFind):
         address = (nodeToAsk.ip, nodeToAsk.port)
         result = await self.find_value(address, self.sourceNode.id,
+                                       self.sourceNode.vk,
                                        nodeToFind.id)
         return self.handleCallResponse(result, nodeToAsk)
 
     async def callPing(self, nodeToAsk):
         address = (nodeToAsk.ip, nodeToAsk.port)
-        result = await self.ping(address, self.sourceNode.id)
+        result = await self.ping(address, self.sourceNode.id, self.sourceNode.vk)
         return self.handleCallResponse(result, nodeToAsk)
 
     async def callStore(self, nodeToAsk, key, value):
         address = (nodeToAsk.ip, nodeToAsk.port)
-        result = await self.store(address, self.sourceNode.id, key, value)
+        result = await self.store(address, self.sourceNode.id, self.sourceNode.vk, key, value)
         return self.handleCallResponse(result, nodeToAsk)
 
     def welcomeIfNewNode(self, node):
