@@ -134,7 +134,7 @@ class MPTestCase(BaseNetworkTestCase):
 
         # If there are no active testers left and none of them failed, we win
         if len(actives) + len(fails) == 0:
-            self.log.test("\n\n{0}\n\n{2} SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
+            self.log.test("\n{0}\n\n{2} SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}"
                           .format('$' * 120, round(timeout, 2), self.id()))
         else:
             fail_msg = "\n\nfail_msg:\n{0}\nASSERTIONS TIMED OUT FOR TESTERS: \n\n".format('-' * 120)
