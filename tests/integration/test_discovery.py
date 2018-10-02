@@ -1,0 +1,110 @@
+from vmnet.testcase import BaseTestCase
+from vmnet.comm import file_listener
+import unittest, time, random, vmnet, cilantro, asyncio, ujson as json
+from os.path import join, dirname
+from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
+from cilantro.logger.base import get_logger
+
+def masternode(idx):
+    from vmnet.comm import send_to_file
+    from cilantro.constants.testnet import TESTNET_MASTERNODES
+    from cilantro.protocol.overlay.discovery import Discovery
+    from cilantro.protocol.overlay.auth import Auth
+    from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
+    import asyncio, os, ujson as json
+
+    async def check_nodes():
+        while True:
+            await asyncio.sleep(1)
+            if len(Discovery.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
+                send_to_file(json.dumps({'node': os.getenv('HOST_NAME')}))
+
+    from cilantro.logger import get_logger
+    log = get_logger('MasterNode_{}'.format(idx))
+    loop = asyncio.get_event_loop()
+    Auth.setup_certs_dirs(TESTNET_MASTERNODES[idx]['sk'])
+    tasks = asyncio.ensure_future(asyncio.gather(
+        Discovery.listen(),
+        Discovery.discover_nodes(os.getenv('HOST_IP')),
+        check_nodes()
+    ))
+    loop.run_until_complete(tasks)
+
+def witness(idx):
+    from vmnet.comm import send_to_file
+    from cilantro.constants.testnet import TESTNET_WITNESSES
+    from cilantro.protocol.overlay.discovery import Discovery
+    from cilantro.protocol.overlay.auth import Auth
+    from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
+    import asyncio, os, ujson as json
+
+    async def check_nodes():
+        while True:
+            await asyncio.sleep(1)
+            if len(Discovery.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
+                send_to_file(json.dumps({'node': os.getenv('HOST_NAME')}))
+
+    from cilantro.logger import get_logger
+    log = get_logger('Witness_{}'.format(idx))
+    loop = asyncio.get_event_loop()
+    Auth.setup_certs_dirs(TESTNET_WITNESSES[idx]['sk'])
+    tasks = asyncio.ensure_future(asyncio.gather(
+        Discovery.listen(),
+        Discovery.discover_nodes(os.getenv('HOST_IP')),
+        check_nodes()
+    ))
+    loop.run_until_complete(tasks)
+
+def delegate(idx):
+    from vmnet.comm import send_to_file
+    from cilantro.constants.testnet import TESTNET_DELEGATES
+    from cilantro.protocol.overlay.discovery import Discovery
+    from cilantro.protocol.overlay.auth import Auth
+    from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
+    import asyncio, os, ujson as json
+
+    async def check_nodes():
+        while True:
+            await asyncio.sleep(1)
+            if len(Discovery.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
+                send_to_file(json.dumps({'node': os.getenv('HOST_NAME')}))
+
+    from cilantro.logger import get_logger
+    log = get_logger('Delegate_{}'.format(idx))
+    loop = asyncio.get_event_loop()
+    Auth.setup_certs_dirs(TESTNET_DELEGATES[idx]['sk'])
+    tasks = asyncio.ensure_future(asyncio.gather(
+        Discovery.listen(),
+        Discovery.discover_nodes(os.getenv('HOST_IP')),
+        check_nodes()
+    ))
+    loop.run_until_complete(tasks)
+
+class TestDiscovery(BaseTestCase):
+
+    log = get_logger(__name__)
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-4-4-bootstrap.json')
+
+    def callback(self, data):
+        for item in data:
+            self.nodes_complete.update(json.loads(item))
+
+    def complete(self):
+        self.assertEqual(len(self.nodes_complete), len(self.groups['masternode'] + self.groups['witness'] + self.groups['delegate'])), \
+            'Not all nodes are able to discover enough nodes within 5s'
+
+    def test_discovery(self):
+        self.nodes_complete = {}
+        for idx, node in enumerate(self.groups['masternode']):
+            self.execute_python(node, wrap_func(masternode, idx))
+        for idx, node in enumerate(self.groups['witness']):
+            self.execute_python(node, wrap_func(witness, idx))
+        for idx, node in enumerate(self.groups['delegate']):
+            self.execute_python(node, wrap_func(delegate, idx))
+
+        file_listener(self, self.callback, self.complete, 5)
+
+        input("Press any key to terminate")
+
+if __name__ == '__main__':
+    unittest.main()

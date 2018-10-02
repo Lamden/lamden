@@ -21,7 +21,12 @@ class Handshake:
         cls.log.info('Sending handshake request from {} to {} (vk={})'.format(cls.host_ip, ip, vk))
         if not cls.authorized_nodes.get(domain):
             cls.authorized_nodes[domain] = {}
+        if cls.authorized_nodes['all'].get(ip):
+            if vk == cls.authorized_nodes['all'][ip]:
+                cls.log.info('Authorized To Domain: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
+                cls.authorized_nodes[domain][ip] = vk
         if cls.authorized_nodes[domain].get(ip):
+            cls.log.info('Previously Authorized: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
             return True
         public_key = Auth.vk2pk(vk)
         cls.client_sock.curve_secretkey = Auth.private_key
@@ -45,7 +50,7 @@ class Handshake:
         return True
 
     @classmethod
-    async def listen_for_handshake(cls):
+    async def listen(cls):
         cls.server_sock.curve_secretkey = Auth.private_key
         cls.server_sock.curve_publickey = Auth.public_key
         cls.server_sock.curve_server = True
@@ -63,16 +68,16 @@ class Handshake:
                     if ip == cls.host_ip and vk == Auth.vk:
                         cls.authorized_nodes[domain][ip] = vk
                 elif len(msg) == 4: # this is a reply
-                    assert msg[-1] == 'rep', 'Not a reply'
+                    assert msg[-1] == 'rep', 'This is not a reply'
 
                 if cls.authorized_nodes[domain].get(ip):
-                    cls.log.spam('Already Authorized: {} <=O= {} (vk={})'.format(cls.host_ip, ip, vk))
+                    cls.log.spam('Already Authorized: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
                 elif cls.validate_roles_with_domain(domain, vk):
                     cls.authorized_nodes[domain][ip] = vk
                     cls.reply(ip, domain)
                     cls.log.info('Authorized: {} <=O= {} (vk={})'.format(cls.host_ip, ip, vk))
                 else:
-                    cls.log.warning('Unauthorized: {} <=X= {} (vk={})'.format(cls.host_ip, ip, vk))
+                    cls.log.warning('Unauthorized: {} <=X= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
             except Exception as e:
                 cls.log.error(traceback.format_exc())
 

@@ -17,7 +17,7 @@ class Discovery:
     connections = {}
 
     @classmethod
-    async def create_server(cls):
+    async def listen(cls):
         cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
         cls.sock.bind(cls.url)
         cls.log.info('Listening to other nodes on {}'.format(cls.url))

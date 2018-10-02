@@ -5,6 +5,7 @@ import random
 import pickle
 import asyncio
 import logging
+import os
 
 from cilantro.protocol.overlay.kademlia.protocol import KademliaProtocol
 from cilantro.protocol.overlay.kademlia.utils import digest
@@ -21,7 +22,7 @@ class Network(object):
     High level view of a node instance.  This is the object that should be
     created to start listening as an active node on the network.
     """
-
+    port = os.getenv('DHT_PORT', 20003)
     protocol_class = KademliaProtocol
 
     def __init__(self, ksize=20, alpha=3, node_id=None, storage=None):
@@ -57,7 +58,7 @@ class Network(object):
     def _create_protocol(self):
         return self.protocol_class(self.node, self.storage, self.ksize)
 
-    def listen(self, port, interface='0.0.0.0'):
+    async def listen(self, interface='0.0.0.0'):
         """
         Start listening on the given port.
 
@@ -65,18 +66,11 @@ class Network(object):
         """
         loop = asyncio.get_event_loop()
         listen = loop.create_datagram_endpoint(self._create_protocol,
-                                               local_addr=(interface, port))
+                                               local_addr=(interface, self.port))
         log.info("Node %i listening on %s:%i",
-                 self.node.long_id, interface, port)
-        self.transport, self.protocol = loop.run_until_complete(listen)
-        # finally, schedule refreshing table
-        self.refresh_table()
-
-    def refresh_table(self):
-        log.debug("Refreshing routing table")
-        asyncio.ensure_future(self._refresh_table())
-        loop = asyncio.get_event_loop()
-        self.refresh_loop = loop.call_later(3600, self.refresh_table)
+                 self.node.long_id, interface, self.port)
+        self.transport, self.protocol = await asyncio.ensure_future(listen)
+        await self._refresh_table()
 
     async def _refresh_table(self):
         """
@@ -97,6 +91,9 @@ class Network(object):
         # now republish keys older than one hour
         for dkey, value in self.storage.iteritemsOlderThan(3600):
             await self.set_digest(dkey, value)
+
+        await asyncio.sleep(3600)
+        await self._refresh_table()
 
     def bootstrappableNeighbors(self):
         """
@@ -130,6 +127,7 @@ class Network(object):
 
     async def bootstrap_node(self, addr):
         result = await self.protocol.ping(addr, self.node.id)
+        log.important(result)
         return Node(result[1], addr[0], addr[1]) if result[0] else None
 
     async def get(self, key):
