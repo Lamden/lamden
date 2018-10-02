@@ -59,8 +59,11 @@ class ContractTransactionBuilder:
 
     @staticmethod
     def random_currency_tx():
-        sender, receiver = wallet.new(), wallet.new()
-        amount = random.randint(1, 2 ** 16)
+        from cilantro.utils.test.god import ALL_WALLETS
+        import random
+
+        sender, receiver = random.sample(ALL_WALLETS, 2)
+        amount = random.randint(1, 2 ** 8)
         return ContractTransactionBuilder.create_currency_tx(sender[0], receiver[1], amount)
 
     @staticmethod

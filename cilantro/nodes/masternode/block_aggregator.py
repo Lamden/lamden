@@ -61,7 +61,7 @@ class BlockAggregator(Worker):
             secure=True,
             domain="sb-contender"
         )
-        # self.router.setsockopt(zmq.ZMQ_ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
+        self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
@@ -97,8 +97,7 @@ class BlockAggregator(Worker):
         msg = envelope.message
 
         if isinstance(msg, StateUpdateRequest):
-            raise NotImplementedError("BlockManager not capable of responding to StateUpdateRequests yet")
-            # self.recv_state_update_request(envelope)
+            self.recv_state_update_request(id_frame=frames[0], req=msg)
         else:
             raise Exception("BlockAggregator got message type {} from ROUTER socket that it does not know how to handle"
                             .format(type(msg)))
@@ -200,8 +199,8 @@ class BlockAggregator(Worker):
         # Development sanity checks
         assert prev_block_hash == self.curr_block_hash, "Current block hash {} does not match StorageDriver previous " \
                                                         "block hash {}".format(self.curr_block_hash, prev_block_hash)
-        assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} total SBs" \
-                                                    .format(len(merkle_roots), NUM_SB_PER_BLOCK)
+        assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} SBs/per/block" \
+                                                      .format(len(merkle_roots), NUM_SB_PER_BLOCK)
 
         self.log.info("Attempting to store block with hash {} and prev_block_hash {}".format(block_hash, prev_block_hash))
         block_data = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash,
@@ -246,10 +245,8 @@ class BlockAggregator(Worker):
                     sub_block_idx=idx))
         return sub_block_metadatas, all_signatures, all_merkle_leaves, all_transactions
 
-    def recv_state_update_request(self, envelope: Envelope):
-        req = envelope.message
-        self.log.debug("Got StateUpdateRequest from sender {} with current block hash {}".format(envelope.sender, req.block_hash))
-
-        # TODO finish implementing
-
+    def recv_state_update_request(self, id_frame: bytes, req: StateUpdateRequest):
         blocks = StorageDriver.get_latest_blocks(req.block_hash)
+        reply = StateUpdateReply.create(blocks)
+        self.router.send_multipart([])
+

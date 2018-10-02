@@ -63,7 +63,7 @@ class TestSenecaInterpreter(TestCase):
 
         # Assert the contract was added to the queue
         self.assertEqual(self.interpreter.queue_size, 1)
-        self.assertEqual(self.interpreter.queue[0].contract, contract_tx.transaction)
+        self.assertEqual(self.interpreter.queue[0].contract_tx, contract_tx.transaction)
 
     def test_run_bad_contract_reverts_to_last_successful_contract(self):
         """
@@ -155,25 +155,6 @@ class TestSenecaInterpreter(TestCase):
         self.assertEqual(dummy_contract.get_balance(sender), sender_initial_balance + 1500)
         self.interpreter.flush(update_state=False)
         self.assertEqual(dummy_contract.get_balance(sender), sender_initial_balance + 1000)
-
-    def test_queue_binary(self):
-        """
-        Tests that queue_binary returns a list of serialized ContractTransactions
-        """
-        sender = ALICE_VK
-        receiver = BOB_VK
-
-        self.interpreter = SenecaInterpreter()
-        dummy_contract = get_contract_exports(self.interpreter.ex, self.interpreter.contracts_table, contract_id='dummy')
-
-        contracts = []
-        for i in range(5):
-            contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False))
-            self.interpreter.interpret(contract_tx)
-            contracts.append(contract_tx.transaction)
-
-        for actual, expected in zip([c.serialize() for c in contracts], self.interpreter.queue_binary):
-            self.assertEqual(actual, expected)
 
     def test_check_contract_correct_order(self):
         sender = ALICE_VK

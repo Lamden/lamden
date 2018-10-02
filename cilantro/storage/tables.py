@@ -7,7 +7,7 @@ from cilantro.constants.db import DB_SETTINGS
 log = get_logger("DB Creator")
 
 DB_NAME = DB_SETTINGS['db']
-NUM_SNIPES = 8  # Number of times to attempt to kill a single sleeping DB cursor when resetting db
+NUM_SNIPES = 32  # Number of times to attempt to kill a single sleeping DB cursor when resetting db
 
 constitution_json = json.load(open(os.path.join(os.path.dirname(__file__), 'constitution.json')))
 
@@ -66,10 +66,12 @@ def _assassinate_sleeping_db_cursors(ex):
     Slay them one by one, without mercy or remorse.
     Leave no survivors.
     """
+    log.debug("Killing sleeping DB cursors...")
     for _ in range(NUM_SNIPES):
         try:
             ex.raw("SET @kill_id := (select id from information_schema.processlist where command='Sleep' limit 1);")
             ex.raw("KILL (SELECT @kill_id);")
+            log.debugv("Killed a DB cursor")
         except Exception as e:
             pass
 

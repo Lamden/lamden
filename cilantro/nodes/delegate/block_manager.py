@@ -278,7 +278,6 @@ class BlockManager(Worker):
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
-
     def update_db(self):
         # first sort the sb result hashes based on sub block index
         sorted_sb_hashes = sorted(self.db_state.sub_block_hash_map.keys(),
