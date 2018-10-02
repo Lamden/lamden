@@ -229,11 +229,12 @@ class BlockManager(Worker):
         self.db_state.cur_block_hash = block_data.block_hash
         self.log.important("Caught up to block with hash {}".format(self.db_state.cur_block_hash))
 
-    def handle_state_update_reply(self, bd_list: List[BlockData]):
+    def handle_state_update_reply(self, msg: StateUpdateReply):
         # TODO need to handle the duplicates from a single sender (intentional attack?)
         # sender = envelope.sender
         # TODO also need to worry about quorum, etc
         # bd_map = {}
+        bd_list = msg.block_data
         for block_data in bd_list:
             prev_block_hash = block_data.prev_block_hash
             if self.db_state.cur_block_hash == prev_block_hash:
