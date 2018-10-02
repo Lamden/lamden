@@ -208,6 +208,8 @@ class BlockAggregator(Worker):
 
         # TODO wrap storage in try/catch. Add logic for storage failure
         StorageDriver.store_block(block_data)
+
+        self.curr_block_hash = block_hash
         new_block_notif = block_data.create_new_block_notif()
 
         if self.full_block_hashes.get(block_hash):

@@ -1,7 +1,7 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
-from cilantro.utils import lazy_property, Hasher
+from cilantro.utils import lazy_property, Hasher, lazy_func
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.messages.utils import validate_hex
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
@@ -75,7 +75,7 @@ class BlockData(MessageBase):
     def merkle_roots(self) -> List[str]:
         return [mr.decode() for mr in self._data.merkleRoots]
 
-    @lazy_property
+    @lazy_func
     def create_new_block_notif(self, block_num=0) -> NewBlockNotification:
         return NewBlockNotification.create(
             block_hash=self.block_hash,

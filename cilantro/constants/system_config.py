@@ -35,3 +35,9 @@ assert NUM_SUB_BLOCKS >= NUM_BLOCKS, "num_blocks {} cannot be more than num_sub_
 # ///////////////////////////////////////////////
 BATCH_INTERVAL = 30
 MAX_SKIP_TURNS = 4
+
+
+# ///////////////////////////////////////////////
+# Delegate
+# ///////////////////////////////////////////////
+MIN_NEW_BLOCK_MN_QOURUM = math.ceil(NUM_MASTERS * 2 / 3)  # Number of NewBlockNotifications needed from unique MNs

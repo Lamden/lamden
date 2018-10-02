@@ -147,6 +147,8 @@ class SubBlockBuilder(Worker):
 
         if isinstance(msg, MakeNextBlock):
             self._make_next_sub_block()
+        # elif isinstance(msg, DiscardPrevBlock):        # if not matched consensus, then discard current state and use catchup flow
+            # self.interpreter.flush(update_state=false)
         else:
             raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                             .format(type(msg)))
@@ -249,6 +251,10 @@ class SubBlockBuilder(Worker):
         self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
     def _make_next_sub_block(self):
+        # first commit current state - under no conflict between SB assumption (TODO)
+        self.interpreter.flush()
+
+        # now start next one
         self.cur_block_index = (self.cur_block_index + 1) % NUM_BLOCKS
         sb_index_start = self.cur_block_index * NUM_SB_PER_BLOCK
         for i in range(NUM_SB_PER_BLOCK):

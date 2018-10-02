@@ -101,7 +101,7 @@ class TestBlockManager(TestCase):
             bm.handle_sub_msg([b'filter doesnt matter', b'envelope binary also doesnt matter'])
 
         # Now, actually assert handle_new_block was called with mock_env as an arg
-        bm.handle_new_block.assert_called_with(mock_env)
+        bm.handle_new_block.assert_called_with(mock_env.message)
 
 
 
