@@ -137,6 +137,7 @@ class NodeSpiderCrawl(SpiderCrawl):
         toremove = []
         for peerid, response in responses.items():
             response = RPCFindResponse(response)
+            log.critical(response)
             if not response.happened():
                 toremove.append(peerid)
             else:

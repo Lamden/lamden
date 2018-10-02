@@ -37,17 +37,20 @@ class Discovery:
 
     @classmethod
     async def discover_nodes(cls, start_ip):
+        try_count = 0
         while True:
             cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
             cls.connect(get_ip_range(start_ip))
             await asyncio.sleep(DISCOVERY_TIMEOUT)
-            if len(cls.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
+            try_count += 1
+            if len(cls.discovered_nodes) >= MIN_BOOTSTRAP_NODES and try_count > 0:
                 cls.log.info('Found {} nodes to bootstrap.'.format(
                     len(cls.discovered_nodes)
                 ))
                 return cls.discovered_nodes
             else:
-                cls.log.info('Did not find enough nodes ({}/{}).'.format(
+                cls.log.info('Did not find enough nodes after {} tries ({}/{}).'.format(
+                    try_count,
                     len(cls.discovered_nodes),
                     MIN_BOOTSTRAP_NODES
                 ))

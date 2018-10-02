@@ -15,6 +15,7 @@ class Handshake:
     client_sock = ctx.socket(zmq.ROUTER)
     pepper = env('PEPPER', 'ciltantro_code').encode()
     authorized_nodes = {'all':{}}
+    unknown_authorized_nodes = {}
 
     @classmethod
     async def initiate_handshake(cls, ip, vk, domain='all'):
@@ -22,9 +23,9 @@ class Handshake:
         if not cls.authorized_nodes.get(domain):
             cls.authorized_nodes[domain] = {}
         if cls.authorized_nodes['all'].get(ip):
-            if vk == cls.authorized_nodes['all'][ip]:
+            if ip == cls.authorized_nodes['all'][vk]:
                 cls.log.info('Authorized To Domain: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
-                cls.authorized_nodes[domain][ip] = vk
+                cls.authorized_nodes[domain][vk] = ip
         if cls.authorized_nodes[domain].get(ip):
             cls.log.info('Previously Authorized: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
             return True
@@ -37,11 +38,11 @@ class Handshake:
 
         start = time.time()
         for i in range(AUTH_TIMEOUT):
-            if cls.authorized_nodes[domain].get(ip): break
+            if cls.authorized_nodes[domain].get(vk): break
             cls.request(ip, domain)
             await asyncio.sleep(AUTH_INTERVAL)
         end = time.time()
-        if cls.authorized_nodes[domain].get(ip):
+        if cls.authorized_nodes[domain].get(vk):
             cls.log.info('Complete (took {}s):'.format(end-start))
             return True
         else:
@@ -62,22 +63,28 @@ class Handshake:
                 msg = [chunk.decode() for chunk \
                     in await cls.server_sock.recv_multipart()]
                 ip, vk, domain = msg[:3]
+                is_reply = True
                 if not cls.authorized_nodes.get(domain):
                     cls.authorized_nodes[domain] = {}
                 if len(msg) == 3: # this is a request
                     if ip == cls.host_ip and vk == Auth.vk:
-                        cls.authorized_nodes[domain][ip] = vk
+                        cls.authorized_nodes[domain][vk] = ip
                 elif len(msg) == 4: # this is a reply
                     assert msg[-1] == 'rep', 'This is not a reply'
+                    is_reply = True
 
                 if cls.authorized_nodes[domain].get(ip):
                     cls.log.spam('Already Authorized: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
                 elif cls.validate_roles_with_domain(domain, vk):
-                    cls.authorized_nodes[domain][ip] = vk
-                    cls.reply(ip, domain)
+                    cls.authorized_nodes[domain][vk] = ip
+                    cls.authorized_nodes['all'][vk] = ip # Set all category for easier look-up
+                    # Only reply to requests
+                    if not is_reply: cls.reply(ip, domain)
                     cls.log.info('Authorized: {} <=O= {} (vk={})'.format(cls.host_ip, ip, vk))
                 else:
-                    cls.log.warning('Unauthorized: {} <=X= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
+                    cls.unknown_authorized_nodes[vk] = ip
+                    # The sender proved that it has the VK via ZMQ Auth but the sender is not found in the receiver's VKBook
+                    cls.log.warning('Unknown VK: {} <=X= {} (vk={}, domain={}), saving to unknown_authorized_nodes for now'.format(cls.host_ip, ip, vk, domain))
             except Exception as e:
                 cls.log.error(traceback.format_exc())
 

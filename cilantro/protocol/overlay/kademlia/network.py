@@ -127,8 +127,16 @@ class Network(object):
 
     async def bootstrap_node(self, addr):
         result = await self.protocol.ping(addr, self.node.id)
-        log.important(result)
         return Node(result[1], addr[0], addr[1]) if result[0] else None
+
+    async def vk_lookup(self, vk):
+        log.debug('Attempting to look up node with vk="{}" initial contacts'.format(vk))
+        cos = list(map(self.bootstrap_node, self.bootstrappableNeighbors()))
+        gathered = await asyncio.gather(*cos)
+        nodes = [node for node in gathered if node is not None]
+        spider = NodeSpiderCrawl(self.protocol, self.node, nodes,
+                                 self.ksize, self.alpha)
+        return await spider.find()
 
     async def get(self, key):
         """

@@ -31,38 +31,23 @@ class OverlayInterface:
         return Handshake.authorized_nodes
 
     async def run_tasks(self):
-        self.log.debug('''
-        ###########################################################################
-        #   START DISCOVERY
-        ###########################################################################
-        ''')
         await self.discover()
-        self.log.debug('''
-        ###########################################################################
-        #   END DISCOVERY
-        ###########################################################################
-        ''')
-        self.log.debug('''
-        ###########################################################################
-        #   START BOOTSTRAP
-        ###########################################################################
+        self.log.important('''
+###########################################################################
+#   DISCOVERY COMPLETE
+###########################################################################
         ''')
         await self.bootstrap()
-        self.log.debug('''
-        ###########################################################################
-        #   END BOOTSTRAP
-        ###########################################################################
-        ''')
-        self.log.debug('''
-        ###########################################################################
-        #   START HANDSHAKE
-        ###########################################################################
+        self.log.important('''
+###########################################################################
+#   BOOTSTRAP COMPLETE
+###########################################################################
         ''')
         await self.authorize()
-        self.log.debug('''
-        ###########################################################################
-        #   END HANDSHAKE
-        ###########################################################################
+        self.log.important('''
+###########################################################################
+#   HANDSHAKE COMPLETE
+###########################################################################
         ''')
 
     async def discover(self):
@@ -71,18 +56,24 @@ class OverlayInterface:
     async def bootstrap(self):
         addrs = [(Discovery.discovered_nodes[vk], self.network.port) \
             for vk in Discovery.discovered_nodes]
-        if len(addrs) == 1 and Auth.vk not in VKBook.get_masternodes():
-            self.log.critical('''\
-            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-              BOOTSTRAP FAILED: Cannot find other nodes and also not a masternode
-            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\
-            ''')
-        self.log.critical('''\
-        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          BOOTSTRAP FAILED: Cannot find other nodes and also not a masternode
-        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\
-        ''')
+        while True:
+            if len(addrs) == 1 and Auth.vk not in VKBook.get_masternodes():
+                self.log.critical('''
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+x   BOOTSTRAP FAILED: Cannot find other nodes and also not a masternode
+x       Retrying...
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+                ''')
+                await self.discover()
+            else:
+                break
+
         await self.network.bootstrap(addrs)
 
     async def authorize(self):
+        self.log.critical(self.neighbors)
+        await asyncio.gather(*[
+            Handshake.initiate_handshake() for neighbor in self.neighbors
+        ])
+
         await asyncio.sleep(1)
