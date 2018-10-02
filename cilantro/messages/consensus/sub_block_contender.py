@@ -28,7 +28,7 @@ class SubBlockContender(MessageBase):
     def validate(self):
 
         assert self.signature.sender in VKBook.get_delegates(), 'Not a valid delegate'
-        assert self.signature.verify(self.result_hash.encode()), 'Cannot verify signature'
+        assert self.signature.verify(bytes.fromhex(self.result_hash)), 'Cannot verify signature'
         assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
         assert self._data.inputHash, "input hash field missing from data {}".format(self._data)
         assert self._data.merkleLeaves, "leaves field missing from data {}".format(self._data)
@@ -105,7 +105,7 @@ class SubBlockContender(MessageBase):
         The Merkle Tree leaves associated with the block (a binary tree stored implicitly as a list).
         Each element is hex string representing a node's hash.
         """
-        return [leaf.decode() for leaf in self._data.merkleLeaves]
+        return [leaf.hex() for leaf in self._data.merkleLeaves]
 
     @property
     def transactions(self) -> List[TransactionData]:
