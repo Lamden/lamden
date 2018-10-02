@@ -158,7 +158,7 @@ class BlockAggregator(Worker):
                         if len(self.contenders[input_hash]['transactions']) == len(self.contenders[input_hash]['merkle_leaves']):
                             self.log.info('Sub block consensus reached, all transactions present.')
                             self.total_valid_sub_blocks += 1
-                            if self.total_valid_sub_blocks >= NUM_SUB_BLOCKS:
+                            if self.total_valid_sub_blocks >= NUM_SB_PER_BLOCK:
                                 self.contenders[input_hash]['consensus_reached'] = True
                                 new_block_notif = self.store_full_block(list(self.contenders.keys()))
                                 self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())

@@ -170,7 +170,7 @@ class BlockManager(Worker):
             self.sb_builders[i].start()
 
         # Sleep to SBB's IPC sockets are ready for any messages from BlockManager
-        time.sleep(1)
+        time.sleep(4)
         self.log.debugv("Done sleeping sleeping after starting SBB procs")
 
     def _get_my_index(self):

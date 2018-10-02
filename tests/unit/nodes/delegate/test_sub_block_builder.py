@@ -127,7 +127,7 @@ class TestSubBlockBuilder(TestCase):
     @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
     @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
     @mock.patch("cilantro.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SUB_BLOCKS", 1)
+    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
     def test_single_tx_batch_adds_to_queue(self, *args):
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
         # Note we do not send a MakeNextBlockNotifcation
@@ -148,7 +148,7 @@ class TestSubBlockBuilder(TestCase):
     @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
     @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
     @mock.patch("cilantro.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SUB_BLOCKS", 1)
+    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
     def test_double_tx_batch_builds_sbb(self, *args):
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
         sbb._make_next_sb = MagicMock()
