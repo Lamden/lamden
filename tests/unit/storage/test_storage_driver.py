@@ -41,5 +41,21 @@ class TestStorageDriver(TestCase):
         self.assertEqual(block_meta.prev_block_hash, block.prev_block_hash)
         self.assertEqual(block_meta.masternode_signature, block.masternode_signature)
 
+    @mock.patch("cilantro.messages.block_data.block_metadata.SUBBLOCKS_REQUIRED", 2)
+    def test_get_latest_blocks(self):
+        blocks = []
+        for i in range(5):
+            if len(blocks) > 0:
+                block = BlockDataBuilder.create_block(prev_block_hash=blocks[-1].block_hash)
+            else:
+                block = BlockDataBuilder.create_block()
+            blocks.append(block)
+            StorageDriver.store_block(block, validate=False)
+        latest_blocks = StorageDriver.get_latest_blocks(blocks[1].block_hash)
+        self.assertEqual(len(latest_blocks), 3)
+        self.assertEqual(latest_blocks[0].block_hash, blocks[2].block_hash)
+        self.assertEqual(latest_blocks[1].block_hash, blocks[3].block_hash)
+        self.assertEqual(latest_blocks[2].block_hash, blocks[4].block_hash)
+
 if __name__ == '__main__':
     unittest.main()

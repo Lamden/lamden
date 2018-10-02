@@ -21,6 +21,7 @@ class Discovery:
         cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
         cls.sock.bind(cls.url)
         cls.log.info('Listening to other nodes on {}'.format(cls.url))
+        cls.discovered_nodes[Auth.vk] = cls.host_ip
         while True:
             try:
                 msg = await cls.sock.recv_multipart()

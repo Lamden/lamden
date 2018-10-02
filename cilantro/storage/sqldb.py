@@ -4,13 +4,14 @@ from configparser import SafeConfigParser
 path = os.path.dirname(cilantro.__path__[0])
 config = SafeConfigParser()
 config.read('{}/db_conf.ini'.format(path))
+encoding = 'binary'
 
 class SQLDB():
     connection = mysql.connector.connect(
         host=config.get('DB','hostname'),
         user=config.get('DB','username'),
         passwd=config.get('DB','password'),
-        charset='utf8'
+        charset=encoding
     )
     cursor = connection.cursor()
     database = config.get('DB','database')
@@ -29,7 +30,7 @@ class SQLDB():
             host=config.get('DB','hostname'),
             user=config.get('DB','username'),
             passwd=config.get('DB','password'),
-            charset='utf8'
+            charset=encoding
         )
         cls.cursor = cls.connection.cursor()
         cls.setup_db()

@@ -41,13 +41,13 @@ class Handshake:
             cls.request(ip, domain)
             await asyncio.sleep(AUTH_INTERVAL)
         end = time.time()
-        if not cls.authorized_nodes[domain].get(ip):
+        if cls.authorized_nodes[domain].get(ip):
+            cls.log.info('Complete (took {}s):'.format(end-start))
+            return True
+        else:
             cls.log.warning('Timeout (took {}s): {} <=:= {} (vk={})'.format(end-start, cls.host_ip, ip, vk))
             cls.log.warning(cls.authorized_nodes[domain])
             return False
-        cls.log.info('Complete (took {}s):'.format(end-start))
-        cls.log.info(cls.authorized_nodes[domain])
-        return True
 
     @classmethod
     async def listen(cls):
