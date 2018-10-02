@@ -40,7 +40,7 @@ def vk_lookup(func):
 
 class LSocket:
 
-    DEFERED_FUNCS = ('send_multipart', 'send', 'send_msg', 'send_envelope')
+    DEFERED_FUNCS = ('send_multipart', 'send')
 
     def __init__(self, socket: zmq.asyncio.Socket, manager, name='LSocket', secure=False, domain='*'):
         self.log = get_logger(name)
@@ -140,9 +140,9 @@ class LSocket:
 
         if header:
             assert type(header) is bytes, "Header arg must be bytes, not {}".format(type(header))
-            self.socket.send_multipart([header, data])
+            self.send_multipart([header, data])
         else:
-            self.socket.send_multipart([data])
+            self.send_multipart([data])
 
     @vk_lookup
     def connect(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
