@@ -199,8 +199,8 @@ class BlockAggregator(Worker):
         # Development sanity checks
         assert prev_block_hash == self.curr_block_hash, "Current block hash {} does not match StorageDriver previous " \
                                                         "block hash {}".format(self.curr_block_hash, prev_block_hash)
-        assert len(merkle_roots) == NUM_SUB_BLOCKS, "Aggregator has {} merkle roots but there are {} total SBs" \
-                                                    .format(len(merkle_roots), NUM_SUB_BLOCKS)
+        assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} SBs/per/block" \
+                                                      .format(len(merkle_roots), NUM_SB_PER_BLOCK)
 
         self.log.info("Attempting to store block with hash {} and prev_block_hash {}".format(block_hash, prev_block_hash))
         block_data = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash,
