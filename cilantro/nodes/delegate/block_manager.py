@@ -299,7 +299,7 @@ class BlockManager(Worker):
             return
 
         count = self.db_state.next_block.get(new_block_hash, 0) + 1
-        if (count >= MIN_NEW_BLOCK_MN_QOURUM):      # TODO
+        if count >= MIN_NEW_BLOCK_MN_QOURUM:
             self.update_db_if_ready(block_data)
         else:
             self.db_state.next_block[block_data.block_hash] = count
