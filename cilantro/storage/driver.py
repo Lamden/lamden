@@ -1,5 +1,5 @@
 from cilantro.storage.sqldb import SQLDB
-from cilantro.messages.block_data.block_data import BlockData
+from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 import dill, ujson as json, textwrap
 from typing import List
@@ -29,7 +29,7 @@ class BlockMetaSQL:
 
     @classmethod
     def unpack(cls, sql_obj):
-        return {
+        obj_dict = {
             'block_num': sql_obj[0],
             'block_hash': sql_obj[1].decode(),
             'merkle_roots': chunk(sql_obj[2]),
@@ -37,6 +37,7 @@ class BlockMetaSQL:
             'masternode_signature': MerkleSignature.from_bytes(sql_obj[4]),
             'timestamp': sql_obj[5].timestamp()
         }
+        return BlockMetaData.create(**obj_dict)
 
 class BlockTransactionsSQL:
     @classmethod
@@ -207,7 +208,7 @@ class StorageDriver(object):
             return res
 
     @classmethod
-    def get_latest_blocks(cls, start_block_hash):
+    def get_latest_blocks(cls, start_block_hash) -> List[BlockData]:
         with SQLDB() as (connection, cursor):
             cursor.execute("""
                 SELECT *

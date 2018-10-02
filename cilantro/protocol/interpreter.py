@@ -85,12 +85,12 @@ class SenecaInterpreter:
     def _rerun_contracts(self):
         self.ex.rollback()
         for data in self.queue:
-            c = data.contract
+            c = data.contract_tx
             r = self._run_contract(c, rerun=True)
             if not r:
                 raise Exception("Previously successful contract {} failed during recovery with code: {}".format(c.sender, c.code))
         if len(self.queue) > 0:
-            self.log.debug("Recovered to code with sender {}".format(self.queue[-1].contract.sender))
+            self.log.debug("Recovered to code with sender {}".format(self.queue[-1].contract_tx.sender))
         else:
             self.log.debug("Restoring to beginning of block")
 
@@ -108,16 +108,8 @@ class SenecaInterpreter:
             else:
                 self.queue.append(TransactionData.create(contract_tx=contract, status='SUCCESS', state='over9000'))
 
-    @property
-    def queue_binary(self) -> List[bytes]:
-        self.log.warning("WARNING -- queue_binary should be deprecated. Use get_tx_queue()")
-        return [tx.contract.serialize() for tx in self.queue]
-
     def get_tx_queue(self) -> List[TransactionData]:
         return list(self.queue)
-
-    def get_queue_binary(self) -> List[bytes]:
-        return [tx.serialize() for tx in self.queue]
 
     @property
     def queue_size(self):

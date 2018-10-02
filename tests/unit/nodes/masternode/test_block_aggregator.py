@@ -31,35 +31,39 @@ TEST_SK = TESTNET_MASTERNODES[0]['sk']
 TEST_VK = TESTNET_MASTERNODES[0]['vk']
 DEL_SK = TESTNET_DELEGATES[0]['sk']
 DEL_VK = TESTNET_DELEGATES[0]['vk']
-INPUT_HASH = '1111111111111111111111111111111111111111111111111111111111111111'
-INPUT_HASH_1 = '2222222222222222222222222222222222222222222222222222222222222222'
-RAWTXS = [
+INPUT_HASH1 = '1111111111111111111111111111111111111111111111111111111111111111'
+INPUT_HASH2 = '2222222222222222222222222222222222222222222222222222222222222222'
+RAWTXS1 = [
     b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
     b'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
     b'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
     b'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
     b'EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE'
 ]
-RAWTXS_1 = [
+RAWTXS2 = [
     b'1AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
     b'2BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
     b'3CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
     b'4DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
     b'5EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE'
 ]
-TXS = [TransactionData.create(
+TXS1 = [TransactionData.create(
     contract_tx=ContractTransactionBuilder.create_contract_tx(sender_sk=TEST_SK, code_str=raw_tx.decode()),
     status='SUCCESS', state='blah'
-    ) for raw_tx in RAWTXS]
-TXS_1 = [TransactionData.create(
+    ) for raw_tx in RAWTXS1]
+TXS2 = [TransactionData.create(
     contract_tx=ContractTransactionBuilder.create_contract_tx(sender_sk=TEST_SK, code_str=raw_tx.decode()),
     status='SUCCESS', state='blah'
-    ) for raw_tx in RAWTXS_1]
-MERKLE_LEAVES = [Hasher.hash(tx) for tx in TXS]
-MERKLE_LEAVES_1 = [Hasher.hash(tx) for tx in TXS_1]
+    ) for raw_tx in RAWTXS2]
 
-RESULT_HASH = MerkleTree.from_hex_leaves(MERKLE_LEAVES).root_as_hex
-RESULT_HASH_1 = MerkleTree.from_hex_leaves(MERKLE_LEAVES_1).root_as_hex
+TREE1 = MerkleTree.from_raw_transactions([t.serialize() for t in TXS1])
+TREE2 = MerkleTree.from_raw_transactions([t.serialize() for t in TXS2])
+
+MERKLE_LEAVES1 = TREE1.leaves
+MERKLE_LEAVES2 = TREE2.leaves
+
+RESULT_HASH1 = TREE1.root_as_hex
+RESULT_HASH2 = TREE2.root_as_hex
 
 log = get_logger('BlockAggregator')
 
@@ -139,11 +143,11 @@ class TestBlockAggregator(TestCase):
         ba.manager = MagicMock()
         ba.build_task_list()
 
-        signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-        sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
+        signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+        sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
 
         ba.recv_sub_block_contender(sbc)
-        self.assertTrue(sbc._data.signature in ba.result_hashes[RESULT_HASH]['signatures'])
+        self.assertTrue(sbc._data.signature in ba.result_hashes[RESULT_HASH1]['signatures'])
 
     @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
@@ -155,12 +159,12 @@ class TestBlockAggregator(TestCase):
         ba.build_task_list()
 
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
-        self.assertEqual(len(ba.result_hashes[RESULT_HASH]['signatures']), DELEGATE_MAJORITY)
-        self.assertEqual(len(ba.contenders[INPUT_HASH]['transactions']), 5)
+        self.assertEqual(len(ba.result_hashes[RESULT_HASH1]['signatures']), DELEGATE_MAJORITY)
+        self.assertEqual(len(ba.contenders[INPUT_HASH1]['transactions']), 5)
         self.assertEqual(len(ba.full_block_hashes), 0)
 
 
@@ -185,8 +189,8 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
@@ -210,11 +214,10 @@ class TestBlockAggregatorStorage(TestCase):
         ba.build_task_list()
         bh = ba.curr_block_hash
         for i in range(DELEGATE_MAJORITY + 5):
-            signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
-        tree = MerkleTree.from_hex_leaves(MERKLE_LEAVES)
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
@@ -239,19 +242,18 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
         # Sub block 1
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=RESULT_HASH_1.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH_1, INPUT_HASH_1, MERKLE_LEAVES_1, signature, TXS_1, 1)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 1)
             ba.recv_sub_block_contender(sbc)
 
         self.assertEqual(ba.total_valid_sub_blocks, 2)
 
-        tree = MerkleTree.from_hex_leaves(MERKLE_LEAVES+MERKLE_LEAVES_1)
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
@@ -280,14 +282,14 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
         # Sub block 1
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=RESULT_HASH_1.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH_1, INPUT_HASH_1, MERKLE_LEAVES_1, signature, TXS_1, 1)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 1)
             ba.recv_sub_block_contender(sbc)
 
         self.assertEqual(ba.total_valid_sub_blocks, 2)
