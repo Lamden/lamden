@@ -35,6 +35,7 @@ import asyncio
 import zmq
 import os
 import time
+import random
 from collections import defaultdict
 
 IPC_IP = 'block-manager-ipc-sock'
@@ -75,7 +76,7 @@ class BlockManager(Worker):
 
         # Define Sockets (these get set in build_task_list)
         self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
-        self.ipc_ip = IPC_IP + '-' + str(os.getpid())
+        self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
 
         self.run()
 
@@ -87,7 +88,7 @@ class BlockManager(Worker):
         self.update_db_state()
 
         # DEBUG -- until we properly send back StateUpdateReply from Masternodes
-        time.sleep(2)
+        # time.sleep(2)
         self.tasks.append(self.spam_sbc())
         self.send_updated_db_msg()
         # END DEBUG
@@ -96,9 +97,11 @@ class BlockManager(Worker):
 
     async def spam_sbc(self):
         while True:
-            await asyncio.sleep(1)
-            self.log.spam("sending test ipc msg")
-            self.ipc_router.send_multipart([b'0', int_to_bytes(1), b'hi its me the block manager'])
+            await asyncio.sleep(4)
+            for i in self.sb_builders:
+                id_frame = str(i).encode()
+                self.log.spam("sending test ipc msg to sb_builder id {}".format(id_frame))
+                self.ipc_router.send_multipart([id_frame, int_to_bytes(1), b'hi its me the block manager'])
 
     def build_task_list(self):
         # Create a TCP Router socket for comm with other nodes

@@ -223,14 +223,14 @@ class LSocket:
                                             verifying_key=self.manager.verifying_key, uuid=reply_uuid)
 
     def __getattr__(self, item):
-        self.log.spam("called __getattr__ with item {}".format(item))  # TODO remove this
+        # self.log.spam("called __getattr__ with item {}".format(item))  # TODO remove this
         assert hasattr(self.socket, item), "Underlying socket object {} has no attribute named {}".format(self.socket, item)
         underlying = getattr(self.socket, item)
 
         # If we are accessing an attribute that does not exist in LSocket, we assume its a attribute on self.socket
         # Otherwise, we assume its a method on self.socket
         if not callable(underlying):
-            self.log.important2("{} is not callable, returning it as presumably an attribute".format(underlying))  # TODO remmove
+            # self.log.important2("{} is not callable, returning it as presumably an attribute".format(underlying))  # TODO remmove
             return underlying
 
         # If this socket is not ready (ie it has not bound/connected yet), defer execution of this method

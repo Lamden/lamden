@@ -75,7 +75,7 @@ class SubBlockBuilder(Worker):
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
-        self._create_sub_sockets()
+        # self._create_sub_sockets()
 
         self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {} num_sb_per_builder {}"
                         .format(sbb_index, NUM_SUB_BLOCKS, NUM_BLOCKS, NUM_SB_BUILDERS, NUM_SB_PER_BLOCK, NUM_SB_PER_BUILDER))
@@ -86,12 +86,16 @@ class SubBlockBuilder(Worker):
         self.log.notice("SBB {} starting...".format(self.sbb_index))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
+        # DEBUG -- TODO DELETE
+        self.log.fatal("\n SBB EXITING EVENT LOOP!!! THIS SHOULD NOT HAPPEN!!! \n")
+        # END DEBUG
+
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
         self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
-                      .format(port, ip, identity))
+                      .format(ip, port, identity))
         self.ipc_dealer = self.manager.create_socket(socket_type=zmq.DEALER, name="SBB-IPC-Dealer[{}]".format(self.sbb_index), secure=False)
-        self.ipc_dealer.setsockopt(zmq.IDENTITY, identity)
         self.ipc_dealer.connect(port=port, protocol='ipc', ip=ip)
+        self.ipc_dealer.setsockopt(zmq.IDENTITY, identity)
         self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
 
     def _create_sub_sockets(self):
@@ -112,6 +116,7 @@ class SubBlockBuilder(Worker):
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
     def handle_ipc_msg(self, frames):
+        self.log.important("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))  # TODO remove
         self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
         assert len(frames) == 2, "Expected 3 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
