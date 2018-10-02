@@ -87,9 +87,12 @@ class BlockManager(Worker):
         self.log.info("Catching up...")
         self.update_db_state()
 
-        # DEBUG -- until we properly send back StateUpdateReply from Masternodes
-        self.tasks.append(self.spam_sbbs())
+        # here we fix call to send_updated_db_msg until we properly send back StateUpdateReply from Masternodes
+        # TODO -- remove once Masternodes can reply to StateUpdateRequest
         self.send_updated_db_msg()
+
+        # DEBUG -- TODO DELETE
+        # self.tasks.append(self.spam_sbbs())
         # END DEBUG
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
@@ -162,10 +165,9 @@ class BlockManager(Worker):
 
     def handle_ipc_msg(self, frames):
         # DEBUG -- TODO DELETE
-        self.log.important2("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
-        return
+        # self.log.important2("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
+        # return
         # END DEBUG
-
         self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
         assert len(frames) == 3, "Expected 3 frames: (id, msg_type, msg_blob). Got {} instead.".format(frames)
 
