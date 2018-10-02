@@ -154,7 +154,7 @@ class SubBlockBuilder(Worker):
                             .format(type(msg)))
 
     def handle_sub_msg(self, frames, index):
-        self.log.info("Sub socket got frames {} with handler_index {}".format(frames, index))
+        self.log.spam("Sub socket got frames {} with handler_index {}".format(frames, index))
         assert 0 <= index < len(self.sb_managers), "Got index {} out of range of sb_managers array {}".format(
             index, self.sb_managers)
 
@@ -185,11 +185,11 @@ class SubBlockBuilder(Worker):
 
         self.sb_managers[index].processed_txs_timestamp = timestamp
         if self.sb_managers[index].num_pending_sb > 0:
-            if ((self.sb_managers[index].num_pending_sb == 1) and (self.pending_block_index == self.cur_block_index)):
+            if (self.sb_managers[index].num_pending_sb == 1) and (self.pending_block_index == self.cur_block_index):
                 sbb_idx = self.sb_managers[index].sub_block_index
                 self._make_next_sb(input_hash, envelope.message, sbb_idx)
 
-            self.sb_managers[index].num_pending_sb = self.sb_managers[index].num_pending_sb - 1
+            self.sb_managers[index].num_pending_sb -= 1
         else:
             self.log.debug("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
             self.sb_managers[index].pending_txs.append(input_hash, envelope.message)
@@ -228,7 +228,6 @@ class SubBlockBuilder(Worker):
         tx_queue = self.interpreter.get_tx_queue()
         tx_binaries = [tx.serialize() for tx in tx_queue]
 
-        # TODO -- do we want to sign the real 'raw' merkle root or the merkle root as an encoded hex str???
         merkle = MerkleTree.from_raw_transactions(tx_binaries)
         signature = wallet.sign(self.signing_key, merkle.root)
         merkle_sig = MerkleSignature.create(sig_hex=signature,
@@ -267,7 +266,7 @@ class SubBlockBuilder(Worker):
                 sbb_idx = self.sb_managers[sb_idx].sub_block_index
                 self._make_next_sb(input_hash, txs_bag, sbb_idx)
             else:
-                self.sb_managers[sb_idx].num_pending_sb = self.sb_managers[sb_idx].num_pending_sb + 1
+                self.sb_managers[sb_idx].num_pending_sb += 1
                 self.pending_block_index = self.cur_block_index
 
 

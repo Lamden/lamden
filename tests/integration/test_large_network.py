@@ -1,16 +1,15 @@
 # ------------------------------------------------------------------------
 # Mock out get_testnet_json_path to return the desired Testnet config json
-JSON_NAME = '2-2-4.json'
+JSON_FILE_NAME = '2-2-4.json'
 
 import cilantro
 from unittest.mock import patch
-FAKE_JSON_DIR = cilantro.__path__[0] + '/../testnet_configs/' + '2-2-4.json'
+patched_json_dir = cilantro.__path__[0] + '/../testnet_configs/' + JSON_FILE_NAME
 with patch('cilantro.utils.test.testnet_nodes.get_testnet_json_path') as mock_path:
-    mock_path.return_value = FAKE_JSON_DIR
+    mock_path.return_value = patched_json_dir
     from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 # Done mocking
 # ------------------------------------------------------------------------
-
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
 from cilantro.storage.db import VKBook
