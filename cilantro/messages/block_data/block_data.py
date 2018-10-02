@@ -92,7 +92,7 @@ DEL_VK = TESTNET_MASTERNODES[0]['vk']
 PREV_BLOCK_HASH = Hasher.hash('0' * 64)
 
 class BlockDataBuilder:
-    block_num = 0
+    block_num = 1
     @classmethod
     def create_block(cls, prev_block_hash=PREV_BLOCK_HASH, merkle_roots=None, transactions=None, tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK):
         if not transactions:
