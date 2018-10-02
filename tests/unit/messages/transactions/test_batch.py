@@ -1,9 +1,16 @@
-from cilantro.messages.transaction.batch import TransactionBatch
+from cilantro.messages.transaction.batch import TransactionBatch, build_test_transaction_batch
 from cilantro.messages.transaction.ordering import build_test_container
 from unittest import TestCase
 
 
 class TestTransactionBatch(TestCase):
+
+    def test_build_test_transaction_batch(self):
+        non_empty_batch = build_test_transaction_batch(8)
+        empty_batch = build_test_transaction_batch(0)
+
+        self.assertTrue(empty_batch.is_empty)
+        self.assertEqual(len(non_empty_batch.transactions), 8)
 
     def test_empty_init(self):
         batch = TransactionBatch.create(None)

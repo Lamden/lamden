@@ -3,7 +3,7 @@ from cilantro.constants.system_config import *
 from cilantro.nodes.delegate.block_manager import IPC_IP, IPC_PORT
 from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder, SubBlockManager
 
-from cilantro.messages.transaction.batch import TransactionBatch
+from cilantro.messages.transaction.batch import TransactionBatch, build_test_transaction_batch
 from cilantro.messages.consensus.empty_sub_block_contender import EmptySubBlockContender
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender, SubBlockContenderBuilder
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
@@ -63,14 +63,14 @@ class TestSubBlockBuilder(TestCase):
         assert isinstance(msg, EmptySubBlockContender), "Must pass in an EmptySubBlockContender instance"
         # print("sbb._create_empty_sbc called with: {}".format(call_args))
 
-    # @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-    # @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-    # @mock.patch("cilantro.nodes.delegate.block_manager.asyncio", autospec=True)
-    # @mock.patch("cilantro.nodes.delegate.block_manager.SubBlockBuilder.run", autospec=True)
-    # def test_handle_new_block_signal(self, mock_run_method, mock_bm_asyncio, mock_manager, mock_worker_asyncio):
-    #     sbb = SubBlockBuilder(ip=TEST_IP, signing_key=TEST_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
-    #
-    #     txs1 = [TransactionDataBuilder.create_random_tx() for _ in range(TRANSACTIONS_PER_SUB_BLOCK)]
+    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
+    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
+    @mock.patch("cilantro.nodes.delegate.block_manager.asyncio", autospec=True)
+    @mock.patch("cilantro.nodes.delegate.block_manager.SubBlockBuilder.run", autospec=True)
+    def test_handle_new_block_signal(self, mock_run_method, mock_bm_asyncio, mock_manager, mock_worker_asyncio):
+        sbb = SubBlockBuilder(ip=TEST_IP, signing_key=TEST_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
+
+        txs1 = [TransactionDataBuilder.create_random_tx() for _ in range(TRANSACTIONS_PER_SUB_BLOCK)]
 
 
 if __name__ == "__main__":
