@@ -182,7 +182,7 @@ class BlockAggregator(Worker):
             if self.full_block_hashes[block_hash]['consensus_count'] >= MASTERNODE_MAJORITY:
                 self.full_block_hashes[block_hash]['consensus_reached'] = True
                 bmd = self.full_block_hashes[block_hash].get('full_block_metadata')
-                if not len(bmd.merkle_roots) == NUM_SUB_BLOCKS:
+                if not len(bmd.merkle_roots) == NUM_SB_PER_BLOCK:
                     # TODO Request blocks from other masternodes
                     pass
         else:
