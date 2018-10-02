@@ -219,13 +219,15 @@ class SubBlockBuilder(Worker):
         Creates a Sub Block Contender from a TransactionBatch
         """
         # We assume if we are trying to create a SBC, our interpreter is empty and in a fresh state
-        assert self.interpreter.queue_size == 0, "Expected an empty interpreter queue before building a SBC"
+        # assert self.interpreter.queue_size == 0, "Expected an empty interpreter queue before building a SBC"
+        num_txs = len(batch.transactions)
 
         for txn in batch.transactions:
             self.interpreter.interpret(txn)  # this is a blocking call. either async or threads??
 
         # Merkle-ize transaction queue and create signed merkle hash
-        tx_queue = self.interpreter.get_tx_queue()
+        all_tx_queue = self.interpreter.get_tx_queue()
+        tx_queue = all_tx_queue[-num_txs:]
         tx_binaries = [tx.serialize() for tx in tx_queue]
 
         # TODO -- do we want to sign the real 'raw' merkle root or the merkle root as an encoded hex str???

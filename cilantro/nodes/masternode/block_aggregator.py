@@ -106,6 +106,7 @@ class BlockAggregator(Worker):
     def recv_sub_block_contender(self, sbc: SubBlockContender):
         result_hash = sbc.result_hash
         input_hash = sbc.input_hash
+        self.log.info("Received a sbc with result hash {} and input hash {}".format(result_hash, input_hash))
         cached = self.contenders.get(input_hash)
         if not cached:
             if MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash):
