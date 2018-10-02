@@ -24,7 +24,6 @@ from typing import List
 from cilantro.logger import get_logger
 from cilantro.storage.db import VKBook
 from cilantro.constants.ports import SBB_PORT_START
-from cilantro.constants.masternode import BATCH_INTERVAL
 
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
@@ -71,29 +70,45 @@ class SubBlockBuilder(Worker):
         self.tasks = []
 
         # Create DEALER socket to talk to the BlockManager process over IPC
-        self.dealer = None
+        self.ipc_dealer = None
         self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sbb_index).encode())
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
         self._create_sub_sockets()
 
+        # DEBUG -- TODO DELETE
+        # self.tasks.append(self.spam_bm())
+        # END DEBUG
+
         self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {} num_sb_per_builder {}"
                         .format(sbb_index, NUM_SUB_BLOCKS, NUM_BLOCKS, NUM_SB_BUILDERS, NUM_SB_PER_BLOCK, NUM_SB_PER_BUILDER))
 
         self.run()
 
+    async def spam_bm(self):
+        while True:
+            await asyncio.sleep(4)
+            msg = 'hello from sbb {}'.format(self.sbb_index)
+            self.log.info("SBB sending msg over ipc: {}".format(msg))
+            self.ipc_dealer.send_multipart([b'0', msg.encode()])
+
     def run(self):
         self.log.notice("SBB {} starting...".format(self.sbb_index))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
+        # DEBUG -- TODO DELETE
+        self.log.fatal("\n SBB EXITING EVENT LOOP!!! THIS SHOULD NOT HAPPEN!!! \n")
+        # END DEBUG
+
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
         self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
-                      .format(port, ip, identity))
-        self.dealer = self.manager.create_socket(socket_type=zmq.DEALER, name="SBB-IPC-Dealer[{}]".format(self.sbb_index))
-        self.dealer.setsockopt(zmq.IDENTITY, identity)
-        self.dealer.connect(port=port, protocol='ipc', ip=ip)
-        self.tasks.append(self.dealer.add_handler(handler_func=self.handle_ipc_msg))
+                      .format(ip, port, identity))
+        self.ipc_dealer = self.manager.create_socket(socket_type=zmq.DEALER, name="SBB-IPC-Dealer[{}]".format(self.sbb_index), secure=False)
+        self.ipc_dealer.setsockopt(zmq.IDENTITY, identity)
+        self.ipc_dealer.connect(port=port, protocol='ipc', ip=ip)
+
+        self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
 
     def _create_sub_sockets(self):
         # We then BIND a sub socket to a port for each of these masternode indices
@@ -113,6 +128,10 @@ class SubBlockBuilder(Worker):
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
     def handle_ipc_msg(self, frames):
+        # DEBUG -- TODO DELETE
+        # self.log.important("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))  # TODO remove
+        # return
+        # END DEBUG
         self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
         assert len(frames) == 2, "Expected 3 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
@@ -159,19 +178,25 @@ class SubBlockBuilder(Worker):
         # TODO if verification fails, log and return here ?
 
         # keep updating timestamp as they are increasing from a master
+
+        # DEBUG -- TODO DELETE
+        self.log.important("Recv tx batch with input hash {}".format(input_hash))
+        # END DEBUG
+
         self.sb_managers[index].processed_txs_timestamp = timestamp
         if self.sb_managers[index].num_pending_sb > 0:
-            if ((self.sb_managers[index].num_pending_sb == 1) and
-                (self.pending_block_index == self.cur_block_index)):
+            if ((self.sb_managers[index].num_pending_sb == 1) and (self.pending_block_index == self.cur_block_index)):
                 sbb_idx = self.sb_managers[index].sub_block_index
                 self._make_next_sb(input_hash, envelope.message, sbb_idx)
+
             self.sb_managers[index].num_pending_sb = self.sb_managers[index].num_pending_sb - 1
         else:
+            self.log.debug("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
             self.sb_managers[index].pending_txs.append(input_hash, envelope.message)
 
     def _make_next_sb(self, input_hash: str, txs_bag: MessageBase, sbb_idx: int):
         self.log.debug("SBB {} attempting to build sub block with sub block index {}".format(self.sbb_index, sbb_idx))
- 
+
         batch = TransactionBatch.from_data(txs_bag)
         sbc = self._create_empty_sbc(input_hash, sbb_idx) if batch.is_empty \
                   else self._create_sbc_from_batch(input_hash, sbb_idx, batch)
@@ -201,18 +226,19 @@ class SubBlockBuilder(Worker):
             self.interpreter.interpret(txn)  # this is a blocking call. either async or threads??
 
         # Merkle-ize transaction queue and create signed merkle hash
-        all_tx = self.interpreter.queue_binary
-        merkle = MerkleTree.from_raw_transactions(all_tx)
-        signature = wallet.sign(self.signing_key, merkle.root)
+        tx_queue = self.interpreter.get_tx_queue()
+        tx_binaries = [tx.serialize() for tx in tx_queue]
 
+        # TODO -- do we want to sign the real 'raw' merkle root or the merkle root as an encoded hex str???
+        merkle = MerkleTree.from_raw_transactions(tx_binaries)
+        signature = wallet.sign(self.signing_key, merkle.root)
         merkle_sig = MerkleSignature.create(sig_hex=signature,
-                                            timestamp=str(int(time.time())),
+                                            timestamp=str(time.time()),
                                             sender=self.verifying_key)
 
-        # TODO fix interpreter ... must pass in TransactionData object into SBC, not raw binaries
         sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=input_hash,
                                        merkle_leaves=merkle.leaves, sub_block_index=sbb_idx,
-                                       signature=merkle_sig, raw_txs=all_tx)
+                                       signature=merkle_sig, transactions=tx_queue)
         return sbc
 
     def _send_msg_over_ipc(self, message: MessageBase):
@@ -221,8 +247,8 @@ class SubBlockBuilder(Worker):
         type of message
         """
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
-        message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
-        self.dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
+        message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
+        self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
     def _make_next_sub_block(self):
         # first commit current state - under no conflict between SB assumption (TODO)

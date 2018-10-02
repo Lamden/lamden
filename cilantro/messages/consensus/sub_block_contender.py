@@ -2,6 +2,7 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.utils import lazy_property, set_lazy_property, is_valid_hex
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 from cilantro.protocol.structures import MerkleTree
+from cilantro.protocol import wallet
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
 from cilantro.storage.db import VKBook
 from cilantro.utils.hasher import Hasher
@@ -28,7 +29,7 @@ class SubBlockContender(MessageBase):
     def validate(self):
 
         assert self.signature.sender in VKBook.get_delegates(), 'Not a valid delegate'
-        assert self.signature.verify(self.result_hash.encode()), 'Cannot verify signature'
+        assert self.signature.verify(bytes.fromhex(self.result_hash)), 'Cannot verify signature'
         assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
         assert self._data.inputHash, "input hash field missing from data {}".format(self._data)
         assert self._data.merkleLeaves, "leaves field missing from data {}".format(self._data)
@@ -105,7 +106,7 @@ class SubBlockContender(MessageBase):
         The Merkle Tree leaves associated with the block (a binary tree stored implicitly as a list).
         Each element is hex string representing a node's hash.
         """
-        return [leaf.decode() for leaf in self._data.merkleLeaves]
+        return [leaf.hex() for leaf in self._data.merkleLeaves]
 
     @property
     def transactions(self) -> List[TransactionData]:
@@ -119,12 +120,12 @@ class SubBlockContender(MessageBase):
 
 class SubBlockContenderBuilder:
     @classmethod
-    def create_sub_block(cls, transactions=None, tx_count=5, txs_for_input_hash=[i for i in range(5)], sb_index=0, del_sk=DEL_SK, del_vk=DEL_VK):
+    def create(cls, transactions: List[TransactionData]=None, tx_count=5, input_hash='A'*64, sb_index=0, del_sk=DEL_SK):
         if not transactions:
-            transactions = [TransactionDataBuilder.create_random_tx(sk=del_sk) for i in range(tx_count)]
-        merkle_leaves = [Hasher.hash(tx) for tx in transactions]
-        result_hash = MerkleTree.from_hex_leaves(merkle_leaves).root_as_hex
-        input_hash = Hasher.hash_iterable([transactions[i] for i in txs_for_input_hash])
-        signature = build_test_merkle_sig(msg=result_hash.encode(), sk=del_sk, vk=del_vk)
-        sbc = SubBlockContender.create(result_hash, input_hash, merkle_leaves, signature, transactions, sb_index)
+            transactions = [TransactionDataBuilder.create_random_tx() for _ in range(tx_count)]
+        raw_txs = [tx.serialize() for tx in transactions]
+        tree = MerkleTree.from_raw_transactions(raw_txs)
+        signature = build_test_merkle_sig(msg=tree.root, sk=del_sk, vk=wallet.get_vk(del_sk))
+        sbc = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
+                                       signature=signature, transactions=transactions, sub_block_index=sb_index)
         return sbc

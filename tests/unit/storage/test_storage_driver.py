@@ -43,7 +43,7 @@ class TestStorageDriver(TestCase):
         self.assertEqual(block_meta['masternode_signature'], block.masternode_signature)
 
     def test_store_sub_block(self):
-        sub_block = SubBlockContenderBuilder.create_sub_block()
+        sub_block = SubBlockContenderBuilder.create()
         signatures = [build_test_merkle_sig() for _ in range(len(sub_block.merkle_leaves))]
         StorageDriver.store_sub_block(sub_block, signatures)
         sub_block_meta = StorageDriver.get_sub_block_meta(sub_block.result_hash)

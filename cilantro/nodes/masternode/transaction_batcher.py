@@ -2,7 +2,7 @@
 from cilantro.constants.system_config import TRANSACTIONS_PER_SUB_BLOCK
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
 from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
-from cilantro.constants.masternode import BATCH_INTERVAL, MAX_SKIP_TURNS
+from cilantro.constants.system_config import BATCH_INTERVAL, MAX_SKIP_TURNS
 
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.messages.transaction.ordering import OrderingContainer

@@ -99,7 +99,7 @@ class BlockDataBuilder:
             merkle_roots = []
             transactions = []
             for i in range(sub_block_count):
-                transactions += [TransactionDataBuilder.create_random_tx(sk=del_sk) for i in range(tx_count)]
+                transactions += [TransactionDataBuilder.create_random_tx() for i in range(tx_count)]
                 merkle_leaves = [Hasher.hash(tx) for tx in transactions]
                 merkle_roots.append(MerkleTree.from_hex_leaves(merkle_leaves).root_as_hex)
         block_hash = Hasher.hash_iterable([*merkle_roots, prev_block_hash])

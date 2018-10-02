@@ -18,6 +18,7 @@ from cilantro.logger.base import get_logger
 from cilantro.storage.db import VKBook
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.utils.lprocess import LProcess
+from cilantro.utils.hasher import Hasher
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.messages.block_data.block_data import BlockData
@@ -37,6 +38,8 @@ from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpd
 import asyncio
 import zmq
 import os
+import time
+import random
 from collections import defaultdict
 
 IPC_IP = 'block-manager-ipc-sock'
@@ -80,7 +83,7 @@ class BlockManager(Worker):
 
         # Define Sockets (these get set in build_task_list)
         self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
-        self.ipc_ip = IPC_IP + '-' + str(os.getpid())
+        self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
 
         self.run()
 
@@ -90,7 +93,24 @@ class BlockManager(Worker):
         self.start_sbb_procs()
         self.log.info("Catching up...")
         self.catchup_db_state()
+
+        # here we fix call to send_updated_db_msg until we properly send back StateUpdateReply from Masternodes
+        # TODO -- remove once Masternodes can reply to StateUpdateRequest
+        self.send_updated_db_msg()
+
+        # DEBUG -- TODO DELETE
+        # self.tasks.append(self.spam_sbbs())
+        # END DEBUG
+
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
+
+    async def spam_sbbs(self):
+        while True:
+            await asyncio.sleep(4)
+            for i in self.sb_builders:
+                id_frame = str(i).encode()
+                self.log.spam("sending test ipc msg to sb_builder id {}".format(id_frame))
+                self.ipc_router.send_multipart([id_frame, int_to_bytes(1), b'hi its me the block manager'])
 
     def build_task_list(self):
         # Create a TCP Router socket for comm with other nodes
@@ -209,12 +229,12 @@ class BlockManager(Worker):
         self.db_state.cur_block_hash = block_data.block_hash
         self.log.important("Caught up to block with hash {}".format(self.db_state.cur_block_hash))
 
-
-    def handle_state_update_reply(self, bd_list: List[BlockData]):
+    def handle_state_update_reply(self, msg: StateUpdateReply):
         # TODO need to handle the duplicates from a single sender (intentional attack?)
         # sender = envelope.sender
         # TODO also need to worry about quorum, etc
         # bd_map = {}
+        bd_list = msg.block_data
         for block_data in bd_list:
             prev_block_hash = block_data.prev_block_hash
             if self.db_state.cur_block_hash == prev_block_hash:
@@ -224,13 +244,12 @@ class BlockManager(Worker):
                 # ignore right now - just log
                 self.log.important("Ignore block data with prev block hash {}".format(prev_block_hash))
 
-
     def _handle_sbc(self, sbc: SubBlockContender):
         self.db_state.sub_block_hash_map[sbc.result_hash] = sbc.sb_index
         self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
         if self.db_state.next_block_hash != self.db_state.cur_block_hash:
             num_sb = len(self.db_state.sub_block_hash_map)
-            if (num_sb == self.sub_blocks_per_block):  # got all sub_block
+            if num_sb == NUM_SB_PER_BLOCK:  # got all sub_block
                 self.update_db()
 
     def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
@@ -240,7 +259,7 @@ class BlockManager(Worker):
         """
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
         id_frame = str(sb_index).encode()
-        message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
+        message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
 
@@ -248,7 +267,7 @@ class BlockManager(Worker):
         # first sort the sb result hashes based on sub block index
         sorted_sb_hashes = sorted(self.db_state.sub_block_hash_map.keys(),
                                   key=lambda result_hash: self.db_state.sub_block_hash_map[result_hash])
-        # append prev block hash 
+        # append prev block hash
         sorted_sb_hashes.append(self.db_state.cur_block_hash)
         our_block_hash = Hasher.hash_iterable(sorted_sb_hashes)
         if (our_block_hash == self.db_state.next_block_hash):
@@ -261,33 +280,32 @@ class BlockManager(Worker):
             # we can't handle this with current Seneca. TODO
             self.log.important("Error: mismatch between current db state with masters!!")
 
-
     def update_db_if_ready(self, block_data: NewBlockNotification):
         self.db_state.next_block_hash = block_data.block_hash
         # check if we have all sub_blocks
         num_sb = len(self.db_state.sub_block_hash_map)
-        if (num_sb < self.sub_blocks_per_block):  # don't have all sub-blocks
+        if (num_sb < NUM_SB_PER_BLOCK):  # don't have all sub-blocks
             return                                # since we don't have a way to sync Seneca with full data from master, just wait for sub-blocks done
         self.update_db()
-
 
     # update current db state to the new block
     def handle_new_block(self, block_data: NewBlockNotification):
         # cur_block_hash = self.db_state.cur_block_hash
         # our_next_block_hash = self.get_our_next_block_hash()
         new_block_hash = block_data.block_hash
-        
+
         if new_block_hash == self.db_state.cur_block_hash:
             # TODO log something
             return
 
         count = self.db_state.next_block.get(new_block_hash, 0) + 1
-        if (count >= self.min_new_block_quorum):      # TODO
+        if count >= MIN_NEW_BLOCK_MN_QOURUM:
             self.update_db_if_ready(block_data)
         else:
-            self.db_state.next_block[block_hash] = count
+            self.db_state.next_block[block_data.block_hash] = count
 
     def send_updated_db_msg(self):
+        self.log.info("Sending MakeNextBlock message to SBBs")
         message = MakeNextBlock.create()
         for idx in range(NUM_SB_BUILDERS):
             self._send_msg_over_ipc(sb_index=idx, message=message)

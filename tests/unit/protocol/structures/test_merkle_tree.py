@@ -199,8 +199,52 @@ class TestMerkleTree(TestCase):
 
         self.assertFalse(MerkleTree.verify_tree_from_str(leaves, bad_root))
 
-    # TODO test from raw leaves
+    def test_from_raw_leaves_equals_from_hex_leaves(self):
+        raw_bytes = [secrets.token_bytes(8) for _ in range(20)]
 
-    # TODO test from hex leaves
+        tree_from_bytes = MerkleTree.from_raw_transactions(raw_bytes)
+        tree_from_hex = MerkleTree.from_hex_leaves(tree_from_bytes.leaves_as_hex)
 
-    # TODO test from raw transactions
+        self.assertEqual(tree_from_bytes.root, tree_from_hex.root)
+        self.assertEqual(tree_from_bytes.root_as_hex, tree_from_hex.root_as_hex)
+
+    def test_from_raw_leaves_equals_from_concat_hex_leaves(self):
+        raw_bytes = [secrets.token_bytes(8) for _ in range(20)]
+
+        tree_from_bytes = MerkleTree.from_raw_transactions(raw_bytes)
+        tree_from_hex = MerkleTree.from_leaves_hex_str(tree_from_bytes.leaves_as_concat_hex_str)
+
+        self.assertEqual(tree_from_bytes.root, tree_from_hex.root)
+        self.assertEqual(tree_from_bytes.root_as_hex, tree_from_hex.root_as_hex)
+
+    def test_from_hex_leaves_same(self):
+        raw_bytes = [secrets.token_bytes(8) for _ in range(20)]
+
+        tree_from_bytes = MerkleTree.from_raw_transactions(raw_bytes)
+        tree_from_hex = MerkleTree.from_hex_leaves(tree_from_bytes.leaves_as_hex)
+        other_tree_from_hex = MerkleTree.from_hex_leaves(tree_from_hex.leaves_as_hex)
+
+        self.assertEqual(other_tree_from_hex.root, tree_from_hex.root)
+        self.assertEqual(other_tree_from_hex.root_as_hex, tree_from_hex.root_as_hex)
+
+    def test_from_hex_leaves(self):
+        raw_bytes = [secrets.token_bytes(8) for _ in range(20)]
+        hashes = [Hasher.hash(b, algorithm=MerkleTree.HASH_ALG) for b in raw_bytes]
+
+        tree_from_bytes = MerkleTree.from_raw_transactions(raw_bytes)
+        tree_from_str_leaves = MerkleTree.from_hex_leaves(hashes)
+
+        self.assertEqual(tree_from_bytes.root, tree_from_str_leaves.root)
+        self.assertEqual(tree_from_bytes.root_as_hex, tree_from_str_leaves.root_as_hex)
+
+    def test_from_raw_leaves(self):
+        raw_bytes = [secrets.token_bytes(8) for _ in range(20)]
+        raw_hashes = [Hasher.hash(b, algorithm=MerkleTree.HASH_ALG, return_bytes=True) for b in raw_bytes]
+
+        tree_from_raw_leaves = MerkleTree.from_raw_leaves(raw_hashes)
+        tree_from_bytes = MerkleTree.from_raw_transactions(raw_bytes)
+
+        self.assertEqual(tree_from_raw_leaves.root, tree_from_bytes.root)
+        self.assertEqual(tree_from_raw_leaves.root_as_hex, tree_from_bytes.root_as_hex)
+
+
