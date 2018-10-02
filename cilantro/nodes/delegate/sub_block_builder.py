@@ -224,18 +224,19 @@ class SubBlockBuilder(Worker):
             self.interpreter.interpret(txn)  # this is a blocking call. either async or threads??
 
         # Merkle-ize transaction queue and create signed merkle hash
-        all_tx = self.interpreter.queue_binary
-        merkle = MerkleTree.from_raw_transactions(all_tx)
-        signature = wallet.sign(self.signing_key, merkle.root)
+        tx_queue = self.interpreter.get_tx_queue()
+        tx_binaries = [tx.serialize() for tx in tx_queue]
 
+        # TODO -- do we want to sign the real 'raw' merkle root or the merkle root as an encoded hex str???
+        merkle = MerkleTree.from_raw_transactions(tx_binaries)
+        signature = wallet.sign(self.signing_key, merkle.root)
         merkle_sig = MerkleSignature.create(sig_hex=signature,
-                                            timestamp=str(int(time.time())),
+                                            timestamp=str(time.time()),
                                             sender=self.verifying_key)
 
-        # TODO fix interpreter ... must pass in TransactionData object into SBC, not raw binaries
         sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=input_hash,
                                        merkle_leaves=merkle.leaves, sub_block_index=sbb_idx,
-                                       signature=merkle_sig, raw_txs=all_tx)
+                                       signature=merkle_sig, transactions=tx_queue)
         return sbc
 
     def _send_msg_over_ipc(self, message: MessageBase):

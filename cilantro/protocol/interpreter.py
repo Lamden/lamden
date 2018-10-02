@@ -116,10 +116,13 @@ class SenecaInterpreter:
     @property
     def queue_binary(self) -> List[bytes]:
         self.log.warning("WARNING -- queue_binary should be deprecated. Use get_tx_queue()")
-        return [data.contract.serialize() for data in self.queue]
+        return [tx.contract.serialize() for tx in self.queue]
 
     def get_tx_queue(self) -> List[TransactionData]:
         return list(self.queue)
+
+    def get_queue_binary(self) -> List[bytes]:
+        return [tx.serialize() for tx in self.queue]
 
     @property
     def queue_size(self):
