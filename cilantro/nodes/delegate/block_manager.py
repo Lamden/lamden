@@ -260,6 +260,7 @@ class BlockManager(Worker):
 
     def _handle_sbc(self, sbc: SubBlockContender):
         self.db_state.sub_block_hash_map[sbc.result_hash] = sbc.sb_index
+        self.log.important("Got SBC with sb-index {}".format(sbc.sb_index))
         self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
         if self.db_state.next_block_hash != self.db_state.cur_block_hash:
             num_sb = len(self.db_state.sub_block_hash_map)
@@ -292,7 +293,7 @@ class BlockManager(Worker):
             self.db_state.next_block.clear()
         else:
             # we can't handle this with current Seneca. TODO
-            self.log.important("Error: mismatch between current db state with masters!!")
+            self.log.important("Error: mismatch between current db state with masters!! my est bh {} and masters bh {}".format(our_block_hash, self.db_state.next_block_hash))
 
     def update_db_if_ready(self, block_data: NewBlockNotification):
         self.db_state.next_block_hash = block_data.block_hash

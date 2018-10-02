@@ -4,7 +4,7 @@ from configparser import SafeConfigParser
 path = os.path.dirname(cilantro.__path__[0])
 config = SafeConfigParser()
 config.read('{}/db_conf.ini'.format(path))
-
+encoding = 'binary'
 
 class SQLDB():
     connection = None
@@ -29,7 +29,7 @@ class SQLDB():
             host=config.get('DB','hostname'),
             user=config.get('DB','username'),
             passwd=config.get('DB','password'),
-            charset='binary'
+            charset=encoding
         )
         cls.cursor = cls.connection.cursor()
         cls.setup_db()
@@ -69,7 +69,7 @@ class SQLDB():
     @classmethod
     def build_tables(cls):
         cls.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS sub_block (
+            CREATE TABLE IF NOT EXISTS subblock (
                 merkle_root VARCHAR(64) PRIMARY KEY,
                 signatures BLOB NOT NULL,
                 merkle_leaves BLOB NOT NULL,
