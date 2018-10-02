@@ -194,12 +194,11 @@ class SubBlockBuilder(Worker):
             self.log.debug("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
             self.sb_managers[index].pending_txs.append(input_hash, envelope.message)
 
-    def _make_next_sb(self, input_hash: str, txs_bag: MessageBase, sbb_idx: int):
+    def _make_next_sb(self, input_hash: str, tx_batch: TransactionBatch, sbb_idx: int):
         self.log.debug("SBB {} attempting to build sub block with sub block index {}".format(self.sbb_index, sbb_idx))
 
-        batch = TransactionBatch.from_data(txs_bag)
-        sbc = self._create_empty_sbc(input_hash, sbb_idx) if batch.is_empty \
-                  else self._create_sbc_from_batch(input_hash, sbb_idx, batch)
+        sbc = self._create_empty_sbc(input_hash, sbb_idx) if tx_batch.is_empty \
+            else self._create_sbc_from_batch(input_hash, sbb_idx, tx_batch)
         self._send_msg_over_ipc(sbc)
 
     def _create_empty_sbc(self, input_hash: str, sbb_idx: int) -> SubBlockContender:

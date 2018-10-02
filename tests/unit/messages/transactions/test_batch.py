@@ -28,6 +28,7 @@ class TestTransactionBatch(TestCase):
         clone = TransactionBatch.from_bytes(batch.serialize())
 
         self.assertEqual(batch, clone)
+        self.assertEqual(clone.transactions, containers)
 
     def test_create_with_non_ordering_container(self):
         not_containers = ['sup im a string. no OrderingContainer here, no sir', 'hi fren']

@@ -19,11 +19,6 @@ import time
 import asyncio
 
 
-class ContractResult:
-    def __init__(self, contract: ContractTransaction, status: str, state: str):
-        self.contract, self.status, self.state = contract, status, state
-
-
 class SenecaInterpreter:
 
     def __init__(self):
@@ -111,7 +106,7 @@ class SenecaInterpreter:
             if rerun:
                 return res
             else:
-                self.queue.append(ContractResult(contract=contract, status='SUCCESS', state='over9000!!!'))
+                self.queue.append(TransactionData.create(contract_tx=contract, status='SUCCESS', state='over9000'))
 
     @property
     def queue_binary(self) -> List[bytes]:
