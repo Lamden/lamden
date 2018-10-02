@@ -13,10 +13,6 @@ FETCH_BLOCK_TIMEOUT = 24
 WEB_SERVER_PORT = 8080
 NUM_WORKERS = 2  # Number of Sanic worker procs
 
-# Transaction Batcher
-BATCH_INTERVAL = 10
-MAX_SKIP_TURNS = 4
-
 # Storage
 REP_FACTOR = 3
 MAX_BLOCK = 100

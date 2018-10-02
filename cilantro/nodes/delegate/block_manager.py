@@ -34,6 +34,7 @@ from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpd
 import asyncio
 import zmq
 import os
+import time
 from collections import defaultdict
 
 IPC_IP = 'block-manager-ipc-sock'
@@ -84,7 +85,20 @@ class BlockManager(Worker):
         self.start_sbb_procs()
         self.log.info("Catching up...")
         self.update_db_state()
+
+        # DEBUG -- until we properly send back StateUpdateReply from Masternodes
+        time.sleep(2)
+        self.tasks.append(self.spam_sbc())
+        self.send_updated_db_msg()
+        # END DEBUG
+
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
+
+    async def spam_sbc(self):
+        while True:
+            await asyncio.sleep(1)
+            self.log.spam("sending test ipc msg")
+            self.ipc_router.send_multipart([b'0', int_to_bytes(1), b'hi its me the block manager'])
 
     def build_task_list(self):
         # Create a TCP Router socket for comm with other nodes
@@ -217,7 +231,7 @@ class BlockManager(Worker):
         """
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
         id_frame = str(sb_index).encode()
-        message_type = MessageBase.registry[message]  # this is an int (enum) denoting the class of message
+        message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
     # raghu todo - need to hook up catch logic with db_state
@@ -248,6 +262,7 @@ class BlockManager(Worker):
             self.db_state.next_block[block_hash] = count
 
     def send_updated_db_msg(self):
+        self.log.info("Sending MakeNextBlock message to SBBs")
         message = MakeNextBlock.create()
         for idx in range(NUM_SB_BUILDERS):
             self._send_msg_over_ipc(sb_index=idx, message=message)
