@@ -159,7 +159,7 @@ class BlockAggregator(Worker):
                         if len(self.contenders[input_hash]['transactions']) == len(self.contenders[input_hash]['merkle_leaves']):
                             self.log.info('Sub block consensus reached, all transactions present.')
                             self.total_valid_sub_blocks += 1
-                            if self.total_valid_sub_blocks >= NUM_SUB_BLOCKS:
+                            if self.total_valid_sub_blocks >= NUM_SB_PER_BLOCK:
                                 self.contenders[input_hash]['consensus_reached'] = True
                                 new_block_notif = self.store_full_block(list(self.contenders.keys()))
                                 self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
@@ -183,7 +183,7 @@ class BlockAggregator(Worker):
             if self.full_block_hashes[block_hash]['consensus_count'] >= MASTERNODE_MAJORITY:
                 self.full_block_hashes[block_hash]['consensus_reached'] = True
                 bmd = self.full_block_hashes[block_hash].get('full_block_metadata')
-                if not len(bmd.merkle_roots) == NUM_SUB_BLOCKS:
+                if not len(bmd.merkle_roots) == NUM_SB_PER_BLOCK:
                     # TODO Request blocks from other masternodes
                     pass
         else:
@@ -200,8 +200,8 @@ class BlockAggregator(Worker):
         # Development sanity checks
         assert prev_block_hash == self.curr_block_hash, "Current block hash {} does not match StorageDriver previous " \
                                                         "block hash {}".format(self.curr_block_hash, prev_block_hash)
-        assert len(merkle_roots) == NUM_SUB_BLOCKS, "Aggregator has {} merkle roots but there are {} total SBs" \
-                                                    .format(len(merkle_roots), NUM_SUB_BLOCKS)
+        assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} total SBs" \
+                                                    .format(len(merkle_roots), NUM_SB_PER_BLOCK)
 
         self.log.info("Attempting to store block with hash {} and prev_block_hash {}".format(block_hash, prev_block_hash))
         block_data = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash,

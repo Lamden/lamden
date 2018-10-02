@@ -154,6 +154,7 @@ class SubBlockBuilder(Worker):
                             .format(type(msg)))
 
     def handle_sub_msg(self, frames, index):
+# rpc
         self.log.info("Sub socket got frames {} with handler_index {}".format(frames, index))
         assert 0 <= index < len(self.sb_managers), "Got index {} out of range of sb_managers array {}".format(
             index, self.sb_managers)
@@ -205,6 +206,7 @@ class SubBlockBuilder(Worker):
         """
         Creates an Empty Sub Block Contender from a TransactionBatch
         """
+        self.log.debug("Empty SBB {} sub block index {}".format(self.sbb_index, sbb_idx))
         signature = wallet.sign(self.signing_key, input_hash.encode())
         merkle_sig = MerkleSignature.create(sig_hex=signature,
                                             timestamp=str(int(time.time())),
@@ -221,6 +223,7 @@ class SubBlockBuilder(Worker):
         # We assume if we are trying to create a SBC, our interpreter is empty and in a fresh state
         # assert self.interpreter.queue_size == 0, "Expected an empty interpreter queue before building a SBC"
         num_txs = len(batch.transactions)
+        self.log.debug("True SBB {} sub block index {}".format(self.sbb_index, sbb_idx))
 
         for txn in batch.transactions:
             self.interpreter.interpret(txn)  # this is a blocking call. either async or threads??

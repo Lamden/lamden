@@ -170,7 +170,7 @@ class BlockManager(Worker):
             self.sb_builders[i].start()
 
         # Sleep to SBB's IPC sockets are ready for any messages from BlockManager
-        time.sleep(1)
+        time.sleep(4)
         self.log.debugv("Done sleeping sleeping after starting SBB procs")
 
     def _get_my_index(self):
@@ -284,8 +284,7 @@ class BlockManager(Worker):
         sorted_sb_hashes = sorted(self.db_state.sub_block_hash_map.keys(),
                                   key=lambda result_hash: self.db_state.sub_block_hash_map[result_hash])
         # append prev block hash
-        sorted_sb_hashes.append(self.db_state.cur_block_hash)
-        our_block_hash = Hasher.hash_iterable(sorted_sb_hashes)
+        our_block_hash = BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.cur_block_hash)
         if (our_block_hash == self.db_state.next_block_hash):
             # we have consensus
             self.send_updated_db_msg()
@@ -301,6 +300,7 @@ class BlockManager(Worker):
         # check if we have all sub_blocks
         num_sb = len(self.db_state.sub_block_hash_map)
         if (num_sb < NUM_SB_PER_BLOCK):  # don't have all sub-blocks
+            self.log.info("I don't have all SBs")
             return                                # since we don't have a way to sync Seneca with full data from master, just wait for sub-blocks done
         self.update_db()
 
@@ -309,13 +309,16 @@ class BlockManager(Worker):
         # cur_block_hash = self.db_state.cur_block_hash
         # our_next_block_hash = self.get_our_next_block_hash()
         new_block_hash = block_data.block_hash
+        self.log.info("Got new block notification ...")
 
         if new_block_hash == self.db_state.cur_block_hash:
             # TODO log something
+            self.log.info("new block notification is same as current state")
             return
 
         count = self.db_state.next_block.get(new_block_hash, 0) + 1
         if count >= MIN_NEW_BLOCK_MN_QOURUM:
+            self.log.info("new block quorum met")
             self.update_db_if_ready(block_data)
         else:
             self.db_state.next_block[block_data.block_hash] = count
