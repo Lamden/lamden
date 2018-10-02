@@ -8,11 +8,11 @@ class MakeNextBlock(MessageBase):
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return b''
+        return b'make_next_block'
 
     @classmethod
     def create(cls):
-        return cls.from_data(b'')
+        return cls.from_data(b'make_next_block')
 
     def serialize(self):
-        return b''
+        return b'make_next_block'

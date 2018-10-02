@@ -61,6 +61,7 @@ class BlockAggregator(Worker):
             secure=True,
             domain="sb-contender"
         )
+        # self.router.setsockopt(zmq.ZMQ_ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
 

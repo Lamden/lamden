@@ -116,11 +116,13 @@ class BlockManager(Worker):
         # Create a TCP Router socket for comm with other nodes
         self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-Router", secure=True)
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
+        self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
         self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
+        self.ipc_router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.ipc_router.bind(port=IPC_PORT, protocol='ipc', ip=self.ipc_ip)
         self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_msg))
 
@@ -147,11 +149,15 @@ class BlockManager(Worker):
         # only when one can connect to quorum masters and get db update, move to next step
         # at the end, it has updated its db state to consensus latest
         # latest_block_hash, list of mn vks
-        envelope = StateUpdateRequest.create(block_hash=self.db_state.cur_block_hash)
         # send msg to each of the connected masters. Do we need to maintain a list of connected vks ??
         # TODO send this over PUB to all masternodes instead of Router
-        for vk in VKBook.get_masternodes():
-            self.router.send_msg(envelope, header=vk.encode())
+
+        # TODO add this code when we can ensure block manager's router is properly set up...
+        pass
+        # envelope = StateUpdateRequest.create(block_hash=self.db_state.cur_block_hash)
+        # for vk in VKBook.get_masternodes():
+        #     self.router.send_msg(envelope, header=vk.encode())
+
         # no need to wait for the replys as we have added a handler
 
     def start_sbb_procs(self):
@@ -163,6 +169,10 @@ class BlockManager(Worker):
             self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
 
+        # Sleep to SBB's IPC sockets are ready for any messages from BlockManager
+        time.sleep(1)
+        self.log.debugv("Done sleeping sleeping after starting SBB procs")
+
     def _get_my_index(self):
         for index, vk in enumerate(VKBook.get_delegates()):
             if vk == self.verifying_key:
@@ -171,6 +181,10 @@ class BlockManager(Worker):
         raise Exception("Delegate VK {} not found in VKBook {}".format(self.verifying_key, VKBook.get_delegates()))
 
     def handle_ipc_msg(self, frames):
+        # DEBUG -- TODO DELETE
+        # self.log.important2("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
+        # return
+        # END DEBUG
         self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
         assert len(frames) == 3, "Expected 3 frames: (id, msg_type, msg_blob). Got {} instead.".format(frames)
 
@@ -257,6 +271,7 @@ class BlockManager(Worker):
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
         frame to identify the type of message
         """
+        self.log.spam("Sending msg to sb_index {} with payload {}".format(sb_index, message))
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
         id_frame = str(sb_index).encode()
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
