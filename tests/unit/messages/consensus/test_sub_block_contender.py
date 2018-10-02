@@ -1,4 +1,4 @@
-from cilantro.messages.consensus.sub_block_contender import SubBlockContender
+from cilantro.messages.consensus.sub_block_contender import SubBlockContender, SubBlockContenderBuilder
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 from cilantro.messages.transaction.data import TransactionDataBuilder
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
@@ -13,10 +13,15 @@ TEST_VK = TESTNET_MASTERNODES[0]['vk']
 DEL_SK = TESTNET_DELEGATES[0]['sk']
 DEL_VK = TESTNET_DELEGATES[0]['vk']
 
+
 class TestSubBlockContender(TestCase):
 
+    def test_builder(self):
+        sbc = SubBlockContenderBuilder.create()
+        self.assertEqual(sbc, SubBlockContender.from_bytes(sbc.serialize()))
+
     def test_create(self):
-        txs = [TransactionDataBuilder.create_random_tx(sk=DEL_SK) for i in range(5)]
+        txs = [TransactionDataBuilder.create_random_tx() for i in range(5)]
         raw_txs = [tx.serialize() for tx in txs]
         tree = MerkleTree.from_raw_transactions(raw_txs)
 
@@ -30,7 +35,7 @@ class TestSubBlockContender(TestCase):
         self.assertEqual(sbc1, sbc2)
 
     def test_serialize_deserialize(self):
-        txs = [TransactionDataBuilder.create_random_tx(sk=DEL_SK) for i in range(5)]
+        txs = [TransactionDataBuilder.create_random_tx() for i in range(5)]
         raw_txs = [tx.serialize() for tx in txs]
         tree = MerkleTree.from_raw_transactions(raw_txs)
 
