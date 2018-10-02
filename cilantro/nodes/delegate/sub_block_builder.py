@@ -251,6 +251,7 @@ class SubBlockBuilder(Worker):
 
     def _make_next_sub_block(self):
         # first commit current state - under no conflict between SB assumption (TODO)
+        self.log.info("Flushing interpreter queue")
         self.interpreter.flush()
 
         # now start next one
