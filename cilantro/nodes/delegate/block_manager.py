@@ -88,14 +88,13 @@ class BlockManager(Worker):
         self.update_db_state()
 
         # DEBUG -- until we properly send back StateUpdateReply from Masternodes
-        # time.sleep(2)
-        self.tasks.append(self.spam_sbc())
+        self.tasks.append(self.spam_sbbs())
         self.send_updated_db_msg()
         # END DEBUG
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
-    async def spam_sbc(self):
+    async def spam_sbbs(self):
         while True:
             await asyncio.sleep(4)
             for i in self.sb_builders:
@@ -162,6 +161,11 @@ class BlockManager(Worker):
         raise Exception("Delegate VK {} not found in VKBook {}".format(self.verifying_key, VKBook.get_delegates()))
 
     def handle_ipc_msg(self, frames):
+        # DEBUG -- TODO DELETE
+        self.log.important2("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
+        return
+        # END DEBUG
+
         self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
         assert len(frames) == 3, "Expected 3 frames: (id, msg_type, msg_blob). Got {} instead.".format(frames)
 

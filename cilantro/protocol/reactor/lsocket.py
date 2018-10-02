@@ -40,6 +40,8 @@ def vk_lookup(func):
 
 class LSocket:
 
+    DEFERED_FUNCS = ('send_multipart', 'send', 'send_msg', 'send_envelope')
+
     def __init__(self, socket: zmq.asyncio.Socket, manager, name='LSocket', secure=False, domain='*'):
         self.log = get_logger(name)
         self.secure = secure
@@ -234,7 +236,7 @@ class LSocket:
             return underlying
 
         # If this socket is not ready (ie it has not bound/connected yet), defer execution of this method
-        if not self.ready:
+        if not self.ready and item in self.DEFERED_FUNCS:
             self.log.debugv("Socket is not ready yet. Defering method named {}".format(item))
             return self._defer_func(item)
         else:
