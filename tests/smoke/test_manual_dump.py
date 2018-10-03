@@ -76,7 +76,7 @@ def dump_it(volume, delay=0):
 class TestManualDump(BaseNetworkTestCase):
 
     VOLUME = 1200  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-4-4-bootstrap.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-4-4-4-bootstrap.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)
