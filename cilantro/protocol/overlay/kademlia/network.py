@@ -127,8 +127,9 @@ class Network(object):
 
     async def bootstrap_node(self, addr):
         result = await self.protocol.ping(addr, self.node.id, self.node.vk)
-        nodeid, vk = result[1]
-        return Node(nodeid, addr[0], addr[1], vk) if result[0] else None
+        if result[0]:
+            nodeid, vk = result[1]
+            return Node(nodeid, addr[0], addr[1], vk)
 
     async def vk_lookup(self, vk):
         log.debug('Attempting to look up node with vk="{}"'.format(vk))
@@ -137,6 +138,7 @@ class Network(object):
                                  self.ksize, self.alpha)
         node = await spider.find()
         # TODO validate here
+        return node
 
     async def get(self, key):
         """

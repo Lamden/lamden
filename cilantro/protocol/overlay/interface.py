@@ -35,20 +35,16 @@ class OverlayInterface:
         self.log.important('''
 ###########################################################################
 #   DISCOVERY COMPLETE
-###########################################################################
+###########################################################################\
         ''')
         await self.bootstrap()
         self.log.important('''
 ###########################################################################
 #   BOOTSTRAP COMPLETE
-###########################################################################
+###########################################################################\
         ''')
-        await self.authorize()
-        self.log.important('''
-###########################################################################
-#   HANDSHAKE COMPLETE
-###########################################################################
-        ''')
+        #DEBUG
+        await self.lookup_ip('cf59a8b6ee38e12a11e83f211833d76891b16794bc6fae015bb8e63791ba7337')
 
     async def discover(self):
         await Discovery.discover_nodes(Discovery.host_ip)
@@ -70,13 +66,12 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
         await self.network.bootstrap(addrs)
 
-    async def authorize(self):
-        self.log.critical(self.neighbors)
+    async def authenticate(self):
+        # self.log.critical(self.neighbors)
         # await asyncio.gather(*[
         #     Handshake.initiate_handshake() for neighbor in self.neighbors
         # ])
-
         await asyncio.sleep(1)
 
-    async def lookup_vks(self):
-        pass
+    async def lookup_ip(self, vk):
+        self.log.critical(await self.network.vk_lookup(vk))
