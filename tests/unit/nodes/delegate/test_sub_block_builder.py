@@ -86,6 +86,16 @@ class TestSubBlockBuilder(TestCase):
         self.assertEquals(len(sbb.sb_managers), 8)
 
     @SBBTester.test
+    def test_create_empty_sbc(self, *args):
+        sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
+        input_hash = 'A' * 64
+        sbb_idx = 0
+
+        empty_sbc = sbb._create_empty_sbc(input_hash, sbb_idx)
+        self.assertEqual(empty_sbc.input_hash, input_hash)
+        self.assertEqual(empty_sbc.sb_index, sbb_idx)
+
+    @SBBTester.test
     def test_sub_msg_with_make_next_block_notification_calls_handle_ipc_msg(self, *args):
         """
         Tests handle_ipc_msg correctly calls handle_new_block when a NewBlockNotification is received

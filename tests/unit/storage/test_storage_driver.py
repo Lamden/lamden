@@ -30,7 +30,7 @@ class TestStorageDriver(TestCase):
     def setUp(self):
         SQLDB.truncate_tables('subblock', 'block', 'transaction')
 
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SUB_BLOCKS", 2)
+    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
     def test_store_block(self):
         block = BlockDataBuilder.create_block()
         StorageDriver.store_block(block, validate=False)
@@ -41,7 +41,7 @@ class TestStorageDriver(TestCase):
         self.assertEqual(block_meta.prev_block_hash, block.prev_block_hash)
         self.assertEqual(block_meta.masternode_signature, block.masternode_signature)
 
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SUB_BLOCKS", 2)
+    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
     def test_get_latest_blocks(self):
         blocks = []
         for i in range(5):
