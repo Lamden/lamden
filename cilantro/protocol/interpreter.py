@@ -105,8 +105,10 @@ class SenecaInterpreter:
         self.log.spam("Executing use_contracts from user {}. Mock mode enabled: {}".format(contract.sender, self.mock))
 
         if self.mock:
-            sleep_time = random.uniform(MIN_MOCK_INTERPRET_TIME, MAX_MOCK_INTERPRET_TIME)
-            # sleep_time = MOCK_INTERPRET_TIME
+            if MOCK_INTERPRET_RANDOM_MODE:
+                sleep_time = random.uniform(MIN_MOCK_INTERPRET_TIME, MAX_MOCK_INTERPRET_TIME)
+            else:
+                sleep_time = MOCK_INTERPRET_TIME
             time.sleep(sleep_time)
             self.queue.append(TransactionData.create(contract_tx=contract, status='SUCCESS', state='over9000'))
             return
