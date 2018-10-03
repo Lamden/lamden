@@ -5,8 +5,9 @@ import random
 import pickle
 import asyncio
 import logging
-import os
 
+from cilantro.constants.overlay_network import *
+from cilantro.constants.ports import DHT_PORT
 from cilantro.protocol.overlay.kademlia.protocol import KademliaProtocol
 from cilantro.protocol.overlay.kademlia.utils import digest
 from cilantro.protocol.overlay.kademlia.storage import ForgetfulStorage
@@ -24,8 +25,8 @@ class Network(object):
     High level view of a node instance.  This is the object that should be
     created to start listening as an active node on the network.
     """
-    host_ip = os.getenv('HOST_IP')
-    port = os.getenv('DHT_PORT', 20003)
+    host_ip = HOST_IP
+    port = DHT_PORT
     protocol_class = KademliaProtocol
 
     def __init__(self, ksize=20, alpha=3, storage=None):
@@ -47,6 +48,7 @@ class Network(object):
         self.protocol = None
         self.refresh_loop = None
         self.save_state_loop = None
+        self.cached_vks = {}
 
     def stop(self):
         if self.transport is not None:
@@ -70,7 +72,7 @@ class Network(object):
         loop = asyncio.get_event_loop()
         listen = loop.create_datagram_endpoint(self._create_protocol,
                                                local_addr=(interface, self.port))
-        log.info("Node %i listening on %s:%i",
+        log.spam("Node %i listening on %s:%i",
                  self.node.long_id, interface, self.port)
         self.transport, self.protocol = await asyncio.ensure_future(listen)
         await self._refresh_table()
@@ -119,7 +121,7 @@ class Network(object):
             addrs: A `list` of (ip, port) `tuple` pairs.  Note that only IP
                    addresses are acceptable - hostnames will cause an error.
         """
-        log.debug("Attempting to bootstrap node with %i initial contacts",
+        log.spam("Attempting to bootstrap node with %i initial contacts",
                   len(addrs))
         cos = list(map(self.bootstrap_node, addrs))
         gathered = await asyncio.gather(*cos)
@@ -135,11 +137,22 @@ class Network(object):
             return Node(nodeid, addr[0], addr[1], vk)
 
     async def lookup_ip(self, vk):
-        log.debug('Attempting to look up node with vk="{}"'.format(vk))
-        nearest = self.protocol.router.findNeighbors(Node(digest(vk)))
-        spider = VKSpiderCrawl(self.protocol, self.node, nearest,
-                                 self.ksize, self.alpha)
-        return await spider.find(nodeid=digest(vk))
+        log.spam('Attempting to look up node with vk="{}"'.format(vk))
+        if self.cached_vks.get(vk):
+            node = self.cached_vks.get(vk)
+            log.debug('"{}" found in cache resolving to {}'.format(vk, node))
+            return node.ip
+        else:
+            nearest = self.protocol.router.findNeighbors(Node(digest(vk)))
+            spider = VKSpiderCrawl(self.protocol, self.node, nearest,
+                                     self.ksize, self.alpha)
+            node = await spider.find(nodeid=digest(vk))
+            if node:
+                log.debug('"{}" resolved to {}'.format(vk, node))
+                return node.ip
+            else:
+                log.warning('"{}" cannot be resolved'.format(vk))
+                return None
 
     async def get(self, key):
         """
@@ -148,7 +161,7 @@ class Network(object):
         Returns:
             :class:`None` if not found, the value otherwise.
         """
-        log.info("Looking up key %s", key)
+        log.spam("Looking up key %s", key)
         dkey = digest(key)
         # if this node has it, return it
         if self.storage.get(dkey) is not None:
@@ -170,7 +183,7 @@ class Network(object):
             raise TypeError(
                 "Value must be of type int, float, bool, str, or bytes"
             )
-        log.info("setting '%s' = '%s' on network", key, value)
+        log.spam("setting '%s' = '%s' on network", key, value)
         dkey = digest(key)
         return await self.set_digest(dkey, value)
 
@@ -190,7 +203,7 @@ class Network(object):
         spider = NodeSpiderCrawl(self.protocol, node, nearest,
                                  self.ksize, self.alpha)
         nodes = await spider.find()
-        log.info("setting '%s' on %s", dkey.hex(), list(map(str, nodes)))
+        log.spam("setting '%s' on %s", dkey.hex(), list(map(str, nodes)))
 
         # if this node is close too, then store here as well
         biggest = max([n.distanceTo(node) for n in nodes])
@@ -205,7 +218,7 @@ class Network(object):
         Save the state of this node (the alpha/ksize/id/immediate neighbors)
         to a cache file with the given fname.
         """
-        log.info("Saving state to %s", fname)
+        log.spam("Saving state to %s", fname)
         data = {
             'ksize': self.ksize,
             'alpha': self.alpha,
@@ -224,7 +237,7 @@ class Network(object):
         Load the state of this node (the alpha/ksize/id/immediate neighbors)
         from a cache file with the given fname.
         """
-        log.info("Loading state from %s", fname)
+        log.spam("Loading state from %s", fname)
         with open(fname, 'rb') as f:
             data = pickle.load(f)
         s = Network(data['ksize'], data['alpha'], data['id'])

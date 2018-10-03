@@ -12,7 +12,6 @@ pycapnp==0.6.3
 pytest==3.5.0
 pytest-aiohttp==0.3.0
 #pyzmq==17.0.0
-rpcudp==3.0.0
 requests==2.18.4
 six==1.11.0
 SQLAlchemy==1.2.6

@@ -2,8 +2,8 @@ import random
 import asyncio
 import logging
 
-from rpcudp.protocol import RPCProtocol
-
+from cilantro.protocol.overlay.kademlia.rpcudp import RPCProtocol
+from cilantro.constants.overlay_network import RPC_TIMEOUT
 from cilantro.protocol.overlay.kademlia.node import Node
 from cilantro.protocol.overlay.kademlia.routing import RoutingTable
 from cilantro.protocol.overlay.kademlia.utils import digest
@@ -14,7 +14,7 @@ log = get_logger(__name__)
 
 class KademliaProtocol(RPCProtocol):
     def __init__(self, sourceNode, storage, ksize):
-        RPCProtocol.__init__(self)
+        RPCProtocol.__init__(self, waitTimeout=RPC_TIMEOUT)
         self.router = RoutingTable(self, ksize, sourceNode)
         self.storage = storage
         self.sourceNode = sourceNode
@@ -40,7 +40,7 @@ class KademliaProtocol(RPCProtocol):
     def rpc_store(self, sender, nodeid, vk, key, value):
         source = Node(nodeid, sender[0], sender[1], vk)
         self.welcomeIfNewNode(source)
-        log.debug("got a store request from %s, storing '%s'='%s'",
+        log.spam("got a store request from %s, storing '%s'='%s'",
                   sender, key.hex(), value)
         self.storage[key] = value
         return True

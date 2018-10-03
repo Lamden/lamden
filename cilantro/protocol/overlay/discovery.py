@@ -1,18 +1,20 @@
 import zmq, zmq.asyncio, asyncio, traceback
 from os import getenv as env
 from cilantro.constants.overlay_network import *
+from cilantro.constants.ports import DISCOVERY_PORT
 from cilantro.protocol.overlay.ip import *
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.logger import get_logger
+from cilantro.storage.db import VKBook
 
 class Discovery:
     log = get_logger('Discovery')
-    host_ip = env('HOST_IP')
-    port = env('DISCOVERY_PORT', 20001)
+    host_ip = HOST_IP
+    port = DISCOVERY_PORT
     url = 'tcp://*:{}'.format(port)
     ctx = zmq.asyncio.Context()
     sock = ctx.socket(zmq.ROUTER)
-    pepper = env('PEPPER', 'ciltantro_code').encode()
+    pepper = PEPPER.encode()
     discovered_nodes = {}
     connections = {}
 
@@ -41,19 +43,21 @@ class Discovery:
         while True:
             cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
             cls.connect(get_ip_range(start_ip))
-            await asyncio.sleep(DISCOVERY_TIMEOUT)
             try_count += 1
-            if len(cls.discovered_nodes) >= MIN_BOOTSTRAP_NODES and try_count > 0:
+            await asyncio.sleep(DISCOVERY_TIMEOUT)
+            if (len(cls.discovered_nodes) == 1 and Auth.vk in VKBook.get_masternodes()) or \
+                len(cls.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
                 cls.log.info('Found {} nodes to bootstrap.'.format(
                     len(cls.discovered_nodes)
                 ))
-                return cls.discovered_nodes
-            else:
+                return True
+            elif try_count >= DISCOVERY_RETRIES:
                 cls.log.info('Did not find enough nodes after {} tries ({}/{}).'.format(
                     try_count,
                     len(cls.discovered_nodes),
                     MIN_BOOTSTRAP_NODES
                 ))
+                return False
 
     @classmethod
     def request(cls, ip):

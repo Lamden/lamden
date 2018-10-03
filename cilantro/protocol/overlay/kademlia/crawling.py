@@ -30,7 +30,7 @@ class SpiderCrawl(object):
         self.node = node
         self.nearest = NodeHeap(self.node, self.ksize)
         self.lastIDsCrawled = []
-        log.info("creating spider with peers: %s", peers)
+        log.spam("creating spider with peers: %s", peers)
         self.nearest.push(peers)
 
     async def _find(self, rpcmethod):
@@ -49,7 +49,7 @@ class SpiderCrawl(object):
              yet queried
           4. repeat, unless nearest list has all been queried, then ur done
         """
-        log.info("crawling network with nearest: %s", str(tuple(self.nearest)))
+        log.spam("crawling network with nearest: %s", str(tuple(self.nearest)))
         count = self.alpha
         if self.nearest.getIDs() == self.lastIDsCrawled:
             count = len(self.nearest)
