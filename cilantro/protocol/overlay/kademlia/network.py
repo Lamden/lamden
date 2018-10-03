@@ -13,6 +13,8 @@ from cilantro.protocol.overlay.kademlia.storage import ForgetfulStorage
 from cilantro.protocol.overlay.kademlia.node import Node
 from cilantro.protocol.overlay.kademlia.crawling import ValueSpiderCrawl
 from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
+from cilantro.protocol.overlay.kademlia.crawling import VKSpiderCrawl
+from cilantro.protocol.overlay.auth import Auth
 
 from cilantro.logger.base import get_logger
 log = get_logger(__name__)
@@ -22,10 +24,11 @@ class Network(object):
     High level view of a node instance.  This is the object that should be
     created to start listening as an active node on the network.
     """
+    host_ip = os.getenv('HOST_IP')
     port = os.getenv('DHT_PORT', 20003)
     protocol_class = KademliaProtocol
 
-    def __init__(self, ksize=20, alpha=3, vk=None, storage=None):
+    def __init__(self, ksize=20, alpha=3, storage=None):
         """
         Create a server instance.  This will start listening on the given port.
 
@@ -39,7 +42,7 @@ class Network(object):
         self.ksize = ksize
         self.alpha = alpha
         self.storage = storage or ForgetfulStorage()
-        self.node = Node(node_id=digest(vk), vk=vk)
+        self.node = Node(node_id=digest(Auth.vk), ip=self.host_ip, port=self.port, vk=Auth.vk)
         self.transport = None
         self.protocol = None
         self.refresh_loop = None
@@ -131,14 +134,12 @@ class Network(object):
             nodeid, vk = result[1]
             return Node(nodeid, addr[0], addr[1], vk)
 
-    async def vk_lookup(self, vk):
+    async def lookup_ip(self, vk):
         log.debug('Attempting to look up node with vk="{}"'.format(vk))
-        nodes = self.bootstrappableNeighbors()
-        spider = NodeSpiderCrawl(self.protocol, self.node, nodes,
+        nearest = self.protocol.router.findNeighbors(Node(digest(vk)))
+        spider = VKSpiderCrawl(self.protocol, self.node, nearest,
                                  self.ksize, self.alpha)
-        node = await spider.find()
-        # TODO validate here
-        return node
+        return await spider.find(nodeid=digest(vk))
 
     async def get(self, key):
         """

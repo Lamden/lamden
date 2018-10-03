@@ -59,7 +59,7 @@ class KademliaProtocol(RPCProtocol):
         self.welcomeIfNewNode(source)
         value = self.storage.get(key, None)
         if value is None:
-            return self.rpc_find_node(sender, nodeid, key)
+            return self.rpc_find_node(sender, nodeid, vk, key)
         return {'value': value}
 
     async def callFindNode(self, nodeToAsk, nodeToFind):

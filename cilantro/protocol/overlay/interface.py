@@ -14,7 +14,7 @@ class OverlayInterface:
         self.log = get_logger('OverlayInterface')
         Auth.setup_certs_dirs(sk_hex=sk_hex)
         self.loop = asyncio.get_event_loop()
-        self.network = Network(vk=Auth.vk, storage=None)
+        self.network = Network(storage=None)
         self.loop.run_until_complete(asyncio.gather(
             Discovery.listen(),
             Handshake.listen(),
@@ -44,6 +44,7 @@ class OverlayInterface:
 ###########################################################################\
         ''')
         #DEBUG
+        await asyncio.sleep(3)
         await self.lookup_ip('cf59a8b6ee38e12a11e83f211833d76891b16794bc6fae015bb8e63791ba7337')
 
     async def discover(self):
@@ -74,4 +75,5 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         await asyncio.sleep(1)
 
     async def lookup_ip(self, vk):
-        self.log.critical(await self.network.vk_lookup(vk))
+        node = await self.network.lookup_ip(vk)
+        return node.ip
