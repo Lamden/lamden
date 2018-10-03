@@ -147,6 +147,7 @@ class BlockAggregator(Worker):
 
     def combine_result_hash(self, input_hash):
         if self.contenders.get(input_hash):
+            result_hashes = []
             for result_hash in self.result_hashes:
                 if input_hash in self.result_hashes[result_hash]['input_hashes']:
                     signatures = self.result_hashes[result_hash]['signatures']
@@ -159,11 +160,15 @@ class BlockAggregator(Worker):
                             self.total_valid_sub_blocks += 1
                             self.result_hashes[result_hash]['consensus_reached'] = True
                             if self.total_valid_sub_blocks >= NUM_SB_PER_BLOCK:
-                                new_block_notif = self.store_full_block(self.result_hashes.keys())
+                                result_hashes = [h for h in self.result_hashes if self.result_hashes[h]['consensus_reached']]
+                                new_block_notif = self.store_full_block(result_hashes)
                                 self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
+                                break
                         elif self.contenders[input_hash]['received_count'] == NUM_DELEGATES:
                             self.log.error('Received sub blocks from all delegates and still have missing transactions!')
                             raise Exception('Received sub blocks from all delegates and still have missing transactions!') # DEBUG
+            for rh in result_hashes:
+                del self.result_hashes[rh]
 
     def recv_new_block_notif(self, nbc: NewBlockNotification):
         block_hash = nbc.block_hash
