@@ -154,24 +154,7 @@ class TestBlockAggregator(TestCase):
         ba.recv_sub_block_contender(sbc)
         self.assertTrue(sbc._data.signature in ba.result_hashes[RESULT_HASH1]['signatures'])
 
-    @BlockAggTester.test
-    def test_combine_result_hash_transactions_missing(self, *args):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
 
-        ba.manager = MagicMock()
-        ba.build_task_list()
-
-        for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
-            ba.recv_sub_block_contender(sbc)
-
-        self.assertEqual(len(ba.result_hashes[RESULT_HASH1]['signatures']), DELEGATE_MAJORITY)
-        self.assertEqual(len(ba.contenders[INPUT_HASH1]['transactions']), 5)
-        self.assertEqual(len(ba.full_block_hashes), 0)
-
-
-# TODO fix these tests?
 class TestBlockAggregatorStorage(TestCase):
 
     def setUp(self):
@@ -197,7 +180,7 @@ class TestBlockAggregatorStorage(TestCase):
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.contenders.keys()),
+            merkle_roots=sorted(ba.result_hashes.keys(), key=lambda result_hash: ba.result_hashes[result_hash]['sb_index']),
             prev_block_hash=old_b_hash,
             masternode_signature=signature
         )
@@ -229,7 +212,7 @@ class TestBlockAggregatorStorage(TestCase):
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.contenders.keys()),
+            merkle_roots=sorted(ba.result_hashes.keys(), key=lambda result_hash: ba.result_hashes[result_hash]['sb_index']),
             prev_block_hash=old_b_hash,
             masternode_signature=signature
         )
@@ -255,13 +238,13 @@ class TestBlockAggregatorStorage(TestCase):
         # Sub block 1
         for i in range(NUM_DELEGATES):
             signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 0)
+            sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 1)
             ba.recv_sub_block_contender(sbc)
 
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.contenders.keys()),
+            merkle_roots=sorted(ba.result_hashes.keys(), key=lambda result_hash: ba.result_hashes[result_hash]['sb_index']),
             prev_block_hash=old_b_hash,
             masternode_signature=signature
         )
@@ -284,7 +267,7 @@ class TestBlockAggregatorStorage(TestCase):
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.contenders.keys()),
+            merkle_roots=sorted(ba.result_hashes.keys(), key=lambda result_hash: ba.result_hashes[result_hash]['sb_index']),
             prev_block_hash=bh,
             masternode_signature=signature
         )
@@ -318,7 +301,7 @@ class TestBlockAggregatorStorage(TestCase):
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.contenders.keys()),
+            merkle_roots=sorted(ba.result_hashes.keys(), key=lambda result_hash: ba.result_hashes[result_hash]['sb_index']),
             prev_block_hash=bh,
             masternode_signature=signature
         )
@@ -352,6 +335,22 @@ class TestBlockAggregatorStorage(TestCase):
             ba.recv_sub_block_contender(sbc)
 
         self.assertEqual(ba.total_valid_sub_blocks, 2)
+
+    @BlockAggTester.test
+    def test_combine_result_hash_transactions_missing(self, *args):
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+
+        ba.manager = MagicMock()
+        ba.build_task_list()
+
+        for i in range(DELEGATE_MAJORITY):
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1[:3], 0)
+            ba.recv_sub_block_contender(sbc)
+
+        self.assertEqual(len(ba.result_hashes[RESULT_HASH1]['signatures']), DELEGATE_MAJORITY)
+        self.assertEqual(len(ba.contenders[INPUT_HASH1]['transactions']), 3)
+        self.assertEqual(len(ba.full_block_hashes), 0)
 
 
 if __name__ == '__main__':
