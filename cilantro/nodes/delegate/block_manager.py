@@ -32,6 +32,7 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
+from cilantro.messages.consensus.empty_sub_block_contender import EmptySubBlockContender
 from cilantro.messages.signals.make_next_block import MakeNextBlock
 from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
 
@@ -197,7 +198,7 @@ class BlockManager(Worker):
         msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
         self.log.debugv("BlockManager received an IPC message from sbb_index {} with message {}".format(sbb_index, msg))
 
-        if isinstance(msg, SubBlockContender):
+        if isinstance(msg, SubBlockContender) or isinstance(msg, EmptySubBlockContender):
             self._handle_sbc(msg)
         # elif isinstance(msg, SomeOtherType):
         #     self._handle_some_other_type_of_msg(msg)
@@ -206,14 +207,15 @@ class BlockManager(Worker):
                             .format(type(msg)))
 
     def handle_sub_msg(self, frames):
-        # TODO filter out duplicates
+        # TODO filter out duplicate NewBlockNotifications
+        # (masters should not be sending more than 1, but we should be sure)
 
-        # The first frame is the filter, and the last frame is the envelope binary
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         msg_hash = envelope.message_hash
 
         if isinstance(msg, NewBlockNotification):
+            self.log.important3("BM got NewBlockNotification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
             self.handle_new_block(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
@@ -221,7 +223,7 @@ class BlockManager(Worker):
         # Last frame, frames[-1] will be the envelope binary
 
     def handle_router_msg(self, frames):
-        self.log.important("Got msg over tcp ROUTER socket with frames: {}".format(frames))
+        # self.log.important("Got msg over tcp ROUTER socket with frames: {}".format(frames))
         # TODO implement
         # TODO verify that the first frame (identity frame) matches the verifying key on the Envelope's seal
 
@@ -258,9 +260,9 @@ class BlockManager(Worker):
                 # ignore right now - just log
                 self.log.important("Ignore block data with prev block hash {}".format(prev_block_hash))
 
-    def _handle_sbc(self, sbc: SubBlockContender):
+    def _handle_sbc(self, sbc: SubBlockContender or EmptySubBlockContender):
         self.db_state.sub_block_hash_map[sbc.result_hash] = sbc.sb_index
-        self.log.important("Got SBC with sb-index {}. Sending to masternodes.".format(sbc.sb_index))
+        self.log.important("Got SBC with sb-index {}. Sending to Masternodes.".format(sbc.sb_index))
         self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
         if self.db_state.next_block_hash != self.db_state.cur_block_hash:
             num_sb = len(self.db_state.sub_block_hash_map)
@@ -286,13 +288,14 @@ class BlockManager(Worker):
         our_block_hash = BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.cur_block_hash)
         if (our_block_hash == self.db_state.next_block_hash):
             # we have consensus
+            self.log.success2("BlockManager achieved consensus on NewBlockNotification!")
             self.send_updated_db_msg()
             self.db_state.cur_block_hash = our_block_hash
             self.db_state.sub_block_hash_map.clear()
             self.db_state.next_block.clear()
         else:
             # we can't handle this with current Seneca. TODO
-            self.log.important("Error: mismatch between current db state with masters!! my est bh {} and masters bh {}".format(our_block_hash, self.db_state.next_block_hash))
+            self.log.fatal("Error: mismatch between current db state with masters!! my est bh {} and masters bh {}".format(our_block_hash, self.db_state.next_block_hash))
 
     def update_db_if_ready(self, block_data: NewBlockNotification):
         self.db_state.next_block_hash = block_data.block_hash
@@ -300,7 +303,8 @@ class BlockManager(Worker):
         num_sb = len(self.db_state.sub_block_hash_map)
         if (num_sb < NUM_SB_PER_BLOCK):  # don't have all sub-blocks
             self.log.info("I don't have all SBs")
-            return                                # since we don't have a way to sync Seneca with full data from master, just wait for sub-blocks done
+            # since we don't have a way to sync Seneca with full data from master, just wait for sub-blocks done
+            return
         self.update_db()
 
     # update current db state to the new block
@@ -308,16 +312,15 @@ class BlockManager(Worker):
         # cur_block_hash = self.db_state.cur_block_hash
         # our_next_block_hash = self.get_our_next_block_hash()
         new_block_hash = block_data.block_hash
-        self.log.info("Got new block notification ...")
+        self.log.info("Got new block notification with block hash {}...".format(new_block_hash))
 
         if new_block_hash == self.db_state.cur_block_hash:
-            # TODO log something
-            self.log.info("new block notification is same as current state")
+            self.log.info("New block notification is same as current state. Ignoring.")
             return
 
         count = self.db_state.next_block.get(new_block_hash, 0) + 1
         if count >= MIN_NEW_BLOCK_MN_QOURUM:
-            self.log.info("new block quorum met")
+            self.log.info("New block quorum met!")
             self.update_db_if_ready(block_data)
         else:
             self.db_state.next_block[block_data.block_hash] = count

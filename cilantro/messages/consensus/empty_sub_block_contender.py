@@ -17,8 +17,8 @@ class EmptySubBlockContender(MessageBase):
         # Validate field types and existence
         assert self._data.inputHash, "input hash field missing from data {}".format(self._data)
         assert self._data.signature, "Signature field missing from data {}".format(self._data)
+        assert self.signature.verify(bytes.fromhex(self.input_hash)), "Could not verify Merkle signature"
         assert hasattr(self._data, 'subBlockIdx'), "Sub-block index field missing from data {}".format(self._data)
-
 
     @classmethod
     def create(cls, input_hash: str, sb_index: int, signature: MerkleSignature):
@@ -37,7 +37,6 @@ class EmptySubBlockContender(MessageBase):
 
         return cls.from_data(struct)
 
-
     @classmethod
     def _chunks(cls, l, n=64):
         for i in range(0, len(l), n):
@@ -46,6 +45,10 @@ class EmptySubBlockContender(MessageBase):
     @classmethod
     def _deserialize_data(cls, data: bytes):
         return subblock_capnp.EmptySubBlockContender.from_bytes_packed(data)
+
+    @lazy_property
+    def result_hash(self) -> str:
+        return
 
     @lazy_property
     def input_hash(self) -> str:

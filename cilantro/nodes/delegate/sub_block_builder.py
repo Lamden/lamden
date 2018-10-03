@@ -180,7 +180,7 @@ class SubBlockBuilder(Worker):
         # keep updating timestamp as they are increasing from a master
 
         # DEBUG -- TODO DELETE
-        self.log.important("Recv tx batch w/ {} transactions, and input hash {}".format(len(envelope.message.transactions), input_hash))
+        self.log.notice("Recv tx batch w/ {} transactions, and input hash {}".format(len(envelope.message.transactions), input_hash))
         # END DEBUG
 
         self.sb_managers[index].processed_txs_timestamp = timestamp
@@ -206,7 +206,7 @@ class SubBlockBuilder(Worker):
         Creates an Empty Sub Block Contender from a TransactionBatch
         """
         self.log.debug("Empty SBB {} sub block index {}".format(self.sbb_index, sbb_idx))
-        signature = wallet.sign(self.signing_key, input_hash.encode())
+        signature = wallet.sign(self.signing_key, bytes.fromhex(input_hash))
         merkle_sig = MerkleSignature.create(sig_hex=signature,
                                             timestamp=str(int(time.time())),
                                             sender=self.verifying_key)

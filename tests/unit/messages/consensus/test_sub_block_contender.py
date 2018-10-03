@@ -53,12 +53,8 @@ class TestSubBlockContender(TestCase):
 class TestEmptySubBlockContender(TestCase):
 
     def test_create(self):
-        txs = [TransactionDataBuilder.create_random_tx() for i in range(5)]
-        raw_txs = [tx.serialize() for tx in txs]
-        tree = MerkleTree.from_raw_transactions(raw_txs)
-
         input_hash = 'B' * 64  # in reality this would be the env hash. we can just make something up
-        signature = build_test_merkle_sig(msg=tree.root, sk=DEL_SK, vk=DEL_VK)
+        signature = build_test_merkle_sig(msg=bytes.fromhex(input_hash), sk=DEL_SK, vk=DEL_VK)
 
         sbc = EmptySubBlockContender.create(input_hash=input_hash, sb_index=0, signature=signature)
         sbc_binary = sbc.serialize()

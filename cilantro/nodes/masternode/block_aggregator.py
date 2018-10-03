@@ -162,6 +162,7 @@ class BlockAggregator(Worker):
                             if self.total_valid_sub_blocks >= NUM_SB_PER_BLOCK:
                                 result_hashes = [h for h in self.result_hashes if self.result_hashes[h]['consensus_reached']]
                                 new_block_notif = self.store_full_block(result_hashes)
+                                self.log.notice("Sending new block notification!")
                                 self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
                                 break
                         elif self.contenders[input_hash]['received_count'] == NUM_DELEGATES:
@@ -222,7 +223,7 @@ class BlockAggregator(Worker):
             self.log.info('Already received block hash "{}", adding to consensus count.'.format(block_hash))
             self.full_block_hashes[block_hash]['consensus_count'] += 1
         else:
-            self.log.important('Created resultant block-hash "{}"'.format(block_hash))
+            self.log.info('Created resultant block-hash "{}"'.format(block_hash))
             self.full_block_hashes[block_hash] = {
                 'consensus_count': 1,
                 'full_block_metadata': new_block_notif
