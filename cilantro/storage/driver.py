@@ -204,8 +204,10 @@ class StorageDriver(object):
                   ORDER BY block_num DESC
                   LIMIT 1
             """)
-            res = cursor.fetchone() or GENESIS_HASH
-            return res
+            res = cursor.fetchone()
+            if res:
+                return res[0].decode()
+            return GENESIS_HASH
 
     @classmethod
     def get_latest_blocks(cls, start_block_hash) -> List[BlockData]:

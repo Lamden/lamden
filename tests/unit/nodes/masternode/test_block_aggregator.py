@@ -154,24 +154,7 @@ class TestBlockAggregator(TestCase):
         ba.recv_sub_block_contender(sbc)
         self.assertTrue(sbc._data.signature in ba.result_hashes[RESULT_HASH1]['signatures'])
 
-    @BlockAggTester.test
-    def test_combine_result_hash_transactions_missing(self, *args):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
 
-        ba.manager = MagicMock()
-        ba.build_task_list()
-
-        for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
-            ba.recv_sub_block_contender(sbc)
-
-        self.assertEqual(len(ba.result_hashes[RESULT_HASH1]['signatures']), DELEGATE_MAJORITY)
-        self.assertEqual(len(ba.contenders[INPUT_HASH1]['transactions']), 5)
-        self.assertEqual(len(ba.full_block_hashes), 0)
-
-
-# TODO fix these tests?
 class TestBlockAggregatorStorage(TestCase):
 
     def setUp(self):
@@ -352,6 +335,22 @@ class TestBlockAggregatorStorage(TestCase):
             ba.recv_sub_block_contender(sbc)
 
         self.assertEqual(ba.total_valid_sub_blocks, 2)
+
+    @BlockAggTester.test
+    def test_combine_result_hash_transactions_missing(self, *args):
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+
+        ba.manager = MagicMock()
+        ba.build_task_list()
+
+        for i in range(DELEGATE_MAJORITY):
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1[:3], 0)
+            ba.recv_sub_block_contender(sbc)
+
+        self.assertEqual(len(ba.result_hashes[RESULT_HASH1]['signatures']), DELEGATE_MAJORITY)
+        self.assertEqual(len(ba.contenders[INPUT_HASH1]['transactions']), 3)
+        self.assertEqual(len(ba.full_block_hashes), 0)
 
 
 if __name__ == '__main__':
