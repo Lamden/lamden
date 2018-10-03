@@ -1,11 +1,9 @@
+import unittest, time, cilantro
 from vmnet.testcase import BaseNetworkTestCase
 from cilantro.utils.test.mp_test_case import vmnet_test
 from cilantro.constants.testnet import TESTNET_MASTERNODES
-import unittest, time
-import vmnet, cilantro
 from os.path import dirname, join
-import time
-from cilantro.storage.mongo import MDB
+from cilantro.storage.db import VKBook
 
 cilantro_path = dirname(dirname(cilantro.__path__[0]))
 
@@ -15,22 +13,15 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def start_mn(verifing_key):
-    import os, zmq, time
+    import os, zmq, time, asyncio
     from cilantro.logger.base import get_logger
     from tests.experiments.storage.test_master_store import MasterOps
 
     log = get_logger(os.getenv('MN'))
 
-    store = MDB()
-    store.start_db(Type='new')
-#    log.info("db -> {}".format(store.query_db_status()))
-
-
     count = MasterOps.get_master_set()
-
     mn_id = MasterOps.get_mn_id(vk = verifing_key)
     rep_fact = MasterOps.get_rep_factor()
-
 
     # find master idx in pool
     pool_sz = MasterOps.rep_pool_sz(rep_fact,count)
@@ -38,8 +29,8 @@ def start_mn(verifing_key):
     idx = MasterOps.mn_pool_idx(pool_sz,mn_id)
 
     ctx = zmq.Context()
-    socket = ctx.socket(socket_type=zmq.PAIR)
-    url = "tcp://{}:10200".format(os.getenv('MGMT'))
+    socket = ctx.socket(socket_type=zmq.SUB)
+    url = "tcp://{}:10200".format(os.getenv('HOST_NAME'))
 
     time.sleep(1)
     log.info("CLIENT CONNECTING TO {}".format(url))
@@ -48,13 +39,13 @@ def start_mn(verifing_key):
 
     log.debug("waiting for msg...")
     msg = socket.recv_pyobj()
-
+    log.info("msg {}".format(msg))
     log.info("total masters {}".format(count))
     log.info("master index {}".format(idx))
     log.info("master id {}".format(mn_id))
 
     blk_num = 1
-    while blk_num <= 2:
+    while blk_num <= 5:
         log.debug("waiting for msg...")
         msg = socket.recv_pyobj()
         log.info("got msg {}".format(msg))
@@ -82,20 +73,20 @@ def start_mn(verifing_key):
 
 
     log.info('end!')
-
     socket.close()
 
 def start_mgmt():
-    import os, asyncio, zmq, time, zmq.asyncio
+    import asyncio, zmq, zmq.asyncio, os, time
     from cilantro.logger.base import get_logger
+
+    log = get_logger('mgmt')
 
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(loop)
 
-    log = get_logger("ZMQ Server")
     log.info("server host ip is {}".format(os.getenv('HOST_IP')))
     ctx = zmq.Context()
-    socket = ctx.socket(socket_type=zmq.PAIR)
+    socket = ctx.socket(socket_type=zmq.PUB)
 
     url = "tcp://{}:10200".format(os.getenv('HOST_IP'))
     log.info("SERVER BINDING TO {}".format(url))
@@ -115,28 +106,34 @@ def start_mgmt():
         time.sleep(1)
         blk_num += 1
 
+
     socket.close()
 
 
-class TestZMQPair(BaseNetworkTestCase):
+class TestMockStore(BaseNetworkTestCase):
 
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro_mn.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro_multi_master.json')
 
     @vmnet_test
     def test_store(self):
-
-        self.execute_python('mgmt', start_mgmt)
+        self. execute_python('mgmt', start_mgmt)
         time.sleep(1)
-        key = TESTNET_MASTERNODES[0]['vk']
 
+        masters = VKBook.get_masternodes()
+        print(masters)
+
+        i = len(masters)
         for node in self.groups['mn']:
-     #       key = TESTNET_MASTERNODES[i]['vk']
+            if i <= 0:
+                break
+            key = TESTNET_MASTERNODES[len(masters)-i]['vk']
+            self.execute_python(node, wrap_func(start_mn, verifing_key=key))
+            i-=1
+            print(key)
             print(node)
 
-        self.execute_python(node,wrap_func(start_mn, verifing_key = key))
 
         input("\n\nEnter any key to terminate")
-
 
 if __name__ == '__main__':
     unittest.main()

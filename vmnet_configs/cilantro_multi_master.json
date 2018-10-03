@@ -2,8 +2,8 @@
     "services": [
         {
             "name": "mn",
-            "image": "cilantro_mn.dev",
-            "count": 1,
+            "image": "cilantro_base.dev",
+            "count": 2,
             "ports": [
                 27017,10200, 8080, 4319
             ]
@@ -13,7 +13,7 @@
             "image": "cilantro_base.dev",
             "count": 1,
             "ports": [
-                10200, 8080, 4319
+                27017,10200, 8080, 4319
             ]
         }
     ]
