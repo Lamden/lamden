@@ -17,10 +17,10 @@ MASTERNODE_MAJORITY = math.ceil(NUM_MASTERS * 2 / 3)
 # ///////////////////////////////////////////////
 # Block and Sub-block
 # ///////////////////////////////////////////////
-_MAX_SUB_BLOCK_BUILDERS = 1
-_MAX_BLOCKS = 2
+_MAX_SUB_BLOCK_BUILDERS = 2
+_MAX_BLOCKS = 1
 
-TRANSACTIONS_PER_SUB_BLOCK = 4
+TRANSACTIONS_PER_SUB_BLOCK = 100
 NUM_SUB_BLOCKS = NUM_MASTERS  # same as num masternodes for now
 NUM_BLOCKS = min(_MAX_BLOCKS, NUM_SUB_BLOCKS)
 NUM_SB_PER_BLOCK = (NUM_SUB_BLOCKS + NUM_BLOCKS - 1) // NUM_BLOCKS
@@ -46,4 +46,4 @@ MIN_NEW_BLOCK_MN_QOURUM = math.ceil(NUM_MASTERS * 2 / 3)  # Number of NewBlockNo
 # ///////////////////////////////////////////////
 # Seneca Interpreter
 # ///////////////////////////////////////////////
-MOCK_INTERPRET_TIME = 0.05
+MOCK_INTERPRET_TIME = 0.04

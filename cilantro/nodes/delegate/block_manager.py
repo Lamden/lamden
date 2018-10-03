@@ -260,7 +260,7 @@ class BlockManager(Worker):
 
     def _handle_sbc(self, sbc: SubBlockContender):
         self.db_state.sub_block_hash_map[sbc.result_hash] = sbc.sb_index
-        self.log.important("Got SBC with sb-index {}".format(sbc.sb_index))
+        self.log.important("Got SBC with sb-index {}. Sending to masternodes.".format(sbc.sb_index))
         self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
         if self.db_state.next_block_hash != self.db_state.cur_block_hash:
             num_sb = len(self.db_state.sub_block_hash_map)

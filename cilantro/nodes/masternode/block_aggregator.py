@@ -139,7 +139,7 @@ class BlockAggregator(Worker):
                 return
             else:
                 self.contenders[input_hash]['transactions'].add(tx)
-                self.log.warning('Received {}/{} transactions!'.format(
+                self.log.spam('Received {}/{} transactions!'.format(
                     len(self.contenders[input_hash]['transactions']), len(self.contenders[input_hash]['merkle_leaves'])
                 ))
 

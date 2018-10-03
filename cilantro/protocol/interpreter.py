@@ -50,12 +50,13 @@ class SenecaInterpreter:
         Flushes internal queue of transactions. If update_state is True, this will also commit the changes
         to the database. Otherwise, this method will discard any changes
         """
-        if update_state:
-            self.log.info("Flushing queue and committing queue of {} items".format(len(self.queue)))
-            self.ex.commit()
-        else:
-            self.log.info("Flushing queue and rolling back {} transactions".format(len(self.queue)))
-            self.ex.rollback()
+        if not self.mock:
+            if update_state:
+                self.log.info("Flushing queue and committing queue of {} items".format(len(self.queue)))
+                self.ex.commit()
+            else:
+                self.log.info("Flushing queue and rolling back {} transactions".format(len(self.queue)))
+                self.ex.rollback()
 
         self.queue.clear()
 

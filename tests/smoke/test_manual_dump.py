@@ -24,6 +24,7 @@ def run_mn(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
+    overwrite_logger_level(11)
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[slot_num]['sk']
@@ -39,6 +40,7 @@ def run_witness(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
+    overwrite_logger_level(11)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -54,7 +56,7 @@ def run_delegate(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    # overwrite_logger_level(21)
+    overwrite_logger_level(11)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -73,7 +75,7 @@ def dump_it(volume, delay=0):
 
 class TestManualDump(BaseNetworkTestCase):
 
-    VOLUME = 40  # Number of transactions to dump
+    VOLUME = 400  # Number of transactions to dump
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-4-4-bootstrap.json')
     PROFILE_TYPE = None
 
