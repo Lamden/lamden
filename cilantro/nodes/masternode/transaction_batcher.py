@@ -38,7 +38,7 @@ class TransactionBatcher(Worker):
             num_txns = self.queue.qsize()
             tx_list = []
             if (num_txns >= TRANSACTIONS_PER_SUB_BLOCK) or (skip_turns < 1):
-                for _ in range(num_txns):
+                for _ in range(min(TRANSACTIONS_PER_SUB_BLOCK, num_txns)):
                     tx = self.queue.get()
                     self.log.spam("masternode bagging transaction from sender {}".format(tx.sender))
 
