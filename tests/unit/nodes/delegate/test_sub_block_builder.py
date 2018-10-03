@@ -80,6 +80,7 @@ class TestSubBlockBuilder(TestCase):
     @SBBTester.test
     @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 8)
     @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 8)
+    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
     def test_create_sub_sockets(self, *args):
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
 
