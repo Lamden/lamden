@@ -25,6 +25,9 @@ install:
 build-image:
 	docker build -t cilantro_base.dev -f vmnet_configs/images/cilantro_base.dev .
 
+build-mn:
+	docker build -t cilantro_mn.dev -f vmnet_configs/images/cilantro_master.dev .
+
 clean-logs:
 	./scripts/clean-logs.sh
 

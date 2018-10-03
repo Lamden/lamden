@@ -18,6 +18,7 @@ INTER_MASTER_PORT = 9904
 MN_TX_PUB_PORT = 9901
 MN_NEW_BLOCK_PUB_PORT = 9902
 MN_SUB_BLOCK_PORT = 9903
+MN_STORE_PORT = 27017
 
 
 # ---------------------------------------------------------------
