@@ -17,7 +17,7 @@ MASTERNODE_MAJORITY = math.ceil(NUM_MASTERS * 2 / 3)
 # ///////////////////////////////////////////////
 # Block and Sub-block
 # ///////////////////////////////////////////////
-_MAX_SUB_BLOCK_BUILDERS = 2
+_MAX_SUB_BLOCK_BUILDERS = 4
 _MAX_BLOCKS = 1
 
 TRANSACTIONS_PER_SUB_BLOCK = 100
