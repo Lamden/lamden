@@ -41,3 +41,9 @@ MAX_SKIP_TURNS = 4
 # Delegate
 # ///////////////////////////////////////////////
 MIN_NEW_BLOCK_MN_QOURUM = math.ceil(NUM_MASTERS * 2 / 3)  # Number of NewBlockNotifications needed from unique MNs
+
+
+# ///////////////////////////////////////////////
+# Seneca Interpreter
+# ///////////////////////////////////////////////
+MOCK_INTERPRET_TIME = 0.05

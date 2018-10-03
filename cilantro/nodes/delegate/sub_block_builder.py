@@ -65,7 +65,7 @@ class SubBlockBuilder(Worker):
         self.sbb_index = sbb_index
         self.cur_block_index = NUM_BLOCKS - 1  # so it will start at block 0
         self.pending_block_index = 0
-        self.interpreter = SenecaInterpreter()
+        self.interpreter = SenecaInterpreter(mock=True)
 
         self.tasks = []
 

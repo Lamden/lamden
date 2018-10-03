@@ -25,7 +25,7 @@ class TestSenecaInterpreter(TestCase):
         reset_db()
 
     def tearDown(self):
-        if hasattr(self, 'interpreter'):
+        if hasattr(self, 'interpreter') and not self.interpreter.mock:
             self.interpreter.ex.cur.close()
             self.interpreter.ex.conn.close()
 
@@ -233,7 +233,6 @@ class TestSenecaInterpreter(TestCase):
         t = Timer(2.8, assertCondition)
         t.start()
 
-
     def test_rerun_fail(self):
         orig = SenecaInterpreter._run_contract
         def mocked_rerun(*args, **kwargs):
@@ -267,6 +266,19 @@ class TestSenecaInterpreter(TestCase):
         sender_initial_balance = dummy_contract.get_balance(sender)
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=True))
         self.interpreter.interpret(contract_tx)
+
+    @mock.patch("cilantro.protocol.interpreter.run_contract")
+    def test_mock_interpreter(self, mock_run_contract_func):
+        sender = ALICE_VK
+        receiver = BOB_VK
+        contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False))
+
+        self.interpreter = SenecaInterpreter(mock=True)
+        self.interpreter.interpret(contract_tx)
+
+        mock_run_contract_func.assert_not_called()
+        self.assertEqual(self.interpreter.queue_size, 1)
+
 
 if __name__ == '__main__':
     unittest.main()
