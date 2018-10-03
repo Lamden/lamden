@@ -1,4 +1,5 @@
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender, SubBlockContenderBuilder
+from cilantro.messages.consensus.empty_sub_block_contender import EmptySubBlockContender
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 from cilantro.messages.transaction.data import TransactionDataBuilder
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
@@ -47,6 +48,26 @@ class TestSubBlockContender(TestCase):
         clone = SubBlockContender.from_bytes(sbc.serialize())
 
         self.assertEqual(clone, sbc)
+
+
+class TestEmptySubBlockContender(TestCase):
+
+    def test_create(self):
+        txs = [TransactionDataBuilder.create_random_tx() for i in range(5)]
+        raw_txs = [tx.serialize() for tx in txs]
+        tree = MerkleTree.from_raw_transactions(raw_txs)
+
+        input_hash = 'B' * 64  # in reality this would be the env hash. we can just make something up
+        signature = build_test_merkle_sig(msg=tree.root, sk=DEL_SK, vk=DEL_VK)
+
+        sbc = EmptySubBlockContender.create(input_hash=input_hash, sb_index=0, signature=signature)
+        sbc_binary = sbc.serialize()
+        clone = EmptySubBlockContender.from_bytes(sbc_binary)
+
+        self.assertEqual(sbc, clone)
+
+
+
 
 if __name__ == '__main__':
     unittest.main()

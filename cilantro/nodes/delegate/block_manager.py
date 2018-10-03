@@ -162,7 +162,7 @@ class BlockManager(Worker):
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):
-            self.sb_builders[i] = LProcess(target=SubBlockBuilder,
+            self.sb_builders[i] = LProcess(target=SubBlockBuilder, name="SBB_Proc-{}".format(i),
                                            kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT,
                                                    "signing_key": self.signing_key, "ip": self.ip,
                                                    "sbb_index": i})

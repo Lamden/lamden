@@ -45,7 +45,7 @@ class EmptySubBlockContender(MessageBase):
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return subblock_capnp.SubBlockContender.from_bytes_packed(data)
+        return subblock_capnp.EmptySubBlockContender.from_bytes_packed(data)
 
     @lazy_property
     def input_hash(self) -> str:
