@@ -49,6 +49,9 @@ class TransactionBatcher(Worker):
                 continue
 
             # send either empty or some txns capping at TRANSACTIONS_PER_SUB_BLOCK
-            self.log.debug("Sending {} transactions in batch".format(len(tx_list)))
+            if len(tx_list):
+                self.log.info("Sending {} transactions in batch".format(len(tx_list)))
+            else:
+                self.log.info("Sending an empty transaction batch")
             batch = TransactionBatch.create(transactions=tx_list)
             self.pub_sock.send_msg(msg=batch, header=WITNESS_MASTERNODE_FILTER.encode())

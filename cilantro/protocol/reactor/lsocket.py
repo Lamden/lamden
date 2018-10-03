@@ -25,7 +25,7 @@ def vk_lookup(func):
             cmd_id = self.manager.overlay_client.get_node_from_vk(kwargs['vk'], domain=self.domain)
             assert cmd_id not in self.pending_lookups, "Collision! Uuid {} already in pending lookups {}".format(cmd_id, self.pending_lookups)
 
-            self.log.important2("Looking up vk {}".format(kwargs['vk']))  # TODO remove
+            self.log.socket("Looking up vk {}".format(kwargs['vk']))  # TODO remove
             self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.pending_lookups[cmd_id] = (func.__name__, args, kwargs)
             self.manager.pending_lookups[cmd_id] = self

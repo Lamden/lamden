@@ -35,8 +35,8 @@ assert NUM_SUB_BLOCKS/NUM_SB_PER_BLOCK == NUM_BLOCKS, "NUM_SUB_BLOCKS/NUM_SB_PER
 # ///////////////////////////////////////////////
 # Transaction Batcher
 # ///////////////////////////////////////////////
-BATCH_INTERVAL = 1
-MAX_SKIP_TURNS = 4
+BATCH_INTERVAL = 8
+MAX_SKIP_TURNS = 5
 
 
 # ///////////////////////////////////////////////
