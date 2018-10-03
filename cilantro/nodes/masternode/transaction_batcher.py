@@ -30,7 +30,7 @@ class TransactionBatcher(Worker):
         self.log.important("Starting TransactionBatcher with a batch interval of {} seconds".format(BATCH_INTERVAL))
         self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
 
-        skip_turns = 100000
+        skip_turns = MAX_SKIP_TURNS
         while True:
             self.log.spam("Batcher resting for {} seconds".format(BATCH_INTERVAL))
             await asyncio.sleep(BATCH_INTERVAL)
@@ -43,7 +43,7 @@ class TransactionBatcher(Worker):
                     self.log.spam("masternode bagging transaction from sender {}".format(tx.sender))
 
                     tx_list.append(OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key))
-                    skip_turns = 100000            # reset to max again
+                    skip_turns = MAX_SKIP_TURNS  # reset to max again
             else:
                 skip_turns = skip_turns - 1
                 continue
