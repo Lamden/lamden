@@ -1,4 +1,5 @@
-from cilantro.constants.testnet import *
+from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES, TESTNET_WITNESSES
+import math
 
 # In reality, these should be inferred from VKBook instead of hard-coded, once we start using smart contracts for
 # some of these config constants
@@ -30,10 +31,11 @@ NUM_SB_PER_BUILDER = (NUM_SUB_BLOCKS + NUM_SB_BUILDERS - 1) // NUM_SB_BUILDERS
 assert NUM_SUB_BLOCKS >= NUM_BLOCKS, "num_blocks {} cannot be more than num_sub_blocks {}".format(NUM_BLOCKS, NUM_SUB_BLOCKS)
 assert NUM_SUB_BLOCKS/NUM_SB_PER_BLOCK == NUM_BLOCKS, "NUM_SUB_BLOCKS/NUM_SB_PER_BLOCK should equal NUM_BLOCKS"
 
+
 # ///////////////////////////////////////////////
 # Transaction Batcher
 # ///////////////////////////////////////////////
-BATCH_INTERVAL = 30
+BATCH_INTERVAL = 1
 MAX_SKIP_TURNS = 4
 
 
@@ -47,3 +49,5 @@ MIN_NEW_BLOCK_MN_QOURUM = math.ceil(NUM_MASTERS * 2 / 3)  # Number of NewBlockNo
 # Seneca Interpreter
 # ///////////////////////////////////////////////
 MOCK_INTERPRET_TIME = 0.04
+MIN_MOCK_INTERPRET_TIME = 0.01
+MAX_MOCK_INTERPRET_TIME = 0.1
