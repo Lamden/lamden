@@ -112,14 +112,12 @@ class BlockAggregator(Worker):
                 self.contenders[input_hash] = {
                     'merkle_leaves': sbc.merkle_leaves,
                     'transactions': set(),
-                    'sb_index': sbc.sb_index,
                     'received_count': 0
                 }
-                self.log.spam('Received and validated SubBlockContender {}'.format(sbc))
             else:
-                self.log.fatal('SubBlockContender yields invalid tree!')
+                self.log.fatal('Received a SubBlockContender with invalid merkle tree!')
                 return
-        elif cached.get('consensus_reached'):
+        if self.result_hashes.get(result_hash) and self.result_hashes[result_hash]['consensus_reached'] == True:
             self.log.info('Received from a delegate for SubBlockContender that has already reached consensus on sub block level')
             return
         else:
@@ -127,8 +125,9 @@ class BlockAggregator(Worker):
 
         self.contenders[input_hash]['received_count'] += 1
         if not self.result_hashes.get(result_hash):
-            self.result_hashes[result_hash] = {'signatures': {}, 'input_hash': input_hash}
+            self.result_hashes[result_hash] = {'signatures': {}, 'input_hashes': set(), 'consensus_reached': False, 'sb_index': sbc.sb_index}
         self.result_hashes[result_hash]['signatures'][sbc._data.signature] = sbc.signature
+        self.result_hashes[result_hash]['input_hashes'].add(input_hash)
 
         for tx in sbc.transactions:
             merkle_leaf = tx.hash
@@ -149,7 +148,7 @@ class BlockAggregator(Worker):
     def combine_result_hash(self, input_hash):
         if self.contenders.get(input_hash):
             for result_hash in self.result_hashes:
-                if self.result_hashes[result_hash]['input_hash'] == input_hash:
+                if input_hash in self.result_hashes[result_hash]['input_hashes']:
                     signatures = self.result_hashes[result_hash]['signatures']
                     self.log.info('Received {}/{} ({} required) signatures'.format(
                         len(signatures), NUM_DELEGATES, DELEGATE_MAJORITY
@@ -158,9 +157,9 @@ class BlockAggregator(Worker):
                         if len(self.contenders[input_hash]['transactions']) == len(self.contenders[input_hash]['merkle_leaves']):
                             self.log.info('Sub block consensus reached, all transactions present.')
                             self.total_valid_sub_blocks += 1
+                            self.result_hashes[result_hash]['consensus_reached'] = True
                             if self.total_valid_sub_blocks >= NUM_SB_PER_BLOCK:
-                                self.contenders[input_hash]['consensus_reached'] = True
-                                new_block_notif = self.store_full_block(list(self.contenders.keys()))
+                                new_block_notif = self.store_full_block(self.result_hashes.keys())
                                 self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
                         elif self.contenders[input_hash]['received_count'] == NUM_DELEGATES:
                             self.log.error('Received sub blocks from all delegates and still have missing transactions!')
@@ -189,7 +188,7 @@ class BlockAggregator(Worker):
             self.log.info('Received KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
 
     def store_full_block(self, hash_list: List[str]) -> NewBlockNotification:
-        merkle_roots = sorted(hash_list, key=lambda input_hash: self.contenders[input_hash]['sb_index'])
+        merkle_roots = sorted(hash_list, key=lambda result_hash: self.result_hashes[result_hash]['sb_index'])
         sub_block_metadatas, all_signatures, all_merkle_leaves, all_transactions = self.combine_sub_blocks(merkle_roots)
         prev_block_hash = StorageDriver.get_latest_block_hash()
         block_hash = BlockData.compute_block_hash(sbc_roots=merkle_roots, prev_block_hash=prev_block_hash)
@@ -231,9 +230,8 @@ class BlockAggregator(Worker):
         all_signatures = []
         all_transactions = []
 
-        for idx, input_hash in enumerate(merkle_roots):
-            for result_hash in self.result_hashes:
-                if not input_hash == self.result_hashes[result_hash]['input_hash']: continue
+        for idx, result_hash in enumerate(merkle_roots):
+            for input_hash in self.result_hashes[result_hash]['input_hashes']:
                 merkle_leaves = self.contenders[input_hash]['merkle_leaves']
                 all_transactions += self.contenders[input_hash]['transactions']
                 all_merkle_leaves += merkle_leaves
@@ -249,4 +247,3 @@ class BlockAggregator(Worker):
         blocks = StorageDriver.get_latest_blocks(req.block_hash)
         reply = StateUpdateReply.create(blocks)
         self.router.send_multipart([])
-
