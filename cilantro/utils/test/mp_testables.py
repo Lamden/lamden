@@ -9,7 +9,7 @@ from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.nodes.masternode.masternode import Masternode
 from cilantro.nodes.delegate.delegate import Delegate
 from cilantro.nodes.witness.witness import Witness
-from cilantro.protocol.overlay.interface import OverlayServer
+from cilantro.protocol.overlay.daemon import OverlayServer
 from cilantro.utils.lprocess import LProcess
 from cilantro.storage.db import DB
 from cilantro.utils.test.pubsub_auth import PubSubAuthTester

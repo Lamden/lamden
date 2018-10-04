@@ -13,17 +13,19 @@ import asyncio, os
 from enum import Enum, auto
 
 class OverlayInterface:
-    def __init__(self, sk_hex):
+    def __init__(self, sk_hex, block=True):
         self.log = get_logger('OverlayInterface')
         Auth.setup_certs_dirs(sk_hex=sk_hex)
         self.loop = asyncio.get_event_loop()
         self.network = Network(storage=None)
-        self.loop.run_until_complete(asyncio.gather(
+        self.tasks = asyncio.gather(
             Discovery.listen(),
             Handshake.listen(),
             self.network.listen(),
-            self.run_tasks()
-        ))
+            self.bootup()
+        )
+        if block:
+            self.loop.run_until_complete(self.tasks)
 
     @property
     def neighbors(self):
@@ -34,7 +36,7 @@ class OverlayInterface:
     def authorized_nodes(self):
         return Handshake.authorized_nodes
 
-    async def run_tasks(self):
+    async def bootup(self):
         await self.discover()
         self.log.success('''
 ###########################################################################
@@ -45,15 +47,6 @@ class OverlayInterface:
         self.log.success('''
 ###########################################################################
 #   BOOTSTRAP COMPLETE
-###########################################################################\
-        ''')
-        await asyncio.sleep(5) # TODO Change this
-        await asyncio.gather(*[
-            self.authenticate(vk) for vk in VKBook.get_all()
-        ])
-        self.log.success('''
-###########################################################################
-#   AUTHENTICATION COMPLETE
 ###########################################################################\
         ''')
 
@@ -86,3 +79,8 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
     async def lookup_ip(self, vk):
         return await self.network.lookup_ip(vk)
+
+    def teardown(self):
+        self.log.important('Shutting Down.')
+        for task in self.tasks:
+            task.cancel()

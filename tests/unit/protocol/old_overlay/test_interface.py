@@ -1,6 +1,6 @@
 import unittest, asyncio, zmq, time, os, sys
 from unittest import TestCase
-from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
+from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
 from cilantro.constants.testnet import TESTNET_MASTERNODES
 from threading import Timer, Thread
 from multiprocessing import Process, Queue
@@ -14,7 +14,7 @@ class TestInterface(TestCase):
 
     def test_start_stop_service(self):
         def _stop():
-            self.assertTrue(hasattr(self.server, 'dht'))
+            self.assertTrue(hasattr(self.server, 'interface'))
             self.assertTrue(self.server._started)
             self.server.teardown()
             self.assertIsInstance(self.server.cmd_sock, zmq.Socket)

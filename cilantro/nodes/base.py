@@ -2,7 +2,7 @@ from cilantro.logger import get_logger
 from cilantro.protocol.transport import Composer
 from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.protocol.multiprocessing.worker import Worker
-from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
+from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
 from cilantro.utils.lprocess import LProcess
 
 import asyncio

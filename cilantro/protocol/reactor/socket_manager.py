@@ -1,6 +1,6 @@
 import zmq.asyncio
 import asyncio
-from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
+from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
 from cilantro.protocol.reactor.lsocket import LSocket
 from cilantro.logger import get_logger
 from collections import deque

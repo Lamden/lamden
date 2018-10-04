@@ -10,14 +10,13 @@ def masternode(idx):
     from cilantro.constants.testnet import TESTNET_MASTERNODES
     from cilantro.protocol.overlay.discovery import Discovery
     from cilantro.protocol.overlay.auth import Auth
-    from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     import asyncio, os, ujson as json
 
     async def check_nodes():
         while True:
             await asyncio.sleep(1)
-            if len(Discovery.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
-                send_to_file(json.dumps({'node': os.getenv('HOST_NAME')}))
+            if len(Discovery.discovered_nodes) >= 1:
+                send_to_file(os.getenv('HOST_NAME'))
 
     from cilantro.logger import get_logger
     log = get_logger('MasterNode_{}'.format(idx))
@@ -42,7 +41,7 @@ def witness(idx):
         while True:
             await asyncio.sleep(1)
             if len(Discovery.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
-                send_to_file(json.dumps({'node': os.getenv('HOST_NAME')}))
+                send_to_file(os.getenv('HOST_NAME'))
 
     from cilantro.logger import get_logger
     log = get_logger('Witness_{}'.format(idx))
@@ -67,7 +66,7 @@ def delegate(idx):
         while True:
             await asyncio.sleep(1)
             if len(Discovery.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
-                send_to_file(json.dumps({'node': os.getenv('HOST_NAME')}))
+                send_to_file(os.getenv('HOST_NAME'))
 
     from cilantro.logger import get_logger
     log = get_logger('Delegate_{}'.format(idx))
@@ -86,25 +85,22 @@ class TestDiscovery(BaseTestCase):
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-4-4-bootstrap.json')
 
     def callback(self, data):
-        for item in data:
-            self.nodes_complete.update(json.loads(item))
+        for node in data:
+            self.nodes_complete.add(node)
 
     def complete(self):
-        self.assertEqual(len(self.nodes_complete), len(self.groups['masternode'] + self.groups['witness'] + self.groups['delegate'])), \
-            'Not all nodes are able to discover enough nodes within 5s'
+        all_nodes = set(self.groups['masternode']+self.groups['witness']+self.groups['delegate'])
+        self.assertEqual(self.nodes_complete, all_nodes)
 
     def test_discovery(self):
-        self.nodes_complete = {}
+        self.nodes_complete = set()
         for idx, node in enumerate(self.groups['masternode']):
             self.execute_python(node, wrap_func(masternode, idx))
         for idx, node in enumerate(self.groups['witness']):
             self.execute_python(node, wrap_func(witness, idx))
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(delegate, idx))
-
-        file_listener(self, self.callback, self.complete, 5)
-
-        input("Press any key to terminate")
+        file_listener(self, self.callback, self.complete, 15)
 
 if __name__ == '__main__':
     unittest.main()

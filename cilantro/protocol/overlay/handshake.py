@@ -20,7 +20,6 @@ class Handshake:
 
     @classmethod
     async def initiate_handshake(cls, ip, vk, domain='all'):
-        cls.log.info('Sending handshake request from {} to {} (vk={})'.format(cls.host_ip, ip, vk))
         if not cls.check_previously_authorized(ip, vk, domain):
             public_key = Auth.vk2pk(vk)
             cls.client_sock.curve_secretkey = Auth.private_key
@@ -32,6 +31,7 @@ class Handshake:
             start = time.time()
             for i in range(AUTH_TIMEOUT):
                 if cls.authorized_nodes[domain].get(vk): break
+                cls.log.info('Sending handshake request from {} to {} (vk={})'.format(cls.host_ip, ip, vk))
                 cls.request(ip, domain)
                 await asyncio.sleep(AUTH_INTERVAL)
             end = time.time()
@@ -56,13 +56,16 @@ class Handshake:
                 msg = [chunk.decode() for chunk \
                     in await cls.server_sock.recv_multipart()]
                 ip, vk, domain = msg[:3]
-                is_reply = True
+                is_reply = False
                 if not cls.authorized_nodes.get(domain):
                     cls.authorized_nodes[domain] = {}
                 if len(msg) == 3: # this is a request
                     if ip == cls.host_ip and vk == Auth.vk:
                         cls.authorized_nodes[domain][vk] = ip
+                    else:
+                        cls.log.info('Received a handshake request from {} (vk={}, domain={})'.format(ip, vk, domain))
                 elif len(msg) == 4: # this is a reply
+                    cls.log.info('Received a handshake reply from {} (vk={}, domain={})'.format(ip, vk, domain))
                     assert msg[-1] == 'rep', 'This is not a reply'
                     is_reply = True
 
@@ -77,6 +80,8 @@ class Handshake:
                         cls.unknown_authorized_nodes[vk] = ip
                         # The sender proved that it has the VK via ZMQ Auth but the sender is not found in the receiver's VKBook
                         cls.log.important('Unknown VK: {} <=X= {} (vk={}, domain={}), saving to unknown_authorized_nodes for now'.format(cls.host_ip, ip, vk, domain))
+                else:
+                    if not is_reply: cls.reply(ip, domain)
             except Exception as e:
                 cls.log.error(traceback.format_exc())
 
