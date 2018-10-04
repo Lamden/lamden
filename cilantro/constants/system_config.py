@@ -35,15 +35,10 @@ assert NUM_SUB_BLOCKS/NUM_SB_PER_BLOCK == NUM_BLOCKS, "NUM_SUB_BLOCKS/NUM_SB_PER
 # ///////////////////////////////////////////////
 # Transaction Batcher
 # ///////////////////////////////////////////////
-<<<<<<< HEAD
-BATCH_INTERVAL = 5
-MAX_SKIP_TURNS = 4
-=======
 # BATCH_INTERVAL = 8
-MAX_BATCH_DURATION = 8 / NUM_BLOCKS      # just to get back to 8 for now, but it has to be a function of TRANSACTIONS_PER_SUB_BLOCK
+MAX_BATCH_DURATION = 8 / NUM_BLOCKS  # just to get back to 8 for now, but it has to be a function of TRANSACTIONS_PER_SUB_BLOCK
 BATCH_INTERVAL = NUM_BLOCKS * MAX_BATCH_DURATION
 MAX_SKIP_TURNS = 5
->>>>>>> 6027f9895802ab9590e05ee63636aab3b9e73aca
 
 
 # ///////////////////////////////////////////////
