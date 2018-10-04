@@ -70,6 +70,7 @@ def vmnet_test(*args, **kwargs):
         run_webui = kwargs.get('run_webui', False)
         return _vmnet_test
 
+
 class MPTestCase(BaseNetworkTestCase):
     config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
     testers = []
@@ -193,8 +194,3 @@ class MPTestCase(BaseNetworkTestCase):
 
         return actives, passives, fails, timeout
 
-
-# TODO find him a better home
-# if hasattr(MPTestCase, 'vmnet_test_active'):
-#     if BaseNetworkTestCase.vmnet_test_active:
-#         signal.signal(signal.SIGINT, signal_handler)
