@@ -22,6 +22,8 @@ class TransactionBatcher(Worker):
         self.pub_sock.bind(port=MN_TX_PUB_PORT, ip=self.ip)
 
         # TODO create PAIR socket to orchestrate w/ main process?
+        # it may be efficient to have this to get delta interval so we won't send more bags than we can handle
+        self.delta_extra = 0   # TODO get this delta from main process (blk aggregator)
 
         # Start main event loop
         self.loop.run_until_complete(self.compose_transactions())
@@ -30,10 +32,13 @@ class TransactionBatcher(Worker):
         self.log.important("Starting TransactionBatcher with a batch interval of {} seconds".format(BATCH_INTERVAL))
         self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
 
+        # TODO - do we need skip_turns? we need it with assumption that it is more efficient to skip very small batch
+        # Instead of two small batches, it is more efficient to have one empty one and second one with combined one.
+        # need to verify this assumption when Seneca is fully operational
         skip_turns = 100000
         while True:
             self.log.spam("Batcher resting for {} seconds".format(BATCH_INTERVAL))
-            await asyncio.sleep(BATCH_INTERVAL)
+            await asyncio.sleep(BATCH_INTERVAL + self.delta_extra)
 
             num_txns = self.queue.qsize()
             tx_list = []

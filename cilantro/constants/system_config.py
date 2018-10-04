@@ -33,7 +33,8 @@ assert NUM_SUB_BLOCKS/NUM_SB_PER_BLOCK == NUM_BLOCKS, "NUM_SUB_BLOCKS/NUM_SB_PER
 # ///////////////////////////////////////////////
 # Transaction Batcher
 # ///////////////////////////////////////////////
-BATCH_INTERVAL = 30
+MAX_BATCH_DURATION = 1
+BATCH_INTERVAL = NUM_BLOCKS * MAX_BATCH_DURATION
 MAX_SKIP_TURNS = 4
 
 
