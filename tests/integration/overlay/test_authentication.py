@@ -21,7 +21,7 @@ def masternode(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(5)
+        await asyncio.sleep(10)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES]
@@ -29,10 +29,9 @@ def masternode(idx, node_count):
     delegates = [node['vk'] for node in TESTNET_DELEGATES]
     all_nodes = masternodes + witnesses + delegates
 
-    oi = OverlayInterface(TESTNET_MASTERNODES[idx]['sk'], block=False)
-    oi.loop.run_until_complete(asyncio.gather(
-        oi.tasks, connect(), check()
-    ))
+    oi = OverlayInterface(TESTNET_MASTERNODES[idx]['sk'])
+    oi.tasks += [connect(), check()]
+    oi.start()
 
 def witness(idx, node_count):
     from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
@@ -50,7 +49,7 @@ def witness(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(5)
+        await asyncio.sleep(10)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES]
@@ -58,10 +57,9 @@ def witness(idx, node_count):
     delegates = [node['vk'] for node in TESTNET_DELEGATES]
     all_nodes = masternodes + witnesses + delegates
 
-    oi = OverlayInterface(TESTNET_WITNESSES[idx]['sk'], block=False)
-    oi.loop.run_until_complete(asyncio.gather(
-        oi.tasks, connect(), check()
-    ))
+    oi = OverlayInterface(TESTNET_WITNESSES[idx]['sk'])
+    oi.tasks += [connect(), check()]
+    oi.start()
 
 def delegate(idx, node_count):
     from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
@@ -79,7 +77,7 @@ def delegate(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(5)
+        await asyncio.sleep(10)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES]
@@ -87,10 +85,9 @@ def delegate(idx, node_count):
     delegates = [node['vk'] for node in TESTNET_DELEGATES]
     all_nodes = masternodes + witnesses + delegates
 
-    oi = OverlayInterface(TESTNET_DELEGATES[idx]['sk'], block=False)
-    oi.loop.run_until_complete(asyncio.gather(
-        oi.tasks, connect(), check()
-    ))
+    oi = OverlayInterface(TESTNET_DELEGATES[idx]['sk'])
+    oi.tasks += [connect(), check()]
+    oi.start()
 
 class TestAuthentication(BaseTestCase):
 
@@ -115,7 +112,7 @@ class TestAuthentication(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(delegate, idx, node_count))
 
-        file_listener(self, self.callback, self.complete, 15)
+        file_listener(self, self.callback, self.complete, 30)
 
 if __name__ == '__main__':
     unittest.main()

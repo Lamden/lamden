@@ -16,12 +16,11 @@ def masternode(idx):
         while True:
             await asyncio.sleep(1)
             if len(oi.neighbors) >= MIN_BOOTSTRAP_NODES:
-                send_to_file(json.dumps({os.getenv('HOST_NAME'): True}))
+                send_to_file(os.getenv('HOST_NAME'))
 
-    oi = OverlayInterface(TESTNET_MASTERNODES[idx]['sk'], block=False)
-    oi.loop.run_until_complete(asyncio.gather(
-        oi.tasks, check()
-    ))
+    oi = OverlayInterface(TESTNET_MASTERNODES[idx]['sk'])
+    oi.tasks.append(check())
+    oi.start()
 
 def witness(idx):
     from cilantro.constants.testnet import TESTNET_WITNESSES
@@ -34,12 +33,11 @@ def witness(idx):
         while True:
             await asyncio.sleep(1)
             if len(oi.neighbors) >= MIN_BOOTSTRAP_NODES:
-                send_to_file(json.dumps({os.getenv('HOST_NAME'): True}))
+                send_to_file(os.getenv('HOST_NAME'))
 
-    oi = OverlayInterface(TESTNET_WITNESSES[idx]['sk'], block=False)
-    oi.loop.run_until_complete(asyncio.gather(
-        oi.tasks, check()
-    ))
+    oi = OverlayInterface(TESTNET_WITNESSES[idx]['sk'])
+    oi.tasks.append(check())
+    oi.start()
 
 def delegate(idx):
     from cilantro.constants.testnet import TESTNET_DELEGATES
@@ -54,10 +52,9 @@ def delegate(idx):
             if len(oi.neighbors) >= MIN_BOOTSTRAP_NODES:
                 send_to_file(os.getenv('HOST_NAME'))
 
-    oi = OverlayInterface(TESTNET_DELEGATES[idx]['sk'], block=False)
-    oi.loop.run_until_complete(asyncio.gather(
-        oi.tasks, check()
-    ))
+    oi = OverlayInterface(TESTNET_DELEGATES[idx]['sk'])
+    oi.tasks.append(check())
+    oi.start()
 
 class TestInterface(BaseTestCase):
 
@@ -81,7 +78,7 @@ class TestInterface(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(delegate, idx))
 
-        file_listener(self, self.callback, self.complete, 10)
+        file_listener(self, self.callback, self.complete, 15)
 
 if __name__ == '__main__':
     unittest.main()

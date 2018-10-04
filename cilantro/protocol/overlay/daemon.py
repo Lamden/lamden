@@ -1,5 +1,6 @@
 import zmq, zmq.asyncio, asyncio, ujson, os, uuid, json
 from cilantro.protocol.overlay.interface import OverlayInterface
+from cilantro.protocol.overlay.handshake import Handshake
 from cilantro.constants.overlay_network import *
 from cilantro.storage.db import VKBook
 from cilantro.logger.base import get_logger
@@ -28,19 +29,11 @@ class OverlayServer(object):
         self.evt_sock.bind(EVENT_URL)
         self.cmd_sock = self.ctx.socket(zmq.ROUTER)
         self.cmd_sock.bind(CMD_URL)
-
-        self.fut = asyncio.ensure_future(self.command_listener())
+        OverlayServer.evt_sock = self.evt_sock
 
         self.interface = OverlayInterface(sk)
-
-        self._started = True
-        self.evt_sock.send_json({
-            'event': 'service_status',
-            'status': 'ready'
-        })
-
-        if block:
-            self.loop.run_forever()
+        self.interface.tasks.append(self.command_listener())
+        self.interface.start()
 
     async def command_listener(self):
         self.log.info('Listening for overlay commands over {}'.format(CMD_URL))
@@ -52,29 +45,24 @@ class OverlayServer(object):
 
     def _get_node_from_vk(self, id_frame, event_id, vk: str, domain='all', timeout=5):
         async def coro():
-            node = None
             if vk in VKBook.get_all():
-                try:
-                    node = await asyncio.wait_for(self.overlay_network.authenticate(vk, domain), timeout)
-                except asyncio.TimeoutError:
-                    self.log.notice('Did not find an ip for VK {} in {}s'.format(vk, timeout))
+                ip = await self.overlay_network.lookup_ip(vk, domain)
+                authorized = await Handshake.initiate_handshake(ip, vk, domain)
+                if ip:
+                    data = json.dumps({
+                        'event': 'got_ip',
+                        'event_id': event_id,
+                        'ip': ip,
+                        'vk': vk
+                    }).encode()
+                else:
+                    data = json.dumps({
+                        'event': 'not_found',
+                        'event_id': event_id
+                    }).encode()
 
-            if node:
-                data = json.dumps({
-                    'event': 'got_ip',
-                    'event_id': event_id,
-                    'public_key': node.public_key.decode(),
-                    'ip': node.ip,
-                    'vk': vk
-                }).encode()
-            else:
-                data = json.dumps({
-                    'event': 'not_found',
-                    'event_id': event_id
-                }).encode()
-
-            self.log.debugv("OverlayServer replying to id {} with data {}".format(id_frame, data))
-            self.cmd_sock.send_multipart([id_frame, data])
+                self.log.debugv("OverlayServer replying to id {} with data {}".format(id_frame, data))
+                self.cmd_sock.send_multipart([id_frame, data])
 
         asyncio.ensure_future(coro())
 

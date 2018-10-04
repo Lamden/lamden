@@ -9,23 +9,27 @@ from cilantro.constants.overlay_network import *
 from cilantro.logger.base import get_logger
 from cilantro.storage.db import VKBook
 from cilantro.protocol.overlay.kademlia.node import Node
+
 import asyncio, os
 from enum import Enum, auto
 
 class OverlayInterface:
-    def __init__(self, sk_hex, block=True):
+    def __init__(self, sk_hex):
         self.log = get_logger('OverlayInterface')
         Auth.setup_certs_dirs(sk_hex=sk_hex)
         self.loop = asyncio.get_event_loop()
         self.network = Network(storage=None)
-        self.tasks = asyncio.gather(
+        self.tasks = [
             Discovery.listen(),
             Handshake.listen(),
             self.network.listen(),
             self.bootup()
-        )
-        if block:
-            self.loop.run_until_complete(self.tasks)
+        ]
+
+    def start(self):
+        self.loop.run_until_complete(asyncio.gather(
+            *self.tasks
+        ))
 
     @property
     def neighbors(self):
@@ -49,6 +53,10 @@ class OverlayInterface:
 #   BOOTSTRAP COMPLETE
 ###########################################################################\
         ''')
+        OverlayServer.evt_sock.send_json({
+            'event': 'service_status',
+            'status': 'ready'
+        })
 
     async def discover(self):
         while True:
@@ -61,6 +69,7 @@ x   DISCOVERY FAILED: Cannot find enough nodes ({}/{}) and not a masternode
 x       Retrying...
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
                 '''.format(len(Discovery.discovered_nodes), MIN_BOOTSTRAP_NODES))
+        await asyncio.gather(*self.on_discovery_complete)
 
     async def bootstrap(self):
         addrs = [(Discovery.discovered_nodes[vk], self.network.port) \
@@ -73,9 +82,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         if not ip:
             self.log.critical('Authentication Failed: Cannot find ip for vk={}'.format(vk))
             return
-        return await asyncio.gather(*[
-            Handshake.initiate_handshake(ip, vk, domain)
-        ])
+        return await Handshake.initiate_handshake(ip, vk, domain)
 
     async def lookup_ip(self, vk):
         return await self.network.lookup_ip(vk)

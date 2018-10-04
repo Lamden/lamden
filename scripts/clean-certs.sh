@@ -1,2 +1,2 @@
 cd ..
-find . -name 'certs' -exec rm -r "{}" \;
+find . -name 'certs' | xargs rm -rf

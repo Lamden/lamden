@@ -1,2 +1,2 @@
 cd ..
-find . -name 'logs' -exec rm -r "{}" \;
+find . -name 'logs' | xargs rm -rf
