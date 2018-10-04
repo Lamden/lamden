@@ -46,7 +46,7 @@ class KademliaProtocol(RPCProtocol):
         return True
 
     def rpc_find_node(self, sender, nodeid, vk, key):
-        log.info("finding neighbors of %i in local table",
+        log.spam("finding neighbors of %i in local table",
                  int(nodeid.hex(), 16))
         source = Node(nodeid, sender[0], sender[1], vk)
         self.welcomeIfNewNode(source)
@@ -103,7 +103,7 @@ class KademliaProtocol(RPCProtocol):
         if not self.router.isNewNode(node):
             return
 
-        log.info("never seen %s before, adding to router", node)
+        log.spam("never seen %s before, adding to router", node)
         for key, value in self.storage.items():
             keynode = Node(digest(key))
             neighbors = self.router.findNeighbors(keynode)
@@ -126,6 +126,6 @@ class KademliaProtocol(RPCProtocol):
             self.router.removeContact(node)
             return result
 
-        log.info("got successful response from %s", node)
+        log.spam("got successful response from %s", node)
         self.welcomeIfNewNode(node)
         return result

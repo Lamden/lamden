@@ -16,5 +16,5 @@ MIN_BOOTSTRAP_NODES = 2
 
 HOST_IP = env('HOST_IP', get_public_ip())
 PEPPER = env('PEPPER', 'cilantro_pepper')
-EVENT_URL = 'ipc://overlay-event-ipc-sock-{}'.format(HOST_IP)
-CMD_URL = 'ipc://overlay-cmd-ipc-sock-{}'.format(HOST_IP)
+EVENT_URL = 'ipc://overlay-event-ipc-sock-{}'.format(env('HOST_NAME', ''))
+CMD_URL = 'ipc://overlay-cmd-ipc-sock-{}'.format(env('HOST_NAME', ''))

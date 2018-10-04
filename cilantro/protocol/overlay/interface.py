@@ -2,6 +2,7 @@ from cilantro.protocol.overlay.kademlia.network import Network
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.protocol.overlay.discovery import Discovery
 from cilantro.protocol.overlay.handshake import Handshake
+from cilantro.protocol.overlay.event import Event
 from cilantro.protocol.overlay.ip import *
 from cilantro.protocol.overlay.kademlia.utils import digest
 from cilantro.protocol.overlay.ip import get_public_ip
@@ -14,8 +15,9 @@ import asyncio, os
 from enum import Enum, auto
 
 class OverlayInterface:
+    started = False
+    log = get_logger('OverlayInterface')
     def __init__(self, sk_hex):
-        self.log = get_logger('OverlayInterface')
         Auth.setup_certs_dirs(sk_hex=sk_hex)
         self.loop = asyncio.get_event_loop()
         self.network = Network(storage=None)
@@ -47,16 +49,15 @@ class OverlayInterface:
 #   DISCOVERY COMPLETE
 ###########################################################################\
         ''')
+        Event.emit({ 'event': 'discovery', 'status': 'complete' })
         await self.bootstrap()
         self.log.success('''
 ###########################################################################
 #   BOOTSTRAP COMPLETE
 ###########################################################################\
         ''')
-        OverlayServer.evt_sock.send_json({
-            'event': 'service_status',
-            'status': 'ready'
-        })
+        Event.emit({ 'event': 'service_status', 'status': 'ready' })
+        self.started = True
 
     async def discover(self):
         while True:
@@ -69,7 +70,6 @@ x   DISCOVERY FAILED: Cannot find enough nodes ({}/{}) and not a masternode
 x       Retrying...
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
                 '''.format(len(Discovery.discovered_nodes), MIN_BOOTSTRAP_NODES))
-        await asyncio.gather(*self.on_discovery_complete)
 
     async def bootstrap(self):
         addrs = [(Discovery.discovered_nodes[vk], self.network.port) \
@@ -81,7 +81,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         ip = await self.lookup_ip(vk)
         if not ip:
             self.log.critical('Authentication Failed: Cannot find ip for vk={}'.format(vk))
-            return
+            return False
         return await Handshake.initiate_handshake(ip, vk, domain)
 
     async def lookup_ip(self, vk):
@@ -91,3 +91,4 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         self.log.important('Shutting Down.')
         for task in self.tasks:
             task.cancel()
+        self.started = False

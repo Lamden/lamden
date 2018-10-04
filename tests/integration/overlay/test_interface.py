@@ -7,7 +7,7 @@ from cilantro.logger.base import get_logger
 
 def masternode(idx):
     from cilantro.constants.testnet import TESTNET_MASTERNODES
-    from cilantro.protocol.overlay.daemon import OverlayInterface
+    from cilantro.protocol.overlay.interface import OverlayInterface
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from vmnet.comm import send_to_file
     import asyncio, json, os
@@ -24,7 +24,7 @@ def masternode(idx):
 
 def witness(idx):
     from cilantro.constants.testnet import TESTNET_WITNESSES
-    from cilantro.protocol.overlay.daemon import OverlayInterface
+    from cilantro.protocol.overlay.interface import OverlayInterface
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from vmnet.comm import send_to_file
     import asyncio, json, os
@@ -41,7 +41,7 @@ def witness(idx):
 
 def delegate(idx):
     from cilantro.constants.testnet import TESTNET_DELEGATES
-    from cilantro.protocol.overlay.daemon import OverlayInterface
+    from cilantro.protocol.overlay.interface import OverlayInterface
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from vmnet.comm import send_to_file
     import asyncio, json, os

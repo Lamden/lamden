@@ -2,6 +2,7 @@ import zmq, zmq.asyncio, asyncio, traceback, time
 from os import getenv as env
 from cilantro.constants.overlay_network import *
 from cilantro.constants.ports import AUTH_PORT
+from cilantro.protocol.overlay.event import Event
 from cilantro.protocol.overlay.ip import *
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.logger import get_logger
@@ -21,18 +22,15 @@ class Handshake:
     @classmethod
     async def initiate_handshake(cls, ip, vk, domain='all'):
         if not cls.check_previously_authorized(ip, vk, domain):
-            public_key = Auth.vk2pk(vk)
             cls.client_sock.curve_secretkey = Auth.private_key
             cls.client_sock.curve_publickey = Auth.public_key
             cls.client_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
-            cls.client_sock.curve_serverkey = public_key
-            cls.client_sock.connect('tcp://{}:{}'.format(ip, cls.port))
 
             start = time.time()
             for i in range(AUTH_TIMEOUT):
                 if cls.authorized_nodes[domain].get(vk): break
                 cls.log.info('Sending handshake request from {} to {} (vk={})'.format(cls.host_ip, ip, vk))
-                cls.request(ip, domain)
+                cls.request(ip, vk, domain)
                 await asyncio.sleep(AUTH_INTERVAL)
             end = time.time()
         if cls.authorized_nodes[domain].get(vk):
@@ -64,33 +62,42 @@ class Handshake:
                         cls.authorized_nodes[domain][vk] = ip
                     else:
                         cls.log.info('Received a handshake request from {} (vk={}, domain={})'.format(ip, vk, domain))
-                elif len(msg) == 4: # this is a reply
+                elif len(msg) == 4 and msg[-1] == 'rep': # this is a reply
                     cls.log.info('Received a handshake reply from {} (vk={}, domain={})'.format(ip, vk, domain))
-                    assert msg[-1] == 'rep', 'This is not a reply'
                     is_reply = True
+                else:
+                    cls.log.warning('Received invalid message')
+                    Event.emit({'event': 'invalid_msg', 'msg': msg})
+                    continue
 
                 if not cls.check_previously_authorized(ip, vk, domain):
                     if cls.validate_roles_with_domain(domain, vk):
                         cls.authorized_nodes[domain][vk] = ip
                         cls.authorized_nodes['all'][vk] = ip # Set all category for easier look-up
                         # Only reply to requests
-                        if not is_reply: cls.reply(ip, domain)
+                        if not is_reply: cls.reply(ip, vk, domain)
                         cls.log.info('Authorized: {} <=O= {} (vk={})'.format(cls.host_ip, ip, vk))
+                        Event.emit({'event': 'authorized', 'vk': vk, 'ip': ip})
                     else:
                         cls.unknown_authorized_nodes[vk] = ip
-                        # The sender proved that it has the VK via ZMQ Auth but the sender is not found in the receiver's VKBook
+                        # NOTE The sender proved that it has the VK via ZMQ Auth but the sender is not found in the receiver's VKBook
                         cls.log.important('Unknown VK: {} <=X= {} (vk={}, domain={}), saving to unknown_authorized_nodes for now'.format(cls.host_ip, ip, vk, domain))
+                        Event.emit({'event': 'unknown_vk', 'vk': vk, 'ip': ip})
                 else:
                     if not is_reply: cls.reply(ip, domain)
             except Exception as e:
                 cls.log.error(traceback.format_exc())
 
     @classmethod
-    def request(cls, ip, domain):
+    def request(cls, ip, vk, domain):
+        cls.client_sock.curve_serverkey = Auth.vk2pk(vk)
+        cls.client_sock.connect('tcp://{}:{}'.format(ip, cls.port))
         cls.client_sock.send_multipart([ip.encode(), Auth.vk.encode(), domain.encode()])
 
     @classmethod
-    def reply(cls, ip, domain):
+    def reply(cls, ip, vk, domain):
+        cls.client_sock.curve_serverkey = Auth.vk2pk(vk)
+        cls.client_sock.connect('tcp://{}:{}'.format(ip, cls.port))
         cls.client_sock.send_multipart([ip.encode(), Auth.vk.encode(), domain.encode(), b'rep'])
 
     @classmethod

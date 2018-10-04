@@ -1,25 +1,47 @@
-import zmq, zmq.asyncio, asyncio, ujson, os, uuid, json
+import zmq, zmq.asyncio, asyncio, ujson, os, uuid, json, inspect
 from cilantro.protocol.overlay.interface import OverlayInterface
 from cilantro.protocol.overlay.handshake import Handshake
-from cilantro.constants.overlay_network import *
+from cilantro.constants.overlay_network import EVENT_URL, CMD_URL, CLIENT_SETUP_TIMEOUT
 from cilantro.storage.db import VKBook
 from cilantro.logger.base import get_logger
+from cilantro.protocol.overlay.event import Event
 from collections import deque
 
 def command(fn):
     def _command(self, *args, **kwargs):
         event_id = uuid.uuid4().hex
         self.cmd_sock.send_multipart(
-            ['_{}'.format(fn.__name__).encode(), event_id.encode()] + \
+            [fn.__name__.encode(), event_id.encode()] + \
             [arg.encode() for arg in args] + \
             [kwargs[k].encode() for k in kwargs])
         return event_id
     return _command
 
+def reply(fn):
+    def _reply(self, *args, **kwargs):
+        id_frame = args[0]
+        res = fn(self, *args[1:], **kwargs)
+        self.cmd_sock.send_multipart([
+            id_frame,
+            json.dumps(res).encode()
+        ])
+    return _reply
+
+def async_reply(fn):
+    def _reply(self, *args, **kwargs):
+        def _done(fut):
+            self.cmd_sock.send_multipart([
+                id_frame,
+                json.dumps(fut.result()).encode()
+            ])
+        id_frame = args[0]
+        fut = asyncio.ensure_future(fn(self, *args[1:], **kwargs))
+        fut.add_done_callback(_done)
+    return _reply
+
 class OverlayServer(object):
-    def __init__(self, sk, loop=None, block=True):
+    def __init__(self, sk, loop=None):
         self.log = get_logger(type(self).__name__)
-        self._started = False
 
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -29,10 +51,13 @@ class OverlayServer(object):
         self.evt_sock.bind(EVENT_URL)
         self.cmd_sock = self.ctx.socket(zmq.ROUTER)
         self.cmd_sock.bind(CMD_URL)
-        OverlayServer.evt_sock = self.evt_sock
+
+        Event.set_evt_sock(self.evt_sock)
 
         self.interface = OverlayInterface(sk)
         self.interface.tasks.append(self.command_listener())
+
+    def start(self):
         self.interface.start()
 
     async def command_listener(self):
@@ -43,51 +68,45 @@ class OverlayServer(object):
             data = [b.decode() for b in msg[2:]]
             getattr(self, msg[1].decode())(msg[0], *data)
 
-    def _get_node_from_vk(self, id_frame, event_id, vk: str, domain='all', timeout=5):
-        async def coro():
-            if vk in VKBook.get_all():
-                ip = await self.overlay_network.lookup_ip(vk, domain)
-                authorized = await Handshake.initiate_handshake(ip, vk, domain)
-                if ip:
-                    data = json.dumps({
-                        'event': 'got_ip',
-                        'event_id': event_id,
-                        'ip': ip,
-                        'vk': vk
-                    }).encode()
-                else:
-                    data = json.dumps({
-                        'event': 'not_found',
-                        'event_id': event_id
-                    }).encode()
+    @async_reply
+    async def get_node_from_vk(self, event_id, vk, domain='all', timeout=5):
+        if vk in VKBook.get_all():
+            ip = await self.interface.lookup_ip(vk)
+            authorized = await self.interface.authenticate(vk, domain)
+            if ip:
+                return {
+                    'event': 'got_ip' if authorized else 'unauthorized_ip',
+                    'event_id': event_id,
+                    'ip': ip,
+                    'vk': vk
+                }
+            else:
+                return {
+                    'event': 'not_found',
+                    'event_id': event_id,
+                    'vk': vk
+                }
 
-                self.log.debugv("OverlayServer replying to id {} with data {}".format(id_frame, data))
-                self.cmd_sock.send_multipart([id_frame, data])
-
-        asyncio.ensure_future(coro())
-
-    def _get_service_status(self, id_frame, event_id):
-        if self._started:
-            data = json.dumps({
+    @reply
+    def get_service_status(self, event_id):
+        if self.interface.started:
+            return {
                 'event': 'service_status',
                 'status': 'ready'
-            }).encode()
+            }
         else:
-            data = json.dumps({
+            return {
                 'event': 'service_status',
                 'status': 'not_ready'
-            }).encode()
-
-        self.cmd_sock.send_multipart([id_frame, data])
+            }
 
     def teardown(self):
         try:
-            self._started = False
             self.evt_sock.close()
             self.cmd_sock.close()
             try: self.fut.set_result('done')
             except: self.fut.cancel()
-            self.interface.cleanup()
+            self.interface.teardown()
             self.log.notice('Overlay service stopped.')
         except:
             pass
@@ -107,20 +126,21 @@ class OverlayClient(object):
         self.evt_sock.setsockopt(zmq.SUBSCRIBE, b"")
         self.evt_sock.connect(EVENT_URL)
 
-        self.event_future = asyncio.ensure_future(self.event_listener(event_handler))
-        self.reply_future = asyncio.ensure_future(self.reply_listener(event_handler))
+        self.tasks = [
+            self.event_listener(event_handler),
+            self.reply_listener(event_handler),
+            self.block_until_ready()
+        ]
 
         self._ready = False
 
+    def start(self):
         try:
-            self.loop.run_until_complete(self.block_until_ready())
+            self.loop.run_until_complete(asyncio.gather(*self.tasks))
         except:
             msg = '\nOverlayServer is not ready after {}s...\n'.format(CLIENT_SETUP_TIMEOUT)
             self.log.fatal(msg)
             raise Exception(msg)
-
-        if block:
-            self.loop.run_forever()
 
     async def block_until_ready(self):
         async def wait_until_ready():
@@ -140,7 +160,7 @@ class OverlayClient(object):
         self.log.info('Listening for overlay events over {}'.format(EVENT_URL))
         while True:
             msg = await self.evt_sock.recv_json()
-            self.log.spam("OverlayClient received event {}".format(msg))
+            self.log.debug("OverlayClient received event {}".format(msg))
             if msg.get('event') == 'service_status' and msg.get('status') == 'ready':
                 self._ready = True
             event_handler(msg)
@@ -149,16 +169,16 @@ class OverlayClient(object):
         self.log.info("Listening for overlay replies over {}".format(CMD_URL))
         while True:
             msg = await self.cmd_sock.recv_multipart()
-            self.log.spam("OverlayClient received event {}".format(msg))
+            self.log.info("OverlayClient received reply {}".format(msg))
             event = json.loads(msg[-1])
-            if event.get('event') == 'service_status' and event.get('status') == 'ready':
+            if event.get('event') == 'service_status' and \
+                event.get('status') == 'ready':
                 self._ready = True
             event_handler(event)
 
     def teardown(self):
         self.cmd_sock.close()
         self.evt_sock.close()
-
         try:
             for fut in (self.event_future, self.reply_future):
                 fut.set_result('done')
