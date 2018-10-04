@@ -2,14 +2,13 @@ from cilantro.logger import get_logger
 from cilantro.protocol.transport import Composer
 from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.protocol.multiprocessing.worker import Worker
-from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
+from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
 from cilantro.utils.lprocess import LProcess
 
 import asyncio
 import os
 import time
 from cilantro.protocol import wallet
-
 
 BOOT_DELAY = 5  # MANDATORY NAP TIME (How long each node sleeps after starting its overlay server)
 

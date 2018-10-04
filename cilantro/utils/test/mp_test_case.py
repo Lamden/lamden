@@ -18,6 +18,11 @@ CILANTRO_PATH = dirname(dirname(cilantro.__path__[0]))
 
 log = get_logger("MPTestCaseBoy")  # TODO delete dat
 
+def wrap_func(fn, *args, **kwargs):
+    def wrapper():
+        return fn(*args, **kwargs)
+    return wrapper
+
 def signal_handler(sig, frame):
     print("Killing docker containers...")
     os.system("docker kill $(docker ps -q)")

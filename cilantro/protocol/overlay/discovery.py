@@ -1,102 +1,80 @@
-"""
-    Scans ip addresses for the kaderalized dynamic discover procedure
-"""
-
-
+import zmq, zmq.asyncio, asyncio, traceback
+from os import getenv as env
+from cilantro.constants.overlay_network import *
+from cilantro.constants.ports import DISCOVERY_PORT
 from cilantro.protocol.overlay.ip import *
-from cilantro.protocol.overlay.msg import *
+from cilantro.protocol.overlay.auth import Auth
 from cilantro.logger import get_logger
-import os, resource, socket, asyncio, time
-
-SOCKET_LIMIT = 2500
-log = get_logger(__name__)
-resource.setrlimit(resource.RLIMIT_NOFILE, (SOCKET_LIMIT, SOCKET_LIMIT))
+from cilantro.storage.db import VKBook
 
 class Discovery:
-    available_ips = {}
-    subnets = {}
-    max_wait = 3
-    min_bootstrap_nodes = 3
-    max_tasks = 100000
-    crawler_port = os.getenv('CRAWLER_PORT', 31337)
+    log = get_logger('Discovery')
+    host_ip = HOST_IP
+    port = DISCOVERY_PORT
+    url = 'tcp://*:{}'.format(port)
+    ctx = zmq.asyncio.Context()
+    sock = ctx.socket(zmq.ROUTER)
+    pepper = PEPPER.encode()
+    discovered_nodes = {}
+    connections = {}
 
-    async def discover(self, mode, return_asap=True):
-        ips = {}
-        if mode in ['test', 'local']:
-            self.ip = os.getenv('HOST_IP', '127.0.0.1')
-            host = self.ip
-            hostname = 'virtual_network' if os.getenv('HOST_IP', '127.0.0.1') else 'localhost'
-            ips[hostname] = [decimal_to_ip(d) for d in range(*get_local_range(host))]
-            self.subnets[get_subnet(host)] = {'area': hostname, 'count': 0}
-        else:
-            self.public_ip = get_public_ip()
-            self.ip = self.public_ip
-            if mode == 'neighborhood':
-                for area in get_region_range(self.public_ip):
-                    ip, city = area.split(',')
-                    ips[city] = [decimal_to_ip(d) for d in range(*get_local_range(ip))]
-                    self.subnets[get_subnet(ip)] = {'area': city, 'count': 0}
-                ips['virtual_network'] = [decimal_to_ip(d) for d in range(*get_local_range(os.getenv('HOST_IP', '127.0.0.1')))]
-        log.debug('Scanning {} ...'.format(mode))
-        self.sem = asyncio.Semaphore(self.max_tasks)
-        self.return_asap = return_asap
-        all_ips = []
-        for city in ips: all_ips += ips[city]
-        try:
-            await asyncio.wait_for(self.scan_all(list(reversed(all_ips))), timeout=self.max_wait)
-        except Exception as e:
-            try:
-                self.futures.set_result('done')
-            except:
-                self.futures.cancel()
-        log.debug('{}/{} IP addresses in total a of {} subnets of {} regions are available'.format(len(self.available_ips.keys()), len(all_ips), len(self.subnets.keys()), len(ips.keys())))
-        return self.available_ips
-
-    async def fetch(self, ip):
-        try:
-            self.udp_sock.sendto(compose_msg(['discover', os.getenv('HOST_IP', '127.0.0.1')]), (ip, self.crawler_port))
-            await asyncio.sleep(self.max_wait)
-        except:
-            pass
-
-    async def bound_fetch(self, ip):
-        async with self.sem:
-            return await self.fetch(ip)
-
-    async def scan_all(self, ips):
-        # ips = [ip for ip in ips if ip not in self.available_ips.keys()]
-        tasks = [asyncio.ensure_future(self.bound_fetch(ip)) for ip in ips]
-        self.futures = asyncio.ensure_future(asyncio.gather(*tasks))
-        return await self.futures
-
-    def listen_for_crawlers(self):
-        self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_sock.setblocking(False)
-        self.udp_sock_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_sock_server.bind(('0.0.0.0', self.crawler_port))
-        self.udp_sock_server.setblocking(False)
-        self.server = asyncio.ensure_future(self.listen())
-
-    async def listen(self):
-        log.debug('Listening to the world on port {}...'.format(self.crawler_port))
+    @classmethod
+    async def listen(cls):
+        cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
+        cls.sock.bind(cls.url)
+        cls.log.info('Listening to other nodes on {}'.format(cls.url))
+        cls.discovered_nodes[Auth.vk] = cls.host_ip
         while True:
-            data = await self.loop.sock_recv(self.udp_sock_server, 1024)
-            msg_type, payload = decode_msg(data)
-            addr = (payload[0], self.crawler_port)
-            if msg_type == 'discover':
-                self.udp_sock.sendto(compose_msg(['ack', os.getenv('HOST_IP', '127.0.0.1')]), addr)
-            elif msg_type == 'ack':
-                subnet = get_subnet(addr[0])
-                if self.subnets.get(subnet):
-                    self.available_ips[addr[0]] = int(time.time())
-                    self.subnets[subnet]['count'] += 1
-                    if len(self.available_ips) >= self.min_bootstrap_nodes and self.return_asap:
-                        self.futures.cancel()
+            try:
+                msg = await cls.sock.recv_multipart()
+                ip, pepper = msg[:2]
+                assert pepper == cls.pepper, 'Node not using cilantro'
+                if len(msg) == 2:
+                    cls.reply(ip)
+                elif len(msg) == 3:
+                    vk = msg[-1]
+                    cls.discovered_nodes[vk.decode()] = ip.decode()
+            except Exception as e:
+                cls.log.error(traceback.format_exc())
 
-    def stop_discovery(self):
-        self.udp_sock.close()
-        self.udp_sock_server.close()
-        try:
-            self.server.set_result('done')
-        except:
-            self.server.cancel()
+    @classmethod
+    async def discover_nodes(cls, start_ip):
+        try_count = 0
+        while True:
+            cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
+            cls.connect(get_ip_range(start_ip))
+            try_count += 1
+            await asyncio.sleep(DISCOVERY_TIMEOUT)
+            if (len(cls.discovered_nodes) == 1 and Auth.vk in VKBook.get_masternodes()):
+                cls.log.important('Bootstrapping as the only masternode.'.format(
+                    len(cls.discovered_nodes)
+                ))
+                return True
+            elif len(cls.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
+                cls.log.info('Found {} nodes to bootstrap.'.format(
+                    len(cls.discovered_nodes)
+                ))
+                return True
+            elif try_count >= DISCOVERY_RETRIES:
+                cls.log.info('Did not find enough nodes after {} tries ({}/{}).'.format(
+                    try_count,
+                    len(cls.discovered_nodes),
+                    MIN_BOOTSTRAP_NODES
+                ))
+                return False
+
+    @classmethod
+    def request(cls, ip):
+        cls.sock.send_multipart([ip, cls.pepper])
+
+    @classmethod
+    def reply(cls, ip):
+        cls.sock.send_multipart([ip, cls.pepper, Auth.vk.encode()])
+
+    @classmethod
+    def connect(cls, ips):
+        for ip in ips:
+            url = 'tcp://{}:{}'.format(ip, cls.port)
+            cls.sock.connect(url)
+            cls.connections[ip] = url
+            cls.request(ip.encode())
