@@ -97,6 +97,25 @@ class TestSubBlockBuilder(TestCase):
         self.assertEqual(empty_sbc.sb_index, sbb_idx)
 
     @SBBTester.test
+    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
+    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
+    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
+    @mock.patch("cilantro.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
+    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
+    def test_one_sb_recv_empty_tx_bag(self, *args):
+        sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
+        self.assertEquals(len(sbb.sb_managers), 1)
+
+        # Send an empty TX batch. This should get queued up as the SBB doesnt have a MakeNextBlock msg yet
+        empty_tx_batch_env = SBBTester.create_tx_batch_env(num_txs=0, env_signing_key=MN_SK1)
+        SBBTester.send_sub_to_sbb(sbb, envelope=empty_tx_batch_env, handler_key=0)
+        self.assertEqual(len(sbb.sb_managers[0].pending_txs), 1)
+
+        # Now, send a MakeNextBlock notif. This should trigger an empty subblock to be built and sent over IPC to BM
+        make_next_block = MakeNextBlock.create()
+        SBBTester.send_ipc_to_sbb(sbb, make_next_block)
+
+    @SBBTester.test
     def test_sub_msg_with_make_next_block_notification_calls_handle_ipc_msg(self, *args):
         """
         Tests handle_ipc_msg correctly calls handle_new_block when a NewBlockNotification is received

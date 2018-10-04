@@ -5,7 +5,7 @@ from cilantro.storage.db import DB
 
 from cilantro.constants.protocol import MAX_QUEUE_DELAY_MS
 from cilantro.constants.db import DB_SETTINGS
-from cilantro.constants.system_config import MOCK_INTERPRET_TIME
+from cilantro.constants.system_config import *
 
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.ordering import OrderingContainer
@@ -16,6 +16,7 @@ from seneca.engine.storage.mysql_spits_executer import Executer
 from collections import deque
 from heapq import heappush, heappop
 from typing import List
+import random
 import time
 import asyncio
 
@@ -104,7 +105,11 @@ class SenecaInterpreter:
         self.log.spam("Executing use_contracts from user {}. Mock mode enabled: {}".format(contract.sender, self.mock))
 
         if self.mock:
-            time.sleep(MOCK_INTERPRET_TIME)
+            if MOCK_INTERPRET_RANDOM_MODE:
+                sleep_time = random.uniform(MIN_MOCK_INTERPRET_TIME, MAX_MOCK_INTERPRET_TIME)
+            else:
+                sleep_time = MOCK_INTERPRET_TIME
+            time.sleep(sleep_time)
             self.queue.append(TransactionData.create(contract_tx=contract, status='SUCCESS', state='over9000'))
             return
 

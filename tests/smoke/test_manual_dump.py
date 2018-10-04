@@ -4,7 +4,9 @@ from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test
 from cilantro.utils.test.god import God
 from cilantro.logger.base import get_logger
-
+from cilantro.utils.test.god import God
+from cilantro.logger import get_logger, overwrite_logger_level
+import logging
 
 LOG_LEVEL = 0
 
@@ -75,8 +77,8 @@ def dump_it(volume, delay=0):
 
 class TestManualDump(BaseNetworkTestCase):
 
-    VOLUME = 400  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-4-4-bootstrap.json')
+    VOLUME = 1200  # Number of transactions to dump
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-4-4-4-bootstrap.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)
@@ -96,11 +98,16 @@ class TestManualDump(BaseNetworkTestCase):
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
 
-        input("Press any key to begin the dump...")
-        log.important3("Dumpatron dumping transactions!")
-        self.execute_python('mgmt', wrap_func(dump_it, volume=self.VOLUME), async=True, profiling=self.PROFILE_TYPE)
+        while True:
+            user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
+            if user_input.lower() == 'x':
+                log.debug("Termination input detected. Breaking")
+                break
 
-        input("Press any key to initiate teardown")
+            vol = int(user_input) if user_input.isdigit() else self.VOLUME
+            log.important3("Dumpatron dumping {} transactions!".format(vol))
+            self.execute_python('mgmt', wrap_func(dump_it, volume=vol), async=True, profiling=self.PROFILE_TYPE)
+
         log.important3("Dumpatron initiating system teardown")
         God.teardown_all("http://{}".format(self.ports['masternode']['8080']))
 

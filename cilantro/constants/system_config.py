@@ -1,4 +1,5 @@
-from cilantro.constants.testnet import *
+from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES, TESTNET_WITNESSES
+import math
 
 # In reality, these should be inferred from VKBook instead of hard-coded, once we start using smart contracts for
 # some of these config constants
@@ -17,7 +18,7 @@ MASTERNODE_MAJORITY = math.ceil(NUM_MASTERS * 2 / 3)
 # ///////////////////////////////////////////////
 # Block and Sub-block
 # ///////////////////////////////////////////////
-_MAX_SUB_BLOCK_BUILDERS = 2
+_MAX_SUB_BLOCK_BUILDERS = 4
 _MAX_BLOCKS = 1
 
 TRANSACTIONS_PER_SUB_BLOCK = 100
@@ -30,12 +31,14 @@ NUM_SB_PER_BUILDER = (NUM_SUB_BLOCKS + NUM_SB_BUILDERS - 1) // NUM_SB_BUILDERS
 assert NUM_SUB_BLOCKS >= NUM_BLOCKS, "num_blocks {} cannot be more than num_sub_blocks {}".format(NUM_BLOCKS, NUM_SUB_BLOCKS)
 assert NUM_SUB_BLOCKS/NUM_SB_PER_BLOCK == NUM_BLOCKS, "NUM_SUB_BLOCKS/NUM_SB_PER_BLOCK should equal NUM_BLOCKS"
 
+
 # ///////////////////////////////////////////////
 # Transaction Batcher
 # ///////////////////////////////////////////////
-MAX_BATCH_DURATION = 1
+# BATCH_INTERVAL = 8
+MAX_BATCH_DURATION = 8 / NUM_BLOCKS      # just to get back to 8 for now, but it has to be a function of TRANSACTIONS_PER_SUB_BLOCK
 BATCH_INTERVAL = NUM_BLOCKS * MAX_BATCH_DURATION
-MAX_SKIP_TURNS = 4
+MAX_SKIP_TURNS = 5
 
 
 # ///////////////////////////////////////////////
@@ -47,4 +50,10 @@ MIN_NEW_BLOCK_MN_QOURUM = math.ceil(NUM_MASTERS * 2 / 3)  # Number of NewBlockNo
 # ///////////////////////////////////////////////
 # Seneca Interpreter
 # ///////////////////////////////////////////////
-MOCK_INTERPRET_TIME = 0.04
+# If MOCK_INTERPRET_RANDOM_MODE=False, we use MOCK_INTERPRET_TIME
+MOCK_INTERPRET_TIME = 0.05
+
+# If MOCK_INTERPRET_RANDOM_MODE=True, we use a random value between MIN_MOCK_INTERPRET_TIME and MAX_MOCK_INTERPRET_TIME
+MOCK_INTERPRET_RANDOM_MODE = True
+MIN_MOCK_INTERPRET_TIME = 0.01
+MAX_MOCK_INTERPRET_TIME = 0.1
