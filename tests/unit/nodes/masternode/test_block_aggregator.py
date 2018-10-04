@@ -3,8 +3,6 @@ from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro.storage.db import VKBook
 from cilantro.storage.db import reset_db
 
-from cilantro.constants.system_config import DELEGATE_MAJORITY
-
 import unittest
 from unittest import TestCase
 from unittest import mock
@@ -26,6 +24,7 @@ from cilantro.messages.block_data.block_metadata import *
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.protocol import wallet
+from cilantro.storage.sqldb import SQLDB
 
 
 class BlockAggTester:
@@ -158,6 +157,7 @@ class TestBlockAggregator(TestCase):
 class TestBlockAggregatorStorage(TestCase):
 
     def setUp(self):
+        SQLDB.reset_db()
         reset_db()
 
     @BlockAggTester.test
@@ -180,7 +180,7 @@ class TestBlockAggregatorStorage(TestCase):
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.result_hashes.keys(), key=lambda result_hash: ba.result_hashes[result_hash]['sb_index']),
+            merkle_roots=[RESULT_HASH1],
             prev_block_hash=old_b_hash,
             masternode_signature=signature
         )
@@ -212,7 +212,7 @@ class TestBlockAggregatorStorage(TestCase):
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.result_hashes.keys(), key=lambda result_hash: ba.result_hashes[result_hash]['sb_index']),
+            merkle_roots=[RESULT_HASH1, RESULT_HASH2],
             prev_block_hash=old_b_hash,
             masternode_signature=signature
         )
@@ -244,7 +244,7 @@ class TestBlockAggregatorStorage(TestCase):
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.result_hashes.keys(), key=lambda result_hash: ba.result_hashes[result_hash]['sb_index']),
+            merkle_roots=[RESULT_HASH1, RESULT_HASH2],
             prev_block_hash=old_b_hash,
             masternode_signature=signature
         )
@@ -267,7 +267,7 @@ class TestBlockAggregatorStorage(TestCase):
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.result_hashes.keys(), key=lambda result_hash: ba.result_hashes[result_hash]['sb_index']),
+            merkle_roots=[RESULT_HASH1],
             prev_block_hash=bh,
             masternode_signature=signature
         )
@@ -301,7 +301,7 @@ class TestBlockAggregatorStorage(TestCase):
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.result_hashes.keys(), key=lambda result_hash: ba.result_hashes[result_hash]['sb_index']),
+            merkle_roots=[RESULT_HASH1, RESULT_HASH2],
             prev_block_hash=bh,
             masternode_signature=signature
         )
