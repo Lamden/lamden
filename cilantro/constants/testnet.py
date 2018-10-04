@@ -1,6 +1,10 @@
 import json, math
-from cilantro.utils.test.testnet_nodes import TESTNET_JSON_PATH
+from cilantro.utils.test.testnet_nodes import get_testnet_json_path
+TESTNET_JSON_PATH = get_testnet_json_path()
 
+# DEBUG -- TODO DELETE
+# print("\n\n\n\n\n TESTNET JSON PATH: {} \n\n\n\n\n".format(TESTNET_JSON_PATH))
+# END DEBUG
 
 with open(TESTNET_JSON_PATH, 'r') as f:
     _dat_good_json = json.load(f)
@@ -11,8 +15,6 @@ _DELEGATES = _dat_good_json['delegates']
 assert len(_WITNESSES) % len(_MASTERNODES) == 0, "# of witnesses must be divisible by # of masternodes, but got {} ma" \
                                                  "sternodes and {} witnesses".format(len(_MASTERNODES), len(_WITNESSES))
 
-MAJORITY = math.ceil(len(_DELEGATES) * 2/3)
-
 TESTNET_MASTERNODES = [{'sk': node['sk'], 'vk': node['vk']} for node in _MASTERNODES]
 TESTNET_WITNESSES = [{'sk': node['sk'], 'vk': node['vk']} for node in _WITNESSES]
 TESTNET_DELEGATES = [{'sk': node['sk'], 'vk': node['vk']} for node in _DELEGATES]
@@ -21,6 +23,7 @@ r = len(_WITNESSES) // len(_MASTERNODES)  # replication factor
 MN_WITNESS_MAP = {}  # Map of masternodes --> responsible witness set
 WITNESS_MN_MAP = {}  # inverse of map above
 
+# Build MN_WITNESS_MAP/WITNESS_MN_MAP
 for i, mn in enumerate(_MASTERNODES):
     mn_vk = mn['vk']
     witnesses = [node['vk'] for node in _WITNESSES[i*r:i*r+r]]

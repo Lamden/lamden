@@ -90,6 +90,7 @@ coloredlogs.DEFAULT_FIELD_STYLES = {
     'programname': {'color': 'cyan'}
 }
 
+
 class LoggerWriter:
     def __init__(self, level):
         self.level = level
@@ -99,6 +100,7 @@ class LoggerWriter:
     def flush(self):
         return
 
+
 class ColoredFileHandler(logging.FileHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -106,12 +108,14 @@ class ColoredFileHandler(logging.FileHandler):
             coloredlogs.ColoredFormatter(format)
         )
 
+
 class ColoredStreamHandler(logging.StreamHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setFormatter(
             coloredlogs.ColoredFormatter(format)
         )
+
 
 def get_logger(name=''):
 
@@ -141,6 +145,7 @@ def get_logger(name=''):
         apply_custom_level(log, log_name, log_level)
 
     return log
+
 
 def overwrite_logger_level(level):
     global _LOG_LVL

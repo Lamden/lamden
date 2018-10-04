@@ -2,15 +2,20 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.utils import lazy_property, set_lazy_property, is_valid_hex
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 from cilantro.protocol.structures import MerkleTree
-from cilantro.messages.transaction.data import TransactionData
+from cilantro.protocol import wallet
+from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
 from cilantro.storage.db import VKBook
 from cilantro.utils.hasher import Hasher
+from cilantro.constants.testnet import TESTNET_DELEGATES
 
-import pickle
+from cilantro.constants.testnet import TESTNET_DELEGATES
+DEL_SK = TESTNET_DELEGATES[0]['sk']
+DEL_VK = TESTNET_DELEGATES[0]['vk']
 from typing import List
 
 import capnp
 import subblock_capnp
+
 
 class SubBlockContender(MessageBase):
     # TODO switch underlying data struct for this guy to Capnp (or at least JSON)
@@ -24,12 +29,10 @@ class SubBlockContender(MessageBase):
     def validate(self):
 
         assert self.signature.sender in VKBook.get_delegates(), 'Not a valid delegate'
-        assert self.signature.verify(self.result_hash.encode()), 'Cannot verify signature'
+        assert self.signature.verify(bytes.fromhex(self.result_hash)), 'Cannot verify signature'
         assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
         assert self._data.inputHash, "input hash field missing from data {}".format(self._data)
-        assert self._data.merkleLeaves, "leaves field missing from data {}".format(self._data)
         assert self._data.signature, "Signature field missing from data {}".format(self._data)
-        assert self._data.transactions, "Raw transactions field missing from data {}".format(self._data)
         assert hasattr(self._data, 'subBlockIdx'), "Sub-block index field missing from data {}".format(self._data)
 
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
@@ -40,9 +43,6 @@ class SubBlockContender(MessageBase):
         # Ensure merkle leaves are valid hex - this may not be present in all cases
         for leaf in self.merkle_leaves:
             assert is_valid_hex(leaf, length=64), "Invalid Merkle leaf {} ... expected 64 char hex string".format(leaf)
-
-
-
 
     @classmethod
     def create(cls, result_hash: str, input_hash: str, merkle_leaves: List[bytes],
@@ -68,6 +68,11 @@ class SubBlockContender(MessageBase):
         struct.subBlockIdx = sub_block_index
 
         return cls.from_data(struct)
+
+    @classmethod
+    def create_empty_sublock(cls, input_hash: str, signature: MerkleSignature, sub_block_index: int):
+        return cls.create(result_hash=input_hash, input_hash=input_hash, signature=signature,
+                          sub_block_index=sub_block_index, merkle_leaves=[], transactions=[])
 
     @classmethod
     def _chunks(cls, l, n=64):
@@ -99,12 +104,16 @@ class SubBlockContender(MessageBase):
         return MerkleSignature.from_bytes(self._data.signature)
 
     @property
+    def is_empty(self) -> bool:
+        return len(self.merkle_leaves) == 0
+
+    @property
     def merkle_leaves(self) -> List[str]:
         """
         The Merkle Tree leaves associated with the block (a binary tree stored implicitly as a list).
         Each element is hex string representing a node's hash.
         """
-        return [leaf.decode() for leaf in self._data.merkleLeaves]
+        return [leaf.hex() for leaf in self._data.merkleLeaves]
 
     @property
     def transactions(self) -> List[TransactionData]:
@@ -114,3 +123,16 @@ class SubBlockContender(MessageBase):
         assert isinstance(other, SubBlockContender), "Attempted to compare a BlockContender with a non-BlockContender"
         return self.input_hash == other.input_hash and \
             self.result_hash == other.result_hash
+
+
+class SubBlockContenderBuilder:
+    @classmethod
+    def create(cls, transactions: List[TransactionData]=None, tx_count=5, input_hash='A'*64, sb_index=0, del_sk=DEL_SK):
+        if not transactions:
+            transactions = [TransactionDataBuilder.create_random_tx() for _ in range(tx_count)]
+        raw_txs = [tx.serialize() for tx in transactions]
+        tree = MerkleTree.from_raw_transactions(raw_txs)
+        signature = build_test_merkle_sig(msg=tree.root, sk=del_sk, vk=wallet.get_vk(del_sk))
+        sbc = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
+                                       signature=signature, transactions=transactions, sub_block_index=sb_index)
+        return sbc

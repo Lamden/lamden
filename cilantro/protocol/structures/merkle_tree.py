@@ -10,6 +10,7 @@ class MerkleTree:
     """
     Data structure for computing a merkle tree
     """
+    HASH_ALG = Hasher.Alg.SHA3_256
 
     def __init__(self, leaves: List[bytes], hash_leaves=True):
         """
@@ -199,7 +200,7 @@ class MerkleTree:
         if type(o) is str:
             o = bytes.fromhex(o)
 
-        return Hasher.hash(o, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)
+        return Hasher.hash(o, algorithm=MerkleTree.HASH_ALG, return_bytes=True)
 
     @staticmethod
     def hash_nodes(nodes: list):

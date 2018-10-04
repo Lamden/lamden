@@ -16,8 +16,9 @@ class MessageBaseMeta(type):
         # Define an "undirected" mapping between classes and their enum vals
         m = hashlib.md5()
         m.update(clsobj.__name__.encode())
-        l = int(m.digest().hex(),16) % pow(2, 16)
-        assert clsobj.registry.get(l) is None, 'Registry enum collision of message class {}!'.format(clsobj.__name__)
+        l = int(m.digest().hex(), 16) % pow(2, 16)
+        assert clsobj.registry.get(l) is None, 'Registry enum collision of message class {}! Collided with {}'.format(
+            clsobj.__name__, clsobj.registry.get(l))
 
         clsobj.registry[clsobj] = l
         clsobj.registry[l] = clsobj

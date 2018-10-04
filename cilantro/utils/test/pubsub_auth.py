@@ -1,17 +1,8 @@
-from cilantro.logger.base import get_logger
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.base.base import MessageBase
-from cilantro.protocol import wallet
-
-from cilantro.protocol.reactor.socket_manager import SocketManager
-from cilantro.protocol.reactor.lsocket import LSocket
-from cilantro.protocol.overlay.ironhouse import Ironhouse
 from cilantro.protocol.multiprocessing.worker import Worker
 
 import os
 import asyncio
 import zmq.asyncio
-import time
 
 
 PORT = 9432

@@ -1,4 +1,4 @@
-import mysql, mysql.connector, cilantro, os
+import mysql.connector, cilantro, os
 from configparser import SafeConfigParser
 
 path = os.path.dirname(cilantro.__path__[0])
@@ -7,23 +7,22 @@ config.read('{}/db_conf.ini'.format(path))
 encoding = 'binary'
 
 class SQLDB():
-    connection = mysql.connector.connect(
-        host=config.get('DB','hostname'),
-        user=config.get('DB','username'),
-        passwd=config.get('DB','password'),
-        charset=encoding
-    )
-    cursor = connection.cursor()
+    connection = None
+    cursor = None
     database = config.get('DB','database')
     def __enter__(self, database=None, reset=False):
         database = database or self.database
+        if self.connection == None:
+            self.force_start()
         if reset:
             self.drop_db(database)
             self.setup_db(database)
+        elif not self.connection.is_connected():
+            self.force_start()
         return self.connection, self.cursor
     def __exit__(self, type, value, traceback):
-        self.connection.commit()
         return False
+
     @classmethod
     def force_start(cls):
         cls.connection = mysql.connector.connect(
@@ -34,8 +33,11 @@ class SQLDB():
         )
         cls.cursor = cls.connection.cursor()
         cls.setup_db()
+
     @classmethod
     def setup_db(cls, database=None):
+        if cls.connection == None:
+            cls.force_start()
         database = database or cls.database
         cls.cursor.execute("""
             CREATE DATABASE IF NOT EXISTS {}
@@ -44,26 +46,31 @@ class SQLDB():
             USE {}
             """.format(database))
         cls.build_tables()
+
     @classmethod
     def drop_db(cls, database=None):
-        cls.cursor.execute("""
-            DROP DATABASE IF EXISTS {}
-            """.format(database or cls.database))
+        if cls.cursor:
+            cls.cursor.execute("""
+                DROP DATABASE IF EXISTS {}
+                """.format(database or cls.database))
+
     @classmethod
     def reset_db(cls, database=None):
         cls.drop_db(database)
         cls.setup_db(database)
+
     @classmethod
     def truncate_tables(cls, *tables):
         for table in tables:
             cls.cursor.execute("""
                 TRUNCATE TABLE {}
             """.format(table))
+
     @classmethod
     def build_tables(cls):
         cls.cursor.execute("""
             CREATE TABLE IF NOT EXISTS subblock (
-                merkle_root VARCHAR(32) PRIMARY KEY,
+                merkle_root VARCHAR(64) PRIMARY KEY,
                 signatures BLOB NOT NULL,
                 merkle_leaves BLOB NOT NULL,
                 sb_index INT NOT NULL
@@ -84,20 +91,8 @@ class SQLDB():
                 tx_hash VARCHAR(64) PRIMARY KEY,
                 block_hash VARCHAR(64) NOT NULL,
                 raw_tx_hash VARCHAR(64) NOT NULL,
-                tx_blob BLOB NOT NULL,
+                contract_tx BLOB NOT NULL,
                 status VARCHAR(16) NOT NULL,
                 state BLOB NOT NULL
             )
         """)
-
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--drop', action='store_true', default=False)
-    parser.add_argument('-b', '--build-tables', action='store_true', default=False)
-    args = parser.parse_args()
-    if args.drop:
-        SQLDB.drop_db()
-    SQLDB.setup_db()
-else:
-    SQLDB.setup_db()

@@ -1,18 +1,6 @@
-from cilantro.messages.base.base import MessageBase
+from cilantro.messages.base.base_signal import SignalBase
 
 
-class MakeNextBlock(MessageBase):
+class MakeNextBlock(SignalBase):
+    pass
 
-    def validate(self):
-        pass
-
-    @classmethod
-    def _deserialize_data(cls, data: bytes):
-        return b''
-
-    @classmethod
-    def create(cls):
-        return cls.from_data(b'')
-
-    def serialize(self):
-        return b''

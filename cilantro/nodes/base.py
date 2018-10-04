@@ -10,7 +10,6 @@ import os
 import time
 from cilantro.protocol import wallet
 
-
 BOOT_DELAY = 5  # MANDATORY NAP TIME (How long each node sleeps after starting its overlay server)
 
 def take_a_nice_relaxing_nap(log):

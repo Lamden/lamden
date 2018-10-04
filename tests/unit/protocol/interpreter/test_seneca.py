@@ -25,7 +25,7 @@ class TestSenecaInterpreter(TestCase):
         reset_db()
 
     def tearDown(self):
-        if hasattr(self, 'interpreter'):
+        if hasattr(self, 'interpreter') and not self.interpreter.mock:
             self.interpreter.ex.cur.close()
             self.interpreter.ex.conn.close()
 
@@ -63,7 +63,7 @@ class TestSenecaInterpreter(TestCase):
 
         # Assert the contract was added to the queue
         self.assertEqual(self.interpreter.queue_size, 1)
-        self.assertEqual(self.interpreter.queue[0].contract, contract_tx.transaction)
+        self.assertEqual(self.interpreter.queue[0].contract_tx, contract_tx.transaction)
 
     def test_run_bad_contract_reverts_to_last_successful_contract(self):
         """
@@ -156,25 +156,6 @@ class TestSenecaInterpreter(TestCase):
         self.interpreter.flush(update_state=False)
         self.assertEqual(dummy_contract.get_balance(sender), sender_initial_balance + 1000)
 
-    def test_queue_binary(self):
-        """
-        Tests that queue_binary returns a list of serialized ContractTransactions
-        """
-        sender = ALICE_VK
-        receiver = BOB_VK
-
-        self.interpreter = SenecaInterpreter()
-        dummy_contract = get_contract_exports(self.interpreter.ex, self.interpreter.contracts_table, contract_id='dummy')
-
-        contracts = []
-        for i in range(5):
-            contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False))
-            self.interpreter.interpret(contract_tx)
-            contracts.append(contract_tx.transaction)
-
-        for actual, expected in zip([c.serialize() for c in contracts], self.interpreter.queue_binary):
-            self.assertEqual(actual, expected)
-
     def test_check_contract_correct_order(self):
         sender = ALICE_VK
         receiver = BOB_VK
@@ -252,7 +233,6 @@ class TestSenecaInterpreter(TestCase):
         t = Timer(2.8, assertCondition)
         t.start()
 
-
     def test_rerun_fail(self):
         orig = SenecaInterpreter._run_contract
         def mocked_rerun(*args, **kwargs):
@@ -286,6 +266,19 @@ class TestSenecaInterpreter(TestCase):
         sender_initial_balance = dummy_contract.get_balance(sender)
         contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=True))
         self.interpreter.interpret(contract_tx)
+
+    @mock.patch("cilantro.protocol.interpreter.run_contract")
+    def test_mock_interpreter(self, mock_run_contract_func):
+        sender = ALICE_VK
+        receiver = BOB_VK
+        contract_tx = self.ordered_tx(ContractTransactionBuilder.create_dummy_tx(sender_sk=ALICE_SK, receiver_vk=receiver, fail=False))
+
+        self.interpreter = SenecaInterpreter(mock=True)
+        self.interpreter.interpret(contract_tx)
+
+        mock_run_contract_func.assert_not_called()
+        self.assertEqual(self.interpreter.queue_size, 1)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,16 +1,20 @@
+# ------------------------------------------------------------------------
+# Mock out get_testnet_json_path to return the desired Testnet config json
+JSON_FILE_NAME = '2-2-4.json'
+
+import cilantro
+from unittest.mock import patch
+patched_json_dir = cilantro.__path__[0] + '/../testnet_configs/' + JSON_FILE_NAME
+with patch('cilantro.utils.test.testnet_nodes.get_testnet_json_path') as mock_path:
+    mock_path.return_value = patched_json_dir
+    from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
+# Done mocking
+# ------------------------------------------------------------------------
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
 from cilantro.storage.db import VKBook
-from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 import unittest, time
 
-
-"""
-!!! NOTE  !!!
-these tests require a 2 MN / 2 WITNESS / 4 DELEGATE config in testnet.json
-
-In the future, we need to develop a way to swap out testnet.json depending on what integration test we are running
-"""
 
 def config_sub(test_obj):
     from unittest.mock import MagicMock
@@ -34,6 +38,7 @@ class TestLargeNetwork(MPTestCase):
         BLOCK = False
 
         mn_0 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='[node_1]MN_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+        time.sleep(4)  # Pause after first MN boots (so we are extra sure he will be available for discovery)
         mn_1 = MPPubSubAuth(sk=TESTNET_MASTERNODES[1]['sk'], name='[node_2]MN_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
 
         wit_0 = MPPubSubAuth(sk=TESTNET_WITNESSES[0]['sk'], name='[node_3]WITNESS_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)

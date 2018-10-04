@@ -25,7 +25,7 @@ def vk_lookup(func):
             cmd_id = self.manager.overlay_client.get_node_from_vk(kwargs['vk'], domain=self.domain)
             assert cmd_id not in self.pending_lookups, "Collision! Uuid {} already in pending lookups {}".format(cmd_id, self.pending_lookups)
 
-            self.log.important2("Looking up vk {}".format(kwargs['vk']))  # TODO remove
+            self.log.socket("Looking up vk {}".format(kwargs['vk']))  # TODO remove
             self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.pending_lookups[cmd_id] = (func.__name__, args, kwargs)
             self.manager.pending_lookups[cmd_id] = self
@@ -39,6 +39,8 @@ def vk_lookup(func):
 
 
 class LSocket:
+
+    DEFERED_FUNCS = ('send_multipart', 'send')
 
     def __init__(self, socket: zmq.asyncio.Socket, manager, name='LSocket', secure=False, domain='*'):
         self.log = get_logger(name)
@@ -138,9 +140,9 @@ class LSocket:
 
         if header:
             assert type(header) is bytes, "Header arg must be bytes, not {}".format(type(header))
-            self.socket.send_multipart([header, data])
+            self.send_multipart([header, data])
         else:
-            self.socket.send_multipart([data])
+            self.send_multipart([data])
 
     @vk_lookup
     def connect(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
@@ -223,18 +225,18 @@ class LSocket:
                                             verifying_key=self.manager.verifying_key, uuid=reply_uuid)
 
     def __getattr__(self, item):
-        self.log.spam("called __getattr__ with item {}".format(item))  # TODO remove this
+        # self.log.spam("called __getattr__ with item {}".format(item))  # TODO remove this
         assert hasattr(self.socket, item), "Underlying socket object {} has no attribute named {}".format(self.socket, item)
         underlying = getattr(self.socket, item)
 
         # If we are accessing an attribute that does not exist in LSocket, we assume its a attribute on self.socket
         # Otherwise, we assume its a method on self.socket
         if not callable(underlying):
-            self.log.important2("{} is not callable, returning it as presumably an attribute".format(underlying))  # TODO remmove
+            # self.log.important2("{} is not callable, returning it as presumably an attribute".format(underlying))  # TODO remmove
             return underlying
 
         # If this socket is not ready (ie it has not bound/connected yet), defer execution of this method
-        if not self.ready:
+        if not self.ready and item in self.DEFERED_FUNCS:
             self.log.debugv("Socket is not ready yet. Defering method named {}".format(item))
             return self._defer_func(item)
         else:

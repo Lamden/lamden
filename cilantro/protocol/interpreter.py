@@ -5,6 +5,7 @@ from cilantro.storage.db import DB
 
 from cilantro.constants.protocol import MAX_QUEUE_DELAY_MS
 from cilantro.constants.db import DB_SETTINGS
+from cilantro.constants.system_config import *
 
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.ordering import OrderingContainer
@@ -15,47 +16,48 @@ from seneca.engine.storage.mysql_spits_executer import Executer
 from collections import deque
 from heapq import heappush, heappop
 from typing import List
+import random
 import time
 import asyncio
 
 
-class ContractResult:
-    def __init__(self, contract: ContractTransaction, status: str, state: str):
-        self.contract, self.status, self.state = contract, status, state
-
-
 class SenecaInterpreter:
 
-    def __init__(self):
+    def __init__(self, mock=False):
         self.log = get_logger(self.__class__.__name__)
         self.queue = deque()
         self.heap = []
+        self.mock = mock
 
         self.max_delay_ms = MAX_QUEUE_DELAY_MS
-        self.ex = Executer(**DB_SETTINGS)
 
         # Grab a reference to contracts table from DB singleton
-        with DB() as db:
-            self.contracts_table = db.tables.contracts
+        if not mock:
+            self.ex = Executer(**DB_SETTINGS)
+            with DB() as db:
+                self.contracts_table = db.tables.contracts
 
-        self.loop = asyncio.get_event_loop()
-        self.check_contract_future = None
-        self.start()
+            self.loop = asyncio.get_event_loop()
+            self.check_contract_future = None
+            self.start()
 
-        # Ensure contracts table was seeded properly
-        assert self.contracts_table.select().run(self.ex), "Expected contracts table to be seeded with at least one row"
+            # Ensure contracts table was seeded properly
+            assert self.contracts_table.select().run(self.ex), "Expected contracts table to be seeded with at least one row"
+        else:
+            self.log.notice("Mock Interpreter enabled, with a fixed contract run time of {}".format(MOCK_INTERPRET_TIME))
 
     def flush(self, update_state=True):
         """
         Flushes internal queue of transactions. If update_state is True, this will also commit the changes
         to the database. Otherwise, this method will discard any changes
         """
-        if update_state:
-            self.log.info("Flushing queue and committing queue of {} items".format(len(self.queue)))
-            self.ex.commit()
-        else:
-            self.log.info("Flushing queue and rolling back {} transactions".format(len(self.queue)))
-            self.ex.rollback()
+        if not self.mock:
+            if update_state:
+                self.log.info("Flushing queue and committing queue of {} items".format(len(self.queue)))
+                self.ex.commit()
+            else:
+                self.log.info("Flushing queue and rolling back {} transactions".format(len(self.queue)))
+                self.ex.rollback()
 
         self.queue.clear()
 
@@ -90,33 +92,38 @@ class SenecaInterpreter:
     def _rerun_contracts(self):
         self.ex.rollback()
         for data in self.queue:
-            c = data.contract
+            c = data.contract_tx
             r = self._run_contract(c, rerun=True)
             if not r:
                 raise Exception("Previously successful contract {} failed during recovery with code: {}".format(c.sender, c.code))
         if len(self.queue) > 0:
-            self.log.debug("Recovered to code with sender {}".format(self.queue[-1].contract.sender))
+            self.log.debug("Recovered to code with sender {}".format(self.queue[-1].contract_tx.sender))
         else:
             self.log.debug("Restoring to beginning of block")
 
     def _run_contract(self, contract: ContractTransaction, rerun: bool = False):
-        self.log.debug("Executing use_contracts from user {}".format(contract.sender))
+        self.log.spam("Executing use_contracts from user {}. Mock mode enabled: {}".format(contract.sender, self.mock))
+
+        if self.mock:
+            if MOCK_INTERPRET_RANDOM_MODE:
+                sleep_time = random.uniform(MIN_MOCK_INTERPRET_TIME, MAX_MOCK_INTERPRET_TIME)
+            else:
+                sleep_time = MOCK_INTERPRET_TIME
+            time.sleep(sleep_time)
+            self.queue.append(TransactionData.create(contract_tx=contract, status='SUCCESS', state='over9000'))
+            return
+
         res = run_contract(self.ex, self.contracts_table, contract_id=None, user_id=contract.sender, code_str=contract.code)
         if not res:
             self.log.error("Error executing use_contracts from user {} with code:\n{}\nres:{}".format(contract.sender, contract.code, res))
             self._rerun_contracts()
         else:
-            self.log.debug("Successfully executing use_contracts from sender {}".format(contract.sender))
+            self.log.spam("Successfully executing use_contracts from sender {}".format(contract.sender))
             # TODO get 'status' and 'state' from res
             if rerun:
                 return res
             else:
-                self.queue.append(ContractResult(contract=contract, status='SUCCESS', state='over9000!!!'))
-
-    @property
-    def queue_binary(self) -> List[bytes]:
-        self.log.warning("WARNING -- queue_binary should be deprecated. Use get_tx_queue()")
-        return [data.contract.serialize() for data in self.queue]
+                self.queue.append(TransactionData.create(contract_tx=contract, status='SUCCESS', state='over9000'))
 
     def get_tx_queue(self) -> List[TransactionData]:
         return list(self.queue)

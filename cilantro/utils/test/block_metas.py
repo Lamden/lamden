@@ -4,6 +4,7 @@ from cilantro.protocol import wallet
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.constants.testnet import TESTNET_MASTERNODES
 
+
 def build_valid_block_data(num_transactions=4) -> dict:
     """
     Utility method to build a dictionary with all the params needed to invoke store_block
