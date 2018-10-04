@@ -1,3 +1,6 @@
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('4-4-4.json')
+
 from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random, vmnet, cilantro
 from os.path import join, dirname

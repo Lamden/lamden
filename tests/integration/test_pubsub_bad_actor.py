@@ -1,8 +1,11 @@
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('2-2-4.json')
+from cilantro.constants.testnet import *
+
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test
 from cilantro.utils.test.mp_testables import MPPubSubAuth
 import unittest, time
 
-from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 
 PUB1_SK, PUB1_VK = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
 PUB2_SK, PUB2_VK = TESTNET_MASTERNODES[1]['sk'], TESTNET_MASTERNODES[1]['vk']

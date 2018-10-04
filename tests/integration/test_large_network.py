@@ -1,15 +1,7 @@
-# ------------------------------------------------------------------------
-# Mock out get_testnet_json_path to return the desired Testnet config json
-JSON_FILE_NAME = '2-2-4.json'
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('2-2-4.json')
+from cilantro.constants.testnet import *
 
-import cilantro
-from unittest.mock import patch
-patched_json_dir = cilantro.__path__[0] + '/../testnet_configs/' + JSON_FILE_NAME
-with patch('cilantro.utils.test.testnet_nodes.get_testnet_json_path') as mock_path:
-    mock_path.return_value = patched_json_dir
-    from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
-# Done mocking
-# ------------------------------------------------------------------------
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
 from cilantro.storage.db import VKBook
@@ -35,7 +27,7 @@ class TestLargeNetwork(MPTestCase):
             c_args = test_obj.handle_sub.call_args_list
             assert len(c_args) == 7, "Expected 7 messages (one from each node). Instead, got:\n{}".format(c_args)
 
-        BLOCK = False
+        BLOCK = True
 
         mn_0 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='[node_1]MN_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
         time.sleep(4)  # Pause after first MN boots (so we are extra sure he will be available for discovery)
