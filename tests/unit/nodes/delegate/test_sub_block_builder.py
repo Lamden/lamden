@@ -20,7 +20,6 @@ from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder, SubBlockM
 
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.batch import TransactionBatch, build_test_transaction_batch
-from cilantro.messages.consensus.empty_sub_block_contender import EmptySubBlockContender
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender, SubBlockContenderBuilder
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
 from cilantro.messages.signals.make_next_block import MakeNextBlock
@@ -95,6 +94,7 @@ class TestSubBlockBuilder(TestCase):
         empty_sbc = sbb._create_empty_sbc(input_hash, sbb_idx)
         self.assertEqual(empty_sbc.input_hash, input_hash)
         self.assertEqual(empty_sbc.sb_index, sbb_idx)
+        self.assertTrue(empty_sbc.is_empty)
 
     @SBBTester.test
     @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
@@ -137,10 +137,9 @@ class TestSubBlockBuilder(TestCase):
         sbb._make_next_sub_block()
         sbb._send_msg_over_ipc.assert_called()
 
-        # see what it was called with
         msg = sbb._send_msg_over_ipc.call_args[0][0]
-        assert isinstance(msg, EmptySubBlockContender), "Must pass in an EmptySubBlockContender instance"
-        # print("sbb._create_empty_sbc called with: {}".format(call_args))
+        self.assertTrue(isinstance(msg, SubBlockContender))
+        self.assertTrue(msg.is_empty)
 
     @SBBTester.test
     def test_handle_new_block_signal_calls_make_next_sub_block(self, *args):

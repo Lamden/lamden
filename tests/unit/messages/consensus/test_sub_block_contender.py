@@ -1,5 +1,4 @@
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender, SubBlockContenderBuilder
-from cilantro.messages.consensus.empty_sub_block_contender import EmptySubBlockContender
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 from cilantro.messages.transaction.data import TransactionDataBuilder
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
@@ -8,6 +7,7 @@ from unittest import TestCase
 import unittest
 import secrets
 from unittest.mock import patch
+
 
 TEST_SK = TESTNET_MASTERNODES[0]['sk']
 TEST_VK = TESTNET_MASTERNODES[0]['vk']
@@ -33,6 +33,8 @@ class TestSubBlockContender(TestCase):
                                        signature=signature, transactions=txs, sub_block_index=0)
         sbc2 = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
                                         signature=signature, transactions=txs, sub_block_index=0)
+        self.assertFalse(sbc1.is_empty)
+        self.assertFalse(sbc2.is_empty)
         self.assertEqual(sbc1, sbc2)
 
     def test_serialize_deserialize(self):
@@ -49,20 +51,13 @@ class TestSubBlockContender(TestCase):
 
         self.assertEqual(clone, sbc)
 
-
-class TestEmptySubBlockContender(TestCase):
-
-    def test_create(self):
+    def test_empty_sub_block_contender(self):
         input_hash = 'B' * 64  # in reality this would be the env hash. we can just make something up
         signature = build_test_merkle_sig(msg=bytes.fromhex(input_hash), sk=DEL_SK, vk=DEL_VK)
 
-        sbc = EmptySubBlockContender.create(input_hash=input_hash, sb_index=0, signature=signature)
-        sbc_binary = sbc.serialize()
-        clone = EmptySubBlockContender.from_bytes(sbc_binary)
+        sbc = SubBlockContender.create_empty_sublock(input_hash=input_hash, signature=signature, sub_block_index=0)
 
-        self.assertEqual(sbc, clone)
-
-
+        self.assertTrue(sbc.is_empty)
 
 
 if __name__ == '__main__':

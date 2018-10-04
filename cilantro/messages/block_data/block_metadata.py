@@ -19,7 +19,9 @@ class BlockMetaData(MessageBase):
     def validate(self):
         assert validate_hex(self._data.blockHash, 64), 'Invalid hash'
         assert validate_hex(self._data.prevBlockHash, 64), 'Invalid previous block hash'
-        assert len(self._data.merkleRoots) == NUM_SB_PER_BLOCK, 'num of roots in block meta does not match NUM_SUB_BLOCKS'
+        assert len(self._data.merkleRoots) == NUM_SB_PER_BLOCK, 'num of roots in block meta {} does not match ' \
+                                                                'NUM_SUB_BLOCKS {}'.format(len(self._data.merkleRoots),
+                                                                                           NUM_SB_PER_BLOCK)
         assert type(self._data.timestamp) == int, 'Invalid timestamp'
         assert self.masternode_signature.sender in VKBook.get_masternodes(), 'Not a valid masternode'
         assert self.masternode_signature.verify(self.block_hash.encode()), 'Cannot verify signature'

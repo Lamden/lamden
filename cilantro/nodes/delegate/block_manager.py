@@ -32,7 +32,6 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro.messages.consensus.empty_sub_block_contender import EmptySubBlockContender
 from cilantro.messages.signals.make_next_block import MakeNextBlock
 from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
 
@@ -198,7 +197,7 @@ class BlockManager(Worker):
         msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
         self.log.debugv("BlockManager received an IPC message from sbb_index {} with message {}".format(sbb_index, msg))
 
-        if isinstance(msg, SubBlockContender) or isinstance(msg, EmptySubBlockContender):
+        if isinstance(msg, SubBlockContender):
             self._handle_sbc(msg)
         # elif isinstance(msg, SomeOtherType):
         #     self._handle_some_other_type_of_msg(msg)
@@ -260,7 +259,7 @@ class BlockManager(Worker):
                 # ignore right now - just log
                 self.log.important("Ignore block data with prev block hash {}".format(prev_block_hash))
 
-    def _handle_sbc(self, sbc: SubBlockContender or EmptySubBlockContender):
+    def _handle_sbc(self, sbc: SubBlockContender):
         self.db_state.sub_block_hash_map[sbc.result_hash] = sbc.sb_index
         self.log.important("Got SBC with sb-index {}. Sending to Masternodes.".format(sbc.sb_index))
         self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())

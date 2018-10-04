@@ -31,7 +31,6 @@ from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.transaction.batch import TransactionBatch
 from cilantro.messages.signals.make_next_block import MakeNextBlock
-from cilantro.messages.consensus.empty_sub_block_contender import EmptySubBlockContender
 
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.protocol import wallet
@@ -210,8 +209,7 @@ class SubBlockBuilder(Worker):
         merkle_sig = MerkleSignature.create(sig_hex=signature,
                                             timestamp=str(int(time.time())),
                                             sender=self.verifying_key)
-        sbc = EmptySubBlockContender.create(input_hash=input_hash,
-                                            sb_index=sbb_idx, signature=merkle_sig)
+        sbc = SubBlockContender.create_empty_sublock(input_hash=input_hash, sub_block_index=sbb_idx, signature=merkle_sig)
         return sbc
 
     def _create_sbc_from_batch(self, input_hash: str, sbb_idx: int,
