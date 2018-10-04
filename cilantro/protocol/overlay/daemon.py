@@ -40,7 +40,7 @@ def async_reply(fn):
     return _reply
 
 class OverlayServer(object):
-    def __init__(self, sk, loop=None):
+    def __init__(self, sk, loop=None, start=False):
         self.log = get_logger(type(self).__name__)
 
         self.loop = loop or asyncio.new_event_loop()
@@ -56,6 +56,9 @@ class OverlayServer(object):
 
         self.interface = OverlayInterface(sk)
         self.interface.tasks.append(self.command_listener())
+
+        if start:
+            self.start()
 
     def start(self):
         self.interface.start()
@@ -113,7 +116,7 @@ class OverlayServer(object):
 
 
 class OverlayClient(object):
-    def __init__(self, event_handler, loop=None, ctx=None, block=False):
+    def __init__(self, event_handler, loop=None, ctx=None, start=False):
         self.log = get_logger(type(self).__name__)
 
         self.loop = loop or asyncio.get_event_loop()
@@ -133,6 +136,9 @@ class OverlayClient(object):
         ]
 
         self._ready = False
+
+        if start:
+            self.start()
 
     def start(self):
         try:

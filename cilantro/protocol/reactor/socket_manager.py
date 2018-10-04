@@ -37,7 +37,7 @@ class SocketManager:
         self.pending_lookups = {}   # A dict of 'event_id' to socket instance
 
         # Instantiating an OverlayClient blocks until the OverlayServer is ready
-        self.overlay_client = OverlayClient(self._handle_overlay_event, loop=self.loop, ctx=self.context)
+        self.overlay_client = OverlayClient(self._handle_overlay_event, loop=self.loop, ctx=self.context, start=True)
 
     def create_socket(self, socket_type, secure=False, domain='*', *args, name='LSocket', **kwargs) -> LSocket:
         assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)

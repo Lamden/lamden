@@ -27,7 +27,7 @@ class MPPubSubAuth(MPTesterBase):
         asyncio.set_event_loop(loop)
 
         # Start Overlay Process
-        overlay_proc = LProcess(target=OverlayServer, args=(sk,))
+        overlay_proc = LProcess(target=OverlayServer, args=(sk,), kwargs={'start':True})
         overlay_proc.start()
 
         obj = PubSubAuthTester(sk, name=name, loop=loop)
@@ -43,7 +43,7 @@ class MPRouterAuth(MPTesterBase):
         asyncio.set_event_loop(loop)
 
         # Start Overlay Process
-        overlay_proc = LProcess(target=OverlayServer, args=(sk,))
+        overlay_proc = LProcess(target=OverlayServer, args=(sk,), kwargs={'start':True})
         overlay_proc.start()
 
         obj = RouterAuthTester(sk, name=name, loop=loop)
@@ -60,7 +60,7 @@ class MPComposer(MPTesterBase):
         ctx = zmq.asyncio.Context()
 
         # Start Overlay Process
-        overlay_proc = LProcess(target=OverlayServer, args=(sk,))
+        overlay_proc = LProcess(target=OverlayServer, args=(sk,), kwargs={'start':True})
         overlay_proc.start()
 
         router = MagicMock()
