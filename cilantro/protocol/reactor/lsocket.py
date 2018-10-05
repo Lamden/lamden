@@ -1,7 +1,7 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.protocol.structures import EnvelopeAuth
-from cilantro.protocol.overlay.ironhouse import Ironhouse
+from cilantro.protocol.overlay.auth import Auth
 from cilantro.logger.base import get_logger
 import zmq.asyncio, asyncio, os
 
@@ -29,7 +29,7 @@ def vk_lookup(func):
             self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.pending_lookups[cmd_id] = (func.__name__, args, kwargs)
             self.manager.pending_lookups[cmd_id] = self
-            self.manager.auth.configure_curve(domain=self.domain, location=self.location)
+            Auth.configure_auth(self.manager.auth, self.domain)
 
         # If the 'ip' key is already set in kwargs, no need to do a lookup
         else:
@@ -48,14 +48,13 @@ class LSocket:
         self.socket = socket
         self.domain = domain
 
-        self.location = join(Ironhouse.base_dir, self.domain) if self.domain != '*' else Ironhouse.authorized_keys_dir
         if secure:
-            self.socket = Ironhouse.secure_socket(self.socket, manager.secret, manager.public_key)
-            self.socket.curve_secretkey = manager.secret
-            self.socket.curve_publickey = manager.public_key
-            if self.domain != '*':
-                os.makedirs(self.location, exist_ok=True)
-                self.socket.zap_domain = self.domain.encode()
+            self.socket = Auth.secure_socket(
+                self.socket,
+                manager.secret,
+                manager.public_key,
+                self.domain
+            )
 
         self.manager = manager
 
@@ -162,15 +161,13 @@ class LSocket:
 
         if should_connect:
             if self.secure:
-                self.socket.curve_serverkey = Ironhouse.vk2pk(vk)
-                self.manager.auth.configure_curve(domain=self.domain, location=self.location)
-
+                self.socket.curve_serverkey = Auth.vk2pk(vk)
+                Auth.configure_auth(self.manager.auth, self.domain)
             self.socket.connect(url)
         else:
             if self.secure:
                 self.socket.curve_server = True
-                self.manager.auth.configure_curve(domain=self.domain, location=self.location)
-
+                Auth.configure_auth(self.manager.auth, self.domain)
             self.socket.bind(url)
 
         if len(self.pending_lookups) == 0:

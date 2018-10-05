@@ -29,9 +29,9 @@ def masternode(idx, node_count):
     log = get_logger('MasterNode_{}'.format(idx))
     loop = asyncio.get_event_loop()
     Auth.setup_certs_dirs(TESTNET_MASTERNODES[idx]['sk'])
-    masternodes = [{'vk': node['vk'], 'ip': os.getenv('MASTERNODE').split(',')[idx]} for idx, node in enumerate(TESTNET_MASTERNODES)]
-    witnesses = [{'vk': node['vk'], 'ip': os.getenv('WITNESS').split(',')[idx]} for idx, node in enumerate(TESTNET_WITNESSES)]
-    delegates = [{'vk': node['vk'], 'ip': os.getenv('DELEGATE').split(',')[idx]} for idx, node in enumerate(TESTNET_DELEGATES)]
+    masternodes = [{'vk': node['vk'], 'ip': os.getenv('MASTERNODE').split(',')[idx]} for idx, node in enumerate(TESTNET_MASTERNODES[:2])]
+    witnesses = [{'vk': node['vk'], 'ip': os.getenv('WITNESS').split(',')[idx]} for idx, node in enumerate(TESTNET_WITNESSES[:2])]
+    delegates = [{'vk': node['vk'], 'ip': os.getenv('DELEGATE').split(',')[idx]} for idx, node in enumerate(TESTNET_DELEGATES[:4])]
     all_nodes = masternodes + witnesses + delegates
     tasks = asyncio.ensure_future(asyncio.gather(
         send_handshake(),
@@ -64,9 +64,9 @@ def witness(idx, node_count):
     log = get_logger('Witness_{}'.format(idx))
     loop = asyncio.get_event_loop()
     Auth.setup_certs_dirs(TESTNET_WITNESSES[idx]['sk'])
-    masternodes = [{'vk': node['vk'], 'ip': os.getenv('MASTERNODE').split(',')[idx]} for idx, node in enumerate(TESTNET_MASTERNODES)]
-    witnesses = [{'vk': node['vk'], 'ip': os.getenv('WITNESS').split(',')[idx]} for idx, node in enumerate(TESTNET_WITNESSES)]
-    delegates = [{'vk': node['vk'], 'ip': os.getenv('DELEGATE').split(',')[idx]} for idx, node in enumerate(TESTNET_DELEGATES)]
+    masternodes = [{'vk': node['vk'], 'ip': os.getenv('MASTERNODE').split(',')[idx]} for idx, node in enumerate(TESTNET_MASTERNODES[:2])]
+    witnesses = [{'vk': node['vk'], 'ip': os.getenv('WITNESS').split(',')[idx]} for idx, node in enumerate(TESTNET_WITNESSES[:2])]
+    delegates = [{'vk': node['vk'], 'ip': os.getenv('DELEGATE').split(',')[idx]} for idx, node in enumerate(TESTNET_DELEGATES[:4])]
     all_nodes = masternodes + witnesses + delegates
     tasks = asyncio.ensure_future(asyncio.gather(
         send_handshake(),
@@ -99,9 +99,9 @@ def delegate(idx, node_count):
     log = get_logger('Delegate_{}'.format(idx))
     loop = asyncio.get_event_loop()
     Auth.setup_certs_dirs(TESTNET_DELEGATES[idx]['sk'])
-    masternodes = [{'vk': node['vk'], 'ip': os.getenv('MASTERNODE').split(',')[idx]} for idx, node in enumerate(TESTNET_MASTERNODES)]
-    witnesses = [{'vk': node['vk'], 'ip': os.getenv('WITNESS').split(',')[idx]} for idx, node in enumerate(TESTNET_WITNESSES)]
-    delegates = [{'vk': node['vk'], 'ip': os.getenv('DELEGATE').split(',')[idx]} for idx, node in enumerate(TESTNET_DELEGATES)]
+    masternodes = [{'vk': node['vk'], 'ip': os.getenv('MASTERNODE').split(',')[idx]} for idx, node in enumerate(TESTNET_MASTERNODES[:2])]
+    witnesses = [{'vk': node['vk'], 'ip': os.getenv('WITNESS').split(',')[idx]} for idx, node in enumerate(TESTNET_WITNESSES[:2])]
+    delegates = [{'vk': node['vk'], 'ip': os.getenv('DELEGATE').split(',')[idx]} for idx, node in enumerate(TESTNET_DELEGATES[:4])]
     all_nodes = masternodes + witnesses + delegates
     tasks = asyncio.ensure_future(asyncio.gather(
         send_handshake(),

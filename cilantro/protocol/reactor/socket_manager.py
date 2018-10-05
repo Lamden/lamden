@@ -11,7 +11,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.base.base import MessageBase
 from cilantro.protocol.structures import EnvelopeAuth
 
-from cilantro.protocol.overlay.ironhouse import Ironhouse
+from cilantro.protocol.overlay.auth import Auth
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 from nacl.signing import SigningKey
 
@@ -26,7 +26,7 @@ class SocketManager:
 
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(self.signing_key)
-        self.public_key = Ironhouse.vk2pk(self.verifying_key)
+        self.public_key = Auth.vk2pk(self.verifying_key)
         self.secret = crypto_sign_ed25519_sk_to_curve25519(SigningKey(seed=bytes.fromhex(signing_key))._signing_key)
 
         self.loop = loop or asyncio.get_event_loop()

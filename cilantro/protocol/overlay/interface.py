@@ -77,7 +77,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         await self.network.bootstrap(addrs)
         self.network.cached_vks.update(self.neighbors)
 
-    async def authenticate(self, vk, domain='all'):
+    async def authenticate(self, vk, domain='*'):
         ip = await self.lookup_ip(vk)
         if not ip:
             self.log.critical('Authentication Failed: Cannot find ip for vk={}'.format(vk))

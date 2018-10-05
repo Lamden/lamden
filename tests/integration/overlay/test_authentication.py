@@ -17,16 +17,16 @@ def masternode(idx, node_count):
     async def check():
         while True:
             await asyncio.sleep(1)
-            if len(oi.authorized_nodes['all']) >= node_count:
+            if len(oi.authorized_nodes['*']) >= node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
         await asyncio.sleep(10)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
-    masternodes = [node['vk'] for node in TESTNET_MASTERNODES]
-    witnesses = [node['vk'] for node in TESTNET_WITNESSES]
-    delegates = [node['vk'] for node in TESTNET_DELEGATES]
+    masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
+    witnesses = [node['vk'] for node in TESTNET_WITNESSES[:2]]
+    delegates = [node['vk'] for node in TESTNET_DELEGATES[:4]]
     all_nodes = masternodes + witnesses + delegates
 
     oi = OverlayInterface(TESTNET_MASTERNODES[idx]['sk'])
@@ -45,16 +45,16 @@ def witness(idx, node_count):
     async def check():
         while True:
             await asyncio.sleep(1)
-            if len(oi.authorized_nodes['all']) >= node_count:
+            if len(oi.authorized_nodes['*']) >= node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
         await asyncio.sleep(10)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
-    masternodes = [node['vk'] for node in TESTNET_MASTERNODES]
-    witnesses = [node['vk'] for node in TESTNET_WITNESSES]
-    delegates = [node['vk'] for node in TESTNET_DELEGATES]
+    masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
+    witnesses = [node['vk'] for node in TESTNET_WITNESSES[:2]]
+    delegates = [node['vk'] for node in TESTNET_DELEGATES[:4]]
     all_nodes = masternodes + witnesses + delegates
 
     oi = OverlayInterface(TESTNET_WITNESSES[idx]['sk'])
@@ -73,16 +73,16 @@ def delegate(idx, node_count):
     async def check():
         while True:
             await asyncio.sleep(1)
-            if len(oi.authorized_nodes['all']) >= node_count:
+            if len(oi.authorized_nodes['*']) >= node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
         await asyncio.sleep(10)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
-    masternodes = [node['vk'] for node in TESTNET_MASTERNODES]
-    witnesses = [node['vk'] for node in TESTNET_WITNESSES]
-    delegates = [node['vk'] for node in TESTNET_DELEGATES]
+    masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
+    witnesses = [node['vk'] for node in TESTNET_WITNESSES[:2]]
+    delegates = [node['vk'] for node in TESTNET_DELEGATES[:4]]
     all_nodes = masternodes + witnesses + delegates
 
     oi = OverlayInterface(TESTNET_DELEGATES[idx]['sk'])
@@ -112,7 +112,7 @@ class TestAuthentication(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(delegate, idx, node_count))
 
-        file_listener(self, self.callback, self.complete, 30)
+        file_listener(self, self.callback, self.complete, 20)
 
 if __name__ == '__main__':
     unittest.main()

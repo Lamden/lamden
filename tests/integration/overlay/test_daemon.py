@@ -26,9 +26,9 @@ def nodefn(node_type, idx):
         async def lookup_ip():
             await asyncio.sleep(5)
             for vk in [
-                *[node['vk'] for node in TESTNET_MASTERNODES],
-                *[node['vk'] for node in TESTNET_WITNESSES],
-                *[node['vk'] for node in TESTNET_DELEGATES]
+                *[node['vk'] for node in TESTNET_MASTERNODES[:2]],
+                *[node['vk'] for node in TESTNET_WITNESSES][:2],
+                *[node['vk'] for node in TESTNET_DELEGATES][:4]
             ]:
                 client.get_node_from_vk(vk)
 
@@ -64,9 +64,9 @@ class TestDaemon(BaseTestCase):
 
     def complete(self):
         all_vks = set([
-            *[node['vk'] for node in TESTNET_MASTERNODES],
-            *[node['vk'] for node in TESTNET_WITNESSES],
-            *[node['vk'] for node in TESTNET_DELEGATES]
+            *[node['vk'] for node in TESTNET_MASTERNODES[:2]],
+            *[node['vk'] for node in TESTNET_WITNESSES[:2]],
+            *[node['vk'] for node in TESTNET_DELEGATES[:4]]
         ])
         all_hostnames = self.groups['masternode'] + self.groups['witness'] + self.groups['delegate']
         for hostname in all_hostnames:
@@ -81,7 +81,7 @@ class TestDaemon(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(nodefn, 'Delegate', idx))
 
-        file_listener(self, self.callback, self.complete, 15)
+        file_listener(self, self.callback, self.complete, 20)
 
 if __name__ == '__main__':
     unittest.main()

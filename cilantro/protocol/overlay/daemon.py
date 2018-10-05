@@ -72,7 +72,7 @@ class OverlayServer(object):
             getattr(self, msg[1].decode())(msg[0], *data)
 
     @async_reply
-    async def get_node_from_vk(self, event_id, vk, domain='all', timeout=5):
+    async def get_node_from_vk(self, event_id, vk, domain='*', timeout=5):
         if vk in VKBook.get_all():
             ip = await self.interface.lookup_ip(vk)
             authorized = await self.interface.authenticate(vk, domain)
