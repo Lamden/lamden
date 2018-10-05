@@ -30,7 +30,7 @@ CONFIG_FILE_PATH = TESTNET_JSON_DIR + CONFIG_FILE_NAME
 
 def set_testnet_config(testnet_json_file='2-2-4.json'):
     config = configparser.ConfigParser()
-    config[TESTNET_KEY] = {TESTNET_JSON_KEY: TESTNET_JSON_DIR + testnet_json_file}
+    config[TESTNET_KEY] = {TESTNET_JSON_KEY: testnet_json_file}
 
     with open(CONFIG_FILE_PATH, 'w') as f:
         config.write(f)
@@ -39,7 +39,7 @@ def set_testnet_config(testnet_json_file='2-2-4.json'):
 def get_testnet_json_path():
     config = configparser.ConfigParser()
     config.read(CONFIG_FILE_PATH)
-    return config[TESTNET_KEY][TESTNET_JSON_KEY]
+    return TESTNET_JSON_DIR + config[TESTNET_KEY][TESTNET_JSON_KEY]
 
 
 def generate_testnet_json(num_masters=NUM_MASTERS, num_witnesses=NUM_WITNESSES, num_delegates=NUM_DELEGATES):
