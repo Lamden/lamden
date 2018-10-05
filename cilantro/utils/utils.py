@@ -100,7 +100,6 @@ def is_valid_hex(hex_str: str, length=0) -> bool:
     except:
         return False
 
-
 def int_to_bytes(x):
     return x.to_bytes((x.bit_length() + 7) // 8, 'big')
 

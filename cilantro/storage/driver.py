@@ -124,6 +124,42 @@ class BlockDataSQL:
             ))
         return blocks
 
+class BlockDataSQL:
+    @classmethod
+    def _chunks(cls, l, n=64):
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
+    @classmethod
+    def unpack(cls, data):
+        blocks = []
+        block_data = {}
+        for d in data:
+            if not block_data.get(d[1]):
+                block_data[d[1]] = {
+                    'transactions': [],
+                    'block_num': d[0],
+                    'block_hash': d[1].decode(),
+                    'merkle_roots': list(cls._chunks(d[2].decode())),
+                    'prev_block_hash': d[3].decode(),
+                    'signature': MerkleSignature.from_bytes(d[4])
+                }
+            block_data[d[1]]['transactions'].append(TransactionData.create(
+                contract_tx=ContractTransaction.from_bytes(d[9]),
+                status=d[10].decode(),
+                state=d[11].decode()
+            ))
+        for block_hash in block_data:
+            bd = block_data[block_hash]
+            blocks.append(BlockData.create(
+                block_num=bd['block_num'],
+                block_hash=bd['block_hash'],
+                merkle_roots=bd['merkle_roots'],
+                prev_block_hash=bd['prev_block_hash'],
+                masternode_signature=bd['signature'],
+                transactions=bd['transactions']
+            ))
+        return blocks
+
 class StorageDriver(object):
     @classmethod
     def store_block(cls, block: BlockData, validate: bool=False):
@@ -164,7 +200,6 @@ class StorageDriver(object):
             if res:
                 return BlockMetaSQL.unpack(res)
 
-    @classmethod
     def get_sub_block_meta(cls, merkle_root):
         with SQLDB() as (connection, cursor):
             cursor.execute("""

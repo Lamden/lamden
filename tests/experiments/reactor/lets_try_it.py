@@ -18,7 +18,7 @@ from os.path import join, dirname
 
 def run_pub():
     from cilantro.utils.test.pubsub_auth import PubSubAuthTester
-    from cilantro.protocol.overlay.interface import OverlayServer
+    from cilantro.protocol.overlay.daemon import OverlayServer
     from cilantro.constants.testnet import TESTNET_MASTERNODES
     from cilantro.utils.lprocess import LProcess
     import os
@@ -38,7 +38,7 @@ def run_pub():
 
 def run_sub():
     from cilantro.utils.test.pubsub_auth import PubSubAuthTester
-    from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
+    from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
     from cilantro.utils.lprocess import LProcess
     from cilantro.constants.testnet import TESTNET_DELEGATES
     from cilantro.constants.testnet import TESTNET_MASTERNODES

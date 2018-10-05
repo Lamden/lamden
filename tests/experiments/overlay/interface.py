@@ -1,4 +1,4 @@
-from cilantro.protocol.overlay.interface import OverlayInterface
+from cilantro.protocol.overlay.daemon import OverlayInterface
 from cilantro.logger.base import get_logger
 from threading import Thread
 import asyncio
