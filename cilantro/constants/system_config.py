@@ -21,6 +21,7 @@ MASTERNODE_MAJORITY = math.ceil(NUM_MASTERS * 2 / 3)
 _MAX_SUB_BLOCK_BUILDERS = 4
 _MAX_BLOCKS = 1
 
+SUB_BLOCK_VALID_PERIOD = 60 * 10 # sub-blocks contenders are valid for 10 minutes from the latest contender received
 TRANSACTIONS_PER_SUB_BLOCK = 100
 NUM_SUB_BLOCKS = NUM_MASTERS  # same as num masternodes for now
 NUM_BLOCKS = min(_MAX_BLOCKS, NUM_SUB_BLOCKS)
