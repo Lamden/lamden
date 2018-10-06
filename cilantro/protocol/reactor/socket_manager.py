@@ -11,7 +11,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.base.base import MessageBase
 from cilantro.protocol.structures import EnvelopeAuth
 
-from cilantro.protocol.overlay.ironhouse import Ironhouse
+from cilantro.protocol.overlay.auth import Auth
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 from nacl.signing import SigningKey
 
@@ -24,14 +24,15 @@ class SocketManager:
 
         self.log = get_logger(type(self).__name__)
 
-        self.signing_key = signing_key
-        self.verifying_key = wallet.get_vk(self.signing_key)
-        self.public_key = Ironhouse.vk2pk(self.verifying_key)
-        self.secret = crypto_sign_ed25519_sk_to_curve25519(SigningKey(seed=bytes.fromhex(signing_key))._signing_key)
+        Auth.setup_certs_dirs(signing_key)
+        self.signing_key = Auth.sk
+        self.verifying_key = Auth.vk
+        self.public_key = Auth.public_key
+        self.secret = Auth.private_key
 
         self.loop = loop or asyncio.get_event_loop()
         self.context = context or zmq.asyncio.Context()
-        self.secure_context, self.auth = Ironhouse.secure_context(context, async=True)
+        self.secure_context, self.auth = Auth.secure_context(context, async=True)
 
         self.sockets = []
         self.pending_lookups = {}   # A dict of 'event_id' to socket instance

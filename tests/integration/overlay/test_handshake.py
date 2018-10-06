@@ -15,8 +15,8 @@ def masternode(idx, node_count):
     async def check_nodes():
         while True:
             await asyncio.sleep(1)
-            log.critical(len(Handshake.authorized_nodes['all']))
-            if len(Handshake.authorized_nodes['all']) == node_count:
+            log.critical(len(Handshake.authorized_nodes['*']))
+            if len(Handshake.authorized_nodes['*']) == node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def send_handshake():
@@ -50,8 +50,8 @@ def witness(idx, node_count):
     async def check_nodes():
         while True:
             await asyncio.sleep(1)
-            log.critical(len(Handshake.authorized_nodes['all']))
-            if len(Handshake.authorized_nodes['all']) == node_count:
+            log.critical(len(Handshake.authorized_nodes['*']))
+            if len(Handshake.authorized_nodes['*']) == node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def send_handshake():
@@ -85,8 +85,8 @@ def delegate(idx, node_count):
     async def check_nodes():
         while True:
             await asyncio.sleep(1)
-            log.critical(len(Handshake.authorized_nodes['all']))
-            if len(Handshake.authorized_nodes['all']) == node_count:
+            log.critical(len(Handshake.authorized_nodes['*']))
+            if len(Handshake.authorized_nodes['*']) == node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def send_handshake():

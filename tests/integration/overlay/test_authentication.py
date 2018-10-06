@@ -17,7 +17,7 @@ def masternode(idx, node_count):
     async def check():
         while True:
             await asyncio.sleep(1)
-            if len(oi.authorized_nodes['all']) >= node_count:
+            if len(oi.authorized_nodes['*']) >= node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
@@ -45,7 +45,7 @@ def witness(idx, node_count):
     async def check():
         while True:
             await asyncio.sleep(1)
-            if len(oi.authorized_nodes['all']) >= node_count:
+            if len(oi.authorized_nodes['*']) >= node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
@@ -73,7 +73,7 @@ def delegate(idx, node_count):
     async def check():
         while True:
             await asyncio.sleep(1)
-            if len(oi.authorized_nodes['all']) >= node_count:
+            if len(oi.authorized_nodes['*']) >= node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():

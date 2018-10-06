@@ -2,6 +2,8 @@ import zmq, zmq.asyncio, asyncio, traceback, time
 from os import getenv as env
 from cilantro.constants.overlay_network import *
 from cilantro.constants.ports import AUTH_PORT
+from zmq.auth.thread import ThreadAuthenticator
+from zmq.auth.asyncio import AsyncioAuthenticator
 from cilantro.protocol.overlay.event import Event
 from cilantro.protocol.overlay.ip import *
 from cilantro.protocol.overlay.auth import Auth
@@ -13,19 +15,21 @@ class Handshake:
     port = AUTH_PORT
     url = 'tcp://*:{}'.format(port)
     ctx = zmq.asyncio.Context()
+    auth = AsyncioAuthenticator(ctx)
+    auth.configure_curve(domain="*", location=zmq.auth.CURVE_ALLOW_ANY)
+    auth.start()
     server_sock = ctx.socket(zmq.ROUTER)
     client_sock = ctx.socket(zmq.ROUTER)
     pepper = PEPPER.encode()
-    authorized_nodes = {'all':{}}
+    authorized_nodes = {'*':{}}
     unknown_authorized_nodes = {}
 
     @classmethod
-    async def initiate_handshake(cls, ip, vk, domain='all'):
+    async def initiate_handshake(cls, ip, vk, domain='*'):
         if not cls.check_previously_authorized(ip, vk, domain):
             cls.client_sock.curve_secretkey = Auth.private_key
             cls.client_sock.curve_publickey = Auth.public_key
             cls.client_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
-
             start = time.time()
             for i in range(AUTH_TIMEOUT):
                 if cls.authorized_nodes[domain].get(vk): break
@@ -33,6 +37,7 @@ class Handshake:
                 cls.request(ip, vk, domain)
                 await asyncio.sleep(AUTH_INTERVAL)
             end = time.time()
+
         if cls.authorized_nodes[domain].get(vk):
             cls.log.info('Complete (took {}s):'.format(end-start))
             return True
@@ -73,7 +78,7 @@ class Handshake:
                 if not cls.check_previously_authorized(ip, vk, domain):
                     if cls.validate_roles_with_domain(domain, vk):
                         cls.authorized_nodes[domain][vk] = ip
-                        cls.authorized_nodes['all'][vk] = ip # Set all category for easier look-up
+                        cls.authorized_nodes['*'][vk] = ip # Set all category for easier look-up
                         # Only reply to requests
                         if not is_reply: cls.reply(ip, vk, domain)
                         cls.log.info('Authorized: {} <=O= {} (vk={})'.format(cls.host_ip, ip, vk))
@@ -107,15 +112,15 @@ class Handshake:
         if cls.authorized_nodes[domain].get(ip):
             cls.log.spam('Previously Authorized: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
             return True
-        elif cls.authorized_nodes['all'].get(ip):
-            if ip == cls.authorized_nodes['all'][vk]:
+        elif cls.authorized_nodes['*'].get(ip):
+            if ip == cls.authorized_nodes['*'][vk]:
                 cls.log.spam('Already Authorized To Domain: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
                 cls.authorized_nodes[domain][vk] = ip
                 return True
         elif cls.unknown_authorized_nodes.get(vk):
             if ip == cls.unknown_authorized_nodes[vk]:
                 cls.log.spam('Found and authorized previously unknown but authorized node: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
-                cls.authorized_nodes['all'][vk] = ip
+                cls.authorized_nodes['*'][vk] = ip
                 cls.authorized_nodes[domain][vk] = ip
             else:
                 cls.log.spam('Removing stale unknown VK: {} =||= {} (vk={})'.format(cls.host_ip, ip, vk))
@@ -124,7 +129,7 @@ class Handshake:
 
     @classmethod
     def validate_roles_with_domain(cls, domain, vk):
-        if domain == 'all':
+        if domain == '*':
             return Auth.auth_validate(vk, 'any')
         elif domain == 'block-aggregator':
             return Auth.auth_validate(vk, ['masternodes', 'delegates'])

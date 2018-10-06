@@ -17,9 +17,10 @@ from enum import Enum, auto
 class OverlayInterface:
     started = False
     log = get_logger('OverlayInterface')
-    def __init__(self, sk_hex):
+    def __init__(self, sk_hex, loop=None):
         Auth.setup_certs_dirs(sk_hex=sk_hex)
-        self.loop = asyncio.get_event_loop()
+        self.loop = loop or asyncio.get_event_loop()
+        asyncio.set_event_loop(self.loop)
         self.network = Network(storage=None)
         self.tasks = [
             Discovery.listen(),
@@ -77,7 +78,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         await self.network.bootstrap(addrs)
         self.network.cached_vks.update(self.neighbors)
 
-    async def authenticate(self, vk, domain='all'):
+    async def authenticate(self, vk, domain='*'):
         ip = await self.lookup_ip(vk)
         if not ip:
             self.log.critical('Authentication Failed: Cannot find ip for vk={}'.format(vk))

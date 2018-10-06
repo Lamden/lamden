@@ -40,8 +40,8 @@ def async_reply(fn):
     return _reply
 
 class OverlayServer(object):
-    def __init__(self, sk, loop=None, start=False):
-        self.log = get_logger(type(self).__name__)
+    def __init__(self, sk, loop=None, start=True):
+        self.log = get_logger('OverlayServer')
 
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -72,7 +72,7 @@ class OverlayServer(object):
             getattr(self, msg[1].decode())(msg[0], *data)
 
     @async_reply
-    async def get_node_from_vk(self, event_id, vk, domain='all', timeout=5):
+    async def get_node_from_vk(self, event_id, vk, domain='*', timeout=5):
         if vk in VKBook.get_all():
             ip = await self.interface.lookup_ip(vk)
             authorized = await self.interface.authenticate(vk, domain)
@@ -117,32 +117,29 @@ class OverlayServer(object):
 
 class OverlayClient(object):
     def __init__(self, event_handler, loop=None, ctx=None, start=False):
-        self.log = get_logger(type(self).__name__)
-
+        self.log = get_logger('OverlayClient')
         self.loop = loop or asyncio.get_event_loop()
+        asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context.instance()
-
         self.cmd_sock = self.ctx.socket(socket_type=zmq.DEALER)
         self.cmd_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
         self.cmd_sock.connect(CMD_URL)
         self.evt_sock = self.ctx.socket(socket_type=zmq.SUB)
         self.evt_sock.setsockopt(zmq.SUBSCRIBE, b"")
         self.evt_sock.connect(EVENT_URL)
-
         self.tasks = [
             self.event_listener(event_handler),
             self.reply_listener(event_handler),
-            self.block_until_ready()
         ]
 
         self._ready = False
-
         if start:
             self.start()
 
     def start(self):
         try:
-            self.loop.run_until_complete(asyncio.gather(*self.tasks))
+            asyncio.ensure_future(asyncio.gather(*self.tasks))
+            self.loop.run_until_complete(self.block_until_ready())
         except:
             msg = '\nOverlayServer is not ready after {}s...\n'.format(CLIENT_SETUP_TIMEOUT)
             self.log.fatal(msg)

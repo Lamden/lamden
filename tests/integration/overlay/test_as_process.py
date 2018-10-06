@@ -8,47 +8,45 @@ from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, T
 
 def nodefn(node_type, idx):
     from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
-    from cilantro.protocol.overlay.daemon import OverlayServer
+    from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
+    from cilantro.logger.base import get_logger
     from multiprocessing import Process
     from vmnet.comm import send_to_file
     import asyncio, json, os, zmq.asyncio, asyncio
+    log = get_logger('{}{}'.format(node_type, idx+1))
 
-    def client(nt, i):
-        from cilantro.protocol.overlay.daemon import OverlayClient
-        from cilantro.logger.base import get_logger
-        import os, asyncio
-        log = get_logger('{}{}'.format(nt, i+1))
-        def handler(data):
-            if data['event'] == 'got_ip':
-                data['hostname'] = os.getenv('HOST_NAME')
-                send_to_file(json.dumps(data))
-        async def lookup_ip():
-            await asyncio.sleep(5)
-            for vk in [
-                *[node['vk'] for node in TESTNET_MASTERNODES],
-                *[node['vk'] for node in TESTNET_WITNESSES],
-                *[node['vk'] for node in TESTNET_DELEGATES]
-            ]:
-                client.get_node_from_vk(vk)
+    def server(i):
+        if node_type == 'MasterNode':
+            server = OverlayServer(TESTNET_MASTERNODES[i]['sk'])
+        elif node_type == 'Witness':
+            server = OverlayServer(TESTNET_WITNESSES[i]['sk'])
+        elif node_type == 'Delegate':
+            server = OverlayServer(TESTNET_DELEGATES[i]['sk'])
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        ctx = zmq.asyncio.Context()
-        client = OverlayClient(handler, ctx=ctx, start=False)
-        client.tasks.append(lookup_ip())
-        client.start()
-        loop.run_forever()
-
-    p = Process(target=client, args=(node_type, idx, ))
+    p = Process(target=server, args=(idx, ))
     p.start()
+
+    def handler(data):
+        if data['event'] == 'got_ip':
+            data['hostname'] = os.getenv('HOST_NAME')
+            send_to_file(json.dumps(data))
+    async def lookup_ip():
+        await asyncio.sleep(5)
+        for vk in [
+            *[node['vk'] for node in TESTNET_MASTERNODES],
+            *[node['vk'] for node in TESTNET_WITNESSES],
+            *[node['vk'] for node in TESTNET_DELEGATES]
+        ]:
+            client.get_node_from_vk(vk)
+
     loop = asyncio.get_event_loop()
-    if node_type == 'MasterNode':
-        server = OverlayServer(TESTNET_MASTERNODES[idx]['sk'], loop=loop)
-    elif node_type == 'Witness':
-        server = OverlayServer(TESTNET_WITNESSES[idx]['sk'], loop=loop)
-    elif node_type == 'Delegate':
-        server = OverlayServer(TESTNET_DELEGATES[idx]['sk'], loop=loop)
+    asyncio.set_event_loop(loop)
+    ctx = zmq.asyncio.Context()
+    client = OverlayClient(handler, loop=loop, ctx=ctx, start=False)
+    client.tasks.append(lookup_ip())
+    client.start()
+    loop.run_forever()
 
 class TestDaemon(BaseTestCase):
 
