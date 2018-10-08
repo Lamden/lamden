@@ -14,15 +14,21 @@ class Handshake:
     host_ip = HOST_IP
     port = AUTH_PORT
     url = 'tcp://*:{}'.format(port)
-    ctx = zmq.asyncio.Context()
-    auth = AsyncioAuthenticator(ctx)
-    auth.configure_curve(domain="*", location=zmq.auth.CURVE_ALLOW_ANY)
-    auth.start()
-    server_sock = ctx.socket(zmq.ROUTER)
-    client_sock = ctx.socket(zmq.ROUTER)
     pepper = PEPPER.encode()
     authorized_nodes = {'*':{}}
     unknown_authorized_nodes = {}
+    is_setup = False
+
+    @classmethod
+    def setup(cls):
+        if not cls.is_setup:
+            cls.ctx = zmq.asyncio.Context()
+            cls.server_sock = cls.ctx.socket(zmq.ROUTER)
+            cls.client_sock = cls.ctx.socket(zmq.ROUTER)
+            cls.auth = AsyncioAuthenticator(cls.ctx)
+            cls.auth.configure_curve(domain="*", location=zmq.auth.CURVE_ALLOW_ANY)
+            cls.auth.start()
+            cls.is_setup = True
 
     @classmethod
     async def initiate_handshake(cls, ip, vk, domain='*'):

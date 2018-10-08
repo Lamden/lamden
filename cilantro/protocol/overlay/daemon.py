@@ -54,7 +54,7 @@ class OverlayServer(object):
 
         Event.set_evt_sock(self.evt_sock)
 
-        self.interface = OverlayInterface(sk)
+        self.interface = OverlayInterface(sk, loop=loop)
         self.interface.tasks.append(self.command_listener())
 
         if start:
@@ -120,7 +120,7 @@ class OverlayClient(object):
         self.log = get_logger('OverlayClient')
         self.loop = loop or asyncio.get_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.ctx = ctx or zmq.asyncio.Context.instance()
+        self.ctx = ctx or zmq.asyncio.Context()
         self.cmd_sock = self.ctx.socket(socket_type=zmq.DEALER)
         self.cmd_sock.setsockopt(zmq.IDENTITY, str(os.getpid()).encode())
         self.cmd_sock.connect(CMD_URL)

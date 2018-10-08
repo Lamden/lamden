@@ -15,7 +15,6 @@ def masternode(idx, node_count):
     async def check_nodes():
         while True:
             await asyncio.sleep(1)
-            log.critical(len(Handshake.authorized_nodes['*']))
             if len(Handshake.authorized_nodes['*']) == node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
@@ -28,6 +27,7 @@ def masternode(idx, node_count):
     from cilantro.logger import get_logger
     log = get_logger('MasterNode_{}'.format(idx))
     loop = asyncio.get_event_loop()
+    Handshake.setup()
     Auth.setup_certs_dirs(TESTNET_MASTERNODES[idx]['sk'])
     masternodes = [{'vk': node['vk'], 'ip': os.getenv('MASTERNODE').split(',')[idx]} for idx, node in enumerate(TESTNET_MASTERNODES)]
     witnesses = [{'vk': node['vk'], 'ip': os.getenv('WITNESS').split(',')[idx]} for idx, node in enumerate(TESTNET_WITNESSES)]
@@ -50,7 +50,6 @@ def witness(idx, node_count):
     async def check_nodes():
         while True:
             await asyncio.sleep(1)
-            log.critical(len(Handshake.authorized_nodes['*']))
             if len(Handshake.authorized_nodes['*']) == node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
@@ -63,6 +62,7 @@ def witness(idx, node_count):
     from cilantro.logger import get_logger
     log = get_logger('Witness_{}'.format(idx))
     loop = asyncio.get_event_loop()
+    Handshake.setup()
     Auth.setup_certs_dirs(TESTNET_WITNESSES[idx]['sk'])
     masternodes = [{'vk': node['vk'], 'ip': os.getenv('MASTERNODE').split(',')[idx]} for idx, node in enumerate(TESTNET_MASTERNODES)]
     witnesses = [{'vk': node['vk'], 'ip': os.getenv('WITNESS').split(',')[idx]} for idx, node in enumerate(TESTNET_WITNESSES)]
@@ -85,7 +85,6 @@ def delegate(idx, node_count):
     async def check_nodes():
         while True:
             await asyncio.sleep(1)
-            log.critical(len(Handshake.authorized_nodes['*']))
             if len(Handshake.authorized_nodes['*']) == node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
@@ -98,6 +97,7 @@ def delegate(idx, node_count):
     from cilantro.logger import get_logger
     log = get_logger('Delegate_{}'.format(idx))
     loop = asyncio.get_event_loop()
+    Handshake.setup()
     Auth.setup_certs_dirs(TESTNET_DELEGATES[idx]['sk'])
     masternodes = [{'vk': node['vk'], 'ip': os.getenv('MASTERNODE').split(',')[idx]} for idx, node in enumerate(TESTNET_MASTERNODES)]
     witnesses = [{'vk': node['vk'], 'ip': os.getenv('WITNESS').split(',')[idx]} for idx, node in enumerate(TESTNET_WITNESSES)]
@@ -113,7 +113,7 @@ def delegate(idx, node_count):
 class TestHandshake(BaseTestCase):
 
     log = get_logger(__name__)
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-4-4-bootstrap.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
 
     def callback(self, data):
         for node in data:
@@ -133,7 +133,7 @@ class TestHandshake(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(delegate, idx, node_count))
 
-        file_listener(self, self.callback, self.complete, 10)
+        file_listener(self, self.callback, self.complete, 20)
 
 if __name__ == '__main__':
     unittest.main()

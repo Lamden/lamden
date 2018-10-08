@@ -20,8 +20,9 @@ class OverlayInterface:
     def __init__(self, sk_hex, loop=None):
         Auth.setup_certs_dirs(sk_hex=sk_hex)
         self.loop = loop or asyncio.get_event_loop()
-        asyncio.set_event_loop(self.loop)
         self.network = Network(storage=None)
+        Discovery.setup()
+        Handshake.setup()
         self.tasks = [
             Discovery.listen(),
             Handshake.listen(),

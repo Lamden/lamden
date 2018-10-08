@@ -59,7 +59,7 @@ def delegate(idx):
 class TestInterface(BaseTestCase):
 
     log = get_logger(__name__)
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-4-4-bootstrap.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
 
     def callback(self, data):
         for node in data:

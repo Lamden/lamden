@@ -21,6 +21,7 @@ def masternode(idx):
     from cilantro.logger import get_logger
     log = get_logger('MasterNode_{}'.format(idx))
     loop = asyncio.get_event_loop()
+    Discovery.setup()
     Auth.setup_certs_dirs(TESTNET_MASTERNODES[idx]['sk'])
     tasks = asyncio.ensure_future(asyncio.gather(
         Discovery.listen(),
@@ -46,6 +47,7 @@ def witness(idx):
     from cilantro.logger import get_logger
     log = get_logger('Witness_{}'.format(idx))
     loop = asyncio.get_event_loop()
+    Discovery.setup()
     Auth.setup_certs_dirs(TESTNET_WITNESSES[idx]['sk'])
     tasks = asyncio.ensure_future(asyncio.gather(
         Discovery.listen(),
@@ -71,6 +73,7 @@ def delegate(idx):
     from cilantro.logger import get_logger
     log = get_logger('Delegate_{}'.format(idx))
     loop = asyncio.get_event_loop()
+    Discovery.setup()
     Auth.setup_certs_dirs(TESTNET_DELEGATES[idx]['sk'])
     tasks = asyncio.ensure_future(asyncio.gather(
         Discovery.listen(),
@@ -82,7 +85,7 @@ def delegate(idx):
 class TestDiscovery(BaseTestCase):
 
     log = get_logger(__name__)
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-4-4-bootstrap.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
 
     def callback(self, data):
         for node in data:

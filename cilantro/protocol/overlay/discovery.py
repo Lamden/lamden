@@ -12,11 +12,17 @@ class Discovery:
     host_ip = HOST_IP
     port = DISCOVERY_PORT
     url = 'tcp://*:{}'.format(port)
-    ctx = zmq.asyncio.Context()
-    sock = ctx.socket(zmq.ROUTER)
     pepper = PEPPER.encode()
     discovered_nodes = {}
     connections = {}
+    is_setup = False
+
+    @classmethod
+    def setup(cls):
+        if not cls.is_setup:
+            cls.ctx = zmq.asyncio.Context()
+            cls.sock = cls.ctx.socket(zmq.ROUTER)
+            cls.is_setup = True
 
     @classmethod
     async def listen(cls):
