@@ -22,9 +22,9 @@ class BlockData(MessageBase):
     @staticmethod
     def compute_block_hash(sbc_roots: List[str], prev_block_hash: str):
         # DEBUG -- TODO DELETE
-        from cilantro.logger.base import get_logger
-        log = get_logger("BlockData.compute_block_hash")
-        log.important2("COMPUTING BLOCK HASH with\nroots={}\nprev_block_hash={}".format(sbc_roots, prev_block_hash))
+        # from cilantro.logger.base import get_logger
+        # log = get_logger("BlockData.compute_block_hash")
+        # log.important2("COMPUTING BLOCK HASH with\nroots={}\nprev_block_hash={}".format(sbc_roots, prev_block_hash))
         # END DEBUG
         # TODO validate input (valid 64 char hex str)
         return Hasher.hash_iterable(sbc_roots + [prev_block_hash])

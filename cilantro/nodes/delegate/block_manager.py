@@ -62,7 +62,7 @@ class BlockManager(Worker):
         self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
 
         self.ip = ip
-        self.sb_builders = {}  # index -> process      # perhaps can be consolidated with the above ?
+        self.sb_builders = {}  # index -> process
         self.tasks = []
 
         self.my_sb_index = self._get_my_index() % NUM_SB_BUILDERS

@@ -1,6 +1,6 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
-import json
+import json, time
 from cilantro.protocol import wallet
 
 class MerkleSignature(MessageBase):
@@ -50,7 +50,8 @@ class MerkleSignature(MessageBase):
             return False
 
     @classmethod
-    def create(cls, sig_hex: str, timestamp: str, sender: str, validate=True):
+    def create(cls, sig_hex: str, sender: str, timestamp: str=None, validate=True):
+        timestamp = timestamp or str(time.time())
         data = {cls.SIG: sig_hex, cls.TS: timestamp, cls.SENDER: sender}
         return cls.from_data(data, validate=validate)
 
