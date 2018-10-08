@@ -24,8 +24,6 @@ class BlockMetaData(MessageBase):
         assert len(self._data.merkleRoots) == NUM_SB_PER_BLOCK, 'num of roots in block meta {} does not match ' \
                                                                 'NUM_SB_PER_BLOCK {}'.format(len(self._data.merkleRoots),
                                                                                              NUM_SB_PER_BLOCK)
-        assert len(self._data.inputHashes) == len(self._data.merkleRoots), "Length of input hashes does not match " \
-                                                                           "length of merkle roots"
         assert type(self._data.timestamp) == int, 'Invalid timestamp'
         assert self.masternode_signature.sender in VKBook.get_masternodes(), 'Not a valid masternode'
         assert self.masternode_signature.verify(self.block_hash.encode()), 'Cannot verify signature'
@@ -37,8 +35,8 @@ class BlockMetaData(MessageBase):
         return blockdata_capnp.BlockMetaData.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, block_hash: str, merkle_roots: List[str], input_hashes: List[str], prev_block_hash: str,
-                    masternode_signature: MerkleSignature, timestamp: int=0, block_num: int=0):
+    def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str,
+               masternode_signature: MerkleSignature, timestamp: int=0, block_num: int=0, input_hashes: List[str]=None):
 
         if not timestamp:
             timestamp = int(time.time())
@@ -88,5 +86,8 @@ class BlockMetaData(MessageBase):
 
 
 class NewBlockNotification(BlockMetaData):
-    pass
+    def validate(self):
+        super().validate()
+        assert len(self._data.inputHashes) == len(self._data.merkleRoots), "Length of input hashes does not match " \
+                                                                           "length of merkle roots"
 

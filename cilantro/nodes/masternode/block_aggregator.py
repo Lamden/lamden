@@ -195,6 +195,7 @@ class BlockAggregator(Worker):
 
     def store_full_block(self, hash_list: List[str]) -> NewBlockNotification:
         merkle_roots = sorted(hash_list, key=lambda result_hash: self.result_hashes[result_hash]['sb_index'])
+        input_hashes = [self.result_hashes[root]['input_hashes'][0] for root in merkle_roots]
         sub_block_metadatas, all_signatures, all_merkle_leaves, all_transactions = self.combine_sub_blocks(merkle_roots)
         prev_block_hash = StorageDriver.get_latest_block_hash()
         block_hash = BlockData.compute_block_hash(sbc_roots=merkle_roots, prev_block_hash=prev_block_hash)
@@ -217,7 +218,11 @@ class BlockAggregator(Worker):
         self.log.success("STORED BLOCK WITH HASH {}".format(block_hash))
 
         self.curr_block_hash = block_hash
-        new_block_notif = block_data.create_new_block_notif()
+
+        new_block_notif = NewBlockNotification.create(block_hash=block_data.block_hash, merkle_roots=block_data.merkle_roots,
+                                                      prev_block_hash=block_data.prev_block_hash,
+                                                      masternode_signature=block_data.masternode_signature,
+                                                      input_hashes=input_hashes)
 
         if self.full_block_hashes.get(block_hash):
             self.log.info('Already received block hash "{}", adding to consensus count.'.format(block_hash))

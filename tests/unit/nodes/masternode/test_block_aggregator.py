@@ -182,7 +182,8 @@ class TestBlockAggregatorStorage(TestCase):
             block_hash=ba.curr_block_hash,
             merkle_roots=[RESULT_HASH1],
             prev_block_hash=old_b_hash,
-            masternode_signature=signature
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1]
         )
         ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
 
@@ -214,7 +215,8 @@ class TestBlockAggregatorStorage(TestCase):
             block_hash=ba.curr_block_hash,
             merkle_roots=[RESULT_HASH1, RESULT_HASH2],
             prev_block_hash=old_b_hash,
-            masternode_signature=signature
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1, INPUT_HASH2]
         )
         ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
 
@@ -246,7 +248,8 @@ class TestBlockAggregatorStorage(TestCase):
             block_hash=ba.curr_block_hash,
             merkle_roots=[RESULT_HASH1, RESULT_HASH2],
             prev_block_hash=old_b_hash,
-            masternode_signature=signature
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1, INPUT_HASH2]
         )
         ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
 
@@ -269,7 +272,8 @@ class TestBlockAggregatorStorage(TestCase):
             block_hash=ba.curr_block_hash,
             merkle_roots=[RESULT_HASH1],
             prev_block_hash=bh,
-            masternode_signature=signature
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1]
         )
         ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
 
@@ -303,7 +307,8 @@ class TestBlockAggregatorStorage(TestCase):
             block_hash=ba.curr_block_hash,
             merkle_roots=[RESULT_HASH1, RESULT_HASH2],
             prev_block_hash=bh,
-            masternode_signature=signature
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1, INPUT_HASH2]
         )
         for i in range(3):
             ba.recv_new_block_notif(new_block_notif)
