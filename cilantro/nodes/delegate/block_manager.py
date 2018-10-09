@@ -32,7 +32,7 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro.messages.signals.make_next_block import MakeNextBlock
+from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
 from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
 
 import asyncio
@@ -62,7 +62,7 @@ class BlockManager(Worker):
         self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
 
         self.ip = ip
-        self.sb_builders = {}  # index -> process      # perhaps can be consolidated with the above ?
+        self.sb_builders = {}  # index -> process
         self.tasks = []
 
         self.my_sb_index = self._get_my_index() % NUM_SB_BUILDERS
@@ -308,8 +308,6 @@ class BlockManager(Worker):
 
     # update current db state to the new block
     def handle_new_block(self, block_data: NewBlockNotification):
-        # cur_block_hash = self.db_state.cur_block_hash
-        # our_next_block_hash = self.get_our_next_block_hash()
         new_block_hash = block_data.block_hash
         self.log.info("Got new block notification with block hash {}...".format(new_block_hash))
 
@@ -322,7 +320,7 @@ class BlockManager(Worker):
             self.log.info("New block quorum met!")
             self.update_db_if_ready(block_data)
         else:
-            self.db_state.next_block[block_data.block_hash] = count
+            self.db_state.next_block[new_block_hash] = count
 
     def send_updated_db_msg(self):
         self.log.info("Sending MakeNextBlock message to SBBs")

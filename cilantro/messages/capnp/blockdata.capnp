@@ -5,10 +5,11 @@ using T = import "transaction.capnp";
 struct BlockMetaData {
     blockHash @0 :Data;
     merkleRoots @1 :List(Data);
-    prevBlockHash @2 :Data;
-    timestamp @3 :UInt64;
-    masternodeSignature @4 :Data;
-    blockNum @5 :UInt32;
+    inputHashes @2 :List(Data);
+    prevBlockHash @3 :Data;
+    timestamp @4 :UInt64;
+    masternodeSignature @5 :Data;
+    blockNum @6 :UInt32;
 }
 
 struct BlockData {

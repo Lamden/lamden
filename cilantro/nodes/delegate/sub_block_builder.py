@@ -30,7 +30,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.transaction.batch import TransactionBatch
-from cilantro.messages.signals.make_next_block import MakeNextBlock
+from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
 
 from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.protocol import wallet
@@ -146,8 +146,8 @@ class SubBlockBuilder(Worker):
 
         if isinstance(msg, MakeNextBlock):
             self._make_next_sub_block()
-        # elif isinstance(msg, DiscardPrevBlock):        # if not matched consensus, then discard current state and use catchup flow
-            # self.interpreter.flush(update_state=false)
+        elif isinstance(msg, DiscardPrevBlock):        # if not matched consensus, then discard current state and use catchup flow
+            self.interpreter.flush(update_state=false)
         else:
             raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                             .format(type(msg)))

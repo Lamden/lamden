@@ -1,3 +1,6 @@
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('2-2-4.json')
+
 from cilantro.logger.base import get_logger
 from cilantro.constants.testnet import TESTNET_DELEGATES
 from cilantro.nodes.delegate.block_manager import BlockManager, IPC_PORT
