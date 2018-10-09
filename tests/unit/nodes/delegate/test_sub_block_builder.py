@@ -22,7 +22,7 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.batch import TransactionBatch, build_test_transaction_batch
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender, SubBlockContenderBuilder
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro.messages.signals.make_next_block import MakeNextBlock
+from cilantro.messages.signals.delegate import MakeNextBlock
 
 from unittest import TestCase
 from unittest import mock

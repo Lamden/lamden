@@ -32,7 +32,7 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro.messages.signals.make_next_block import MakeNextBlock
+from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
 from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
 
 import asyncio
