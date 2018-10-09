@@ -308,8 +308,6 @@ class BlockManager(Worker):
 
     # update current db state to the new block
     def handle_new_block(self, block_data: NewBlockNotification):
-        # cur_block_hash = self.db_state.cur_block_hash
-        # our_next_block_hash = self.get_our_next_block_hash()
         new_block_hash = block_data.block_hash
         self.log.info("Got new block notification with block hash {}...".format(new_block_hash))
 
@@ -322,7 +320,7 @@ class BlockManager(Worker):
             self.log.info("New block quorum met!")
             self.update_db_if_ready(block_data)
         else:
-            self.db_state.next_block[block_data.block_hash] = count
+            self.db_state.next_block[new_block_hash] = count
 
     def send_updated_db_msg(self):
         self.log.info("Sending MakeNextBlock message to SBBs")
