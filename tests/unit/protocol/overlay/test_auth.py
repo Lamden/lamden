@@ -10,11 +10,10 @@ class TestAuth(TestCase):
     def test_setup_certs_dirs(self):
         sk, vk = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
         Auth.setup_certs_dirs(sk, reset_auth_folder=True)
-        self.assertTrue(exists(join(Auth.authorized_keys_dir, Auth.keyname)))
         self.assertEqual(Auth.sk, sk)
         self.assertEqual(Auth.vk, vk)
         self.assertEqual(Auth.public_key, Auth.vk2pk(vk))
-        self.assertEqual(Auth.private_key, crypto_sign_ed25519_sk_to_curve25519(cls.sk._signing_key).hex())
+        self.assertEqual(Auth.private_key, crypto_sign_ed25519_sk_to_curve25519(Auth._sk._signing_key))
 
 if __name__ == '__main__':
     unittest.main()

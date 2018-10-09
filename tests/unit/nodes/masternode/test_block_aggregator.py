@@ -157,8 +157,8 @@ class TestBlockAggregator(TestCase):
 class TestBlockAggregatorStorage(TestCase):
 
     def setUp(self):
-        SQLDB.reset_db()
         reset_db()
+        SQLDB.force_start()
 
     @BlockAggTester.test
     @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)

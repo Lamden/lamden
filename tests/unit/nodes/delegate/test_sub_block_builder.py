@@ -4,10 +4,11 @@ JSON_FILE_NAME = '2-2-4.json'
 
 import cilantro
 from unittest.mock import patch
-patched_json_dir = cilantro.__path__[0] + '/../testnet_configs/' + JSON_FILE_NAME
-with patch('cilantro.utils.test.testnet_nodes.get_testnet_json_path') as mock_path:
-    mock_path.return_value = patched_json_dir
-    from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
+# patched_json_dir = cilantro.__path__[0] + '/../testnet_configs/' + JSON_FILE_NAME
+# with patch('cilantro.utils.test.testnet_nodes.get_testnet_json_path') as mock_path:
+#     mock_path.return_value = patched_json_dir
+#     from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
+from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 # Done mocking
 # ------------------------------------------------------------------------
 from cilantro.logger.base import get_logger
@@ -122,7 +123,7 @@ class TestSubBlockBuilder(TestCase):
         """
 
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
-        
+
         self.assertTrue(len(sbb.sb_managers) == NUM_SB_PER_BUILDER)
 
         # Mock Envelope.from_bytes to return a mock envelope of our choosing

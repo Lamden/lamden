@@ -31,6 +31,7 @@ def nodefn(node_type, idx):
         if data['event'] == 'got_ip':
             data['hostname'] = os.getenv('HOST_NAME')
             send_to_file(json.dumps(data))
+            
     async def lookup_ip():
         await asyncio.sleep(5)
         for vk in [
