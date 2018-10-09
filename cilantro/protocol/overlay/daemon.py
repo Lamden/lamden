@@ -12,8 +12,8 @@ def command(fn):
         event_id = uuid.uuid4().hex
         self.cmd_sock.send_multipart(
             [fn.__name__.encode(), event_id.encode()] + \
-            [arg.encode() for arg in args] + \
-            [kwargs[k].encode() for k in kwargs])
+            [arg.encode() if hasattr(arg, 'encode') else str(arg).encode() for arg in args] + \
+            [kwargs[k].encode() if hasattr(kwargs[k], 'encode') else str(kwargs[k]).encode() for k in kwargs])
         return event_id
     return _command
 
@@ -72,10 +72,11 @@ class OverlayServer(object):
             getattr(self, msg[1].decode())(msg[0], *data)
 
     @async_reply
-    async def get_node_from_vk(self, event_id, vk, domain='*', timeout=5):
+    async def get_node_from_vk(self, event_id, vk, domain='*', secure='False'):
         if vk in VKBook.get_all():
             ip = await self.interface.lookup_ip(vk)
-            authorized = await self.interface.authenticate(vk, domain)
+            authorized = await self.interface.authenticate(vk, domain) \
+                if secure == 'True' else True
             if ip:
                 return {
                     'event': 'got_ip' if authorized else 'unauthorized_ip',

@@ -12,6 +12,7 @@ from cilantro.storage.db import VKBook
 from cilantro.protocol.overlay.kademlia.node import Node
 
 import asyncio, os
+from os import getenv as env
 from enum import Enum, auto
 
 class OverlayInterface:

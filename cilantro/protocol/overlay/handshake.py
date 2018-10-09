@@ -24,7 +24,14 @@ class Handshake:
         if not cls.is_setup:
             cls.ctx = zmq.asyncio.Context()
             cls.server_sock = cls.ctx.socket(zmq.ROUTER)
+            cls.server_sock.curve_secretkey = Auth.private_key
+            cls.server_sock.curve_publickey = Auth.public_key
+            cls.server_sock.curve_server = True
+            cls.server_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             cls.client_sock = cls.ctx.socket(zmq.ROUTER)
+            cls.client_sock.curve_secretkey = Auth.private_key
+            cls.client_sock.curve_publickey = Auth.public_key
+            cls.client_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             cls.auth = AsyncioAuthenticator(cls.ctx)
             cls.auth.configure_curve(domain="*", location=zmq.auth.CURVE_ALLOW_ANY)
             cls.auth.start()
@@ -33,9 +40,6 @@ class Handshake:
     @classmethod
     async def initiate_handshake(cls, ip, vk, domain='*'):
         if not cls.check_previously_authorized(ip, vk, domain):
-            cls.client_sock.curve_secretkey = Auth.private_key
-            cls.client_sock.curve_publickey = Auth.public_key
-            cls.client_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             start = time.time()
             for i in range(AUTH_TIMEOUT):
                 if cls.authorized_nodes[domain].get(vk): break
@@ -54,10 +58,6 @@ class Handshake:
 
     @classmethod
     async def listen(cls):
-        cls.server_sock.curve_secretkey = Auth.private_key
-        cls.server_sock.curve_publickey = Auth.public_key
-        cls.server_sock.curve_server = True
-        cls.server_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
         cls.server_sock.bind(cls.url)
         cls.log.info('Listening to other nodes on {}'.format(cls.url))
         while True:
@@ -71,6 +71,7 @@ class Handshake:
                 if len(msg) == 3: # this is a request
                     if ip == cls.host_ip and vk == Auth.vk:
                         cls.authorized_nodes[domain][vk] = ip
+                        return
                     else:
                         cls.log.info('Received a handshake request from {} (vk={}, domain={})'.format(ip, vk, domain))
                 elif len(msg) == 4 and msg[-1] == 'rep': # this is a reply
@@ -85,12 +86,14 @@ class Handshake:
                     if cls.validate_roles_with_domain(domain, vk):
                         cls.authorized_nodes[domain][vk] = ip
                         cls.authorized_nodes['*'][vk] = ip # Set all category for easier look-up
+                        Auth.add_public_key(vk=vk, domain=domain)
                         # Only reply to requests
                         if not is_reply: cls.reply(ip, vk, domain)
                         cls.log.info('Authorized: {} <=O= {} (vk={})'.format(cls.host_ip, ip, vk))
                         Event.emit({'event': 'authorized', 'vk': vk, 'ip': ip})
                     else:
                         cls.unknown_authorized_nodes[vk] = ip
+                        Auth.remove_public_key(vk=vk, domain=domain)
                         # NOTE The sender proved that it has the VK via ZMQ Auth but the sender is not found in the receiver's VKBook
                         cls.log.important('Unknown VK: {} <=X= {} (vk={}, domain={}), saving to unknown_authorized_nodes for now'.format(cls.host_ip, ip, vk, domain))
                         Event.emit({'event': 'unknown_vk', 'vk': vk, 'ip': ip})

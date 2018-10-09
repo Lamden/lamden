@@ -22,7 +22,7 @@ def vk_lookup(func):
         contains_ip = 'ip' in kwargs and kwargs['ip']
 
         if contains_vk and not contains_ip:
-            cmd_id = self.manager.overlay_client.get_node_from_vk(kwargs['vk'], domain=self.domain)
+            cmd_id = self.manager.overlay_client.get_node_from_vk(kwargs['vk'], domain=self.domain, secure=self.secure)
             assert cmd_id not in self.pending_lookups, "Collision! Uuid {} already in pending lookups {}".format(cmd_id, self.pending_lookups)
 
             self.log.socket("Looking up vk {}".format(kwargs['vk']))  # TODO remove
