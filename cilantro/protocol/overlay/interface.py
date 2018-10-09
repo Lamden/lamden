@@ -12,15 +12,18 @@ from cilantro.storage.db import VKBook
 from cilantro.protocol.overlay.kademlia.node import Node
 
 import asyncio, os
+from os import getenv as env
 from enum import Enum, auto
 
 class OverlayInterface:
     started = False
     log = get_logger('OverlayInterface')
-    def __init__(self, sk_hex):
-        Auth.setup_certs_dirs(sk_hex=sk_hex)
-        self.loop = asyncio.get_event_loop()
+    def __init__(self, sk_hex, loop=None):
+        self.loop = loop or asyncio.get_event_loop()
+        Auth.setup(sk_hex=sk_hex)
         self.network = Network(storage=None)
+        Discovery.setup()
+        Handshake.setup()
         self.tasks = [
             Discovery.listen(),
             Handshake.listen(),
@@ -77,7 +80,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         await self.network.bootstrap(addrs)
         self.network.cached_vks.update(self.neighbors)
 
-    async def authenticate(self, vk, domain='all'):
+    async def authenticate(self, vk, domain='*'):
         ip = await self.lookup_ip(vk)
         if not ip:
             self.log.critical('Authentication Failed: Cannot find ip for vk={}'.format(vk))

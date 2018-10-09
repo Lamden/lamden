@@ -14,7 +14,10 @@ DISCOVERY_TIMEOUT = 2
 DISCOVERY_RETRIES = 3
 MIN_BOOTSTRAP_NODES = 2
 
-HOST_IP = env('HOST_IP', get_public_ip())
+if env('HOST_IP'):
+    HOST_IP = env('HOST_IP')
+else:
+    HOST_IP = get_public_ip()
 PEPPER = env('PEPPER', 'cilantro_pepper')
 EVENT_URL = 'ipc://overlay-event-ipc-sock-{}'.format(env('HOST_NAME', ''))
 CMD_URL = 'ipc://overlay-cmd-ipc-sock-{}'.format(env('HOST_NAME', ''))

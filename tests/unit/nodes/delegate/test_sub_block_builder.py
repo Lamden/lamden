@@ -113,7 +113,7 @@ class TestSubBlockBuilder(TestCase):
         """
 
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
-        
+
         self.assertTrue(len(sbb.sb_managers) == NUM_SB_PER_BUILDER)
 
         # Mock Envelope.from_bytes to return a mock envelope of our choosing

@@ -59,17 +59,20 @@ def delegate(idx):
 class TestInterface(BaseTestCase):
 
     log = get_logger(__name__)
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-4-4-bootstrap.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
+    enable_ui = False
 
     def callback(self, data):
         for node in data:
             self.nodes_complete.add(node)
+        if self.nodes_complete == self.all_nodes:
+            self.end_test()
 
-    def complete(self):
-        all_nodes = set(self.groups['masternode']+self.groups['witness']+self.groups['delegate'])
-        self.assertEqual(self.nodes_complete, all_nodes)
+    def timeout(self):
+        self.assertEqual(self.nodes_complete, self.all_nodes)
 
     def test_interface(self):
+        self.all_nodes = set(self.groups['masternode']+self.groups['witness']+self.groups['delegate'])
         self.nodes_complete = set()
         for idx, node in enumerate(self.groups['masternode']):
             self.execute_python(node, wrap_func(masternode, idx))
@@ -78,7 +81,7 @@ class TestInterface(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(delegate, idx))
 
-        file_listener(self, self.callback, self.complete, 15)
+        file_listener(self, self.callback, self.timeout, 15)
 
 if __name__ == '__main__':
     unittest.main()

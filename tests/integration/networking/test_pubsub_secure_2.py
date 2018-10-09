@@ -1,7 +1,7 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-4.json')
 from cilantro.constants.testnet import *
-
+from cilantro.protocol.overlay.auth import Auth
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test
 from cilantro.utils.test.mp_testables import MPPubSubAuth
 import unittest, time
@@ -45,7 +45,7 @@ class TestPubSubSecure(MPTestCase):
         sub.connect_sub(vk=PUB1_VK)
         sub.connect_sub(vk=PUB2_VK)
 
-        time.sleep(5)  # Allow time for VK lookup
+        time.sleep(12)  # Allow time for VK lookup
 
         pub1.send_pub(msg1)
         pub2.send_pub(msg2)
@@ -77,7 +77,7 @@ class TestPubSubSecure(MPTestCase):
         sub.connect_sub(vk=PUB1_VK, socket_key='sub1')
         sub.connect_sub(vk=PUB2_VK, socket_key='sub2')
 
-        time.sleep(8)  # Allow time for VK lookup
+        time.sleep(12)  # Allow time for VK lookup
 
         pub1.send_pub(msg1)
         pub2.send_pub(msg2)
