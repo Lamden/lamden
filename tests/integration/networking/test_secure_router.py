@@ -9,8 +9,6 @@ import unittest, time
 
 PUB1_SK, PUB1_VK = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
 PUB2_SK, PUB2_VK = TESTNET_MASTERNODES[1]['sk'], TESTNET_MASTERNODES[1]['vk']
-SUB1_SK, SUB1_VK = TESTNET_DELEGATES[0]['sk'], TESTNET_DELEGATES[0]['vk']
-SUB2_SK, SUB2_VK = TESTNET_DELEGATES[1]['sk'], TESTNET_DELEGATES[1]['vk']
 
 
 def config_node(test_obj):
@@ -39,13 +37,13 @@ class TestRouterSecure(MPTestCase):
         router2.connect_router_socket(vk=PUB1_VK)
 
         # Give time for VK lookup
-        time.sleep(12)
+        time.sleep(5)
 
         router2.send_msg(id_frame=router1.ip.encode(), msg=b'hi from router 2!')
 
         self.start()
 
-    @vmnet_test(start_webui=True)
+    @vmnet_test
     def test_both_bind(self):
         def assert_router(test_obj):
             test_obj.handle_router_msg.assert_called_once()
@@ -65,7 +63,7 @@ class TestRouterSecure(MPTestCase):
         router2.connect_router_socket(vk=PUB1_VK)
 
         # Give time for VK lookup
-        time.sleep(12)
+        time.sleep(5)
 
         router2.send_msg(id_frame=router1.ip.encode(), msg=b'hi from router 2!')
         router1.send_msg(id_frame=router2.ip.encode(), msg=b'hi from router 1!')

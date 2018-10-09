@@ -51,7 +51,8 @@ class Discovery:
             cls.connect(get_ip_range(start_ip))
             try_count += 1
             await asyncio.sleep(DISCOVERY_TIMEOUT)
-            if (len(cls.discovered_nodes) == 1 and Auth.vk in VKBook.get_masternodes()):
+            if (len(cls.discovered_nodes) == 1 and Auth.vk in VKBook.get_masternodes()) \
+                and try_count >= DISCOVERY_RETRIES:
                 cls.log.important('Bootstrapping as the only masternode.'.format(
                     len(cls.discovered_nodes)
                 ))

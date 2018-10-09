@@ -17,7 +17,7 @@ def config_sub(test_obj):
 class TestLargeNetwork(MPTestCase):
     config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-8.json'.format(CILANTRO_PATH)
 
-    @vmnet_test(run_webui=True)
+    @vmnet_test
     def test_2_2_4(self):
         """
         Tests creating a network with 2 Masternodes, 2 Witnesses, and 4 Delegates. Ensures everyone can connect to

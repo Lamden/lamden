@@ -31,7 +31,7 @@ def nodefn(node_type, idx):
         if data['event'] == 'got_ip':
             data['hostname'] = os.getenv('HOST_NAME')
             send_to_file(json.dumps(data))
-            
+
     async def lookup_ip():
         await asyncio.sleep(5)
         for vk in [
@@ -53,6 +53,7 @@ class TestDaemon(BaseTestCase):
 
     log = get_logger(__name__)
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
+    enable_ui = False
 
     def callback(self, data):
         for s in data:
@@ -60,18 +61,22 @@ class TestDaemon(BaseTestCase):
             if not self.nodes_got_ip.get(d['hostname']):
                 self.nodes_got_ip[d['hostname']] = set()
             self.nodes_got_ip[d['hostname']].add(d['vk'])
+        for hostname in self.all_hostnames:
+            if self.nodes_got_ip.get(hostname) != self.all_vks:
+                return
+        self.end_test()
 
-    def complete(self):
-        all_vks = set([
+    def timeout(self):
+        for hostname in self.all_hostnames:
+            self.assertEqual(self.nodes_got_ip[hostname], self.all_vks)
+
+    def test_daemon(self):
+        self.all_vks = set([
             *[node['vk'] for node in TESTNET_MASTERNODES],
             *[node['vk'] for node in TESTNET_WITNESSES],
             *[node['vk'] for node in TESTNET_DELEGATES]
         ])
-        all_hostnames = self.groups['masternode'] + self.groups['witness'] + self.groups['delegate']
-        for hostname in all_hostnames:
-            self.assertEqual(self.nodes_got_ip[hostname], all_vks)
-
-    def test_daemon(self):
+        self.all_hostnames = self.groups['masternode'] + self.groups['witness'] + self.groups['delegate']
         self.nodes_got_ip = {}
         for idx, node in enumerate(self.groups['masternode']):
             self.execute_python(node, wrap_func(nodefn, 'MasterNode', idx))
@@ -80,7 +85,7 @@ class TestDaemon(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(nodefn, 'Delegate', idx))
 
-        file_listener(self, self.callback, self.complete, 30)
+        file_listener(self, self.callback, self.timeout, 30)
 
 if __name__ == '__main__':
     unittest.main()

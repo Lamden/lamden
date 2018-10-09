@@ -7,9 +7,9 @@ from cilantro.protocol.overlay.auth import Auth
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 
 class TestAuth(TestCase):
-    def test_setup_certs_dirs(self):
+    def test_setup(self):
         sk, vk = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
-        Auth.setup_certs_dirs(sk, reset_auth_folder=True)
+        Auth.setup(sk, reset_auth_folder=True)
         self.assertEqual(Auth.sk, sk)
         self.assertEqual(Auth.vk, vk)
         self.assertEqual(Auth.public_key, Auth.vk2pk(vk))

@@ -49,7 +49,7 @@ class Handshake:
             end = time.time()
 
         if cls.authorized_nodes[domain].get(vk):
-            cls.log.info('Complete (took {}s):'.format(end-start))
+            cls.log.info('Complete (took {}s): {} <=o= {} (vk={})'.format(end-start, cls.host_ip, ip, vk))
             return True
         else:
             cls.log.warning('Timeout (took {}s): {} <=:= {} (vk={})'.format(end-start, cls.host_ip, ip, vk))
@@ -71,7 +71,8 @@ class Handshake:
                 if len(msg) == 3: # this is a request
                     if ip == cls.host_ip and vk == Auth.vk:
                         cls.authorized_nodes[domain][vk] = ip
-                        return
+                        Auth.add_public_key(vk=vk, domain=domain)
+                        continue
                     else:
                         cls.log.info('Received a handshake request from {} (vk={}, domain={})'.format(ip, vk, domain))
                 elif len(msg) == 4 and msg[-1] == 'rep': # this is a reply
@@ -98,7 +99,7 @@ class Handshake:
                         cls.log.important('Unknown VK: {} <=X= {} (vk={}, domain={}), saving to unknown_authorized_nodes for now'.format(cls.host_ip, ip, vk, domain))
                         Event.emit({'event': 'unknown_vk', 'vk': vk, 'ip': ip})
                 else:
-                    if not is_reply: cls.reply(ip, domain)
+                    if not is_reply: cls.reply(ip, vk, domain)
             except Exception as e:
                 cls.log.error(traceback.format_exc())
 

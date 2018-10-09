@@ -13,19 +13,21 @@ from cilantro.utils import lazy_property
 
 class Auth:
     log = get_logger('Auth')
+    is_setup = False
     @classmethod
-    def setup_certs_dirs(cls, sk_hex, reset_auth_folder=False):
-        cls.sk = sk_hex
-        cls._sk = SigningKey(seed=bytes.fromhex(sk_hex))
-        cls.vk = cls._sk.verify_key.encode().hex()
-        cls.public_key = cls.vk2pk(cls.vk)
-        cls.private_key = crypto_sign_ed25519_sk_to_curve25519(cls._sk._signing_key)
-        cls.keyname = cls.public_key.hex()
-        cls.base_dir = 'certs/{}'.format(os.getenv('HOST_NAME', cls.keyname))
-        cls.default_domain_dir = 'authorized_keys'
-        cls.authorized_keys_dir = join(cls.base_dir, cls.default_domain_dir)
-        if reset_auth_folder: cls.reset_folder()
-        cls.add_public_key(public_key=cls.public_key)
+    def setup(cls, sk_hex, reset_auth_folder=False):
+        if not cls.is_setup:
+            cls.sk = sk_hex
+            cls._sk = SigningKey(seed=bytes.fromhex(sk_hex))
+            cls.vk = cls._sk.verify_key.encode().hex()
+            cls.public_key = cls.vk2pk(cls.vk)
+            cls.private_key = crypto_sign_ed25519_sk_to_curve25519(cls._sk._signing_key)
+            cls.keyname = cls.public_key.hex()
+            cls.base_dir = 'certs/{}'.format(os.getenv('HOST_NAME', cls.keyname))
+            cls.default_domain_dir = 'authorized_keys'
+            cls.authorized_keys_dir = join(cls.base_dir, cls.default_domain_dir)
+            if reset_auth_folder: cls.reset_folder()
+            cls.add_public_key(public_key=cls.public_key)
 
     @classmethod
     def reset_folder(cls):

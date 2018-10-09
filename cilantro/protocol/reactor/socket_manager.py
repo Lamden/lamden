@@ -24,7 +24,7 @@ class SocketManager:
 
         self.log = get_logger(type(self).__name__)
 
-        Auth.setup_certs_dirs(signing_key)
+        Auth.setup(signing_key)
         self.signing_key = Auth.sk
         self.verifying_key = Auth.vk
         self.public_key = Auth.public_key
