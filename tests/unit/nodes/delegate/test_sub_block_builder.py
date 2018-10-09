@@ -1,15 +1,6 @@
-# ------------------------------------------------------------------------
-# Mock out get_testnet_json_path to return the desired Testnet config json
-JSON_FILE_NAME = '2-2-4.json'
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('2-2-4.json')
 
-import cilantro
-from unittest.mock import patch
-patched_json_dir = cilantro.__path__[0] + '/../testnet_configs/' + JSON_FILE_NAME
-with patch('cilantro.utils.test.testnet_nodes.get_testnet_json_path') as mock_path:
-    mock_path.return_value = patched_json_dir
-    from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
-# Done mocking
-# ------------------------------------------------------------------------
 from cilantro.logger.base import get_logger
 from cilantro.constants.system_config import *
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
@@ -22,7 +13,7 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.batch import TransactionBatch, build_test_transaction_batch
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender, SubBlockContenderBuilder
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro.messages.signals.make_next_block import MakeNextBlock
+from cilantro.messages.signals.delegate import MakeNextBlock
 
 from unittest import TestCase
 from unittest import mock
@@ -122,7 +113,7 @@ class TestSubBlockBuilder(TestCase):
         """
 
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
-        
+
         self.assertTrue(len(sbb.sb_managers) == NUM_SB_PER_BUILDER)
 
         # Mock Envelope.from_bytes to return a mock envelope of our choosing

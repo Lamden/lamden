@@ -4,6 +4,8 @@ from zmq.auth.asyncio import AsyncioAuthenticator
 from os import getenv as env
 from cilantro.constants.overlay_network import *
 from cilantro.constants.ports import AUTH_PORT
+from zmq.auth.thread import ThreadAuthenticator
+from zmq.auth.asyncio import AsyncioAuthenticator
 from cilantro.protocol.overlay.event import Event
 from cilantro.protocol.overlay.ip import *
 from cilantro.protocol.overlay.auth import Auth
@@ -14,23 +16,31 @@ class Handshake:
     host_ip = HOST_IP
     port = AUTH_PORT
     url = 'tcp://*:{}'.format(port)
-    ctx = zmq.asyncio.Context()
-    auth = AsyncioAuthenticator(ctx)
-    sock = ctx.socket(zmq.ROUTER)
-    sock.setsockopt(zmq.IDENTITY, host_ip.encode())
-    sock.bind(url)
     pepper = PEPPER.encode()
     authorized_nodes = {'*':{}}
     unknown_authorized_nodes = {}
-    auth.log = log
-    auth.start()
+    is_setup = False
+
+    @classmethod
+    def setup(cls):
+        if not cls.is_setup:
+            cls.ctx = zmq.asyncio.Context()
+            cls.server_sock = cls.ctx.socket(zmq.ROUTER)
+            cls.server_sock.curve_secretkey = Auth.private_key
+            cls.server_sock.curve_publickey = Auth.public_key
+            cls.server_sock.curve_server = True
+            cls.server_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
+            cls.client_sock = cls.ctx.socket(zmq.ROUTER)
+            cls.client_sock.curve_secretkey = Auth.private_key
+            cls.client_sock.curve_publickey = Auth.public_key
+            cls.client_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
+            cls.auth = AsyncioAuthenticator(cls.ctx)
+            cls.auth.configure_curve(domain="*", location=zmq.auth.CURVE_ALLOW_ANY)
+            cls.auth.start()
+            cls.is_setup = True
 
     @classmethod
     async def initiate_handshake(cls, ip, vk, domain='*'):
-        if ip == cls.host_ip and vk == Auth.vk:
-            cls.authorized_nodes[domain][vk] = ip
-            cls.authorized_nodes['*'][vk] = ip
-            return True
         if not cls.check_previously_authorized(ip, vk, domain):
             start = time.time()
             for i in range(AUTH_TIMEOUT):
@@ -39,8 +49,9 @@ class Handshake:
                 cls.request(ip, domain)
                 await asyncio.sleep(AUTH_INTERVAL)
             end = time.time()
+
         if cls.authorized_nodes[domain].get(vk):
-            cls.log.info('Complete (took {}s):'.format(end-start))
+            cls.log.info('Complete (took {}s): {} <=o= {} (vk={})'.format(end-start, cls.host_ip, ip, vk))
             return True
         else:
             cls.log.warning('Timeout (took {}s): {} <=:= {} (vk={})'.format(end-start, cls.host_ip, ip, vk))
@@ -48,6 +59,7 @@ class Handshake:
 
     @classmethod
     async def listen(cls):
+        cls.server_sock.bind(cls.url)
         cls.log.info('Listening to other nodes on {}'.format(cls.url))
         while True:
             try:
@@ -58,9 +70,14 @@ class Handshake:
                 is_reply = False
                 if not cls.authorized_nodes.get(domain):
                     cls.authorized_nodes[domain] = {}
-                if len(frame) == 3: # this is a request
-                    cls.log.info('Received a handshake request from {} (vk={}, domain={})'.format(ip, vk, domain))
-                elif len(frame) == 4 and frame[-1] == b'rep': # this is a reply
+                if len(msg) == 3: # this is a request
+                    if ip == cls.host_ip and vk == Auth.vk:
+                        cls.authorized_nodes[domain][vk] = ip
+                        Auth.add_public_key(vk=vk, domain=domain)
+                        continue
+                    else:
+                        cls.log.info('Received a handshake request from {} (vk={}, domain={})'.format(ip, vk, domain))
+                elif len(msg) == 4 and msg[-1] == 'rep': # this is a reply
                     cls.log.info('Received a handshake reply from {} (vk={}, domain={})'.format(ip, vk, domain))
                     is_reply = True
 
@@ -70,20 +87,20 @@ class Handshake:
                         Event.emit({'event': 'unknown_vk', 'vk': vk, 'ip': ip})
                     elif cls.validate_roles_with_domain(domain, vk):
                         cls.authorized_nodes[domain][vk] = ip
-                        cls.authorized_nodes['*'][vk] = ip # Set * category for easier look-up
-                        Auth.add_public_key(Auth.vk2pk(vk))
-                        Auth.configure_auth(cls.auth, domain)
+                        cls.authorized_nodes['*'][vk] = ip # Set all category for easier look-up
+                        Auth.add_public_key(vk=vk, domain=domain)
                         # Only reply to requests
                         if not is_reply: cls.reply(ip, domain)
                         cls.log.info('Authorized: {} <=O= {} (vk={})'.format(cls.host_ip, ip, vk))
                         Event.emit({'event': 'authorized', 'vk': vk, 'ip': ip})
                     else:
                         cls.unknown_authorized_nodes[vk] = ip
+                        Auth.remove_public_key(vk=vk, domain=domain)
                         # NOTE The sender proved that it has the VK via ZMQ Auth but the sender is not found in the receiver's VKBook
                         cls.log.important('Unknown VK: {} <=X= {} (vk={}, domain={}), saving to unknown_authorized_nodes for now'.format(cls.host_ip, ip, vk, domain))
                         Event.emit({'event': 'unknown_vk', 'vk': vk, 'ip': ip})
                 else:
-                    if not is_reply: cls.reply(ip, domain)
+                    if not is_reply: cls.reply(ip, vk, domain)
             except Exception as e:
                 cls.log.warning('Received invalid message')
                 Event.emit({'event': 'invalid_msg', 'frame': frame})

@@ -23,15 +23,15 @@ class SocketManager:
         assert is_valid_hex(signing_key, 64), "signing_key must a 64 char hex str not {}".format(signing_key)
 
         self.log = get_logger(type(self).__name__)
-
-        self.signing_key = signing_key
-        self.verifying_key = wallet.get_vk(self.signing_key)
-        self.public_key = Auth.vk2pk(self.verifying_key)
-        self.secret = crypto_sign_ed25519_sk_to_curve25519(SigningKey(seed=bytes.fromhex(signing_key))._signing_key)
+        Auth.setup(signing_key)
+        self.signing_key = Auth.sk
+        self.verifying_key = Auth.vk
+        self.public_key = Auth.public_key
+        self.secret = Auth.private_key
 
         self.loop = loop or asyncio.get_event_loop()
         self.context = context or zmq.asyncio.Context()
-        self.secure_context, self.auth = Ironhouse.secure_context(context, async=True)
+        self.secure_context, self.auth = Auth.secure_context(context, async=True)
 
         self.sockets = []
         self.pending_lookups = {}   # A dict of 'event_id' to socket instance

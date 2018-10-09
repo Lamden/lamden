@@ -17,6 +17,8 @@ class BlockMetaData(MessageBase):
     """
 
     def validate(self):
+        from cilantro.messages.block_data.block_data import BlockData  # avoid cyclic imports
+
         assert validate_hex(self._data.blockHash, 64), 'Invalid hash'
         assert validate_hex(self._data.prevBlockHash, 64), 'Invalid previous block hash'
         assert len(self._data.merkleRoots) == NUM_SB_PER_BLOCK, 'num of roots in block meta {} does not match ' \
@@ -25,6 +27,8 @@ class BlockMetaData(MessageBase):
         assert type(self._data.timestamp) == int, 'Invalid timestamp'
         assert self.masternode_signature.sender in VKBook.get_masternodes(), 'Not a valid masternode'
         assert self.masternode_signature.verify(self.block_hash.encode()), 'Cannot verify signature'
+        expected_b_hash = BlockData.compute_block_hash(sbc_roots=self.merkle_roots, prev_block_hash=self.prev_block_hash)
+        assert expected_b_hash == self.block_hash, "Block hash could not be verified (does not match computed hash)"
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
@@ -32,7 +36,7 @@ class BlockMetaData(MessageBase):
 
     @classmethod
     def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str,
-                    masternode_signature: MerkleSignature, timestamp: int=0, block_num: int=0):
+               masternode_signature: MerkleSignature, timestamp: int=0, block_num: int=0, input_hashes: List[str]=None):
 
         if not timestamp:
             timestamp = int(time.time())
@@ -41,6 +45,7 @@ class BlockMetaData(MessageBase):
         struct.init('merkleRoots', len(merkle_roots))
         struct.blockHash = block_hash
         struct.merkleRoots = merkle_roots
+        struct.inputHashes = input_hashes
         struct.prevBlockHash = prev_block_hash
         struct.timestamp = int(timestamp)
         struct.blockNum = block_num
@@ -54,6 +59,10 @@ class BlockMetaData(MessageBase):
     @property
     def merkle_roots(self) -> List[str]:
         return [root.decode() for root in self._data.merkleRoots]
+
+    @property
+    def input_hashes(self) -> List[str]:
+        return [h.decode() for h in self._data.inputHashes]
 
     @property
     def masternode_signature(self) -> MerkleSignature:
@@ -77,5 +86,8 @@ class BlockMetaData(MessageBase):
 
 
 class NewBlockNotification(BlockMetaData):
-    pass
+    def validate(self):
+        super().validate()
+        assert len(self._data.inputHashes) == len(self._data.merkleRoots), "Length of input hashes does not match " \
+                                                                           "length of merkle roots"
 

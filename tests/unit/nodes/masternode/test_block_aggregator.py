@@ -1,3 +1,6 @@
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('2-2-4.json')
+
 from cilantro.logger.base import get_logger
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro.storage.db import VKBook
@@ -157,8 +160,8 @@ class TestBlockAggregator(TestCase):
 class TestBlockAggregatorStorage(TestCase):
 
     def setUp(self):
-        SQLDB.reset_db()
         reset_db()
+        SQLDB.force_start()
 
     @BlockAggTester.test
     @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)
@@ -182,7 +185,8 @@ class TestBlockAggregatorStorage(TestCase):
             block_hash=ba.curr_block_hash,
             merkle_roots=[RESULT_HASH1],
             prev_block_hash=old_b_hash,
-            masternode_signature=signature
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1]
         )
         ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
 
@@ -214,7 +218,8 @@ class TestBlockAggregatorStorage(TestCase):
             block_hash=ba.curr_block_hash,
             merkle_roots=[RESULT_HASH1, RESULT_HASH2],
             prev_block_hash=old_b_hash,
-            masternode_signature=signature
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1, INPUT_HASH2]
         )
         ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
 
@@ -246,7 +251,8 @@ class TestBlockAggregatorStorage(TestCase):
             block_hash=ba.curr_block_hash,
             merkle_roots=[RESULT_HASH1, RESULT_HASH2],
             prev_block_hash=old_b_hash,
-            masternode_signature=signature
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1, INPUT_HASH2]
         )
         ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
 
@@ -269,7 +275,8 @@ class TestBlockAggregatorStorage(TestCase):
             block_hash=ba.curr_block_hash,
             merkle_roots=[RESULT_HASH1],
             prev_block_hash=bh,
-            masternode_signature=signature
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1]
         )
         ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
 
@@ -303,7 +310,8 @@ class TestBlockAggregatorStorage(TestCase):
             block_hash=ba.curr_block_hash,
             merkle_roots=[RESULT_HASH1, RESULT_HASH2],
             prev_block_hash=bh,
-            masternode_signature=signature
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1, INPUT_HASH2]
         )
         for i in range(3):
             ba.recv_new_block_notif(new_block_notif)

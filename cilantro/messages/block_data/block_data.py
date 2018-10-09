@@ -22,9 +22,9 @@ class BlockData(MessageBase):
     @staticmethod
     def compute_block_hash(sbc_roots: List[str], prev_block_hash: str):
         # DEBUG -- TODO DELETE
-        from cilantro.logger.base import get_logger
-        log = get_logger("BlockData.compute_block_hash")
-        log.important2("COMPUTING BLOCK HASH with\nroots={}\nprev_block_hash={}".format(sbc_roots, prev_block_hash))
+        # from cilantro.logger.base import get_logger
+        # log = get_logger("BlockData.compute_block_hash")
+        # log.important2("COMPUTING BLOCK HASH with\nroots={}\nprev_block_hash={}".format(sbc_roots, prev_block_hash))
         # END DEBUG
         # TODO validate input (valid 64 char hex str)
         return Hasher.hash_iterable(sbc_roots + [prev_block_hash])
@@ -80,15 +80,6 @@ class BlockData(MessageBase):
     def merkle_roots(self) -> List[str]:
         return [mr.decode() for mr in self._data.merkleRoots]
 
-    @lazy_func
-    def create_new_block_notif(self, block_num=0) -> NewBlockNotification:
-        return NewBlockNotification.create(
-            block_hash=self.block_hash,
-            merkle_roots=self.merkle_roots,
-            prev_block_hash=self.prev_block_hash,
-            masternode_signature=self.masternode_signature,
-            block_num=block_num or self.block_num
-        )
 
 MN_SK = TESTNET_MASTERNODES[0]['sk']
 MN_VK = TESTNET_MASTERNODES[0]['vk']
