@@ -111,6 +111,7 @@ def main(args):
 
     for group in all_tests:
         for test in group:
+            log.critical(group)
 
             if _should_skip_module(test, skip_module_names):
                 log.notice("Skipping test module {}".format(test))
