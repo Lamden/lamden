@@ -12,7 +12,7 @@ from os.path import join
 
 
 RDY_WAIT_INTERVAL = 1.0  # TODO move this to constants, and explain it
-MAX_RDY_WAIT = 10.0  # TODO move this to constants, and explain it
+MAX_RDY_WAIT = 20.0  # TODO move this to constants, and explain it
 
 
 def vk_lookup(func):
