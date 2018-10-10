@@ -60,7 +60,7 @@ class TestLargeNetwork(MPTestCase):
                 if vk == node_vk: continue
                 n.connect_sub(vk=vk)
 
-        time.sleep(30)  # Allow time for VK lookups
+        time.sleep(45)  # Allow time for VK lookups
 
         # Make each node pub a msg
         for n in all_nodes:
