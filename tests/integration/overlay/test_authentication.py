@@ -21,7 +21,7 @@ def masternode(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(5)
+        await asyncio.sleep(8)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
@@ -49,7 +49,7 @@ def witness(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(5)
+        await asyncio.sleep(8)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
@@ -77,7 +77,7 @@ def delegate(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(5)
+        await asyncio.sleep(8)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
@@ -115,7 +115,7 @@ class TestAuthentication(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(delegate, idx, node_count))
 
-        file_listener(self, self.callback, self.timeout, 30)
+        file_listener(self, self.callback, self.timeout, 60)
 
 if __name__ == '__main__':
     unittest.main()
