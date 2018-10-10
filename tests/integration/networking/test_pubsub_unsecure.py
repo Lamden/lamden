@@ -29,6 +29,8 @@ class TestPubSubUnsecure(MPTestCase):
 
         msg = b'*falcon noise*'
 
+        BLOCK = False
+
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB', block_until_rdy=BLOCK)
         sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB1', block_until_rdy=BLOCK)
         sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB2', block_until_rdy=BLOCK)
@@ -59,6 +61,8 @@ class TestPubSubUnsecure(MPTestCase):
 
         msg1 = b'*falcon1 noise*'
         msg2 = b'*falcon2 noise*'
+
+        BLOCK = False
 
         pub1 = MPPubSubAuth(sk=PUB1_SK, name='PUB1', block_until_rdy=BLOCK)
         pub2 = MPPubSubAuth(sk=PUB2_SK, name='PUB2', block_until_rdy=BLOCK)
