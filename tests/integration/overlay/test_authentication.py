@@ -77,7 +77,7 @@ def delegate(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(8)
+        await asyncio.sleep(15)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
