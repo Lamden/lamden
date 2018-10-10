@@ -20,7 +20,7 @@ from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
 from typing import List
 
-import asyncio, zmq, os, time
+import asyncio, zmq, os, time, itertools
 from collections import defaultdict
 
 class BlockAggregator(Worker):
@@ -34,6 +34,7 @@ class BlockAggregator(Worker):
         self.result_hashes = {}
         self.sub_blocks = {}
         self.full_blocks = {}
+        self.curr_block_hash = '0' * 64
 
         self.run()
 
@@ -109,11 +110,11 @@ class BlockAggregator(Worker):
                 self.log.spam('Already validated this SubBlock (result_hash={})'.format(
                     sbc.result_hash))
             elif self.check_alredy_verified(sbc):
-                self.log.spam('Already received and verified this input hash (result_hash={}, input_hash={})'.format(
+                self.log.spam('Already received and verified this SubBlockContender (result_hash={}, input_hash={})'.format(
                     sbc.result_hash, sbc.input_hash))
             else:
                 if self.verify_sub_block_contender(sbc):
-                    self.log.info('Received input hash for an existing result hash (result_hash={}, input_hash={})'.format(
+                    self.log.info('Received SubBlockContender for an existing result hash (result_hash={}, input_hash={})'.format(
                         sbc.result_hash, sbc.input_hash))
                     self.aggregate_sub_block(sbc)
                 else:
@@ -129,18 +130,19 @@ class BlockAggregator(Worker):
                     sbc.result_hash, sbc.input_hash))
 
     def check_alredy_verified(self, sbc: SubBlockContender):
-        if sbc.signature in self.result_hashes.get(sbc.result_hash, {}).get('_valid_signatures_'):
+        if sbc.signature.signature in self.result_hashes.get(sbc.result_hash, {}).get('_valid_signatures_'):
             return True
         return False
 
     def verify_sub_block_contender(self, sbc: SubBlockContender):
-        if not sbc.signature.verify(sbc.result_hash):
+        if not sbc.signature.verify(bytes.fromhex(sbc.result_hash)):
             self.log.info('This SubBlockContender does not have a correct signature!')
             return False
         if len(sbc.merkle_leaves) > 0:
             if MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash) \
                 and self.validate_transactions(sbc):
                 self.log.info('This SubBlockContender is valid!')
+                return True
             else:
                 self.log.warning('This SubblockContender is INVALID!')
         else:
@@ -160,20 +162,22 @@ class BlockAggregator(Worker):
             self.result_hashes[sbc.result_hash] = {
                 '_committed_': False,
                 '_consensus_reached_': False,
-                '_transactions_': set(),
-                '_valid_signatures_': set(),
+                '_transactions_': {},
+                '_valid_signatures_': {},
+                '_input_hash_': sbc.input_hash,
                 '_merkle_leaves_': sbc.merkle_leaves,
                 '_sb_index_': sbc.sb_index,
                 '_lastest_valid_': time.time()
             }
-        self.result_hashes[sbc.result_hash]['_valid_signatures_'].add(sbc.signature)
-        self.result_hashes[sbc.result_hash]['_transactions_'].add(set(sbc.transactions))
+        self.result_hashes[sbc.result_hash]['_valid_signatures_'][sbc.signature.signature] = sbc.signature
+        for tx in sbc.transactions:
+            self.result_hashes[sbc.result_hash]['_transactions_'][tx.hash] = tx
         if len(self.result_hashes[sbc.result_hash]['_valid_signatures_']) >= DELEGATE_MAJORITY \
             and len(self.result_hashes[sbc.result_hash]['_transactions_']) == \
                 len(self.result_hashes[sbc.result_hash]['_merkle_leaves_']):
             self.log.info('SubBlock is validated and consensus reached (result_hash={})'.format(sbc.result_hash))
             self.result_hashes[sbc.result_hash]['_consensus_reached_'] = True
-            self.store_sub_block(sbc, self.result_hashes[sbc.result_hash]['_valid_signatures_'])
+            self.store_sub_block(sbc, self.result_hashes[sbc.result_hash]['_valid_signatures_'].values())
             self.store_full_block()
         else:
             self.log.info('Saved valid sub block into memory (result_hash={}, signatures:{}/{}, transactions:{}/{})'.format(
@@ -185,14 +189,14 @@ class BlockAggregator(Worker):
         self.cleanup_block_memory()
 
     def cleanup_block_memory(self):
-        self.result_hashes = [
-             self.result_hashes[result_hash] \
+        self.result_hashes = {
+             result_hash: self.result_hashes[result_hash] \
                 for result_hash in self.result_hashes \
                 if self.result_hashes[result_hash]['_lastest_valid_'] <= SUB_BLOCK_VALID_PERIOD + time.time() and \
                     not self.result_hashes[result_hash].get('_committed_')
-        ]
+        }
 
-    def store_sub_block(self, sbc: SubBlockContender, signatures):
+    def store_sub_block(self, sbc: SubBlockContender, signatures: List[MerkleSignature]):
         StorageDriver.store_sub_block(sbc, list(signatures))
 
     def store_full_block(self):
@@ -204,30 +208,28 @@ class BlockAggregator(Worker):
             self.log.info('Received {}/{} required sub-blocks so far.'.format(
                 len(sub_blocks), NUM_SB_PER_BLOCK))
         else:
-            self.log.info("Attempting to store block with hash {} and prev_block_hash {}".format(block_hash, prev_block_hash))
+
             unordered_merkle_roots = [result_hash for result_hash in sub_blocks][:NUM_SB_PER_BLOCK]
-            merkle_roots = sorted(unordered_merkle_roots, key=lambda result_hash: self.result_hashes[result_hash]['sb_index'])
-            transactions = list(itertools.chain.from_iterable([sub_blocks[mr]['_transactions_'] for mr in merkle_roots]))
+            merkle_roots = sorted(unordered_merkle_roots, key=lambda result_hash: self.result_hashes[result_hash]['_sb_index_'])
+            input_hashes = [self.result_hashes[result_hash]['_input_hash_'] for result_hash in merkle_roots]
+            transactions = list(itertools.chain.from_iterable([sub_blocks[mr]['_transactions_'].values() for mr in merkle_roots]))
             prev_block_hash = StorageDriver.get_latest_block_hash()
             block_hash = BlockData.compute_block_hash(sbc_roots=merkle_roots, prev_block_hash=prev_block_hash)
             sig = MerkleSignature.create(sig_hex=wallet.sign(self.signing_key, block_hash.encode()),
                                          sender=self.verifying_key, timestamp=str(time.time()))
             block_data = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash,
                                           transactions=transactions, masternode_signature=sig,
-                                          merkle_roots=merkle_roots)
+                                          merkle_roots=merkle_roots, input_hashes=input_hashes)
 
+            self.log.info("Attempting to store block with hash {} and prev_block_hash {}".format(block_hash, prev_block_hash))
             # DEBUG Development sanity checks
-            if not hasattr(self, 'curr_block_hash'):
-                self.curr_block_hash = '0' * 64
             assert prev_block_hash == self.curr_block_hash, "Current block hash {} does not match StorageDriver previous " \
                                                             "block hash {}".format(self.curr_block_hash, prev_block_hash)
             assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} SBs/per/block" \
                                                           .format(len(merkle_roots), NUM_SB_PER_BLOCK)
-            self.curr_block_hash = block_hash
-            # DEBUG Development sanity checks
-
             # TODO wrap storage in try/catch. Add logic for storage failure
             StorageDriver.store_block(block_data)
+            self.curr_block_hash = block_hash
             self.log.success("STORED BLOCK WITH HASH {}".format(block_hash))
             self.send_new_block_notification(block_data)
             for result_hash in merkle_roots:
@@ -235,17 +237,16 @@ class BlockAggregator(Worker):
                 self.result_hashes[result_hash]['_committed_'] = True
 
     def send_new_block_notification(self, block_data):
-
-        new_block_notif = block_data.create_new_block_notif()
-
+        new_block_notif = NewBlockNotification.create_from_block_data(block_data)
+        block_hash = block_data.block_hash
         if self.full_blocks.get(block_hash):
             self.log.info('Already received block hash "{}", adding to consensus count.'.format(block_hash))
-            self.full_blocks[block_hash]['_consensus_count_'] += 1
         else:
             self.log.info('Created resultant block-hash "{}"'.format(block_hash))
             self.full_blocks[block_hash] = {
-                '_consensus_count_': 1,
-                '_block_metadata_': new_block_notif
+                '_block_metadata_': new_block_notif,
+                '_consensus_reached_': False,
+                '_master_signatures_': {block_data.masternode_signature.signature: block_data.masternode_signature}
             }
 
         self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
@@ -254,19 +255,20 @@ class BlockAggregator(Worker):
 
     def recv_new_block_notif(self, nbc: NewBlockNotification):
         block_hash = nbc.block_hash
-
+        signature = nbc.masternode_signature
         if not self.full_blocks.get(block_hash):
             self.log.info('Received NEW block hash "{}", did not yet receive valid sub blocks from delegates.'.format(block_hash))
             self.full_blocks[block_hash] = {
-                '_consensus_count_': 1,
                 '_block_metadata_': nbc,
-                '_consensus_reached_': False
+                '_consensus_reached_': False,
+                '_master_signatures_': {signature.signature: signature}
             }
+        elif signature.signature in self.full_blocks[block_hash]['_master_signatures_']:
+            self.log.warning('Already received the NewBlockNotification with block_hash "{}"'.format(block_hash))
         elif self.full_blocks[block_hash].get('consensus_reached') != True:
-            self.total_valid_sub_blocks = 0
             self.log.info('Received KNOWN block hash "{}", adding to consensus count.'.format(block_hash))
-            self.full_blocks[block_hash]['_consensus_count_'] += 1
-            if self.full_blocks[block_hash]['_consensus_count_'] >= MASTERNODE_MAJORITY:
+            self.full_blocks[block_hash]['_master_signatures_'][signature.signature] = signature
+            if len(self.full_blocks[block_hash]['_master_signatures_']) >= MASTERNODE_MAJORITY:
                 self.full_blocks[block_hash]['_consensus_reached_'] = True
                 bmd = self.full_blocks[block_hash].get('_block_metadata_')
                 if not len(bmd.merkle_roots) == NUM_SB_PER_BLOCK:

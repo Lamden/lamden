@@ -16,7 +16,6 @@ def chunk(s):
     assert len(s) % 64 == 0, 'Malformed'
     return [s[i*64:(i+1)*64].decode() for i in range(int(len(s)/64))]
 
-
 class BlockMetaSQL:
     @classmethod
     def pack(cls, block):

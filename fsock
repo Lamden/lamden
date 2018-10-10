@@ -1,6 +1,0 @@
-{"event": "got_ip", "event_id": "aa30f103ca43412b8c4ac700745f3e89", "ip": "172.29.0.4", "vk": "38c28e17265c363490e0564babb5af41a529960c840424ede9184d209a466069", "hostname": "witness_4"}
-{"event": "got_ip", "event_id": "6ed8149b56a44e9d836c3e2b58745b37", "ip": "172.29.0.3", "vk": "3c5994eaaa55580d31725f33ac1d7586f1f05113f9aa63a2a085beac302f166a", "hostname": "witness_3"}
-{"event": "got_ip", "event_id": "928bb57d50544e498f45c0eaac897d26", "ip": "172.29.0.1", "vk": "a2ac987b227e5fbad188f42c11fdfc347688530167b975baeab216e337626ec5", "hostname": "masternode_1"}
-{"event": "got_ip", "event_id": "2bf01d2b6e88441c893c80b80b23b0c7", "ip": "172.29.0.2", "vk": "ac550f1023f623b61981bda3f88e26e06d389a373141a9b43bd91497050c915c", "hostname": "masternode_2"}
-{"event": "got_ip", "event_id": "54884b4f91c24d2fa46883f6d1fce4ba", "ip": "172.29.0.8", "vk": "0001eebd3b1bbf6093450d78e174f2e547b35206101f5f00988c63cb7406c395", "hostname": "delegate_8"}
-{"event": "got_ip", "event_id": "0a39e0ddb8134f3a8b54d39070363ce1", "ip": "172.29.0.7", "vk": "72bf576d9d4618f9ae922ed7c68d2462859d4d3bbaa3ee247d09f4fd8addac92", "hostname": "delegate_7"}

@@ -21,12 +21,6 @@ class BlockData(MessageBase):
     # TODO find this method a better home. Maybe in utils or something?
     @staticmethod
     def compute_block_hash(sbc_roots: List[str], prev_block_hash: str):
-        # DEBUG -- TODO DELETE
-        # from cilantro.logger.base import get_logger
-        # log = get_logger("BlockData.compute_block_hash")
-        # log.important2("COMPUTING BLOCK HASH with\nroots={}\nprev_block_hash={}".format(sbc_roots, prev_block_hash))
-        # END DEBUG
-        # TODO validate input (valid 64 char hex str)
         return Hasher.hash_iterable(sbc_roots + [prev_block_hash])
 
     def validate(self):
@@ -44,12 +38,14 @@ class BlockData(MessageBase):
 
     @classmethod
     def create(cls, block_hash: str, prev_block_hash: str, transactions: List[TransactionData],
-               masternode_signature: MerkleSignature, merkle_roots: List[str], block_num: int=0):
+               masternode_signature: MerkleSignature, input_hashes: List[str],
+               merkle_roots: List[str], block_num: int=0):
         struct = blockdata_capnp.BlockData.new_message()
         struct.init('transactions', len(transactions))
         struct.init('merkleRoots', len(merkle_roots))
         struct.blockHash = block_hash
         struct.blockNum = block_num
+        struct.inputHashes = input_hashes
         struct.merkleRoots = [mr.encode() for mr in merkle_roots]
         struct.prevBlockHash = prev_block_hash
         struct.masternodeSignature = masternode_signature.serialize()
@@ -80,6 +76,9 @@ class BlockData(MessageBase):
     def merkle_roots(self) -> List[str]:
         return [mr.decode() for mr in self._data.merkleRoots]
 
+    @lazy_property
+    def input_hashes(self) -> List[str]:
+        return [input_hash.decode() for input_hash in self._data.inputHashes]
 
 MN_SK = TESTNET_MASTERNODES[0]['sk']
 MN_VK = TESTNET_MASTERNODES[0]['vk']
