@@ -37,7 +37,7 @@ class BlockMetaData(MessageBase):
 
     @classmethod
     def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str,
-               masternode_signature: MerkleSignature, input_hashes: List[str],
+               masternode_signature: MerkleSignature, input_hashes: List[str] = [],
                timestamp: int=0, block_num: int=0):
 
         if not timestamp:

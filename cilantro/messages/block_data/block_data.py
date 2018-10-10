@@ -38,8 +38,8 @@ class BlockData(MessageBase):
 
     @classmethod
     def create(cls, block_hash: str, prev_block_hash: str, transactions: List[TransactionData],
-               masternode_signature: MerkleSignature, input_hashes: List[str],
-               merkle_roots: List[str], block_num: int=0):
+               masternode_signature: MerkleSignature, merkle_roots: List[str],
+               input_hashes: List[str] = [], block_num: int=0):
         struct = blockdata_capnp.BlockData.new_message()
         struct.init('transactions', len(transactions))
         struct.init('merkleRoots', len(merkle_roots))
@@ -93,14 +93,17 @@ class BlockDataBuilder:
         if not transactions:
             merkle_roots = []
             transactions = []
+            input_hashes = []
             for i in range(sub_block_count):
                 transactions += [TransactionDataBuilder.create_random_tx() for i in range(tx_count)]
                 merkle_leaves = [Hasher.hash(tx) for tx in transactions]
                 merkle_roots.append(MerkleTree.from_hex_leaves(merkle_leaves).root_as_hex)
+                input_hashes = [Hasher.hash(leaf) for leaf in merkle_leaves]
         block_hash = Hasher.hash_iterable([*merkle_roots, prev_block_hash])
         block_num = cls.block_num
         signature = build_test_merkle_sig(msg=block_hash.encode(), sk=mn_sk, vk=mn_vk)
         block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, transactions=transactions,
-                                 masternode_signature=signature, merkle_roots=merkle_roots, block_num=block_num)
+                                 masternode_signature=signature, merkle_roots=merkle_roots, block_num=block_num,
+                                 input_hashes=input_hashes)
         cls.block_num += 1
         return block
