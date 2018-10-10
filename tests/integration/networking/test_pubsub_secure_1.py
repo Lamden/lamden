@@ -39,7 +39,7 @@ class TestPubSubSecure(MPTestCase):
             sub.add_sub_socket()
             sub.connect_sub(vk=PUB1_VK)
 
-        time.sleep(5)  # Allow time for VK lookup
+        time.sleep(12)  # Allow time for VK lookup
 
         pub.send_pub(msg)
 
@@ -63,7 +63,7 @@ class TestPubSubSecure(MPTestCase):
             sub.add_sub_socket(secure=True)
             sub.connect_sub(vk=PUB1_VK)
 
-        time.sleep(5)  # Allow time for VK lookup
+        time.sleep(12)  # Allow time for VK lookup
 
         pub.send_pub(msg)
 

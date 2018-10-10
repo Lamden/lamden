@@ -37,7 +37,7 @@ class TestRouterSecure(MPTestCase):
         router2.connect_router_socket(vk=PUB1_VK)
 
         # Give time for VK lookup
-        time.sleep(5)
+        time.sleep(12)
 
         router2.send_msg(id_frame=router1.ip.encode(), msg=b'hi from router 2!')
 
@@ -63,7 +63,7 @@ class TestRouterSecure(MPTestCase):
         router2.connect_router_socket(vk=PUB1_VK)
 
         # Give time for VK lookup
-        time.sleep(5)
+        time.sleep(12)
 
         router2.send_msg(id_frame=router1.ip.encode(), msg=b'hi from router 2!')
         router1.send_msg(id_frame=router2.ip.encode(), msg=b'hi from router 1!')

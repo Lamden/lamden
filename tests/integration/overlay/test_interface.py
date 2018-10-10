@@ -81,7 +81,7 @@ class TestInterface(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(delegate, idx))
 
-        file_listener(self, self.callback, self.timeout, 15)
+        file_listener(self, self.callback, self.timeout, 30)
 
 if __name__ == '__main__':
     unittest.main()

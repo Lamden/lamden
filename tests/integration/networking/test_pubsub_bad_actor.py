@@ -36,7 +36,7 @@ class TestPubSubBadActor(MPTestCase):
         sub.add_sub_socket(secure=False, socket_key='sub1')
         sub.connect_sub(vk=PUB1_VK, socket_key='sub1')
 
-        time.sleep(5)  # Allow time for VK lookup
+        time.sleep(12)  # Allow time for VK lookup
 
         pub.send_pub(msg)
         time.sleep(2)
