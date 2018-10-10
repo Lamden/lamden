@@ -69,7 +69,7 @@ class SQLDB():
     @classmethod
     def build_tables(cls):
         cls.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS subblock (
+            CREATE TABLE IF NOT EXISTS sub_block (
                 merkle_root VARCHAR(64) PRIMARY KEY,
                 signatures BLOB NOT NULL,
                 merkle_leaves BLOB NOT NULL,

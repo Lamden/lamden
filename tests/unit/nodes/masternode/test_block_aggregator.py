@@ -154,7 +154,7 @@ class TestBlockAggregator(TestCase):
         sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
 
         ba.recv_sub_block_contender(sbc)
-        self.assertTrue(sbc._data.signature in ba.result_hashes[RESULT_HASH1]['signatures'])
+        self.assertTrue(sbc.signature.signature in ba.result_hashes[RESULT_HASH1]['_valid_signatures_'])
 
 
 class TestBlockAggregatorStorage(TestCase):
@@ -176,7 +176,7 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
@@ -203,13 +203,13 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
         # Sub block 1
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=DEL_SK, vk=DEL_VK)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 0)
             ba.recv_sub_block_contender(sbc)
 
@@ -236,13 +236,13 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(NUM_DELEGATES):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
         # Sub block 1
         for i in range(NUM_DELEGATES):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=DEL_SK, vk=DEL_VK)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 1)
             ba.recv_sub_block_contender(sbc)
 
@@ -266,7 +266,7 @@ class TestBlockAggregatorStorage(TestCase):
         ba.build_task_list()
         bh = ba.curr_block_hash
         for i in range(DELEGATE_MAJORITY + 5):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i%DELEGATE_MAJORITY]['sk'], vk=TESTNET_DELEGATES[i%DELEGATE_MAJORITY]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
@@ -281,7 +281,7 @@ class TestBlockAggregatorStorage(TestCase):
         ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
 
     @BlockAggTester.test
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.MASTERNODE_MAJORITY", 3)
+    @mock.patch("cilantro.nodes.masternode.block_aggregator.MASTERNODE_MAJORITY", 2)
     @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
     @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
     def test_recv_result_hash_multiple_subblocks_consensus(self, *args):
@@ -293,32 +293,33 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
         # Sub block 1
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=DEL_SK, vk=DEL_VK)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 1)
             ba.recv_sub_block_contender(sbc)
 
-        self.assertEqual(ba.total_valid_sub_blocks, 2)
+        self.assertEqual(len(ba.full_blocks), 1)
 
-        signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
-        new_block_notif = NewBlockNotification.create(
-            block_hash=ba.curr_block_hash,
-            merkle_roots=[RESULT_HASH1, RESULT_HASH2],
-            prev_block_hash=bh,
-            masternode_signature=signature,
-            input_hashes=[INPUT_HASH1, INPUT_HASH2]
-        )
-        for i in range(3):
+        for i in range(2):
+            signature = MerkleSignature.create(
+                sig_hex=wallet.sign(TESTNET_MASTERNODES[i]['sk'], ba.curr_block_hash.encode()),
+                sender=TESTNET_MASTERNODES[i]['vk'])
+            new_block_notif = NewBlockNotification.create(
+                block_hash=ba.curr_block_hash,
+                merkle_roots=[RESULT_HASH1, RESULT_HASH2],
+                prev_block_hash=bh,
+                masternode_signature=signature,
+                input_hashes=[INPUT_HASH1, INPUT_HASH2]
+            )
             ba.recv_new_block_notif(new_block_notif)
 
-        self.assertEqual(ba.full_block_hashes[ba.curr_block_hash]['consensus_count'], 3)
-        self.assertEqual(ba.full_block_hashes[ba.curr_block_hash]['full_block_metadata'], new_block_notif)
-        self.assertEqual(ba.total_valid_sub_blocks, 0)
+        self.assertEqual(len(ba.full_blocks[ba.curr_block_hash]['_master_signatures_']), 2)
+        self.assertEqual(ba.full_blocks[ba.curr_block_hash]['_block_metadata_'], new_block_notif)
 
     @BlockAggTester.test
     @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
@@ -332,17 +333,17 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
         # Sub block 1
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=DEL_SK, vk=DEL_VK)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 1)
             ba.recv_sub_block_contender(sbc)
 
-        self.assertEqual(ba.total_valid_sub_blocks, 2)
+        self.assertEqual(len(ba.sub_blocks), 2)
 
     @BlockAggTester.test
     def test_combine_result_hash_transactions_missing(self, *args):
@@ -352,13 +353,13 @@ class TestBlockAggregatorStorage(TestCase):
         ba.build_task_list()
 
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1[:3], 0)
             ba.recv_sub_block_contender(sbc)
 
-        self.assertEqual(len(ba.result_hashes[RESULT_HASH1]['signatures']), DELEGATE_MAJORITY)
-        self.assertEqual(len(ba.contenders[INPUT_HASH1]['transactions']), 3)
-        self.assertEqual(len(ba.full_block_hashes), 0)
+        self.assertEqual(len(ba.result_hashes[RESULT_HASH1]['_valid_signatures_']), DELEGATE_MAJORITY)
+        self.assertEqual(len(ba.result_hashes[RESULT_HASH1]['_transactions_']), 3)
+        self.assertEqual(len(ba.full_blocks), 0)
 
 
 if __name__ == '__main__':

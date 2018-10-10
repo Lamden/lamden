@@ -85,7 +85,7 @@ class TestDaemon(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(nodefn, 'Delegate', idx))
 
-        file_listener(self, self.callback, self.timeout, 30)
+        file_listener(self, self.callback, self.timeout, 20)
 
 if __name__ == '__main__':
     unittest.main()

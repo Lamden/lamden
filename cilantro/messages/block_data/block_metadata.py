@@ -26,6 +26,7 @@ class BlockMetaData(MessageBase):
                                                                                              NUM_SB_PER_BLOCK)
         assert type(self._data.timestamp) == int, 'Invalid timestamp'
         assert self.masternode_signature.sender in VKBook.get_masternodes(), 'Not a valid masternode'
+
         assert self.masternode_signature.verify(self.block_hash.encode()), 'Cannot verify signature'
         expected_b_hash = BlockData.compute_block_hash(sbc_roots=self.merkle_roots, prev_block_hash=self.prev_block_hash)
         assert expected_b_hash == self.block_hash, "Block hash could not be verified (does not match computed hash)"
@@ -36,7 +37,8 @@ class BlockMetaData(MessageBase):
 
     @classmethod
     def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str,
-               masternode_signature: MerkleSignature, timestamp: int=0, block_num: int=0, input_hashes: List[str]=None):
+               masternode_signature: MerkleSignature, input_hashes: List[str] = [],
+               timestamp: int=0, block_num: int=0):
 
         if not timestamp:
             timestamp = int(time.time())
@@ -45,12 +47,21 @@ class BlockMetaData(MessageBase):
         struct.init('merkleRoots', len(merkle_roots))
         struct.blockHash = block_hash
         struct.merkleRoots = merkle_roots
-        struct.inputHashes = input_hashes
         struct.prevBlockHash = prev_block_hash
+        struct.inputHashes = input_hashes
         struct.timestamp = int(timestamp)
         struct.blockNum = block_num
         struct.masternodeSignature = masternode_signature.serialize()
         return cls.from_data(struct)
+
+    @classmethod
+    def create_from_block_data(cls, block_data):
+        return cls.create(
+            block_hash=block_data.block_hash, prev_block_hash=block_data.prev_block_hash,
+            masternode_signature=block_data.masternode_signature,
+            input_hashes=block_data.input_hashes,
+            merkle_roots=block_data.merkle_roots, block_num=block_data.block_num
+        )
 
     @property
     def block_hash(self) -> str:
@@ -90,4 +101,3 @@ class NewBlockNotification(BlockMetaData):
         super().validate()
         assert len(self._data.inputHashes) == len(self._data.merkleRoots), "Length of input hashes does not match " \
                                                                            "length of merkle roots"
-
