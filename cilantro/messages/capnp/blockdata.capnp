@@ -16,9 +16,10 @@ struct BlockData {
     blockHash @0 :Data;
     blockNum @1 :UInt32;
     merkleRoots @2 :List(Data);
-    prevBlockHash @3 :Data;
-    masternodeSignature @4 :Data;
-    transactions @5 :List(Data);
+    inputHashes @3 :List(Data);
+    prevBlockHash @4 :Data;
+    masternodeSignature @5 :Data;
+    transactions @6 :List(Data);
 }
 
 struct StateUpdateRequest {
@@ -28,4 +29,3 @@ struct StateUpdateRequest {
 struct StateUpdateReply {
     blockData @0 :List(BlockData);
 }
-

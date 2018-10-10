@@ -24,9 +24,9 @@ def masternode(idx, node_count):
         await asyncio.sleep(5)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
-    masternodes = [node['vk'] for node in TESTNET_MASTERNODES]
-    witnesses = [node['vk'] for node in TESTNET_WITNESSES]
-    delegates = [node['vk'] for node in TESTNET_DELEGATES]
+    masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
+    witnesses = [node['vk'] for node in TESTNET_WITNESSES[:2]]
+    delegates = [node['vk'] for node in TESTNET_DELEGATES[:4]]
     all_nodes = masternodes + witnesses + delegates
 
     oi = OverlayInterface(TESTNET_MASTERNODES[idx]['sk'])
@@ -52,9 +52,9 @@ def witness(idx, node_count):
         await asyncio.sleep(5)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
-    masternodes = [node['vk'] for node in TESTNET_MASTERNODES]
-    witnesses = [node['vk'] for node in TESTNET_WITNESSES]
-    delegates = [node['vk'] for node in TESTNET_DELEGATES]
+    masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
+    witnesses = [node['vk'] for node in TESTNET_WITNESSES[:2]]
+    delegates = [node['vk'] for node in TESTNET_DELEGATES[:4]]
     all_nodes = masternodes + witnesses + delegates
 
     oi = OverlayInterface(TESTNET_WITNESSES[idx]['sk'])
@@ -80,9 +80,9 @@ def delegate(idx, node_count):
         await asyncio.sleep(5)
         await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
 
-    masternodes = [node['vk'] for node in TESTNET_MASTERNODES]
-    witnesses = [node['vk'] for node in TESTNET_WITNESSES]
-    delegates = [node['vk'] for node in TESTNET_DELEGATES]
+    masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
+    witnesses = [node['vk'] for node in TESTNET_WITNESSES[:2]]
+    delegates = [node['vk'] for node in TESTNET_DELEGATES[:4]]
     all_nodes = masternodes + witnesses + delegates
 
     oi = OverlayInterface(TESTNET_DELEGATES[idx]['sk'])

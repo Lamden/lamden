@@ -28,7 +28,7 @@ class TestStorageDriver(TestCase):
         SQLDB.connection.close()
 
     def setUp(self):
-        SQLDB.truncate_tables('subblock', 'block', 'transaction')
+        SQLDB.truncate_tables('sub_block', 'block', 'transaction')
 
     @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
     def test_store_block(self):

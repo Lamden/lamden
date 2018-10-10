@@ -2,19 +2,22 @@ import socket, struct, requests, os, asyncio
 
 def get_public_ip():
     async def fetch_1():
-        return (await loop.run_in_executor(None, requests.get, 'http://ip.42.pl/raw')).text
+        res = (await loop.run_in_executor(None, requests.get, 'http://ip.42.pl/raw')).text
+        futs.set_result(res)
     async def fetch_2():
-        return (await loop.run_in_executor(None, requests.get, 'http://jsonip.com')).json()['ip']
+        res = (await loop.run_in_executor(None, requests.get, 'http://jsonip.com')).json()['ip']
+        futs.set_result(res)
     async def fetch_3():
-        return (await loop.run_in_executor(None, requests.get, 'http://httpbin.org/ip')).json()['origin']
+        res = (await loop.run_in_executor(None, requests.get, 'http://httpbin.org/ip')).json()['origin']
+        futs.set_result(res)
     async def fetch_4():
-        return (await loop.run_in_executor(None, requests.get, 'https://api.ipify.org/?format=json')).json()['ip']
+        res = (await loop.run_in_executor(None, requests.get, 'https://api.ipify.org/?format=json')).json()['ip']
+        futs.set_result(res)
     try:
         tasks = fetch_1(), fetch_2(), fetch_3(), fetch_4()
         loop = asyncio.get_event_loop()
-        ips = loop.run_until_complete(asyncio.gather(*tasks))
-        assert len(set(ips)) > 0, 'Not connected to internet'
-        return ips[0]
+        futs = asyncio.ensure_future(asyncio.wait_for(asyncio.gather(*tasks), 3))
+        return loop.run_until_complete(futs)
     except:
         raise Exception('Cannot get your public ip!')
 
