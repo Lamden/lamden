@@ -10,7 +10,7 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration-0
       - run: pyenv local 3.6.5
       - run:
           name: Install MySQL Client
@@ -45,7 +45,7 @@ jobs:
              ./scripts/make_test_config.py --password buttcoins --username cilantro_user --database cilantro_dev --hostname 127.0.0.1
 
       - save_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration-0
           paths:
             - "/usr/local/bin"
             - "/opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages"
