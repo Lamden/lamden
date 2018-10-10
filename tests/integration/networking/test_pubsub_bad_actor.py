@@ -45,7 +45,7 @@ class TestPubSubBadActor(MPTestCase):
         pub.send_pub(msg)
         time.sleep(2)
 
-        self.start()
+        self.start(timeout=26)
 
     # @vmnet_test
     # def test_pubsub_1_pub_1_sub_mixed_auth_unsecure_bad_pub(self):

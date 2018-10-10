@@ -45,7 +45,7 @@ class TestRouterSecure(MPTestCase):
 
         router2.send_msg(id_frame=router1.ip.encode(), msg=b'hi from router 2!')
 
-        self.start()
+        self.start(timeout=24)
 
     @vmnet_test
     def test_both_bind(self):
@@ -76,7 +76,7 @@ class TestRouterSecure(MPTestCase):
         router2.send_msg(id_frame=router1.ip.encode(), msg=b'hi from router 2!')
         router1.send_msg(id_frame=router2.ip.encode(), msg=b'hi from router 1!')
 
-        self.start()
+        self.start(timeout=24)
 
 if __name__ == '__main__':
     unittest.main()

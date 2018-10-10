@@ -66,7 +66,7 @@ class TestLargeNetwork(MPTestCase):
         for n in all_nodes:
             n.send_pub("hi from {} with ip {}".format(n.name, n.ip).encode())
 
-        self.start(timeout=16)
+        self.start(timeout=45)
 
 
 if __name__ == '__main__':

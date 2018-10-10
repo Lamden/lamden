@@ -54,7 +54,7 @@ class TestPubSubSecure(MPTestCase):
         pub1.send_pub(msg1)
         pub2.send_pub(msg2)
 
-        self.start()
+        self.start(timeout=24)
 
     @vmnet_test
     def test_pubsub_1_pub_1_sub_mixed_auth_unsecure(self):
@@ -90,7 +90,7 @@ class TestPubSubSecure(MPTestCase):
         pub1.send_pub(msg1)
         pub2.send_pub(msg2)
 
-        self.start()
+        self.start(timeout=24)
 
 if __name__ == '__main__':
     unittest.main()

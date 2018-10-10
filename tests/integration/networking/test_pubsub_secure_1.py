@@ -71,7 +71,7 @@ class TestPubSubSecure(MPTestCase):
 
         pub.send_pub(msg)
 
-        self.start()
+        self.start(timeout=24)
 
 
 if __name__ == '__main__':
