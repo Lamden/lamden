@@ -32,7 +32,7 @@ class TestRouterSecure(MPTestCase):
         router1 = MPRouterAuth(sk=PUB1_SK, name='ROUTER 1', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
         router2 = MPRouterAuth(sk=PUB2_SK, name='ROUTER 2', block_until_rdy=BLOCK)
 
-        time.sleep(12)
+        time.sleep(25)
 
         for r in (router1, router2):
             r.create_router_socket(identity=r.ip.encode(), secure=True)
@@ -41,7 +41,7 @@ class TestRouterSecure(MPTestCase):
         router2.connect_router_socket(vk=PUB1_VK)
 
         # Give time for VK lookup
-        time.sleep(12)
+        time.sleep(25)
 
         router2.send_msg(id_frame=router1.ip.encode(), msg=b'hi from router 2!')
 
@@ -61,7 +61,7 @@ class TestRouterSecure(MPTestCase):
         router1 = MPRouterAuth(sk=PUB1_SK, name='ROUTER 1', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
         router2 = MPRouterAuth(sk=PUB2_SK, name='ROUTER 2', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
 
-        time.sleep(12)
+        time.sleep(25)
 
         for r in (router1, router2):
             r.create_router_socket(identity=r.ip.encode(), secure=True, name='Router-{}'.format(r.ip))
@@ -71,7 +71,7 @@ class TestRouterSecure(MPTestCase):
         router2.connect_router_socket(vk=PUB1_VK)
 
         # Give time for VK lookup
-        time.sleep(12)
+        time.sleep(25)
 
         router2.send_msg(id_frame=router1.ip.encode(), msg=b'hi from router 2!')
         router1.send_msg(id_frame=router2.ip.encode(), msg=b'hi from router 1!')

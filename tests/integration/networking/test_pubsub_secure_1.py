@@ -34,7 +34,7 @@ class TestPubSubSecure(MPTestCase):
         sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB1', block_until_rdy=BLOCK)
         sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB2', block_until_rdy=BLOCK)
 
-        time.sleep(12)
+        time.sleep(25)
 
         pub.add_pub_socket(ip=pub.ip)
 
@@ -42,7 +42,7 @@ class TestPubSubSecure(MPTestCase):
             sub.add_sub_socket()
             sub.connect_sub(vk=PUB1_VK)
 
-        time.sleep(12)  # Allow time for VK lookup
+        time.sleep(25)  # Allow time for VK lookup
 
         pub.send_pub(msg)
 
@@ -61,7 +61,7 @@ class TestPubSubSecure(MPTestCase):
         sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB1', block_until_rdy=BLOCK)
         sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB2', block_until_rdy=BLOCK)
 
-        time.sleep(12)
+        time.sleep(25)
 
         pub.add_pub_socket(ip=pub.ip, secure=True)
 
@@ -69,7 +69,7 @@ class TestPubSubSecure(MPTestCase):
             sub.add_sub_socket(secure=True)
             sub.connect_sub(vk=PUB1_VK)
 
-        time.sleep(12)  # Allow time for VK lookup
+        time.sleep(25)  # Allow time for VK lookup
 
         pub.send_pub(msg)
 

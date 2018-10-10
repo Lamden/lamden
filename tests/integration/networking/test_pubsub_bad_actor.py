@@ -33,14 +33,14 @@ class TestPubSubBadActor(MPTestCase):
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB1', block_until_rdy=BLOCK)
         sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=BLOCK)
 
-        time.sleep(12)
+        time.sleep(25)
 
         pub.add_pub_socket(ip=pub.ip, secure=True)
 
         sub.add_sub_socket(secure=False, socket_key='sub1')
         sub.connect_sub(vk=PUB1_VK, socket_key='sub1')
 
-        time.sleep(12)  # Allow time for VK lookup
+        time.sleep(25)  # Allow time for VK lookup
 
         pub.send_pub(msg)
         time.sleep(2)
