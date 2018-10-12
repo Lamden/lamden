@@ -29,7 +29,6 @@ def vk_lookup(func):
             self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.pending_lookups[cmd_id] = (func.__name__, args, kwargs)
             self.manager.pending_lookups[cmd_id] = self
-            Auth.configure_auth(self.manager.auth, self.domain)
 
         # If the 'ip' key is already set in kwargs, no need to do a lookup
         else:
