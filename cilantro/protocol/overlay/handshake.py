@@ -27,18 +27,22 @@ class Handshake:
             cls.auth.start()
             cls.auth.configure_curve(domain="*", location=zmq.auth.CURVE_ALLOW_ANY)
             cls.server_sock = cls.ctx.socket(zmq.ROUTER)
+            cls.server_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             cls.server_sock.curve_secretkey = Auth.private_key
             cls.server_sock.curve_publickey = Auth.public_key
             cls.server_sock.curve_server = True
-            cls.server_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             cls.client_sock = cls.ctx.socket(zmq.ROUTER)
+            cls.client_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             cls.client_sock.curve_secretkey = Auth.private_key
             cls.client_sock.curve_publickey = Auth.public_key
-            cls.client_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             cls.is_setup = True
 
     @classmethod
     async def initiate_handshake(cls, ip, vk, domain='*'):
+        if ip == cls.host_ip and vk == Auth.vk:
+            cls.authorized_nodes[domain][vk] = ip
+            Auth.add_public_key(vk=vk, domain=domain)
+            return True
         if not cls.check_previously_authorized(ip, vk, domain):
             start = time.time()
             for i in range(AUTH_TIMEOUT):
@@ -69,12 +73,7 @@ class Handshake:
                 if not cls.authorized_nodes.get(domain):
                     cls.authorized_nodes[domain] = {}
                 if len(msg) == 3: # this is a request
-                    if ip == cls.host_ip and vk == Auth.vk:
-                        cls.authorized_nodes[domain][vk] = ip
-                        Auth.add_public_key(vk=vk, domain=domain)
-                        continue
-                    else:
-                        cls.log.info('Received a handshake request from {} (vk={}, domain={})'.format(ip, vk, domain))
+                    cls.log.info('Received a handshake request from {} (vk={}, domain={})'.format(ip, vk, domain))
                 elif len(msg) == 4 and msg[-1] == 'rep': # this is a reply
                     cls.log.info('Received a handshake reply from {} (vk={}, domain={})'.format(ip, vk, domain))
                     is_reply = True
