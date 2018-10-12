@@ -23,6 +23,9 @@ class Handshake:
     def setup(cls):
         if not cls.is_setup:
             cls.ctx = zmq.asyncio.Context()
+            cls.auth = AsyncioAuthenticator(cls.ctx)
+            cls.auth.start()
+            cls.auth.configure_curve(domain="*", location=zmq.auth.CURVE_ALLOW_ANY)
             cls.server_sock = cls.ctx.socket(zmq.ROUTER)
             cls.server_sock.curve_secretkey = Auth.private_key
             cls.server_sock.curve_publickey = Auth.public_key
@@ -32,9 +35,6 @@ class Handshake:
             cls.client_sock.curve_secretkey = Auth.private_key
             cls.client_sock.curve_publickey = Auth.public_key
             cls.client_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
-            cls.auth = AsyncioAuthenticator(cls.ctx)
-            cls.auth.configure_curve(domain="*", location=zmq.auth.CURVE_ALLOW_ANY)
-            cls.auth.start()
             cls.is_setup = True
 
     @classmethod
