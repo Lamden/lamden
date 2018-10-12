@@ -11,19 +11,21 @@ from cilantro.logger.base import get_logger
 from cilantro.storage.db import VKBook
 from cilantro.protocol.overlay.kademlia.node import Node
 
-import asyncio, os
+import asyncio, os, zmq.asyncio, zmq
 from os import getenv as env
 from enum import Enum, auto
 
 class OverlayInterface:
     started = False
     log = get_logger('OverlayInterface')
-    def __init__(self, sk_hex, loop=None):
+    def __init__(self, sk_hex, loop=None, ctx=None):
         self.loop = loop or asyncio.get_event_loop()
+        self.ctx = ctx or zmq.asyncio.Context()
+        asyncio.set_event_loop(self.loop)
         Auth.setup(sk_hex=sk_hex)
-        self.network = Network(storage=None)
-        Discovery.setup()
-        Handshake.setup()
+        self.network = Network(loop=self.loop, storage=None)
+        Discovery.setup(ctx=self.ctx)
+        Handshake.setup(ctx=self.ctx)
         self.tasks = [
             Discovery.listen(),
             Handshake.listen(),
@@ -80,11 +82,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         await self.network.bootstrap(addrs)
         self.network.cached_vks.update(self.neighbors)
 
-    async def authenticate(self, vk, domain='*'):
-        ip = await self.lookup_ip(vk)
-        if not ip:
-            self.log.critical('Authentication Failed: Cannot find ip for vk={}'.format(vk))
-            return False
+    async def authenticate(self, ip, vk, domain='*'):
         return await Handshake.initiate_handshake(ip, vk, domain)
 
     async def lookup_ip(self, vk):

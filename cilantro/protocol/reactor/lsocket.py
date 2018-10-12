@@ -12,7 +12,7 @@ from os.path import join
 
 
 RDY_WAIT_INTERVAL = 1.0  # TODO move this to constants, and explain it
-MAX_RDY_WAIT = 30.0  # TODO move this to constants, and explain it
+MAX_RDY_WAIT = 60.0  # TODO move this to constants, and explain it
 
 
 def vk_lookup(func):
@@ -95,7 +95,8 @@ class LSocket:
                 if not self.ready:
                     self.log.spam("Socket not ready yet...waiting {} seconds".format(RDY_WAIT_INTERVAL))  # TODO remove this? it be hella noisy..
                     await asyncio.sleep(RDY_WAIT_INTERVAL)
-                    duration_waited += RDY_WAIT_INTERVAL
+                    if len(self.pending_lookups) > 0:
+                        duration_waited += RDY_WAIT_INTERVAL
                     continue
 
                 try:

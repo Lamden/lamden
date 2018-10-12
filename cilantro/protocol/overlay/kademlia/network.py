@@ -29,7 +29,7 @@ class Network(object):
     port = DHT_PORT
     protocol_class = KademliaProtocol
 
-    def __init__(self, ksize=20, alpha=3, storage=None):
+    def __init__(self, ksize=20, alpha=3, loop=None, storage=None):
         """
         Create a server instance.  This will start listening on the given port.
 
@@ -42,6 +42,7 @@ class Network(object):
         """
         self.ksize = ksize
         self.alpha = alpha
+        self.loop = loop or asyncio.get_event_loop()
         self.storage = storage or ForgetfulStorage()
         self.node = Node(node_id=digest(Auth.vk), ip=self.host_ip, port=self.port, vk=Auth.vk)
         self.transport = None
@@ -69,7 +70,7 @@ class Network(object):
 
         Provide interface="::" to accept ipv6 address
         """
-        loop = asyncio.get_event_loop()
+        loop = self.loop
         listen = loop.create_datagram_endpoint(self._create_protocol,
                                                local_addr=(interface, self.port))
         log.spam("Node %i listening on %s:%i",
@@ -138,7 +139,9 @@ class Network(object):
 
     async def lookup_ip(self, vk):
         log.spam('Attempting to look up node with vk="{}"'.format(vk))
-        if self.cached_vks.get(vk):
+        if Auth.vk == vk:
+            return HOST_IP
+        elif self.cached_vks.get(vk):
             node = self.cached_vks.get(vk)
             log.debug('"{}" found in cache resolving to {}'.format(vk, node))
             return node.ip

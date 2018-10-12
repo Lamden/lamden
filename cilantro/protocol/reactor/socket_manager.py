@@ -31,7 +31,7 @@ class SocketManager:
 
         self.loop = loop or asyncio.get_event_loop()
         self.context = context or zmq.asyncio.Context()
-        self.secure_context, self.auth = Auth.secure_context(context, async=True)
+        self.secure_context, self.auth = Auth.secure_context(async=True)
 
         self.sockets = []
         self.pending_lookups = {}   # A dict of 'event_id' to socket instance

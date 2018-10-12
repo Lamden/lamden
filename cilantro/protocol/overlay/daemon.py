@@ -40,12 +40,12 @@ def async_reply(fn):
     return _reply
 
 class OverlayServer(object):
-    def __init__(self, sk, loop=None, start=True):
+    def __init__(self, sk, loop=None, ctx=None, start=True):
         self.log = get_logger('OverlayServer')
 
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.ctx = zmq.asyncio.Context()
+        self.ctx = ctx or zmq.asyncio.Context()
 
         self.evt_sock = self.ctx.socket(zmq.PUB)
         self.evt_sock.bind(EVENT_URL)
@@ -54,7 +54,7 @@ class OverlayServer(object):
 
         Event.set_evt_sock(self.evt_sock)
 
-        self.interface = OverlayInterface(sk, loop=loop)
+        self.interface = OverlayInterface(sk, loop=loop, ctx=ctx)
         self.interface.tasks.append(self.command_listener())
 
         if start:
@@ -75,7 +75,7 @@ class OverlayServer(object):
     async def get_node_from_vk(self, event_id, vk, domain='*', secure='False'):
         if vk in VKBook.get_all():
             ip = await self.interface.lookup_ip(vk)
-            authorized = await self.interface.authenticate(vk, domain) \
+            authorized = await self.interface.authenticate(ip, vk, domain) \
                 if secure == 'True' else True
             if ip:
                 return {

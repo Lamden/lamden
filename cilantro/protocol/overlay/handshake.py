@@ -20,21 +20,17 @@ class Handshake:
     is_setup = False
 
     @classmethod
-    def setup(cls):
+    def setup(cls, ctx=None):
         if not cls.is_setup:
-            cls.ctx = zmq.asyncio.Context()
+            cls.ctx = ctx or zmq.asyncio.Context()
             cls.auth = AsyncioAuthenticator(cls.ctx)
             cls.auth.start()
             cls.auth.configure_curve(domain="*", location=zmq.auth.CURVE_ALLOW_ANY)
-            cls.server_sock = cls.ctx.socket(zmq.ROUTER)
-            cls.server_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
-            cls.server_sock.curve_secretkey = Auth.private_key
-            cls.server_sock.curve_publickey = Auth.public_key
-            cls.server_sock.curve_server = True
-            cls.client_sock = cls.ctx.socket(zmq.ROUTER)
-            cls.client_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
-            cls.client_sock.curve_secretkey = Auth.private_key
-            cls.client_sock.curve_publickey = Auth.public_key
+            cls.sock = cls.ctx.socket(zmq.ROUTER)
+            cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
+            cls.sock.curve_secretkey = Auth.private_key
+            cls.sock.curve_publickey = Auth.public_key
+            cls.sock.curve_server = True
             cls.is_setup = True
 
     @classmethod
@@ -44,11 +40,14 @@ class Handshake:
             Auth.add_public_key(vk=vk, domain=domain)
             return True
         if not cls.check_previously_authorized(ip, vk, domain):
+            await asyncio.sleep(10)
             start = time.time()
+            cls.log.critical('about to request from this guy {}'.format(ip))
+            cls.request(ip, vk, domain)
             for i in range(AUTH_TIMEOUT):
                 if cls.authorized_nodes[domain].get(vk): break
-                cls.log.info('Sending handshake request from {} to {} (vk={})'.format(cls.host_ip, ip, vk))
-                cls.request(ip, vk, domain)
+                # cls.log.info('Sending handshake request from {} to {} (vk={})'.format(cls.host_ip, ip, vk))
+                # cls.request(ip, vk, domain)
                 await asyncio.sleep(AUTH_INTERVAL)
             end = time.time()
 
@@ -62,12 +61,14 @@ class Handshake:
 
     @classmethod
     async def listen(cls):
-        cls.server_sock.bind(cls.url)
+        cls.sock.bind(cls.url)
         cls.log.info('Listening to other nodes on {}'.format(cls.url))
         while True:
             try:
+                cls.log.critical('BEFORE RECV')
                 msg = [chunk.decode() for chunk \
-                    in await cls.server_sock.recv_multipart()]
+                    in await cls.sock.recv_multipart()]
+                cls.log.critical('AFTER RECV')
                 ip, vk, domain = msg[:3]
                 is_reply = False
                 if not cls.authorized_nodes.get(domain):
@@ -104,15 +105,17 @@ class Handshake:
 
     @classmethod
     def request(cls, ip, vk, domain):
-        cls.client_sock.curve_serverkey = Auth.vk2pk(vk)
-        cls.client_sock.connect('tcp://{}:{}'.format(ip, cls.port))
-        cls.client_sock.send_multipart([ip.encode(), Auth.vk.encode(), domain.encode()])
+        cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
+        cls.sock.curve_serverkey = Auth.vk2pk(vk)
+        cls.sock.connect('tcp://{}:{}'.format(ip, cls.port))
+        cls.sock.send_multipart([ip.encode(), Auth.vk.encode(), domain.encode()])
 
     @classmethod
     def reply(cls, ip, vk, domain):
-        cls.client_sock.curve_serverkey = Auth.vk2pk(vk)
-        cls.client_sock.connect('tcp://{}:{}'.format(ip, cls.port))
-        cls.client_sock.send_multipart([ip.encode(), Auth.vk.encode(), domain.encode(), b'rep'])
+        cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
+        cls.sock.curve_serverkey = Auth.vk2pk(vk)
+        cls.sock.connect('tcp://{}:{}'.format(ip, cls.port))
+        cls.sock.send_multipart([ip.encode(), Auth.vk.encode(), domain.encode(), b'rep'])
 
     @classmethod
     def check_previously_authorized(cls, ip, vk, domain):
