@@ -20,12 +20,12 @@ class OverlayInterface:
     log = get_logger('OverlayInterface')
     def __init__(self, sk_hex, loop=None, ctx=None):
         self.loop = loop or asyncio.get_event_loop()
-        self.ctx = ctx or zmq.asyncio.Context()
         asyncio.set_event_loop(self.loop)
+        self.ctx = ctx or zmq.asyncio.Context()
         Auth.setup(sk_hex=sk_hex)
         self.network = Network(loop=self.loop, storage=None)
         Discovery.setup(ctx=self.ctx)
-        Handshake.setup(ctx=self.ctx)
+        Handshake.setup(loop=self.loop, ctx=self.ctx)
         self.tasks = [
             Discovery.listen(),
             Handshake.listen(),

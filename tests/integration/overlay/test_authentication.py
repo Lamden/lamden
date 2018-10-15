@@ -10,7 +10,7 @@ def masternode(idx, node_count):
     from cilantro.protocol.overlay.interface import OverlayInterface
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from vmnet.comm import send_to_file
-    import asyncio, json, os
+    import asyncio, json, os, zmq
     from cilantro.logger import get_logger
     log = get_logger('MasterNode_{}'.format(idx))
 
@@ -21,15 +21,18 @@ def masternode(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(15)
-        await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
+        await asyncio.sleep(5)
+        await asyncio.gather(*[oi.authenticate('.'.join(os.getenv('HOST_IP').split('.')[:-1]+[str(idx)]), vk) for idx, vk in enumerate(all_nodes)])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
     witnesses = [node['vk'] for node in TESTNET_WITNESSES[:2]]
     delegates = [node['vk'] for node in TESTNET_DELEGATES[:4]]
     all_nodes = masternodes + witnesses + delegates
 
-    oi = OverlayInterface(TESTNET_MASTERNODES[idx]['sk'])
+    loop = asyncio.get_event_loop()
+    asyncio.set_event_loop(loop)
+    ctx = zmq.asyncio.Context()
+    oi = OverlayInterface(TESTNET_MASTERNODES[idx]['sk'], loop=loop, ctx=ctx)
     oi.tasks += [connect(), check()]
     oi.start()
 
@@ -38,7 +41,7 @@ def witness(idx, node_count):
     from cilantro.protocol.overlay.interface import OverlayInterface
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from vmnet.comm import send_to_file
-    import asyncio, json, os
+    import asyncio, json, os, zmq
     from cilantro.logger import get_logger
     log = get_logger('WitnessNode_{}'.format(idx))
 
@@ -49,15 +52,18 @@ def witness(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(15)
-        await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
+        await asyncio.sleep(5)
+        await asyncio.gather(*[oi.authenticate('.'.join(os.getenv('HOST_IP').split('.')[:-1]+[str(idx)]), vk) for idx, vk in enumerate(all_nodes)])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
     witnesses = [node['vk'] for node in TESTNET_WITNESSES[:2]]
     delegates = [node['vk'] for node in TESTNET_DELEGATES[:4]]
     all_nodes = masternodes + witnesses + delegates
 
-    oi = OverlayInterface(TESTNET_WITNESSES[idx]['sk'])
+    loop = asyncio.get_event_loop()
+    asyncio.set_event_loop(loop)
+    ctx = zmq.asyncio.Context()
+    oi = OverlayInterface(TESTNET_WITNESSES[idx]['sk'], loop=loop, ctx=ctx)
     oi.tasks += [connect(), check()]
     oi.start()
 
@@ -66,7 +72,7 @@ def delegate(idx, node_count):
     from cilantro.protocol.overlay.interface import OverlayInterface
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from vmnet.comm import send_to_file
-    import asyncio, json, os
+    import asyncio, json, os, zmq
     from cilantro.logger import get_logger
     log = get_logger('DelegateNode_{}'.format(idx))
 
@@ -77,15 +83,18 @@ def delegate(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(15)
-        await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
+        await asyncio.sleep(5)
+        await asyncio.gather(*[oi.authenticate('.'.join(os.getenv('HOST_IP').split('.')[:-1]+[str(idx)]), vk) for idx, vk in enumerate(all_nodes)])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
     witnesses = [node['vk'] for node in TESTNET_WITNESSES[:2]]
     delegates = [node['vk'] for node in TESTNET_DELEGATES[:4]]
     all_nodes = masternodes + witnesses + delegates
 
-    oi = OverlayInterface(TESTNET_DELEGATES[idx]['sk'])
+    loop = asyncio.get_event_loop()
+    asyncio.set_event_loop(loop)
+    ctx = zmq.asyncio.Context()
+    oi = OverlayInterface(TESTNET_DELEGATES[idx]['sk'], loop=loop, ctx=ctx)
     oi.tasks += [connect(), check()]
     oi.start()
 
@@ -93,7 +102,7 @@ class TestAuthentication(BaseTestCase):
 
     log = get_logger(__name__)
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
-    enable_ui = False
+    enable_ui = True
 
     def callback(self, data):
         for node in data:
