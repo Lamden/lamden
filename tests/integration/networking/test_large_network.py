@@ -1,6 +1,7 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-4.json')
 from cilantro.constants.testnet import *
+from cilantro.constants.test_suites import CI_FACTOR
 
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
@@ -42,7 +43,7 @@ class TestLargeNetwork(MPTestCase):
         del_2 = MPPubSubAuth(sk=TESTNET_DELEGATES[2]['sk'], name='[node_7]DELEGATE_2', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
         del_3 = MPPubSubAuth(sk=TESTNET_DELEGATES[3]['sk'], name='[node_8]DELEGATE_3', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
 
-        time.sleep(16)  # Nap while nodes hookup
+        time.sleep(16*CI_FACTOR)  # Nap while nodes hookup
 
         all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0, del_1, del_2, del_3)
         all_vks = (TESTNET_MASTERNODES[0]['vk'], TESTNET_MASTERNODES[1]['vk'], TESTNET_WITNESSES[0]['vk'],
@@ -61,13 +62,13 @@ class TestLargeNetwork(MPTestCase):
                 if vk == node_vk: continue
                 n.connect_sub(vk=vk)
 
-        time.sleep(16)  # Allow time for VK lookups
+        time.sleep(16*CI_FACTOR)  # Allow time for VK lookups
 
         # Make each node pub a msg
         for n in all_nodes:
             n.send_pub("hi from {} with ip {}".format(n.name, n.ip).encode())
 
-        self.start(timeout=12)
+        self.start(timeout=10*CI_FACTOR)
 
 
 if __name__ == '__main__':

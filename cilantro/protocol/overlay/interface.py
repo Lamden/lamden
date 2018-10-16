@@ -20,7 +20,6 @@ class OverlayInterface:
     log = get_logger('OverlayInterface')
     def __init__(self, sk_hex, loop=None, ctx=None):
         self.loop = loop or asyncio.get_event_loop()
-        asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
         Auth.setup(sk_hex=sk_hex)
         self.network = Network(loop=self.loop, storage=None)
@@ -65,16 +64,15 @@ class OverlayInterface:
         self.started = True
 
     async def discover(self):
-        while True:
-            if await Discovery.discover_nodes(Discovery.host_ip):
-                break
-            else:
-                self.log.critical('''
+        if await Discovery.discover_nodes(Discovery.host_ip):
+            return
+        else:
+            self.log.critical('''
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 x   DISCOVERY FAILED: Cannot find enough nodes ({}/{}) and not a masternode
 x       Retrying...
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-                '''.format(len(Discovery.discovered_nodes), MIN_BOOTSTRAP_NODES))
+            '''.format(len(Discovery.discovered_nodes), MIN_BOOTSTRAP_NODES))
 
     async def bootstrap(self):
         addrs = [(Discovery.discovered_nodes[vk], self.network.port) \

@@ -12,15 +12,14 @@ def nodefn(sk, ip_vk_dict, expected_ip, use_auth):
     from cilantro.protocol.overlay.auth import Auth
     from cilantro.logger.base import get_logger
     from vmnet.comm import send_to_file
-    import asyncio, json, os, zmq.asyncio, zmq, traceback
+    import asyncio, json, os, zmq.asyncio, zmq, traceback, time
     assert os.getenv('HOST_IP') == expected_ip, "we fukt up"
 
     class RouterAuth:
         PORT = 6967
-        REPLY_T = b'reply'
-        REQ_T = b'request'
-
         def __init__(self, sk, use_auth=True, loop=None, ctx=None):
+            assert loop, "must pass in loop"
+            assert ctx, "must pass in context"
             self.sk = sk
             self.use_auth = use_auth
             self.log = get_logger('RouterAuth')
@@ -29,8 +28,15 @@ def nodefn(sk, ip_vk_dict, expected_ip, use_auth):
             self.ip = os.getenv('HOST_IP')
 
             if use_auth:
+                self.log.notice("Configuring authentication")
                 Auth.setup(sk)
+                self.auth = AsyncioAuthenticator(context=self.ctx, loop=self.loop)
+                self.auth.configure_curve(domain='*', location=zmq.auth.CURVE_ALLOW_ANY)
+                self.auth.start()
+                time.sleep(3)
 
+
+            self.dealers = {}
             self.router = self.ctx.socket(zmq.ROUTER)
             self.router.setsockopt(zmq.IDENTITY, self.ip.encode())
             self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
@@ -38,10 +44,6 @@ def nodefn(sk, ip_vk_dict, expected_ip, use_auth):
             self.reply_ids = set()
 
             if use_auth:
-                self.log.notice("Configuring authentication")
-                self.auth = AsyncioAuthenticator(context=self.ctx, loop=self.loop)
-                self.auth.start()
-                self.auth.configure_curve(domain='*', location=zmq.CURVE_ALLOW_ANY)
                 self.router.curve_secretkey = Auth.private_key
                 self.router.curve_publickey = Auth.public_key
                 self.router.curve_server = True
@@ -55,47 +57,61 @@ def nodefn(sk, ip_vk_dict, expected_ip, use_auth):
             while True:
                 try:
                     self.log.spam("router waiting for msg...")
-                    id, msg_type, msg = await self.router.recv_multipart()
-                    self.log.notice('Received msg {} of type {} from ID {}'.format(msg, msg_type, id))
-
-                    if msg_type == self.REQ_T:
-                        reply_msg = "Thanks for the msg <{}>, this is {}'s reply".format(msg.decode(), self.ip)
-                        self.log.important2("Replying to ID {} with msg {}".format(id, reply_msg))
-                        self.router.send_multipart([id, self.REPLY_T, msg])
-                    elif msg_type == self.REPLY_T:
-                        self.log.important3("Received a reply from ID {} with msg {}".format(id, msg.decode()))
-                        self.reply_ids.add(id.decode())
-                    else:
-                        raise Exception("Got unknown type {}".format(msg_type))
+                    ip, msg = await self.router.recv_multipart()
+                    self.log.notice('Received msg {} from ip {}'.format(msg, ip))
+                    reply_msg = "Thanks for the msg <{}>, this is {}'s reply".format(msg.decode(), self.ip)
+                    self.log.important2("Replying to ID {} with msg {}".format(ip, reply_msg))
+                    self.router.send_multipart([ip, self.ip.encode(), reply_msg.encode()])
                 except Exception as e:
                     self.log.fatal(traceback.format_exc())
 
-        def send_request(self, ip, vk=None):
-            if self.use_auth:
-                assert vk, "Must pass in VK to use auth"
-                self.router.curve_serverkey = Auth.vk2pk(vk)
+        async def send_request(self, ip, vk=None):
+            if ip in self.dealers:
+                self.log.info("Request already pending for ip {}!".format(ip))
+                return
+
             self.log.notice("Sending REQUEST to ip {} with vk {}".format(ip, vk))
 
-            req_msg = 'msg from {}'.format(self.ip).encode()
+            self.dealers[ip] = self.ctx.socket(zmq.DEALER)
+            self.dealers[ip].setsockopt(zmq.IDENTITY, self.ip.encode())
+
+            if self.use_auth:
+                assert vk, "Must pass in VK to use auth"
+                self.dealers[ip].curve_secretkey = Auth.private_key
+                self.dealers[ip].curve_publickey = Auth.public_key
+                self.dealers[ip].curve_serverkey = Auth.vk2pk(vk)
+
+            req_msg = 'req from {}'.format(self.ip).encode()
             url = 'tcp://{}:{}'.format(ip, self.PORT)
             self.log.socket("CONNECTING to url {}".format(url))
-            self.router.connect(url)
+            self.dealers[ip].connect(url)
 
             try:
-                self.router.send_multipart([ip.encode(), self.REQ_T, req_msg])
+                self.dealers[ip].send_multipart([req_msg])
+                self.log.important("Dealer socket send request to ip {} and waiting for reply...".format(ip))
+                # time.sleep(0.1)  # for debug (should not need this)
+                ip, msg = await asyncio.wait_for(self.dealers[ip].recv_multipart(), 5)
+                ip = ip.decode()
+                self.log.important3('Received reply: {} from {}'.format(msg, ip))
+                self.reply_ids.add(ip)
+                self.log.info("Closing dealer socket on ip {}".format(ip))
+                self.dealers[ip].close()
+                del self.dealers[ip]
+
             except Exception as e:
                 self.log.fatal(traceback.format_exc())
 
     async def send_request(n):
-        await asyncio.sleep(3)
-        for ip, node_info in ip_vk_dict.items():
-            vk = node_info[0]
-            log.notice("Sending request to ip {} with vk {}".format(ip, vk))
-            n.send_request(ip, vk)
+        await asyncio.sleep(5)
+        await asyncio.gather(*[
+            n.send_request(ip, node_info[0]) \
+                for ip, node_info in ip_vk_dict.items() \
+                if os.getenv('HOST_IP') != ip
+        ])
 
     async def check_succ(n):
         succ = False
-        for _ in range(10):
+        for _ in range(15):
             await asyncio.sleep(1)
             if len(n.reply_ids) == len(ip_vk_dict) - 1:
                 log.success("SUCCESS WE GOT EM ALL SON")
@@ -127,7 +143,7 @@ class TestAuthRouter(BaseTestCase):
     log = get_logger(__name__)
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-8.json')
     enable_ui = True
-    USE_AUTH = False
+    USE_AUTH = True
 
     def callback(self, data):
         for s in data:
