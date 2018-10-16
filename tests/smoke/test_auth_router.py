@@ -38,7 +38,7 @@ def nodefn(sk, ip_vk_dict, expected_ip, use_auth):
 
             self.dealers = {}
             self.router = self.ctx.socket(zmq.ROUTER)
-            # self.router.setsockopt(zmq.IDENTITY, self.ip.encode())
+            self.router.setsockopt(zmq.IDENTITY, self.ip.encode())
             self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
 
             self.reply_ids = set()
@@ -66,17 +66,21 @@ def nodefn(sk, ip_vk_dict, expected_ip, use_auth):
                     self.log.fatal(traceback.format_exc())
 
         async def send_request(self, ip, vk=None):
-            if self.use_auth:
-                assert vk, "Must pass in VK to use auth"
-                self.router.curve_serverkey = Auth.vk2pk(vk)
-            self.log.notice("Sending REQUEST to ip {} with vk {}".format(ip, vk))
-
             if ip in self.dealers:
                 self.log.info("Request already pending for ip {}!".format(ip))
                 return
 
+            self.log.notice("Sending REQUEST to ip {} with vk {}".format(ip, vk))
+
             self.dealers[ip] = self.ctx.socket(zmq.DEALER)
             self.dealers[ip].setsockopt(zmq.IDENTITY, self.ip.encode())
+
+            if self.use_auth:
+                assert vk, "Must pass in VK to use auth"
+                self.dealers[ip].curve_secretkey = Auth.private_key
+                self.dealers[ip].curve_publickey = Auth.public_key
+                self.dealers[ip].curve_serverkey = Auth.vk2pk(vk)
+
             req_msg = 'req from {}'.format(self.ip).encode()
             url = 'tcp://{}:{}'.format(ip, self.PORT)
             self.log.socket("CONNECTING to url {}".format(url))
@@ -139,7 +143,7 @@ class TestAuthRouter(BaseTestCase):
     log = get_logger(__name__)
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-8.json')
     enable_ui = True
-    USE_AUTH = False
+    USE_AUTH = True
 
     def callback(self, data):
         for s in data:

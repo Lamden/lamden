@@ -20,7 +20,6 @@ class OverlayInterface:
     log = get_logger('OverlayInterface')
     def __init__(self, sk_hex, loop=None, ctx=None):
         self.loop = loop or asyncio.get_event_loop()
-        asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
         Auth.setup(sk_hex=sk_hex)
         self.network = Network(loop=self.loop, storage=None)
