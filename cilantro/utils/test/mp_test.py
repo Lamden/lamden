@@ -40,7 +40,7 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
     except Exception as e:
         log.error("\n\n TesterProcess encountered exception outside of internal loop! Error:\n {}\n\n"
                        .format(traceback.format_exc()))
-        tester_socket.send_pyobj(SIG_FAIL)
+        tester_socket.send(SIG_FAIL)
         tester._teardown()
 
 
