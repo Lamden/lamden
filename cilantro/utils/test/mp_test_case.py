@@ -79,12 +79,17 @@ def vmnet_test(*args, **kwargs):
 class MPTestCase(BaseNetworkTestCase):
     config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
     testers = []
-    curr_tester_index = 1
+    _curr_tester_index = 1
     vmnet_test_active = False
+    log_lvl = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("MPTestOrchestrater")
+
+    @classmethod
+    def setUpClass(cls):
+        MPTestCase.log_lvl = cls.log_lvl
 
     @classmethod
     def next_container(cls) -> tuple:
@@ -92,13 +97,13 @@ class MPTestCase(BaseNetworkTestCase):
         Retreives the next available docker image.
         :return: A 2 tuple containing the ip and name of container in the form: (name: str, ip: str)
         """
-        num = MPTestCase.curr_tester_index
+        num = MPTestCase._curr_tester_index
         name = "node_{}".format(num)
 
         assert num <= len(cls.nodemap), "Tester object number {} exceeds tester capacity of {}".format(num, len(cls.nodemap))
         assert name in cls.nodemap, "Node named {} not found in node map {}".format(name, cls.nodemap)
 
-        MPTestCase.curr_tester_index += 1
+        MPTestCase._curr_tester_index += 1
 
         return name, cls.nodemap[name]
 
@@ -115,7 +120,7 @@ class MPTestCase(BaseNetworkTestCase):
         super().tearDown()
 
         MPTestCase.testers.clear()
-        MPTestCase.curr_tester_index = 1
+        MPTestCase._curr_tester_index = 1
 
     def start(self, timeout=TEST_TIMEOUT):
         """

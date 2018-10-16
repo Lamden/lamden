@@ -8,7 +8,7 @@ import inspect
 import traceback
 import time
 from cilantro.utils.lprocess import LProcess
-from cilantro.logger import get_logger
+from cilantro.logger import get_logger, overwrite_logger_level
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -27,8 +27,10 @@ SIG_ABORT = b'NOSUCC'
 SIG_START = b'STARTSUCC'
 
 
-def _run_test_proc(name, url, build_fn, config_fn, assert_fn):
+def _run_test_proc(name, url, build_fn, config_fn, assert_fn, log_lvl=0):
     log = get_logger("TestObjectRunner[{}]".format(name))
+    log.important("Setting log level to {}".format(log_lvl))
+    overwrite_logger_level(log_lvl)
 
     # TODO create socket outside of loop and pass it in for
     tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
@@ -327,7 +329,8 @@ class MPTesterBase:
 
             self.log.notice("Creating node named {} in a docker container with name {} and ip {}".format(self.name, name, self.ip))
 
-            runner_func = wrap_func(_run_test_proc, self.name, remote_url, build_fn, self.config_fn, self.assert_fn)
+            runner_func = wrap_func(_run_test_proc, self.name, remote_url, build_fn, self.config_fn, self.assert_fn,
+                                    MPTestCase.log_lvl)
 
             # TODO -- will i need a ton of imports and stuff to make this run smoothly...?
             MPTestCase.execute_python(name, runner_func, async=True)
@@ -338,7 +341,8 @@ class MPTesterBase:
             self.log.notice("Creating node named {} in a subprocess with IPC url {}".format(self.name, self.url))
 
             self.test_proc = LProcess(target=_run_test_proc, name=self.name, args=(self.name, self.url, build_fn,
-                                                                                   self.config_fn, self.assert_fn,))
+                                                                                   self.config_fn, self.assert_fn,
+                                                                                   MPTestCase.log_lvl))
             self.test_proc.start()
 
     def wait_for_test_object(self):
