@@ -61,7 +61,7 @@ UNIT_TESTS = [
 
 NODE_INTEGRATION_TESTS = [
     'tests.integration.networking',
-    # 'tests.integration.overlay'
+    'tests.integration.overlay'
 ]
 
 # All integration tests
