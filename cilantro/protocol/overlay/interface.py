@@ -18,10 +18,18 @@ from enum import Enum, auto
 class OverlayInterface:
     started = False
     log = get_logger('OverlayInterface')
+
     def __init__(self, sk_hex, loop=None, ctx=None):
         self.loop = loop or asyncio.get_event_loop()
         self.ctx = ctx or zmq.asyncio.Context()
         Auth.setup(sk_hex=sk_hex)
+
+        # DEBUG -- TODO DELETE
+        import time
+        self.log.important("Sleeping after configuring auth...")
+        time.sleep(2)
+        self.log.important("Done sleeping after auth configuration")
+
         self.network = Network(loop=self.loop, storage=None)
         Discovery.setup(ctx=self.ctx)
         Handshake.setup(loop=self.loop, ctx=self.ctx)

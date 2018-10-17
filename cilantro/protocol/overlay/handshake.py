@@ -29,6 +29,13 @@ class Handshake:
             cls.auth = AsyncioAuthenticator(context=cls.ctx, loop=cls.loop)
             cls.auth.configure_curve(domain="*", location=zmq.auth.CURVE_ALLOW_ANY)
             cls.auth.start()
+
+            # DEBUG -- TODO DELETE
+            cls.log.important3("Taking a nap after starting authenticator")
+            time.sleep(2)
+            cls.log.important3("Done with nap")
+            # END DEBUG
+
             cls.server_sock = cls.ctx.socket(zmq.ROUTER)
             cls.server_sock.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
             cls.server_sock.curve_secretkey = Auth.private_key
@@ -47,8 +54,10 @@ class Handshake:
         if not cls.check_previously_authorized(ip, vk, domain):
             start = time.time()
             authorized = False
-            cls.log.info('Sending handshake request from {} to {} (vk={})'.format(cls.host_ip, ip, vk))
             url = 'tcp://{}:{}'.format(ip, cls.port)
+            cls.log.info('Sending handshake request from {} to {} (vk={}) ... to url {}'.format(cls.host_ip, ip, vk, url))
+            cls.log.notice('Sending handshake request from {} to {} (vk={}) ... to url {}'.format(cls.host_ip, ip, vk, url))  # TODO delete
+
             client_sock = cls.ctx.socket(zmq.DEALER)
             client_sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             client_sock.curve_secretkey = Auth.private_key
@@ -61,10 +70,13 @@ class Handshake:
                 ip, vk, domain = [chunk.decode() for chunk in await asyncio.wait_for(client_sock.recv_multipart(), AUTH_TIMEOUT)]
                 authorized = cls.process_handshake(ip, vk, domain)
                 cls.log.info('Complete (took {}s): {} <=o= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
+                cls.log.notice('Complete (took {}s): {} <=o= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))  # TODO delete
             except asyncio.TimeoutError:
                 cls.log.warning('Timeout (took {}s): {} <=:= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
-                cls.log.warning(cls.authorized_nodes[domain])
-            client_sock.close()
+                cls.log.warning('Authorized nodes: {}'.format(cls.authorized_nodes[domain]))
+            finally:
+                client_sock.close()
+
             return authorized
 
     @classmethod
@@ -94,7 +106,7 @@ class Handshake:
                 cls.unknown_authorized_nodes[vk] = ip
                 Auth.remove_public_key(vk=vk, domain=domain)
                 # NOTE The sender proved that it has the VK via ZMQ Auth but the sender is not found in the receiver's VKBook
-                cls.log.important('Unknown VK: {} <=X= {} (vk={}, domain={}), saving to unknown_authorized_nodes for now'.format(cls.host_ip, ip, vk, domain))
+                cls.log.warning('Unknown VK: {} <=X= {} (vk={}, domain={}), saving to unknown_authorized_nodes for now'.format(cls.host_ip, ip, vk, domain))
                 Event.emit({'event': 'unknown_vk', 'vk': vk, 'ip': ip})
                 return False
         return False
