@@ -28,7 +28,7 @@ class TestLargeNetwork(MPTestCase):
 
         def assert_sub(test_obj):
             c_args = test_obj.handle_sub.call_args_list
-            assert len(c_args) == 7, "Expected 7 messages (one from each node). Instead, got:\n{}".format(c_args)
+            assert len(c_args) == 3, "Expected 3 messages (one from each node). Instead, got:\n{}".format(c_args)
 
         BLOCK = False
         time.sleep(1)
