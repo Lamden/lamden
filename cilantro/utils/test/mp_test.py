@@ -53,17 +53,6 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn, log_lvl=0, env_var
         tester._teardown()
 
 
-def wrap_container_bootstrap_fn(func, *args, **kwargs):
-    from .mp_test_case import MPTestCase
-    env_vars = {}
-    if os.getenv('CIRLCECI'):
-        env_vars['CIRCLECI'] = '1'
-
-    def _func():
-        return func(*args, log_lvl=MPTestCase.log_lvl, env_vars=env_vars, **kwargs)
-    return _func
-
-
 def wrap_fn(func, *args, **kwargs):
     def _func():
         return func(*args, **kwargs)
@@ -348,8 +337,12 @@ class MPTesterBase:
 
             self.log.notice("Creating node named {} in a docker container with name {} and ip {}".format(self.name, name, self.ip))
 
-            runner_func = wrap_container_bootstrap_fn(_run_test_proc, self.name, remote_url, build_fn, self.config_fn,
-                                                      self.assert_fn, )
+            env_vars = {}
+            if os.getenv('CIRLCECI'):
+                env_vars['CIRCLECI'] = '1'
+
+            runner_func = wrap_fn(_run_test_proc, self.name, remote_url, build_fn, self.config_fn,
+                                  self.assert_fn, env_vars=env_vars, log_lvl=MPTestCase.log_lvl)
 
             # TODO -- will i need a ton of imports and stuff to make this run smoothly...?
             MPTestCase.execute_python(name, runner_func, async=True)
