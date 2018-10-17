@@ -7,6 +7,7 @@ import random
 import inspect
 import traceback
 import time
+import os
 from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger, overwrite_logger_level
 
@@ -27,10 +28,16 @@ SIG_ABORT = b'NOSUCC'
 SIG_START = b'STARTSUCC'
 
 
-def _run_test_proc(name, url, build_fn, config_fn, assert_fn, log_lvl=0):
+def _run_test_proc(name, url, build_fn, config_fn, assert_fn, log_lvl=0, env_vars=None):
     log = get_logger("TestObjectRunner[{}]".format(name))
-    log.important("Setting log level to {}".format(log_lvl))
-    overwrite_logger_level(log_lvl)
+
+    for k, v in env_vars.items():
+        log.debug("Setting env var {}={}".format(k, v))
+        os.environ[k] = v
+
+    if log_lvl:
+        log.notice("Setting log level to {}".format(log_lvl))
+        overwrite_logger_level(log_lvl)
 
     # TODO create socket outside of loop and pass it in for
     tester = MPTesterProcess(name=name, url=url, build_fn=build_fn, config_fn=config_fn, assert_fn=assert_fn)
@@ -46,10 +53,22 @@ def _run_test_proc(name, url, build_fn, config_fn, assert_fn, log_lvl=0):
         tester._teardown()
 
 
-def wrap_func(func, *args, **kwargs):
+def wrap_container_bootstrap_fn(func, *args, **kwargs):
+    from .mp_test_case import MPTestCase
+    env_vars = {}
+    if os.getenv('CIRLCECI'):
+        env_vars['CIRCLECI'] = '1'
+
+    def _func():
+        return func(*args, log_lvl=MPTestCase.log_lvl, env_vars=env_vars, **kwargs)
+    return _func
+
+
+def wrap_fn(func, *args, **kwargs):
     def _func():
         return func(*args, **kwargs)
     return _func
+
 
 def get_filename(proc_name):
     import os
@@ -289,7 +308,7 @@ class MPTesterBase:
         # Create a wrapper around the build_obj with args and kwargs. We do this b/c this function will actually be
         # invoked in a separate process/machine, thus we need to capture the function call to serialize it and send
         # it across a socket
-        build_fn = wrap_func(type(self).build_obj, *args, name=name, **kwargs)
+        build_fn = wrap_fn(type(self).build_obj, *args, name=name, **kwargs)
 
         self._config_url_and_test_proc(build_fn, always_run_as_subproc)
 
@@ -329,8 +348,8 @@ class MPTesterBase:
 
             self.log.notice("Creating node named {} in a docker container with name {} and ip {}".format(self.name, name, self.ip))
 
-            runner_func = wrap_func(_run_test_proc, self.name, remote_url, build_fn, self.config_fn, self.assert_fn,
-                                    MPTestCase.log_lvl)
+            runner_func = wrap_container_bootstrap_fn(_run_test_proc, self.name, remote_url, build_fn, self.config_fn,
+                                                      self.assert_fn, )
 
             # TODO -- will i need a ton of imports and stuff to make this run smoothly...?
             MPTestCase.execute_python(name, runner_func, async=True)
@@ -342,7 +361,7 @@ class MPTesterBase:
 
             self.test_proc = LProcess(target=_run_test_proc, name=self.name, args=(self.name, self.url, build_fn,
                                                                                    self.config_fn, self.assert_fn,
-                                                                                   MPTestCase.log_lvl))
+                                                                                   ))
             self.test_proc.start()
 
     def wait_for_test_object(self):
