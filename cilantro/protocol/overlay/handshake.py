@@ -67,10 +67,9 @@ class Handshake:
             client_sock.send_multipart([vk.encode(), domain.encode()])
 
             try:
-                ip, vk, domain = [chunk.decode() for chunk in await asyncio.wait_for(client_sock.recv_multipart(), AUTH_TIMEOUT)]
-                authorized = cls.process_handshake(ip, vk, domain)
-                cls.log.info('Complete (took {}s): {} <=o= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
-                cls.log.notice('Complete (took {}s): {} <=o= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))  # TODO delete
+                recv_ip, recv_vk, domain = [chunk.decode() for chunk in await asyncio.wait_for(client_sock.recv_multipart(), AUTH_TIMEOUT)]
+                authorized = cls.process_handshake(recv_ip, recv_vk, domain)
+                cls.log.notice('Complete (took {}s): {} <=o= {} (vk={})'.format(time.time()-start, cls.host_ip, recv_ip, recv_vk))
             except asyncio.TimeoutError:
                 cls.log.warning('Timeout (took {}s): {} <=:= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
                 cls.log.warning('Authorized nodes: {}'.format(cls.authorized_nodes[domain]))
