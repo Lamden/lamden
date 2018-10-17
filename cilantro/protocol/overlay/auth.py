@@ -27,7 +27,7 @@ class Auth:
             cls.authorized_keys_dir = join(cls.base_dir, cls.default_domain_dir)
             if reset_auth_folder:
                 cls.reset_folder()
-                cls.add_public_key(public_key=cls.public_key)
+            cls.add_public_key(public_key=cls.public_key)
 
     @classmethod
     def get_keys(cls, sk_hex):
@@ -63,6 +63,8 @@ class Auth:
         public_key_file = join(public_key_dir, public_key_filename)
         now = datetime.datetime.now()
 
+        cls.log.critical('adding key {} to {}'.format(vk, public_key_file))
+
         os.makedirs(public_key_dir, exist_ok=True)
         zmq.auth.certs._write_key_file(public_key_file,
                         zmq.auth.certs._cert_public_banner.format(now),
@@ -82,8 +84,6 @@ class Auth:
     def configure_auth(cls, auth, domain='*'):
         location = cls.authorized_keys_dir if domain == '*' else join(cls.base_dir, domain)
         auth.configure_curve(domain=domain, location=location)
-        import time
-        time.sleep(0.5)
 
     @classmethod
     def secure_context(cls, context=None, async=False):
@@ -101,8 +101,8 @@ class Auth:
     def secure_socket(cls, sock, secret, public_key, domain='*'):
         sock.curve_secretkey = secret
         sock.curve_publickey = public_key
+        sock.zap_domain = domain.encode()
         if domain != '*':
-            sock.zap_domain = domain.encode()
             public_key_dir = join(cls.base_dir, domain)
         else:
             public_key_dir = join(cls.base_dir, cls.default_domain_dir)
