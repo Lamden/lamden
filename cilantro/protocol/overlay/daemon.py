@@ -77,6 +77,7 @@ class OverlayServer(object):
             ip = await self.interface.lookup_ip(vk)
             authorized = await self.interface.authenticate(ip, vk, domain) \
                 if secure == 'True' else True
+            
             if ip:
                 return {
                     'event': 'got_ip' if authorized else 'unauthorized_ip',

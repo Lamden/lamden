@@ -17,9 +17,9 @@ def config_sub(test_obj):
 
 class TestLargeNetwork(MPTestCase):
     config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-8.json'.format(CILANTRO_PATH)
-    log_lvl = 21
+    # log_lvl = 21
 
-    @vmnet_test(run_webui=True)
+    @vmnet_test
     def test_2_2_4(self):
         """
         Tests creating a network with 2 Masternodes, 2 Witnesses, and 4 Delegates. Ensures everyone can connect to
@@ -30,6 +30,7 @@ class TestLargeNetwork(MPTestCase):
             assert len(c_args) == 7, "Expected 7 messages (one from each node). Instead, got:\n{}".format(c_args)
 
         BLOCK = False
+        time.sleep(1)
 
         mn_0 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='[node_1]MN_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
         time.sleep(3)  # Pause after first MN boots (so we are extra sure he will be available for discovery)
