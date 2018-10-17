@@ -10,6 +10,7 @@ from cilantro.protocol.overlay.auth import Auth
 from cilantro.logger import get_logger
 from collections import defaultdict
 
+
 class Handshake:
     log = get_logger('Handshake')
     host_ip = HOST_IP

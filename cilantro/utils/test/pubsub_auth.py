@@ -24,6 +24,8 @@ class PubSubAuthTester(Worker):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.log.important3("PubSubAuthTester starting with VK {}".format(self.verifying_key))
+
         # Dict of socket key -> LSocket instance
         self.pub_sockets = {}
         self.sub_sockets = {}
