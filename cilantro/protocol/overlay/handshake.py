@@ -107,14 +107,14 @@ class Handshake:
                 cls.authorized_nodes['*'][vk] = ip
                 Auth.add_public_key(vk=vk, domain=domain)
                 cls.log.info('Authorized: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
-                Event.emit({'event': 'authorized', 'vk': vk, 'ip': ip})
+                Event.emit({'event': 'authorized', 'vk': vk, 'ip': ip, 'domain': domain})
                 return True
             else:
                 cls.unknown_authorized_nodes[vk] = ip
                 Auth.remove_public_key(vk=vk, domain=domain)
                 # NOTE The sender proved that it has the VK via the router's identity frame but the sender is not found in the receiver's VKBook
                 cls.log.warning('Unknown VK: {} <=X= {} (vk={}, domain={}), saving to unknown_authorized_nodes for now'.format(cls.host_ip, ip, vk, domain))
-                Event.emit({'event': 'unknown_vk', 'vk': vk, 'ip': ip})
+                Event.emit({'event': 'unknown_vk', 'vk': vk, 'ip': ip, 'domain': domain})
                 return False
 
     @classmethod

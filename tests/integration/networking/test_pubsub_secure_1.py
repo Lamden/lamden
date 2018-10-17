@@ -60,7 +60,7 @@ class TestPubSubSecure(MPTestCase):
         BLOCK = False
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB', block_until_rdy=BLOCK)
         sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB1', block_until_rdy=BLOCK)
-        sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB2', block_until_rdy=BLOCK)
+        sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB2_SK, name='SUB2', block_until_rdy=BLOCK)
 
         time.sleep(15*CI_FACTOR)
 
