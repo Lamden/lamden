@@ -145,7 +145,7 @@ class NodeSpiderCrawl(SpiderCrawl):
         self.nearest.remove(toremove)
 
         if self.nearest.allBeenContacted():
-            return list(self.nearest)
+            return None
         return await self.find()
 
 class VKSpiderCrawl(SpiderCrawl):
