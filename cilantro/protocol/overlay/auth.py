@@ -98,8 +98,8 @@ class Auth:
     def secure_socket(cls, sock, secret, public_key, domain='*'):
         sock.curve_secretkey = secret
         sock.curve_publickey = public_key
-        sock.zap_domain = domain.encode()
         if domain != '*':
+            sock.zap_domain = domain.encode()
             public_key_dir = join(cls.base_dir, domain)
         else:
             public_key_dir = join(cls.base_dir, cls.default_domain_dir)

@@ -74,8 +74,11 @@ class Handshake:
             except HandshakeException:
                 cls.log.warning('Unauthorized: The received ip and vk does not match the requested.')
             except asyncio.TimeoutError:
-                cls.log.warning('Timeout (took {}s): {} <=:= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
-                cls.log.warning('Authorized nodes: {}'.format(cls.authorized_nodes[domain]))
+                if cls.check_previously_authorized(ip, vk, domain):
+                    cls.log.notice('Complete (took {}s): {} <=o= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
+                else:
+                    cls.log.warning('Timeout (took {}s): {} <=:= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
+                    cls.log.warning('Authorized nodes: {}'.format(cls.authorized_nodes[domain]))
             except Exception:
                 cls.log.error(traceback.format_exc())
             finally:
@@ -121,7 +124,7 @@ class Handshake:
     def check_previously_authorized(cls, ip, vk, domain):
         if not cls.authorized_nodes.get(domain):
             cls.authorized_nodes[domain] = {}
-        if cls.authorized_nodes[domain].get(ip):
+        if cls.authorized_nodes[domain].get(vk):
             cls.log.spam('Previously Authorized: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
             return True
         elif cls.authorized_nodes['*'].get(vk):
