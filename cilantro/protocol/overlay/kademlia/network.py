@@ -146,9 +146,7 @@ class Network(object):
             log.debug('"{}" found in cache resolving to {}'.format(vk, node))
             return node.ip
         else:
-            nearest = self.protocol.router.findNeighbors(Node(digest(vk)))
-            if self.node in nearest:
-                nearest.remove(self.node)
+            nearest = self.protocol.router.findNeighbors(Node(digest(vk)), exclude=self.node)
             spider = VKSpiderCrawl(self.protocol, self.node, nearest,
                                      self.ksize, self.alpha)
             node = await spider.find(nodeid=digest(vk))
