@@ -55,7 +55,6 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-#            python3.6 ~/cilantro/tests/integration/networking/test_large_network.py
             python3.6 ~/cilantro/tests/run_tests.py --integration 1 --unit 0
 
   unit_tests:
