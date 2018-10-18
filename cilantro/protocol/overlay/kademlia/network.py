@@ -14,6 +14,7 @@ from cilantro.protocol.overlay.kademlia.storage import ForgetfulStorage
 from cilantro.protocol.overlay.kademlia.node import Node
 from cilantro.protocol.overlay.kademlia.crawling import ValueSpiderCrawl
 from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
+from cilantro.protocol.overlay.kademlia.crawling import VKSpiderCrawl
 from cilantro.protocol.overlay.auth import Auth
 
 from cilantro.logger.base import get_logger
@@ -146,7 +147,9 @@ class Network(object):
             return node.ip
         else:
             nearest = self.protocol.router.findNeighbors(Node(digest(vk)))
-            spider = NodeSpiderCrawl(self.protocol, self.node, nearest,
+            if self.node in nearest:
+                nearest.remove(self.node)
+            spider = VKSpiderCrawl(self.protocol, self.node, nearest,
                                      self.ksize, self.alpha)
             node = await spider.find(nodeid=digest(vk))
             if node:
