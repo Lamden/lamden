@@ -169,11 +169,9 @@ class VKSpiderCrawl(SpiderCrawl):
                 self.nearest.push(response.getNodeList())
         self.nearest.remove(toremove)
 
-        node_found = self.node_found()
-        if node_found: return node_found
-
         if self.nearest.allBeenContacted():
-            return None
+            return self.node_found()
+            
         return await self.find()
 
     def node_found(self):
