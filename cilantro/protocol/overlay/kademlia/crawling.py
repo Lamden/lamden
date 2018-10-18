@@ -154,7 +154,7 @@ class VKSpiderCrawl(SpiderCrawl):
         Find the specific node id.
         """
         for peer in list(self.nearest):
-            if peer.id == nodeid:
+            if peer.id == nodeid or peer.id == self.nodeid:
                 return peer
         self.nodeid = nodeid
         return await self._find(self.protocol.callFindNode)
@@ -171,6 +171,11 @@ class VKSpiderCrawl(SpiderCrawl):
             else:
                 self.nearest.push(response.getNodeList())
         self.nearest.remove(toremove)
+
+        for peer in self.nearest:
+            if self.nodeid == peer.id:
+                return peer
+
         if self.nearest.allBeenContacted():
             return None
         return await self.find()
