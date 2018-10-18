@@ -153,6 +153,8 @@ class VKSpiderCrawl(SpiderCrawl):
         """
         Find the specific node id.
         """
+        if self.node.id == nodeid:
+            return self.node
         for peer in list(self.nearest):
             if peer.id == nodeid:
                 return peer
