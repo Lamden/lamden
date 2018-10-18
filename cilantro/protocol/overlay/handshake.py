@@ -11,9 +11,6 @@ from cilantro.logger import get_logger
 from cilantro.storage.db import VKBook
 from collections import defaultdict
 
-class HandshakeException(Exception):
-    pass
-
 class Handshake:
     log = get_logger('Handshake')
     host_ip = HOST_IP
@@ -71,8 +68,6 @@ class Handshake:
                 cls.log.info('Received a handshake reply from {} to {} (vk={})'.format(ip, cls.host_ip, vk))
                 authorized = cls.process_handshake(ip, vk, domain)
                 cls.log.notice('Complete (took {}s): {} <=o= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
-            except HandshakeException:
-                cls.log.warning('Unauthorized: The received ip and vk does not match the requested.')
             except asyncio.TimeoutError:
                 if cls.check_previously_authorized(ip, vk, domain):
                     authorized = True
@@ -126,20 +121,20 @@ class Handshake:
         if not cls.authorized_nodes.get(domain):
             cls.authorized_nodes[domain] = {}
         if cls.authorized_nodes[domain].get(vk):
-            cls.log.spam('Previously Authorized: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
+            cls.log.info('Previously Authorized: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
             return True
         elif cls.authorized_nodes['*'].get(vk):
             if ip == cls.authorized_nodes['*'][vk]:
-                cls.log.spam('Already Authorized To Domain: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
+                cls.log.info('Already Authorized To Domain: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
                 cls.authorized_nodes[domain][vk] = ip
                 return True
         elif cls.unknown_authorized_nodes.get(vk):
             if ip == cls.unknown_authorized_nodes[vk]:
-                cls.log.spam('Found and authorized previously unknown but authorized node: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
+                cls.log.info('Found and authorized previously unknown but authorized node: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
                 cls.authorized_nodes['*'][vk] = ip
                 cls.authorized_nodes[domain][vk] = ip
             else:
-                cls.log.spam('Removing stale unknown VK: {} =||= {} (vk={})'.format(cls.host_ip, ip, vk))
+                cls.log.info('Removing stale unknown VK: {} =||= {} (vk={})'.format(cls.host_ip, ip, vk))
             del cls.unknown_authorized_nodes[vk]
             return False
         return False
