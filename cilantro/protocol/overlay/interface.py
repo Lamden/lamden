@@ -24,7 +24,7 @@ class OverlayInterface:
         self.ctx = ctx or zmq.asyncio.Context()
         Auth.setup(sk_hex=sk_hex, reset_auth_folder=True)
 
-        self.network = Network(loop=self.loop, storage=None)
+        self.network = Network(loop=self.loop)
         Discovery.setup(ctx=self.ctx)
         Handshake.setup(loop=self.loop, ctx=self.ctx)
         self.tasks = [

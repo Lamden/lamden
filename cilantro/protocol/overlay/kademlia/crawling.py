@@ -149,12 +149,13 @@ class NodeSpiderCrawl(SpiderCrawl):
         return await self.find()
 
 class VKSpiderCrawl(SpiderCrawl):
+    
     async def find(self, nodeid=None):
         """
         Find the specific node id.
         """
         self.nodeid = nodeid
-        
+
         node_found = self.node_found()
         if node_found: return node_found
 
