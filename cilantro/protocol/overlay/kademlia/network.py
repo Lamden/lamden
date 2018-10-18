@@ -150,7 +150,6 @@ class Network(object):
             spider = VKSpiderCrawl(self.protocol, self.node, nearest,
                                      self.ksize, self.alpha)
             node = await spider.find(nodeid=digest(vk))
-            log.important2(node)
             if node:
                 log.debug('"{}" resolved to {}'.format(vk, node))
                 return node.ip

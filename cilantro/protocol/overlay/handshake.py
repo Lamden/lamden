@@ -135,7 +135,7 @@ class Handshake:
                 cls.authorized_nodes[domain][vk] = ip
             else:
                 cls.log.info('Removing stale unknown VK: {} =||= {} (vk={})'.format(cls.host_ip, ip, vk))
-            del cls.unknown_authorized_nodes[vk]
+                del cls.unknown_authorized_nodes[vk]
             return False
         return False
 
