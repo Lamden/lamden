@@ -154,6 +154,10 @@ class VKSpiderCrawl(SpiderCrawl):
         Find the specific node id.
         """
         self.nodeid = nodeid
+        
+        node_found = self.node_found()
+        if node_found: return node_found
+
         return await self._find(self.protocol.callFindNode)
 
     async def _nodesFound(self, responses):
@@ -169,9 +173,11 @@ class VKSpiderCrawl(SpiderCrawl):
                 self.nearest.push(response.getNodeList())
         self.nearest.remove(toremove)
 
+        node_found = self.node_found()
+        if node_found: return node_found
+
         if self.nearest.allBeenContacted():
-            return self.node_found()
-            
+            return None
         return await self.find()
 
     def node_found(self):
