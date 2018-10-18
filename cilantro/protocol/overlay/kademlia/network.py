@@ -144,16 +144,23 @@ class Network(object):
                 if node.vk == vk:
                     self.cached_vks[vk] = node.ip
                     return node.ip
-            spider = VKSpiderCrawl(self.protocol, self.node, nearest,
+            spider = NodeSpiderCrawl(self.protocol, self.node, nearest,
                                      self.ksize, self.alpha)
-            node = await spider.find(nodeid=digest(vk))
-            if type(node) == Node:
-                log.debug('"{}" resolved to {}'.format(vk, node))
-                self.cached_vks[vk] = node.ip
-                return node.ip
-            else:
-                log.warning('"{}" cannot be resolved (asked {})'.format(vk, node))
-                return None
+            nodes = await spider.find(nodeid=digest(vk))
+            for node in nodes:
+                if node.vk == vk:
+                    log.debug('"{}" resolved to {}'.format(vk, node))
+                    self.cached_vks[vk] = node.ip
+                    return node.ip
+            log.warning('"{}" cannot be resolved (asked {})'.format(vk, node))
+            return None
+            # if type(node) == Node:
+            #     log.debug('"{}" resolved to {}'.format(vk, node))
+            #     self.cached_vks[vk] = node.ip
+            #     return node.ip
+            # else:
+            #     log.warning('"{}" cannot be resolved (asked {})'.format(vk, node))
+            #     return None
 
     def saveState(self, fname):
         """
