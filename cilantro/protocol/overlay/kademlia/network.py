@@ -152,6 +152,7 @@ class Network(object):
             node = await spider.find(nodeid=digest(vk))
             if node:
                 log.debug('"{}" resolved to {}'.format(vk, node))
+                cached_vks[vk] = node.ip
                 return node.ip
             else:
                 log.warning('"{}" cannot be resolved'.format(vk))
