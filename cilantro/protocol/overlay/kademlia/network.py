@@ -132,13 +132,14 @@ class Network(object):
     async def lookup_ip(self, vk):
         log.spam('Attempting to look up node with vk="{}"'.format(vk))
         if Auth.vk == vk:
-            return HOST_IP
+            self.cached_vks[vk] = self.host_ip
+            return self.host_ip
         elif self.cached_vks.get(vk):
             node = self.cached_vks.get(vk)
             log.debug('"{}" found in cache resolving to {}'.format(vk, node))
             return node.ip
         else:
-            nearest = self.protocol.router.findNeighbors(Node(digest(vk)), exclude=self.node)
+            nearest = self.protocol.router.findNeighbors(self.node)
             spider = VKSpiderCrawl(self.protocol, self.node, nearest,
                                      self.ksize, self.alpha)
             node = await spider.find(nodeid=digest(vk))
