@@ -140,6 +140,10 @@ class Network(object):
             return node.ip
         else:
             nearest = self.protocol.router.findNeighbors(self.node)
+            for node in nearest:
+                if node.vk == vk:
+                    self.cached_vks[vk] = node.ip
+                    return node.ip
             spider = VKSpiderCrawl(self.protocol, self.node, nearest,
                                      self.ksize, self.alpha)
             node = await spider.find(nodeid=digest(vk))
