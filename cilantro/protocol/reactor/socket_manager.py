@@ -65,5 +65,5 @@ class SocketManager:
             Auth.configure_auth(self.auth, e['domain'])
         else:
             # TODO handle all events. Or write code to only subscribe to certain events
-            self.log.warning("Composer got overlay event {} that it does not know how to handle. Ignoring.".format(e))
+            self.log.debug("Composer got overlay event {} that it does not know how to handle. Ignoring.".format(e))
             return

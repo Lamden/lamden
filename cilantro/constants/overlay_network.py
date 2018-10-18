@@ -7,7 +7,7 @@ KSIZE = 20
 MAX_PEERS = 64
 
 AUTH_TIMEOUT = 8 * CI_FACTOR  # Times-out after retrying auth for the interval
-RPC_TIMEOUT = 5  # use 5 in prod
+RPC_TIMEOUT = 5 * CI_FACTOR  # use 5 in prod
 CLIENT_SETUP_TIMEOUT = 24  # How long OverlayClient should wait for a rdy sig from the OverlayServer until we timeout
 DISCOVERY_TIMEOUT = 2 * CI_FACTOR
 

@@ -55,7 +55,7 @@ class OverlayInterface:
 #   DISCOVERY COMPLETE
 ###########################################################################\
         ''')
-        Event.emit({ 'event': 'discovery', 'status': 'complete' })
+        # Event.emit({ 'event': 'discovery', 'status': 'complete' })
         await self.bootstrap()
         self.log.success('''
 ###########################################################################

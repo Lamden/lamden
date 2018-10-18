@@ -120,15 +120,15 @@ class Handshake:
     def check_previously_authorized(cls, ip, vk, domain):
         if not cls.authorized_nodes.get(domain):
             cls.authorized_nodes[domain] = {}
-        if cls.authorized_nodes[domain].get(vk):
+        if cls.authorized_nodes[domain].get(vk) == ip:
             cls.log.info('Previously Authorized: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
             return True
-        elif cls.authorized_nodes['*'].get(vk):
+        elif cls.authorized_nodes['*'].get(vk) == ip:
             if ip == cls.authorized_nodes['*'][vk]:
                 cls.log.info('Already Authorized To Domain: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
                 cls.authorized_nodes[domain][vk] = ip
                 return True
-        elif cls.unknown_authorized_nodes.get(vk):
+        elif cls.unknown_authorized_nodes.get(vk) == ip:
             if ip == cls.unknown_authorized_nodes[vk]:
                 cls.log.info('Found and authorized previously unknown but authorized node: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
                 cls.authorized_nodes['*'][vk] = ip
