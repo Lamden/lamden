@@ -26,7 +26,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
         self.transport = transport
 
     def datagram_received(self, data, addr):
-        log.important2("received datagram from %s", addr)
+        log.spam("received datagram from %s", addr)
         asyncio.ensure_future(self._solveDatagram(data, addr))
 
     @asyncio.coroutine
@@ -46,7 +46,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
             self._acceptResponse(msgID, data, address)
         else:
             # otherwise, don't know the format, don't do anything
-            log.important2("Received unknown message from %s, ignoring", address)
+            log.spam("Received unknown message from %s, ignoring", address)
 
     def _acceptResponse(self, msgID, data, address):
         msgargs = (b64encode(msgID), address)
@@ -54,7 +54,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
             log.warning("received unknown message %s "
                         "from %s; ignoring", *msgargs)
             return
-        log.important2("received response %s for message "
+        log.spam("received response %s for message "
                   "id %s from %s", data, *msgargs)
         f, timeout = self._outstanding[msgID]
         timeout.cancel()
@@ -76,7 +76,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
         if not asyncio.iscoroutinefunction(f):
             f = asyncio.coroutine(f)
         response = yield from f(address, *args)
-        log.important2("sending response %s for msg id %s to %s",
+        log.spam("sending response %s for msg id %s to %s",
                   response, b64encode(msgID), address)
         txdata = b'\x01' + msgID + umsgpack.packb(response)
         self.transport.sendto(txdata, address)
@@ -114,7 +114,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
                 raise MalformedMessage("Total length of function "
                                        "name and arguments cannot exceed 8K")
             txdata = b'\x00' + msgID + data
-            log.important2("calling remote function %s on %s (msgid %s)",
+            log.spam("calling remote function %s on %s (msgid %s)",
                       name, address, b64encode(msgID))
             self.transport.sendto(txdata, address)
 
