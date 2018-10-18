@@ -157,6 +157,7 @@ class VKSpiderCrawl(SpiderCrawl):
         self.nodeid = nodeid
 
         node_found = self.node_found()
+        log.critical(node_found)
         if node_found: return node_found
 
         return await self._find(self.protocol.callFindNode)
@@ -168,6 +169,7 @@ class VKSpiderCrawl(SpiderCrawl):
         toremove = []
         for peerid, response in responses.items():
             response = RPCFindResponse(response)
+            log.critical('response is {}'.format(response.response))
             if not response.happened():
                 toremove.append(peerid)
             else:

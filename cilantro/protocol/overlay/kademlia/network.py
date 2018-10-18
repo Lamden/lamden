@@ -140,27 +140,16 @@ class Network(object):
             return node.ip
         else:
             nearest = self.protocol.router.findNeighbors(self.node)
-            for node in nearest:
-                if node.vk == vk:
-                    self.cached_vks[vk] = node.ip
-                    return node.ip
-            spider = NodeSpiderCrawl(self.protocol, self.node, nearest,
-                                     self.ksize, self.alpha)
-            nodes = await spider.find(nodeid=digest(vk))
-            for node in nodes:
-                if node.vk == vk:
-                    log.debug('"{}" resolved to {}'.format(vk, node))
-                    self.cached_vks[vk] = node.ip
-                    return node.ip
-            log.warning('"{}" cannot be resolved (asked {})'.format(vk, node))
-            return None
-            # if type(node) == Node:
-            #     log.debug('"{}" resolved to {}'.format(vk, node))
-            #     self.cached_vks[vk] = node.ip
-            #     return node.ip
-            # else:
-            #     log.warning('"{}" cannot be resolved (asked {})'.format(vk, node))
-            #     return None
+            spider = VKSpiderCrawl(self.protocol, Node(digest(vk), port=self.port, vk=vk),
+                                    nearest, self.ksize, self.alpha)
+            node = await spider.find(nodeid=digest(vk))
+            if type(node) == Node:
+                log.debug('"{}" resolved to {}'.format(vk, node))
+                self.cached_vks[vk] = node.ip
+                return node.ip
+            else:
+                log.warning('"{}" cannot be resolved (asked {})'.format(vk, node))
+                return None
 
     def saveState(self, fname):
         """
