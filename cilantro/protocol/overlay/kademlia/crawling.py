@@ -154,6 +154,8 @@ class VKSpiderCrawl(SpiderCrawl):
         Find the specific node id.
         """
         self.nodeid = nodeid
+        node_found = self.node_found()
+        if node_found: return node_found
         return await self._find(self.protocol.callFindNode)
 
     async def _nodesFound(self, responses):
@@ -169,16 +171,19 @@ class VKSpiderCrawl(SpiderCrawl):
                 self.nearest.push(response.getNodeList())
         self.nearest.remove(toremove)
 
-        if self.node.id == self.nodeid:
-            return self.node
-
-        for peer in self.nearest:
-            if self.nodeid == peer.id:
-                return peer
+        node_found = self.node_found()
+        if node_found: return node_found
 
         if self.nearest.allBeenContacted():
             return None
         return await self.find()
+
+    def node_found(self):
+        if self.node.id == self.nodeid:
+            return self.node
+        for peer in self.nearest:
+            if self.nodeid == peer.id:
+                return peer
 
 
 class RPCFindResponse(object):
