@@ -114,7 +114,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
                 raise MalformedMessage("Total length of function "
                                        "name and arguments cannot exceed 8K")
             txdata = b'\x00' + msgID + data
-            log.spam("calling remote function %s on %s (msgid %s)",
+            log.important("calling remote function %s on %s (msgid %s)",
                       name, address, b64encode(msgID))
             self.transport.sendto(txdata, address)
 
