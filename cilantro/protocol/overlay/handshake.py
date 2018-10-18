@@ -80,8 +80,6 @@ class Handshake:
             finally:
                 client_sock.close()
 
-            # DEBUG CI
-            return True
             return authorized
 
     @classmethod
@@ -93,8 +91,6 @@ class Handshake:
                 ip, vk = ip_vk.split(';')
                 cls.log.info('Received a handshake request from {} to {} (vk={})'.format(ip, cls.host_ip, vk))
                 authorized = cls.process_handshake(ip, vk, domain)
-                # DEBUG CI
-                authorized = True
                 if authorized:
                     cls.server_sock.send_multipart([ip_vk.encode(), domain.encode()])
             except Exception as e:
