@@ -75,6 +75,7 @@ class Handshake:
                 cls.log.warning('Unauthorized: The received ip and vk does not match the requested.')
             except asyncio.TimeoutError:
                 if cls.check_previously_authorized(ip, vk, domain):
+                    authorized = True
                     cls.log.notice('Complete (took {}s): {} <=o= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
                 else:
                     cls.log.warning('Timeout (took {}s): {} <=:= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
