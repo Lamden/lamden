@@ -125,10 +125,16 @@ class ValueSpiderCrawl(SpiderCrawl):
 
 class NodeSpiderCrawl(SpiderCrawl):
 
-    async def find(self):
+    async def find(self, nodeid=None):
         """
         Find the closest nodes.
         """
+        if nodeid: self.nodeid = nodeid
+        if hasattr(self, 'nodeid'):
+            for peer in list(self.nearest):
+                if peer.id == self.nodeid:
+                    del self.nodeid
+                    return peer
         return await self._find(self.protocol.callFindNode)
 
     async def _nodesFound(self, responses):
@@ -143,40 +149,9 @@ class NodeSpiderCrawl(SpiderCrawl):
             else:
                 self.nearest.push(response.getNodeList())
         self.nearest.remove(toremove)
-
         if self.nearest.allBeenContacted():
             return list(self.nearest)
         return await self.find()
-
-class VKSpiderCrawl(SpiderCrawl):
-    async def find(self, nodeid=None):
-        """
-        Find the specific node id.
-        """
-        self.nodeid = nodeid
-        return await self._find(self.protocol.callFindNode)
-
-    async def _nodesFound(self, responses):
-        """
-        Handle the result of an iteration in _find.
-        """
-        toremove = []
-        for peerid, response in responses.items():
-            response = RPCFindResponse(response)
-            if not response.happened():
-                toremove.append(peerid)
-            else:
-                self.nearest.push(response.getNodeList())
-        self.nearest.remove(toremove)
-
-        for peer in self.nearest:
-            if self.nodeid == peer.id:
-                return peer
-
-        if self.nearest.allBeenContacted():
-            return None
-        return await self.find()
-
 
 class RPCFindResponse(object):
     def __init__(self, response):
