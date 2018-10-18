@@ -28,7 +28,7 @@ SIG_ABORT = b'NOSUCC'
 SIG_START = b'STARTSUCC'
 
 
-def _run_test_proc(name, url, build_fn, config_fn, assert_fn, log_lvl=0, env_vars=None):
+def _run_test_proc(name, url, build_fn, config_fn, assert_fn, log_lvl=0, env_vars={}):
     log = get_logger("TestObjectRunner[{}]".format(name))
 
     for k, v in env_vars.items():
