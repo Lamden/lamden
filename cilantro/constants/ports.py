@@ -8,6 +8,7 @@ DEFAULT_PUB_PORT = 9900
 DISCOVERY_PORT = 20001
 AUTH_PORT = 20002
 DHT_PORT = 20003
+NETWORK_PORT = 20004
 
 # ---------------------------------------------------------------
 # Masternode Ports
