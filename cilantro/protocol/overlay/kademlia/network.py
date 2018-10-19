@@ -138,17 +138,26 @@ class Network(object):
             log.debug('"{}" found in cache resolving to {}'.format(vk, node))
             return node.ip
         else:
-            nearest = self.protocol.router.findNeighbors(self.node)
+            nearest = self.protocol.router.findNeighbors(Node(digest(vk)))
+            nearest = nearest[:2]
+            ip = self.get_ip_from_nodes_list(vk, nearest)
+            if ip:
+                log.debug('"{}" resolved to {}'.format(vk, ip))
+                return ip
             spider = NodeSpiderCrawl(self.protocol, Node(digest(vk)),
                                     nearest, self.ksize, self.alpha)
             nodes = await spider.find()
-            for node in nodes:
-                if node.vk == vk:
-                    log.debug('"{}" resolved to {}'.format(vk, node))
-                    self.cached_vks[vk] = node.ip
-                    return node.ip
+            ip = self.get_ip_from_nodes_list(vk, nodes)
+            if ip:
+                log.debug('"{}" resolved to {}'.format(vk, ip))
+                return ip
             log.warning('"{}" cannot be resolved (asked {})'.format(vk, node))
             return None
+
+    def get_ip_from_nodes_list(self, vk, nodes):
+        for node in nodes:
+            if vk == node.vk:
+                return node.ip
 
     def saveState(self, fname):
         """
