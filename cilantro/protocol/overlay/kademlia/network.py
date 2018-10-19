@@ -13,7 +13,6 @@ from cilantro.protocol.overlay.kademlia.utils import digest
 from cilantro.protocol.overlay.kademlia.node import Node
 from cilantro.protocol.overlay.kademlia.crawling import ValueSpiderCrawl
 from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
-from cilantro.protocol.overlay.kademlia.crawling import VKSpiderCrawl
 from cilantro.protocol.overlay.auth import Auth
 
 from cilantro.logger.base import get_logger
@@ -140,16 +139,16 @@ class Network(object):
             return node.ip
         else:
             nearest = self.protocol.router.findNeighbors(self.node)
-            spider = VKSpiderCrawl(self.protocol, self.node,
+            spider = NodeSpiderCrawl(self.protocol, Node(digest(vk)),
                                     nearest, self.ksize, self.alpha)
-            node = await spider.find(nodeid=digest(vk))
-            if type(node) == Node:
-                log.debug('"{}" resolved to {}'.format(vk, node))
-                self.cached_vks[vk] = node.ip
-                return node.ip
-            else:
-                log.warning('"{}" cannot be resolved (asked {})'.format(vk, node))
-                return None
+            nodes = await spider.find()
+            for node in nodes:
+                if node.vk == vk:
+                    log.debug('"{}" resolved to {}'.format(vk, node))
+                    self.cached_vks[vk] = node.ip
+                    return node.ip
+            log.warning('"{}" cannot be resolved (asked {})'.format(vk, node))
+            return None
 
     def saveState(self, fname):
         """
