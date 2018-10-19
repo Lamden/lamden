@@ -155,7 +155,7 @@ class VKSpiderCrawl(SpiderCrawl):
         Find the specific node id.
         """
         self.nodeid = nodeid
-        return await self._find(self.protocol.callFindNode)
+        return await self._find(self.protocol.callFindIp)
 
     async def _nodesFound(self, responses):
         """

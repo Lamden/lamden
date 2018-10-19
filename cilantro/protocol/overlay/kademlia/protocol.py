@@ -42,9 +42,25 @@ class KademliaProtocol(RPCProtocol):
         neighbors = self.router.findNeighbors(node, exclude=source)
         return list(map(tuple, neighbors))
 
+    def rpc_find_ip(self, sender, nodeid, vk, key):
+        log.spam("finding neighbors of %i in local table",
+                 int(nodeid.hex(), 16))
+        source = Node(nodeid, sender[0], sender[1], vk)
+        self.welcomeIfNewNode(source)
+        node = Node(key)
+        neighbors = self.router.findNeighbors(node)
+        return list(map(tuple, neighbors))
+
     async def callFindNode(self, nodeToAsk, nodeToFind):
         address = (nodeToAsk.ip, nodeToAsk.port)
         result = await self.find_node(address, self.sourceNode.id,
+                                      self.sourceNode.vk,
+                                      nodeToFind.id)
+        return self.handleCallResponse(result, nodeToAsk)
+
+    async def callFindIp(self, nodeToAsk, nodeToFind):
+        address = (nodeToAsk.ip, nodeToAsk.port)
+        result = await self.find_ip(address, self.sourceNode.id,
                                       self.sourceNode.vk,
                                       nodeToFind.id)
         return self.handleCallResponse(result, nodeToAsk)
