@@ -6,45 +6,43 @@ import pickle
 import asyncio
 import logging
 
-from cilantro.constants.overlay_network import *
-from cilantro.constants.ports import DHT_PORT
 from cilantro.protocol.overlay.kademlia.protocol import KademliaProtocol
 from cilantro.protocol.overlay.kademlia.utils import digest
+from cilantro.protocol.overlay.kademlia.storage import ForgetfulStorage
 from cilantro.protocol.overlay.kademlia.node import Node
 from cilantro.protocol.overlay.kademlia.crawling import ValueSpiderCrawl
 from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
-from cilantro.protocol.overlay.auth import Auth
 
-from cilantro.logger.base import get_logger
-log = get_logger(__name__)
+log = logging.getLogger(__name__)
+
 
 class Network(object):
     """
     High level view of a node instance.  This is the object that should be
     created to start listening as an active node on the network.
     """
-    host_ip = HOST_IP
-    port = DHT_PORT
+
     protocol_class = KademliaProtocol
 
-    def __init__(self, ksize=20, alpha=3, loop=None):
+    def __init__(self, ksize=20, alpha=3, node_id=None, storage=None):
         """
         Create a server instance.  This will start listening on the given port.
 
         Args:
             ksize (int): The k parameter from the paper
             alpha (int): The alpha parameter from the paper
-            vk: The vk for this node on the network.
+            node_id: The id for this node on the network.
+            storage: An instance that implements
+                     :interface:`~kademlia.storage.IStorage`
         """
         self.ksize = ksize
         self.alpha = alpha
-        self.loop = loop or asyncio.get_event_loop()
-        self.node = Node(node_id=digest(Auth.vk), ip=self.host_ip, port=self.port, vk=Auth.vk)
+        self.storage = storage or ForgetfulStorage()
+        self.node = Node(node_id or digest(random.getrandbits(255)))
         self.transport = None
         self.protocol = None
         self.refresh_loop = None
         self.save_state_loop = None
-        self.cached_vks = {}
 
     def stop(self):
         if self.transport is not None:
@@ -57,21 +55,28 @@ class Network(object):
             self.save_state_loop.cancel()
 
     def _create_protocol(self):
-        return self.protocol_class(self.node, self.ksize)
+        return self.protocol_class(self.node, self.storage, self.ksize)
 
-    async def listen(self, interface='0.0.0.0'):
+    def listen(self, port, interface='0.0.0.0'):
         """
         Start listening on the given port.
 
         Provide interface="::" to accept ipv6 address
         """
-        loop = self.loop
+        loop = asyncio.get_event_loop()
         listen = loop.create_datagram_endpoint(self._create_protocol,
-                                               local_addr=(interface, self.port))
-        log.spam("Node %i listening on %s:%i",
-                 self.node.long_id, interface, self.port)
-        self.transport, self.protocol = await asyncio.ensure_future(listen)
-        await self._refresh_table()
+                                               local_addr=(interface, port))
+        log.info("Node %i listening on %s:%i",
+                 self.node.long_id, interface, port)
+        self.transport, self.protocol = loop.run_until_complete(listen)
+        # finally, schedule refreshing table
+        self.refresh_table()
+
+    def refresh_table(self):
+        log.debug("Refreshing routing table")
+        asyncio.ensure_future(self._refresh_table())
+        loop = asyncio.get_event_loop()
+        self.refresh_loop = loop.call_later(3600, self.refresh_table)
 
     async def _refresh_table(self):
         """
@@ -89,8 +94,9 @@ class Network(object):
         # do our crawling
         await asyncio.gather(*ds)
 
-        await asyncio.sleep(3600)
-        await self._refresh_table()
+        # now republish keys older than one hour
+        for dkey, value in self.storage.iteritemsOlderThan(3600):
+            await self.set_digest(dkey, value)
 
     def bootstrappableNeighbors(self):
         """
@@ -103,7 +109,7 @@ class Network(object):
         back up, the list of nodes can be used to bootstrap.
         """
         neighbors = self.protocol.router.findNeighbors(self.node)
-        return [tuple(n)[1:] for n in neighbors]
+        return [tuple(n)[-2:] for n in neighbors]
 
     async def bootstrap(self, addrs):
         """
@@ -113,7 +119,7 @@ class Network(object):
             addrs: A `list` of (ip, port) `tuple` pairs.  Note that only IP
                    addresses are acceptable - hostnames will cause an error.
         """
-        log.spam("Attempting to bootstrap node with %i initial contacts",
+        log.debug("Attempting to bootstrap node with %i initial contacts",
                   len(addrs))
         cos = list(map(self.bootstrap_node, addrs))
         gathered = await asyncio.gather(*cos)
@@ -123,48 +129,74 @@ class Network(object):
         return await spider.find()
 
     async def bootstrap_node(self, addr):
-        result = await self.protocol.ping(addr, self.node.id, self.node.vk)
-        if result[0]:
-            nodeid, vk = result[1]
-            return Node(nodeid, addr[0], addr[1], vk)
+        result = await self.protocol.ping(addr, self.node.id)
+        return Node(result[1], addr[0], addr[1]) if result[0] else None
 
-    async def lookup_ip(self, vk):
-        log.spam('Attempting to look up node with vk="{}"'.format(vk))
-        if Auth.vk == vk:
-            self.cached_vks[vk] = self.host_ip
-            return self.host_ip
-        elif self.cached_vks.get(vk):
-            node = self.cached_vks.get(vk)
-            log.debug('"{}" found in cache resolving to {}'.format(vk, node))
-            return node.ip
-        else:
-            nearest = self.protocol.router.findNeighbors(Node(digest(vk)))
-            nearest = nearest[:2]
-            ip = self.get_ip_from_nodes_list(vk, nearest)
-            if ip:
-                log.debug('"{}" resolved to {}'.format(vk, ip))
-                return ip
-            spider = NodeSpiderCrawl(self.protocol, Node(digest(vk)),
-                                    nearest, self.ksize, self.alpha)
-            nodes = await spider.find()
-            ip = self.get_ip_from_nodes_list(vk, nodes)
-            if ip:
-                log.debug('"{}" resolved to {}'.format(vk, ip))
-                return ip
-            log.warning('"{}" cannot be resolved (asked {})'.format(vk, node))
+    async def get(self, key):
+        """
+        Get a key if the network has it.
+
+        Returns:
+            :class:`None` if not found, the value otherwise.
+        """
+        log.info("Looking up key %s", key)
+        dkey = digest(key)
+        # if this node has it, return it
+        if self.storage.get(dkey) is not None:
+            return self.storage.get(dkey)
+        node = Node(dkey)
+        nearest = self.protocol.router.findNeighbors(node)
+        if len(nearest) == 0:
+            log.warning("There are no known neighbors to get key %s", key)
             return None
+        spider = ValueSpiderCrawl(self.protocol, node, nearest,
+                                  self.ksize, self.alpha)
+        return await spider.find()
 
-    def get_ip_from_nodes_list(self, vk, nodes):
-        for node in nodes:
-            if vk == node.vk:
-                return node.ip
+    async def set(self, key, value):
+        """
+        Set the given string key to the given value in the network.
+        """
+        if not check_dht_value_type(value):
+            raise TypeError(
+                "Value must be of type int, float, bool, str, or bytes"
+            )
+        log.info("setting '%s' = '%s' on network", key, value)
+        dkey = digest(key)
+        return await self.set_digest(dkey, value)
+
+    async def set_digest(self, dkey, value):
+        """
+        Set the given SHA1 digest key (bytes) to the given value in the
+        network.
+        """
+        node = Node(dkey)
+
+        nearest = self.protocol.router.findNeighbors(node)
+        if len(nearest) == 0:
+            log.warning("There are no known neighbors to set key %s",
+                        dkey.hex())
+            return False
+
+        spider = NodeSpiderCrawl(self.protocol, node, nearest,
+                                 self.ksize, self.alpha)
+        nodes = await spider.find()
+        log.info("setting '%s' on %s", dkey.hex(), list(map(str, nodes)))
+
+        # if this node is close too, then store here as well
+        biggest = max([n.distanceTo(node) for n in nodes])
+        if self.node.distanceTo(node) < biggest:
+            self.storage[dkey] = value
+        ds = [self.protocol.callStore(n, dkey, value) for n in nodes]
+        # return true only if at least one store call succeeded
+        return any(await asyncio.gather(*ds))
 
     def saveState(self, fname):
         """
         Save the state of this node (the alpha/ksize/id/immediate neighbors)
         to a cache file with the given fname.
         """
-        log.spam("Saving state to %s", fname)
+        log.info("Saving state to %s", fname)
         data = {
             'ksize': self.ksize,
             'alpha': self.alpha,
@@ -183,10 +215,10 @@ class Network(object):
         Load the state of this node (the alpha/ksize/id/immediate neighbors)
         from a cache file with the given fname.
         """
-        log.spam("Loading state from %s", fname)
+        log.info("Loading state from %s", fname)
         with open(fname, 'rb') as f:
             data = pickle.load(f)
-        s = Network(data['ksize'], data['alpha'], data['id'])
+        s = Server(data['ksize'], data['alpha'], data['id'])
         if len(data['neighbors']) > 0:
             s.bootstrap(data['neighbors'])
         return s
@@ -207,3 +239,20 @@ class Network(object):
                                                self.saveStateRegularly,
                                                fname,
                                                frequency)
+
+
+def check_dht_value_type(value):
+    """
+    Checks to see if the type of the value is a valid type for
+    placing in the dht.
+    """
+    typeset = set(
+        [
+            int,
+            float,
+            bool,
+            str,
+            bytes,
+        ]
+    )
+    return type(value) in typeset

@@ -3,8 +3,8 @@ import logging
 
 from cilantro.protocol.overlay.kademlia.node import Node, NodeHeap
 from cilantro.protocol.overlay.kademlia.utils import gather_dict
-from cilantro.logger.base import get_logger
-log = get_logger(__name__)
+
+log = logging.getLogger(__name__)
 
 
 class SpiderCrawl(object):
@@ -30,7 +30,7 @@ class SpiderCrawl(object):
         self.node = node
         self.nearest = NodeHeap(self.node, self.ksize)
         self.lastIDsCrawled = []
-        log.spam("creating spider with peers: %s", peers)
+        log.info("creating spider with peers: %s", peers)
         self.nearest.push(peers)
 
     async def _find(self, rpcmethod):
@@ -49,7 +49,7 @@ class SpiderCrawl(object):
              yet queried
           4. repeat, unless nearest list has all been queried, then ur done
         """
-        log.spam("crawling network with nearest: %s", str(tuple(self.nearest)))
+        log.info("crawling network with nearest: %s", str(tuple(self.nearest)))
         count = self.alpha
         if self.nearest.getIDs() == self.lastIDsCrawled:
             count = len(self.nearest)
@@ -124,7 +124,6 @@ class ValueSpiderCrawl(SpiderCrawl):
 
 
 class NodeSpiderCrawl(SpiderCrawl):
-
     async def find(self):
         """
         Find the closest nodes.
@@ -147,6 +146,7 @@ class NodeSpiderCrawl(SpiderCrawl):
         if self.nearest.allBeenContacted():
             return list(self.nearest)
         return await self.find()
+
 
 class RPCFindResponse(object):
     def __init__(self, response):

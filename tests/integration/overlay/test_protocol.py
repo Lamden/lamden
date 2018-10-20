@@ -57,13 +57,10 @@ def nodefn(idx):
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(loop)
 
-    sk = str(idx%10) * 64  ### Mock only
-    Auth.setup(sk) ### Mock only
-    network = Network(loop=loop)
+    network = Network()
     network.node.id = digest(os.getenv('HOST_IP')) ### Mock only
-
+    network.listen(DHT_PORT)
     loop.run_until_complete(asyncio.gather(
-        network.listen(),
         bootstrap_nodes(neighbors[:-1]),
         find_neighbors(set(neighbors[:-1]), neighbors[-1])
     ))
