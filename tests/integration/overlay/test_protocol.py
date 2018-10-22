@@ -6,6 +6,7 @@ from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
 from cilantro.logger.base import get_logger
 
 def nodefn(idx):
+    
     import os, asyncio
     from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
     from cilantro.protocol.overlay.kademlia.network import Network
