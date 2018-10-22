@@ -118,10 +118,10 @@ class KademliaProtocol(RPCProtocol):
         If we get a response, add the node to the routing table.  If
         we get no response, make sure it's removed from the routing table.
         """
-        # if not result[0]:
-        #     log.warning("no response from %s, removing from router", node)
-        #     self.router.removeContact(node)
-        #     return result
+        if not result[0]:
+            log.warning("no response from %s, removing from router", node)
+            self.router.removeContact(node)
+            return result
 
         log.info("got successful response from %s", node)
         self.welcomeIfNewNode(node)

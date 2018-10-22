@@ -15,7 +15,7 @@ class MalformedMessage(Exception):
     """
 
 class RPCProtocol(asyncio.DatagramProtocol):
-    def __init__(self, loop=None, ctx=None, waitTimeout=5):
+    def __init__(self, loop=None, ctx=None, waitTimeout=10):
         """
         @param waitTimeout: Consider it a connetion failure if no response
         within this time window.
