@@ -1,9 +1,11 @@
 import asyncio
+import zmq, zmq.asyncio
 import logging
 import os
 from base64 import b64encode
 from hashlib import sha1
 import umsgpack
+from cilantro.constants.ports import DHT_PORT
 from cilantro.logger.base import get_logger
 log = get_logger(__name__)
 
@@ -13,24 +15,30 @@ class MalformedMessage(Exception):
     """
 
 class RPCProtocol(asyncio.DatagramProtocol):
-    def __init__(self, waitTimeout=5):
+    def __init__(self, loop=None, ctx=None, waitTimeout=5):
         """
         @param waitTimeout: Consider it a connetion failure if no response
         within this time window.
         """
         self._waitTimeout = waitTimeout
         self._outstanding = {}
-        self.transport = None
+        self.loop = loop or asyncio.get_event_loop()
+        self.ctx = ctx or zmq.asyncio.Context()
 
-    def connection_made(self, transport):
-        self.transport = transport
+    def send_msg(self, addr, msg=None):
+        assert msg, 'No message passed, not sending'
+        identity = '{}:{}'.format(self.sourceNode.ip, self.sourceNode.port).encode()
+        sock = self.ctx.socket(zmq.DEALER)
+        sock.setsockopt(zmq.IDENTITY, identity)
+        sock.connect('tcp://{}:{}'.format(addr[0], addr[1]))
+        sock.send_multipart([msg])
+        sock.close()
 
-    def datagram_received(self, data, addr):
+    async def datagram_received(self, data, addr):
         log.spam("received datagram from %s", addr)
-        asyncio.ensure_future(self._solveDatagram(data, addr))
+        await self._solveDatagram(data, addr)
 
-    @asyncio.coroutine
-    def _solveDatagram(self, datagram, address):
+    async def _solveDatagram(self, datagram, address):
         if len(datagram) < 22:
             log.warning("received datagram too small from %s,"
                         " ignoring", address)
@@ -41,7 +49,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
 
         if datagram[:1] == b'\x00':
             # schedule accepting request and returning the result
-            asyncio.ensure_future(self._acceptRequest(msgID, data, address))
+            await self._acceptRequest(msgID, data, address)
         elif datagram[:1] == b'\x01':
             self._acceptResponse(msgID, data, address)
         else:
@@ -79,7 +87,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
         log.spam("sending response %s for msg id %s to %s",
                   response, b64encode(msgID), address)
         txdata = b'\x01' + msgID + umsgpack.packb(response)
-        self.transport.sendto(txdata, address)
+        self.send_msg(address, txdata)
 
     def _timeout(self, msgID):
         args = (b64encode(msgID), self._waitTimeout)
@@ -116,14 +124,13 @@ class RPCProtocol(asyncio.DatagramProtocol):
             txdata = b'\x00' + msgID + data
             log.important("calling remote function %s on %s (msgid %s)",
                       name, address, b64encode(msgID))
-            self.transport.sendto(txdata, address)
+            self.send_msg(address, txdata)
 
-            loop = asyncio.get_event_loop()
-            if hasattr(loop, 'create_future'):
-                f = loop.create_future()
+            if hasattr(self.loop, 'create_future'):
+                f = self.loop.create_future()
             else:
                 f = asyncio.Future()
-            timeout = loop.call_later(self._waitTimeout, self._timeout, msgID)
+            timeout = self.loop.call_later(self._waitTimeout, self._timeout, msgID)
             self._outstanding[msgID] = (f, timeout)
             return f
 
