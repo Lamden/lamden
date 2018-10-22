@@ -6,7 +6,7 @@ from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
 from cilantro.logger.base import get_logger
 
 def nodefn(idx):
-    
+
     import os, asyncio
     from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
     from cilantro.protocol.overlay.kademlia.network import Network
@@ -71,7 +71,7 @@ class TestProtocol(BaseTestCase):
 
     log = get_logger(__name__)
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-8.json')
-    enable_ui = True
+    enable_ui = False
 
     def callback(self, data):
         for node in data:
