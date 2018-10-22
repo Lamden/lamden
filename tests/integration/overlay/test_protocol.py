@@ -26,7 +26,6 @@ def nodefn(idx):
     neighbors = (os.getenv('NODE').split(',') * 2)[idx+1:idx+4]
 
     async def bootstrap_nodes(ipsToAsk):
-        await asyncio.sleep(1)
         await network.bootstrap([(ip, DHT_PORT) for ip in ipsToAsk])
 
     async def find_neighbors(ipsToAsk, ipToFind):
@@ -59,11 +58,13 @@ def nodefn(idx):
 
     network = Network()
     network.node.id = digest(os.getenv('HOST_IP')) ### Mock only
-    network.listen(DHT_PORT)
+
     loop.run_until_complete(asyncio.gather(
+        network.listen(),
         bootstrap_nodes(neighbors[:-1]),
         find_neighbors(set(neighbors[:-1]), neighbors[-1])
     ))
+    loop.run_forever()
 
 class TestProtocol(BaseTestCase):
 

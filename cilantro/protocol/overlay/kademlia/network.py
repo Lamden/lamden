@@ -5,6 +5,8 @@ import random
 import pickle
 import asyncio
 import logging
+import os
+import zmq, zmq.asyncio
 
 from cilantro.protocol.overlay.kademlia.protocol import KademliaProtocol
 from cilantro.protocol.overlay.kademlia.utils import digest
@@ -12,6 +14,8 @@ from cilantro.protocol.overlay.kademlia.storage import ForgetfulStorage
 from cilantro.protocol.overlay.kademlia.node import Node
 from cilantro.protocol.overlay.kademlia.crawling import ValueSpiderCrawl
 from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
+from cilantro.constants.ports import DHT_PORT
+from cilantro.constants.overlay_network import *
 
 log = logging.getLogger(__name__)
 
@@ -22,9 +26,7 @@ class Network(object):
     created to start listening as an active node on the network.
     """
 
-    protocol_class = KademliaProtocol
-
-    def __init__(self, ksize=20, alpha=3, node_id=None, storage=None):
+    def __init__(self, ksize=20, alpha=3, node_id=None, storage=None, loop=None, ctx=None):
         """
         Create a server instance.  This will start listening on the given port.
 
@@ -38,51 +40,50 @@ class Network(object):
         self.ksize = ksize
         self.alpha = alpha
         self.storage = storage or ForgetfulStorage()
-        self.node = Node(node_id or digest(random.getrandbits(255)))
-        self.transport = None
-        self.protocol = None
-        self.refresh_loop = None
-        self.save_state_loop = None
+        self.port = DHT_PORT
+        self.node = Node(
+            node_id or digest(random.getrandbits(255)),
+            ip=HOST_IP,
+            port=self.port
+        )
+        self.state_fname = '{}/network-state.dat'.format(os.getenv('HOST_NAME', 'node'))
+
+        self.loop = loop or asyncio.get_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.ctx = ctx or zmq.asyncio.Context()
+        self.identity = '{}:{}'.format(self.node.ip, self.node.port).encode()
+        self.sock = self.ctx.socket(zmq.ROUTER)
+        self.sock.setsockopt(zmq.IDENTITY, self.identity)
+        self.sock.setsockopt(zmq.ROUTER_MANDATORY, 1)
+        self.sock.bind('tcp://*:{}'.format(self.port))
+
+        self.protocol = KademliaProtocol(self.node, self.storage, self.ksize, self.loop, self.ctx)
+
+        self.tasks = asyncio.gather(
+            self.listen(),
+            self.refresh_table(),
+            self.saveStateRegularly()
+        )
 
     def stop(self):
-        if self.transport is not None:
-            self.transport.close()
+        self.tasks.cancel()
 
-        if self.refresh_loop:
-            self.refresh_loop.cancel()
-
-        if self.save_state_loop:
-            self.save_state_loop.cancel()
-
-    def _create_protocol(self):
-        return self.protocol_class(self.node, self.storage, self.ksize)
-
-    def listen(self, port, interface='0.0.0.0'):
+    async def listen(self):
         """
         Start listening on the given port.
 
         Provide interface="::" to accept ipv6 address
         """
-        loop = asyncio.get_event_loop()
-        listen = loop.create_datagram_endpoint(self._create_protocol,
-                                               local_addr=(interface, port))
         log.info("Node %i listening on %s:%i",
-                 self.node.long_id, interface, port)
-        self.transport, self.protocol = loop.run_until_complete(listen)
-        # finally, schedule refreshing table
-        self.refresh_table()
+                 self.node.long_id, '0.0.0.0', self.port)
+        while True:
+            msg = await self.sock.recv_multipart()
+            addr = msg[0].decode().split(':')
+            data = msg[1]
+            await self.protocol.datagram_received(data, addr)
 
-    def refresh_table(self):
+    async def refresh_table(self):
         log.debug("Refreshing routing table")
-        asyncio.ensure_future(self._refresh_table())
-        loop = asyncio.get_event_loop()
-        self.refresh_loop = loop.call_later(3600, self.refresh_table)
-
-    async def _refresh_table(self):
-        """
-        Refresh buckets that haven't had any lookups in the last hour
-        (per section 2.3 of the paper).
-        """
         ds = []
         for node_id in self.protocol.getRefreshIDs():
             node = Node(node_id)
@@ -97,6 +98,10 @@ class Network(object):
         # now republish keys older than one hour
         for dkey, value in self.storage.iteritemsOlderThan(3600):
             await self.set_digest(dkey, value)
+
+        await asyncio.sleep(3600)
+        await self.refresh_table()
+
 
     def bootstrappableNeighbors(self):
         """
@@ -223,7 +228,7 @@ class Network(object):
             s.bootstrap(data['neighbors'])
         return s
 
-    def saveStateRegularly(self, fname, frequency=600):
+    async def saveStateRegularly(self, fname=None, frequency=600):
         """
         Save the state of node with a given regularity to the given
         filename.
@@ -233,12 +238,10 @@ class Network(object):
             frequency: Frequency in seconds that the state should be saved.
                         By default, 10 minutes.
         """
+        fname = fname or self.state_fname
         self.saveState(fname)
-        loop = asyncio.get_event_loop()
-        self.save_state_loop = loop.call_later(frequency,
-                                               self.saveStateRegularly,
-                                               fname,
-                                               frequency)
+        await asyncio.sleep(frequency)
+        self.saveStateRegularly(fname, frequency)
 
 
 def check_dht_value_type(value):

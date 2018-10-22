@@ -2,7 +2,7 @@ import random
 import asyncio
 import logging
 
-from cilantro.protocol.overlay.kademlia.rpcudp import RPCProtocol
+from cilantro.protocol.overlay.kademlia.rpczmq import RPCProtocol
 
 from cilantro.protocol.overlay.kademlia.node import Node
 from cilantro.protocol.overlay.kademlia.routing import RoutingTable
@@ -12,8 +12,8 @@ log = logging.getLogger(__name__)
 
 
 class KademliaProtocol(RPCProtocol):
-    def __init__(self, sourceNode, storage, ksize):
-        RPCProtocol.__init__(self)
+    def __init__(self, sourceNode, storage, ksize, loop=None, ctx=None):
+        RPCProtocol.__init__(self, loop, ctx)
         self.router = RoutingTable(self, ksize, sourceNode)
         self.storage = storage
         self.sourceNode = sourceNode
