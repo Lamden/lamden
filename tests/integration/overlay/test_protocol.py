@@ -17,7 +17,7 @@ def nodefn(idx):
     from cilantro.logger.base import get_logger
     from vmnet.comm import send_to_file
 
-    log = get_logger('Node_{}'.format(idx))
+    log = get_logger('Node_{}'.format(idx+1))
 
     sourceNode = Node(
         digest(os.getenv('HOST_IP')),

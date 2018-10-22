@@ -26,13 +26,16 @@ class RPCProtocol(asyncio.DatagramProtocol):
         self.ctx = ctx or zmq.asyncio.Context()
 
     def send_msg(self, addr, msg=None):
-        assert msg, 'No message passed, not sending'
-        identity = '{}:{}'.format(self.sourceNode.ip, self.sourceNode.port).encode()
-        sock = self.ctx.socket(zmq.DEALER)
-        sock.setsockopt(zmq.IDENTITY, identity)
-        sock.connect('tcp://{}:{}'.format(addr[0], addr[1]))
-        sock.send_multipart([msg])
-        sock.close()
+        if addr[0] == self.sourceNode.ip:
+            asyncio.ensure_future(self.datagram_received(msg, addr))
+        else:
+            assert msg, 'No message passed, not sending'
+            identity = '{}:{}'.format(self.sourceNode.ip, self.sourceNode.port).encode()
+            sock = self.ctx.socket(zmq.DEALER)
+            sock.setsockopt(zmq.IDENTITY, identity)
+            sock.connect('tcp://{}:{}'.format(addr[0], addr[1]))
+            sock.send_multipart([msg])
+            sock.close()
 
     async def datagram_received(self, data, addr):
         log.spam("received datagram from %s", addr)
