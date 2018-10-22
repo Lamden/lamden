@@ -14,8 +14,8 @@ class MalformedMessage(Exception):
     Message does not contain what is expected.
     """
 
-class RPCProtocol(asyncio.DatagramProtocol):
-    def __init__(self, loop=None, ctx=None, waitTimeout=10):
+class RPCProtocol:
+    def __init__(self, loop=None, ctx=None, waitTimeout=5):
         """
         @param waitTimeout: Consider it a connetion failure if no response
         within this time window.
@@ -133,6 +133,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
                 f = self.loop.create_future()
             else:
                 f = asyncio.Future()
+
             timeout = self.loop.call_later(self._waitTimeout, self._timeout, msgID)
             self._outstanding[msgID] = (f, timeout)
             return f
