@@ -61,17 +61,16 @@ def nodefn(idx):
     network.node.id = digest(os.getenv('HOST_IP')) ### Mock only
 
     loop.run_until_complete(asyncio.gather(
-        network.listen(),
+        *network.tasks,
         bootstrap_nodes(neighbors[:-1]),
         find_neighbors(set(neighbors[:-1]), neighbors[-1])
     ))
-    loop.run_forever()
 
 class TestProtocol(BaseTestCase):
 
     log = get_logger(__name__)
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-8.json')
-    enable_ui = False
+    enable_ui = True
 
     def callback(self, data):
         for node in data:

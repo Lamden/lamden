@@ -51,36 +51,21 @@ class Network(object):
         self.loop = loop or asyncio.get_event_loop()
         asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
-        self.identity = '{}:{}'.format(self.node.ip, self.node.port).encode()
-        self.sock = self.ctx.socket(zmq.ROUTER)
-        self.sock.setsockopt(zmq.IDENTITY, self.identity)
-        self.sock.setsockopt(zmq.ROUTER_MANDATORY, 1)
-        self.sock.bind('tcp://*:{}'.format(self.port))
-
         self.protocol = KademliaProtocol(self.node, self.storage, self.ksize, self.loop, self.ctx)
 
-        self.tasks = asyncio.gather(
-            self.listen(),
+        self.tasks = [
+            self.protocol.listen(),
             self.refresh_table(),
             self.saveStateRegularly()
-        )
+        ]
+
+    def start(self):
+        self.loop.run_until_complete(asyncio.gather(
+            *self.tasks
+        ))
 
     def stop(self):
         self.tasks.cancel()
-
-    async def listen(self):
-        """
-        Start listening on the given port.
-
-        Provide interface="::" to accept ipv6 address
-        """
-        log.info("Node %i listening on %s:%i",
-                 self.node.long_id, '0.0.0.0', self.port)
-        while True:
-            msg = await self.sock.recv_multipart()
-            addr = msg[0].decode().split(':')
-            data = msg[1]
-            await self.protocol.datagram_received(data, addr)
 
     async def refresh_table(self):
         log.debug("Refreshing routing table")
