@@ -4,7 +4,7 @@ jobs:
     machine:
         image: circleci/classic:201808-01
     working_directory: ~/cilantro
-    parallelism: 1
+    parallelism: 5
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
@@ -55,7 +55,6 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-#            python3.6 ~/cilantro/tests/integration/overlay/test_protocol.py
             python3.6 ~/cilantro/tests/run_tests.py --integration 1 --unit 0
 
   unit_tests:

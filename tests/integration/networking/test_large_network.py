@@ -73,4 +73,5 @@ class TestLargeNetwork(MPTestCase):
 
 
 if __name__ == '__main__':
+    # Hello CI, want to go for a run?
     unittest.main()
