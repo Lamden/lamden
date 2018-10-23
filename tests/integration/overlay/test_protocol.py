@@ -30,7 +30,7 @@ def nodefn(idx):
         await network.bootstrap([(ip, DHT_PORT) for ip in ipsToAsk])
 
     async def find_neighbors(ipsToAsk, ipToFind):
-        await asyncio.sleep(3)
+        await asyncio.sleep(10)
         nodesToAsk = [
             Node(
                 digest(ip),
