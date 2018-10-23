@@ -44,6 +44,7 @@ class Network(object):
         self.storage = storage or ForgetfulStorage()
         self.port = DHT_PORT
         self.cached_vks = {}
+        self.host_ip = HOST_IP
 
         assert Auth.is_setup, 'Auth.setup() has not been called. Please do this in the OverlayInterface.'
         assert node_id, 'Node ID must be set!'
