@@ -32,12 +32,12 @@ class KademliaProtocol(RPCProtocol):
         return sender
 
     def rpc_ping(self, sender, nodeid):
-        source = Node(nodeid, sender[0], sender[1])
+        source = Node(nodeid, sender[0], sender[1], sender[2])
         self.welcomeIfNewNode(source)
         return self.sourceNode.id
 
     def rpc_store(self, sender, nodeid, key, value):
-        source = Node(nodeid, sender[0], sender[1])
+        source = Node(nodeid, sender[0], sender[1], sender[2])
         self.welcomeIfNewNode(source)
         log.debug("got a store request from %s, storing '%s'='%s'",
                   sender, key.hex(), value)
@@ -47,14 +47,14 @@ class KademliaProtocol(RPCProtocol):
     def rpc_find_node(self, sender, nodeid, key):
         log.info("finding neighbors of %i in local table",
                  int(nodeid.hex(), 16))
-        source = Node(nodeid, sender[0], sender[1])
+        source = Node(nodeid, sender[0], sender[1], sender[2])
         self.welcomeIfNewNode(source)
         node = Node(key)
         neighbors = self.router.findNeighbors(node, exclude=source)
         return list(map(tuple, neighbors))
 
     def rpc_find_value(self, sender, nodeid, key):
-        source = Node(nodeid, sender[0], sender[1])
+        source = Node(nodeid, sender[0], sender[1], sender[2])
         self.welcomeIfNewNode(source)
         value = self.storage.get(key, None)
         if value is None:
@@ -62,24 +62,24 @@ class KademliaProtocol(RPCProtocol):
         return {'value': value}
 
     async def callFindNode(self, nodeToAsk, nodeToFind):
-        address = (nodeToAsk.ip, nodeToAsk.port)
+        address = (nodeToAsk.ip, nodeToAsk.port, self.sourceNode.vk)
         result = await self.find_node(address, self.sourceNode.id,
                                       nodeToFind.id)
         return self.handleCallResponse(result, nodeToAsk)
 
     async def callFindValue(self, nodeToAsk, nodeToFind):
-        address = (nodeToAsk.ip, nodeToAsk.port)
+        address = (nodeToAsk.ip, nodeToAsk.port, self.sourceNode.vk)
         result = await self.find_value(address, self.sourceNode.id,
                                        nodeToFind.id)
         return self.handleCallResponse(result, nodeToAsk)
 
     async def callPing(self, nodeToAsk):
-        address = (nodeToAsk.ip, nodeToAsk.port)
+        address = (nodeToAsk.ip, nodeToAsk.port, self.sourceNode.vk)
         result = await self.ping(address, self.sourceNode.id)
         return self.handleCallResponse(result, nodeToAsk)
 
     async def callStore(self, nodeToAsk, key, value):
-        address = (nodeToAsk.ip, nodeToAsk.port)
+        address = (nodeToAsk.ip, nodeToAsk.port, self.sourceNode.vk)
         result = await self.store(address, self.sourceNode.id, key, value)
         return self.handleCallResponse(result, nodeToAsk)
 

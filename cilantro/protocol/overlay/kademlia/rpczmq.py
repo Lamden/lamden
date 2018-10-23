@@ -31,7 +31,7 @@ class RPCProtocol:
 
         Provide interface="::" to accept ipv6 address
         """
-        self.identity = '{}:{}'.format(self.sourceNode.ip, self.sourceNode.port).encode()
+        self.identity = '{}:{}:{}'.format(self.sourceNode.ip, self.sourceNode.port, self.sourceNode.vk).encode()
         self.sock = self.ctx.socket(zmq.ROUTER)
         self.sock.setsockopt(zmq.IDENTITY, self.identity)
         self.sock.bind('tcp://*:{}'.format(self.sourceNode.port))
@@ -101,7 +101,7 @@ class RPCProtocol:
         log.spam("sending response %s for msg id %s to %s",
                   response, b64encode(msgID), address)
         txdata = b'\x01' + msgID + umsgpack.packb(response)
-        identity = '{}:{}'.format(address[0], address[1]).encode()
+        identity = '{}:{}:{}'.format(address[0], address[1], address[2]).encode()
         self.sock.send_multipart([identity, txdata])
 
     def _timeout(self, msgID):
@@ -137,7 +137,7 @@ class RPCProtocol:
                 raise MalformedMessage("Total length of function "
                                        "name and arguments cannot exceed 8K")
             txdata = b'\x00' + msgID + data
-            log.important("calling remote function %s on %s (msgid %s)",
+            log.spam("calling remote function %s on %s (msgid %s)",
                       name, address, b64encode(msgID))
 
             try:

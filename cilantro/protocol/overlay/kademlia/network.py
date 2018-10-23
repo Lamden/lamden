@@ -16,8 +16,10 @@ from cilantro.protocol.overlay.kademlia.crawling import ValueSpiderCrawl
 from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
 from cilantro.constants.ports import DHT_PORT
 from cilantro.constants.overlay_network import *
+from cilantro.protocol.overlay.auth import Auth
+from cilantro.logger.base import get_logger
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 class Network(object):
@@ -41,10 +43,16 @@ class Network(object):
         self.alpha = alpha
         self.storage = storage or ForgetfulStorage()
         self.port = DHT_PORT
+        self.cached_vks = {}
+
+        assert Auth.is_setup, 'Auth.setup() has not been called. Please do this in the OverlayInterface.'
+        assert node_id, 'Node ID must be set!'
+        
         self.node = Node(
-            node_id or digest(random.getrandbits(255)),
+            node_id,
             ip=HOST_IP,
-            port=self.port
+            port=self.port,
+            vk=Auth.vk
         )
         self.state_fname = '{}/network-state.dat'.format(os.getenv('HOST_NAME', 'node'))
 
@@ -90,7 +98,7 @@ class Network(object):
 
     def bootstrappableNeighbors(self):
         """
-        Get a :class:`list` of (ip, port) :class:`tuple` pairs suitable for
+        Get a :class:`list` of (ip, port, vk) :class:`tuple` pairs suitable for
         use as an argument to the bootstrap method.
 
         The server should have been bootstrapped
@@ -99,7 +107,7 @@ class Network(object):
         back up, the list of nodes can be used to bootstrap.
         """
         neighbors = self.protocol.router.findNeighbors(self.node)
-        return [tuple(n)[-2:] for n in neighbors]
+        return [tuple(n)[1:] for n in neighbors]
 
     async def bootstrap(self, addrs):
         """
@@ -121,6 +129,38 @@ class Network(object):
     async def bootstrap_node(self, addr):
         result = await self.protocol.ping(addr, self.node.id)
         return Node(result[1], addr[0], addr[1]) if result[0] else None
+
+    async def lookup_ip(self, vk):
+        log.spam('Attempting to look up node with vk="{}"'.format(vk))
+        if Auth.vk == vk:
+            self.cached_vks[vk] = self.host_ip
+            return self.host_ip
+        elif self.cached_vks.get(vk):
+            node = self.cached_vks.get(vk)
+            log.debug('"{}" found in cache resolving to {}'.format(vk, node))
+            return node.ip
+        else:
+            nearest = self.protocol.router.findNeighbors(Node(digest(vk)))
+            ip = self.get_ip_from_nodes_list(vk, nearest)
+            if ip:
+                log.debug('"{}" resolved to {}'.format(vk, ip))
+                return ip
+            spider = NodeSpiderCrawl(self.protocol, Node(digest(vk)),
+                                    nearest, self.ksize, self.alpha)
+            nodes = await spider.find()
+            ip = self.get_ip_from_nodes_list(vk, nodes)
+            if ip:
+                log.debug('"{}" resolved to {}'.format(vk, ip))
+                return ip
+            log.warning('"{}" cannot be resolved (asked {})'.format(vk, nodes))
+            return None
+
+    def get_ip_from_nodes_list(self, vk, nodes):
+        nodeid = digest(vk)
+        for node in nodes:
+            log.critical('{} .. {}'.format(nodeid, node.id))
+            if nodeid == node.id:
+                return node.ip
 
     async def get(self, key):
         """

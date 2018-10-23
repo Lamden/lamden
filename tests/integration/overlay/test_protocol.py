@@ -47,7 +47,6 @@ def nodefn(idx):
         spider = NodeSpiderCrawl(network.protocol, nodeToFind, nodesToAsk, 3, 3)
         res = await spider.find()
         res = [r.ip for r in res]
-        log.critical(res)
         if ipToFind in res:
             send_to_file(os.getenv('HOST_NAME'))
             log.important('Found {}!'.format(ipToFind))
@@ -70,7 +69,7 @@ class TestProtocol(BaseTestCase):
 
     log = get_logger(__name__)
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-8.json')
-    enable_ui = True
+    enable_ui = False
 
     def callback(self, data):
         for node in data:

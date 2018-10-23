@@ -28,6 +28,7 @@ class Auth:
             if reset_auth_folder:
                 cls.reset_folder()
             cls.add_public_key(public_key=cls.public_key)
+            cls.is_setup = True
 
     @classmethod
     def get_keys(cls, sk_hex):
