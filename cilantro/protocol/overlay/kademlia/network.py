@@ -47,7 +47,7 @@ class Network(object):
 
         assert Auth.is_setup, 'Auth.setup() has not been called. Please do this in the OverlayInterface.'
         assert node_id, 'Node ID must be set!'
-        
+
         self.node = Node(
             node_id,
             ip=HOST_IP,
@@ -158,7 +158,6 @@ class Network(object):
     def get_ip_from_nodes_list(self, vk, nodes):
         nodeid = digest(vk)
         for node in nodes:
-            log.critical('{} .. {}'.format(nodeid, node.id))
             if nodeid == node.id:
                 return node.ip
 
