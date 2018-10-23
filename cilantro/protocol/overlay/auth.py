@@ -67,6 +67,8 @@ class Auth:
         zmq.auth.certs._write_key_file(public_key_file,
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)
+        import time
+        time.sleep(0.5)
 
     @classmethod
     def remove_public_key(cls, public_key=None, vk=None, domain='*'):
