@@ -149,10 +149,15 @@ class OverlayClient(object):
 
     async def block_until_ready(self):
         async def wait_until_ready():
-            while not self._ready:
-                await asyncio.sleep(0.5)
+            while True:
+                self.get_service_status()
+                i = 0
+                while i < 5:
+                    if self._ready: return
+                    await asyncio.sleep(0.5)
+                    i += 1
+                if self._ready: return
 
-        self.get_service_status()
         await asyncio.wait_for(wait_until_ready(), CLIENT_SETUP_TIMEOUT)
 
     @command
