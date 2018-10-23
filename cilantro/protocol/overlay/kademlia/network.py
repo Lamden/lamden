@@ -10,7 +10,6 @@ import zmq, zmq.asyncio
 
 from cilantro.protocol.overlay.kademlia.protocol import KademliaProtocol
 from cilantro.protocol.overlay.kademlia.utils import digest
-from cilantro.protocol.overlay.kademlia.storage import ForgetfulStorage
 from cilantro.protocol.overlay.kademlia.node import Node
 from cilantro.protocol.overlay.kademlia.crawling import ValueSpiderCrawl
 from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
@@ -28,7 +27,7 @@ class Network(object):
     created to start listening as an active node on the network.
     """
 
-    def __init__(self, ksize=20, alpha=3, node_id=None, storage=None, loop=None, ctx=None):
+    def __init__(self, ksize=20, alpha=3, node_id=None, loop=None, ctx=None):
         """
         Create a server instance.  This will start listening on the given port.
 
@@ -36,12 +35,9 @@ class Network(object):
             ksize (int): The k parameter from the paper
             alpha (int): The alpha parameter from the paper
             node_id: The id for this node on the network.
-            storage: An instance that implements
-                     :interface:`~kademlia.storage.IStorage`
         """
         self.ksize = ksize
         self.alpha = alpha
-        self.storage = storage or ForgetfulStorage()
         self.port = DHT_PORT
         self.cached_vks = {}
         self.host_ip = HOST_IP
@@ -60,7 +56,7 @@ class Network(object):
         self.loop = loop or asyncio.get_event_loop()
         asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
-        self.protocol = KademliaProtocol(self.node, self.storage, self.ksize, self.loop, self.ctx)
+        self.protocol = KademliaProtocol(self.node, self.ksize, self.loop, self.ctx)
 
         self.tasks = [
             self.protocol.listen(),
@@ -78,7 +74,6 @@ class Network(object):
 
     async def refresh_table(self):
         log.debug("Refreshing routing table")
-        await asyncio.sleep(3600)
         ds = []
         for node_id in self.protocol.getRefreshIDs():
             node = Node(node_id)
@@ -89,12 +84,7 @@ class Network(object):
 
         # do our crawling
         await asyncio.gather(*ds)
-
-        # now republish keys older than one hour
-        for dkey, value in self.storage.iteritemsOlderThan(3600):
-            await self.set_digest(dkey, value)
-
-
+        await asyncio.sleep(3600)
         await self.refresh_table()
 
 
@@ -163,65 +153,6 @@ class Network(object):
             if nodeid == node.id:
                 return node.ip
 
-    async def get(self, key):
-        """
-        Get a key if the network has it.
-
-        Returns:
-            :class:`None` if not found, the value otherwise.
-        """
-        log.info("Looking up key %s", key)
-        dkey = digest(key)
-        # if this node has it, return it
-        if self.storage.get(dkey) is not None:
-            return self.storage.get(dkey)
-        node = Node(dkey)
-        nearest = self.protocol.router.findNeighbors(node)
-        if len(nearest) == 0:
-            log.warning("There are no known neighbors to get key %s", key)
-            return None
-        spider = ValueSpiderCrawl(self.protocol, node, nearest,
-                                  self.ksize, self.alpha)
-        return await spider.find()
-
-    async def set(self, key, value):
-        """
-        Set the given string key to the given value in the network.
-        """
-        if not check_dht_value_type(value):
-            raise TypeError(
-                "Value must be of type int, float, bool, str, or bytes"
-            )
-        log.info("setting '%s' = '%s' on network", key, value)
-        dkey = digest(key)
-        return await self.set_digest(dkey, value)
-
-    async def set_digest(self, dkey, value):
-        """
-        Set the given SHA1 digest key (bytes) to the given value in the
-        network.
-        """
-        node = Node(dkey)
-
-        nearest = self.protocol.router.findNeighbors(node)
-        if len(nearest) == 0:
-            log.warning("There are no known neighbors to set key %s",
-                        dkey.hex())
-            return False
-
-        spider = NodeSpiderCrawl(self.protocol, node, nearest,
-                                 self.ksize, self.alpha)
-        nodes = await spider.find()
-        log.info("setting '%s' on %s", dkey.hex(), list(map(str, nodes)))
-
-        # if this node is close too, then store here as well
-        biggest = max([n.distanceTo(node) for n in nodes])
-        if self.node.distanceTo(node) < biggest:
-            self.storage[dkey] = value
-        ds = [self.protocol.callStore(n, dkey, value) for n in nodes]
-        # return true only if at least one store call succeeded
-        return any(await asyncio.gather(*ds))
-
     def saveState(self, fname):
         """
         Save the state of this node (the alpha/ksize/id/immediate neighbors)
@@ -268,20 +199,3 @@ class Network(object):
         self.saveState(fname)
         await asyncio.sleep(frequency)
         self.saveStateRegularly(fname, frequency)
-
-
-def check_dht_value_type(value):
-    """
-    Checks to see if the type of the value is a valid type for
-    placing in the dht.
-    """
-    typeset = set(
-        [
-            int,
-            float,
-            bool,
-            str,
-            bytes,
-        ]
-    )
-    return type(value) in typeset
