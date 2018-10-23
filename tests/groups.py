@@ -60,7 +60,7 @@ UNIT_TESTS = [
 """
 
 NODE_INTEGRATION_TESTS = [
-    # 'tests.integration.networking',
+    'tests.integration.networking',
     'tests.integration.overlay'
 ]
 
