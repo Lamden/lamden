@@ -69,6 +69,7 @@ class Network(object):
 
     async def refresh_table(self):
         log.debug("Refreshing routing table")
+        await asyncio.sleep(1)
         ds = []
         for node_id in self.protocol.getRefreshIDs():
             node = Node(node_id)
