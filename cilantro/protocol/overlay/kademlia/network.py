@@ -53,7 +53,7 @@ class Network(object):
         self.state_fname = '{}/network-state.dat'.format(os.getenv('HOST_NAME', 'node'))
 
         self.loop = loop or asyncio.get_event_loop()
-        asyncio.set_event_loop(self.loop)
+        # asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
         self.protocol = KademliaProtocol(self.node, self.ksize, self.loop, self.ctx)
 

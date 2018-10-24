@@ -23,6 +23,7 @@ class RPCProtocol:
         self._waitTimeout = waitTimeout
         self._outstanding = {}
         self.loop = loop or asyncio.get_event_loop()
+        # asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
 
     async def listen(self):

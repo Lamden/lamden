@@ -26,7 +26,7 @@ class Handshake:
     def setup(cls, loop=None, ctx=None):
         if not cls.is_setup:
             cls.loop = loop or asyncio.get_event_loop()
-            asyncio.set_event_loop(cls.loop)
+            # asyncio.set_event_loop(cls.loop)
             cls.ctx = ctx or zmq.asyncio.Context()
             cls.identity = '{};{}'.format(cls.host_ip, Auth.vk).encode()
             cls.auth = AsyncioAuthenticator(context=cls.ctx, loop=cls.loop)
