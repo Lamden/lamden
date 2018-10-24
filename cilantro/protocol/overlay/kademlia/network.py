@@ -11,7 +11,6 @@ import zmq, zmq.asyncio
 from cilantro.protocol.overlay.kademlia.protocol import KademliaProtocol
 from cilantro.protocol.overlay.kademlia.utils import digest
 from cilantro.protocol.overlay.kademlia.node import Node
-from cilantro.protocol.overlay.kademlia.crawling import ValueSpiderCrawl
 from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
 from cilantro.constants.ports import DHT_PORT
 from cilantro.constants.overlay_network import *
@@ -54,7 +53,7 @@ class Network(object):
         self.state_fname = '{}/network-state.dat'.format(os.getenv('HOST_NAME', 'node'))
 
         self.loop = loop or asyncio.get_event_loop()
-        asyncio.set_event_loop(self.loop)
+        # asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
         self.protocol = KademliaProtocol(self.node, self.ksize, self.loop, self.ctx)
 
