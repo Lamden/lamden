@@ -3,15 +3,15 @@
 
     If Block is viewed as consists of a merkle tree of transactions, then sub-block refers to the sub-tree of the block.
     Conceptually Sub Block could form whole block or part of block. This lets us scale things horizontally.
-    Each of this SB builder will be started on a separate process and will coordinate with BlockManager 
+    Each of this SB builder will be started on a separate process and will coordinate with BlockManager
     to resolve db conflicts between sub-blocks and send resolved sub-block to master.
     It also sends in partial data of transactions along with the sub-block
-    
+
     We typically take all transactions from a single master to form a sub-block,
     but a sub-block builder can be responsible for more than one master and so can make more than one sub-block.
-    This ensures our ordering guarantees that transactions entered at a master is executed in that order, 
+    This ensures our ordering guarantees that transactions entered at a master is executed in that order,
     but we will decide the order of transactions between different masters.
-    
+
 """
 
 
@@ -60,13 +60,13 @@ class SubBlockBuilder(Worker):
     def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int, *args, **kwargs):
         super().__init__(signing_key=signing_key, name="SubBlockBuilder_{}".format(sbb_index))
 
+        self.tasks = []
+
         self.ip = ip
         self.sbb_index = sbb_index
         self.cur_block_index = NUM_BLOCKS - 1  # so it will start at block 0
         self.pending_block_index = 0
-        self.interpreter = SenecaInterpreter(mock=True)
-
-        self.tasks = []
+        self.interpreter = SenecaInterpreter(mock=True) # TODO replace with actual interpreter
 
         # Create DEALER socket to talk to the BlockManager process over IPC
         self.ipc_dealer = None
@@ -76,29 +76,14 @@ class SubBlockBuilder(Worker):
         self.sb_managers = []
         self._create_sub_sockets()
 
-        # DEBUG -- TODO DELETE
-        # self.tasks.append(self.spam_bm())
-        # END DEBUG
-
         self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {} num_sb_per_builder {}"
                         .format(sbb_index, NUM_SUB_BLOCKS, NUM_BLOCKS, NUM_SB_BUILDERS, NUM_SB_PER_BLOCK, NUM_SB_PER_BUILDER))
 
         self.run()
 
-    async def spam_bm(self):
-        while True:
-            await asyncio.sleep(4)
-            msg = 'hello from sbb {}'.format(self.sbb_index)
-            self.log.info("SBB sending msg over ipc: {}".format(msg))
-            self.ipc_dealer.send_multipart([b'0', msg.encode()])
-
     def run(self):
         self.log.notice("SBB {} starting...".format(self.sbb_index))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
-
-        # DEBUG -- TODO DELETE
-        self.log.fatal("\n SBB EXITING EVENT LOOP!!! THIS SHOULD NOT HAPPEN!!! \n")
-        # END DEBUG
 
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
         self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
@@ -270,5 +255,3 @@ class SubBlockBuilder(Worker):
             else:
                 self.sb_managers[sb_idx].num_pending_sb += 1
                 self.pending_block_index = self.cur_block_index
-
-
