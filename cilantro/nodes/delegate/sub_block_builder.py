@@ -66,7 +66,7 @@ class SubBlockBuilder(Worker):
         self.sbb_index = sbb_index
         self.cur_block_index = NUM_BLOCKS - 1  # so it will start at block 0
         self.pending_block_index = 0
-        self.interpreter = SenecaInterpreter(mock=True) # TODO replace with actual interpreter
+        self.client = SenecaClient(sbb_idx=sbb_index, num_sbb=NUM_SUB_BLOCKS, loop=self.loop)
 
         # Create DEALER socket to talk to the BlockManager process over IPC
         self.ipc_dealer = None
@@ -98,7 +98,7 @@ class SubBlockBuilder(Worker):
         # We then BIND a sub socket to a port for each of these masternode indices
         for idx in range(NUM_SB_PER_BUILDER):
             sb_idx = idx * NUM_SB_BUILDERS + self.sbb_index  # actual SB index in global index space
-            if sb_idx >= NUM_SUB_BLOCKS:    # out of range already
+            if sb_idx >=:    # out of range already
                 return
 
             port = SBB_PORT_START + sb_idx
@@ -132,7 +132,7 @@ class SubBlockBuilder(Worker):
         if isinstance(msg, MakeNextBlock):
             self._make_next_sub_block()
         elif isinstance(msg, DiscardPrevBlock):        # if not matched consensus, then discard current state and use catchup flow
-            self.interpreter.flush(update_state=false)
+            self.interpreter.flush(update_state=False)
         else:
             raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                             .format(type(msg)))
@@ -208,7 +208,7 @@ class SubBlockBuilder(Worker):
         self.log.debug("True SBB {} sub block index {}".format(self.sbb_index, sbb_idx))
 
         for txn in batch.transactions:
-            self.interpreter.interpret(txn)  # this is a blocking call. either async or threads??
+            self.client.run_contract(txn)  # this is a blocking call. either async or threads??
 
         # Merkle-ize transaction queue and create signed merkle hash
         all_tx_queue = self.interpreter.get_tx_queue()
