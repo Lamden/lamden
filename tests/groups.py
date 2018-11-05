@@ -40,7 +40,7 @@ DB_TESTS = [
 ]
 
 SMART_CONTRACT_TESTS = [
-    'tests.unit.contracts'
+    # 'tests.unit.contracts'
 ]
 
 # All unit tests

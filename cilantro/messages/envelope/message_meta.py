@@ -1,6 +1,14 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.constants.protocol import MAX_UUID
 import capnp
+
+# DEBUG TODO delete
+import sys
+print("INSIDE MESSAGE META")
+print("sys path {}".format(sys.path))
+print("XYZ123")
+# END DEBUG TODO delete
+
 import envelope_capnp
 
 import random
@@ -58,5 +66,3 @@ class MessageMeta(MessageBase):
     @property
     def timestamp(self) -> float:
         return float(self._data.timestamp)
-
-
