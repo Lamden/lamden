@@ -98,8 +98,6 @@ class SubBlockBuilder(Worker):
         # We then BIND a sub socket to a port for each of these masternode indices
         for idx in range(NUM_SB_PER_BUILDER):
             sb_idx = idx * NUM_SB_BUILDERS + self.sbb_index  # actual SB index in global index space
-            if sb_idx >=:    # out of range already
-                return
 
             port = SBB_PORT_START + sb_idx
             sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
@@ -131,8 +129,8 @@ class SubBlockBuilder(Worker):
 
         if isinstance(msg, MakeNextBlock):
             self._make_next_sub_block()
-        elif isinstance(msg, DiscardPrevBlock):        # if not matched consensus, then discard current state and use catchup flow
-            self.interpreter.flush(update_state=False)
+        # elif isinstance(msg, DiscardPrevBlock):        # if not matched consensus, then discard current state and use catchup flow
+        #     self.interpreter.flush(update_state=False)
         else:
             raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                             .format(type(msg)))
@@ -211,7 +209,7 @@ class SubBlockBuilder(Worker):
             self.client.run_contract(txn)  # this is a blocking call. either async or threads??
 
         # Merkle-ize transaction queue and create signed merkle hash
-        all_tx_queue = self.interpreter.get_tx_queue()
+        all_tx_queue = []#self.interpreter.get_tx_queue()
         tx_queue = all_tx_queue[-num_txs:]
         tx_binaries = [tx.serialize() for tx in tx_queue]
 
@@ -238,7 +236,7 @@ class SubBlockBuilder(Worker):
     def _make_next_sub_block(self):
         # first commit current state - under no conflict between SB assumption (TODO)
         self.log.info("Flushing interpreter queue")
-        self.interpreter.flush()
+        # self.interpreter.flush()
 
         # now start next one
         self.cur_block_index = (self.cur_block_index + 1) % NUM_BLOCKS

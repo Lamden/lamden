@@ -11,7 +11,7 @@ class TestContractExecuter(TestCase):
         sbb_idx = 0
         num_sub = 2
         self.client = SenecaClient(sbb_idx, num_sub, concurrent_mode=False)
-        self.client.reset_db(self.client.master_db)
+        self.client.master_db.flushall()
         self.contract = ContractTransactionBuilder.create_contract_tx(
             sender_sk=sk,
             code_str='''

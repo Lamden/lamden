@@ -20,7 +20,7 @@ from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.utils.lprocess import LProcess
 from cilantro.utils.hasher import Hasher
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
-from cilantro.protocol.interpreter import SenecaInterpreter
+# from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.messages.block_data.block_data import BlockData
 from typing import List
 
@@ -70,7 +70,7 @@ class BlockManager(Worker):
         # Falcon needs to add db interface modifications
         # self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
         self.db_state = DBState(StorageDriver.get_latest_block_hash())
-        self.interpreter = SenecaInterpreter()
+        # self.interpreter = SenecaInterpreter()
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
@@ -237,9 +237,9 @@ class BlockManager(Worker):
 
     def update_db_state(self, block_data: BlockData):
         txs_list = block_data.transactions
-        for txn in txs_list:
-            self.interpreter.interpret(txn)
-        self.interpreter.flush()      # save and reset
+        # for txn in txs_list:
+        #     self.interpreter.interpret(txn)
+        # self.interpreter.flush()      # save and reset
         self.db_state.cur_block_hash = block_data.block_hash
         self.log.important("Caught up to block with hash {}".format(self.db_state.cur_block_hash))
 
