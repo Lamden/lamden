@@ -32,7 +32,7 @@ from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.transaction.batch import TransactionBatch
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
 
-from cilantro.protocol.interpreter import SenecaInterpreter
+from seneca.engine.client import SenecaClient
 from cilantro.protocol import wallet
 from cilantro.protocol.multiprocessing.worker import Worker
 

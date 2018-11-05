@@ -22,7 +22,6 @@ class NodeFactory:
     def run_masternode(signing_key, ip, name='Masternode', reset_db=False):\
         if reset_db: NodeFactory._reset_db()
         _build_block_schema(reset_db)
-
         mn = Masternode(ip=ip, name=name, signing_key=signing_key)
 
     @staticmethod
