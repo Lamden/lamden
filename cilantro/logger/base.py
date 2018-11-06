@@ -124,9 +124,9 @@ def get_logger(name=''):
     os.makedirs(filedir, exist_ok=True)
 
     filehandlers = [
-        logging.FileHandler(get_main_log_path()),
-        logging.FileHandler(filename),
-        ColoredFileHandler('{}_color'.format(filename)),
+        logging.FileHandler(get_main_log_path(), delay=True),
+        logging.FileHandler(filename, delay=True),
+        ColoredFileHandler('{}_color'.format(filename), delay=True),
         ColoredStreamHandler()
     ]
     logging.basicConfig(

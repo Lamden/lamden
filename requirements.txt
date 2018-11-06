@@ -18,8 +18,4 @@ urllib3==1.22
 uvloop==0.9.1
 u-msgpack-python==2.5.0
 yarl==1.1.0
-vprof
-docker
-dill
--e git://github.com/Lamden/vmnet.git#egg=vmnet
--e git://github.com/Lamden/seneca.git#egg=seneca
+-e git://github.com/Lamden/seneca.git@dev#egg=seneca

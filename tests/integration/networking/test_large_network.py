@@ -30,7 +30,6 @@ class TestLargeNetwork(MPTestCase):
             assert len(c_args) == 7, "Expected 7 messages (one from each node). Instead, got:\n{}".format(c_args)
 
         BLOCK = False
-        time.sleep(1)
 
         mn_0 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='[node_1]MN_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
         time.sleep(3)  # Pause after first MN boots (so we are extra sure he will be available for discovery)

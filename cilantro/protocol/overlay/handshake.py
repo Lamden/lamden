@@ -121,7 +121,7 @@ class Handshake:
         if not cls.authorized_nodes.get(domain):
             cls.authorized_nodes[domain] = {}
         if cls.authorized_nodes[domain].get(vk):
-            cls.log.info('Previously Authorized: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
+            cls.log.spam('Previously Authorized: {} <=O= {} (vk={}, domain={})'.format(cls.host_ip, ip, vk, domain))
             return True
         elif cls.authorized_nodes['*'].get(vk):
             if ip == cls.authorized_nodes['*'][vk]:

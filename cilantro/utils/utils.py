@@ -107,6 +107,8 @@ def int_to_bytes(x):
 def bytes_to_int(xbytes):
     return int.from_bytes(xbytes, 'big')
 
+def make_n_tup(d):
+    return namedtuple('_', ' '.join(d.keys()))(**d)
 
 class IPUtils:
     url_pattern = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})', flags=re.IGNORECASE)

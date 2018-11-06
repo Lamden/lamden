@@ -8,3 +8,4 @@ dill
 # Non-Cythonized for CI
 pynacl
 pyzmq
+vmnet

@@ -1,11 +1,8 @@
 from cilantro.logger import get_logger
 from cilantro.utils import Hasher
-from cilantro.storage.tables import create_table
-import seneca.engine.storage.easy_db as t
-from seneca.execute import execute_contract, get_read_only_contract_obj as get_exports
+from seneca.engine.interface import SenecaInterface
 import datetime
 import os
-from functools import lru_cache
 
 
 log = get_logger("ContractsTable")
@@ -17,111 +14,31 @@ CONTRACTS_DIR = "{}/../contracts/lib".format(dir_path)
 GENESIS_AUTHOR = 'default_cilantro_contract'
 GENESIS_DATE = datetime.datetime(datetime.MINYEAR, 1, 1)
 
-
-def build_contracts_table(ex, should_drop=True):
-    log.debugv("Building contracts table...")
-    contracts = t.Table('smart_contracts',
-                        t.Column('contract_id', t.str_len(64), True),
-                        [
-                            t.Column('code_str', str),
-                            t.Column('author', t.str_len(64)),
-                            t.Column('execution_datetime', datetime.datetime),
-                            t.Column('execution_status', t.str_len(30)),
-                        ])
-
-    return create_table(ex, contracts, should_drop)
-
-
-def seed_contracts(ex, contracts_table):
+def seed_contracts():
     """
     Seeds the contracts table with all contracts found in cilantro/contracts
     """
+    log.debugv("Setting up SenecaInterface to publish contracts.")
+    interface = SenecaInterface()
+
     log.debugv("Inserting contract code...")
     # Insert contract code from files in file system into database table
     for contract_id, code_str in _read_contract_files():
-        contracts_table.insert([{
-            'contract_id': contract_id,
-            'code_str': code_str,
-            'author': GENESIS_AUTHOR,
-            'execution_datetime': GENESIS_DATE,
-            'execution_status': 'pending',
-        }]).run(ex)
+        interface.publish_code_str(
+            contract_id,
+            GENESIS_AUTHOR,
+            code_str,
+            keep_original=True)
 
     log.debugv("Seeding contracts...")
     # Run contracts
     for contract_id, code_str in _read_contract_files():
-        run_contract(ex, contracts_table, contract_id)
-    log.debugv("Done seeding contracts.")
+        code_obj = interface.get_code(contract_id)
+
+    log.debugv("Done seeding contracts. Tearing down SenecaInterface.")
+    interface.teardown()
 
 
-def module_loader_fn(ex, contract_table):
-    """
-    Returns a module loader function used for executing contracts
-    :return: A function which takes a single parameter, a contract_id, and returns a tuple of (contract_data, code_str)
-    """
-    @lru_cache(maxsize=32)
-    def _module_loader_fn(contract_id: str) -> tuple:
-        author, exec_dt, code_str = _lookup_contract_info(ex, contract_table, contract_id)
-        runtime_data = {'author': author, 'contract_id': contract_id, 'execution_datetime': exec_dt}
-
-        return runtime_data, code_str
-
-    return _module_loader_fn
-
-
-def _ex_contract(executor, contract_table, contract_id: str='', user_id=GENESIS_AUTHOR, code_str: str='', get_contract=False):
-        assert bool(contract_id) ^ bool(code_str), "Either contract_id or code_str must be passed in (XOR, one or the other)"
-        # log.debug("[inside _execute_contract] Executing contract with id {} and user_id {}".format(contract_id, user_id))
-
-        if code_str:
-            author = user_id
-            exec_dt = None  # todo make this current datetime
-        else:
-            author, exec_dt, code_str = _lookup_contract_info(executor, contract_table, contract_id)
-
-        global_run_data = {'caller_user_id': user_id, 'execution_datetime': exec_dt, 'caller_contract_id': contract_id}
-        this_contract_run_data = {'author': user_id, 'execution_datetime': exec_dt, 'contract_id': contract_id}
-
-        _ex_func = get_exports if get_contract else execute_contract
-        result = _ex_func(global_run_data, this_contract_run_data, code_str,
-                          module_loader=module_loader_fn(executor, contract_table),
-                          db_executer=executor)
-
-        return result
-
-
-def get_contract_exports(*args, **kwargs):
-    return _ex_contract(*args, **kwargs, get_contract=True)
-
-
-def run_contract(*args, **kwargs):
-    return _ex_contract(*args, **kwargs, get_contract=False)
-
-
-@lru_cache(maxsize=32)
-def _lookup_contract_info(executor, contract_table, contract_id: str) -> tuple:
-    """
-    Looks up the contract info for the specified contract id. This includes the author, execution datetime, and code
-    string. These values a returned in a tuple of that order.
-    :param contract_id: The id of the contract to lookup
-    :return: A tuple, containing 3 elements (author: str, execution_datetime: datetime.datetime, code_str: str)
-    :raises: An exception if the contract_id cannot be found
-    """
-    query = contract_table.select().where(contract_table.contract_id == contract_id).run(executor)
-
-    assert len(query.rows) > 0, "No rows found for contract_id {}".format(contract_id)
-    assert len(query.rows) <= 1, "Multiple rows found for contract_id {}".format(contract_id)
-
-    author = query[0]['author']
-    exec_dt = query[0]['execution_datetime']
-    code_str = query[0]['code_str']
-
-    assert len(code_str) > 0, 'Contract id {} with author {} has empty code string'.format(contract_id, author)
-
-    return author, exec_dt, code_str
-
-
-@lru_cache(maxsize=32)
 def _read_contract_files() -> list:
     """
     Reads all contracts in the cilantro/contracts directory.
@@ -172,11 +89,9 @@ def _validate_filename(filename):
     :return: None
     :raises: An assertion if the filename is invalid
     """
-    err_str = "file named {} is not a valid smart contract (must be a .seneca file)".format(filename)
+    err_str = "file named {} is not a valid smart contract (must be a .sen.py file)".format(filename)
     assert filename, "Got filename that is empty string"
 
-    dot_idx = filename.find('.')
-    assert dot_idx, err_str
-
-    extension = filename[dot_idx+1:]
-    assert extension == 'seneca', err_str
+    parts = filename.split('.')
+    assert len(parts), err_str
+    assert parts[-2:] == ['sen', 'py'], err_str

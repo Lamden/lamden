@@ -9,10 +9,12 @@ struct MetaData {
 struct ContractTransaction {
     metadata @0: MetaData;
     payload @1: Payload;
+    contractName @2 :Data;
 
     struct Payload {
         sender @0 :Data;
         code @1 :Text;
+        gasSupplied @2 :UInt32;
     }
 }
 

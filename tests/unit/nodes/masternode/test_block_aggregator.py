@@ -4,7 +4,6 @@ set_testnet_config('2-2-4.json')
 from cilantro.logger.base import get_logger
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro.storage.db import VKBook
-from cilantro.storage.db import reset_db
 
 import unittest
 from unittest import TestCase
@@ -160,7 +159,7 @@ class TestBlockAggregator(TestCase):
 class TestBlockAggregatorStorage(TestCase):
 
     def setUp(self):
-        reset_db()
+        SQLDB.reset_db()
         SQLDB.force_start()
 
     @BlockAggTester.test

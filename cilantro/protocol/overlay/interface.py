@@ -68,9 +68,7 @@ class OverlayInterface:
         self.started = True
 
     async def discover(self):
-        if await Discovery.discover_nodes(Discovery.host_ip):
-            return
-        else:
+        if not await Discovery.discover_nodes(Discovery.host_ip):
             self.log.critical('''
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 x   DISCOVERY FAILED: Cannot find enough nodes ({}/{}) and not a masternode
