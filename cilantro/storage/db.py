@@ -18,11 +18,11 @@ import math
 from cilantro.logger import get_logger
 from functools import wraps
 
-from cilantro.storage.tables import build_tables, _reset_db
-from cilantro.constants.db import DB_SETTINGS
-
-DB_NAME = 'cilantro'
-SCRATCH_PREFIX = 'scratch_'
+# from cilantro.storage.tables import build_tables, _reset_db
+# from cilantro.constants.db import DB_SETTINGS
+#
+# DB_NAME = 'cilantro'
+# SCRATCH_PREFIX = 'scratch_'
 
 
 log = get_logger("DB")

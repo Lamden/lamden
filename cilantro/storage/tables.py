@@ -84,4 +84,3 @@ def _reset_db(ex):
     ex.raw('DROP DATABASE IF EXISTS {};'.format(DB_NAME))
     ex.raw('CREATE DATABASE IF NOT EXISTS {};'.format(DB_NAME))
     ex.raw('USE {};'.format(DB_NAME))
-
