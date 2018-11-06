@@ -60,7 +60,7 @@ jobs:
       - run:
           name: Run Tests
           command: |
-            sudo service redis-server start --port 6379
+            ./redis-4.0.6/src/redis-server --daemonize yes
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
             python3.6 ~/cilantro/tests/run_tests.py --integration 1 --unit 0
