@@ -13,7 +13,6 @@ TODO -- better documentation on whats going on here
 
 PROTOCOL_TESTS = [
     'tests.unit.protocol.overlay',
-    'tests.unit.protocol.interpreter',
     'tests.unit.protocol.structures',
     'tests.unit.protocol.states',
     'tests.unit.protocol.wallets'
