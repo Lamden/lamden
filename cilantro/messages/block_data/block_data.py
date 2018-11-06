@@ -105,5 +105,9 @@ class BlockDataBuilder:
         block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, transactions=transactions,
                                  masternode_signature=signature, merkle_roots=merkle_roots, block_num=block_num,
                                  input_hashes=input_hashes)
+
         cls.block_num += 1
-        return block
+        block_dict = {'blk_num': cls.block_num,'block_hash': block_hash, 'prev_block_hash': prev_block_hash,
+                      'transactions': transactions, 'masternode_signature': signature, 'merkle_roots': merkle_roots,
+                      'block_num': block_num,'input_hashes': input_hashes}
+        return block, block_dict
