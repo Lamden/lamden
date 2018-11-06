@@ -69,6 +69,7 @@ jobs:
     working_directory: ~/cilantro
     docker:
       - image: circleci/python:3.6.5
+      - image: redis:4.0.6
       - image: lamden/cilantro-db
         environment:
           username: cilantro_user
@@ -106,6 +107,7 @@ jobs:
       - run:
           name: Run Tests
           command: |
+            ./redis-4.0.6/src/redis-server --daemonize yes
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
             python3.6 ~/cilantro/tests/run_tests.py --integration 0 --unit 1 --skip_modules tests.unit.protocol.overlay tests.unit.nodes.masternode
