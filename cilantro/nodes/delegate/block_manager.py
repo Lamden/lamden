@@ -68,8 +68,6 @@ class BlockManager(Worker):
         self.my_sb_index = self._get_my_index() % NUM_SB_BUILDERS
 
         # raghu todo tie to initial catch up logic as well as right place to do this
-        # Falcon needs to add db interface modifications
-        # self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
         self.db_state = DBState(StorageDriver.get_latest_block_hash())
         self.min_new_block_quorum = 1  # TODO
         self.interpreter = SenecaInterpreter()
