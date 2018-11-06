@@ -42,10 +42,9 @@ class MDB():
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client['blocks']
             cls.mn_collection = cls.mn_db['chains']
-            init_mdb = cls.insert_record()
-        #    self.first = BlockData._deserialize_data(self.blk_zero)
-        #    self.blkid = self.collection.insert_one(self.first)
-
+            cls.init_mdb = cls.insert_record()
+            #blk_id = cls.mn_collection.insert_one(first)
+            cls.log.info("insert id {}".format(blk_id))
 
         if Type=='cache' or Type=='all':
             uri = cls.setup_db(Type='cache')
@@ -58,12 +57,12 @@ class MDB():
         if Type == 'new':    # fresh setup
             database = cls.cfg.get('MN_DB','mn_blk_database')
             uri="mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
-            return uri, database
+            return uri
 
         if Type == 'cache':
             database = cls.cfg.get('MN_DB','mn_cache_database')
             uri="mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
-            return uri, database
+            return uri
 
     @classmethod
     def reset_db (cls, db='all'):
@@ -73,18 +72,24 @@ class MDB():
         cls.start_db()
 
     @classmethod
-    def insert_record(cls):
+    def insert_record(cls, block_dict=None):
         if cls.init_mdb == False:
             cls.blk_zero = BlockDataBuilder.create_block()
-     #       blk_id = cls.mn_collection.insert_one(cls.blk_zero[1])
             cls.log.info("genesis block {}".format(cls.blk_zero[1]))
+            block_dict = cls.blk_zero[1]
+            blk_id = cls.mn_collection.insert(block_dict)
             cls.init_mdb = True
-            return cls.init_mdb
+            return blk_id
+        else:
+            # insert passed dict block to db
+            blk_id = cls.mn_collection.insert(block_dict)
+            return blk_id
 
         return False
 
     def query_db_status(self, list='all'):
 
-        db_list = self.perennial_client.list_database_names() + self.stash_client.list_database_names()
-        if list == 'all':
-            return db_list
+        # db_list = self.mn_client.list_database_names() + self.stash_client.list_database_names()
+        # if list == 'all':
+        #     return db_list
+        pass

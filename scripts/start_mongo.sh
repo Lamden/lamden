@@ -9,10 +9,10 @@ echo 'Dir created'
 mongod --dbpath /app/data/db --logpath /app/data/db/logs/mongo.log
 echo 'started mongod'
 
-mongo
-use admin
-db.createUser({user:"lamden",pwd:"pwd",roles:[{role:"root",db:"admin"}]})
+#mongo
+#use admin
+#db.createUser({user:"lamden",pwd:"pwd",roles:[{role:"root",db:"admin"}]})
 
-echo 'user created'
+#echo 'user created'
 
 

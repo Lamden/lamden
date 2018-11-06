@@ -106,8 +106,11 @@ class BlockDataBuilder:
                                  masternode_signature=signature, merkle_roots=merkle_roots, block_num=block_num,
                                  input_hashes=input_hashes)
 
-        cls.block_num += 1
         block_dict = {'blk_num': cls.block_num,'block_hash': block_hash, 'prev_block_hash': prev_block_hash,
-                      'transactions': transactions, 'masternode_signature': signature, 'merkle_roots': merkle_roots,
-                      'block_num': block_num,'input_hashes': input_hashes}
+                      'masternode_signature': signature}
+        block_dict['merkle_roots']=merkle_roots
+        block_dict['transactions']=transactions
+        block_dict['input_hashes']=input_hashes
+
+        cls.block_num += 1
         return block, block_dict
