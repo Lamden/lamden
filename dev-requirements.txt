@@ -1,6 +1,7 @@
 coloredlogs
 coverage
 numpy
+pymongo
 scipy
 vprof
 docker
