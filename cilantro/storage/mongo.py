@@ -1,8 +1,10 @@
-import cilantro, os, ujson as json, bson
+import cilantro
+import os
 from configparser import SafeConfigParser
 from pymongo import MongoClient
 from cilantro.logger.base import get_logger
 from cilantro.messages.block_data.block_data import BlockDataBuilder, BlockData
+
 
 class MDB():
     # Config
@@ -16,13 +18,23 @@ class MDB():
     pwd = cfg.get('MN_DB','password')
     port = cfg.get('MN_DB','port')
 
+    # master store db
+
     mn_client = None
     mn_db = None
-    _is_setup = False
+    mn_collection = None
     genesis_blk = None
+    init_mdb = False
+
+    # local index db
+
+    mn_client_idx = None
+    mn_db_idx = None
+    mn_coll_idx = None
+    init_idx_db = False
 
     def __init__(self, db_type=None, reset=False):
-        if self._is_setup == False:
+        if self.init_mdb is False:
             self.start_db(db_type='all')
             return
 
@@ -31,7 +43,7 @@ class MDB():
             return
 
     @classmethod
-    def start_db(cls,db_type="all"):
+    def start_db(cls, db_type="all"):
         """
             init block store, store_index
         """
@@ -42,15 +54,17 @@ class MDB():
             cls.genesis_blk = BlockDataBuilder.create_block()
             block_dict = cls.get_dict(cls.genesis_blk)
             cls.log.spam("storing genesis block... {}".format(block_dict))
-            blk_id = cls.mn_db['blocks'].insert_one('blocks', block_dict)
-            cls._is_setup = True
-            return blk_id
+            cls.mn_collection = cls.mn_db['blocks']
+            cls.init_mdb = cls.insert_record(block_dict)
 
-        if db_type=='cache' or db_type=='all':
-            uri = cls.setup_db(db_type='cache')
-            stash_client = MongoClient(uri)
-            collection = stash_client["index"]
-
+            if cls.init_mdb is True:
+                uri = MDB.setup_db(Type='index')
+                cls.mn_client_idx = MongoClient(uri)
+                cls.mn_db_idx = MongoClient(uri).get_database()
+                cls.mn_coll_idx = cls.mn_db_idx['index']
+                idx = {'block_num': cls.genesis_blk.get('block_num'), 'block_hash': cls.genesis_blk.get('block_hash'),
+                       'mn_sign': cls.genesis_blk.get('mn_sign')}
+                cls.init_idx_db = cls.insert_idx_record(dict=idx)
 
     @classmethod
     def setup_db(cls, db_type='new'):
@@ -72,9 +86,27 @@ class MDB():
 
     @classmethod
     def drop_db(cls, db='all'):
-        pass # TODO, doesn't work!
-        # if db == 'all':
-        #     cls.mn_client.drop_database(cls.mn_db)
+        if db == 'all':
+            cls.mn_client.drop_database(cls.mn_db)
+            cls.mn_client_idx.drop_database(cls.mn_db_idx)
+
+    @classmethod
+    def insert_record(cls, block_dict=None):
+        if block_dict == None:
+            return False
+
+        # insert passed dict block to db
+        blk_id = cls.mn_collection.insert(block_dict)
+        # cls.log.info("block {}".format(block_dict))
+        return True
+
+    @classmethod
+    def insert_idx_record(cls, dict=None):
+        if dict is None:
+            return None
+        idx_entry = cls.mn_coll_idx.insert(dict)
+        cls.log.info("entry {}".format(idx_entry))
+        return True
 
     @classmethod
     def get_dict(cls, capnp_struct, ignore=[]):
@@ -87,13 +119,15 @@ class MDB():
                 if type(v) == list:
                     if hasattr(v[0], 'serialize'):
                         v = [v_i.serialize() for v_i in v]
+                elif hasattr(v, 'serialize'):
+                    v = v.serialize()
                 d[k] = v
-
-        cls.log.critical(bson.BSON.encode(d))
         return d
 
-    def query_db_status(self, list='all'):
-        # db_list = self.mn_client.list_database_names() + self.stash_client.list_database_names()
-        # if list == 'all':
-        #     return db_list
-        pass
+    def query_db(self, type=None, query=None):
+        if type is 'idx' and query is not None:
+            result = self.mn_coll_idx.find(query)
+            for x in result:
+                self.log.info("result {}".format(x))
+            return result
+

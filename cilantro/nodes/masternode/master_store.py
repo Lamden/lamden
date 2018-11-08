@@ -27,10 +27,15 @@ class MasterOps:
     Config Related operations
     '''
     @classmethod
-    def init_master(cls):
+    def init_master(cls, key):
         if not cls.init_state:
+
+            mn_id = cls.set_mn_id(key)
+            if mn_id == -1:
+                cls.log.info("failed to get id")
+
             # start/setup mongodb
-            MDB.start_db()
+            MDB.start_db(Type="all", ID=mn_id)
             cls.log.info("db initiated")
             cls.init_state = True
 
@@ -95,13 +100,29 @@ class MasterOps:
         else:
             return False
 
+    @classmethod
+    def update_idx(mn_id = None, block_num=None):
+
+        if mn_id==None or block_num==None:
+            cls.log.error("error in passing args")
+            return
+
+        my_q = {'block_num':block_num}
+        inserted_blk = MDB.query_db(my_q)
+
+        entry = {'block_num':inserted_blk.get('block_num'), 'block_hash':inserted_blk.get('block_hash'),
+                 'master_nodes':inserted_blk.get('master_sign')}
+        MDB.insert_idx_record(entry)
+
+
     '''
-        Read operations
+        Read for particular block hash, does first read
+        to index db if block is local  
     '''
     @staticmethod
     def read_bucket_entry(block_hash):
-        pass
+        my_query = {'block_hash',block_hash}
+        outcome = MDB.query_db(query=my_query)
+        return outcome
 
-    '''
-        Lookup operations
-    '''
+

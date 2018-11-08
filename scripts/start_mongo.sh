@@ -8,6 +8,7 @@ echo 'Dir created'
 
 mongod --dbpath ./data/db --logpath ./data/db/logs/mongo.log &
 sleep 0.5;
+
 echo 'started mongod'
 
 echo 'Loading .ini'
