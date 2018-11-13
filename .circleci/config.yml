@@ -71,8 +71,8 @@ jobs:
     docker:
       - image: circleci/python:3.6.5
       - image: redis:4.0.6
-      - image: lamden/cilantro-db
       - image: lamden/cilantro-mn
+      - image: lamden/cilantro-db
         environment:
           username: cilantro_user
           password: buttcoins
