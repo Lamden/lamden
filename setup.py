@@ -27,7 +27,8 @@ setup(
         'uvloop==0.9.1',
         'u-msgpack-python==2.5.0',
         'yarl==1.1.0',
-        'seneca'
+        'seneca',
+        'click'
     ],
     dependency_links=[
         "git://github.com/Lamden/seneca.git@dev#egg=seneca"
