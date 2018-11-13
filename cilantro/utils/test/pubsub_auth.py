@@ -24,6 +24,8 @@ class PubSubAuthTester(Worker):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.log.important3("PubSubAuthTester starting with VK {}".format(self.verifying_key))
+
         # Dict of socket key -> LSocket instance
         self.pub_sockets = {}
         self.sub_sockets = {}
@@ -35,9 +37,9 @@ class PubSubAuthTester(Worker):
         assert socket_key not in self.pub_sockets, "Key {} already exists in pub sockets {}".format(socket_key, self.pub_sockets)
 
         sock = self.manager.create_socket(zmq.PUB, secure=secure, domain=domain)
+        self.log.socket("Binding pub socket with key {} using ip {}".format(socket_key, ip))
         sock.bind(port=PORT, protocol=protocol, ip=ip)
 
-        self.log.socket("Binding pub socket with key {} using ip {}".format(socket_key, ip))
         self.pub_sockets[socket_key] = sock
 
     def add_sub_socket(self, filter=b'', secure=False, domain=DEFAULT_DOMAIN, socket_key=SUB_SOCK_KEY):
@@ -58,7 +60,6 @@ class PubSubAuthTester(Worker):
 
     def start_publishing(self, num_msgs=50, interval=1, filter=b''):
         assert len(self.pub_sockets) > 0, "Must add at least 1 pub socket to start publishing"
-
         async def _start_pubbing(num):
             for i in range(num):
                 self.log.info("sending pub {}".format(i))

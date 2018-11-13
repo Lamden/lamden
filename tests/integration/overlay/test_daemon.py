@@ -33,7 +33,7 @@ def nodefn(node_type, idx):
             send_to_file(json.dumps(data))
 
     async def lookup_ip():
-        await asyncio.sleep(5)
+        await asyncio.sleep(15)
         for vk in [
             *[node['vk'] for node in TESTNET_MASTERNODES],
             *[node['vk'] for node in TESTNET_WITNESSES],
@@ -85,7 +85,7 @@ class TestDaemon(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(nodefn, 'Delegate', idx))
 
-        file_listener(self, self.callback, self.timeout, 30)
+        file_listener(self, self.callback, self.timeout, 90)
 
 if __name__ == '__main__':
     unittest.main()

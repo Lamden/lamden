@@ -1,4 +1,5 @@
 from cilantro.messages.base.base import MessageBase
+
 import capnp
 import envelope_capnp
 
@@ -27,4 +28,3 @@ class Seal(MessageBase):
     @property
     def verifying_key(self):
         return self._data.verifyingKey.decode()
-

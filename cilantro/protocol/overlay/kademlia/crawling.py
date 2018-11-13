@@ -3,8 +3,8 @@ import logging
 
 from cilantro.protocol.overlay.kademlia.node import Node, NodeHeap
 from cilantro.protocol.overlay.kademlia.utils import gather_dict
-from cilantro.logger.base import get_logger
-log = get_logger(__name__)
+
+log = logging.getLogger(__name__)
 
 
 class SpiderCrawl(object):
@@ -30,7 +30,7 @@ class SpiderCrawl(object):
         self.node = node
         self.nearest = NodeHeap(self.node, self.ksize)
         self.lastIDsCrawled = []
-        log.spam("creating spider with peers: %s", peers)
+        log.info("creating spider with peers: %s", peers)
         self.nearest.push(peers)
 
     async def _find(self, rpcmethod):
@@ -49,7 +49,7 @@ class SpiderCrawl(object):
              yet queried
           4. repeat, unless nearest list has all been queried, then ur done
         """
-        log.spam("crawling network with nearest: %s", str(tuple(self.nearest)))
+        log.info("crawling network with nearest: %s", str(tuple(self.nearest)))
         count = self.alpha
         if self.nearest.getIDs() == self.lastIDsCrawled:
             count = len(self.nearest)
@@ -65,66 +65,7 @@ class SpiderCrawl(object):
     async def _nodesFound(self, responses):
         raise NotImplementedError
 
-
-class ValueSpiderCrawl(SpiderCrawl):
-    def __init__(self, protocol, node, peers, ksize, alpha):
-        SpiderCrawl.__init__(self, protocol, node, peers, ksize, alpha)
-        # keep track of the single nearest node without value - per
-        # section 2.3 so we can set the key there if found
-        self.nearestWithoutValue = NodeHeap(self.node, 1)
-
-    async def find(self):
-        """
-        Find either the closest nodes or the value requested.
-        """
-        return await self._find(self.protocol.callFindValue)
-
-    async def _nodesFound(self, responses):
-        """
-        Handle the result of an iteration in _find.
-        """
-        toremove = []
-        foundValues = []
-        for peerid, response in responses.items():
-            response = RPCFindResponse(response)
-            if not response.happened():
-                toremove.append(peerid)
-            elif response.hasValue():
-                foundValues.append(response.getValue())
-            else:
-                peer = self.nearest.getNodeById(peerid)
-                self.nearestWithoutValue.push(peer)
-                self.nearest.push(response.getNodeList())
-        self.nearest.remove(toremove)
-
-        if len(foundValues) > 0:
-            return await self._handleFoundValues(foundValues)
-        if self.nearest.allBeenContacted():
-            # not found!
-            return None
-        return await self.find()
-
-    async def _handleFoundValues(self, values):
-        """
-        We got some values!  Exciting.  But let's make sure
-        they're all the same or freak out a little bit.  Also,
-        make sure we tell the nearest node that *didn't* have
-        the value to store it.
-        """
-        valueCounts = Counter(values)
-        if len(valueCounts) != 1:
-            log.warning("Got multiple values for key %i: %s",
-                        self.node.long_id, str(values))
-        value = valueCounts.most_common(1)[0][0]
-
-        peerToSaveTo = self.nearestWithoutValue.popleft()
-        if peerToSaveTo is not None:
-            await self.protocol.callStore(peerToSaveTo, self.node.id, value)
-        return value
-
-
 class NodeSpiderCrawl(SpiderCrawl):
-
     async def find(self):
         """
         Find the closest nodes.
@@ -146,37 +87,6 @@ class NodeSpiderCrawl(SpiderCrawl):
 
         if self.nearest.allBeenContacted():
             return list(self.nearest)
-        return await self.find()
-
-class VKSpiderCrawl(SpiderCrawl):
-    async def find(self, nodeid=None):
-        """
-        Find the specific node id.
-        """
-        if self.node.id == nodeid:
-            return self.node
-        else:
-            self.nodeid = nodeid
-            return await self._find(self.protocol.callFindNode)
-
-    async def _nodesFound(self, responses):
-        """
-        Handle the result of an iteration in _find.
-        """
-        toremove = []
-        for peerid, response in responses.items():
-            response = RPCFindResponse(response)
-            if not response.happened():
-                toremove.append(peerid)
-            else:
-                self.nearest.push(response.getNodeList())
-        self.nearest.remove(toremove)
-
-        for peer in self.nearest:
-            if self.nodeid == peer.id:
-                return peer
-        if self.nearest.allBeenContacted():
-            return None
         return await self.find()
 
 

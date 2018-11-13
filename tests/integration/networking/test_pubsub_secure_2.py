@@ -1,6 +1,7 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-4.json')
 from cilantro.constants.testnet import *
+from cilantro.constants.test_suites import CI_FACTOR
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test
 from cilantro.utils.test.mp_testables import MPPubSubAuth
@@ -34,13 +35,13 @@ class TestPubSubSecure(MPTestCase):
         msg1 = b'*falcon1 noise*'
         msg2 = b'*falcon2 noise*'
 
-        BLOCK = True
+        BLOCK = False
 
         pub1 = MPPubSubAuth(sk=PUB1_SK, name='PUB1', block_until_rdy=BLOCK)
         pub2 = MPPubSubAuth(sk=PUB2_SK, name='PUB2', block_until_rdy=BLOCK)
         sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=BLOCK)
 
-        # time.sleep(12)
+        time.sleep(15*CI_FACTOR)
 
         pub1.add_pub_socket(ip=pub1.ip, secure=True)
         pub2.add_pub_socket(ip=pub2.ip, secure=True)
@@ -49,48 +50,13 @@ class TestPubSubSecure(MPTestCase):
         sub.connect_sub(vk=PUB1_VK)
         sub.connect_sub(vk=PUB2_VK)
 
-        time.sleep(12)  # Allow time for VK lookup
+        time.sleep(15*CI_FACTOR)  # Allow time for VK lookup
 
         pub1.send_pub(msg1)
         pub2.send_pub(msg2)
 
-        self.start(timeout=24)
+        self.start(timeout=20*CI_FACTOR)
 
-    @vmnet_test
-    def test_pubsub_1_pub_1_sub_mixed_auth_unsecure(self):
-        def assert_sub(test_obj):
-            from unittest.mock import call
-            expected_frames = [
-                call([b'', msg1]),
-                call([b'', msg2])
-            ]
-            test_obj.handle_sub.assert_has_calls(expected_frames, any_order=True)
-
-        msg1 = b'*falcon1 noise*'
-        msg2 = b'*falcon2 noise*'
-
-        BLOCK = True
-
-        pub1 = MPPubSubAuth(sk=PUB1_SK, name='PUB1', block_until_rdy=BLOCK)
-        pub2 = MPPubSubAuth(sk=PUB2_SK, name='PUB2', block_until_rdy=BLOCK)
-        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=BLOCK)
-
-        # time.sleep(12)
-
-        pub1.add_pub_socket(ip=pub1.ip, secure=True)
-        pub2.add_pub_socket(ip=pub2.ip, secure=False)
-
-        sub.add_sub_socket(secure=True, socket_key='sub1')
-        sub.add_sub_socket(secure=False, socket_key='sub2')
-        sub.connect_sub(vk=PUB1_VK, socket_key='sub1')
-        sub.connect_sub(vk=PUB2_VK, socket_key='sub2')
-
-        time.sleep(12)  # Allow time for VK lookup
-
-        pub1.send_pub(msg1)
-        pub2.send_pub(msg2)
-
-        self.start(timeout=24)
 
 if __name__ == '__main__':
     unittest.main()

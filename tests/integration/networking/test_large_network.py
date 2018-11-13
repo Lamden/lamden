@@ -1,6 +1,7 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-4.json')
 from cilantro.constants.testnet import *
+from cilantro.constants.test_suites import CI_FACTOR
 
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
@@ -16,6 +17,7 @@ def config_sub(test_obj):
 
 class TestLargeNetwork(MPTestCase):
     config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-8.json'.format(CILANTRO_PATH)
+    # log_lvl = 19
 
     @vmnet_test
     def test_2_2_4(self):
@@ -27,10 +29,10 @@ class TestLargeNetwork(MPTestCase):
             c_args = test_obj.handle_sub.call_args_list
             assert len(c_args) == 7, "Expected 7 messages (one from each node). Instead, got:\n{}".format(c_args)
 
-        BLOCK = True
+        BLOCK = False
 
         mn_0 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='[node_1]MN_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        time.sleep(4)  # Pause after first MN boots (so we are extra sure he will be available for discovery)
+        time.sleep(3)  # Pause after first MN boots (so we are extra sure he will be available for discovery)
         mn_1 = MPPubSubAuth(sk=TESTNET_MASTERNODES[1]['sk'], name='[node_2]MN_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
 
         wit_0 = MPPubSubAuth(sk=TESTNET_WITNESSES[0]['sk'], name='[node_3]WITNESS_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
@@ -41,7 +43,7 @@ class TestLargeNetwork(MPTestCase):
         del_2 = MPPubSubAuth(sk=TESTNET_DELEGATES[2]['sk'], name='[node_7]DELEGATE_2', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
         del_3 = MPPubSubAuth(sk=TESTNET_DELEGATES[3]['sk'], name='[node_8]DELEGATE_3', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
 
-        # time.sleep(15)  # Nap while nodes hookup
+        time.sleep(20*CI_FACTOR)  # Nap while nodes hookup
 
         all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0, del_1, del_2, del_3)
         all_vks = (TESTNET_MASTERNODES[0]['vk'], TESTNET_MASTERNODES[1]['vk'], TESTNET_WITNESSES[0]['vk'],
@@ -60,14 +62,15 @@ class TestLargeNetwork(MPTestCase):
                 if vk == node_vk: continue
                 n.connect_sub(vk=vk)
 
-        time.sleep(30)  # Allow time for VK lookups
+        time.sleep(20*CI_FACTOR)  # Allow time for VK lookups
 
         # Make each node pub a msg
         for n in all_nodes:
             n.send_pub("hi from {} with ip {}".format(n.name, n.ip).encode())
 
-        self.start(timeout=45)
+        self.start(timeout=30)
 
 
 if __name__ == '__main__':
+    # Hello CI, want to go for a run?
     unittest.main()

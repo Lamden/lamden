@@ -28,6 +28,18 @@ class ContractTransaction(TransactionBase):
     def code(self):
         return self._data.payload.code
 
+    @property
+    def sender(self):
+        return self._data.payload.sender.decode()
+
+    @property
+    def contract_name(self):
+        return self._data.contractName.decode()
+
+    @property
+    def gas_supplied(self):
+        return self._data.gasSupplied
+
 
 class ContractTransactionBuilder:
     """
@@ -35,18 +47,20 @@ class ContractTransactionBuilder:
     users via some JS library or something.
     """
     @staticmethod
-    def create_contract_tx(sender_sk: str, code_str: str):
+    def create_contract_tx(sender_sk: str, code_str: str, contract_name: str='sample', gas_supplied: int=1.0):
         validate_hex(sender_sk, 64, 'sender signing key')
 
         struct = transaction_capnp.ContractTransaction.new_message()
 
         struct.payload.sender = wallet.get_vk(sender_sk)
         struct.payload.code = code_str
+        struct.payload.gasSupplied = gas_supplied
 
         payload_binary = struct.payload.copy().to_bytes()
 
         struct.metadata.proof = SHA3POW.find(payload_binary)[0]
         struct.metadata.signature = wallet.sign(sender_sk, payload_binary)
+        struct.contractName = contract_name
 
         return ContractTransaction.from_data(struct)
 

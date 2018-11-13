@@ -11,23 +11,28 @@ from cilantro.logger.base import get_logger
 from cilantro.storage.db import VKBook
 from cilantro.protocol.overlay.kademlia.node import Node
 
-import asyncio, os
+import asyncio, os, zmq.asyncio, zmq
 from os import getenv as env
 from enum import Enum, auto
 
 class OverlayInterface:
     started = False
     log = get_logger('OverlayInterface')
-    def __init__(self, sk_hex, loop=None):
+
+    def __init__(self, sk_hex, loop=None, ctx=None):
+
         self.loop = loop or asyncio.get_event_loop()
-        Auth.setup(sk_hex=sk_hex)
-        self.network = Network(storage=None)
-        Discovery.setup()
-        Handshake.setup()
+        # asyncio.set_event_loop(self.loop)
+        self.ctx = ctx or zmq.asyncio.Context()
+        Auth.setup(sk_hex=sk_hex, reset_auth_folder=True)
+
+        self.network = Network(loop=self.loop, node_id=digest(Auth.vk))
+        Discovery.setup(ctx=self.ctx)
+        Handshake.setup(loop=self.loop, ctx=self.ctx)
         self.tasks = [
             Discovery.listen(),
             Handshake.listen(),
-            self.network.listen(),
+            self.network.protocol.listen(),
             self.bootup()
         ]
 
@@ -52,7 +57,7 @@ class OverlayInterface:
 #   DISCOVERY COMPLETE
 ###########################################################################\
         ''')
-        Event.emit({ 'event': 'discovery', 'status': 'complete' })
+        # Event.emit({ 'event': 'discovery', 'status': 'complete' })
         await self.bootstrap()
         self.log.success('''
 ###########################################################################
@@ -63,16 +68,13 @@ class OverlayInterface:
         self.started = True
 
     async def discover(self):
-        while True:
-            if await Discovery.discover_nodes(Discovery.host_ip):
-                break
-            else:
-                self.log.critical('''
+        if not await Discovery.discover_nodes(Discovery.host_ip):
+            self.log.critical('''
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 x   DISCOVERY FAILED: Cannot find enough nodes ({}/{}) and not a masternode
 x       Retrying...
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-                '''.format(len(Discovery.discovered_nodes), MIN_BOOTSTRAP_NODES))
+            '''.format(len(Discovery.discovered_nodes), MIN_BOOTSTRAP_NODES))
 
     async def bootstrap(self):
         addrs = [(Discovery.discovered_nodes[vk], self.network.port) \
@@ -80,11 +82,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         await self.network.bootstrap(addrs)
         self.network.cached_vks.update(self.neighbors)
 
-    async def authenticate(self, vk, domain='*'):
-        ip = await self.lookup_ip(vk)
-        if not ip:
-            self.log.critical('Authentication Failed: Cannot find ip for vk={}'.format(vk))
-            return False
+    async def authenticate(self, ip, vk, domain='*'):
         return await Handshake.initiate_handshake(ip, vk, domain)
 
     async def lookup_ip(self, vk):

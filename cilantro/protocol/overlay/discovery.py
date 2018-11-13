@@ -18,9 +18,9 @@ class Discovery:
     is_setup = False
 
     @classmethod
-    def setup(cls):
+    def setup(cls, ctx=None):
         if not cls.is_setup:
-            cls.ctx = zmq.asyncio.Context()
+            cls.ctx = ctx or zmq.asyncio.Context()
             cls.sock = cls.ctx.socket(zmq.ROUTER)
             cls.is_setup = True
 

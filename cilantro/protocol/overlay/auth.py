@@ -5,9 +5,8 @@ from zmq.auth.asyncio import AsyncioAuthenticator
 from zmq.utils.z85 import decode, encode
 from nacl.public import PrivateKey, PublicKey
 from nacl.signing import SigningKey, VerifyKey
-from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
+from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519, crypto_sign_ed25519_pk_to_curve25519
 from nacl.encoding import HexEncoder
-from cilantro.storage.db import VKBook
 from cilantro.logger import get_logger
 from cilantro.utils import lazy_property
 
@@ -26,13 +25,23 @@ class Auth:
             cls.base_dir = 'certs/{}'.format(os.getenv('HOST_NAME', cls.keyname))
             cls.default_domain_dir = 'authorized_keys'
             cls.authorized_keys_dir = join(cls.base_dir, cls.default_domain_dir)
-            if reset_auth_folder: cls.reset_folder()
+            if reset_auth_folder:
+                cls.reset_folder()
             cls.add_public_key(public_key=cls.public_key)
+            cls.is_setup = True
+
+    @classmethod
+    def get_keys(cls, sk_hex):
+        sk = SigningKey(seed=bytes.fromhex(sk_hex))
+        vk = sk.verify_key.encode().hex()
+        public_key = cls.vk2pk(vk)
+        private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key)
+        return sk, vk, public_key, private_key
 
     @classmethod
     def reset_folder(cls):
         if exists(cls.base_dir):
-            shutil.rmtree(cls.base_dir)
+            shutil.rmtree(cls.base_dir, ignore_errors=True)
 
     @classmethod
     def sign(cls, msg):
@@ -41,19 +50,6 @@ class Auth:
     @classmethod
     def verify(cls, vk, msg, sig):
         return VerifyKey(vk, encoder=HexEncoder).verify(msg, sig)
-
-    @classmethod
-    def auth_validate(cls, vk, roles='any'):
-        if roles == 'any':
-            return vk in VKBook.get_all()
-        else:
-            if 'masternodes' in roles and vk in VKBook.get_masternodes():
-                return True
-            if 'witnesses' in roles and vk in VKBook.get_witnesses():
-                return True
-            if 'delegates' in roles and vk in VKBook.get_delegates():
-                return True
-        return False
 
     @classmethod
     def vk2pk(cls, vk):
@@ -67,7 +63,6 @@ class Auth:
         public_key_dir = join(cls.base_dir, cls.default_domain_dir if domain == '*' else domain)
         public_key_file = join(public_key_dir, public_key_filename)
         now = datetime.datetime.now()
-
         os.makedirs(public_key_dir, exist_ok=True)
         zmq.auth.certs._write_key_file(public_key_file,
                         zmq.auth.certs._cert_public_banner.format(now),

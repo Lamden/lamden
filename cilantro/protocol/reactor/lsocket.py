@@ -12,7 +12,7 @@ from os.path import join
 
 
 RDY_WAIT_INTERVAL = 1.0  # TODO move this to constants, and explain it
-MAX_RDY_WAIT = 30.0  # TODO move this to constants, and explain it
+MAX_RDY_WAIT = 60.0  # TODO move this to constants, and explain it
 
 
 def vk_lookup(func):
@@ -29,7 +29,6 @@ def vk_lookup(func):
             self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.pending_lookups[cmd_id] = (func.__name__, args, kwargs)
             self.manager.pending_lookups[cmd_id] = self
-            Auth.configure_auth(self.manager.auth, self.domain)
 
         # If the 'ip' key is already set in kwargs, no need to do a lookup
         else:
@@ -96,7 +95,8 @@ class LSocket:
                 if not self.ready:
                     self.log.spam("Socket not ready yet...waiting {} seconds".format(RDY_WAIT_INTERVAL))  # TODO remove this? it be hella noisy..
                     await asyncio.sleep(RDY_WAIT_INTERVAL)
-                    duration_waited += RDY_WAIT_INTERVAL
+                    if len(self.pending_lookups) > 0:
+                        duration_waited += RDY_WAIT_INTERVAL
                     continue
 
                 try:

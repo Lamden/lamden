@@ -23,7 +23,9 @@ class SocketManager:
         assert is_valid_hex(signing_key, 64), "signing_key must a 64 char hex str not {}".format(signing_key)
 
         self.log = get_logger(type(self).__name__)
-        Auth.setup(signing_key)
+
+        Auth.setup(signing_key, reset_auth_folder=False)
+
         self.signing_key = Auth.sk
         self.verifying_key = Auth.vk
         self.public_key = Auth.public_key
@@ -31,7 +33,7 @@ class SocketManager:
 
         self.loop = loop or asyncio.get_event_loop()
         self.context = context or zmq.asyncio.Context()
-        self.secure_context, self.auth = Auth.secure_context(context, async=True)
+        self.secure_context, self.auth = Auth.secure_context(async=True)
 
         self.sockets = []
         self.pending_lookups = {}   # A dict of 'event_id' to socket instance
@@ -52,7 +54,6 @@ class SocketManager:
 
     def _handle_overlay_event(self, e):
         self.log.debugv("SocketManager got overlay event {}".format(e))
-        # self.log.important2("SocketManager got overlay event {}".format(e))  # TODO remove
 
         if e['event'] == 'got_ip':
             assert e['event_id'] in self.pending_lookups, "Overlay returned event {} that is not in pending_lookups {}!"\
@@ -60,7 +61,9 @@ class SocketManager:
 
             sock = self.pending_lookups.pop(e['event_id'])
             sock.handle_overlay_event(e)
+        elif e['event'] == 'authorized':
+            Auth.configure_auth(self.auth, e['domain'])
         else:
             # TODO handle all events. Or write code to only subscribe to certain events
-            self.log.warning("Composer got overlay event {} that it does not know how to handle. Ignoring.".format(e))
+            self.log.debug("Composer got overlay event {} that it does not know how to handle. Ignoring.".format(e))
             return

@@ -10,7 +10,7 @@ def masternode(idx, node_count):
     from cilantro.protocol.overlay.interface import OverlayInterface
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from vmnet.comm import send_to_file
-    import asyncio, json, os
+    import asyncio, json, os, zmq
     from cilantro.logger import get_logger
     log = get_logger('MasterNode_{}'.format(idx))
 
@@ -21,15 +21,19 @@ def masternode(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(5)
-        await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
+        await asyncio.sleep(8)
+        await asyncio.gather(*[oi.authenticate(all_ips[idx], vk) for idx, vk in enumerate(all_nodes)])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
     witnesses = [node['vk'] for node in TESTNET_WITNESSES[:2]]
     delegates = [node['vk'] for node in TESTNET_DELEGATES[:4]]
     all_nodes = masternodes + witnesses + delegates
+    all_ips = os.getenv('MASTERNODE').split(',') + os.getenv('WITNESS').split(',') + os.getenv('DELEGATE').split(',')
 
-    oi = OverlayInterface(TESTNET_MASTERNODES[idx]['sk'])
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    ctx = zmq.asyncio.Context()
+    oi = OverlayInterface(TESTNET_MASTERNODES[idx]['sk'], loop=loop, ctx=ctx)
     oi.tasks += [connect(), check()]
     oi.start()
 
@@ -38,7 +42,7 @@ def witness(idx, node_count):
     from cilantro.protocol.overlay.interface import OverlayInterface
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from vmnet.comm import send_to_file
-    import asyncio, json, os
+    import asyncio, json, os, zmq
     from cilantro.logger import get_logger
     log = get_logger('WitnessNode_{}'.format(idx))
 
@@ -49,15 +53,19 @@ def witness(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(5)
-        await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
+        await asyncio.sleep(8)
+        await asyncio.gather(*[oi.authenticate(all_ips[idx], vk) for idx, vk in enumerate(all_nodes)])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
     witnesses = [node['vk'] for node in TESTNET_WITNESSES[:2]]
     delegates = [node['vk'] for node in TESTNET_DELEGATES[:4]]
     all_nodes = masternodes + witnesses + delegates
+    all_ips = os.getenv('MASTERNODE').split(',') + os.getenv('WITNESS').split(',') + os.getenv('DELEGATE').split(',')
 
-    oi = OverlayInterface(TESTNET_WITNESSES[idx]['sk'])
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    ctx = zmq.asyncio.Context()
+    oi = OverlayInterface(TESTNET_WITNESSES[idx]['sk'], loop=loop, ctx=ctx)
     oi.tasks += [connect(), check()]
     oi.start()
 
@@ -66,7 +74,7 @@ def delegate(idx, node_count):
     from cilantro.protocol.overlay.interface import OverlayInterface
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from vmnet.comm import send_to_file
-    import asyncio, json, os
+    import asyncio, json, os, zmq
     from cilantro.logger import get_logger
     log = get_logger('DelegateNode_{}'.format(idx))
 
@@ -77,15 +85,19 @@ def delegate(idx, node_count):
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def connect():
-        await asyncio.sleep(5)
-        await asyncio.gather(*[oi.authenticate(vk) for vk in all_nodes])
+        await asyncio.sleep(8)
+        await asyncio.gather(*[oi.authenticate(all_ips[idx], vk) for idx, vk in enumerate(all_nodes)])
 
     masternodes = [node['vk'] for node in TESTNET_MASTERNODES[:2]]
     witnesses = [node['vk'] for node in TESTNET_WITNESSES[:2]]
     delegates = [node['vk'] for node in TESTNET_DELEGATES[:4]]
     all_nodes = masternodes + witnesses + delegates
+    all_ips = os.getenv('MASTERNODE').split(',') + os.getenv('WITNESS').split(',') + os.getenv('DELEGATE').split(',')
 
-    oi = OverlayInterface(TESTNET_DELEGATES[idx]['sk'])
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    ctx = zmq.asyncio.Context()
+    oi = OverlayInterface(TESTNET_DELEGATES[idx]['sk'], loop=loop, ctx=ctx)
     oi.tasks += [connect(), check()]
     oi.start()
 
@@ -115,7 +127,7 @@ class TestAuthentication(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(delegate, idx, node_count))
 
-        file_listener(self, self.callback, self.timeout, 30)
+        file_listener(self, self.callback, self.timeout, 90)
 
 if __name__ == '__main__':
     unittest.main()

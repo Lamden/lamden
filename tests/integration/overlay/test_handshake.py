@@ -10,105 +10,114 @@ def masternode(idx, node_count):
     from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
     from cilantro.protocol.overlay.handshake import Handshake
     from cilantro.protocol.overlay.auth import Auth
-    import asyncio, os
+    import asyncio, os, time
 
     async def check_nodes():
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(3)
             if len(Handshake.authorized_nodes['*']) == node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def send_handshake():
-        await asyncio.sleep(5)
+        await asyncio.sleep(8)
         await asyncio.gather(
             *[Handshake.initiate_handshake(node['ip'], vk=node['vk']) \
                 for node in all_nodes])
 
     from cilantro.logger import get_logger
     log = get_logger('MasterNode_{}'.format(idx))
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     Auth.setup(TESTNET_MASTERNODES[idx]['sk'])
-    Handshake.setup()
+    Handshake.setup(loop=loop)
+
     masternodes = [{'vk': node['vk'], 'ip': os.getenv('MASTERNODE').split(',')[idx]} for idx, node in enumerate(TESTNET_MASTERNODES)]
     witnesses = [{'vk': node['vk'], 'ip': os.getenv('WITNESS').split(',')[idx]} for idx, node in enumerate(TESTNET_WITNESSES)]
     delegates = [{'vk': node['vk'], 'ip': os.getenv('DELEGATE').split(',')[idx]} for idx, node in enumerate(TESTNET_DELEGATES)]
     all_nodes = masternodes + witnesses + delegates
-    tasks = asyncio.ensure_future(asyncio.gather(
+    tasks = asyncio.gather(
         send_handshake(),
         Handshake.listen(),
         check_nodes()
-    ))
+    )
     loop.run_until_complete(tasks)
+    log.critical('I shall not see this')
 
 def witness(idx, node_count):
     from vmnet.comm import send_to_file
     from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
     from cilantro.protocol.overlay.handshake import Handshake
     from cilantro.protocol.overlay.auth import Auth
-    import asyncio, os
+    import asyncio, os, time
 
     async def check_nodes():
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(3)
             if len(Handshake.authorized_nodes['*']) == node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def send_handshake():
-        await asyncio.sleep(5)
+        await asyncio.sleep(8)
         await asyncio.gather(
             *[Handshake.initiate_handshake(node['ip'], vk=node['vk']) \
                 for node in all_nodes])
 
     from cilantro.logger import get_logger
     log = get_logger('Witness_{}'.format(idx))
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     Auth.setup(TESTNET_WITNESSES[idx]['sk'])
-    Handshake.setup()
+    Handshake.setup(loop=loop)
+
     masternodes = [{'vk': node['vk'], 'ip': os.getenv('MASTERNODE').split(',')[idx]} for idx, node in enumerate(TESTNET_MASTERNODES)]
     witnesses = [{'vk': node['vk'], 'ip': os.getenv('WITNESS').split(',')[idx]} for idx, node in enumerate(TESTNET_WITNESSES)]
     delegates = [{'vk': node['vk'], 'ip': os.getenv('DELEGATE').split(',')[idx]} for idx, node in enumerate(TESTNET_DELEGATES)]
     all_nodes = masternodes + witnesses + delegates
-    tasks = asyncio.ensure_future(asyncio.gather(
+    tasks = asyncio.gather(
         send_handshake(),
         Handshake.listen(),
         check_nodes()
-    ))
+    )
     loop.run_until_complete(tasks)
+    log.critical('I shall not see this')
 
 def delegate(idx, node_count):
     from vmnet.comm import send_to_file
     from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
     from cilantro.protocol.overlay.handshake import Handshake
     from cilantro.protocol.overlay.auth import Auth
-    import asyncio, os
+    import asyncio, os, time
 
     async def check_nodes():
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(3)
             if len(Handshake.authorized_nodes['*']) == node_count:
                 send_to_file(os.getenv('HOST_NAME'))
 
     async def send_handshake():
-        await asyncio.sleep(5)
+        await asyncio.sleep(8)
         await asyncio.gather(
             *[Handshake.initiate_handshake(node['ip'], vk=node['vk']) \
                 for node in all_nodes])
 
     from cilantro.logger import get_logger
     log = get_logger('Delegate_{}'.format(idx))
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     Auth.setup(TESTNET_DELEGATES[idx]['sk'])
-    Handshake.setup()
+    Handshake.setup(loop=loop)
+
     masternodes = [{'vk': node['vk'], 'ip': os.getenv('MASTERNODE').split(',')[idx]} for idx, node in enumerate(TESTNET_MASTERNODES)]
     witnesses = [{'vk': node['vk'], 'ip': os.getenv('WITNESS').split(',')[idx]} for idx, node in enumerate(TESTNET_WITNESSES)]
     delegates = [{'vk': node['vk'], 'ip': os.getenv('DELEGATE').split(',')[idx]} for idx, node in enumerate(TESTNET_DELEGATES)]
     all_nodes = masternodes + witnesses + delegates
-    tasks = asyncio.ensure_future(asyncio.gather(
+    tasks = asyncio.gather(
         send_handshake(),
         Handshake.listen(),
         check_nodes()
-    ))
+    )
     loop.run_until_complete(tasks)
+    log.critical('I shall not see this')
 
 class TestHandshake(BaseTestCase):
 

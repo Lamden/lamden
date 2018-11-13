@@ -20,7 +20,7 @@ from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.utils.lprocess import LProcess
 from cilantro.utils.hasher import Hasher
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
-from cilantro.protocol.interpreter import SenecaInterpreter
+# from cilantro.protocol.interpreter import SenecaInterpreter
 from cilantro.messages.block_data.block_data import BlockData
 from typing import List
 
@@ -60,24 +60,22 @@ class BlockManager(Worker):
     def __init__(self, ip, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
+        self.tasks = []
 
         self.ip = ip
         self.sb_builders = {}  # index -> process
-        self.tasks = []
-
-        self.my_sb_index = self._get_my_index() % NUM_SB_BUILDERS
+        self.sb_index = self._get_my_index() % NUM_SB_BUILDERS
 
         # raghu todo tie to initial catch up logic as well as right place to do this
         # Falcon needs to add db interface modifications
         # self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
         self.db_state = DBState(StorageDriver.get_latest_block_hash())
-        self.min_new_block_quorum = 1  # TODO
-        self.interpreter = SenecaInterpreter()
+        # self.interpreter = SenecaInterpreter()
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
                         "num_sb_builders={num_sb_builders}\n"
-                        .format(vk=self.verifying_key, sb_index=self.my_sb_index, num_sb=NUM_SUB_BLOCKS,
+                        .format(vk=self.verifying_key, sb_index=self.sb_index, num_sb=NUM_SUB_BLOCKS,
                                 num_blocks=NUM_BLOCKS, sb_per_block=NUM_SB_PER_BLOCK,
                                 num_sb_builders=NUM_SB_BUILDERS))
 
@@ -153,12 +151,13 @@ class BlockManager(Worker):
         # TODO send this over PUB to all masternodes instead of Router
 
         # TODO add this code when we can ensure block manager's router is properly set up...
-        pass
+
         # envelope = StateUpdateRequest.create(block_hash=self.db_state.cur_block_hash)
         # for vk in VKBook.get_masternodes():
         #     self.router.send_msg(envelope, header=vk.encode())
 
         # no need to wait for the replys as we have added a handler
+        pass
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):
@@ -238,9 +237,9 @@ class BlockManager(Worker):
 
     def update_db_state(self, block_data: BlockData):
         txs_list = block_data.transactions
-        for txn in txs_list:
-            self.interpreter.interpret(txn)
-        self.interpreter.flush()      # save and reset
+        # for txn in txs_list:
+        #     self.interpreter.interpret(txn)
+        # self.interpreter.flush()      # save and reset
         self.db_state.cur_block_hash = block_data.block_hash
         self.log.important("Caught up to block with hash {}".format(self.db_state.cur_block_hash))
 
@@ -327,4 +326,3 @@ class BlockManager(Worker):
         message = MakeNextBlock.create()
         for idx in range(NUM_SB_BUILDERS):
             self._send_msg_over_ipc(sb_index=idx, message=message)
-
