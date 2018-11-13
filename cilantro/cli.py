@@ -1,14 +1,17 @@
 import click
 import os
+from cilantro.protocol import wallet
 
 configuration_path = '/usr/local/share/lamden'
 configuration_filename = 'cilantro.conf'
 
-default_directory = './cilantro'
+default_directory = '~/cilantro'
 default_crawl = '127.0.0.1'
 
 
 def create_default_configuration_file(d=default_directory, n=default_crawl):
+
+    # rewrite the configuration file for reading later
     with open(configuration_path + '/' + configuration_filename, 'w') as f:
         f.write('{}\n'.format(d))
         f.write('{}'.format(n))
@@ -23,7 +26,16 @@ def get_configuration(filename):
 
 @click.group()
 def main():
-    pass
+    print('yeet')
+    if not os.path.exists(configuration_path):
+        os.makedirs(configuration_path)
+
+    if not os.path.isfile(configuration_path + '/' + configuration_filename):
+        create_default_configuration_file()
+
+    d, _ = get_configuration(configuration_path + '/' + configuration_filename)
+    if not os.path.exists(os.path.expanduser(d)):
+        os.makedirs(os.path.expanduser(d))
 
 
 # make a directory in.. /usr/local/share/lamden
@@ -35,12 +47,6 @@ def main():
 @click.option('-n', '--network', 'network')
 def config(info, directory, network):
     # make sure that the configuration_path path is available
-    if not os.path.exists(configuration_path):
-        os.makedirs(configuration_path)
-
-    if not os.path.isfile(configuration_path + '/' + configuration_filename):
-        create_default_configuration_file()
-
     if info:
         d, n = get_configuration(configuration_path + '/' + configuration_filename)
         print('Directory: {}'.format(d))
@@ -53,10 +59,12 @@ def config(info, directory, network):
         print('Network Crawl changed to: {}'.format(network))
 
 
-
-# @main.command('new key', short_help='Testing spaces.')
-# def new_key():
-#     print('it do')
+@main.command('key', short_help='Generate a new key.')
+def key():
+    d, _ = get_configuration(configuration_path + '/' + configuration_filename)
+    s, v = wallet.new()
+    print(s)
+    print(v)
 
 
 if __name__ == '__main__':
