@@ -1,6 +1,7 @@
 import click
 import os
 from cilantro.protocol import wallet
+import json
 
 configuration_path = '/usr/local/share/lamden'
 configuration_filename = 'cilantro.conf'
@@ -26,7 +27,6 @@ def get_configuration(filename):
 
 @click.group()
 def main():
-    print('yeet')
     if not os.path.exists(configuration_path):
         os.makedirs(configuration_path)
 
@@ -60,11 +60,33 @@ def config(info, directory, network):
 
 
 @main.command('key', short_help='Generate a new key.')
-def key():
-    d, _ = get_configuration(configuration_path + '/' + configuration_filename)
-    s, v = wallet.new()
-    print(s)
-    print(v)
+@click.option('-o', '--output', 'output')
+@click.option('-a', '--absolute', is_flag=True)
+def key(output, absolute):
+    if not output:
+        print('--output file name must be provided.')
+    else:
+        if not absolute:
+            d, _ = get_configuration(configuration_path + '/' + configuration_filename)
+            d = os.path.expanduser(d)
+
+            o = d + '/' + output
+        else:
+            o = output
+
+        if os.path.isfile(o):
+            print('Key at {} already exists.'.format(o))
+
+        else:
+            s, v = wallet.new()
+            f = {'s': s, 'v': v}
+
+            try:
+                with open(o, 'w') as fp:
+                    json.dump(f, fp)
+                print('New key written to {}'.format(o))
+            except Exception as e:
+                print(e)
 
 
 if __name__ == '__main__':
