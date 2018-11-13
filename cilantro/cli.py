@@ -4,11 +4,14 @@ import os
 configuration_path = '/usr/local/share/lamden'
 configuration_filename = 'cilantro.conf'
 
+default_directory = './cilantro'
+default_crawl = '127.0.0.1'
 
-def create_default_configuration_file():
+
+def create_default_configuration_file(d=default_directory, n=default_crawl):
     with open(configuration_path + '/' + configuration_filename, 'w') as f:
-        f.write('./cilantro\n')
-        f.write('127.0.0.1')
+        f.write('{}\n'.format(d))
+        f.write('{}'.format(n))
 
 
 def get_configuration(filename):
@@ -43,9 +46,11 @@ def config(info, directory, network):
         print('Directory: {}'.format(d))
         print('Network Crawl: {}'.format(n))
     elif directory:
-        print(directory)
+        create_default_configuration_file(d=directory)
+        print('Directory changed to: {}'.format(directory))
     elif network:
-        print(network)
+        create_default_configuration_file(n=network)
+        print('Network Crawl changed to: {}'.format(network))
 
 
 
