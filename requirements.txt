@@ -22,4 +22,4 @@ vprof
 docker
 dill
 -e git://github.com/Lamden/vmnet.git#egg=vmnet
--e git://github.com/Lamden/seneca.git#egg=seneca
+-e git://github.com/Lamden/seneca.git@dev#egg=seneca
