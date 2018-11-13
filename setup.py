@@ -28,7 +28,8 @@ setup(
         'u-msgpack-python==2.5.0',
         'yarl==1.1.0',
         'seneca',
-        'click'
+        'click',
+        'xxtea'
     ],
     dependency_links=[
         "git://github.com/Lamden/seneca.git@dev#egg=seneca"

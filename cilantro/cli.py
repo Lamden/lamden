@@ -2,6 +2,7 @@ import click
 import os
 from cilantro.protocol import wallet
 import json
+import xxtea
 
 configuration_path = '/usr/local/share/lamden'
 configuration_filename = 'cilantro.conf'
