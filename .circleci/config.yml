@@ -131,5 +131,5 @@ workflows:
   version: 2
   build_and_test_cilantro:
     jobs:
-      - integration_tests
       - unit_tests
+      # - integration_tests
