@@ -98,7 +98,7 @@ jobs:
           command: |
              sudo apt install -y mysql-client
 
-      - run
+      - run:
           name: Install mongodb
           command: |
               sudo apt-get install -y mongodb-org
