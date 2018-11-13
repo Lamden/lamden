@@ -4,7 +4,7 @@ from configparser import SafeConfigParser
 path = os.path.dirname(cilantro.__path__[0])
 config = SafeConfigParser()
 config.read('{}/db_conf.ini'.format(path))
-
+encoding = 'binary'
 
 class SQLDB():
     connection = None
@@ -29,7 +29,7 @@ class SQLDB():
             host=config.get('DB','hostname'),
             user=config.get('DB','username'),
             passwd=config.get('DB','password'),
-            charset='binary'
+            charset=encoding
         )
         cls.cursor = cls.connection.cursor()
         cls.setup_db()

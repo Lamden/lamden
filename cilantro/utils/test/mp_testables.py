@@ -9,10 +9,11 @@ from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.nodes.masternode.masternode import Masternode
 from cilantro.nodes.delegate.delegate import Delegate
 from cilantro.nodes.witness.witness import Witness
-from cilantro.protocol.overlay.interface import OverlayServer
+from cilantro.protocol.overlay.daemon import OverlayServer
 from cilantro.utils.lprocess import LProcess
-from cilantro.storage.db import DB
+# from cilantro.storage.db import DB
 from cilantro.utils.test.pubsub_auth import PubSubAuthTester
+from cilantro.utils.test.router_auth import RouterAuthTester
 import asyncio
 import zmq.asyncio
 import os
@@ -30,6 +31,22 @@ class MPPubSubAuth(MPTesterBase):
         overlay_proc.start()
 
         obj = PubSubAuthTester(sk, name=name, loop=loop)
+
+        return obj, loop, []
+
+
+@mp_testable(RouterAuthTester)
+class MPRouterAuth(MPTesterBase):
+    @classmethod
+    def build_obj(cls, sk, name='') -> tuple:
+        loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(loop)
+
+        # Start Overlay Process
+        overlay_proc = LProcess(target=OverlayServer, args=(sk,))
+        overlay_proc.start()
+
+        obj = RouterAuthTester(sk, name=name, loop=loop)
 
         return obj, loop, []
 

@@ -32,9 +32,7 @@ class SubBlockContender(MessageBase):
         assert self.signature.verify(bytes.fromhex(self.result_hash)), 'Cannot verify signature'
         assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
         assert self._data.inputHash, "input hash field missing from data {}".format(self._data)
-        assert self._data.merkleLeaves, "leaves field missing from data {}".format(self._data)
         assert self._data.signature, "Signature field missing from data {}".format(self._data)
-        assert self._data.transactions, "Raw transactions field missing from data {}".format(self._data)
         assert hasattr(self._data, 'subBlockIdx'), "Sub-block index field missing from data {}".format(self._data)
 
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
@@ -72,6 +70,11 @@ class SubBlockContender(MessageBase):
         return cls.from_data(struct)
 
     @classmethod
+    def create_empty_sublock(cls, input_hash: str, signature: MerkleSignature, sub_block_index: int):
+        return cls.create(result_hash=input_hash, input_hash=input_hash, signature=signature,
+                          sub_block_index=sub_block_index, merkle_leaves=[], transactions=[])
+
+    @classmethod
     def _chunks(cls, l, n=64):
         for i in range(0, len(l), n):
             yield l[i:i + n]
@@ -99,6 +102,10 @@ class SubBlockContender(MessageBase):
         """
         # Deserialize signatures
         return MerkleSignature.from_bytes(self._data.signature)
+
+    @property
+    def is_empty(self) -> bool:
+        return len(self.merkle_leaves) == 0
 
     @property
     def merkle_leaves(self) -> List[str]:

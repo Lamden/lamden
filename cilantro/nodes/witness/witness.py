@@ -14,6 +14,7 @@ from cilantro.messages.transaction.batch import TransactionBatch
 from cilantro.messages.signals.kill_signal import KillSignal
 
 from cilantro.storage.db import VKBook
+from cilantro.utils.hasher import Hasher
 
 import zmq, asyncio
 
@@ -103,25 +104,12 @@ class WitnessRunState(WitnessBaseState):
         self.parent.loop.run_until_complete(asyncio.gather(*self.parent.tasks))
 
     def handle_sub_msg(self, frames):
-        self.log.spam("Witness got SUB data with frames {}".format(frames))
         # Deserialize to check envelope date. This might be unnecessary in prod
         env = Envelope.from_bytes(frames[-1])
-        self.log.debugv("Witness got SUB data with envelope {}".format(env))
         assert type(env.message) is TransactionBatch, "Witness expected to receive only TransactionBatch messages, but " \
                                                       "got unknown type {}".format(type(env.message))
-
+        self.log.info(
+            "Witness sending out transaction batch with input hash {} and {} transactions".format(Hasher.hash(env), len(
+                env.message.transactions)))
         self.parent.pub.send_multipart([b'', frames[-1]])
 
-    # @input(OrderingContainer)
-    # def recv_ordered_tx(self, tx: OrderingContainer, envelope: Envelope):
-    #     self.log.spam("witness got tx: {}, with env {}".format(tx, envelope))
-    #     raise Exception("Sending OrderingContainers directly to Witnesses should be deprecated! "
-    #                     "We should be sending TransactionBatch messages")
-    #     # self.parent.composer.send_pub_env(envelope=envelope, filter=WITNESS_DELEGATE_FILTER)
-
-    # @input(TransactionBatch)
-    # def recv_tx_batch(self, batch: TransactionBatch, envelope: Envelope):
-    #     self.log.important("Witness got TransactionBatch {}".format(batch))  # TODO change log level once confident
-    #
-    #     # TODO send this using the appropriate sub_block_builder port and filter
-    #     self.parent.composer.send_pub_env(envelope=envelope, filter=WITNESS_DELEGATE_FILTER)

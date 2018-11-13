@@ -66,18 +66,29 @@ def _should_skip_module(module_name: str, modules_to_skip: list) -> bool:
             return True
     return False
 
-def skip_circle_ci_modules(module_to_skip='tests/integration') -> list:
+def skip_circle_ci_modules(module_to_skip='tests/integration'):
     assert os.getenv('CIRCLECI'), 'Not using CIRCLECI, this operation is Dangerous Davis approved'
     total_containers = os.getenv("CIRCLE_NODE_TOTAL")
     container_idx = os.getenv("CIRCLE_NODE_INDEX")
-    skips = []
+    all_files = []
     for root, dirs, files in os.walk(module_to_skip, topdown=False):
-        for idx, name in enumerate(files):
+        for name in files:
             if re.search(r'^test_.*.py$', name):
-                if int(container_idx) != idx % int(total_containers):
-                    print('Removing {}...'.format(name))
-                    os.remove(os.path.join(root, name))
-    return skips
+                all_files.append(os.path.join(root, name))
+                # if int(container_idx) != idx % int(total_containers):
+                #     print('Removing {}...'.format(name))
+                #     os.remove(os.path.join(root, name))
+    print("All test files (without removing any): {}".format(all_files))
+    removes = []
+    for i, name in enumerate(all_files):
+        if int(container_idx) != i % int(total_containers):
+            print("Removing file {}".format(name))
+            os.remove(name)
+            removes.append(name)
+
+    # Just to see a list of non-removed files for debugging
+    for f in removes: all_files.remove(f)
+    print("All test files this node is responsible for: {}".format(all_files))
 
 def main(args):
     log.debug("\nRunning test suites with args\n\nrun unit tests={}\nrun integration tests={}\nverbosity={}\n"

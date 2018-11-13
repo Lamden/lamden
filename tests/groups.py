@@ -13,7 +13,6 @@ TODO -- better documentation on whats going on here
 
 PROTOCOL_TESTS = [
     'tests.unit.protocol.overlay',
-    'tests.unit.protocol.interpreter',
     'tests.unit.protocol.structures',
     'tests.unit.protocol.states',
     'tests.unit.protocol.wallets'
@@ -40,7 +39,7 @@ DB_TESTS = [
 ]
 
 SMART_CONTRACT_TESTS = [
-    'tests.unit.contracts'
+    # 'tests.unit.contracts'
 ]
 
 # All unit tests
@@ -60,7 +59,8 @@ UNIT_TESTS = [
 """
 
 NODE_INTEGRATION_TESTS = [
-    'tests.integration'
+    'tests.integration.networking',
+    'tests.integration.overlay'
 ]
 
 # All integration tests

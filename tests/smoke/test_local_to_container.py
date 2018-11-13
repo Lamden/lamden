@@ -12,7 +12,7 @@ def wrap_func(fn, *args, **kwargs):
 
 def run_container():
     from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
+    from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
     from multiprocessing import Process
     import os, time, zmq
 

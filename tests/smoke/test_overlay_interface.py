@@ -13,7 +13,7 @@ def wrap_func(fn, *args, **kwargs):
 
 def run_mn():
     from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
+    from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
     from multiprocessing import Process
     import os, time
 
@@ -34,7 +34,7 @@ def run_mn():
 
 def run_witness(slot_num):
     from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
+    from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
     from multiprocessing import Process
     import os
 
@@ -54,7 +54,7 @@ def run_witness(slot_num):
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.interface import OverlayServer, OverlayClient
+    from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
     from multiprocessing import Process
     import os, asyncio
 

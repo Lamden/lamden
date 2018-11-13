@@ -1,10 +1,11 @@
 from vmnet.testcase import BaseNetworkTestCase
 from cilantro.utils.test.mp_test_case import vmnet_test
 from cilantro.constants.testnet import TESTNET_MASTERNODES
-import unittest, time, random
+import unittest, time
 import vmnet, cilantro
 from os.path import dirname, join
 import time
+from cilantro.storage.mongo import MDB
 
 cilantro_path = dirname(dirname(cilantro.__path__[0]))
 
@@ -13,18 +14,21 @@ def wrap_func(fn, *args, **kwargs):
         return fn(*args, **kwargs)
     return wrapper
 
-
-def start_mn(signing_key):
-    import os
-    import zmq, time
+def start_mn(verifing_key):
+    import os, zmq, time
     from cilantro.logger.base import get_logger
     from tests.experiments.storage.test_master_store import MasterOps
 
     log = get_logger(os.getenv('MN'))
 
+    store = MDB(Type='all', reset=False)
+    store.start_db()
+#    log.info("db -> {}".format(store.query_db_status()))
+
+
     count = MasterOps.get_master_set()
 
-    mn_id = MasterOps.get_mn_id(sk = signing_key)
+    mn_id = MasterOps.get_mn_id(vk = verifing_key)
     rep_fact = MasterOps.get_rep_factor()
 
 
@@ -50,7 +54,7 @@ def start_mn(signing_key):
     log.info("master id {}".format(mn_id))
 
     blk_num = 1
-    while blk_num <= 5:
+    while blk_num <= 2:
         log.debug("waiting for msg...")
         msg = socket.recv_pyobj()
         log.info("got msg {}".format(msg))
@@ -82,11 +86,7 @@ def start_mn(signing_key):
     socket.close()
 
 def start_mgmt():
-    import os
-    import asyncio
-    import zmq.asyncio
-    import time
-    import uuid
+    import os, asyncio, zmq, time, zmq.asyncio
     from cilantro.logger.base import get_logger
 
     loop = asyncio.get_event_loop()
@@ -127,13 +127,13 @@ class TestZMQPair(BaseNetworkTestCase):
 
         self.execute_python('mgmt', start_mgmt)
         time.sleep(1)
-        key = TESTNET_MASTERNODES[0]['sk']
-     #   self.execute_python('mn', start_client())
+        key = TESTNET_MASTERNODES[0]['vk']
 
         for node in self.groups['mn']:
-        #    key = TESTNET_MASTERNODES[i]['sk']
-            self.execute_python(node,wrap_func(start_mn, signing_key = key))
+     #       key = TESTNET_MASTERNODES[i]['vk']
+            print(node)
 
+        self.execute_python(node,wrap_func(start_mn, verifing_key = key))
 
         input("\n\nEnter any key to terminate")
 

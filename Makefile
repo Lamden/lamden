@@ -23,7 +23,10 @@ install:
 	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir
 
 build-image:
-	docker build -f vmnet_configs/images/cilantro_base.dev .
+	docker build -t cilantro_base.dev -f vmnet_configs/images/cilantro_base.dev .
+
+build-mn:
+	docker build -t cilantro_mn.dev -f vmnet_configs/images/cilantro_master.dev .
 
 clean-logs:
 	./scripts/clean-logs.sh
@@ -46,7 +49,7 @@ kill-docker:
 	docker kill `docker ps -q` || true; sleep 2
 
 build-testnet-json:
-	python3 -c "from cilantro.utils.test.testnet_nodes import *; generate_testnet_json()"
+	python3 -c "from cilantro.utils.test.testnet_config import *; generate_testnet_json()"
 
 help:
 	echo '\n\n'; cat Makefile; echo '\n\n'

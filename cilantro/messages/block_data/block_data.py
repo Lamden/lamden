@@ -21,7 +21,6 @@ class BlockData(MessageBase):
     # TODO find this method a better home. Maybe in utils or something?
     @staticmethod
     def compute_block_hash(sbc_roots: List[str], prev_block_hash: str):
-        # TODO validate input (valid 64 char hex str)
         return Hasher.hash_iterable(sbc_roots + [prev_block_hash])
 
     def validate(self):
@@ -39,12 +38,14 @@ class BlockData(MessageBase):
 
     @classmethod
     def create(cls, block_hash: str, prev_block_hash: str, transactions: List[TransactionData],
-               masternode_signature: MerkleSignature, merkle_roots: List[str], block_num: int=0):
+               masternode_signature: MerkleSignature, merkle_roots: List[str],
+               input_hashes: List[str] = [], block_num: int=0):
         struct = blockdata_capnp.BlockData.new_message()
         struct.init('transactions', len(transactions))
         struct.init('merkleRoots', len(merkle_roots))
         struct.blockHash = block_hash
         struct.blockNum = block_num
+        struct.inputHashes = input_hashes
         struct.merkleRoots = [mr.encode() for mr in merkle_roots]
         struct.prevBlockHash = prev_block_hash
         struct.masternodeSignature = masternode_signature.serialize()
@@ -75,15 +76,9 @@ class BlockData(MessageBase):
     def merkle_roots(self) -> List[str]:
         return [mr.decode() for mr in self._data.merkleRoots]
 
-    @lazy_func
-    def create_new_block_notif(self, block_num=0) -> NewBlockNotification:
-        return NewBlockNotification.create(
-            block_hash=self.block_hash,
-            merkle_roots=self.merkle_roots,
-            prev_block_hash=self.prev_block_hash,
-            masternode_signature=self.masternode_signature,
-            block_num=block_num or self.block_num
-        )
+    @lazy_property
+    def input_hashes(self) -> List[str]:
+        return [input_hash.decode() for input_hash in self._data.inputHashes]
 
 MN_SK = TESTNET_MASTERNODES[0]['sk']
 MN_VK = TESTNET_MASTERNODES[0]['vk']
@@ -92,20 +87,30 @@ DEL_VK = TESTNET_MASTERNODES[0]['vk']
 PREV_BLOCK_HASH = Hasher.hash('0' * 64)
 
 class BlockDataBuilder:
-    block_num = 0
+    block_num = 1
     @classmethod
     def create_block(cls, prev_block_hash=PREV_BLOCK_HASH, merkle_roots=None, transactions=None, tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK):
         if not transactions:
             merkle_roots = []
             transactions = []
+            input_hashes = []
             for i in range(sub_block_count):
                 transactions += [TransactionDataBuilder.create_random_tx() for i in range(tx_count)]
                 merkle_leaves = [Hasher.hash(tx) for tx in transactions]
                 merkle_roots.append(MerkleTree.from_hex_leaves(merkle_leaves).root_as_hex)
+                input_hashes = [Hasher.hash(leaf) for leaf in merkle_leaves]
         block_hash = Hasher.hash_iterable([*merkle_roots, prev_block_hash])
         block_num = cls.block_num
         signature = build_test_merkle_sig(msg=block_hash.encode(), sk=mn_sk, vk=mn_vk)
         block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, transactions=transactions,
-                                 masternode_signature=signature, merkle_roots=merkle_roots, block_num=block_num)
+                                 masternode_signature=signature, merkle_roots=merkle_roots, block_num=block_num,
+                                 input_hashes=input_hashes)
+
+        # block_dict = {'blk_num': cls.block_num,'block_hash': block_hash, 'prev_block_hash': prev_block_hash,
+        #               'masternode_signature': signature}
+        # block_dict['merkle_roots']=merkle_roots
+        # block_dict['transactions']=transactions
+        # block_dict['input_hashes']=input_hashes
+
         cls.block_num += 1
         return block

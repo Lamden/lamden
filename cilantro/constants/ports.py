@@ -2,7 +2,13 @@
 ROUTER_PORT = 9800
 PAIR_PORT = 9700
 DEFAULT_PUB_PORT = 9900
-
+# ---------------------------------------------------------------
+# Overlay Ports
+# ---------------------------------------------------------------
+DISCOVERY_PORT = 20001
+AUTH_PORT = 20002
+DHT_PORT = 20003
+NETWORK_PORT = 20004
 
 # ---------------------------------------------------------------
 # Masternode Ports
@@ -13,6 +19,7 @@ INTER_MASTER_PORT = 9904
 MN_TX_PUB_PORT = 9901
 MN_NEW_BLOCK_PUB_PORT = 9902
 MN_SUB_BLOCK_PORT = 9903
+MN_STORE_PORT = 27017
 
 
 # ---------------------------------------------------------------

@@ -18,6 +18,11 @@ CILANTRO_PATH = dirname(dirname(cilantro.__path__[0]))
 
 log = get_logger("MPTestCaseBoy")  # TODO delete dat
 
+def wrap_func(fn, *args, **kwargs):
+    def wrapper():
+        return fn(*args, **kwargs)
+    return wrapper
+
 def signal_handler(sig, frame):
     print("Killing docker containers...")
     os.system("docker kill $(docker ps -q)")
@@ -70,15 +75,21 @@ def vmnet_test(*args, **kwargs):
         run_webui = kwargs.get('run_webui', False)
         return _vmnet_test
 
+
 class MPTestCase(BaseNetworkTestCase):
     config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
     testers = []
-    curr_tester_index = 1
+    _curr_tester_index = 1
     vmnet_test_active = False
+    log_lvl = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("MPTestOrchestrater")
+
+    @classmethod
+    def setUpClass(cls):
+        MPTestCase.log_lvl = cls.log_lvl
 
     @classmethod
     def next_container(cls) -> tuple:
@@ -86,13 +97,13 @@ class MPTestCase(BaseNetworkTestCase):
         Retreives the next available docker image.
         :return: A 2 tuple containing the ip and name of container in the form: (name: str, ip: str)
         """
-        num = MPTestCase.curr_tester_index
+        num = MPTestCase._curr_tester_index
         name = "node_{}".format(num)
 
         assert num <= len(cls.nodemap), "Tester object number {} exceeds tester capacity of {}".format(num, len(cls.nodemap))
         assert name in cls.nodemap, "Node named {} not found in node map {}".format(name, cls.nodemap)
 
-        MPTestCase.curr_tester_index += 1
+        MPTestCase._curr_tester_index += 1
 
         return name, cls.nodemap[name]
 
@@ -109,7 +120,7 @@ class MPTestCase(BaseNetworkTestCase):
         super().tearDown()
 
         MPTestCase.testers.clear()
-        MPTestCase.curr_tester_index = 1
+        MPTestCase._curr_tester_index = 1
 
     def start(self, timeout=TEST_TIMEOUT):
         """
@@ -134,7 +145,7 @@ class MPTestCase(BaseNetworkTestCase):
 
         # If there are no active testers left and none of them failed, we win
         if len(actives) + len(fails) == 0:
-            self.log.test("\n\n{0}\n\n{2} SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}\n"
+            self.log.test("\n{0}\n\n{2} SUCCEEDED WITH {1} SECONDS LEFT\n\n{0}"
                           .format('$' * 120, round(timeout, 2), self.id()))
         else:
             fail_msg = "\n\nfail_msg:\n{0}\nASSERTIONS TIMED OUT FOR TESTERS: \n\n".format('-' * 120)
@@ -193,8 +204,3 @@ class MPTestCase(BaseNetworkTestCase):
 
         return actives, passives, fails, timeout
 
-
-# TODO find him a better home
-# if hasattr(MPTestCase, 'vmnet_test_active'):
-#     if BaseNetworkTestCase.vmnet_test_active:
-#         signal.signal(signal.SIGINT, signal_handler)

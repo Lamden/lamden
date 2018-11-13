@@ -1,5 +1,6 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.ordering import OrderingContainer
+from cilantro.messages.transaction.ordering import build_test_container
 from cilantro.utils import lazy_property
 
 from typing import List
@@ -40,3 +41,11 @@ class TransactionBatch(MessageBase):
     @property
     def is_empty(self):
         return len(self.transactions) == 0
+
+
+def build_test_transaction_batch(num_tx=4):
+    assert num_tx >= 0
+    ordering_containers = [build_test_container() for _ in range(num_tx)]
+    return TransactionBatch.create(ordering_containers)
+
+

@@ -1,9 +1,9 @@
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('2-2-4.json')
+
 from cilantro.logger.base import get_logger
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro.storage.db import VKBook
-from cilantro.storage.db import reset_db
-
-from cilantro.constants.system_config import DELEGATE_MAJORITY
 
 import unittest
 from unittest import TestCase
@@ -12,6 +12,7 @@ from unittest.mock import MagicMock
 
 from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MASTER_FILTER, DEFAULT_FILTER
 from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
+from cilantro.constants.system_config import *
 
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
@@ -25,51 +26,66 @@ from cilantro.messages.block_data.block_metadata import *
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.protocol import wallet
+from cilantro.storage.sqldb import SQLDB
+
+
+class BlockAggTester:
+    @staticmethod
+    def test(func):
+        @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
+        @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
+        @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
+        def _func(*args, **kwargs):
+            return func(*args, **kwargs)
+        return _func
+
 
 TEST_IP = '127.0.0.1'
 TEST_SK = TESTNET_MASTERNODES[0]['sk']
 TEST_VK = TESTNET_MASTERNODES[0]['vk']
 DEL_SK = TESTNET_DELEGATES[0]['sk']
 DEL_VK = TESTNET_DELEGATES[0]['vk']
-INPUT_HASH = '1111111111111111111111111111111111111111111111111111111111111111'
-INPUT_HASH_1 = '2222222222222222222222222222222222222222222222222222222222222222'
-RAWTXS = [
+INPUT_HASH1 = '1111111111111111111111111111111111111111111111111111111111111111'
+INPUT_HASH2 = '2222222222222222222222222222222222222222222222222222222222222222'
+RAWTXS1 = [
     b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
     b'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
     b'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
     b'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
     b'EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE'
 ]
-RAWTXS_1 = [
+RAWTXS2 = [
     b'1AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
     b'2BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
     b'3CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
     b'4DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
     b'5EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE'
 ]
-TXS = [TransactionData.create(
+TXS1 = [TransactionData.create(
     contract_tx=ContractTransactionBuilder.create_contract_tx(sender_sk=TEST_SK, code_str=raw_tx.decode()),
     status='SUCCESS', state='blah'
-    ) for raw_tx in RAWTXS]
-TXS_1 = [TransactionData.create(
+    ) for raw_tx in RAWTXS1]
+TXS2 = [TransactionData.create(
     contract_tx=ContractTransactionBuilder.create_contract_tx(sender_sk=TEST_SK, code_str=raw_tx.decode()),
     status='SUCCESS', state='blah'
-    ) for raw_tx in RAWTXS_1]
-MERKLE_LEAVES = [Hasher.hash(tx) for tx in TXS]
-MERKLE_LEAVES_1 = [Hasher.hash(tx) for tx in TXS_1]
+    ) for raw_tx in RAWTXS2]
 
-RESULT_HASH = MerkleTree.from_hex_leaves(MERKLE_LEAVES).root_as_hex
-RESULT_HASH_1 = MerkleTree.from_hex_leaves(MERKLE_LEAVES_1).root_as_hex
+TREE1 = MerkleTree.from_raw_transactions([t.serialize() for t in TXS1])
+TREE2 = MerkleTree.from_raw_transactions([t.serialize() for t in TXS2])
+
+MERKLE_LEAVES1 = TREE1.leaves
+MERKLE_LEAVES2 = TREE2.leaves
+
+RESULT_HASH1 = TREE1.root_as_hex
+RESULT_HASH2 = TREE2.root_as_hex
 
 log = get_logger('BlockAggregator')
 
 
 class TestBlockAggregator(TestCase):
 
-    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
-    def test_build_task_list_connect_and_bind(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
+    @BlockAggTester.test
+    def test_build_task_list_connect_and_bind(self, *args):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
 
         mock_manager = MagicMock()
@@ -94,10 +110,8 @@ class TestBlockAggregator(TestCase):
 
         mock_pub.bind.assert_called_with(ip=TEST_IP, port=MASTER_PUB_PORT)
 
-    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
-    def test_handle_sub_msg_with_sub_block_contender(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
+    @BlockAggTester.test
+    def test_handle_sub_msg_with_sub_block_contender(self, *args):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
 
         ba.manager = MagicMock()
@@ -112,10 +126,8 @@ class TestBlockAggregator(TestCase):
 
         ba.recv_sub_block_contender.assert_called_with(mock_env.message)
 
-    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
-    def test_handle_sub_msg_with_new_block_notif(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
+    @BlockAggTester.test
+    def test_handle_sub_msg_with_new_block_notif(self, *args):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
 
         ba.manager = MagicMock()
@@ -130,52 +142,30 @@ class TestBlockAggregator(TestCase):
 
         ba.recv_new_block_notif.assert_called_with(mock_env.message)
 
-    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
-    def test_recv_sub_block_contender(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
+    @BlockAggTester.test
+    def test_recv_sub_block_contender(self, *args):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
 
         ba.manager = MagicMock()
         ba.build_task_list()
 
-        signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-        sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
+        signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+        sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
 
         ba.recv_sub_block_contender(sbc)
-        self.assertTrue(sbc._data.signature in ba.result_hashes[RESULT_HASH]['signatures'])
-
-    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
-    def test_combine_result_hash_transactions_missing(self, mock_run_method, mock_bm_asyncio, mock_worker_asyncio):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
-
-        ba.manager = MagicMock()
-        ba.build_task_list()
-
-        for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
-            ba.recv_sub_block_contender(sbc)
-
-        self.assertEqual(len(ba.result_hashes[RESULT_HASH]['signatures']), DELEGATE_MAJORITY)
-        self.assertEqual(len(ba.contenders[INPUT_HASH]['transactions']), 5)
-        self.assertEqual(len(ba.full_block_hashes), 0)
+        self.assertTrue(sbc.signature.signature in ba.result_hashes[RESULT_HASH1]['_valid_signatures_'])
 
 
-# TODO fix these tests?
 class TestBlockAggregatorStorage(TestCase):
 
     def setUp(self):
-        reset_db()
+        SQLDB.reset_db()
+        SQLDB.force_start()
 
-    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SUB_BLOCKS", 1)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SUB_BLOCKS", 1)
-    def test_combine_result_hash(self, *args):
+    @BlockAggTester.test
+    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
+    def test_combine_result_hash_with_one_sb(self, *args):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
 
         ba.manager = MagicMock()
@@ -185,24 +175,89 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.contenders.keys()),
+            merkle_roots=[RESULT_HASH1],
             prev_block_hash=old_b_hash,
-            masternode_signature=signature
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1]
         )
         ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
 
-    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SUB_BLOCKS", 1)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SUB_BLOCKS", 1)
+    @BlockAggTester.test
+    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
+    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
+    def test_combine_result_hash_with_multiple_sb(self, *args):
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+
+        ba.manager = MagicMock()
+        ba.build_task_list()
+        ba.pub = MagicMock()
+        old_b_hash = ba.curr_block_hash
+
+        # Sub block 0
+        for i in range(DELEGATE_MAJORITY):
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
+            ba.recv_sub_block_contender(sbc)
+
+        # Sub block 1
+        for i in range(DELEGATE_MAJORITY):
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
+            sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 0)
+            ba.recv_sub_block_contender(sbc)
+
+        signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
+        new_block_notif = NewBlockNotification.create(
+            block_hash=ba.curr_block_hash,
+            merkle_roots=[RESULT_HASH1, RESULT_HASH2],
+            prev_block_hash=old_b_hash,
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1, INPUT_HASH2]
+        )
+        ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
+
+    @BlockAggTester.test
+    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
+    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
+    def test_combine_result_hash_with_multiple_sb_with_extras(self, *args):
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+
+        ba.manager = MagicMock()
+        ba.build_task_list()
+        ba.pub = MagicMock()
+        old_b_hash = ba.curr_block_hash
+
+        # Sub block 0
+        for i in range(NUM_DELEGATES):
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
+            ba.recv_sub_block_contender(sbc)
+
+        # Sub block 1
+        for i in range(NUM_DELEGATES):
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
+            sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 1)
+            ba.recv_sub_block_contender(sbc)
+
+        signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
+        new_block_notif = NewBlockNotification.create(
+            block_hash=ba.curr_block_hash,
+            merkle_roots=[RESULT_HASH1, RESULT_HASH2],
+            prev_block_hash=old_b_hash,
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1, INPUT_HASH2]
+        )
+        ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
+
+    @BlockAggTester.test
+    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
     def test_recv_ignore_extra_sub_block_contenders(self, *args):
 
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
@@ -210,26 +265,24 @@ class TestBlockAggregatorStorage(TestCase):
         ba.build_task_list()
         bh = ba.curr_block_hash
         for i in range(DELEGATE_MAJORITY + 5):
-            signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i%DELEGATE_MAJORITY]['sk'], vk=TESTNET_DELEGATES[i%DELEGATE_MAJORITY]['vk'])
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
-        tree = MerkleTree.from_hex_leaves(MERKLE_LEAVES)
         signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
         new_block_notif = NewBlockNotification.create(
             block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.contenders.keys()),
+            merkle_roots=[RESULT_HASH1],
             prev_block_hash=bh,
-            masternode_signature=signature
+            masternode_signature=signature,
+            input_hashes=[INPUT_HASH1]
         )
         ba.pub.send_msg.assert_called_with(msg=new_block_notif, header=DEFAULT_FILTER.encode())
 
-    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.MASTERNODE_MAJORITY", 3)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SUB_BLOCKS", 2)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SUB_BLOCKS", 2)
+    @BlockAggTester.test
+    @mock.patch("cilantro.nodes.masternode.block_aggregator.MASTERNODE_MAJORITY", 2)
+    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
+    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
     def test_recv_result_hash_multiple_subblocks_consensus(self, *args):
 
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
@@ -239,38 +292,37 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
         # Sub block 1
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=RESULT_HASH_1.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH_1, INPUT_HASH_1, MERKLE_LEAVES_1, signature, TXS_1, 1)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
+            sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 1)
             ba.recv_sub_block_contender(sbc)
 
-        self.assertEqual(ba.total_valid_sub_blocks, 2)
+        self.assertEqual(len(ba.full_blocks), 1)
 
-        tree = MerkleTree.from_hex_leaves(MERKLE_LEAVES+MERKLE_LEAVES_1)
-        signature = MerkleSignature.create(sig_hex=wallet.sign(TEST_SK, ba.curr_block_hash.encode()), timestamp=str(time.time()), sender=ba.verifying_key)
-        new_block_notif = NewBlockNotification.create(
-            block_hash=ba.curr_block_hash,
-            merkle_roots=sorted(ba.contenders.keys()),
-            prev_block_hash=bh,
-            masternode_signature=signature
-        )
-        for i in range(3):
+        for i in range(2):
+            signature = MerkleSignature.create(
+                sig_hex=wallet.sign(TESTNET_MASTERNODES[i]['sk'], ba.curr_block_hash.encode()),
+                sender=TESTNET_MASTERNODES[i]['vk'])
+            new_block_notif = NewBlockNotification.create(
+                block_hash=ba.curr_block_hash,
+                merkle_roots=[RESULT_HASH1, RESULT_HASH2],
+                prev_block_hash=bh,
+                masternode_signature=signature,
+                input_hashes=[INPUT_HASH1, INPUT_HASH2]
+            )
             ba.recv_new_block_notif(new_block_notif)
 
-        self.assertEqual(ba.full_block_hashes[ba.curr_block_hash]['consensus_count'], 3)
-        self.assertEqual(ba.full_block_hashes[ba.curr_block_hash]['full_block_metadata'], new_block_notif)
-        self.assertEqual(ba.total_valid_sub_blocks, 0)
+        self.assertEqual(len(ba.full_blocks[ba.curr_block_hash]['_master_signatures_']), 2)
+        self.assertEqual(ba.full_blocks[ba.curr_block_hash]['_block_metadata_'], new_block_notif)
 
-    @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-    @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SUB_BLOCKS", 2)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SUB_BLOCKS", 2)
+    @BlockAggTester.test
+    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
+    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
     def test_recv_result_hash_multiple_subblocks(self, *args):
 
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
@@ -280,17 +332,33 @@ class TestBlockAggregatorStorage(TestCase):
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=RESULT_HASH.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH, INPUT_HASH, MERKLE_LEAVES, signature, TXS, 0)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0)
             ba.recv_sub_block_contender(sbc)
 
         # Sub block 1
         for i in range(DELEGATE_MAJORITY):
-            signature = build_test_merkle_sig(msg=RESULT_HASH_1.encode(),sk=DEL_SK, vk=DEL_VK)
-            sbc = SubBlockContender.create(RESULT_HASH_1, INPUT_HASH_1, MERKLE_LEAVES_1, signature, TXS_1, 1)
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
+            sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 1)
             ba.recv_sub_block_contender(sbc)
 
-        self.assertEqual(ba.total_valid_sub_blocks, 2)
+        self.assertEqual(len(ba.sub_blocks), 2)
+
+    @BlockAggTester.test
+    def test_combine_result_hash_transactions_missing(self, *args):
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+
+        ba.manager = MagicMock()
+        ba.build_task_list()
+
+        for i in range(DELEGATE_MAJORITY):
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
+            sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1[:3], 0)
+            ba.recv_sub_block_contender(sbc)
+
+        self.assertEqual(len(ba.result_hashes[RESULT_HASH1]['_valid_signatures_']), DELEGATE_MAJORITY)
+        self.assertEqual(len(ba.result_hashes[RESULT_HASH1]['_transactions_']), 3)
+        self.assertEqual(len(ba.full_blocks), 0)
 
 
 if __name__ == '__main__':

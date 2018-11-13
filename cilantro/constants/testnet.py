@@ -1,5 +1,7 @@
 import json, math
-from cilantro.utils.test.testnet_nodes import get_testnet_json_path
+from cilantro.utils.test.testnet_config import get_testnet_json_path
+
+
 TESTNET_JSON_PATH = get_testnet_json_path()
 
 # DEBUG -- TODO DELETE

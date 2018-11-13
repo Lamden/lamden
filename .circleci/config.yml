@@ -10,14 +10,21 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration-0
       - run: pyenv local 3.6.5
+      - run:
+          name: Install Redis
+          command: |
+            wget http://download.redis.io/releases/redis-4.0.6.tar.gz
+            tar xzf redis-4.0.6.tar.gz
+            cd redis-4.0.6 && make
       - run:
           name: Install MySQL Client
           command: |
             sudo rm /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock 2>/dev/null
             sudo dpkg --configure -a
             sudo apt install -y libmysqlclient-dev mysql-client
+
       - run:
           name: Install Cilantro Requirements
           command: |
@@ -45,14 +52,16 @@ jobs:
              ./scripts/make_test_config.py --password buttcoins --username cilantro_user --database cilantro_dev --hostname 127.0.0.1
 
       - save_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration-0
           paths:
             - "/usr/local/bin"
             - "/opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages"
+            - "redis-4.0.6"
 
       - run:
           name: Run Tests
           command: |
+            ./redis-4.0.6/src/redis-server --daemonize yes
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
             python3.6 ~/cilantro/tests/run_tests.py --integration 1 --unit 0
@@ -61,6 +70,8 @@ jobs:
     working_directory: ~/cilantro
     docker:
       - image: circleci/python:3.6.5
+      - image: redis:4.0.6
+      - image: lamden/cilantro-mn
       - image: lamden/cilantro-db
         environment:
           username: cilantro_user
@@ -82,6 +93,7 @@ jobs:
           name: Install Mysql Client
           command: |
              sudo apt install -y mysql-client
+
       - run:
           name: set temp credentials file (aka db config stuff)
           command: |
@@ -110,5 +122,5 @@ workflows:
   version: 2
   build_and_test_cilantro:
     jobs:
-      - integration_tests
       - unit_tests
+      # - integration_tests

@@ -1,6 +1,8 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.constants.protocol import MAX_UUID
 import capnp
+
+import sys
 import envelope_capnp
 
 import random
@@ -58,5 +60,3 @@ class MessageMeta(MessageBase):
     @property
     def timestamp(self) -> float:
         return float(self._data.timestamp)
-
-
