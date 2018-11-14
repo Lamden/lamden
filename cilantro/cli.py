@@ -51,10 +51,10 @@ def main():
 # cilantro.conf
 
 @main.command('config', short_help='Adjust the default directory and network configuration.')
-@click.option('-i', '--info', is_flag=True)
-@click.option('-d', '--directory', 'directory')
-@click.option('-n', '--network', 'network')
-@click.option('-k', '--keyfile', 'keyfile')
+@click.option('-i', '--info', is_flag=True, help='Outputs the current values of the defaults.')
+@click.option('-d', '--directory', 'directory', help='Sets a new directory as the default.')
+@click.option('-n', '--network', 'network', help='Sets a new network as the default.')
+@click.option('-k', '--keyfile', 'keyfile', help='Sets a new keyfile as the default.')
 def config(info, directory, network, keyfile):
     # make sure that the configuration_path path is available
     if info:
@@ -83,9 +83,9 @@ def get_password():
 
 
 @main.command('key', short_help='Generate a new key.')
-@click.option('-o', '--output', 'output')
-@click.option('-r', '--raw', is_flag=True)
-@click.option('-s', '--seed', 'seed')
+@click.option('-o', '--output', 'output', help='Filename where the key will be saved.')
+@click.option('-r', '--raw', is_flag=True, help='Flag to bypass encryption and produce a raw key.')
+@click.option('-s', '--seed', 'seed', help='Passes a deterministic payload to the key generator.')
 def key(output, raw, seed):
 
     if seed:
