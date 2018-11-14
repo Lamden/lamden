@@ -12,6 +12,8 @@ import traceback, multiprocessing, os, asyncio
 from multiprocessing import Queue
 from os import getenv as env
 
+from cilantro.storage.driver import StorageDriver
+
 app = Sanic(__name__)
 log = get_logger(__name__)
 
@@ -31,7 +33,8 @@ async def contract_tx(request):
 
 @app.route("/block", methods=["GET",])
 async def get_block(request):
-    return text('blocks go here')
+    latest_block_hash = StorageDriver.get_latest_block_hash()
+    return text('{}'.format(latest_block_hash))
 
 
 @app.route("/teardown-network", methods=["POST",])
