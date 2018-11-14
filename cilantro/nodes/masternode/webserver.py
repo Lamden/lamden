@@ -15,6 +15,7 @@ from os import getenv as env
 app = Sanic(__name__)
 log = get_logger(__name__)
 
+
 @app.route("/", methods=["POST",])
 async def contract_tx(request):
     if app.queue.full():
@@ -27,15 +28,23 @@ async def contract_tx(request):
     # log.important("proc id {} just put a tx in queue! queue = {}".format(os.getpid(), app.queue))
     return text('ok')
 
+
+@app.route("/block", methods=["GET",])
+async def get_block(request):
+    return text('blocks go here')
+
+
 @app.route("/teardown-network", methods=["POST",])
 async def teardown_network(request):
     tx = KillSignal.create()
     return text('tearing down network')
 
+
 def start_webserver(q):
     app.queue = q
     log.debug("Creating REST server on port {}".format(WEB_SERVER_PORT))
     app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=2, debug=False, access_log=False)
+
 
 if __name__ == '__main__':
     import pyximport; pyximport.install()
