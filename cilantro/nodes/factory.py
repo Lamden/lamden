@@ -4,7 +4,7 @@ from cilantro.nodes.witness.witness import Witness
 from cilantro.storage.contracts import seed_contracts
 from cilantro.storage.sqldb import SQLDB
 from seneca.engine.interface import SenecaInterface
-
+from cilantro.constants.testnet import *
 
 def _build_block_schema(should_reset):
     SQLDB.setup_db()
@@ -34,3 +34,11 @@ class NodeFactory:
     def run_delegate(signing_key, ip, name='Delegate', reset_db=False):
         if reset_db: NodeFactory._reset_db()
         d = Delegate(ip=ip, name=name, signing_key=signing_key)
+
+
+# STEPS TO RUN
+
+def quick_mn():
+    mn_sk = TESTNET_MASTERNODES[0]['sk']
+    ip = '127.0.0.1'
+    NodeFactory.run_masternode(signing_key=mn_sk, ip=ip)
