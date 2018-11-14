@@ -5,6 +5,7 @@ from cilantro.storage.contracts import seed_contracts
 from cilantro.storage.sqldb import SQLDB
 from seneca.engine.interface import SenecaInterface
 
+
 def _build_block_schema(should_reset):
     SQLDB.setup_db()
     if should_reset:
