@@ -4,13 +4,20 @@ from cilantro.protocol import wallet
 import json
 from simplecrypt import encrypt, decrypt
 import getpass
+import hashlib
 
 configuration_path = '/usr/local/share/lamden'
 configuration_filename = 'cilantro.conf'
 
 default_directory = '~/cilantro'
 default_crawl = '127.0.0.1'
+default_keyfile = 'NULL'
 
+defaults = {
+    'directory': default_directory,
+    'crawl': default_crawl,
+    'keyfile': default_keyfile
+}
 
 def create_default_configuration_file(d=default_directory, n=default_crawl):
 
@@ -47,7 +54,8 @@ def main():
 @click.option('-i', '--info', is_flag=True)
 @click.option('-d', '--directory', 'directory')
 @click.option('-n', '--network', 'network')
-def config(info, directory, network):
+@click.option('-k', '--keyfile', 'keyfile')
+def config(info, directory, network, keyfile):
     # make sure that the configuration_path path is available
     if info:
         d, n = get_configuration(configuration_path + '/' + configuration_filename)
@@ -59,6 +67,19 @@ def config(info, directory, network):
     elif network:
         create_default_configuration_file(n=network)
         print('Network Crawl changed to: {}'.format(network))
+    elif keyfile:
+        print('TBD')
+
+
+def get_password():
+    confirm = None
+    password = None
+    while password != confirm or password is None:
+        password = getpass.getpass('Password:')
+        confirm = getpass.getpass('Confirm:')
+        if password != confirm:
+            print('Passwords do not match.')
+    return password
 
 
 @main.command('key', short_help='Generate a new key.')
@@ -67,17 +88,16 @@ def config(info, directory, network):
 @click.option('-s', '--seed', 'seed')
 def key(output, raw, seed):
 
+    if seed:
+        sha = hashlib.sha3_256()
+        sha.update(seed.encode())
+        seed = sha.digest()
+
     s, v = wallet.new() if not seed else wallet.new(seed=seed)
     w = {'s': s, 'v': v}
 
     if not raw:
-        confirm = None
-        password = None
-        while password != confirm or password is None:
-            password = getpass.getpass('Password:')
-            confirm = getpass.getpass('Confirm:')
-            if password != confirm:
-                print('Passwords do not match.')
+        password = get_password()
         if password != '':
             click.echo(click.style('Encrypting...', fg='blue'))
             w['s'] = encrypt(password, w['s']).hex()
@@ -91,6 +111,29 @@ def key(output, raw, seed):
             click.echo(click.style('New key written to {}'.format(output), fg='green'))
     else:
         print(w)
+
+
+@main.command('sign', short_help='Sign some data.')
+@click.option('-k', '--keyfile', 'keyfile')
+@click.option('-d', '--data', 'data')
+def sign(keyfile, data):
+    if not keyfile:
+        print('get default keyfile from conf')
+    elif os.path.isfile(keyfile):
+        key = json.load(open(keyfile))
+        if len(key['s']) > 64:
+            password = get_password()
+            s = bytes.fromhex(key['s'])
+            click.echo(click.style('Decrypting...', fg='blue'))
+            try:
+                decoded_s = decrypt(password, s)
+                key['s'] = decoded_s.decode()
+            except Exception as e:
+                click.echo(click.style('{}'.format(e), fg='red'))
+
+    else:
+        print('keyfile does not exist')
+
 
 if __name__ == '__main__':
     print('yo2')
