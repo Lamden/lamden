@@ -151,9 +151,13 @@ def publish(data):
 
 
 @main.command('ping', short_help='Pings mock Masternode.')
-def ping():
-    r = requests.get('http://104.248.210.79/block')
-    print(r.text)
+@click.option('-i', '--ip', 'ip')
+def ping(ip):
+    if not ip:
+        print('Provide an IP with -i / --ip')
+    else:
+        r = requests.get('http://{}:8080/block'.format(ip))
+        print(r.text)
 
 if __name__ == '__main__':
     print('yo2')
