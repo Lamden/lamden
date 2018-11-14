@@ -2,7 +2,7 @@ import click
 import os
 from cilantro.protocol import wallet
 import json
-import xxtea
+from simplecrypt import encrypt, decrypt
 
 configuration_path = '/usr/local/share/lamden'
 configuration_filename = 'cilantro.conf'
@@ -62,32 +62,68 @@ def config(info, directory, network):
 
 @main.command('key', short_help='Generate a new key.')
 @click.option('-o', '--output', 'output')
-@click.option('-a', '--absolute', is_flag=True)
-def key(output, absolute):
-    if not output:
-        print('--output file name must be provided.')
+@click.password_option()
+@click.option('-s', '--seed', 'seed')
+def key(output, password, seed):
+
+    s, v = wallet.new() if not seed else wallet.new(seed=seed)
+    w = {'s': s, 'v': v}
+
+    if password:
+        click.echo(click.style('Encrypting...', fg='blue'))
+        w['s'] = encrypt(password, w['s']).hex()
+
+    if output:
+        if os.path.isfile(output):
+            click.echo(click.style('Key at {} already exists.'.format(output), fg='red'))
+        else:
+            with open(output, 'w') as f:
+                json.dump(w, f)
+            click.echo(click.style('New key written to {}'.format(output), fg='green'))
+
+
+@main.command('unsafe-key', short_help='Generate a new key without encryption.')
+@click.option('-o', '--output', 'output')
+@click.option('-s', '--seed', 'seed')
+def unsafe_key(output, seed):
+    s, v = wallet.new() if not seed else wallet.new(seed=seed)
+    w = {'s': s, 'v': v}
+
+    if output:
+        if os.path.isfile(output):
+            click.echo(click.style('Key at {} already exists.'.format(output), fg='red'))
+        else:
+            with open(output, 'w') as f:
+                json.dump(w, f)
+            click.echo(click.style('New key written to {}'.format(output), fg='green'))
     else:
-        if not absolute:
-            d, _ = get_configuration(configuration_path + '/' + configuration_filename)
-            d = os.path.expanduser(d)
+        print(w)
 
-            o = d + '/' + output
-        else:
-            o = output
-
-        if os.path.isfile(o):
-            print('Key at {} already exists.'.format(o))
-
-        else:
-            s, v = wallet.new()
-            f = {'s': s, 'v': v}
-
-            try:
-                with open(o, 'w') as fp:
-                    json.dump(f, fp)
-                print('New key written to {}'.format(o))
-            except Exception as e:
-                print(e)
+    # if not output:
+    #     s, v = wallet.new()
+    #     f = {'s': s, 'v': v}
+    #     print(f)
+    # else:
+    #     if not absolute:
+    #         d, _ = get_configuration(configuration_path + '/' + configuration_filename)
+    #         d = os.path.expanduser(d)
+    #
+    #         o = d + '/' + output
+    #     else:
+    #         o = output
+    #
+    #     if os.path.isfile(o):
+    #         click.echo(click.style('Key at {} already exists.'.format(o), fg='red'))
+    #     else:
+    #         s, v = wallet.new()
+    #         f = {'s': s, 'v': v}
+    #
+    #         try:
+    #             with open(o, 'w') as fp:
+    #                 json.dump(f, fp)
+    #             click.echo(click.style('New key written to {}'.format(o), fg='green'))
+    #         except Exception as e:
+    #             print(e)
 
 
 if __name__ == '__main__':

@@ -29,7 +29,7 @@ setup(
         'yarl==1.1.0',
         'seneca',
         'click',
-        'xxtea'
+        'simple-crypt'
     ],
     dependency_links=[
         "git://github.com/Lamden/seneca.git@dev#egg=seneca"
