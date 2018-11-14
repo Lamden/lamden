@@ -5,7 +5,7 @@ from cilantro.storage.contracts import seed_contracts
 from cilantro.storage.sqldb import SQLDB
 from seneca.engine.interface import SenecaInterface
 from cilantro.constants.testnet import *
-
+from cilantro.constants.overlay_network import HOST_IP
 def _build_block_schema(should_reset):
     SQLDB.setup_db()
     if should_reset:
@@ -40,5 +40,4 @@ class NodeFactory:
 
 def quick_mn():
     mn_sk = TESTNET_MASTERNODES[0]['sk']
-    ip = '127.0.0.1'
-    NodeFactory.run_masternode(signing_key=mn_sk, ip=ip)
+    NodeFactory.run_masternode(signing_key=mn_sk, ip=HOST_IP)
