@@ -152,7 +152,7 @@ def publish(data):
 
 @main.command('ping', short_help='Pings mock Masternode.')
 def ping():
-    r = requests.get('http://104.248.210.79/blocks')
+    r = requests.get('http://104.248.210.79/block')
     print(r.text)
 
 if __name__ == '__main__':
