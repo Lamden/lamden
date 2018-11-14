@@ -150,14 +150,17 @@ def publish(data):
     print('TBD')
 
 
-@main.command('ping', short_help='Pings mock Masternode.')
+@main.command('latest_block', short_help='Pings mock Masternode.')
 @click.option('-i', '--ip', 'ip')
 def ping(ip):
     if not ip:
         print('Provide an IP with -i / --ip')
     else:
-        r = requests.get('http://{}:8080/block'.format(ip))
+        r = requests.get('http://{}:8080/latest_block'.format(ip))
         print(r.text)
+
+
+
 
 if __name__ == '__main__':
     print('yo2')

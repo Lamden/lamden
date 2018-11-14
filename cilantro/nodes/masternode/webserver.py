@@ -34,7 +34,7 @@ async def contract_tx(request):
 @app.route("/latest_block", methods=["GET",])
 async def get_block(request):
     latest_block_hash = StorageDriver.get_latest_block_hash()
-    return text('{"latest_block" : {}}'.format(latest_block_hash))
+    return text('{}'.format(latest_block_hash))
 
 
 @app.route("/teardown-network", methods=["POST",])
