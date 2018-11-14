@@ -160,7 +160,41 @@ def ping(ip):
         print(r.text)
 
 
+############################################################
+# GET COMMANDS SUBGROUP
+############################################################
 
+@click.group('get')
+def get():
+    print('testing nesting')
+
+
+@get.command('block')
+@click.argument('num')
+@click.option('-i', '--ip', 'ip')
+def get_block(ip, num):
+    print(num)
+
+
+@get.command('balance')
+@click.argument('address')
+def get_balance(address):
+    print(address)
+
+
+@get.command('contract')
+@click.argument('address')
+@click.option('-m', '--methods', 'methods', is_flag=True, help='Parse and return just the methods this contract offers.')
+@click.option('-d', '--datatypes', 'datatypes', is_flag=True, help='Parse and return data types this contract accesses.')
+def get_balance(address, methods, datatypes):
+    if methods:
+        print('methods')
+    elif datatypes:
+        print('datatypes')
+    print(address)
+
+
+main.add_command(get)
 
 if __name__ == '__main__':
     print('yo2')
