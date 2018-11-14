@@ -99,7 +99,7 @@ def key(output, raw, seed):
     if not raw:
         password = get_password()
         if password != '':
-            click.echo(click.style('Encrypting...', fg='blue'))
+            click.echo(click.style('Encrypting to 100,000 iterations...', fg='blue'))
             w['s'] = encrypt(password, w['s']).hex()
 
     if output:
@@ -124,7 +124,7 @@ def sign(keyfile, data):
         if len(key['s']) > 64:
             password = get_password()
             s = bytes.fromhex(key['s'])
-            click.echo(click.style('Decrypting...', fg='blue'))
+            click.echo(click.style('Decrypting from 100,000 iterations...', fg='blue'))
             try:
                 decoded_s = decrypt(password, s)
                 key['s'] = decoded_s.decode()
@@ -135,6 +135,19 @@ def sign(keyfile, data):
 
     else:
         click.echo(click.style('Keyfile does not exist or data was not provided.', fg='red'))
+
+
+@main.command('estimate', short_help='Get the Compute Units (CUs) required to publish a smart contract or transaction.')
+@click.option('-d', '--data', 'data')
+def estimate(data):
+    print('will interface with falcons code')
+
+
+@main.command('publish', short_help='Publishes a signed smart contract or transaction to the network.')
+@click.option('-d', '--data', 'data')
+def publish(data):
+    print('TBD')
+
 
 
 if __name__ == '__main__':
