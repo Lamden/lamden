@@ -119,7 +119,7 @@ def key(output, raw, seed):
 def sign(keyfile, data):
     if not keyfile:
         print('get default keyfile from conf')
-    elif os.path.isfile(keyfile):
+    elif os.path.isfile(keyfile) and data:
         key = json.load(open(keyfile))
         if len(key['s']) > 64:
             password = get_password()
@@ -131,8 +131,10 @@ def sign(keyfile, data):
             except Exception as e:
                 click.echo(click.style('{}'.format(e), fg='red'))
 
+        print(wallet.sign(key['s'], data.encode()))
+
     else:
-        print('keyfile does not exist')
+        click.echo(click.style('Keyfile does not exist or data was not provided.', fg='red'))
 
 
 if __name__ == '__main__':
