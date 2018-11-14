@@ -5,6 +5,7 @@ import json
 from simplecrypt import encrypt, decrypt
 import getpass
 import hashlib
+import requests
 
 configuration_path = '/usr/local/share/lamden'
 configuration_filename = 'cilantro.conf'
@@ -149,6 +150,10 @@ def publish(data):
     print('TBD')
 
 
+@main.command('ping', short_help='Pings mock Masternode.')
+def ping():
+    r = requests.get('http://104.248.210.79/blocks')
+    print(r.text)
 
 if __name__ == '__main__':
     print('yo2')
