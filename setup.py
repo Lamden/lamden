@@ -27,7 +27,6 @@ setup(
         'uvloop==0.9.1',
         'u-msgpack-python==2.5.0',
         'yarl==1.1.0',
-        'seneca',
         'click',
         'simple-crypt'
     ],
