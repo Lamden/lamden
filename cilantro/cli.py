@@ -41,12 +41,13 @@ def signing_key_for_keyfile(filename):
     _key = json.load(open(filename))
     if len(_key['s']) > 64:
         password = get_password()
-        s = bytes.fromhex(key['s'])
+        s = bytes.fromhex(_key['s'])
         print('Decrypting from 100,000 iterations...')
 
         decoded_s = decrypt(password, s)
         _key['s'] = decoded_s.decode()
-        return _key['s']
+    return _key['s']
+
 
 
 @click.group()
@@ -102,6 +103,8 @@ def get_password():
 @click.option('-r', '--raw', is_flag=True, help='Flag to bypass encryption and produce a raw key.')
 @click.option('-s', '--seed', 'seed', help='Passes a deterministic payload to the key generator.')
 def key(output, raw, seed):
+
+    output = os.path.realpath(output)
 
     if seed:
         sha = hashlib.sha3_256()
@@ -223,15 +226,15 @@ def _set():
 @_set.command('key')
 @click.argument('keyfile')
 def set_key(keyfile):
-
     try:
-        s = signing_key_for_keyfile(keyfile)
+        s = signing_key_for_keyfile(os.path.realpath(keyfile))
         os.environ['SESSION_KEY'] = s
         click.echo(click.style('Session key successfully set! Ending this session will remove your key from memory '
                                'for security. You can now sign and publish transactions without specifying a key.',
                                fg='green'))
     except Exception as e:
         click.echo(click.style('{}'.format(e), fg='red'))
+
 
 main.add_command(get)
 main.add_command(_set)
