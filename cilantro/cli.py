@@ -6,6 +6,8 @@ from simplecrypt import encrypt, decrypt
 import getpass
 import hashlib
 import requests
+from seneca.engine.client import SenecaClient
+from cilantro.messages.transaction.contract import ContractTransactionBuilder
 
 configuration_path = '/usr/local/share/lamden/cilantro'
 directory_file = 'dir.conf'
@@ -50,7 +52,6 @@ def signing_key_for_keyfile(filename):
         decoded_s = decrypt(password, s)
         _key['s'] = decoded_s.decode()
     return _key['s']
-
 
 
 @click.group()
@@ -259,6 +260,39 @@ def sign(keyfile, data):
 
     else:
         click.echo(click.style('Keyfile does not exist or data was not provided.', fg='red'))
+
+
+############################################################
+# MOCK COMMANDS SUBGROUP
+# USED FOR TESTING PURPOSES ONLY
+############################################################
+@click.group('mock')
+def mock():
+    pass
+
+
+@mock.command('contract')
+@click.argument('code')
+@click.argument('name')
+@click.argument('stamp_amount')
+@click.argument('keyfile')
+def mock_contract(code, name, stamp_amount, keyfile):
+    # sender_sk: str, code_str: str, contract_name: str='sample', gas_supplied: int=1.0
+    _code = open(code).read()
+
+    if not keyfile:
+        _key = os.environ['SESSION_KEY']
+    else:
+        _key = signing_key_for_keyfile(keyfile)
+
+    contract = ContractTransactionBuilder.create_contract_tx(sender_sk=_key,
+                                                             code_str=_code,
+                                                             contract_name=name,
+                                                             gas_supplied=stamp_amount)
+
+    s = SenecaClient()
+    # make a contract transaction struct
+    s.submit_contract(contract)
 
 
 main.add_command(get)
