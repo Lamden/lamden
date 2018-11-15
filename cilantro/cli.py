@@ -169,13 +169,17 @@ def get_block(ip, _hash, num):
 @get.command('transaction', help='Gets a transaction given a certain hash.')
 @click.argument('tx_hash')
 def get_transaction(tx_hash):
-    pass
+    j = {'hash': tx_hash}
+    r = requests.get('http://{}:8080/transaction'.format('127.0.0.1'), json=j)
+    print(r.text)
 
 
 @get.command('transactions', help='Gets all transactions given a block hash.')
 @click.argument('block_hash')
 def get_transactions(block_hash):
-    pass
+    j = {'hash': block_hash}
+    r = requests.get('http://{}:8080/transactions'.format('127.0.0.1'), json=j)
+    print(r.text)
 
 
 @get.command('balance')
