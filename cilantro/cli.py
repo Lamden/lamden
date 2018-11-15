@@ -64,27 +64,6 @@ def hi():
     click.echo(click.style(_cil_text, fg='green'))
 
 
-# publish <data> <key> --cleanup
-@main.command('publish', short_help='Publishes a signed smart contract or transaction to the network.')
-@click.argument('data')
-@click.argument('keyfile')
-@click.option('-c', '--cleanup', 'cleanup', is_flag=True)
-def publish(data, keyfile, cleanup):
-    if not data or not os.path.isfile(data):
-        click.echo(click.style('Invalid data argument provided.', fg='red'))
-        return
-
-    if not keyfile:
-        if 'SESSION_KEY' in os.environ:
-            signing_key = os.environ['SESSION_KEY']
-        else:
-            click.echo(click.style('No keyfile provided and no session key loaded.', fg='red'))
-            return
-    else:
-        signing_key = signing_key_for_keyfile(keyfile)
-
-    data = os.path.realpath(data)
-
 ############################################################
 # GET COMMANDS SUBGROUP
 ############################################################
@@ -262,6 +241,29 @@ def sign(keyfile, data):
     else:
         click.echo(click.style('Keyfile does not exist or data was not provided.', fg='red'))
 
+@_new.command('contract')
+@click.argument('code')
+@click.argument('name')
+@click.argument('stamp_amount')
+@click.argument('keyfile')
+def new_contract(code, name, stamp_amount, keyfile):
+    # sender_sk: str, code_str: str, contract_name: str='sample', gas_supplied: int=1.0
+    code = os.path.realpath(code)
+    _code = open(code).read()
+
+    if not keyfile:
+        _key = os.environ['SESSION_KEY']
+    else:
+        _key = signing_key_for_keyfile(keyfile)
+
+    contract = ContractTransactionBuilder.create_contract_tx(sender_sk=_key,
+                                                             code_str=_code,
+                                                             contract_name=name,
+                                                             gas_supplied=int(stamp_amount))
+
+    from cilantro.messages.transaction.container import TransactionContainer
+    r = requests.post('http://{}:8080/'.format('127.0.0.1'), data=TransactionContainer.create(contract).serialize())
+    print(r.text)
 
 ############################################################
 # MOCK COMMANDS SUBGROUP

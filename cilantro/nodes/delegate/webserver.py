@@ -26,7 +26,7 @@ response = raw data of the python code
 @app.route('/contract', methods=['GET'])
 async def contract(request):
     SenecaInterpreter.setup()
-    c = SenecaInterpreter.get_code_str(request.json['contract'])
+    c = SenecaInterpreter.get_contract_meta(request.json['contract'])
     return text('{}'.format(c))
 
 

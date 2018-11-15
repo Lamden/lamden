@@ -28,7 +28,7 @@ async def contract_tx(request):
     try: app.queue.put_nowait(tx)
     except: return text("Queue full! Cannot process any more requests")
     # log.important("proc id {} just put a tx in queue! queue = {}".format(os.getpid(), app.queue))
-    return text('ok')
+    return json({'message': 'Transaction successfully submitted to the network.'})
 
 
 @app.route("/latest_block", methods=["GET",])
