@@ -80,16 +80,24 @@ class BlockData(MessageBase):
     def input_hashes(self) -> List[str]:
         return [input_hash.decode() for input_hash in self._data.inputHashes]
 
-MN_SK = TESTNET_MASTERNODES[0]['sk']
-MN_VK = TESTNET_MASTERNODES[0]['vk']
-DEL_SK = TESTNET_DELEGATES[0]['sk']
-DEL_VK = TESTNET_MASTERNODES[0]['vk']
-PREV_BLOCK_HASH = Hasher.hash('0' * 64)
+
+
 
 class BlockDataBuilder:
     block_num = 1
     @classmethod
-    def create_block(cls, prev_block_hash=PREV_BLOCK_HASH, merkle_roots=None, transactions=None, tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK):
+    def create_block(cls, prev_block_hash=None, merkle_roots=None, transactions=None, tx_count=5, sub_block_count=2, mn_sk=None, mn_vk=None, del_sk=None):
+        MN_SK = TESTNET_MASTERNODES[0]['sk']
+        MN_VK = TESTNET_MASTERNODES[0]['vk']
+        DEL_SK = TESTNET_DELEGATES[0]['sk']
+        DEL_VK = TESTNET_MASTERNODES[0]['vk']
+        PREV_BLOCK_HASH = Hasher.hash('0' * 64)
+
+        prev_block_hash = prev_block_hash or PREV_BLOCK_HASH
+        mn_sk = mn_sk or MN_SK
+        mn_vk = mn_vk or MN_VK
+        del_sk = del_sk or DEL_SK
+
         if not transactions:
             merkle_roots = []
             transactions = []
