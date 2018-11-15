@@ -1,6 +1,5 @@
 aenum==2.0.8
-aiodns==1.1.1
-aiohttp
+aiodns==1.1.1 aiohttp
 aioprocessing==1.0.1
 coloredlogs
 Cython

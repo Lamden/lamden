@@ -30,6 +30,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.transaction.batch import TransactionBatch
+from cilantro.messages.transaction.data import TransactionData
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
 
 from seneca.engine.client import SenecaClient
@@ -227,14 +228,24 @@ class SubBlockBuilder(Worker):
         return sbc
 
     def _handle_cr_complete(self, cr_context: CRContext):
-        # TODO implement this
-        self.log.info()
-        # list of tuples of form [(contract1, result1, state1)... ]
-        result = cr_context.get_subblock_rep()
+        self.log.info("Building sub block contender for input hash {}".format(cr_context.input_hash))
 
-        # Build sub block contender
+        sb_data = cr_context.get_subblock_rep()
+        txs_data = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[2]).serialize() for d in sb_data]
+        txs = [d[0] for d in sb_data]
+
+        merkle = MerkleTree.from_raw_transactions(txs_data)
+        signature = wallet.sign(self.signing_key, merkle.root)
+        merkle_sig = MerkleSignature.create(sig_hex=signature,
+                                            timestamp=str(time.time()),
+                                            sender=self.verifying_key)
+
+        sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=cr_context.input_hash,
+                                       merkle_leaves=merkle.leaves, sub_block_index=cr_context.sbb_idx,
+                                       signature=merkle_sig, transactions=txs)
 
         # Send to block manager
+        self._send_msg_over_ipc(sbc)
 
     def _send_msg_over_ipc(self, message: MessageBase):
         """
