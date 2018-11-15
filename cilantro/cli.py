@@ -9,6 +9,8 @@ import requests
 from seneca.engine.client import SenecaClient
 from cilantro.messages.transaction.contract import ContractTransactionBuilder
 
+from cilantro import tools
+
 configuration_path = '/usr/local/share/lamden/cilantro'
 directory_file = 'dir.conf'
 network_file = 'net.conf'
