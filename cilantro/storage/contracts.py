@@ -20,6 +20,7 @@ def seed_contracts():
     """
     log.debugv("Setting up SenecaInterface to publish contracts.")
     interface = SenecaInterface()
+    interface.setup()
 
     log.debugv("Inserting contract code...")
     # Insert contract code from files in file system into database table
