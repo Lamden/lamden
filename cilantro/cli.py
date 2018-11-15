@@ -62,63 +62,6 @@ def hi():
     click.echo(click.style(_cil_text, fg='green'))
 
 
-@main.command('key', short_help='Generate a new key.')
-@click.option('-o', '--output', 'output', help='Filename where the key will be saved.')
-@click.option('-r', '--raw', is_flag=True, help='Flag to bypass encryption and produce a raw key.')
-@click.option('-s', '--seed', 'seed', help='Passes a deterministic payload to the key generator.')
-def key(output, raw, seed):
-
-    output = os.path.realpath(output)
-
-    if seed:
-        sha = hashlib.sha3_256()
-        sha.update(seed.encode())
-        seed = sha.digest()
-
-    s, v = wallet.new() if not seed else wallet.new(seed=seed)
-    w = {'s': s, 'v': v}
-
-    if not raw:
-        password = get_password()
-        if password != '':
-            click.echo(click.style('Encrypting to 100,000 iterations...', fg='blue'))
-            w['s'] = encrypt(password, w['s']).hex()
-
-    if output:
-        if os.path.isfile(output):
-            click.echo(click.style('Key at {} already exists.'.format(output), fg='red'))
-        else:
-            with open(output, 'w') as f:
-                json.dump(w, f)
-            click.echo(click.style('New key written to {}'.format(output), fg='green'))
-    else:
-        print(w)
-
-# sign <data> <output> <key>
-@main.command('sign', short_help='Sign some data.')
-@click.option('-k', '--keyfile', 'keyfile')
-@click.option('-d', '--data', 'data')
-def sign(keyfile, data):
-    if not keyfile:
-        print('get default keyfile from conf')
-    elif os.path.isfile(keyfile) and data:
-        key = json.load(open(keyfile))
-        if len(key['s']) > 64:
-            password = get_password()
-            s = bytes.fromhex(key['s'])
-            click.echo(click.style('Decrypting from 100,000 iterations...', fg='blue'))
-            try:
-                decoded_s = decrypt(password, s)
-                key['s'] = decoded_s.decode()
-            except Exception as e:
-                click.echo(click.style('{}'.format(e), fg='red'))
-
-        print(wallet.sign(key['s'], data.encode()))
-
-    else:
-        click.echo(click.style('Keyfile does not exist or data was not provided.', fg='red'))
-
-
 @main.command('estimate', short_help='Get the Compute Units (CUs) required to publish a smart contract or transaction.')
 @click.option('-d', '--data', 'data')
 def estimate(data):
@@ -248,8 +191,72 @@ def set_network(network):
         f.write(network)
     click.echo(click.style('Network crawl start range set to {}.'.format(network), fg='green'))
 
+
+@click.group('new', short_help='Subcommand group for creating new resources such as keys.')
+def _new():
+    pass
+
+
+@_new.command('key')
+@click.option('-o', '--output', 'output', help='Filename where the key will be saved.')
+@click.option('-r', '--raw', is_flag=True, help='Flag to bypass encryption and produce a raw key.')
+@click.option('-s', '--seed', 'seed', help='Passes a deterministic payload to the key generator.')
+def key(output, raw, seed):
+
+    output = os.path.realpath(output)
+
+    if seed:
+        sha = hashlib.sha3_256()
+        sha.update(seed.encode())
+        seed = sha.digest()
+
+    s, v = wallet.new() if not seed else wallet.new(seed=seed)
+    w = {'s': s, 'v': v}
+
+    if not raw:
+        password = get_password()
+        if password != '':
+            click.echo(click.style('Encrypting to 100,000 iterations...', fg='blue'))
+            w['s'] = encrypt(password, w['s']).hex()
+
+    if output:
+        if os.path.isfile(output):
+            click.echo(click.style('Key at {} already exists.'.format(output), fg='red'))
+        else:
+            with open(output, 'w') as f:
+                json.dump(w, f)
+            click.echo(click.style('New key written to {}'.format(output), fg='green'))
+    else:
+        print(w)
+
+
+@_new.command('signature')
+@click.option('-k', '--keyfile', 'keyfile')
+@click.option('-d', '--data', 'data')
+def sign(keyfile, data):
+    if not keyfile:
+        print('get default keyfile from conf')
+    elif os.path.isfile(keyfile) and data:
+        key = json.load(open(keyfile))
+        if len(key['s']) > 64:
+            password = get_password()
+            s = bytes.fromhex(key['s'])
+            click.echo(click.style('Decrypting from 100,000 iterations...', fg='blue'))
+            try:
+                decoded_s = decrypt(password, s)
+                key['s'] = decoded_s.decode()
+            except Exception as e:
+                click.echo(click.style('{}'.format(e), fg='red'))
+
+        print(wallet.sign(key['s'], data.encode()))
+
+    else:
+        click.echo(click.style('Keyfile does not exist or data was not provided.', fg='red'))
+
+
 main.add_command(get)
 main.add_command(_set)
+main.add_command(_new)
 
 if __name__ == '__main__':
     print('yo2')
