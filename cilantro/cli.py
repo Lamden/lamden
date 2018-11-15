@@ -181,6 +181,7 @@ def set_directory(directory):
     default_path = os.path.join(configuration_path, directory_file)
     with open(default_path, 'w') as f:
         f.write(directory)
+    click.echo(click.style('Default directory set to {}.'.format(directory), fg='green'))
 
 
 @_set.command('network')
@@ -189,6 +190,7 @@ def set_network(network):
     default_path = os.path.join(configuration_path, network_file)
     with open(default_path, 'w') as f:
         f.write(network)
+    click.echo(click.style('Network crawl start range set to {}.'.format(network), fg='green'))
 
 main.add_command(get)
 main.add_command(_set)
