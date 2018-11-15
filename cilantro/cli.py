@@ -136,8 +136,9 @@ def get_contract(address, methods, datatypes):
         print('methods')
     elif datatypes:
         print('datatypes')
-    print(address)
-
+    j = {'contract': address}
+    r = requests.get('http://{}:8080/contract'.format('127.0.0.1'), json=j)
+    print(r.text)
 
 @get.command('state')
 @click.argument('contract')
@@ -278,6 +279,7 @@ def mock():
 @click.argument('keyfile')
 def mock_contract(code, name, stamp_amount, keyfile):
     # sender_sk: str, code_str: str, contract_name: str='sample', gas_supplied: int=1.0
+    code = os.path.realpath(code)
     _code = open(code).read()
 
     if not keyfile:
@@ -288,9 +290,9 @@ def mock_contract(code, name, stamp_amount, keyfile):
     contract = ContractTransactionBuilder.create_contract_tx(sender_sk=_key,
                                                              code_str=_code,
                                                              contract_name=name,
-                                                             gas_supplied=stamp_amount)
+                                                             gas_supplied=int(stamp_amount))
 
-    s = SenecaClient()
+    s = SenecaClient(sbb_idx=0, num_sbb=0)
     # make a contract transaction struct
     s.submit_contract(contract)
 
@@ -298,6 +300,7 @@ def mock_contract(code, name, stamp_amount, keyfile):
 main.add_command(get)
 main.add_command(_set)
 main.add_command(_new)
+main.add_command(mock)
 
 if __name__ == '__main__':
     print('yo2')
