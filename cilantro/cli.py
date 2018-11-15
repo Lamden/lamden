@@ -26,6 +26,7 @@ _cil_text = \
     
     '''
 
+
 def get_password():
     confirm = None
     password = None
@@ -203,7 +204,8 @@ def _new():
 @click.option('-s', '--seed', 'seed', help='Passes a deterministic payload to the key generator.')
 def key(output, raw, seed):
 
-    output = os.path.realpath(output)
+    if output:
+        output = os.path.realpath(output)
 
     if seed:
         sha = hashlib.sha3_256()
@@ -237,18 +239,18 @@ def sign(keyfile, data):
     if not keyfile:
         print('get default keyfile from conf')
     elif os.path.isfile(keyfile) and data:
-        key = json.load(open(keyfile))
+        _key = json.load(open(keyfile))
         if len(key['s']) > 64:
             password = get_password()
-            s = bytes.fromhex(key['s'])
+            s = bytes.fromhex(_key['s'])
             click.echo(click.style('Decrypting from 100,000 iterations...', fg='blue'))
             try:
                 decoded_s = decrypt(password, s)
-                key['s'] = decoded_s.decode()
+                _key['s'] = decoded_s.decode()
             except Exception as e:
                 click.echo(click.style('{}'.format(e), fg='red'))
 
-        print(wallet.sign(key['s'], data.encode()))
+        print(wallet.sign(_key['s'], data.encode()))
 
     else:
         click.echo(click.style('Keyfile does not exist or data was not provided.', fg='red'))
