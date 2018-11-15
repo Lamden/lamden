@@ -28,10 +28,8 @@ setup(
         'u-msgpack-python==2.5.0',
         'yarl==1.1.0',
         'click',
-        'simple-crypt'
-    ],
-    dependency_links=[
-        "git://github.com/Lamden/seneca.git@dev#egg=seneca"
+        'simple-crypt',
+        'git+https://github.com/Lamden/seneca.git@dev#egg=seneca'
     ],
     extras_require={
         'dev': open('dev-requirements.txt').readlines()
