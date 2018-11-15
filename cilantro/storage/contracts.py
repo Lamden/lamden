@@ -33,7 +33,7 @@ def seed_contracts():
     log.debugv("Seeding contracts...")
     # Run contracts
     for contract_id, code_str in _read_contract_files():
-        code_obj = interface.get_code(contract_id)
+        code_obj = interface.get_code_obj(contract_id)
 
     log.debugv("Done seeding contracts. Tearing down SenecaInterface.")
     interface.teardown()
