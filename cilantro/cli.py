@@ -5,7 +5,6 @@ import json
 from simplecrypt import encrypt, decrypt
 import getpass
 import hashlib
-import requests
 from seneca.engine.client import SenecaClient
 from cilantro.messages.transaction.contract import ContractTransactionBuilder
 
@@ -77,28 +76,30 @@ def get():
 
 
 @get.command('block')
-@click.argument('num')
-@click.option('-i', '--ip', 'ip')
+@click.argument('block_number')
+@click.argument('server_url')
 @click.option('-h', '--hash', '_hash', is_flag=True)
-def get_block(ip, _hash, num):
-    j = {'hash': num} if hash else {'number': num}
-    r = requests.get('http://{}:8080/blocks'.format(ip), json=j)
+def get_block(block_number, server_url, _hash):
+    if _hash:
+        r = tools.get_block(server_url=server_url, block_hash=block_number)
+    else:
+        r = tools.get_block(server_url=server_url, block_number=block_number)
     print(r.text)
 
 
 @get.command('transaction', help='Gets a transaction given a certain hash.')
 @click.argument('tx_hash')
-def get_transaction(tx_hash):
-    j = {'hash': tx_hash}
-    r = requests.get('http://{}:8080/transaction'.format('127.0.0.1'), json=j)
+@click.argument('server_url')
+def get_transaction(tx_hash, server_url):
+    r = tools.get_transaction(tx_hash, server_url)
     print(r.text)
 
 
 @get.command('transactions', help='Gets all transactions given a block hash.')
 @click.argument('block_hash')
-def get_transactions(block_hash):
-    j = {'hash': block_hash}
-    r = requests.get('http://{}:8080/transactions'.format('127.0.0.1'), json=j)
+@click.argument('server_url')
+def get_transactions(block_hash, server_url):
+    r = tools.get_transactions(block_hash, server_url)
     print(r.text)
 
 
@@ -109,16 +110,9 @@ def get_balance(address):
 
 
 @get.command('contract')
-@click.argument('address')
-@click.option('-m', '--methods', 'methods', is_flag=True, help='Parse and return just the methods this contract offers.')
-@click.option('-d', '--datatypes', 'datatypes', is_flag=True, help='Parse and return data types this contract accesses.')
-def get_contract(address, methods, datatypes):
-    if methods:
-        print('methods')
-    elif datatypes:
-        print('datatypes')
-    j = {'contract': address}
-    r = requests.get('http://{}:8080/contract'.format('127.0.0.1'), json=j)
+@click.argument('contract_address')
+def get_contract(contract_address, server_url):
+    r = tools.get_contract(contract_address, server_url)
     print(r.text)
 
 @get.command('state')
@@ -248,23 +242,16 @@ def sign(keyfile, data):
 @click.argument('name')
 @click.argument('stamp_amount')
 @click.argument('keyfile')
-def new_contract(code, name, stamp_amount, keyfile):
-    # sender_sk: str, code_str: str, contract_name: str='sample', gas_supplied: int=1.0
-    code = os.path.realpath(code)
-    _code = open(code).read()
-
+@click.argument('server_url')
+def new_contract(code, name, stamp_amount, keyfile, server_url):
     if not keyfile:
         _key = os.environ['SESSION_KEY']
     else:
         _key = signing_key_for_keyfile(keyfile)
-
-    contract = ContractTransactionBuilder.create_contract_tx(sender_sk=_key,
-                                                             code_str=_code,
-                                                             contract_name=name,
-                                                             gas_supplied=int(stamp_amount))
-
-    from cilantro.messages.transaction.container import TransactionContainer
-    r = requests.post('http://{}:8080/'.format('127.0.0.1'), data=TransactionContainer.create(contract).serialize())
+    code = os.path.realpath(code)
+    _code = open(code).read()
+    contract = tools.build_contract(_code, name, stamp_amount, _key)
+    r = tools.submit_contract(contract, server_url)
     print(r.text)
 
 ############################################################

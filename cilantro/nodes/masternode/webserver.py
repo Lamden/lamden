@@ -39,7 +39,7 @@ async def get_latest_block(request):
 
 @app.route('/blocks', methods=["GET", ])
 async def get_block(request):
-    if request.json.contains('number'):
+    if 'number' in request.json:
         num = request.json['number']
         block = StorageDriver.get_block_by_num(num)
         if block is None:
