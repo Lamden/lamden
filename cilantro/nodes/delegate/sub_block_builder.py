@@ -227,7 +227,10 @@ class SubBlockBuilder(Worker):
         return sbc
 
     def _handle_cr_complete(self, cr_context: CRContext):
-        result = cr_context.get_subblock_rep()  # A list of tuples of form (contract, result, state)
+        # TODO implement this 
+        self.log.info()
+        # list of tuples of form [(contract1, result1, state1)... ]
+        result = cr_context.get_subblock_rep()
 
         # Build sub block contender
 
