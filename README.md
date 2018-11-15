@@ -6,8 +6,8 @@
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 [![GitHub license](https://img.shields.io/github/license/Lamden/cilantro.svg)](https://github.com/Lamden/cilantro/blob/master/LICENSE)
 
-<img src="https://github.com/Lamden/cilantro/raw/master/cilantro.jpeg" align="right"
-     title="Cilantro" width="300" height="450">
+<img src="https://github.com/Lamden/cilantro/raw/master/muncho.png" align="right"
+     title="Muncho" width="340" height="290">
 
 Cilantro is a piece of software that allows the modular construction of blockchains. It is the piece of the puzzle that allows rapid development of decentralized systems while not restricting the possibilities of what said system can do. Lamden’s main deployment of Cilantro is for atomic swaps via the Clove protocol. This deployment is what holds the Lamden Tau coin and is what our first decentralized application will be for the public.
 
