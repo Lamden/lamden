@@ -14,6 +14,17 @@ network_file = 'net.conf'
 default_directory = '~/cilantro'
 default_crawl = '127.0.0.1'
 
+_cil_text = \
+    '''
+          _ _             _             
+      ___(_) | __ _ _ __ | |_ _ __ ___  
+     / __| | |/ _` | '_ \| __| '__/ _ \ 
+    | (__| | | (_| | | | | |_| | | (_) |
+     \___|_|_|\__,_|_| |_|\__|_|  \___/ 
+    
+     = = = = A N A R C H Y N E T = = = =
+    
+    '''
 
 def get_password():
     confirm = None
@@ -44,6 +55,11 @@ def signing_key_for_keyfile(filename):
 @click.group()
 def main():
     pass
+
+
+@main.command('hi', short_help='Prints a fun message.')
+def hi():
+    click.echo(click.style(_cil_text, fg='green'))
 
 
 @main.command('key', short_help='Generate a new key.')
@@ -108,18 +124,34 @@ def sign(keyfile, data):
 def estimate(data):
     print('will interface with falcons code')
 
+
 # publish <data> <key> --cleanup
 @main.command('publish', short_help='Publishes a signed smart contract or transaction to the network.')
-@click.option('-d', '--data', 'data')
-def publish(data):
-    print('TBD')
+@click.argument('data')
+@click.argument('keyfile')
+@click.option('-c', '--cleanup', 'cleanup', is_flag=True)
+def publish(data, keyfile, cleanup):
+    if not data or not os.path.isfile(data):
+        click.echo(click.style('Invalid data argument provided.', fg='red'))
+        return
 
+    if not keyfile:
+        if 'SESSION_KEY' in os.environ:
+            signing_key = os.environ['SESSION_KEY']
+        else:
+            click.echo(click.style('No keyfile provided and no session key loaded.', fg='red'))
+            return
+    else:
+        signing_key = signing_key_for_keyfile(keyfile)
+
+    data = os.path.realpath(data)
 
 ############################################################
 # GET COMMANDS SUBGROUP
 ############################################################
 
-@click.group('get')
+
+@click.group('get', short_help='Subcommand group for getting information from the Cilantro network.')
 def get():
     pass
 
@@ -134,6 +166,18 @@ def get_block(ip, _hash, num):
     print(r.text)
 
 
+@get.command('transaction', help='Gets a transaction given a certain hash.')
+@click.argument('tx_hash')
+def get_transaction(tx_hash):
+    pass
+
+
+@get.command('transactions', help='Gets all transactions given a block hash.')
+@click.argument('block_hash')
+def get_transactions(block_hash):
+    pass
+
+
 @get.command('balance')
 @click.argument('address')
 def get_balance(address):
@@ -144,7 +188,7 @@ def get_balance(address):
 @click.argument('address')
 @click.option('-m', '--methods', 'methods', is_flag=True, help='Parse and return just the methods this contract offers.')
 @click.option('-d', '--datatypes', 'datatypes', is_flag=True, help='Parse and return data types this contract accesses.')
-def get_balance(address, methods, datatypes):
+def get_contract(address, methods, datatypes):
     if methods:
         print('methods')
     elif datatypes:
@@ -152,11 +196,19 @@ def get_balance(address, methods, datatypes):
     print(address)
 
 
+@get.command('state')
+@click.argument('contract')
+@click.argument('resource_prefix')
+@click.argument('key')
+def get_state_variable(contract, resource_prefix, key):
+    pass
+
 ############################################################
 # SET COMMANDS SUBGROUP
 ############################################################
 
-@click.group('set')
+
+@click.group('set', short_help='Subcommand group for setting environment information specific to your computer.')
 def _set():
     pass
 
