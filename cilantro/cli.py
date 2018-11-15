@@ -7,32 +7,23 @@ import getpass
 import hashlib
 import requests
 
-configuration_path = '/usr/local/share/lamden'
-configuration_filename = 'cilantro.conf'
+configuration_path = '/usr/local/share/lamden/cilantro'
+directory_file = 'dir.conf'
+network_file = 'net.conf'
 
 default_directory = '~/cilantro'
 default_crawl = '127.0.0.1'
-default_keyfile = 'NULL'
-
-defaults = {
-    'directory': default_directory,
-    'crawl': default_crawl,
-    'keyfile': default_keyfile
-}
 
 
-def create_default_configuration_file(d=default_directory, n=default_crawl):
-    # rewrite the configuration file for reading later
-    with open(configuration_path + '/' + configuration_filename, 'w') as f:
-        f.write('{}\n'.format(d))
-        f.write('{}'.format(n))
-
-
-def get_configuration(filename):
-    with open(filename) as f:
-        directory = f.readline().rstrip('\n')
-        network = f.readline()
-    return directory, network
+def get_password():
+    confirm = None
+    password = None
+    while password != confirm or password is None:
+        password = getpass.getpass('Password:')
+        confirm = getpass.getpass('Confirm:')
+        if password != confirm:
+            print('Passwords do not match.')
+    return password
 
 
 def signing_key_for_keyfile(filename):
@@ -52,50 +43,7 @@ def signing_key_for_keyfile(filename):
 
 @click.group()
 def main():
-    if not os.path.exists(configuration_path):
-        os.makedirs(configuration_path)
-
-    if not os.path.isfile(configuration_path + '/' + configuration_filename):
-        create_default_configuration_file()
-
-    d, _ = get_configuration(configuration_path + '/' + configuration_filename)
-    if not os.path.exists(os.path.expanduser(d)):
-        os.makedirs(os.path.expanduser(d))
-
-
-# make a directory in.. /usr/local/share/lamden
-# cilantro.conf
-
-@main.command('config', short_help='Adjust the default directory and network configuration.')
-@click.option('-i', '--info', is_flag=True, help='Outputs the current values of the defaults.')
-@click.option('-d', '--directory', 'directory', help='Sets a new directory as the default.')
-@click.option('-n', '--network', 'network', help='Sets a new network as the default.')
-@click.option('-k', '--keyfile', 'keyfile', help='Sets a new keyfile as the default.')
-def config(info, directory, network, keyfile):
-    # make sure that the configuration_path path is available
-    if info:
-        d, n = get_configuration(configuration_path + '/' + configuration_filename)
-        print('Directory: {}'.format(d))
-        print('Network Crawl: {}'.format(n))
-    elif directory:
-        create_default_configuration_file(d=directory)
-        print('Directory changed to: {}'.format(directory))
-    elif network:
-        create_default_configuration_file(n=network)
-        print('Network Crawl changed to: {}'.format(network))
-    elif keyfile:
-        print('TBD')
-
-
-def get_password():
-    confirm = None
-    password = None
-    while password != confirm or password is None:
-        password = getpass.getpass('Password:')
-        confirm = getpass.getpass('Confirm:')
-        if password != confirm:
-            print('Passwords do not match.')
-    return password
+    pass
 
 
 @main.command('key', short_help='Generate a new key.')
@@ -130,7 +78,7 @@ def key(output, raw, seed):
     else:
         print(w)
 
-
+# sign <data> <output> <key>
 @main.command('sign', short_help='Sign some data.')
 @click.option('-k', '--keyfile', 'keyfile')
 @click.option('-d', '--data', 'data')
@@ -160,21 +108,11 @@ def sign(keyfile, data):
 def estimate(data):
     print('will interface with falcons code')
 
-
+# publish <data> <key> --cleanup
 @main.command('publish', short_help='Publishes a signed smart contract or transaction to the network.')
 @click.option('-d', '--data', 'data')
 def publish(data):
     print('TBD')
-
-
-@main.command('latest_block', short_help='Pings mock Masternode.')
-@click.option('-i', '--ip', 'ip')
-def ping(ip):
-    if not ip:
-        print('Provide an IP with -i / --ip')
-    else:
-        r = requests.get('http://{}:8080/latest_block'.format(ip))
-        print(r.text)
 
 
 ############################################################
@@ -235,6 +173,22 @@ def set_key(keyfile):
     except Exception as e:
         click.echo(click.style('{}'.format(e), fg='red'))
 
+
+@_set.command('directory')
+@click.argument('directory')
+def set_directory(directory):
+    directory = os.path.realpath(directory)
+    default_path = os.path.join(configuration_path, directory_file)
+    with open(default_path, 'w') as f:
+        f.write(directory)
+
+
+@_set.command('network')
+@click.argument('network')
+def set_network(network):
+    default_path = os.path.join(configuration_path, network_file)
+    with open(default_path, 'w') as f:
+        f.write(network)
 
 main.add_command(get)
 main.add_command(_set)
