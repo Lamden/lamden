@@ -33,6 +33,7 @@ from cilantro.messages.transaction.batch import TransactionBatch
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
 
 from seneca.engine.client import SenecaClient
+from seneca.engine.conflict_resolution import CRContext
 from cilantro.protocol import wallet
 from cilantro.protocol.multiprocessing.worker import Worker
 
@@ -110,10 +111,6 @@ class SubBlockBuilder(Worker):
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
     def handle_ipc_msg(self, frames):
-        # DEBUG -- TODO DELETE
-        # self.log.important("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))  # TODO remove
-        # return
-        # END DEBUG
         self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
         assert len(frames) == 2, "Expected 3 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
@@ -123,14 +120,14 @@ class SubBlockBuilder(Worker):
         msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
         self.log.debugv("SBB received an IPC message {}".format(msg))
 
-        # raghu TODO listen to updated DB message from BM and start conflict resolution if any
-        # call to make sub-block(s) for next block
-        # tie with messages below
-
         if isinstance(msg, MakeNextBlock):
             self._make_next_sub_block()
-        # elif isinstance(msg, DiscardPrevBlock):        # if not matched consensus, then discard current state and use catchup flow
-        #     self.interpreter.flush(update_state=False)
+
+        # if not matched consensus, then discard current state and use catchup flow
+        elif isinstance(msg, DiscardPrevBlock):
+            self.log.notice("Discarding all pending and active sub blocks!")
+            self.client.flush_all()
+
         else:
             raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                             .format(type(msg)))
@@ -156,10 +153,9 @@ class SubBlockBuilder(Worker):
             return
 
         # TODO properly wrap below in try/except. Leaving it as an assertion just for dev
-        assert envelope.verify_seal(), "Could not validate seal for envelope {}!!!".format(envelope)
-        # TODO if verification fails, log and return here ?
-
-        # keep updating timestamp as they are increasing from a master
+        if not envelope.verify_seal():
+            self.log.critical("Could not validate seal for envelope {}".format(envelope))
+            return
 
         # DEBUG -- TODO DELETE
         self.log.notice("Recv tx batch w/ {} transactions, and input hash {}".format(len(envelope.message.transactions), input_hash))
@@ -181,6 +177,7 @@ class SubBlockBuilder(Worker):
 
         sbc = self._create_empty_sbc(input_hash, sbb_idx) if tx_batch.is_empty \
             else self._create_sbc_from_batch(input_hash, sbb_idx, tx_batch)
+
         self._send_msg_over_ipc(sbc)
 
     def _create_empty_sbc(self, input_hash: str, sbb_idx: int) -> SubBlockContender:
@@ -200,6 +197,9 @@ class SubBlockBuilder(Worker):
         """
         Creates a Sub Block Contender from a TransactionBatch
         """
+        # TODO check if client has enough available db's and queue this sb up if not
+        self.client.start_sub_block(input_hash)
+
         # We assume if we are trying to create a SBC, our interpreter is empty and in a fresh state
         # assert self.interpreter.queue_size == 0, "Expected an empty interpreter queue before building a SBC"
         num_txs = len(batch.transactions)
@@ -222,7 +222,16 @@ class SubBlockBuilder(Worker):
         sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=input_hash,
                                        merkle_leaves=merkle.leaves, sub_block_index=sbb_idx,
                                        signature=merkle_sig, transactions=tx_queue)
+
+        self.client.end_sub_block()
         return sbc
+
+    def _handle_cr_complete(self, cr_context: CRContext):
+        result = cr_context.get_subblock_rep()  # A list of tuples of form (contract, result, state)
+
+        # Build sub block contender
+
+        # Send to block manager
 
     def _send_msg_over_ipc(self, message: MessageBase):
         """
@@ -235,7 +244,7 @@ class SubBlockBuilder(Worker):
 
     def _make_next_sub_block(self):
         # first commit current state - under no conflict between SB assumption (TODO)
-        self.log.info("Flushing interpreter queue")
+        # self.log.info("Flushing interpreter queue")
         # self.interpreter.flush()
 
         # now start next one
