@@ -173,7 +173,8 @@ def get():
 @click.argument('num')
 @click.option('-i', '--ip', 'ip')
 def get_block(ip, num):
-    print(num)
+    r = requests.get('http://{}:8080/blocks'.format(ip), json={'number' : num})
+    print(r.text)
 
 
 @get.command('balance')

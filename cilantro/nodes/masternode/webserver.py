@@ -32,9 +32,18 @@ async def contract_tx(request):
 
 
 @app.route("/latest_block", methods=["GET",])
-async def get_block(request):
+async def get_latest_block(request):
     latest_block_hash = StorageDriver.get_latest_block_hash()
     return text('{}'.format(latest_block_hash))
+
+
+@app.route('/blocks', methods=["GET", ])
+async def get_block(request):
+    num = request.json['number']
+    block = StorageDriver.get_block(num)
+    if block is None:
+        block = {'error': 'Block at number {} does not exist.'.format(num)}
+    return text('{}'.format(block))
 
 
 @app.route("/teardown-network", methods=["POST",])
