@@ -63,12 +63,6 @@ def hi():
     click.echo(click.style(_cil_text, fg='green'))
 
 
-@main.command('estimate', short_help='Get the Compute Units (CUs) required to publish a smart contract or transaction.')
-@click.option('-d', '--data', 'data')
-def estimate(data):
-    print('will interface with falcons code')
-
-
 # publish <data> <key> --cleanup
 @main.command('publish', short_help='Publishes a signed smart contract or transaction to the network.')
 @click.argument('data')
@@ -151,6 +145,12 @@ def get_contract(address, methods, datatypes):
 def get_state_variable(contract, resource_prefix, key):
     pass
 
+
+@get.command('estimate', short_help='Get the Compute Units (CUs) required to publish a smart contract or transaction.')
+@click.option('-d', '--data', 'data')
+def estimate(data):
+    print('will interface with falcons code')
+
 ############################################################
 # SET COMMANDS SUBGROUP
 ############################################################
@@ -191,6 +191,11 @@ def set_network(network):
     with open(default_path, 'w') as f:
         f.write(network)
     click.echo(click.style('Network crawl start range set to {}.'.format(network), fg='green'))
+
+
+############################################################
+# NEW COMMANDS SUBGROUP
+############################################################
 
 
 @click.group('new', short_help='Subcommand group for creating new resources such as keys.')
