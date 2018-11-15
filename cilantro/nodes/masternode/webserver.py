@@ -53,6 +53,24 @@ async def get_block(request):
     return text('{}'.format(block))
 
 
+@app.route('/transaction', methods=['GET', ])
+async def get_transaction(request):
+    _hash = request.json['hash']
+    tx = StorageDriver.get_transactions(raw_tx_hash=_hash)
+    if tx is None:
+        return text({'error': 'Transaction with hash {} does not exist.'.format(_hash)})
+    return text('{}'.format(tx))
+
+
+@app.route('/transactions', methods=['GET', ])
+async def get_transactions(request):
+    _hash = request.json['hash']
+    txs = StorageDriver.get_transactions(block_hash=_hash)
+    if txs is None:
+        return text({'error': 'Block with hash {} does not exist.'.format(_hash)})
+    return text('{}'.format(txs))
+
+
 @app.route("/teardown-network", methods=["POST",])
 async def teardown_network(request):
     tx = KillSignal.create()
