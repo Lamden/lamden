@@ -9,10 +9,12 @@
 <img src="https://github.com/Lamden/cilantro/raw/master/muncho.png" align="right"
      title="Muncho" width="340" height="290">
 
-Cilantro is a piece of software that allows the modular construction of blockchains. It is the piece of the puzzle that allows rapid development of decentralized systems while not restricting the possibilities of what said system can do. Lamden’s main deployment of Cilantro is for atomic swaps via the Clove protocol. This deployment is what holds the Lamden Tau coin and is what our first decentralized application will be for the public.
-
-What this deployment serves is two purposes: one, provide free and fast transactions and atomic swaps to introduce true interoperability to the crypto space in a way that is not controlled by a singular party, and two, demonstrate a successful deployment of the Lamden suite to create a brand new blockchain application.
-
+### Features
+* 2800 transactions per second / core on a 2018 Macbook 2.2 Intel Core i7
+* Smart contracting language in pure, unmodified Python
+* Simple and standard APIs and tooling
+* Integrates with existing IDEs for development
+* Properly designed masternode and delegate governance system that optimizes to performance and reduces collusion.
 
 
 
