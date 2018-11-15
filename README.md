@@ -1,4 +1,4 @@
-# Cilantro
+# Cilantro - A Performant Blockchain that Isn't Confusing
 [![Build Status](https://travis-ci.org/Lamden/cilantro.svg?branch=master)](https://travis-ci.org/Lamden/cilantro)
 [![Coverage Status](https://coveralls.io/repos/github/Lamden/cilantro/badge.svg?branch=master)](https://coveralls.io/github/Lamden/cilantro?branch=master)
 [![GitHub last commit](https://img.shields.io/github/last-commit/Lamden/cilantro.svg)](https://github.com/Lamden/cilantro/commits/master) 
