@@ -35,3 +35,12 @@ tau.send('stu', 1000)
 ```
 
 All transactions are smart contracts. All smart contracts are valid Python code. Not all Python code can run as we've restricted many of the built-in modules. However, if you expose a function, other people can import your smart contract and call it easily.
+
+### Roadmap
+
+* Testnet at end of year.
+
+### Learn more
+
+http://t.me/LamdenTalk
+http://docs.lamden.io
