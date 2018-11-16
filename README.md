@@ -43,4 +43,5 @@ All transactions are smart contracts. All smart contracts are valid Python code.
 ### Learn more
 
 http://t.me/LamdenTalk
+
 http://docs.lamden.io
