@@ -14,8 +14,9 @@
 * Smart contracting language in pure, unmodified Python
 * Simple and standard APIs and tooling
 * Integrates with existing IDEs for development
-* Properly designed masternode and delegate governance system that optimizes to performance and reduces collusion.
-
+* Properly designed masternode and delegate governance system that optimizes to performance and reduces collusion
+* Strong community support
+* Atomic swap integration for cross-chain communication
 
 
 ## Technical Details
