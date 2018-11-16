@@ -19,15 +19,14 @@
 * Atomic swap integration for cross-chain communication
 
 
-## Technical Details
-Cilantro is an enterprise level blockchain that is focused on high throughput and scalability. Cilantro can process
-thousands of transactions per second and incorporates a smart contract language called Seneca to provide advanced user functionality. Features such as staking and anti-spam measures are also included out of the box.
+### Installation
+```
+git clone https://github.com/lamden/cilantro
+cd cilantro
+make install
+```
 
-
-Cilantro is built utilizing the ZeroMQ messaging platform. ZMQ is respected networking library that
-provides advanced socket functionality and several useful message patterns that work well in an asynchronous framework.
-The Cilantro network consists of individuals transacting on the network alongside three key types of participants: the masternodes, the witnesses, and the delegates.
-Each of these three are integral to the network and are described in more detail below.
+PyPi installation will be available at release of AnarchyNet.
 
 ### Masternodes
 Masternodes serve as the entry point into the Cilantro network and publish transactions sent from individual nodes on
