@@ -33,3 +33,18 @@ struct Value {
    anyPointer @18 :AnyPointer;
  }
 }
+
+
+struct Map(Key, Value) {
+  entries @0 :List(Entry);
+  struct Entry {
+    key @0 :Key;
+    value @1 :Value;
+  }
+}
+
+
+struct Kwargs {
+    kwargs @0: Map(Text, Value);
+}
+
