@@ -3,7 +3,7 @@ from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.utils import validate_hex
 from cilantro.utils import lazy_property
 from cilantro.constants.system_config import NUM_SB_PER_BLOCK
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 import time
 from typing import List
 

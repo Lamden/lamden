@@ -1,7 +1,7 @@
 
 
 from configparser import SafeConfigParser
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 from cilantro.logger.base import get_logger
 from cilantro.constants.testnet import TESTNET_MASTERNODES
 from cilantro.storage.mongo import MDB

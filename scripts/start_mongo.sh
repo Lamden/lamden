@@ -1,18 +1,20 @@
 #!/bin/bash
-set -ex
+set -exn
 
 echo "Waiting for mongo on localhost"
-mkdir -p /app/data/db/logs
-touch /app/data/db/logs/log_mongo.log
+mkdir -p ./data/db/logs
+touch ./data/db/logs/log_mongo.log
 echo 'Dir created'
 
-mongod --dbpath /app/data/db --logpath /app/data/db/logs/mongo.log
+mongod --dbpath ./data/db --logpath ./data/db/logs/mongo.log &
+sleep 0.5;
 echo 'started mongod'
 
-mongo
-use admin
-db.createUser({user:"lamden",pwd:"pwd",roles:[{role:"root",db:"admin"}]})
+echo 'Loading .ini'
+sed '/[^\[\]]/d' mn_db_conf.ini | sed 's/\ //g' > tmp.ini
+. tmp.ini
+rm tmp.ini
+
+mongo --eval "db.getSiblingDB('admin').createUser({ user: '$username', pwd: '$password', roles : [{ role: 'userAdminAnyDatabase', db: 'admin' }]})"
 
 echo 'user created'
-
-

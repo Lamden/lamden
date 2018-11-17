@@ -22,7 +22,7 @@ import time
 from typing import List
 
 from cilantro.logger import get_logger
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 from cilantro.constants.ports import SBB_PORT_START
 
 from cilantro.messages.base.base import MessageBase

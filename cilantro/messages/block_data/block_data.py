@@ -8,7 +8,7 @@ from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
 from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
 from typing import List
 from cilantro.logger import get_logger
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 import time
 
 import capnp

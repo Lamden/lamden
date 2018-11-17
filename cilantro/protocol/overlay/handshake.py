@@ -8,7 +8,7 @@ from cilantro.protocol.overlay.event import Event
 from cilantro.protocol.overlay.ip import *
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.logger import get_logger
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 from collections import defaultdict
 
 class Handshake:

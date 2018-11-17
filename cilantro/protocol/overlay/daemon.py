@@ -2,7 +2,7 @@ import zmq, zmq.asyncio, asyncio, ujson, os, uuid, json, inspect
 from cilantro.protocol.overlay.interface import OverlayInterface
 from cilantro.protocol.overlay.handshake import Handshake
 from cilantro.constants.overlay_network import EVENT_URL, CMD_URL, CLIENT_SETUP_TIMEOUT
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 from cilantro.logger.base import get_logger
 from cilantro.protocol.overlay.event import Event
 from collections import deque

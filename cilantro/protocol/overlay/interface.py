@@ -8,7 +8,7 @@ from cilantro.protocol.overlay.kademlia.utils import digest
 from cilantro.protocol.overlay.ip import get_public_ip
 from cilantro.constants.overlay_network import *
 from cilantro.logger.base import get_logger
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 from cilantro.protocol.overlay.kademlia.node import Node
 
 import asyncio, os, zmq.asyncio, zmq

@@ -3,7 +3,7 @@ set_testnet_config('2-2-4.json')
 
 from cilantro.logger.base import get_logger
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 
 import unittest
 from unittest import TestCase
@@ -26,7 +26,7 @@ from cilantro.messages.block_data.block_metadata import *
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.protocol import wallet
-from cilantro.storage.sqldb import SQLDB
+from cilantro.storage.mongo import MDB
 
 
 class BlockAggTester:
@@ -159,8 +159,7 @@ class TestBlockAggregator(TestCase):
 class TestBlockAggregatorStorage(TestCase):
 
     def setUp(self):
-        SQLDB.reset_db()
-        SQLDB.force_start()
+        MDB.reset_db()
 
     @BlockAggTester.test
     @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)

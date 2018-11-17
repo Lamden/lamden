@@ -2,14 +2,13 @@ from cilantro.nodes.masternode.masternode import Masternode
 from cilantro.nodes.delegate.delegate import Delegate
 from cilantro.nodes.witness.witness import Witness
 from cilantro.storage.contracts import seed_contracts
-from cilantro.storage.sqldb import SQLDB
+from cilantro.storage.mongo import MDB
 from seneca.engine.interface import SenecaInterface
 
 def _build_block_schema(should_reset):
-    SQLDB.setup_db()
+    MDB.setup_db()
     if should_reset:
-        SQLDB.reset_db()
-
+        MDB.reset_db()
 
 class NodeFactory:
     @staticmethod
