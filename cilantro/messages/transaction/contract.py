@@ -3,11 +3,19 @@ from cilantro.messages.utils import validate_hex
 from cilantro.protocol import wallet
 from cilantro.storage.templating import ContractTemplate
 from cilantro.protocol.pow import SHA3POW
+import random
 
 import capnp
 import transaction_capnp
 
-import random
+
+VALUE_TYPE_MAP = {
+    str: 'text',
+    bytes: 'data',
+    bool: 'bool'
+}
+
+NUMERIC_TYPES = {int, float}
 
 
 class ContractTransaction(TransactionBase):
@@ -24,9 +32,42 @@ class ContractTransaction(TransactionBase):
     def _deserialize_data(cls, data: bytes):
         return transaction_capnp.ContractTransaction.from_bytes_packed(data)
 
+    @classmethod
+    def create(cls, sender_sk: str, gas_supplied: int, contract_name: str,  func_name: str, *args, **kwargs):
+        assert len(args) == 0, "Contract must be created with key word args only (no positional args sorry)"
+        assert gas_supplied > 0, "Must supply positive gas amount u silly billy"
+
+        struct = transaction_capnp.ContractTransaction.new_message()
+
+        struct.payload.sender = wallet.get_vk(sender_sk)
+        struct.payload.gasSupplied = gas_supplied
+        struct.payload.contractName = contract_name
+        struct.payload.functionName = func_name
+
+        struct.payload.kwargs.init('entries', len(kwargs))
+
+        for i, key in enumerate(kwargs):
+            struct.payload.kwargs.entries[i].key = key
+            value, t = kwargs[key], type(kwargs[key])
+
+            # Represent numeric types as strings so we do not lose any precision due to floating point
+            if t in NUMERIC_TYPES:
+                struct.payload.kwargs.entries[i].value.fixedPoint = str(value)
+            else:
+                assert t in VALUE_TYPE_MAP, "value type {} not recognized in types {}".format(t, list(VALUE_TYPE_MAP.keys()))
+                setattr(struct.payload.kwargs.entries[i].value, VALUE_TYPE_MAP[t], value)
+
+        payload_binary = struct.payload.copy().to_bytes()
+
+        struct.metadata.proof = SHA3POW.find(payload_binary)[0]
+        struct.metadata.signature = wallet.sign(sender_sk, payload_binary)
+
+        return ContractTransaction.from_data(struct)
+
     @property
-    def code(self):
-        return self._data.payload.code
+    def kwargs(self):
+        # TODO implement
+        pass
 
     @property
     def sender(self):
@@ -34,11 +75,15 @@ class ContractTransaction(TransactionBase):
 
     @property
     def contract_name(self):
-        return self._data.contractName.decode()
+        return self._data.payload.contractName
+
+    @property
+    def func_name(self):
+        return self._data.payload.functionName
 
     @property
     def gas_supplied(self):
-        return self._data.gasSupplied
+        return self._data.payload.gasSupplied
 
 
 class ContractTransactionBuilder:

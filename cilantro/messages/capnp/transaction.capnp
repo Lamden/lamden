@@ -18,7 +18,7 @@ struct ContractTransaction {
         sender @0 :Data;
         contractName @1 :Text;
         functionName @2 :Text;
-        gasSupplied @3 :UInt32;
+        gasSupplied @3 :UInt64;
         kwargs @4 :V.Map(Text, V.Value);
     }
 }
