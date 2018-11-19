@@ -18,6 +18,8 @@ from cilantro.nodes.masternode.webserver import start_webserver
 from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 
+import os
+
 
 class Masternode(NodeBase):
     pass
@@ -45,6 +47,22 @@ class MNRunState(MNBaseState):
     def reset_attrs(self):
         pass
 
+    def start_batcher(self):
+        # Create a worker to do transaction batching
+        self.log.debug("Masternode starting transaction batcher process")
+        self.parent.batcher = LProcess(target=TransactionBatcher, name='TxBatcherProc',
+                                       kwargs={'queue': q, 'signing_key': self.parent.signing_key,
+                                               'ip': self.parent.ip})
+        self.parent.batcher.start()
+
+    def start_block_agg(self):
+        # Start the BlockAggregator in this process
+        self.log.notice("Masternode starting BlockAggregator Process")
+        self.block_agg_proc = LProcess(target=BlockAggregator,
+                                       kwargs={'ip': self.parent.ip, 'signing_key': self.parent.signing_key},
+                                       name='BlockAggProc')
+        self.block_agg_proc.start()
+
     @enter_from_any
     def enter_any(self):
         # Create and start web server
@@ -53,16 +71,11 @@ class MNRunState(MNBaseState):
         self.parent.server = LProcess(target=start_webserver, name='WebServerProc', args=(q,))
         self.parent.server.start()
 
-        # Create a worker to do transaction batching
-        self.log.debug("Masternode starting transaction batcher process")
-        self.parent.batcher = LProcess(target=TransactionBatcher, name='TxBatcherProc',
-                                       kwargs={'queue': q, 'signing_key': self.parent.signing_key,
-                                               'ip': self.parent.ip})
-        self.parent.batcher.start()
+        if not os.getenv('MN_MOCK'):
+            self.start_batcher()
+            self.start_block_agg()
+        else:
+            self.log.warning("MN_MOCK env var is set! Not starting block aggregator or tx batcher.")
 
-        # Start the BlockAggregator in this process
-        self.log.notice("Masternode starting BlockAggregator Process")
-        self.block_agg_proc = LProcess(target=BlockAggregator,
-                                       kwargs={'ip': self.parent.ip, 'signing_key': self.parent.signing_key},
-                                       name='BlockAggProc')
-        self.block_agg_proc.start()
+
+

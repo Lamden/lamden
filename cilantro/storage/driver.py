@@ -164,6 +164,28 @@ class StorageDriver(object):
             if res:
                 return BlockMetaSQL.unpack(res)
 
+    @classmethod
+    def get_block_by_num(cls, block_num):
+        with SQLDB() as (connection, cursor):
+            cursor.execute("""
+                SELECT * FROM block
+                    WHERE block_num = %s
+            """, (block_num, ))
+            res = cursor.fetchone()
+            if res:
+                return BlockDataSQL.unpack(res)
+
+    @classmethod
+    def get_block_by_hash(cls, block_hash):
+        with SQLDB() as (connection, cursor):
+            cursor.execute("""
+                    SELECT * FROM block
+                        WHERE block_hash = %s
+                """, (block_hash,))
+            res = cursor.fetchone()
+            if res:
+                return BlockDataSQL.unpack(res)
+
     def get_sub_block_meta(cls, merkle_root):
         with SQLDB() as (connection, cursor):
             cursor.execute("""
