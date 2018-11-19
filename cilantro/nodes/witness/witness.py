@@ -83,6 +83,7 @@ class WitnessBootState(WitnessBaseState):
 
         for delegate_vk in VKBook.get_delegates():
             self.parent.pub.connect(vk=delegate_vk, port=port)
+            time.sleep(1)
 
 @Witness.register_state
 class WitnessRunState(WitnessBaseState):

@@ -26,7 +26,7 @@ class Network(object):
     created to start listening as an active node on the network.
     """
 
-    def __init__(self, ksize=20, alpha=3, node_id=None, loop=None, ctx=None):
+    def __init__(self, ksize=4, alpha=2, node_id=None, loop=None, ctx=None):
         """
         Create a server instance.  This will start listening on the given port.
 
@@ -108,14 +108,23 @@ class Network(object):
             addrs: A `list` of (ip, port) `tuple` pairs.  Note that only IP
                    addresses are acceptable - hostnames will cause an error.
         """
-        log.debug("Attempting to bootstrap node with %i initial contacts",
-                  len(addrs))
-        cos = list(map(self.bootstrap_node, addrs))
-        gathered = await asyncio.gather(*cos)
-        nodes = [node for node in gathered if node is not None]
-        spider = NodeSpiderCrawl(self.protocol, self.node, nodes,
-                                 self.ksize, self.alpha)
-        return await spider.find()
+        log.debug("Attempting to bootstrap node with {} initial contacts: {}".format(
+                  len(addrs), addrs))
+        processed = set()
+        processed.add(self.node.vk)
+        nearest = []
+        for addr in addrs:
+            if addr.vk in processed:
+                continue
+            processed.add(addr.vk)
+            result = await self.protocol.callFindNode(addr, self.node)
+            nearest.extend(result)
+        for addr in nearest:
+            if addr.vk in processed:
+                continue
+            processed.add(addr.vk)
+            await self.protocol.callFindNode(addr, self.node)
+        
 
     async def bootstrap_node(self, addr):
         result = await self.protocol.ping(addr, self.node.id)
@@ -126,30 +135,39 @@ class Network(object):
         if Auth.vk == vk:
             self.cached_vks[vk] = self.host_ip
             return self.host_ip
-        elif self.cached_vks.get(vk):
-            node = self.cached_vks.get(vk)
-            log.debug('"{}" found in cache resolving to {}'.format(vk, node))
-            return node.ip
+        elif vk in self.cached_vks:
+            ip = self.cached_vks.get(vk)
+            log.debug('"{}" found in cache resolving to {}'.format(vk, ip))
+            return ip
         else:
-            nearest = self.protocol.router.findNeighbors(Node(digest(vk)))
+            node_to_find = Node(digest(vk), vk=vk)
+            nearest = self.protocol.router.findNode(node_to_find)
             ip = self.get_ip_from_nodes_list(vk, nearest)
             if ip:
                 log.debug('"{}" resolved to {}'.format(vk, ip))
+                self.cached_vks[vk] = ip
                 return ip
-            spider = NodeSpiderCrawl(self.protocol, Node(digest(vk)),
-                                    nearest, self.ksize, self.alpha)
-            nodes = await spider.find()
-            ip = self.get_ip_from_nodes_list(vk, nodes)
-            if ip:
-                log.debug('"{}" resolved to {}'.format(vk, ip))
-                return ip
-            log.warning('"{}" cannot be resolved (asked {})'.format(vk, nodes))
+            processed = set()
+            processed.add(self.node.vk)
+            while len(nearest) > 0:
+                node = nearest.pop()
+                if node.vk in processed:
+                    continue
+                processed.add(node.vk)
+                result = await self.protocol.callFindNode(node, node_to_find)
+                ip = self.get_ip_from_nodes_list(vk, result)
+                if ip:
+                    log.debug('"{}" resolved to {}'.format(vk, ip))
+                    self.cached_vks[vk] = ip
+                    return ip
+                nearest.extend(result)
+                # await asyncio.sleep(1)
+
             return None
 
     def get_ip_from_nodes_list(self, vk, nodes):
-        nodeid = digest(vk)
         for node in nodes:
-            if nodeid == node.id:
+            if vk == node.vk:
                 return node.ip
 
     def saveState(self, fname):

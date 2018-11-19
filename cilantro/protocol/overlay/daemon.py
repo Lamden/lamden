@@ -1,6 +1,5 @@
 import zmq, zmq.asyncio, asyncio, ujson, os, uuid, json, inspect
 from cilantro.protocol.overlay.interface import OverlayInterface
-from cilantro.protocol.overlay.handshake import Handshake
 from cilantro.constants.overlay_network import EVENT_URL, CMD_URL, CLIENT_SETUP_TIMEOUT
 from cilantro.storage.db import VKBook
 from cilantro.logger.base import get_logger
@@ -150,8 +149,9 @@ class OverlayClient(object):
     async def block_until_ready(self):
         async def wait_until_ready():
             while not self._ready:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(2)
 
+        await asyncio.sleep(6)
         self.get_service_status()
         await asyncio.wait_for(wait_until_ready(), CLIENT_SETUP_TIMEOUT)
 
@@ -179,6 +179,11 @@ class OverlayClient(object):
             if event.get('event') == 'service_status' and \
                 event.get('status') == 'ready':
                 self._ready = True
+            elif event.get('event') == 'service_status' and \
+                event.get('status') == 'not_ready':
+                self.log.info("OverlayClient received not ready. Reissuing service status command ...")
+                await asyncio.sleep(2)
+                self.get_service_status()
             event_handler(event)
 
     def teardown(self):

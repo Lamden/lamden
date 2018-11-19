@@ -11,8 +11,8 @@ from typing import List
 from os.path import join
 
 
-RDY_WAIT_INTERVAL = 1.0  # TODO move this to constants, and explain it
-MAX_RDY_WAIT = 60.0  # TODO move this to constants, and explain it
+RDY_WAIT_INTERVAL = 2.0  # TODO move this to constants, and explain it
+MAX_RDY_WAIT = 80.0  # TODO move this to constants, and explain it
 
 
 def vk_lookup(func):
@@ -62,14 +62,15 @@ class LSocket:
         self.ready = False  # Gets set to True when all pending_lookups have been resolved, and we BIND/CONNECT
 
     def handle_overlay_event(self, event: dict):
-        assert event['event_id'] in self.pending_lookups, "Socket got overlay event {} not in pending lookups {}"\
-                                                           .format(event, self.pending_lookups)
-        assert event['event'] == 'got_ip', "Socket only knows how to handle got_ip events, but got {}".format(event)
-        assert 'ip' in event, "got_ip event {} expected to have key 'ip'".format(event)
+        # assert event['event_id'] in self.pending_lookups, "Socket got overlay event {} not in pending lookups {}"\
+                                                           # .format(event, self.pending_lookups)
+        # assert event['event'] == 'got_ip', "Socket only knows how to handle got_ip events, but got {}".format(event)
+        # assert 'ip' in event, "got_ip event {} expected to have key 'ip'".format(event)
         self.log.debug("Socket handling overlay event {}".format(event))
 
         cmd_name, args, kwargs = self.pending_lookups.pop(event['event_id'])
-        kwargs['ip'] = event['ip']
+        if 'ip' in event:
+            kwargs['ip'] = event['ip']
         getattr(self, cmd_name)(*args, **kwargs)
 
     def flush_lookup_commands(self):
@@ -83,6 +84,7 @@ class LSocket:
                     start_listening=False) -> asyncio.Future or asyncio.coroutine:
         async def _listen(socket, func, key):
             self.log.socket("Starting listener on socket {} with handler key {}".format(socket, key))
+            # self.log.socket("Starting listener {} on socket {} with handler key {}".format(func, socket, key))
             duration_waited = 0
 
             while True:
@@ -145,11 +147,19 @@ class LSocket:
 
     @vk_lookup
     def connect(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
-        self._connect_or_bind(should_connect=True, port=port, protocol=protocol, ip=ip, vk=vk)
+        if ip:
+            self._connect_or_bind(should_connect=True, port=port, protocol=protocol, ip=ip, vk=vk)
+            return True
+        assert False, "sucks in connect"
+        return False
 
     @vk_lookup
     def bind(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
-        self._connect_or_bind(should_connect=False, port=port, protocol=protocol, ip=ip, vk=vk)
+        if ip:
+            self._connect_or_bind(should_connect=False, port=port, protocol=protocol, ip=ip, vk=vk)
+            return True
+        assert False, "sucks in bind"
+        return False
 
     def _connect_or_bind(self, should_connect: bool, port: int, protocol: str='tcp', ip: str='', vk: str=''):
         assert ip, "Expected ip arg to be present!"
