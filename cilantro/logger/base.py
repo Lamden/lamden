@@ -1,9 +1,10 @@
-"""Module for initializing settings related to the built-in Cilantro logger
+"""Module for initializing settings related to the built-in seneca logger
 Functions:
 -get_logger"""
 
 import logging, coloredlogs
-import os, sys, requests
+import os, sys
+
 VALID_LVLS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 _LOG_LVL = os.getenv('LOG_LEVEL', None)
 if _LOG_LVL:
@@ -17,10 +18,10 @@ req_log.setLevel(logging.WARNING)
 req_log.propagate = True
 
 def get_main_log_path():
-    from cilantro import logger
+    from seneca.libs import logger
 
-    root = logger.__file__  # resolves to '/Users/davishaba/Developer/cilantro/cilantro/logger/__init__.py'
-    log_path = '/'.join(root.split('/')[:-3]) + '/logs/cilantro.log'
+    root = logger.__file__  # resolves to '/Users/davishaba/Developer/seneca/seneca/logger/__init__.py'
+    log_path = '/'.join(root.split('/')[:-3]) + '/logs/seneca.log'
 
     # Create log directory if it does not exist
     log_dir = os.path.dirname(log_path)
@@ -52,12 +53,14 @@ CUSTOM_LEVELS = {
 for log_name, log_level in CUSTOM_LEVELS.items():
     logging.addLevelName(log_level, log_name)
 
+
 def apply_custom_level(log, name: str, level: int):
     def _lvl_func(message, *args, **kws):
         if level >= log.getEffectiveLevel():
             log._log(level, message, args, **kws)
 
     setattr(log, name.lower(), _lvl_func)
+
 
 """
 Custom Styling
@@ -117,7 +120,18 @@ class ColoredStreamHandler(logging.StreamHandler):
         )
 
 
+def _ignore(*args, **kwargs):
+    return
+
+
+class MockLogger:
+    def __getattr__(self, item):
+        return _ignore
+
+
 def get_logger(name=''):
+    if _LOG_LVL == 0:
+        return MockLogger()
 
     filedir = "logs/{}".format(os.getenv('TEST_NAME', 'test'))
     filename = "{}/{}.log".format(filedir, os.getenv('HOST_NAME', name))
