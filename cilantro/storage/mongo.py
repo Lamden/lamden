@@ -69,13 +69,13 @@ class MDB():
     @classmethod
     def setup_db(cls, db_type='new'):
         if db_type == 'new':    # fresh setup
-            database = cls.cfg.get('MN_DB','mn_blk_database')
+            database = cls.cfg.get('MN_DB', 'mn_blk_database')
             uri="mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
             cls.log.info("uri {}".format(uri))
             return uri
 
         if db_type == 'cache':
-            database = cls.cfg.get('MN_DB','mn_cache_database')
+            database = cls.cfg.get('MN_DB', 'mn_index_database')
             uri="mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
             return uri
 
