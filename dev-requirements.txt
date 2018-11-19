@@ -9,4 +9,4 @@ dill
 # Non-Cythonized for CI
 pynacl
 pyzmq
-vmnet=0.2.33
+vmnet==0.2.33
