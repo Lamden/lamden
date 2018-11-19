@@ -79,10 +79,10 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
             raise Exception('Failed to discover any nodes. Killing myself with shame!')
 
     async def bootstrap(self):
+        if len(Discovery.discovered_nodes) == 0:
+            raise Exception("Don't know how I ended up here. Can't bootstrap with no nodes discovered! Killing myself with shame!")
         addrs = [Node(digest(vk), ip=Discovery.discovered_nodes[vk], port=self.network.port, vk=vk) \
             for vk in Discovery.discovered_nodes if vk is not Auth.vk]
-        if len(addrs) == 0:
-            raise Exception("Don't know how I ended up here. Can't bootstrap with no nodes discovered! Killing myself with shame!")
         await self.network.bootstrap(addrs)
         # self.network.cached_vks.update(self.neighbors)
 

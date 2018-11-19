@@ -24,6 +24,7 @@ class Discovery:
             cls.is_setup = True
             cls.ctx = ctx or zmq.asyncio.Context()
             cls.sock = cls.ctx.socket(zmq.ROUTER)
+            cls.is_connected = False
             if Auth.vk in VKBook.get_masternodes():
                 # cls.discovered_nodes[Auth.vk] = cls.host_ip
                 cls.is_listen_ready = True
@@ -58,10 +59,11 @@ class Discovery:
             cls.connect(get_ip_range(start_ip))
             try_count += 1
             if (len(cls.discovered_nodes) == 0 and Auth.vk in VKBook.get_masternodes()) \
-                and try_count >= DISCOVERY_RETRIES:
+                and cls.is_connected:
                 cls.log.important('Bootstrapping as the only masternode.'.format(
                     len(cls.discovered_nodes)
                 ))
+                cls.discovered_nodes[Auth.vk] = cls.host_ip
                 return True
             elif len(cls.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
                 cls.log.info('Found {} nodes to bootstrap: {}'.format(
@@ -122,6 +124,7 @@ class Discovery:
     def reply(cls, ip):
         if cls.is_listen_ready and ip != cls.host_ip:
             cls.sock.send_multipart([ip, cls.pepper, Auth.vk.encode()])
+            cls.is_connected = True
 
     @classmethod
     def connect(cls, ips):
