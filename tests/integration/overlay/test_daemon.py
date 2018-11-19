@@ -1,3 +1,5 @@
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('2-2-4.json')
 from vmnet.comm import file_listener
 from vmnet.testcase import BaseTestCase
 import unittest, time, random, vmnet, cilantro, asyncio, ujson as json
@@ -39,6 +41,7 @@ def nodefn(node_type, idx):
             *[node['vk'] for node in TESTNET_WITNESSES],
             *[node['vk'] for node in TESTNET_DELEGATES]
         ]:
+            await asyncio.sleep(1)
             client.get_node_from_vk(vk)
 
     loop = asyncio.get_event_loop()

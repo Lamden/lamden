@@ -50,7 +50,7 @@ class Network(object):
             port=self.port,
             vk=Auth.vk
         )
-        self.state_fname = '{}/network-state.dat'.format(os.getenv('HOST_NAME', 'node'))
+        self.state_fname = '{}-network-state.dat'.format(os.getenv('HOST_NAME', 'node'))
 
         self.loop = loop or asyncio.get_event_loop()
         # asyncio.set_event_loop(self.loop)
@@ -185,7 +185,7 @@ class Network(object):
         if len(data['neighbors']) == 0:
             log.warning("No known neighbors, so not writing to cache.")
             return
-        with open(fname, 'wb') as f:
+        with open(fname, 'wb+') as f:
             pickle.dump(data, f)
 
     @classmethod

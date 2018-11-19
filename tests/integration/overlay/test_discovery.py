@@ -21,8 +21,8 @@ def masternode(idx):
     from cilantro.logger import get_logger
     log = get_logger('MasterNode_{}'.format(idx))
     loop = asyncio.get_event_loop()
-    Discovery.setup()
     Auth.setup(TESTNET_MASTERNODES[idx]['sk'])
+    Discovery.setup()
     tasks = asyncio.ensure_future(asyncio.gather(
         Discovery.listen(),
         Discovery.discover_nodes(os.getenv('HOST_IP')),
@@ -47,8 +47,8 @@ def witness(idx):
     from cilantro.logger import get_logger
     log = get_logger('Witness_{}'.format(idx))
     loop = asyncio.get_event_loop()
-    Discovery.setup()
     Auth.setup(TESTNET_WITNESSES[idx]['sk'])
+    Discovery.setup()
     tasks = asyncio.ensure_future(asyncio.gather(
         Discovery.listen(),
         Discovery.discover_nodes(os.getenv('HOST_IP')),
@@ -73,8 +73,8 @@ def delegate(idx):
     from cilantro.logger import get_logger
     log = get_logger('Delegate_{}'.format(idx))
     loop = asyncio.get_event_loop()
-    Discovery.setup()
     Auth.setup(TESTNET_DELEGATES[idx]['sk'])
+    Discovery.setup()
     tasks = asyncio.ensure_future(asyncio.gather(
         Discovery.listen(),
         Discovery.discover_nodes(os.getenv('HOST_IP')),
