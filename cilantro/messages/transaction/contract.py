@@ -1,21 +1,22 @@
+from cilantro.utils.lazy_property import lazy_property
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.utils import validate_hex
 from cilantro.protocol import wallet
 from cilantro.storage.templating import ContractTemplate
 from cilantro.protocol.pow import SHA3POW
+from decimal import *
 import random
 
 import capnp
 import transaction_capnp
 
 
+NUMERIC_TYPES = {int, Decimal}
 VALUE_TYPE_MAP = {
     str: 'text',
     bytes: 'data',
     bool: 'bool'
 }
-
-NUMERIC_TYPES = {int, float}
 
 
 class ContractTransaction(TransactionBase):
@@ -27,6 +28,7 @@ class ContractTransaction(TransactionBase):
 
     def validate_payload(self):
         validate_hex(self.sender, 64, 'sender')
+        assert self.gas_supplied > 0, "Must supply positive gas amount u silly billy"
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
@@ -45,7 +47,6 @@ class ContractTransaction(TransactionBase):
         struct.payload.functionName = func_name
 
         struct.payload.kwargs.init('entries', len(kwargs))
-
         for i, key in enumerate(kwargs):
             struct.payload.kwargs.entries[i].key = key
             value, t = kwargs[key], type(kwargs[key])
@@ -54,7 +55,9 @@ class ContractTransaction(TransactionBase):
             if t in NUMERIC_TYPES:
                 struct.payload.kwargs.entries[i].value.fixedPoint = str(value)
             else:
-                assert t in VALUE_TYPE_MAP, "value type {} not recognized in types {}".format(t, list(VALUE_TYPE_MAP.keys()))
+                assert t is not float, "Float types not allowed in kwargs. Used python's decimal.Decimal class instead"
+                assert t in VALUE_TYPE_MAP, "value type {} with value {} not recognized in " \
+                                            "types {}".format(t, kwargs[key], list(VALUE_TYPE_MAP.keys()))
                 setattr(struct.payload.kwargs.entries[i].value, VALUE_TYPE_MAP[t], value)
 
         payload_binary = struct.payload.copy().to_bytes()
@@ -64,12 +67,19 @@ class ContractTransaction(TransactionBase):
 
         return ContractTransaction.from_data(struct)
 
-    @property
+    # @property
+    @lazy_property
     def kwargs(self):
-        # TODO implement
-        pass
+        d = {}
+        for entry in self._data.payload.kwargs.entries:
+            if entry.value.which() == 'fixedPoint':
+                d[entry.key] = Decimal(entry.value.fixedPoint)
+            else:
+                d[entry.key] = getattr(entry.value, entry.value.which())
 
-    @property
+        return d
+
+    @lazy_property
     def sender(self):
         return self._data.payload.sender.decode()
 
@@ -91,30 +101,13 @@ class ContractTransactionBuilder:
     Utility methods to construct ContractTransactions. We use this exclusively for testing, as IRL this should be done by
     users via some JS library or something.
     """
-    @staticmethod
-    def create_contract_tx(sender_sk: str, code_str: str, contract_name: str='sample', gas_supplied: int=1.0):
-        validate_hex(sender_sk, 64, 'sender signing key')
-
-        struct = transaction_capnp.ContractTransaction.new_message()
-
-        struct.payload.sender = wallet.get_vk(sender_sk)
-        struct.payload.code = code_str
-        struct.payload.gasSupplied = gas_supplied
-
-        payload_binary = struct.payload.copy().to_bytes()
-
-        struct.metadata.proof = SHA3POW.find(payload_binary)[0]
-        struct.metadata.signature = wallet.sign(sender_sk, payload_binary)
-        struct.contractName = contract_name
-
-        return ContractTransaction.from_data(struct)
+    CURRENCY_CONTRACT_NAME = 'kv_currency'
 
     @staticmethod
-    def create_currency_tx(sender_sk: str, receiver_vk: str, amount: int):
-
-        validate_hex(receiver_vk, 64, 'receiver verifying key')
-        code_str = ContractTemplate.interpolate_template('currency', amount=amount, receiver=receiver_vk)
-        return ContractTransactionBuilder.create_contract_tx(sender_sk, code_str)
+    def create_currency_tx(sender_sk: str, receiver_vk: str, amount: Decimal, gas=1000):
+        return ContractTransaction.create(sender_sk=sender_sk, gas_supplied=gas,
+                                          contract_name=ContractTransactionBuilder.CURRENCY_CONTRACT_NAME,
+                                          func_name='transfer', to=receiver_vk, amount=amount)
 
     @staticmethod
     def random_currency_tx():
@@ -125,8 +118,8 @@ class ContractTransactionBuilder:
         amount = random.randint(1, 2 ** 8)
         return ContractTransactionBuilder.create_currency_tx(sender[0], receiver[1], amount)
 
-    @staticmethod
-    def create_dummy_tx(sender_sk: str, receiver_vk: str, fail: bool):
-
-        code_str = ContractTemplate.interpolate_template('dummy', fail=fail)
-        return ContractTransactionBuilder.create_contract_tx(sender_sk, code_str)
+    # @staticmethod
+    # def create_dummy_tx(sender_sk: str, receiver_vk: str, fail: bool):
+    #
+    #     code_str = ContractTemplate.interpolate_template('dummy', fail=fail)
+    #     return ContractTransactionBuilder.create_contract_tx(sender_sk, code_str)
