@@ -74,7 +74,7 @@ class TestLargeNetwork(MPTestCase):
         for n in all_nodes:
             n.send_pub("hi from {} with ip {}".format(n.name, n.ip).encode())
 
-        time.sleep(30*CI_FACTOR)  # Nap while nodes hookup
+        time.sleep(10*CI_FACTOR)  # Nap while nodes hookup
         self.start(timeout=90)
 
 
