@@ -14,11 +14,11 @@ class TestContractTransaction(TestCase):
         contract_name = 'currency'
         func_name = 'transfer'
 
-        contract_tx = ContractTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
+        contract_tx = ContractTransaction.create(sender_sk=sk, stamps=gas, contract_name=contract_name,
                                                  func_name=func_name, **kwargs)
 
         self.assertEquals(contract_tx.sender, vk)
-        self.assertEquals(contract_tx.gas_supplied, gas)
+        self.assertEquals(contract_tx.stamps, gas)
         self.assertEquals(contract_tx.contract_name, contract_name)
         self.assertEquals(contract_tx.func_name, func_name)
 
@@ -29,7 +29,7 @@ class TestContractTransaction(TestCase):
         contract_name = 'currency'
         func_name = 'transfer'
 
-        contract_tx = ContractTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
+        contract_tx = ContractTransaction.create(sender_sk=sk, stamps=gas, contract_name=contract_name,
                                                  func_name=func_name, **kwargs)
         clone = ContractTransaction.from_bytes(contract_tx.serialize())
 
@@ -42,7 +42,7 @@ class TestContractTransaction(TestCase):
         contract_name = 'currency'
         func_name = 'transfer'
 
-        contract_tx = ContractTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
+        contract_tx = ContractTransaction.create(sender_sk=sk, stamps=gas, contract_name=contract_name,
                                                  func_name=func_name, **kwargs)
 
         self.assertEqual(contract_tx.kwargs, kwargs)

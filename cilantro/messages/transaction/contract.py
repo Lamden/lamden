@@ -29,21 +29,21 @@ class ContractTransaction(TransactionBase):
 
     def validate_payload(self):
         validate_hex(self.sender, 64, 'sender')
-        assert self.gas_supplied > 0, "Must supply positive gas amount u silly billy"
+        assert self.stamps > 0, "Must supply positive gas amount u silly billy"
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
         return transaction_capnp.ContractTransaction.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, sender_sk: str, gas_supplied: int, contract_name: str,  func_name: str, *args, **kwargs):
+    def create(cls, sender_sk: str, stamps: int, contract_name: str, func_name: str, *args, **kwargs):
         assert len(args) == 0, "Contract must be created with key word args only (no positional args sorry)"
-        assert gas_supplied > 0, "Must supply positive gas amount u silly billy"
+        assert stamps > 0, "Must supply positive gas amount u silly billy"
 
         struct = transaction_capnp.ContractTransaction.new_message()
 
         struct.payload.sender = wallet.get_vk(sender_sk)
-        struct.payload.gasSupplied = gas_supplied
+        struct.payload.gasSupplied = stamps
         struct.payload.contractName = contract_name
         struct.payload.functionName = func_name
 
@@ -93,7 +93,7 @@ class ContractTransaction(TransactionBase):
         return self._data.payload.functionName
 
     @property
-    def gas_supplied(self):
+    def stamps(self):
         return self._data.payload.gasSupplied
 
 
@@ -105,8 +105,8 @@ class ContractTransactionBuilder:
     CURRENCY_CONTRACT_NAME = 'kv_currency'
 
     @staticmethod
-    def create_currency_tx(sender_sk: str, receiver_vk: str, amount: Union[int, Decimal], gas=1000):
-        return ContractTransaction.create(sender_sk=sender_sk, gas_supplied=gas,
+    def create_currency_tx(sender_sk: str, receiver_vk: str, amount: Union[int, Decimal], stamps=1000):
+        return ContractTransaction.create(sender_sk=sender_sk, stamps=stamps,
                                           contract_name=ContractTransactionBuilder.CURRENCY_CONTRACT_NAME,
                                           func_name='transfer', to=receiver_vk, amount=amount)
 

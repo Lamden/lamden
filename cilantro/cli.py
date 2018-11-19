@@ -269,7 +269,7 @@ def mock():
 @click.argument('stamp_amount')
 @click.argument('keyfile')
 def mock_contract(code, name, stamp_amount, keyfile):
-    # sender_sk: str, code_str: str, contract_name: str='sample', gas_supplied: int=1.0
+    # sender_sk: str, code_str: str, contract_name: str='sample', stamps: int=1.0
     code = os.path.realpath(code)
     _code = open(code).read()
 
