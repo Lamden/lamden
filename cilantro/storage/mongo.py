@@ -33,13 +33,13 @@ class MDB:
     mn_coll_idx = None
     init_idx_db = False
 
-    def __init__(self, db_type=None, reset=False):
+    def __init__(self, reset=False):
         if self.init_mdb is False:
-            self.start_db(db_type='all')
+            self.start_db()
             return
 
-        if reset==True and self._is_setup == True:
-            self.reset_db(db=db_type)
+        if reset is True and self.init_mdb is True:
+            self.reset_db(db='all')
             return
 
     @classmethod
@@ -51,12 +51,12 @@ class MDB:
             uri = cls.setup_db(db_type = 'MDB')
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client.get_database()
-            cls.genesis_blk = BlockDataBuilder.create_block()
-            block_dict = cls.get_dict(cls.genesis_blk)
+            block_dict = BlockDataBuilder.create_block()
+            cls.genesis_blk = cls.get_dict(block_dict)
 
-            cls.log.spam("storing genesis block... {}".format(block_dict))
+            cls.log.spam("storing genesis block... {}".format(cls.genesis_blk))
             cls.mn_collection = cls.mn_db['blocks']
-            cls.init_mdb = cls.insert_record(block_dict)
+            cls.init_mdb = cls.insert_record(cls.genesis_blk)
 
             if cls.init_mdb is True:
                 uri = cls.setup_db(db_type = 'index')
@@ -65,7 +65,7 @@ class MDB:
                 cls.mn_coll_idx = cls.mn_db_idx['index']
                 idx = {'block_num': cls.genesis_blk.get('block_num'), 'block_hash': cls.genesis_blk.get('block_hash'),
                        'mn_sign': cls.genesis_blk.get('mn_sign')}
-                cls.init_idx_db = cls.insert_idx_record(dict=idx)
+                cls.init_idx_db = cls.insert_idx_record(my_dict=idx)
 
     @classmethod
     def setup_db(cls, db_type=None):
