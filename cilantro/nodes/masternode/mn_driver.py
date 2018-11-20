@@ -1,4 +1,5 @@
 from cilantro.storage.mongo import MDB
+from cilantro.nodes.masternode.master_store import MasterOps
 from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 import dill, ujson as json, textwrap, bson
@@ -20,39 +21,41 @@ class StorageDriver:
     def store_block(cls, block: BlockData, validate: bool=False):
         if validate:
             block.validate()
-        block_dict = cls.get_dict(block)
-        cls.mn_db['blocks'].insert_one(bson.BSON.encode(block_dict))
-        cls.mn_db['state'].update_one({'_id': cls.state_id}, {
-            '_id': cls.state_id,
-            'lastest_block_hash': block_dict['block_hash']
-        }, upsert=True)
+
+        block_dict = MDB.get_dict(block)
+
+        if MasterOps.evaluate_wr(entry = block_dict) is True:
+            return True
 
     @classmethod
     def get_transactions(cls, block_hash=None, raw_tx_hash=None, status=None):
-        assert block_hash or raw_tx_hash or status, 'Must provide at least one search criteria'
-        query = {}
-        if block_hash:
-            query['block_hash'] = block_hash
-        if raw_tx_hash:
-            query['raw_tx_hash'] = raw_tx_hash
-        if status:
-            query['status'] = status
-        return cls.mn_db['transactions'].find(query)
+        pass
+        # assert block_hash or raw_tx_hash or status, 'Must provide at least one search criteria'
+        # query = {}
+        # if block_hash:
+        #     query['block_hash'] = block_hash
+        # if raw_tx_hash:
+        #     query['raw_tx_hash'] = raw_tx_hash
+        # if status:
+        #     query['status'] = status
+        # return cls.mn_db['transactions'].find(query)
 
     @classmethod
     def get_latest_block_hash(cls):
-        state = cls.mn_db['state'].find_one({'_id': cls.state_id})
-        if state:
-            return state['lastest_block_hash']
-        else:
-            return GENESIS_HASH
+        pass
+        # state = cls.mn_db['state'].find_one({'_id': cls.state_id})
+        # if state:
+        #     return state['lastest_block_hash']
+        # else:
+        #     return GENESIS_HASH
 
     @classmethod
     def get_blocks(cls, block_hash):
-        block_dict = cls.mn_db['blocks'].find_one({
-            'block_hash': start_block_hash
-        })
-        assert block_dict.get(block_num), 'Block for block_hash "{}" is not found'.format(start_block_hash)
-        return cls.mn_db['blocks'].find({
-            'block_num': {'$gt': block_dict['block_num']}
-        })
+        pass
+        # block_dict = cls.mn_db['blocks'].find_one({
+        #     'block_hash': start_block_hash
+        # })
+        # assert block_dict.get(block_num), 'Block for block_hash "{}" is not found'.format(start_block_hash)
+        # return cls.mn_db['blocks'].find({
+        #     'block_num': {'$gt': block_dict['block_num']}
+        # })

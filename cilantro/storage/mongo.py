@@ -92,13 +92,14 @@ class MDB():
 
     @classmethod
     def insert_record(cls, block_dict=None):
-        if block_dict == None:
+        if block_dict is None:
             return False
 
         # insert passed dict block to db
         blk_id = cls.mn_collection.insert(block_dict)
         # cls.log.info("block {}".format(block_dict))
-        return True
+        if blk_id:
+            return True
 
     @classmethod
     def insert_idx_record(cls, dict=None):
