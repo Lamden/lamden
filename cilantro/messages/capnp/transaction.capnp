@@ -19,7 +19,8 @@ struct ContractTransaction {
         contractName @1 :Text;
         functionName @2 :Text;
         gasSupplied @3 :UInt64;
-        kwargs @4 :V.Map(Text, V.Value);
+        nonce @4 :Text;
+        kwargs @5 :V.Map(Text, V.Value);
     }
 }
 
