@@ -209,8 +209,10 @@ class SubBlockBuilder(Worker):
         for txn in batch.transactions:
             self.client.run_contract(txn)  # this is a blocking call. either async or threads??
 
+        self.client.end_sub_block()
+
         # Merkle-ize transaction queue and create signed merkle hash
-        all_tx_queue = []#self.interpreter.get_tx_queue()
+        all_tx_queue = self.client.get_next_sub_block()
         tx_queue = all_tx_queue[-num_txs:]
         tx_binaries = [tx.serialize() for tx in tx_queue]
 
@@ -224,7 +226,7 @@ class SubBlockBuilder(Worker):
                                        merkle_leaves=merkle.leaves, sub_block_index=sbb_idx,
                                        signature=merkle_sig, transactions=tx_queue)
 
-        self.client.end_sub_block()
+        # self.client.end_sub_block()
         return sbc
 
     def _handle_cr_complete(self, cr_context: CRContext):
