@@ -20,12 +20,12 @@ class StorageDriver:
     def store_block(cls, block: BlockData, validate: bool=False):
         if validate:
             block.validate()
-        block_dict = cls.get_dict(block)
-        cls.mn_db['blocks'].insert_one(bson.BSON.encode(block_dict))
-        cls.mn_db['state'].update_one({'_id': cls.state_id}, {
+        block_dict = MDB.get_dict(block)
+        MDB.mn_db['blocks'].insert_one(block_dict)
+        MDB.mn_db['state'].update_one({'_id': cls.state_id}, {'$set': {
             '_id': cls.state_id,
             'lastest_block_hash': block_dict['block_hash']
-        }, upsert=True)
+        }}, upsert=True)
 
     @classmethod
     def get_transactions(cls, block_hash=None, raw_tx_hash=None, status=None):
@@ -37,11 +37,11 @@ class StorageDriver:
             query['raw_tx_hash'] = raw_tx_hash
         if status:
             query['status'] = status
-        return cls.mn_db['transactions'].find(query)
+        return MDB.mn_db['transactions'].find(query)
 
     @classmethod
     def get_latest_block_hash(cls):
-        state = cls.mn_db['state'].find_one({'_id': cls.state_id})
+        state = MDB.mn_db['state'].find_one({'_id': cls.state_id})
         if state:
             return state['lastest_block_hash']
         else:
@@ -49,10 +49,10 @@ class StorageDriver:
 
     @classmethod
     def get_blocks(cls, block_hash):
-        block_dict = cls.mn_db['blocks'].find_one({
+        block_dict = MDB.mn_db['blocks'].find_one({
             'block_hash': start_block_hash
         })
         assert block_dict.get(block_num), 'Block for block_hash "{}" is not found'.format(start_block_hash)
-        return cls.mn_db['blocks'].find({
+        return MDB.mn_db['blocks'].find({
             'block_num': {'$gt': block_dict['block_num']}
         })

@@ -41,8 +41,9 @@ class MDB():
             cls.mn_db = cls.mn_client.get_database()
             cls.genesis_blk = BlockDataBuilder.create_block()
             block_dict = cls.get_dict(cls.genesis_blk)
+
             cls.log.spam("storing genesis block... {}".format(block_dict))
-            blk_id = cls.mn_db['blocks'].insert_one('blocks', block_dict)
+            blk_id = cls.mn_db['blocks'].insert_one(block_dict)
             cls._is_setup = True
             return blk_id
 
@@ -82,14 +83,14 @@ class MDB():
         ignore = set(ignore)
         for k,v in capnp_struct.__class__.__dict__.items():
             if k in ignore: continue
+            val = getattr(capnp_struct, k)
             if type(v) == property:
-                v = getattr(capnp_struct, k)
-                if type(v) == list:
-                    if hasattr(v[0], 'serialize'):
-                        v = [v_i.serialize() for v_i in v]
-                d[k] = v
-
-        cls.log.critical(bson.BSON.encode(d))
+                if type(val) == list:
+                    if hasattr(val[0], 'serialize'):
+                        val = [v_i.serialize() for v_i in val]
+                elif hasattr(val, 'serialize'):
+                    val = val.serialize()
+                d[k] = val
         return d
 
     def query_db_status(self, list='all'):

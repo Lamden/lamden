@@ -1,20 +1,15 @@
 #!/bin/bash
-set -exn
+set -ex
+
+export PYTHONPATH=$(pwd)
 
 echo "Waiting for mongo on localhost"
 mkdir -p ./data/db/logs
 touch ./data/db/logs/log_mongo.log
 echo 'Dir created'
 
-mongod --dbpath ./data/db --logpath ./data/db/logs/mongo.log &
-sleep 0.5;
+mongod --dbpath ./data/db --logpath ./data/db/logs/mongo.log --bind_ip_all &
+sleep 1
 echo 'started mongod'
 
-echo 'Loading .ini'
-sed '/[^\[\]]/d' mn_db_conf.ini | sed 's/\ //g' > tmp.ini
-. tmp.ini
-rm tmp.ini
-
-mongo --eval "db.getSiblingDB('admin').createUser({ user: '$username', pwd: '$password', roles : [{ role: 'userAdminAnyDatabase', db: 'admin' }]})"
-
-echo 'user created'
+python3 ./scripts/create_user.py

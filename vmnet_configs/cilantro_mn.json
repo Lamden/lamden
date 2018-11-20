@@ -2,15 +2,15 @@
     "services": [
         {
             "name": "mn",
-            "image": "lamden/cilantro-mn",
+            "image": "cilantro_master.dev",
             "count": 1,
             "ports": [
-                27017,10200, 8080, 4319
+                27017, 10200, 8080, 4319
             ]
         },
         {
             "name": "mgmt",
-            "image": "lamden/cilantro",
+            "image": "cilantro_base.dev",
             "count": 1,
             "ports": [
                 10200, 8080, 4319

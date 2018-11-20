@@ -21,7 +21,7 @@ def start_mn(verifing_key):
 
     log = get_logger(os.getenv('MN'))
 
-    store = MDB(Type='all', reset=False)
+    store = MDB(db_type='all', reset=False)
     store.start_db()
 #    log.info("db -> {}".format(store.query_db_status()))
 
