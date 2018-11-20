@@ -6,7 +6,7 @@ from cilantro.logger.base import get_logger
 from cilantro.messages.block_data.block_data import BlockDataBuilder, BlockData
 
 
-class MDB():
+class MDB:
     # Config
     log = get_logger("mdb_log")
     path = os.path.dirname(cilantro.__path__[0])
@@ -14,9 +14,9 @@ class MDB():
     cfg.read('{}/mn_db_conf.ini'.format(path))
 
     # mongo setup
-    user = cfg.get('MN_DB','username')
-    pwd = cfg.get('MN_DB','password')
-    port = cfg.get('MN_DB','port')
+    user = cfg.get('MN_DB', 'username')
+    pwd = cfg.get('MN_DB', 'password')
+    port = cfg.get('MN_DB', 'port')
 
     # master store db
 
@@ -43,12 +43,12 @@ class MDB():
             return
 
     @classmethod
-    def start_db(cls, db_type="all"):
+    def start_db(cls):
         """
             init block store, store_index
         """
-        if db_type=='new' or db_type=='all':
-            uri = MDB.setup_db()
+        if cls.init_mdb is False:
+            uri = cls.setup_db(db_type = 'MDB')
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client.get_database()
             cls.genesis_blk = BlockDataBuilder.create_block()
@@ -59,7 +59,7 @@ class MDB():
             cls.init_mdb = cls.insert_record(block_dict)
 
             if cls.init_mdb is True:
-                uri = MDB.setup_db(Type='index')
+                uri = cls.setup_db(db_type = 'index')
                 cls.mn_client_idx = MongoClient(uri)
                 cls.mn_db_idx = MongoClient(uri).get_database()
                 cls.mn_coll_idx = cls.mn_db_idx['index']
@@ -68,16 +68,16 @@ class MDB():
                 cls.init_idx_db = cls.insert_idx_record(dict=idx)
 
     @classmethod
-    def setup_db(cls, db_type='new'):
-        if db_type == 'new':    # fresh setup
+    def setup_db(cls, db_type=None):
+        if db_type == 'MDB':    # fresh setup
             database = cls.cfg.get('MN_DB', 'mn_blk_database')
-            uri="mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+            uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
             cls.log.info("uri {}".format(uri))
             return uri
 
-        if db_type == 'cache':
+        if db_type == 'index':
             database = cls.cfg.get('MN_DB', 'mn_index_database')
-            uri="mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+            uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
             return uri
 
     @classmethod
@@ -90,6 +90,7 @@ class MDB():
         if db == 'all':
             cls.mn_client.drop_database(cls.mn_db)
             cls.mn_client_idx.drop_database(cls.mn_db_idx)
+            cls.init_mdb = cls.init_idx_db = False
 
     @classmethod
     def insert_record(cls, block_dict=None):
@@ -103,10 +104,10 @@ class MDB():
             return True
 
     @classmethod
-    def insert_idx_record(cls, dict=None):
+    def insert_idx_record(cls, my_dict = None):
         if dict is None:
             return None
-        idx_entry = cls.mn_coll_idx.insert(dict)
+        idx_entry = cls.mn_coll_idx.insert(my_dict)
         cls.log.info("entry {}".format(idx_entry))
         return True
 

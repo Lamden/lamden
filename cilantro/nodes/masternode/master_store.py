@@ -6,6 +6,7 @@ from cilantro.logger.base import get_logger
 from cilantro.constants.testnet import TESTNET_MASTERNODES
 from cilantro.storage.mongo import MDB
 
+
 class MasterOps:
     """
         Class for various master operations
@@ -36,7 +37,7 @@ class MasterOps:
                 cls.log.info("failed to get id")
 
             # start/setup mongodb
-            MDB.start_db(Type="all", ID=mn_id)
+            MDB.start_db()
             cls.log.info("db initiated")
             cls.init_state = True
 
