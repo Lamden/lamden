@@ -27,7 +27,7 @@ if __name__ == '__main__':
     conf.set(s, 'mn_blk_database', '{}_store'.format(args.database))
     conf.set(s, 'mn_cache_database', '{}_cache'.format(args.database))
     conf.set(s, 'hostname', args.hostname)
-    conf.set(s, 'port', free_port())
+    conf.set(s, 'port', args.port)
     conf.set(s, 'replication', REP_FACTOR)
     conf.set(s, 'quorum', QUORUM)
     conf.set(s, 'total_mn', TEST_HOOK)
