@@ -7,9 +7,11 @@ from enum import Enum, auto
 import capnp
 import transaction_capnp
 
+
 class Status(Enum):
     SUCCESS = auto()
     FAILURE = auto()
+
 
 class TransactionData(MessageBase):
 
@@ -51,6 +53,7 @@ class TransactionData(MessageBase):
 
     def __hash__(self):
         return int(self.hash,16)
+
 
 class TransactionDataBuilder:
     @classmethod
