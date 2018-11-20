@@ -54,7 +54,7 @@ class TransactionData(MessageBase):
 
 class TransactionDataBuilder:
     @classmethod
-    def create_random_tx(cls, status='SUCCESS', state='blah'):
+    def create_random_tx(cls, status='SUCC', state='blah'):
         return TransactionData.create(
             contract_tx=ContractTransactionBuilder.random_currency_tx(), status=status, state=state
         )
