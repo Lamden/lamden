@@ -7,8 +7,8 @@ jobs:
     parallelism: 5
     steps:
       - checkout
-      - run: rm -rf /usr/local/seneca
-      - run: mkdir /usr/local/seneca
+      - run: sudo rm -rf /usr/local/seneca
+      - run: sudo mkdir /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
@@ -83,8 +83,8 @@ jobs:
     parallelism: 1
     steps:
       - checkout
-      - run: rm -rf /usr/local/seneca
-      - run: mkdir /usr/local/seneca
+      - run: sudo rm -rf /usr/local/seneca
+      - run: sudo mkdir /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
