@@ -33,23 +33,17 @@ class TestLargeNetwork(MPTestCase):
 
         mn_0 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='[node_1]MN_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
         mn_1 = MPPubSubAuth(sk=TESTNET_MASTERNODES[1]['sk'], name='[node_2]MN_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        time.sleep(0.5)
 
         wit_0 = MPPubSubAuth(sk=TESTNET_WITNESSES[0]['sk'], name='[node_3]WITNESS_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        time.sleep(0.5)
         wit_1 = MPPubSubAuth(sk=TESTNET_WITNESSES[1]['sk'], name='[node_4]WITNESS_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        time.sleep(0.5)
 
         del_0 = MPPubSubAuth(sk=TESTNET_DELEGATES[0]['sk'], name='[node_5]DELEGATE_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        time.sleep(0.5)
         del_1 = MPPubSubAuth(sk=TESTNET_DELEGATES[1]['sk'], name='[node_6]DELEGATE_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        time.sleep(0.5)
         del_2 = MPPubSubAuth(sk=TESTNET_DELEGATES[2]['sk'], name='[node_7]DELEGATE_2', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        time.sleep(0.5)
         del_3 = MPPubSubAuth(sk=TESTNET_DELEGATES[3]['sk'], name='[node_8]DELEGATE_3', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
 
         # time.sleep(10)  # Nap while nodes hookup
-        time.sleep(20*CI_FACTOR)  # Nap while nodes hookup
+        time.sleep(30*CI_FACTOR)  # Nap while nodes hookup
 
         all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0, del_1, del_2, del_3)
         all_vks = (TESTNET_MASTERNODES[0]['vk'], TESTNET_MASTERNODES[1]['vk'], TESTNET_WITNESSES[0]['vk'],
@@ -70,16 +64,17 @@ class TestLargeNetwork(MPTestCase):
             for vk in VKBook.get_all():
                 if vk == node_vk: continue
                 n.connect_sub(vk=vk)
-                time.sleep(3)
-            time.sleep(2)
+                time.sleep(2)
+            time.sleep(1)
 
         time.sleep(30*CI_FACTOR)  # Allow time for VK lookups
 
         # Make each node pub a msg
         for n in all_nodes:
             n.send_pub("hi from {} with ip {}".format(n.name, n.ip).encode())
+            time.sleep(3)
 
-        time.sleep(20*CI_FACTOR)  # Nap while nodes hookup
+        time.sleep(30*CI_FACTOR)  # Nap while nodes hookup
         self.start(timeout=90)
 
 
