@@ -27,6 +27,9 @@ def run_mn(slot_num):
     import os
     import logging
 
+    # Disable nonces
+    os.environ["NONCE_DISABLED"] = "1"
+
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
     overwrite_logger_level(11)

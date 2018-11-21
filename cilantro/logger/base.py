@@ -17,11 +17,12 @@ req_log = logging.getLogger('urllib3')
 req_log.setLevel(logging.WARNING)
 req_log.propagate = True
 
-def get_main_log_path():
-    from seneca.libs import logger
 
-    root = logger.__file__  # resolves to '/Users/davishaba/Developer/seneca/seneca/logger/__init__.py'
-    log_path = '/'.join(root.split('/')[:-3]) + '/logs/seneca.log'
+def get_main_log_path():
+    import cilantro
+
+    root = cilantro.__file__  # resolves to '/Users/davishaba/Developer/seneca/seneca/logger/__init__.py'
+    log_path = '/'.join(root.split('/')[:-3]) + '/logs/cilantro.log'
 
     # Create log directory if it does not exist
     log_dir = os.path.dirname(log_path)

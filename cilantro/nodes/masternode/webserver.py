@@ -17,15 +17,20 @@ from cilantro.utils.hasher import Hasher
 
 import traceback, multiprocessing, os, asyncio
 from multiprocessing import Queue
-from os import getenv as env
+import os
 
 
 app = Sanic(__name__)
 log = get_logger(__name__)
 
+if os.getenv('NONCE_DISABLED'):
+    log.warning("NONCE_DISABLED env var set! Nonce checking will be disabled!")
+else:
+    log.info("Nonces enabled.")
+
 
 @app.route("/", methods=["POST",])
-async def contract_tx(request):
+async def submit_transaction(request):
     if app.queue.full():
         return json({'error': "Queue full! Cannot process any more requests"})
 
@@ -42,12 +47,13 @@ async def contract_tx(request):
     if type(tx) not in (ContractTransaction, PublishTransaction):
         return json({'error': 'Cannot process transaction of type {}'.format(type(tx))})
 
-    # Verify the nonce, and remove it from db if its valid so it cannot be used again
-    # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
-    if not NonceManager.check_if_exists(tx.nonce):
-        return json({'error': 'Nonce {} has expired or was never created'.format(tx.nonce)})
-    log.spam("Removing nonce {}".format(tx.nonce))
-    NonceManager.delete_nonce(tx.nonce)
+    if not os.getenv('NONCE_DISABLED'):
+        # Verify the nonce, and remove it from db if its valid so it cannot be used again
+        # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
+        if not NonceManager.check_if_exists(tx.nonce):
+            return json({'error': 'Nonce {} has expired or was never created'.format(tx.nonce)})
+        log.spam("Removing nonce {}".format(tx.nonce))
+        NonceManager.delete_nonce(tx.nonce)
 
     # TODO why do we need this if we check the queue at the start of this func? --davis
     try: app.queue.put_nowait(tx)
@@ -67,7 +73,7 @@ async def request_nonce(request):
 
     nonce = NonceManager.create_nonce(user_vk)
     log.spam("Creating nonce {}".format(nonce))
-    return json({'nonce': nonce})
+    return json({'success': True, 'nonce': nonce})
 
 
 @app.route("/latest_block", methods=["GET",])
@@ -112,13 +118,14 @@ async def get_transactions(request):
 
 @app.route("/teardown-network", methods=["POST",])
 async def teardown_network(request):
-    tx = KillSignal.create()
-    return text('tearing down network')
+    raise NotImplementedError()
+    # tx = KillSignal.create()
+    # return text('tearing down network')
 
 
 def start_webserver(q):
     app.queue = q
-    log.debug("Creating REST server on port {}".format(WEB_SERVER_PORT))
+    log.info("Creating REST server on port {}".format(WEB_SERVER_PORT))
     app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False)
 
 

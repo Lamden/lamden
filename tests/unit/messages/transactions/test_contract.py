@@ -13,7 +13,7 @@ class TestContractTransaction(TestCase):
         gas = 10000
         contract_name = 'currency'
         func_name = 'transfer'
-        nonce = 'ABCD' * 16
+        nonce = vk + ':' + 'A' * 64
 
         contract_tx = ContractTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
                                                  func_name=func_name, nonce=nonce, **kwargs)
@@ -30,7 +30,7 @@ class TestContractTransaction(TestCase):
         gas = 10000
         contract_name = 'currency'
         func_name = 'transfer'
-        nonce = 'ABCD' * 16
+        nonce = vk + ':' + 'A' * 64
 
         contract_tx = ContractTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
                                                  func_name=func_name, nonce=nonce, **kwargs)
@@ -44,7 +44,7 @@ class TestContractTransaction(TestCase):
         gas = 10000
         contract_name = 'currency'
         func_name = 'transfer'
-        nonce = 'ABCD' * 16
+        nonce = vk + ':' + 'A' * 64
 
         contract_tx = ContractTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
                                                  func_name=func_name, nonce=nonce, **kwargs)
