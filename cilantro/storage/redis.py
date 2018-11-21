@@ -13,25 +13,37 @@ class SafeRedisMeta(type):
     _lock = Lock()
 
     def _get_key(cls) -> str:
-        key = "{}:{}".format(os.getpid(), threading.get_ident())
+        # uncomment below for thread locking
+        # key = "{}:{}".format(os.getpid(), threading.get_ident())
+
+        key = str(os.getpid())
         return key
 
     def cleanup(cls):
         with cls._lock:
+            # TODO do we need to close all cursors?
             cls._shared_state.clear()
 
     def __getattr__(cls, item):
-        # First see if there is a cursor for this proccess
-        key = cls._get_key()
+        # key = cls._get_key()
+        # with cls._lock:
+        #     if key in cls._shared_state:
+        #         cur = cls._shared_state[key]
+        #     else:
+        #         cur = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
+        #         cls._shared_state[key] = cur
+        #
+        #     return getattr(cur, item)
 
-        # TODO do i need to put this check in a lock? I might...
-        if key in cls._shared_state:
-            return cls._shared_state[key]
+        key = cls._get_key()
+        if key in cls._shared_state:  # TODO does this need to be in a lock? maybe...
+            cur = cls._shared_state[key]
         else:
             with cls._lock:
-                cursor = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
-                cls._shared_state[key] = cursor
+                cur = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
+                cls._shared_state[key] = cur
 
+        return getattr(cur, item)
 
 
 class SafeRedis(metaclass=SafeRedisMeta):
