@@ -1,7 +1,10 @@
 #!/bin/bash
 set -ex
 
+echo "HELLO HELLO HELLO THIS IS NEW CODE"
 export PYTHONPATH=$(pwd)
+
+pip3 install -e git://github.com/Lamden/seneca.git@dev#egg=seneca
 
 echo "Waiting for mongo on localhost"
 mkdir -p ./data/$HOST_NAME/db/logs
