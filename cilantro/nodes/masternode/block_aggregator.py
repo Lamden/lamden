@@ -2,6 +2,7 @@ from cilantro.logger.base import get_logger
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 
+from cilantro.storage.state import StateDriver
 from cilantro.storage.vkbook import VKBook
 from cilantro.nodes.masternode.mn_api import StorageDriver
 
@@ -224,6 +225,7 @@ class BlockAggregator(Worker):
             assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} SBs/per/block" \
                                                           .format(len(merkle_roots), NUM_SB_PER_BLOCK)
             # TODO wrap storage in try/catch. Add logic for storage failure
+            StateDriver.update_with_block(block_data)
             StorageDriver.store_block(block_data)
             self.curr_block_hash = block_hash
             self.log.success("STORED BLOCK WITH HASH {}".format(block_hash))
