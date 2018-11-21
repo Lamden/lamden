@@ -28,9 +28,11 @@ if __name__ == '__main__':
     conf.set(s, 'port', args.port)
     conf.set(s, 'replication', REP_FACTOR)
     conf.set(s, 'quorum', QUORUM)
-    conf.set(s, 'total_mn', TEST_HOOK)
+    conf.set(s, 'total_mn', TOTAL_MN)
     conf.set(s, 'mn_id', MN_ID)
     conf.set(s, 'test_hook', TEST_HOOK)
+    conf.set(s, 'mn_blk_database', MN_BLK_DATABASE)
+    conf.set(s, 'mn_index_database', MN_INDEX_DATABASE)
 
     with open(args.output_file, 'w') as f:
         conf.write(f)

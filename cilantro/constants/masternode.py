@@ -15,5 +15,6 @@ NUM_WORKERS = 2  # Number of Sanic worker procs
 # Storage
 REP_FACTOR = 3
 MAX_BLOCK = 100
-
+MN_BLK_DATABASE = 'mn_store'
+MN_INDEX_DATABASE = 'mn_index'
 TEST_HOOK = False
