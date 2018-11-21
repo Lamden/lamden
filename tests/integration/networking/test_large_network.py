@@ -54,8 +54,8 @@ class TestLargeNetwork(MPTestCase):
         for n in all_nodes:
             n.add_pub_socket(ip=n.ip, secure=True)
 
-        time.sleep(3)  # Nap while nodes hookup
-        # time.sleep(10*CI_FACTOR)  # Nap while nodes hookup
+        # time.sleep(3)  # Nap while nodes hookup
+        time.sleep(20*CI_FACTOR)  # Nap while nodes hookup
 
         # Each node SUBs to everyone else (except themselves)
         for i, n in enumerate(all_nodes):
