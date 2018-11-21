@@ -50,7 +50,7 @@ class StorageDriver:
 
     @classmethod
     def get_latest_block_hash(cls):
-        return '0' * 64
+        return GENESIS_HASH
         # TODO verify
         pass
         # state = MDB.mn_db['state'].find_one({'_id': cls.state_id})
