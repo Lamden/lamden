@@ -9,7 +9,7 @@ class TestNonce(TestCase):
         nonce = NonceManager.create_nonce(user_vk)
 
         self.assertTrue(user_vk in nonce)
-        self.assertEqual(len(nonce), 64*2 +1)
+        self.assertEqual(len(nonce), 64*2 + 1)
         self.assertTrue(NonceManager.check_if_exists(nonce))
 
     def test_create_delete(self):
