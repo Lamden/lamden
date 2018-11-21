@@ -45,6 +45,7 @@ async def contract_tx(request):
     # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
     if not NonceManager.check_if_exists(tx.nonce):
         return json({'error': 'Nonce {} has expired or was never created'.format(tx.nonce)})
+    log.spam("Removing nonce {}".format(tx.nonce))
     NonceManager.delete_nonce(tx.nonce)
 
     # TODO why do we need this if we check the queue at the start of this func? --davis
@@ -62,6 +63,7 @@ async def request_nonce(request):
         return json({'error': "you must supply the key 'verifyingKey' in the json payload"})
 
     nonce = NonceManager.create_nonce(user_vk)
+    log.spam("Creating nonce {}".format(nonce))
     return json({'nonce': nonce})
 
 
