@@ -2,7 +2,7 @@
     "services": [
         {
             "name": "mn",
-            "image": "cilantro_master.dev",
+            "image": "cilantro_mn.dev",
             "count": 1,
             "ports": [
                 27017, 10200, 8080, 4319
