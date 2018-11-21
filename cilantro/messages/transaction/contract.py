@@ -83,14 +83,6 @@ class ContractTransaction(TransactionBase):
 
         return d
 
-    @lazy_property
-    def sender(self):
-        return self._data.payload.sender.decode()
-
-    @property
-    def nonce(self):
-        return self._data.payload.nonce
-
     @property
     def contract_name(self):
         return self._data.payload.contractName
@@ -98,10 +90,6 @@ class ContractTransaction(TransactionBase):
     @property
     def func_name(self):
         return self._data.payload.functionName
-
-    @property
-    def gas_supplied(self):
-        return self._data.payload.gasSupplied
 
 
 class ContractTransactionBuilder:

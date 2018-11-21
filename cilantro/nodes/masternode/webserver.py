@@ -1,17 +1,23 @@
+from cilantro.logger.base import get_logger, overwrite_logger_level
+
 from sanic import Sanic
 from sanic.response import json, text
 from sanic.exceptions import ServerError
-from cilantro.logger.base import get_logger, overwrite_logger_level
+
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.publish import PublishTransaction
 from cilantro.messages.transaction.container import TransactionContainer
-from cilantro.constants.masternode import WEB_SERVER_PORT, NUM_WORKERS
 from cilantro.messages.signals.kill_signal import KillSignal
+
+from cilantro.storage.driver import StorageDriver
+from cilantro.nodes.masternode.nonce import NonceManager
+
+from cilantro.constants.masternode import WEB_SERVER_PORT, NUM_WORKERS
+
 import traceback, multiprocessing, os, asyncio
 from multiprocessing import Queue
 from os import getenv as env
 
-from cilantro.storage.driver import StorageDriver
 
 app = Sanic(__name__)
 log = get_logger(__name__)
@@ -20,14 +26,43 @@ log = get_logger(__name__)
 @app.route("/", methods=["POST",])
 async def contract_tx(request):
     if app.queue.full():
-        return text("Queue full! Cannot process any more requests")
-    tx_bytes = request.body
-    container = TransactionContainer.from_bytes(tx_bytes)
-    tx = container.open()
+        return json({'error': "Queue full! Cannot process any more requests"})
+
+    try:
+        tx_bytes = request.body
+        container = TransactionContainer.from_bytes(tx_bytes)
+        tx = container.open()  # Deserializing the tx automatically validates the signature and POW
+    except Exception as e:
+        return json({'error': 'Error opening transaction: {}'.format(e)})
+
+    # TODO do we need to do any other validation? tx size? check sufficient stamps?
+
+    # Check the transaction type and make sure we can handle it
+    if type(tx) not in (ContractTransaction, PublishTransaction):
+        return json({'error': 'Cannot process transaction of type {}'.format(type(tx))})
+
+    # Verify the nonce, and remove it from db if its valid so it cannot be used again
+    # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
+    if not NonceManager.check_if_exists(tx.nonce):
+        return json({'error': 'Nonce {} has expired or was never created'.format(tx.nonce)})
+    NonceManager.delete_nonce(tx.nonce)
+
+    # TODO why do we need this if we check the queue at the start of this func? --davis
     try: app.queue.put_nowait(tx)
-    except: return text("Queue full! Cannot process any more requests")
+    except: return json({'error': "Queue full! Cannot process any more requests"})
+
     # log.important("proc id {} just put a tx in queue! queue = {}".format(os.getpid(), app.queue))
-    return json({'message': 'Transaction successfully submitted to the network.'})
+    return json({'success': 'Transaction successfully submitted to the network.'})
+
+
+@app.route("/nonce", methods=['GET',])
+async def request_nonce(request):
+    user_vk = request.json.get('verifyingKey')
+    if not user_vk:
+        return json({'error': "you must supply the key 'verifyingKey' in the json payload"})
+
+    nonce = NonceManager.create_nonce(user_vk)
+    return json({'nonce': nonce})
 
 
 @app.route("/latest_block", methods=["GET",])

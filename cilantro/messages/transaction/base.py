@@ -1,6 +1,6 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.utils import validate_hex
-from cilantro.utils import lazy_property
+from cilantro.utils import lazy_property, is_valid_hex
 
 from cilantro.protocol import wallet as W
 from cilantro.protocol.pow import SHA3POW
@@ -59,7 +59,10 @@ class TransactionBase(MessageBase):
         If all fields are valid, this method returns nothing. This method should be implemented by subclasses
         :raises: An exception if the fields are somehow invalid
         """
-        raise NotImplementedError
+        validate_hex(self.sender, 64, 'sender')
+        assert self.gas_supplied > 0, "Must supply positive gas amount u silly billy"
+        assert self.nonce[:64] == self.sender, "Prefix for nonce does not match sender!\nNonce: {}\nSender: {}"\
+                                               .format(self.nonce, self.sender)
 
     @lazy_property
     def _payload_binary(self):
@@ -83,6 +86,14 @@ class TransactionBase(MessageBase):
     @property
     def sender(self):
         return self._data.payload.sender.decode()
+
+    @property
+    def nonce(self):
+        return self._data.payload.nonce
+
+    @property
+    def gas_supplied(self):
+        return self._data.payload.gasSupplied
 
 
 def build_test_transaction() -> TransactionBase:

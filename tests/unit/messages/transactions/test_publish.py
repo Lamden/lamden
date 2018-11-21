@@ -12,7 +12,7 @@ class TestPublishTransaction(TestCase):
         gas = 10000
         contract_name = 'currency'
         contract_code = 'transfer'
-        nonce = 'ABCD' * 16
+        nonce = vk + ':' + 'A' * 64
 
         tx = PublishTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
                                        contract_code=contract_code, nonce=nonce)
@@ -29,7 +29,7 @@ class TestPublishTransaction(TestCase):
         gas = 10000
         contract_name = 'currency'
         contract_code = 'transfer'
-        nonce = 'ABCD' * 16
+        nonce = vk + ':' + 'A' * 64
 
         tx = PublishTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
                                        contract_code=contract_code, nonce=nonce)
