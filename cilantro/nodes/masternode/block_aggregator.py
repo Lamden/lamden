@@ -3,7 +3,7 @@ from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 
 from cilantro.storage.vkbook import VKBook
-from cilantro.nodes.masternode.mn_driver import StorageDriver
+from cilantro.nodes.masternode.mn_api import StorageDriver
 
 from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MASTER_FILTER, DEFAULT_FILTER
 from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT

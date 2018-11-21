@@ -13,7 +13,7 @@
 """
 
 from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder
-from cilantro.nodes.masternode.mn_driver import StorageDriver
+from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.logger.base import get_logger
 from cilantro.storage.vkbook import VKBook
 from cilantro.protocol.multiprocessing.worker import Worker
