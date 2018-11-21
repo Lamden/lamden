@@ -1,11 +1,10 @@
 #!/bin/bash
 set -ex
 
-# DEV only
-if [ $CIRCLECI != 'true' ]
+pip3 install seneca --upgrade
+pip3 install vmnet --upgrade
+if [ $CIRCLECI == 'true' ]
   then
-    pip3 install seneca --upgrade
-    pip3 install vmnet --upgrade
     sudo service mongodb stop
 fi
 
