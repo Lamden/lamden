@@ -36,8 +36,10 @@ def run_mn():
     sk = TESTNET_MASTERNODES[0]['sk']
     NodeFactory.run_masternode(ip=ip, signing_key=sk, reset_db=True)
 
+    input("dont die pls")
 
-def run_user(volume, delay=0):
+
+def run_user():
     from cilantro.utils.test.god import God
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.protocol import wallet
@@ -52,10 +54,11 @@ def run_user(volume, delay=0):
     nonce = God.request_nonce(vk)
     log.important("got nonce return {}".format(nonce))
 
+    input("dont die pls")
+
 
 class TestNonce(BaseNetworkTestCase):
 
-    VOLUME = 1200  # Number of transactions to dump
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-2.json')
     PROFILE_TYPE = None
 

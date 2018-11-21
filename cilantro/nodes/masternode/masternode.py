@@ -17,6 +17,7 @@ from cilantro.nodes.base import NodeBase
 from cilantro.nodes.masternode.webserver import start_webserver
 from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
+from cilantro.nodes.masternode.master_store import MasterOps
 
 import os
 
@@ -38,7 +39,7 @@ class MNBootState(MNBaseState):
     @enter_from_any
     def enter_any(self, prev_state):
         # TODO -- get quorum before we transition to RunState
-
+        MasterOps.init_master(self.signing_key)
         self.parent.transition(MNRunState)
 
 
