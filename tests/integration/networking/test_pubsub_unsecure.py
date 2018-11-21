@@ -36,15 +36,16 @@ class TestPubSubUnsecure(MPTestCase):
         sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB1', block_until_rdy=BLOCK)
         sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB2', block_until_rdy=BLOCK)
 
-        time.sleep(15*CI_FACTOR)
+        time.sleep(30*CI_FACTOR)
 
         pub.add_pub_socket(ip=pub.ip)
 
         for sub in (sub1, sub2):
             sub.add_sub_socket()
             sub.connect_sub(vk=PUB1_VK)
+            time.sleep(2)
 
-        time.sleep(15*CI_FACTOR)  # Allow time for VK lookup
+        time.sleep(30*CI_FACTOR)  # Allow time for VK lookup
 
         pub.send_pub(msg)
 
@@ -69,7 +70,7 @@ class TestPubSubUnsecure(MPTestCase):
         pub2 = MPPubSubAuth(sk=PUB2_SK, name='PUB2', block_until_rdy=BLOCK)
         sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=BLOCK)
 
-        time.sleep(15*CI_FACTOR)
+        time.sleep(30*CI_FACTOR)
 
         pub1.add_pub_socket(ip=pub1.ip, secure=True)
         pub2.add_pub_socket(ip=pub2.ip, secure=False)
@@ -79,7 +80,7 @@ class TestPubSubUnsecure(MPTestCase):
         sub.connect_sub(vk=PUB1_VK, socket_key='sub1')
         sub.connect_sub(vk=PUB2_VK, socket_key='sub2')
 
-        time.sleep(15*CI_FACTOR)  # Allow time for VK lookup
+        time.sleep(30*CI_FACTOR)  # Allow time for VK lookup
 
         pub1.send_pub(msg1)
         pub2.send_pub(msg2)
