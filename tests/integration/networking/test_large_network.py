@@ -55,7 +55,7 @@ class TestLargeNetwork(MPTestCase):
             n.add_pub_socket(ip=n.ip, secure=True)
 
         # time.sleep(3)  # Nap while nodes hookup
-        time.sleep(20*CI_FACTOR)  # Nap while nodes hookup
+        time.sleep(40*CI_FACTOR)  # Nap while nodes hookup
 
         # Each node SUBs to everyone else (except themselves)
         # for i, n in enumerate(all_nodes):
@@ -90,17 +90,16 @@ class TestLargeNetwork(MPTestCase):
                 m.connect_sub(vk=n_vk)
                 n.connect_sub(vk=m_vk)
             it = it + 1
+
+        time.sleep(50*CI_FACTOR)  # Allow time for VK lookups
         
-
-        time.sleep(40*CI_FACTOR)  # Allow time for VK lookups
-
         # Make each node pub a msg
         for n in all_nodes:
             n.send_pub("hi from {} with ip {}".format(n.name, n.ip).encode())
             # time.sleep(3)
 
-        time.sleep(10*CI_FACTOR)  # Nap while nodes hookup
-        self.start(timeout=90)
+        time.sleep(30*CI_FACTOR)  # Nap while nodes hookup
+        self.start(timeout=450)
 
 
 if __name__ == '__main__':
