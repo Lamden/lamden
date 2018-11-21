@@ -49,12 +49,6 @@ MIN_NEW_BLOCK_MN_QOURUM = math.ceil(NUM_MASTERS * 2 / 3)  # Number of NewBlockNo
 
 
 # ///////////////////////////////////////////////
-# Masternode
-# ///////////////////////////////////////////////
-NONCE_EXPIR = 90  # Number of seconds before a nonce requested by a user expires
-
-
-# ///////////////////////////////////////////////
 # Seneca Interpreter
 # ///////////////////////////////////////////////
 # If MOCK_INTERPRET_RANDOM_MODE=False, we use MOCK_INTERPRET_TIME

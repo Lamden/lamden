@@ -4,9 +4,7 @@ from sanic.exceptions import ServerError
 from cilantro.logger.base import get_logger, overwrite_logger_level
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.container import TransactionContainer
-from cilantro.constants.masternode import WEB_SERVER_PORT
-from cilantro.protocol.states.statemachine import StateMachine
-from cilantro.protocol.states.state import StateInput
+from cilantro.constants.masternode import WEB_SERVER_PORT, NUM_WORKERS
 from cilantro.messages.signals.kill_signal import KillSignal
 import traceback, multiprocessing, os, asyncio
 from multiprocessing import Queue
@@ -80,7 +78,7 @@ async def teardown_network(request):
 def start_webserver(q):
     app.queue = q
     log.debug("Creating REST server on port {}".format(WEB_SERVER_PORT))
-    app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=2, debug=False, access_log=False)
+    app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False)
 
 
 if __name__ == '__main__':

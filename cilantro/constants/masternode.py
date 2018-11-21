@@ -16,3 +16,6 @@ NUM_WORKERS = 2  # Number of Sanic worker procs
 # Storage
 REP_FACTOR = 3
 MAX_BLOCK = 100
+
+# Nonces
+NONCE_EXPIR = 90  # Number of seconds before a nonce requested by a user expires
