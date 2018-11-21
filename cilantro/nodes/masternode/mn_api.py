@@ -25,7 +25,7 @@ class StorageDriver:
 
         block_dict = MDB.get_dict(block)
 
-        if MasterOps.evaluate_wr(entry = block_dict) is True:
+        if MasterOps.evaluate_wr(entry=block_dict) is True:
             return True
         # block_dict = MDB.get_dict(block)
         # MDB.mn_db['blocks'].insert_one(block_dict)
@@ -50,6 +50,7 @@ class StorageDriver:
 
     @classmethod
     def get_latest_block_hash(cls):
+        return '0' * 64
         # TODO verify
         pass
         # state = MDB.mn_db['state'].find_one({'_id': cls.state_id})

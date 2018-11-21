@@ -34,6 +34,8 @@ class Hasher:
         from cilantro.messages.transaction.data import TransactionData
         from cilantro.utils import int_to_bytes
 
+        assert data is not None, "Cannot hash a None type!"
+
         t = type(data)
 
         if t is str:
