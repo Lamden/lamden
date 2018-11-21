@@ -1,5 +1,5 @@
-
-
+import os
+import cilantro
 from configparser import SafeConfigParser
 from cilantro.storage.vkbook import VKBook
 from cilantro.logger.base import get_logger
@@ -15,6 +15,7 @@ class MasterOps:
         - get unique master id
     """
     log = get_logger('master_store')
+    path = os.path.dirname(cilantro.__path__[0])
     cfg = SafeConfigParser()
     cfg.read('{}/mn_db_conf.ini'.format(path))
 

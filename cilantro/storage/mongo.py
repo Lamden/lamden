@@ -51,7 +51,7 @@ class MDB:
             uri = cls.setup_db(db_type = 'MDB')
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client.get_database()
-            block_dict = BlockDataBuilder.create_block()
+            block_dict = BlockDataBuilder.create_block(blk_num = 0)
             cls.genesis_blk = cls.get_dict(block_dict)
 
             cls.log.spam("storing genesis block... {}".format(cls.genesis_blk))
@@ -128,6 +128,19 @@ class MDB:
         return d
 
     def query_db(self, type=None, query=None):
+
+        if query is None:
+            if type is None or type is "MDB":
+                block_list = self.mn_collection.find({})
+                for x in block_list:
+                    self.log.info("{}".format(x))
+
+            if type is None or type is "index":
+                index_list = self.mn_coll_idx.find({})
+                for y in index_list:
+                    self.log.info("{}".format(y))
+            return
+
         if type is 'idx' and query is not None:
             result = self.mn_coll_idx.find(query)
             for x in result:

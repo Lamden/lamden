@@ -86,10 +86,11 @@ DEL_SK = TESTNET_DELEGATES[0]['sk']
 DEL_VK = TESTNET_MASTERNODES[0]['vk']
 PREV_BLOCK_HASH = Hasher.hash('0' * 64)
 
+
 class BlockDataBuilder:
-    block_num = 1
+
     @classmethod
-    def create_block(cls, prev_block_hash=PREV_BLOCK_HASH, merkle_roots=None, all_transactions=None, tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK):
+    def create_block(cls, blk_num = None, prev_block_hash=PREV_BLOCK_HASH, merkle_roots=None, all_transactions=None, tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK):
         input_hashes = [uuid.uuid4().hex * 2 for i in range(sub_block_count)]
         if not all_transactions:
             all_transactions = []
@@ -107,7 +108,7 @@ class BlockDataBuilder:
                 input_hashes.append(sub_block['input_hash'])
                 all_transactions += transactions
         block_hash = BlockData.compute_block_hash(merkle_roots, prev_block_hash)
-        block_num = cls.block_num
+        block_num = blk_num
         signature = build_test_merkle_sig(msg=block_hash.encode(), sk=mn_sk, vk=mn_vk)
         block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, transactions=all_transactions,
                                  masternode_signature=signature, merkle_roots=merkle_roots, block_num=block_num,
@@ -119,5 +120,4 @@ class BlockDataBuilder:
         # block_dict['transactions']=transactions
         # block_dict['input_hashes']=input_hashes
 
-        cls.block_num += 1
         return block
