@@ -10,5 +10,7 @@ client = MongoClient()
 db = client.admin
 
 db.add_user(settings.get('MN_DB', 'username'),
-    settings.get('MN_DB', 'password'), roles=[{'role':'userAdminAnyDatabase','db':'admin'}])
+
+settings.get('MN_DB', 'password'), roles=[{'role': 'userAdminAnyDatabase', 'db': 'admin'}])
+
 print('user created')
