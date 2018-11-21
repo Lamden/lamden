@@ -47,7 +47,7 @@ class TestPubSubSecure(MPTestCase):
 
         pub.send_pub(msg)
 
-        self.start()
+        self.start(timeout=20*CI_FACTOR)
 
     @vmnet_test
     def test_pubsub_1_pub_2_sub_auth(self):
