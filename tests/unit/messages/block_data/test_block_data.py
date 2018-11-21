@@ -9,17 +9,17 @@ class TestBlockData(TestCase):
 
     def test_create(self):
         td = TransactionData.create(
-            contract_tx=ContractTransactionBuilder.create_contract_tx(
-                sender_sk=TEST_SK, code_str='abcdefg'
-                ),status='SUCCESS', state='blah')
+            contract_tx=ContractTransactionBuilder.create_currency_tx(
+                sender_sk=TEST_SK, receiver_vk='A' * 64, amount=10),
+            status='SUCCESS', state='blah')
 
         self.assertTrue(isinstance(td.contract_tx, ContractTransaction))
 
     def test_serialize_deserialize(self):
         td = TransactionData.create(
-            contract_tx=ContractTransactionBuilder.create_contract_tx(
-                sender_sk=TEST_SK, code_str='abcdefg'
-                ),status='SUCCESS', state='blah')
+            contract_tx=ContractTransactionBuilder.create_currency_tx(
+                sender_sk=TEST_SK, receiver_vk='A' * 64, amount=10),
+            status='SUCCESS', state='blah')
         clone = TransactionData.from_bytes(td.serialize())
 
         self.assertEqual(clone, td)

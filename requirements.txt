@@ -1,7 +1,4 @@
 aenum==2.0.8
-aiodns==1.1.1
-aiohttp
-aioprocessing==1.0.1
 coloredlogs
 Cython
 idna==2.6
@@ -19,3 +16,6 @@ uvloop==0.9.1
 u-msgpack-python==2.5.0
 yarl==1.1.0
 seneca
+click
+simple-crypt
+sanic
