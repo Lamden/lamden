@@ -49,7 +49,7 @@ MIN_NEW_BLOCK_MN_QOURUM = math.ceil(NUM_MASTERS * 2 / 3)  # Number of NewBlockNo
 
 
 # ///////////////////////////////////////////////
-# Delegate
+# Masternode
 # ///////////////////////////////////////////////
 NONCE_EXPIR = 90  # Number of seconds before a nonce requested by a user expires
 
