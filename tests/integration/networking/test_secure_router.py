@@ -69,7 +69,9 @@ class TestRouterSecure(MPTestCase):
             r.create_router_socket(identity=r.ip.encode(), secure=True, name='Router-{}'.format(r.ip))
             r.bind_router_socket(ip=r.ip)
 
+        time.sleep(2)
         router1.connect_router_socket(vk=PUB2_VK)
+        time.sleep(2*CI_FACTOR)
         router2.connect_router_socket(vk=PUB1_VK)
 
         # Give time for VK lookup
