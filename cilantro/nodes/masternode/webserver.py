@@ -13,6 +13,7 @@ from cilantro.storage.driver import StorageDriver
 from cilantro.nodes.masternode.nonce import NonceManager
 
 from cilantro.constants.masternode import WEB_SERVER_PORT, NUM_WORKERS
+from cilantro.utils.hasher import Hasher
 
 import traceback, multiprocessing, os, asyncio
 from multiprocessing import Queue
@@ -53,7 +54,9 @@ async def contract_tx(request):
     except: return json({'error': "Queue full! Cannot process any more requests"})
 
     # log.important("proc id {} just put a tx in queue! queue = {}".format(os.getpid(), app.queue))
-    return json({'success': 'Transaction successfully submitted to the network.'})
+    # TODO return transaction hash or some unique identifier here
+    return json({'success': 'Transaction successfully submitted to the network.',
+                 'nonce': tx.nonce, 'hash': Hasher.hash(tx)})
 
 
 @app.route("/nonce", methods=['GET',])
