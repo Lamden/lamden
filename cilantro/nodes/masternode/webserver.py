@@ -77,12 +77,12 @@ async def get_block(request):
         num = request.json['number']
         block = StorageDriver.get_block_by_num(num)
         if block is None:
-            return text({'error': 'Block at number {} does not exist.'.format(num)})
+            return json({'error': 'Block at number {} does not exist.'.format(num)})
     else:
         _hash = request.json['hash']
         block = StorageDriver.get_block_by_hash(_hash)
         if block is None:
-            return text({'error': 'Block with hash {} does not exist.'.format(_hash)})
+            return json({'error': 'Block with hash {} does not exist.'.format(_hash)})
 
     return text('{}'.format(block))
 
