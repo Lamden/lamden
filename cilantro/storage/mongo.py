@@ -115,7 +115,7 @@ class MDB:
     @classmethod
     def get_dict(cls, capnp_struct, ignore=[]):
         ignore = set(ignore)
-        return capnp_struct.to_dict()
+        return capnp_struct._data.to_dict()
 
     def query_db(self, type=None, query=None):
 

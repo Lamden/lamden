@@ -89,13 +89,16 @@ PREV_BLOCK_HASH = Hasher.hash('0' * 64)
 class BlockDataBuilder:
 
     @classmethod
-    def create_block(cls, blk_num=0, prev_block_hash=PREV_BLOCK_HASH, merkle_roots=None, all_transactions=[], tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK, states=[]):
+    def create_block(cls, blk_num=0, prev_block_hash=PREV_BLOCK_HASH, merkle_roots=None, all_transactions=[], tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK, states=None):
         merkle_roots = []
         input_hashes = []
         create_new_transactions = len(all_transactions) == 0
         for i in range(sub_block_count):
             if create_new_transactions:
-                transactions = [TransactionDataBuilder.create_random_tx(state=states[(i*tx_count)+j]) for j in range(tx_count)]
+                transactions = []
+                for j in range(tx_count):
+                    state = states[(i*tx_count)+j] if states else 'SET x 1'
+                    transactions.append(TransactionDataBuilder.create_random_tx(state=state))
                 all_transactions += transactions
             else:
                 transactions = all_transactions[i*tx_count:(i+1)*tx_count]

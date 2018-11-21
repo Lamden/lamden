@@ -23,7 +23,7 @@ class TestStateDriver(TestCase):
             'SET optic fiber',
             'SET before after'
         ]
-        self.block = BlockDataBuilder.create_block(sub_block_count=sub_block_count, tx_count=tx_count, states=states)
+        self.block = BlockDataBuilder.create_block(sub_block_count=sub_block_count, tx_count=tx_count, states=states, all_transactions=[])
 
     def test_state_updated(self):
         StateDriver.update_with_block(self.block)

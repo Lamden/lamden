@@ -6,7 +6,6 @@ COPY . /app
 WORKDIR /app
 
 ENV DEBIAN_FRONTEND noninteractive
-ENV PYTHONPATH /app/venv/src/seneca:/app/venv/src/vmnet
 
 RUN apt-get update \
     && apt-get install -y software-properties-common \
@@ -25,6 +24,7 @@ RUN apt-get update \
         gcc g++ git autoconf automake \
         libffi-dev libtool dpkg \
         gsl-bin zlib1g-dev libboost-all-dev \
+        nano \
     && pip3 install --upgrade setuptools wheel \
     && pip3 install -r requirements.txt \
     && pip3 install -r dev-requirements.txt \
@@ -35,14 +35,14 @@ RUN apt-get update \
         && python3 setup.py install \
         && cd - \
     && rm -rf pynacl capnproto \
-    && apt-get remove -y --allow-remove-essential \
-        build-essential \
-        gcc g++ \
-        libffi-dev libtool \
-        gsl-bin zlib1g-dev libboost-all-dev \
-        autoconf automake \
-    && apt autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
+#    && apt-get remove -y --allow-remove-essential \
+#        build-essential \
+#        gcc g++ \
+#        libffi-dev libtool \
+#        gsl-bin zlib1g-dev libboost-all-dev \
+#        autoconf automake \
+#    && apt autoremove -y \
+#    && rm -rf /var/lib/apt/lists/*
 
 #ENTRYPOINT ["sh", "/app/scripts/start_mongo.sh"]
 

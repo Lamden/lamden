@@ -1,7 +1,9 @@
 #!/bin/bash
 set -ex
 
-export PYTHONPATH=$(pwd)
+# DEV only
+pip3 install seneca --upgrade
+pip3 install vmnet --upgrade
 
 echo "Waiting for mongo on localhost"
 mkdir -p ./data/$HOST_NAME/db/logs
