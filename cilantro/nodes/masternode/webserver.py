@@ -1,4 +1,3 @@
-from sanic import Sanic
 from sanic.response import json, text
 from sanic.exceptions import ServerError
 from cilantro.logger.base import get_logger, overwrite_logger_level
@@ -13,10 +12,13 @@ from multiprocessing import Queue
 from os import getenv as env
 
 from cilantro.storage.driver import StorageDriver
+from cilantro.protocol.multiprocessing.sanic import SanicSingleton
+from seneca.engine.interpreter import SenecaInterpreter
+from seneca.engine.interface import SenecaInterface
 
-app = Sanic(__name__)
+app = SanicSingleton.app
+interface = SanicSingleton.interface
 log = get_logger(__name__)
-
 
 @app.route("/", methods=["POST",])
 async def contract_tx(request):
@@ -30,6 +32,17 @@ async def contract_tx(request):
     # log.important("proc id {} just put a tx in queue! queue = {}".format(os.getpid(), app.queue))
     return json({'message': 'Transaction successfully submitted to the network.'})
 
+@app.route("/submit-contract", methods=["POST",])
+async def submit_contract(request):
+    contract_name = request.json['contract_name']
+    author = request.json['author']
+    code_str = request.json['code_str']
+    interface.publish_code_str()
+    pass
+
+@app.route("/run-contract", methods=["POST",])
+async def run_contract(request):
+    pass
 
 @app.route("/latest_block", methods=["GET",])
 async def get_latest_block(request):
@@ -75,7 +88,6 @@ async def get_transactions(request):
 async def teardown_network(request):
     tx = KillSignal.create()
     return text('tearing down network')
-
 
 def start_webserver(q):
     app.queue = q
