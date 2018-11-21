@@ -29,6 +29,7 @@ if __name__ == '__main__':
     conf.set(s, 'replication', REP_FACTOR)
     conf.set(s, 'quorum', QUORUM)
     conf.set(s, 'total_mn', TEST_HOOK)
+    conf.set(s, 'mn_id', MN_ID)
 
     with open(args.output_file, 'w') as f:
         conf.write(f)

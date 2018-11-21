@@ -6,6 +6,7 @@ FETCH_BLOCK_TIMEOUT = 24
 # Quorums
 TOTAL_MN = 12
 QUORUM = 3
+MN_ID = 1
 
 # Web Server
 WEB_SERVER_PORT = 8080
