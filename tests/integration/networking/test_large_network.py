@@ -67,7 +67,7 @@ class TestLargeNetwork(MPTestCase):
                 # time.sleep(2)
             # time.sleep(1)
 
-        for n in enumerate(all_nodes):
+        for i, n in enumerate(all_nodes):
             n.add_sub_socket(secure=True)
         for vk in VKBook.get_all():
             for i, n in enumerate(all_nodes):
