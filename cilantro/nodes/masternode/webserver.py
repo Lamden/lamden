@@ -9,7 +9,6 @@ from cilantro.messages.transaction.publish import PublishTransaction
 from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.messages.signals.kill_signal import KillSignal
 
-from cilantro.storage.driver import StorageDriver
 from cilantro.nodes.masternode.nonce import NonceManager
 
 from cilantro.constants.masternode import WEB_SERVER_PORT, NUM_WORKERS

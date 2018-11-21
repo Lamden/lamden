@@ -42,8 +42,7 @@ class Hasher:
             data = int_to_bytes(data)
         elif issubclass(t, MessageBase):
             data = data.serialize()
-        else:
-            raise Exception("Unable to cast data of original type {} into bytes".format(t))
+
         assert type(data) is bytes, "Unable to cast data of original type {} into bytes".format(t)
 
         return data
