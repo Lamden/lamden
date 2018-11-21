@@ -80,9 +80,11 @@ class BlockData(MessageBase):
     def input_hashes(self) -> List[str]:
         return [input_hash.decode() for input_hash in self._data.inputHashes]
 
-
-
-
+MN_SK = TESTNET_MASTERNODES[0]['sk']
+MN_VK = TESTNET_MASTERNODES[0]['vk']
+DEL_SK = TESTNET_DELEGATES[0]['sk']
+DEL_VK = TESTNET_MASTERNODES[0]['vk']
+PREV_BLOCK_HASH = Hasher.hash('0' * 64)
 
 class BlockDataBuilder:
 
