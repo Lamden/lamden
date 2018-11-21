@@ -2,8 +2,12 @@
 set -ex
 
 # DEV only
-pip3 install seneca --upgrade
-pip3 install vmnet --upgrade
+if [ $CIRCLECI != 'true' ]
+  then
+    pip3 install seneca --upgrade
+    pip3 install vmnet --upgrade
+    sudo service mongodb stop
+fi
 
 echo "Waiting for mongo on localhost"
 mkdir -p ./data/$HOST_NAME/db/logs
