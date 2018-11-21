@@ -58,14 +58,24 @@ class TestLargeNetwork(MPTestCase):
         time.sleep(20*CI_FACTOR)  # Nap while nodes hookup
 
         # Each node SUBs to everyone else (except themselves)
-        for i, n in enumerate(all_nodes):
+        # for i, n in enumerate(all_nodes):
+            # n.add_sub_socket(secure=True)
+            # node_vk = all_vks[i]
+            # for vk in VKBook.get_all():
+                # if vk == node_vk: continue
+                # n.connect_sub(vk=vk)
+                # time.sleep(2)
+            # time.sleep(1)
+
+        for n in enumerate(all_nodes):
             n.add_sub_socket(secure=True)
-            node_vk = all_vks[i]
-            for vk in VKBook.get_all():
+        for vk in VKBook.get_all():
+            for i, n in enumerate(all_nodes):
+                node_vk = all_vks[i]
                 if vk == node_vk: continue
                 n.connect_sub(vk=vk)
-                time.sleep(2)
-            time.sleep(1)
+                time.sleep(1)
+
 
         time.sleep(30*CI_FACTOR)  # Allow time for VK lookups
 
