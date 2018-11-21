@@ -29,7 +29,8 @@ class SafeRedisMeta(type):
             return cls._shared_state[key]
         else:
             with cls._lock:
-                cursor = redis.StrictRedis()
+                cursor = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
+                cls._shared_state[key] = cursor
 
 
 
