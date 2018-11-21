@@ -13,7 +13,7 @@
 # from cilantro.constants.nodes import TRANSACTIONS_PER_SUB_BLOCK
 # from cilantro.constants.delegate import CONSENSUS_TIMEOUT
 #
-# from cilantro.storage.db import VKBook
+# from cilantro.storage.vkbook import VKBook
 # from cilantro.storage.blocks import BlockStorageDriver
 #
 # DelegateBootState = "DelegateBootState"

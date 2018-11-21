@@ -13,7 +13,7 @@ with patch('cilantro.utils.test.testnet_nodes.get_testnet_json_path') as mock_pa
 
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 import unittest, time
 
 

@@ -12,7 +12,7 @@ import traceback, multiprocessing, os, asyncio
 from multiprocessing import Queue
 from os import getenv as env
 
-from cilantro.storage.driver import StorageDriver
+from cilantro.nodes.masternode.mn_api import StorageDriver
 
 app = Sanic(__name__)
 log = get_logger(__name__)
