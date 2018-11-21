@@ -34,7 +34,7 @@ RUN apt-get update \
         && cythonize -ki src/nacl \
         && python3 setup.py install \
         && cd - \
-    && rm -rf pynacl capnproto \
+    && rm -rf pynacl capnproto
 #    && apt-get remove -y --allow-remove-essential \
 #        build-essential \
 #        gcc g++ \

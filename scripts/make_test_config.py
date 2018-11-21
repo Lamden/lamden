@@ -30,6 +30,7 @@ if __name__ == '__main__':
     conf.set(s, 'quorum', QUORUM)
     conf.set(s, 'total_mn', TEST_HOOK)
     conf.set(s, 'mn_id', MN_ID)
+    conf.set(s, 'test_hook', TEST_HOOK)
 
     with open(args.output_file, 'w') as f:
         conf.write(f)
