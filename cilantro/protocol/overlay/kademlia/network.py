@@ -118,12 +118,14 @@ class Network(object):
                 continue
             processed.add(addr.vk)
             result = await self.protocol.callFindNode(addr, self.node)
+            await asyncio.sleep(1)
             nearest.extend(result)
         for addr in nearest:
             if addr.vk in processed:
                 continue
             processed.add(addr.vk)
             await self.protocol.callFindNode(addr, self.node)
+            await asyncio.sleep(1)
         
 
     async def bootstrap_node(self, addr):
@@ -161,7 +163,7 @@ class Network(object):
                     self.cached_vks[vk] = ip
                     return ip
                 nearest.extend(result)
-                # await asyncio.sleep(1)
+                await asyncio.sleep(1)
 
             return None
 

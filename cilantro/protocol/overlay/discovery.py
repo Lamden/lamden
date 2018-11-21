@@ -53,7 +53,7 @@ class Discovery:
     async def discover_nodes(cls, start_ip):
         try_count = 0
         if cls.is_listen_ready:
-            await asyncio.sleep(1)
+            await asyncio.sleep(3)
         while True:
             cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
             cls.connect(get_ip_range(start_ip))
@@ -78,7 +78,7 @@ class Discovery:
                 ))
                 return False
             await asyncio.sleep(DISCOVERY_TIMEOUT)
-        await asyncio.sleep(2 if cls.is_master_node else 4)
+        await asyncio.sleep(3 if cls.is_master_node else 6)
 
     # raghu these class methods are not thread-safe. Not sure why we want them to be class methods rather than instance methods
 #    @classmethod

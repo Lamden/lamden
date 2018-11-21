@@ -70,10 +70,10 @@ class TestLargeNetwork(MPTestCase):
             for vk in VKBook.get_all():
                 if vk == node_vk: continue
                 n.connect_sub(vk=vk)
-                time.sleep(2)
+                time.sleep(3)
             time.sleep(2)
 
-        time.sleep(20*CI_FACTOR)  # Allow time for VK lookups
+        time.sleep(30*CI_FACTOR)  # Allow time for VK lookups
 
         # Make each node pub a msg
         for n in all_nodes:

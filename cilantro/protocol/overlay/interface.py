@@ -67,6 +67,7 @@ class OverlayInterface:
         ''')
         self.started = True
         Event.emit({ 'event': 'service_status', 'status': 'ready' })
+        
 
     async def discover(self):
         if not await Discovery.discover_nodes(Discovery.host_ip):
@@ -84,6 +85,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         addrs = [Node(digest(vk), ip=Discovery.discovered_nodes[vk], port=self.network.port, vk=vk) \
             for vk in Discovery.discovered_nodes if vk is not Auth.vk]
         await self.network.bootstrap(addrs)
+        await asyncio.sleep(1)
         # self.network.cached_vks.update(self.neighbors)
 
     async def authenticate(self, ip, vk, domain='*'):
