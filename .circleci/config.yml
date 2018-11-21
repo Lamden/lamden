@@ -4,7 +4,7 @@ jobs:
     machine:
         image: circleci/classic:201808-01
     working_directory: ~/cilantro
-    parallelism: 5
+    parallelism: 8
     steps:
       - checkout
       - run: sudo rm -rf /usr/local/seneca
