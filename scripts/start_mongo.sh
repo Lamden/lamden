@@ -1,10 +1,13 @@
 #!/bin/bash
 set -ex
 
-echo "HELLO HELLO HELLO THIS IS NEW CODE"
-export PYTHONPATH=$(pwd)
-
-pip3 install -e git://github.com/Lamden/seneca.git@dev#egg=seneca
+# DEV only
+if [ $CIRCLECI != 'true' ]
+  then
+    pip3 install seneca --upgrade
+    pip3 install vmnet --upgrade
+    sudo service mongodb stop
+fi
 
 echo "Waiting for mongo on localhost"
 mkdir -p ./data/$HOST_NAME/db/logs

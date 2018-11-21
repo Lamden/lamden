@@ -11,7 +11,7 @@ class TestBlockData(TestCase):
         td = TransactionData.create(
             contract_tx=ContractTransactionBuilder.create_currency_tx(
                 sender_sk=TEST_SK, receiver_vk='A' * 64, amount=10),
-            status='SUCCESS', state='blah')
+            status='SUCCESS', state='SET x 1')
 
         self.assertTrue(isinstance(td.contract_tx, ContractTransaction))
 
@@ -19,7 +19,7 @@ class TestBlockData(TestCase):
         td = TransactionData.create(
             contract_tx=ContractTransactionBuilder.create_currency_tx(
                 sender_sk=TEST_SK, receiver_vk='A' * 64, amount=10),
-            status='SUCCESS', state='blah')
+            status='SUCCESS', state='SET x 1')
         clone = TransactionData.from_bytes(td.serialize())
 
         self.assertEqual(clone, td)

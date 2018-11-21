@@ -89,34 +89,32 @@ PREV_BLOCK_HASH = Hasher.hash('0' * 64)
 class BlockDataBuilder:
 
     @classmethod
-    def create_block(cls, blk_num = None, prev_block_hash=PREV_BLOCK_HASH, merkle_roots=None, all_transactions=None, tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK):
-        input_hashes = [uuid.uuid4().hex * 2 for i in range(sub_block_count)]
-        if not all_transactions:
-            all_transactions = []
-            merkle_roots = []
-            input_hashes = []
-            for i in range(sub_block_count):
-                transactions = [TransactionDataBuilder.create_random_tx() for i in range(tx_count)]
-                merkle_leaves = [Hasher.hash(tx) for tx in transactions]
-                sub_block = {
-                    'merkle_root': MerkleTree.from_hex_leaves(merkle_leaves).root_as_hex,
-                    'transactions': transactions,
-                    'input_hash': Hasher.hash_iterable(transactions)
-                }
-                merkle_roots.append(sub_block['merkle_root'])
-                input_hashes.append(sub_block['input_hash'])
+    def create_block(cls, blk_num=0, prev_block_hash=PREV_BLOCK_HASH, merkle_roots=None, all_transactions=[], tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK, states=None):
+        merkle_roots = []
+        input_hashes = []
+        create_new_transactions = len(all_transactions) == 0
+        for i in range(sub_block_count):
+            if create_new_transactions:
+                transactions = []
+                for j in range(tx_count):
+                    state = states[(i*tx_count)+j] if states else 'SET x 1'
+                    transactions.append(TransactionDataBuilder.create_random_tx(state=state))
                 all_transactions += transactions
+            else:
+                transactions = all_transactions[i*tx_count:(i+1)*tx_count]
+            merkle_leaves = [Hasher.hash(tx) for tx in transactions]
+            sub_block = {
+                'merkle_root': MerkleTree.from_hex_leaves(merkle_leaves).root_as_hex,
+                'input_hash': Hasher.hash_iterable(transactions)
+            }
+            merkle_roots.append(sub_block['merkle_root'])
+            input_hashes.append(sub_block['input_hash'])
+
         block_hash = BlockData.compute_block_hash(merkle_roots, prev_block_hash)
         block_num = blk_num
         signature = build_test_merkle_sig(msg=block_hash.encode(), sk=mn_sk, vk=mn_vk)
         block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, transactions=all_transactions,
                                  masternode_signature=signature, merkle_roots=merkle_roots, block_num=block_num,
                                  input_hashes=input_hashes)
-
-        # block_dict = {'blk_num': cls.block_num,'block_hash': block_hash, 'prev_block_hash': prev_block_hash,
-        #               'masternode_signature': signature}
-        # block_dict['merkle_roots']=merkle_roots
-        # block_dict['transactions']=transactions
-        # block_dict['input_hashes']=input_hashes
 
         return block
