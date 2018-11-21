@@ -8,8 +8,6 @@ from random_password import random_password
 from cilantro.constants.masternode import *
 
 if __name__ == '__main__':
-    random_pw = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(12))
-
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('--username', default='lamden')
     parser.add_argument('--database', default='mn')

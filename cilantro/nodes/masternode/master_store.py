@@ -81,7 +81,7 @@ class MasterOps:
                 return TESTNET_MASTERNODES['sk']
 
     '''
-        Calculates pool sz for replicated writes 
+        Calculates pool sz for replicated writes
     '''
 
     @classmethod
@@ -128,12 +128,10 @@ class MasterOps:
 
     '''
         Read for particular block hash, does first read
-        to index db if block is local  
+        to index db if block is local
     '''
     @staticmethod
     def read_bucket_entry(block_hash):
         my_query = {'block_hash', block_hash}
         outcome = MDB.query_db(query=my_query)
         return outcome
-
-
