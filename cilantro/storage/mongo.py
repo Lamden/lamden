@@ -114,19 +114,8 @@ class MDB:
 
     @classmethod
     def get_dict(cls, capnp_struct, ignore=[]):
-        d = {}
         ignore = set(ignore)
-        for k,v in capnp_struct.__class__.__dict__.items():
-            if k in ignore: continue
-            val = getattr(capnp_struct, k)
-            if type(v) == property:
-                if type(val) == list:
-                    if hasattr(val[0], 'serialize'):
-                        val = [v_i.serialize() for v_i in val]
-                elif hasattr(val, 'serialize'):
-                    val = val.serialize()
-                d[k] = val
-        return d
+        return capnp_struct.to_dict()
 
     def query_db(self, type=None, query=None):
 
