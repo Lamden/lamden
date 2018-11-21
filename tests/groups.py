@@ -19,8 +19,8 @@ PROTOCOL_TESTS = [
     ]
 
 NODE_TESTS = [
-    # 'tests.unit.nodes.masternode',
-    # 'tests.unit.nodes.delegate',
+    'tests.unit.nodes.masternode',
+    'tests.unit.nodes.delegate',
 ]
 
 MESSAGE_TESTS = [

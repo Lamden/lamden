@@ -1,7 +1,13 @@
 #!/bin/bash
 set -ex
 
-export PYTHONPATH=$(pwd)
+# DEV only
+if [ $CIRCLECI != 'true' ]
+  then
+    pip3 install seneca --upgrade
+    pip3 install vmnet --upgrade
+    sudo service mongodb stop
+fi
 
 echo "Waiting for mongo on localhost"
 mkdir -p ./data/$HOST_NAME/db/logs
