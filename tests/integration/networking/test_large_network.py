@@ -69,22 +69,37 @@ class TestLargeNetwork(MPTestCase):
 
         for i, n in enumerate(all_nodes):
             n.add_sub_socket(secure=True)
-        for vk in VKBook.get_all():
-            for i, n in enumerate(all_nodes):
-                node_vk = all_vks[i]
-                if vk == node_vk: continue
-                n.connect_sub(vk=vk)
-                time.sleep(1)
+        # for vk in VKBook.get_all():
+            # for i, n in enumerate(all_nodes):
+                # node_vk = all_vks[i]
+                # if vk == node_vk: continue
+                # n.connect_sub(vk=vk)
+                # time.sleep(1)
 
+        nsz = len(all_vks)
+        it = 1
+        while it < nsz:
+            for i in range(nsz):
+                j = i + it
+                if j >= nsz:
+                    break
+                m = all_nodes[i]
+                m_vk = all_vks[i]
+                n = all_nodes[j]
+                n_vk = all_vks[j]
+                m.connect_sub(vk=n_vk)
+                n.connect_sub(vk=m_vk)
+            it = it + 1
+        
 
-        time.sleep(30*CI_FACTOR)  # Allow time for VK lookups
+        time.sleep(40*CI_FACTOR)  # Allow time for VK lookups
 
         # Make each node pub a msg
         for n in all_nodes:
             n.send_pub("hi from {} with ip {}".format(n.name, n.ip).encode())
-            time.sleep(3)
+            # time.sleep(3)
 
-        time.sleep(30*CI_FACTOR)  # Nap while nodes hookup
+        time.sleep(10*CI_FACTOR)  # Nap while nodes hookup
         self.start(timeout=90)
 
 
