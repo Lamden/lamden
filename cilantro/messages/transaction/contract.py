@@ -30,7 +30,7 @@ class ContractTransaction(TransactionBase):
     def validate_payload(self):
         validate_hex(self.sender, 64, 'sender')
         assert self.gas_supplied > 0, "Must supply positive gas amount u silly billy"
-        assert is_valid_hex(self.nonce, 64), "Nonce {} not valid 64 char hex".format(nonce)
+        assert is_valid_hex(self.nonce, 64), "Nonce {} not valid 64 char hex".format(self.nonce)
 
     @classmethod
     def _deserialize_data(cls, data: bytes):

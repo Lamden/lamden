@@ -3,6 +3,7 @@ from sanic.response import json, text
 from sanic.exceptions import ServerError
 from cilantro.logger.base import get_logger, overwrite_logger_level
 from cilantro.messages.transaction.contract import ContractTransaction
+from cilantro.messages.transaction.publish import PublishTransaction
 from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.constants.masternode import WEB_SERVER_PORT, NUM_WORKERS
 from cilantro.messages.signals.kill_signal import KillSignal

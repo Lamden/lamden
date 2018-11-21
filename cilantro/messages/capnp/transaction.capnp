@@ -25,6 +25,20 @@ struct ContractTransaction {
 }
 
 
+struct PublishTransaction {
+    metadata @0: MetaData;
+    payload @1: Payload;
+
+    struct Payload {
+        sender @0 :Data;
+        contractName @1 :Text;
+        contractCode @2 :Text;
+        gasSupplied @3 :UInt64;
+        nonce @4 :Text;
+    }
+}
+
+
 struct TransactionData {
     contractTransaction @0 :ContractTransaction;
     status @1: UInt8;
