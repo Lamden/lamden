@@ -4,7 +4,7 @@ from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_
 from cilantro.protocol.structures import MerkleTree
 from cilantro.protocol import wallet
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 from cilantro.utils.hasher import Hasher
 from cilantro.constants.testnet import TESTNET_DELEGATES
 

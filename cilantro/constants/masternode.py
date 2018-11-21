@@ -4,18 +4,17 @@ NEW_BLOCK_TIMEOUT = 8
 FETCH_BLOCK_TIMEOUT = 24
 
 # Quorums
-# TOTAL_MASTERS = 12
-# NUM_PRIMARY = 8
-# NODES_REQUIRED_CONSENSUS = 5
-# SUBBLOCKS_REQUIRED = 1
+TOTAL_MN = 12
+QUORUM = 3
 
 # Web Server
 WEB_SERVER_PORT = 8080
 NUM_WORKERS = 2  # Number of Sanic worker procs
+NONCE_EXPIR = 90  # Number of seconds before a nonce requested by a user expires
 
 # Storage
 REP_FACTOR = 3
 MAX_BLOCK = 100
 
-# Nonces
-NONCE_EXPIR = 90  # Number of seconds before a nonce requested by a user expires
+TEST_HOOK = False
+

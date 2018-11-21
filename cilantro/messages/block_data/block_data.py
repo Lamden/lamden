@@ -8,8 +8,8 @@ from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
 from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
 from typing import List
 from cilantro.logger import get_logger
-from cilantro.storage.db import VKBook
-import time
+from cilantro.storage.vkbook import VKBook
+import time, uuid
 
 import capnp
 import blockdata_capnp
@@ -80,37 +80,36 @@ class BlockData(MessageBase):
     def input_hashes(self) -> List[str]:
         return [input_hash.decode() for input_hash in self._data.inputHashes]
 
-
-
+MN_SK = TESTNET_MASTERNODES[0]['sk']
+MN_VK = TESTNET_MASTERNODES[0]['vk']
+DEL_SK = TESTNET_DELEGATES[0]['sk']
+DEL_VK = TESTNET_MASTERNODES[0]['vk']
+PREV_BLOCK_HASH = Hasher.hash('0' * 64)
 
 class BlockDataBuilder:
-    block_num = 1
+
     @classmethod
-    def create_block(cls, prev_block_hash=None, merkle_roots=None, transactions=None, tx_count=5, sub_block_count=2, mn_sk=None, mn_vk=None, del_sk=None):
-        MN_SK = TESTNET_MASTERNODES[0]['sk']
-        MN_VK = TESTNET_MASTERNODES[0]['vk']
-        DEL_SK = TESTNET_DELEGATES[0]['sk']
-        DEL_VK = TESTNET_MASTERNODES[0]['vk']
-        PREV_BLOCK_HASH = Hasher.hash('0' * 64)
-
-        prev_block_hash = prev_block_hash or PREV_BLOCK_HASH
-        mn_sk = mn_sk or MN_SK
-        mn_vk = mn_vk or MN_VK
-        del_sk = del_sk or DEL_SK
-
-        if not transactions:
+    def create_block(cls, blk_num = None, prev_block_hash=PREV_BLOCK_HASH, merkle_roots=None, all_transactions=None, tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK):
+        input_hashes = [uuid.uuid4().hex * 2 for i in range(sub_block_count)]
+        if not all_transactions:
+            all_transactions = []
             merkle_roots = []
-            transactions = []
             input_hashes = []
             for i in range(sub_block_count):
-                transactions += [TransactionDataBuilder.create_random_tx() for i in range(tx_count)]
+                transactions = [TransactionDataBuilder.create_random_tx() for i in range(tx_count)]
                 merkle_leaves = [Hasher.hash(tx) for tx in transactions]
-                merkle_roots.append(MerkleTree.from_hex_leaves(merkle_leaves).root_as_hex)
-                input_hashes = [Hasher.hash(leaf) for leaf in merkle_leaves]
-        block_hash = Hasher.hash_iterable([*merkle_roots, prev_block_hash])
-        block_num = cls.block_num
+                sub_block = {
+                    'merkle_root': MerkleTree.from_hex_leaves(merkle_leaves).root_as_hex,
+                    'transactions': transactions,
+                    'input_hash': Hasher.hash_iterable(transactions)
+                }
+                merkle_roots.append(sub_block['merkle_root'])
+                input_hashes.append(sub_block['input_hash'])
+                all_transactions += transactions
+        block_hash = BlockData.compute_block_hash(merkle_roots, prev_block_hash)
+        block_num = blk_num
         signature = build_test_merkle_sig(msg=block_hash.encode(), sk=mn_sk, vk=mn_vk)
-        block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, transactions=transactions,
+        block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, transactions=all_transactions,
                                  masternode_signature=signature, merkle_roots=merkle_roots, block_num=block_num,
                                  input_hashes=input_hashes)
 
@@ -120,5 +119,4 @@ class BlockDataBuilder:
         # block_dict['transactions']=transactions
         # block_dict['input_hashes']=input_hashes
 
-        cls.block_num += 1
         return block

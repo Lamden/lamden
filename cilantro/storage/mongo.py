@@ -1,11 +1,12 @@
-import cilantro, os
+import cilantro
+import os
 from configparser import SafeConfigParser
 from pymongo import MongoClient
 from cilantro.logger.base import get_logger
 from cilantro.messages.block_data.block_data import BlockDataBuilder, BlockData
-from cilantro.storage.driver import BlockMetaSQL
 
-class MDB():
+
+class MDB:
     # Config
     log = get_logger("mdb_log")
     path = os.path.dirname(cilantro.__path__[0])
@@ -13,101 +14,125 @@ class MDB():
     cfg.read('{}/mn_db_conf.ini'.format(path))
 
     # mongo setup
-    user=cfg.get('MN_DB','username')
-    pwd=cfg.get('MN_DB','password')
-    port=cfg.get('MN_DB','port')
+    user = cfg.get('MN_DB', 'username')
+    pwd = cfg.get('MN_DB', 'password')
+    port = cfg.get('MN_DB', 'port')
+
+    # master store db
 
     mn_client = None
     mn_db = None
     mn_collection = None
+    genesis_blk = None
     init_mdb = False
-    blk_zero = None
 
-    def __init__(self, Type=None, reset=False):
-        if self.init_mdb == False:
-            self.start_db(Type='all')
+    # local index db
+
+    mn_client_idx = None
+    mn_db_idx = None
+    mn_coll_idx = None
+    init_idx_db = False
+
+    def __init__(self, reset=False):
+        if self.init_mdb is False:
+            self.start_db()
             return
 
-        if reset==True and self.init_mdb==True:
-            self.reset_db(db=Type)
+        if reset is True and self.init_mdb is True:
+            self.reset_db(db='all')
             return
-
 
     @classmethod
-    def start_db(cls,Type="all"):
+    def start_db(cls):
         """
             init block store, store_index
         """
-        if Type=='new' or Type=='all':
-            uri = MDB.setup_db()
+        if cls.init_mdb is False:
+            uri = cls.setup_db(db_type = 'MDB')
             cls.mn_client = MongoClient(uri)
-            cls.mn_db = MongoClient(uri).get_database()
-            cls.mn_collection = cls.mn_db['chains']
-            cls.init_mdb = cls.insert_record()
-            #blk_id = cls.mn_collection.insert_one(first)
-            #cls.log.info("insert id {}".format(blk_id))
+            cls.mn_db = cls.mn_client.get_database()
 
-        if Type=='cache' or Type=='all':
-            uri = cls.setup_db(Type='cache')
-            stash_client = MongoClient(uri)
-            collection = stash_client["index"]
+            block_dict = BlockDataBuilder.create_block(blk_num = 0)
+            cls.genesis_blk = cls.get_dict(block_dict)
 
+            cls.log.spam("storing genesis block... {}".format(cls.genesis_blk))
+            cls.mn_collection = cls.mn_db['blocks']
+            cls.init_mdb = cls.insert_record(cls.genesis_blk)
+
+            if cls.init_mdb is True:
+                uri = cls.setup_db(db_type = 'index')
+                cls.mn_client_idx = MongoClient(uri)
+                cls.mn_db_idx = MongoClient(uri).get_database()
+                cls.mn_coll_idx = cls.mn_db_idx['index']
+                idx = {'block_num': cls.genesis_blk.get('block_num'), 'block_hash': cls.genesis_blk.get('block_hash'),
+                       'mn_sign': cls.genesis_blk.get('mn_sign')}
+                cls.init_idx_db = cls.insert_idx_record(my_dict=idx)
 
     @classmethod
-    def setup_db(cls,Type='new'):
-        if Type == 'new':    # fresh setup
-            database = cls.cfg.get('MN_DB','mn_blk_database')
-            uri="mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+    def setup_db(cls, db_type=None):
+        if db_type == 'MDB':    # fresh setup
+            database = cls.cfg.get('MN_DB', 'mn_blk_database')
+            uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
             cls.log.info("uri {}".format(uri))
             return uri
 
-        if Type == 'cache':
-            database = cls.cfg.get('MN_DB','mn_cache_database')
-            uri="mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+        if db_type == 'index':
+            database = cls.cfg.get('MN_DB', 'mn_index_database')
+            uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
             return uri
 
     @classmethod
-    def reset_db (cls, db='all'):
-        if db == all:
-            cls.mn_client.drop_database()
-
+    def reset_db(cls, db='all'):
+        cls.drop_db(db)
         cls.start_db()
 
     @classmethod
-    def insert_record(cls, block_dict=None):
-        if cls.init_mdb == False:
-            cls.blk_zero = BlockDataBuilder.create_block()
-            block_dict = cls.unpack_block(block = cls.blk_zero)
-            cls.log.info("genesis block {}".format(block_dict))
-            #blk_id = cls.mn_collection.insert_one(block_dict).inserted_id
-            cls.init_mdb = True
-            #return blk_id
-        else:
-            # insert passed dict block to db
-            blk_id = cls.mn_collection.insert(block_dict)
-            return blk_id
-
-        return False
+    def drop_db(cls, db='all'):
+        if db == 'all':
+            cls.mn_client.drop_database(cls.mn_db)
+            cls.mn_client_idx.drop_database(cls.mn_db_idx)
+            cls.init_mdb = cls.init_idx_db = False
 
     @classmethod
-    def unpack_block(cls, block=None):
-        if not block:
+    def insert_record(cls, block_dict=None):
+        if block_dict is None:
+            return False
+
+        # insert passed dict block to db
+        blk_id = cls.mn_collection.insert(block_dict)
+        # cls.log.info("block {}".format(block_dict))
+        if blk_id:
+            return True
+
+    @classmethod
+    def insert_idx_record(cls, my_dict = None):
+        if dict is None:
+            return None
+        idx_entry = cls.mn_coll_idx.insert(my_dict)
+        cls.log.info("entry {}".format(idx_entry))
+        return True
+
+    @classmethod
+    def get_dict(cls, capnp_struct, ignore=[]):
+        ignore = set(ignore)
+        return capnp_struct.to_dict()
+
+    def query_db(self, type=None, query=None):
+
+        if query is None:
+            if type is None or type is "MDB":
+                block_list = self.mn_collection.find({})
+                for x in block_list:
+                    self.log.info("{}".format(x))
+
+            if type is None or type is "index":
+                index_list = self.mn_coll_idx.find({})
+                for y in index_list:
+                    self.log.info("{}".format(y))
             return
-        blk_hash = block.block_hash
-        blk_num =  block.block_num
-        blk_in_hash = block.input_hashes
-        blk_prev_hash = block.prev_block_hash
-        blk_ms = block.masternode_signature
-        blk_tx = block.transactions
 
-        block_dict = {'block_num':blk_num, 'block_hash' : blk_hash, 'prev_block_hash' : blk_prev_hash,
-                     'input_hashes' : blk_in_hash, 'master_sig' : blk_ms, 'transactions' : blk_tx}
-
-        return block_dict
-
-    def query_db_status(self, list='all'):
-
-        # db_list = self.mn_client.list_database_names() + self.stash_client.list_database_names()
-        # if list == 'all':
-        #     return db_list
-        pass
+        if type is 'idx' and query is not None:
+            result = self.mn_coll_idx.find(query)
+            for x in result:
+                self.log.info("result {}".format(x))
+            return result

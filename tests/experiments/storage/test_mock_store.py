@@ -3,7 +3,7 @@ from vmnet.testcase import BaseNetworkTestCase
 from cilantro.utils.test.mp_test_case import vmnet_test
 from cilantro.constants.testnet import TESTNET_MASTERNODES
 from os.path import dirname, join
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 
 cilantro_path = dirname(dirname(cilantro.__path__[0]))
 

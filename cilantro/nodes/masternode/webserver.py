@@ -19,6 +19,7 @@ import traceback, multiprocessing, os, asyncio
 from multiprocessing import Queue
 import os
 
+from cilantro.nodes.masternode.mn_api import StorageDriver
 
 app = Sanic(__name__)
 log = get_logger(__name__)
