@@ -97,6 +97,7 @@ jobs:
       - run:
           name: set temp credentials file (aka db config stuff)
           command: |
+             export PYTHONPATH=$PYTHONPATH:~/cilantro
              ./scripts/make_test_config.py --password buttcoins --username cilantro_user --database cilantro_dev --hostname 127.0.0.1
       - save_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
