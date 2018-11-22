@@ -24,7 +24,7 @@ def start_mn(verifing_key):
     from tests.experiments.storage.test_master_store import MasterOps
 
     log = get_logger(os.getenv('MN'))
-    log.debug('got here')
+    log.important('STARTING MN got here')
 
     store = MDB()
     store.query_db()
