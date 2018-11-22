@@ -17,7 +17,7 @@ from cilantro.nodes.base import NodeBase
 from cilantro.nodes.masternode.webserver import start_webserver
 from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
-
+from cilantro.nodes.masternode.master_store import MasterOps
 import os
 
 
@@ -31,7 +31,7 @@ class MNBaseState(State):
 
 @Masternode.register_init_state
 class MNBootState(MNBaseState):
-
+     
     def reset_attrs(self):
         pass
 

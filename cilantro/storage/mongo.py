@@ -1,9 +1,10 @@
 import cilantro
 import os
+import capnp
 from configparser import SafeConfigParser
 from pymongo import MongoClient
 from cilantro.logger.base import get_logger
-from cilantro.messages.block_data.block_data import BlockDataBuilder, BlockData
+from cilantro.messages.block_data.block_data import BlockDataBuilder, BlockData, MessageBase
 
 
 class MDB:
@@ -13,7 +14,7 @@ class MDB:
     cfg = SafeConfigParser()
     cfg.read('{}/mn_db_conf.ini'.format(path))
 
-    # mongo setup
+    # Mongo setup
     user = cfg.get('MN_DB', 'username')
     pwd = cfg.get('MN_DB', 'password')
     port = cfg.get('MN_DB', 'port')
@@ -52,9 +53,9 @@ class MDB:
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client.get_database()
 
-            block_dict = BlockDataBuilder.create_block(blk_num = 0)
-            cls.genesis_blk = cls.get_dict(block_dict)
-
+            block = BlockDataBuilder.create_block(blk_num = 0)
+            #print("just created block {}".format(block))
+            cls.genesis_blk = cls.get_dict(capnp_struct = block)
             cls.log.spam("storing genesis block... {}".format(cls.genesis_blk))
             cls.mn_collection = cls.mn_db['blocks']
             cls.init_mdb = cls.insert_record(cls.genesis_blk)
@@ -114,8 +115,9 @@ class MDB:
 
     @classmethod
     def get_dict(cls, capnp_struct, ignore=[]):
+        #assert issubclass(type(capnp_struct), MessageBase), "Expected a MessageBase subclass not {}".format(type(capnp_struct))
         ignore = set(ignore)
-        return capnp_struct.to_dict()
+        return capnp_struct._data.to_dict()
 
     def query_db(self, type=None, query=None):
 
