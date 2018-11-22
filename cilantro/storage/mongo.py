@@ -1,9 +1,10 @@
 import cilantro
 import os
+import capnp
 from configparser import SafeConfigParser
 from pymongo import MongoClient
 from cilantro.logger.base import get_logger
-from cilantro.messages.block_data.block_data import BlockDataBuilder, BlockData
+from cilantro.messages.block_data.block_data import BlockDataBuilder, BlockData, MessageBase
 
 
 class MDB:
@@ -13,7 +14,7 @@ class MDB:
     cfg = SafeConfigParser()
     cfg.read('{}/mn_db_conf.ini'.format(path))
 
-    # mongo setup
+    # Mongo setup
     user = cfg.get('MN_DB', 'username')
     pwd = cfg.get('MN_DB', 'password')
     port = cfg.get('MN_DB', 'port')
@@ -42,6 +43,9 @@ class MDB:
             self.reset_db(db='all')
             return
 
+    '''
+        data base mgmt functionality
+    '''
     @classmethod
     def start_db(cls):
         """
@@ -52,20 +56,24 @@ class MDB:
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client.get_database()
 
-            block_dict = BlockDataBuilder.create_block(blk_num = 0)
-            cls.genesis_blk = cls.get_dict(block_dict)
-
-            cls.log.spam("storing genesis block... {}".format(cls.genesis_blk))
+            block = BlockDataBuilder.create_block(blk_num=0)
+            #print("just created block {}".format(block))
+            cls.genesis_blk = cls.get_dict(capnp_struct = block)
+            #cls.log.spam("storing genesis block... {}".format(cls.genesis_blk))
             cls.mn_collection = cls.mn_db['blocks']
-            cls.init_mdb = cls.insert_record(cls.genesis_blk)
+            cls.init_mdb = cls.insert_record(block_dict=cls.genesis_blk)
+
+            cls.log.debug('flipping the bit {}'.format(cls.init_mdb))
 
             if cls.init_mdb is True:
                 uri = cls.setup_db(db_type = 'index')
                 cls.mn_client_idx = MongoClient(uri)
                 cls.mn_db_idx = MongoClient(uri).get_database()
                 cls.mn_coll_idx = cls.mn_db_idx['index']
-                idx = {'block_num': cls.genesis_blk.get('block_num'), 'block_hash': cls.genesis_blk.get('block_hash'),
-                       'mn_sign': cls.genesis_blk.get('mn_sign')}
+                idx = {'block_num': cls.genesis_blk.get('blockNum'), 'block_hash': cls.genesis_blk.get('blockHash'),
+                       'mn_sign': cls.genesis_blk.get('masternodeSignature')}
+                cls.log.debug('print index {}'.format(idx))
+
                 cls.init_idx_db = cls.insert_idx_record(my_dict=idx)
 
     @classmethod
@@ -93,6 +101,10 @@ class MDB:
             cls.mn_client_idx.drop_database(cls.mn_db_idx)
             cls.init_mdb = cls.init_idx_db = False
 
+
+    '''
+        Wr to store or index
+    '''
     @classmethod
     def insert_record(cls, block_dict=None):
         if block_dict is None:
@@ -105,18 +117,23 @@ class MDB:
             return True
 
     @classmethod
-    def insert_idx_record(cls, my_dict = None):
+    def insert_idx_record(cls, my_dict=None):
         if dict is None:
             return None
         idx_entry = cls.mn_coll_idx.insert(my_dict)
         cls.log.info("entry {}".format(idx_entry))
         return True
 
+    # move this to util
     @classmethod
     def get_dict(cls, capnp_struct, ignore=[]):
         ignore = set(ignore)
-        return capnp_struct.to_dict()
+        return capnp_struct._data.to_dict()
 
+
+    '''
+        reading from index or store
+    '''
     def query_db(self, type=None, query=None):
 
         if query is None:
@@ -136,3 +153,15 @@ class MDB:
             for x in result:
                 self.log.info("result {}".format(x))
             return result
+
+    def query_index(self, blk_num = None, blk_hash = None, latest = True):
+        if latest is True:
+            pass
+    def query_store(self, blk_num = None):
+        response = self.mn_collection.find(blk_num)
+
+        if response is None:
+            self.log.error('given blk not present in db')
+            return
+
+        return response

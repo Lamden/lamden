@@ -1,7 +1,10 @@
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('6-6-6.json')
 import unittest
 import vmnet, cilantro
-from os.path import dirname, join
 import time
+from configparser import SafeConfigParser
+from os.path import dirname, join
 from vmnet.testcase import BaseNetworkTestCase
 from cilantro.utils.test.mp_test_case import vmnet_test
 from cilantro.constants.testnet import TESTNET_MASTERNODES
@@ -10,7 +13,8 @@ from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.messages.block_data.block_data import BlockDataBuilder
 
 cilantro_path = dirname(dirname(cilantro.__path__[0]))
-
+cfg = SafeConfigParser()
+cfg.read('{}/mn_db_conf.ini'.format(cilantro_path))
 
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
@@ -24,42 +28,41 @@ def start_mn(verifing_key):
     from tests.experiments.storage.test_master_store import MasterOps
 
     log = get_logger(os.getenv('MN'))
-    log.debug('got here')
-
+    log.info('init master')
     store = MDB()
+    log.info('query db init state ')
     store.query_db()
-    
+
+    log.info('starting zmq setup')
     ctx = zmq.Context()
     socket = ctx.socket(socket_type=zmq.PAIR)
     url = "tcp://{}:10200".format(os.getenv('MGMT'))
-    # time.sleep(1)
+
+    time.sleep(1)
     log.info("CLIENT CONNECTING TO {}".format(url))
     socket.connect(url)
     log.debug("waiting for msg...")
     msg = socket.recv_pyobj()
     log.debug('received: {}'.format(msg))
 
+    log.info('writing 5 blocks')
+
     blk_id = 1
-    wr_success = False
     while blk_id <= 5:
         log.debug("waiting for msg...")
         msg = socket.recv_pyobj()
         log.info("got msg {}".format(msg))
 
         block = BlockDataBuilder.create_block(blk_num = blk_id)
-        wr_success = StorageDriver.store_block(block, validate=False)
-        log.info("wr status {}".format(wr_success))
-
+        success = StorageDriver.store_block(block, validate=False)
+        log.info("wr status {}".format(success))
         time.sleep(1)
         blk_id += 1
-    log.info('end!')
+
+    log.info('end! writes')
 
     log.info('print DB states')
-
     store.query_db()
-
-
-
     socket.close()
 
 

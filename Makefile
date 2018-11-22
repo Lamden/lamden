@@ -38,7 +38,10 @@ clean-temps:
 clean-certs:
 	./scripts/clean-certs.sh
 
-clean: clean-logs clean-temps clean-certs
+clean-dbs:
+	./scripts/clean-db.sh
+
+clean: clean-logs clean-temps clean-certs clean-dbs
 
 pump:
 	python3 ./tests/vmnet/test_pump.py

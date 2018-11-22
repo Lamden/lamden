@@ -5,6 +5,7 @@ MAINTAINER Falcon Wong version: 0.1
 COPY . /app
 WORKDIR /app
 
+ENV DOCKERIZE_VERSION v0.6.1
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update \
@@ -43,6 +44,8 @@ RUN apt-get update \
     && apt autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
-#ENTRYPOINT ["sh", "/app/scripts/start_mongo.sh"]
+ENTRYPOINT ["sh", "/app/scripts/start_mongo.sh"]
 
-CMD bash ./scripts/start_mongo.sh
+CMD tail -f /dev/null
+
+#CMD bash ./scripts/start_mongo.sh

@@ -1,7 +1,8 @@
 from pymongo import MongoClient
-import configparser
+import configparser, time
 import os
 
+time.sleep(2)
 settings = configparser.ConfigParser()
 settings._interpolation = configparser.ExtendedInterpolation()
 db_conf_path = './mn_db_conf.ini'
