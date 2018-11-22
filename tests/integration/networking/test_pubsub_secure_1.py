@@ -43,11 +43,11 @@ class TestPubSubSecure(MPTestCase):
             sub.add_sub_socket()
             sub.connect_sub(vk=PUB1_VK)
 
-        time.sleep(15*CI_FACTOR)  # Allow time for VK lookup
+        time.sleep(10*CI_FACTOR)  # Allow time for VK lookup
 
         pub.send_pub(msg)
 
-        self.start(timeout=20*CI_FACTOR)
+        self.start(timeout=30*CI_FACTOR)
 
     @vmnet_test
     def test_pubsub_1_pub_2_sub_auth(self):
