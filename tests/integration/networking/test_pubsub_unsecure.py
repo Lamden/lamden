@@ -29,6 +29,7 @@ class TestPubSubUnsecure(MPTestCase):
             test_obj.handle_sub.assert_called_with(expected_frames)
 
         msg = b'*falcon noise*'
+        time.sleep(1*CI_FACTOR)
 
         BLOCK = False
 
@@ -62,6 +63,7 @@ class TestPubSubUnsecure(MPTestCase):
 
         msg1 = b'*falcon1 noise*'
         msg2 = b'*falcon2 noise*'
+        time.sleep(1*CI_FACTOR)
 
         BLOCK = False
 

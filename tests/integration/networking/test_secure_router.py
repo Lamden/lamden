@@ -29,6 +29,7 @@ class TestRouterSecure(MPTestCase):
         msg = b'*falcon noise*'
 
         BLOCK = False
+        time.sleep(1*CI_FACTOR)
 
         router1 = MPRouterAuth(sk=PUB1_SK, name='ROUTER 1', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
         router2 = MPRouterAuth(sk=PUB2_SK, name='ROUTER 2', block_until_rdy=BLOCK)
@@ -58,6 +59,7 @@ class TestRouterSecure(MPTestCase):
         # THIS TEST IS PASSING, BUT SHOULD IT BE? LOOKS LIKE ONLY ONE GET IS GETTING THE MSG
 
         BLOCK = False
+        time.sleep(1*CI_FACTOR)
 
         router1 = MPRouterAuth(sk=PUB1_SK, name='ROUTER 1', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
         router2 = MPRouterAuth(sk=PUB2_SK, name='ROUTER 2', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)

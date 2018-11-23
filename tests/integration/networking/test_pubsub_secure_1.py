@@ -29,6 +29,7 @@ class TestPubSubSecure(MPTestCase):
             test_obj.handle_sub.assert_called_with(expected_frames)
 
         msg = b'*falcon noise*'
+        time.sleep(1*CI_FACTOR)
 
         BLOCK = False
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB', block_until_rdy=BLOCK)
@@ -56,6 +57,7 @@ class TestPubSubSecure(MPTestCase):
             test_obj.handle_sub.assert_called_with(expected_frames)
 
         msg = b'*falcon noise*'
+        time.sleep(1*CI_FACTOR)
 
         BLOCK = False
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB', block_until_rdy=BLOCK)
