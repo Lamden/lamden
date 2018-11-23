@@ -12,6 +12,7 @@ from cilantro.protocol.states.state import State
 
 from multiprocessing import Queue
 from cilantro.utils.lprocess import LProcess
+from cilantro.storage.vkbook import VKBook
 
 from cilantro.nodes.base import NodeBase
 from cilantro.nodes.masternode.webserver import start_webserver
@@ -32,14 +33,54 @@ class MNBaseState(State):
 @Masternode.register_init_state
 class MNBootState(MNBaseState):
 
+    # For dev, we require all nodes to be online. IRL this could perhaps be 2/3 node for each role  --davis
+    REQ_MNS = len(VKBook.get_masternodes())
+    REQ_DELS = len(VKBook.get_delegates())
+    REQ_WITS = len(VKBook.get_witnesses())
+
+    @timeout_after(120)  # TODO make this a constants
+    def boot_timeout(self):
+        err = "Masternode could not connect to required qourum!\nMn set: {}\nDelegate set: {}\nWitness " \
+              "set: {}".format(self.online_mns, self.online_dels, self.online_wits)
+        self.log.fatal(err)
+        raise Exception(err)
+
     def reset_attrs(self):
-        pass
+        self.online_mns, self.online_dels, self.online_wits = set(), set(), set()
+
+    # TODO subscribe to node_online events from the delegates/masternodes
+    def quorum_reached(self) -> bool:
+        return (self.REQ_MNS <= len(self.online_mns)) and (self.REQ_DELS <= len(self.online_dels)) and \
+               (self.REQ_WITS <= len(self.online_wits))
+
+    def check_qourum(self):
+        if self.quarum_reached():
+            self.log.info("Quorum reached! Transitioning to run state")
+            self.parent.transition(MNRunState)
+        else:
+            self.log.debugv("Quorum not reached yet.")
+
+
+    # TODO link this function up with overlay events that monitor new nodes coming online
+    # But we also need to include nodes that are ALREADY online at the time of booting
+    def add_online_vk(self, vk: str):
+        # Dev check (maybe dont do this IRL)
+        assert vk in VKBook.get_all(), "VK {} not in VKBook {}!".format(vk, VKBook.get_all())
+        self.log.debugv("Adding vk {} to online nodes".format(vk))
+
+        if vk in VKBook.get_witnesses():
+            self.online_wits.add(vk)
+        if vk in VKBook.get_delegates():
+            self.online_dels.add(vk)
+        if vk in VKBook.get_masternodes():
+            self.online_mns.add(vk)
+
+        self.check_qourum()
 
     @enter_from_any
     def enter_any(self, prev_state):
-        # TODO -- get quorum before we transition to RunState
-
-        self.parent.transition(MNRunState)
+        # TODO seed online node set with nodes who are already available/online. Ping them or something.
+        self.check_qourum()
 
 
 @Masternode.register_state
@@ -71,6 +112,7 @@ class MNRunState(MNBaseState):
         self.parent.server = LProcess(target=start_webserver, name='WebServerProc', args=(q,))
         self.parent.server.start()
 
+        # TODO -- use THIS process for the block aggregator. No need to have it idle, twiddling its thumbs.
         if not os.getenv('MN_MOCK'):
             self.start_batcher()
             self.start_block_agg()
