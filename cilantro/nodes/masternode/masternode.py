@@ -60,7 +60,6 @@ class MNBootState(MNBaseState):
         else:
             self.log.debugv("Quorum not reached yet.")
 
-
     # TODO link this function up with overlay events that monitor new nodes coming online
     # But we also need to include nodes that are ALREADY online at the time of booting
     def add_online_vk(self, vk: str):
