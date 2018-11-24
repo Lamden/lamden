@@ -54,7 +54,7 @@ class MNBootState(MNBaseState):
                (self.REQ_WITS <= len(self.online_wits))
 
     def check_qourum(self):
-        if self.quarum_reached():
+        if self.quorum_reached():
             self.log.info("Quorum reached! Transitioning to run state")
             self.parent.transition(MNRunState)
         else:
@@ -65,7 +65,7 @@ class MNBootState(MNBaseState):
     # But we also need to include nodes that are ALREADY online at the time of booting
     def add_online_vk(self, vk: str):
         # Dev check (maybe dont do this IRL)
-        assert vk in VKBook.get_all(), "VK {} not in VKBook {}!".format(vk, VKBook.get_all())
+        assert vk in VKBook.get_all(), "VK {} not in VKBook vks {}".format(vk, VKBook.get_all())
         self.log.debugv("Adding vk {} to online nodes".format(vk))
 
         if vk in VKBook.get_witnesses():
