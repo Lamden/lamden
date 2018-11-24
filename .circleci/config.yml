@@ -22,6 +22,8 @@ jobs:
           name: Install MySQL Client
           command: |
             sudo rm /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock 2>/dev/null
+            sudo rm /home/circleci/cilantro/overlay-cmd-ipc-sock-node_* 2>/dev/null
+            sudo rm /home/circleci/cilantro/overlay-event-ipc-sock-node_* 2>/dev/null
             sudo dpkg --configure -a
             sudo apt install -y libmysqlclient-dev mysql-client
 

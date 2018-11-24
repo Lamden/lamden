@@ -71,6 +71,8 @@ class TestLargeNetwork(MPTestCase):
 
         self.start(timeout=30)
 
+        time.sleep(2*CI_FACTOR)  # Allow time to shut down properly
+
 
 if __name__ == '__main__':
     # Hello CI, want to go for a run?
