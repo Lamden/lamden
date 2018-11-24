@@ -27,6 +27,7 @@ jobs:
             sudo rm -f /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock 2>/dev/null
             sudo rm -f /home/circleci/cilantro/overlay-cmd-ipc-sock-node_* 2>/dev/null
             sudo rm -f /home/circleci/cilantro/overlay-event-ipc-sock-node_* 2>/dev/null
+            sudo rm /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock 2>/dev/null
             sudo dpkg --configure -a
             sudo apt install -y libmysqlclient-dev mysql-client
 
@@ -69,7 +70,7 @@ jobs:
             ./redis-4.0.6/src/redis-server --daemonize yes
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
-            python3.6 ~/cilantro/tests/run_tests.py --integration 1 --unit 0
+            python3.6 ~/cilantro/tests/run_tests.py --integration 1 --unit 0 -v
 
   unit_tests:
     working_directory: ~/cilantro
