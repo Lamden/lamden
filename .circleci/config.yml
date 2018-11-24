@@ -7,10 +7,13 @@ jobs:
     parallelism: 5
     steps:
       - checkout
+      - run: sudo rm -rf /usr/local/seneca
+      - run: sudo mkdir /usr/local/seneca
+      - run: sudo chown -R circleci:circleci /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration-0
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
       - run: pyenv local 3.6.5
       - run:
           name: Install Redis
@@ -54,7 +57,7 @@ jobs:
              ./scripts/make_test_config.py --password buttcoins --username cilantro_user --database cilantro_dev --hostname 127.0.0.1
 
       - save_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration-0
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
           paths:
             - "/usr/local/bin"
             - "/opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages"
@@ -82,6 +85,9 @@ jobs:
     parallelism: 1
     steps:
       - checkout
+      - run: sudo rm -rf /usr/local/seneca
+      - run: sudo mkdir /usr/local/seneca
+      - run: sudo chown -R circleci:circleci /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
