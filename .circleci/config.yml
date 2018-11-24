@@ -125,4 +125,4 @@ workflows:
   build_and_test_cilantro:
     jobs:
       - unit_tests
-      # - integration_tests
+      - integration_tests
