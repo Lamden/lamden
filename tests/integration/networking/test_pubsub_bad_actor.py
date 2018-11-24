@@ -30,6 +30,7 @@ class TestPubSubBadActor(MPTestCase):
         msg = b'*falcon noise*'
 
         BLOCK = False
+        time.sleep(1*CI_FACTOR)
 
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB1', block_until_rdy=BLOCK)
         sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=BLOCK)

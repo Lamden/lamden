@@ -36,6 +36,7 @@ class TestPubSubSecure(MPTestCase):
         msg2 = b'*falcon2 noise*'
 
         BLOCK = False
+        time.sleep(1*CI_FACTOR)
 
         pub1 = MPPubSubAuth(sk=PUB1_SK, name='PUB1', block_until_rdy=BLOCK)
         pub2 = MPPubSubAuth(sk=PUB2_SK, name='PUB2', block_until_rdy=BLOCK)
