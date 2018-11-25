@@ -31,7 +31,7 @@ class TestPubSubSecure(MPTestCase):
             test_obj.handle_sub.assert_called_with(expected_frames)
 
         msg = b'*falcon noise*'
-        time.sleep(1*CI_FACTOR)
+        time.sleep(2*CI_FACTOR)
 
         BLOCK = False
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB', block_until_rdy=BLOCK)
@@ -41,16 +41,18 @@ class TestPubSubSecure(MPTestCase):
         time.sleep(15*CI_FACTOR)
 
         pub.add_pub_socket(ip=pub.ip)
+        time.sleep(1)
 
         for sub in (sub1, sub2):
             sub.add_sub_socket()
             sub.connect_sub(vk=PUB1_VK)
+            time.sleep(1)
 
         time.sleep(15*CI_FACTOR)  # Allow time for VK lookup
 
         pub.send_pub(msg)
 
-        self.start()
+        self.start(timeout=20*CI_FACTOR)
 
     @vmnet_test
     def test_pubsub_1_pub_2_sub_auth(self):
@@ -59,7 +61,7 @@ class TestPubSubSecure(MPTestCase):
             test_obj.handle_sub.assert_called_with(expected_frames)
 
         msg = b'*falcon noise*'
-        time.sleep(1*CI_FACTOR)
+        time.sleep(2*CI_FACTOR)
 
         BLOCK = False
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB', block_until_rdy=BLOCK)
