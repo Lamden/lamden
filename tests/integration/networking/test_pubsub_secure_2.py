@@ -3,8 +3,9 @@ set_testnet_config('2-2-4.json')
 from cilantro.constants.testnet import *
 from cilantro.constants.test_suites import CI_FACTOR
 from cilantro.protocol.overlay.auth import Auth
-from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test
+from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
+from cilantro.storage.db import VKBook
 import unittest, time
 
 
@@ -21,6 +22,7 @@ def config_sub(test_obj):
 
 
 class TestPubSubSecure(MPTestCase):
+    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
 
     @vmnet_test
     def test_pubsub_2_pub_1_sub_auth(self):

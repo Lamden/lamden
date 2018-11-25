@@ -5,6 +5,7 @@ from cilantro.constants.test_suites import CI_FACTOR
 
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
+from cilantro.storage.db import VKBook
 import unittest, time
 
 
@@ -21,6 +22,7 @@ def config_sub(test_obj):
 
 
 class TestPubSubUnsecure(MPTestCase):
+    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
 
     @vmnet_test
     def test_pubsub_1_pub_2_sub_unsecure(self):

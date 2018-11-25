@@ -22,7 +22,7 @@ def config_sub(test_obj):
 
 
 class TestPubSubBadActor(MPTestCase):
-    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-6.json'.format(CILANTRO_PATH)
+    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
 
     @vmnet_test
     def test_pubsub_1_pub_1_sub_mixed_auth_unsecure_bad_sub(self):
