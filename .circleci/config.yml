@@ -14,7 +14,7 @@ jobs:
       - run: sudo mkdir /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
+      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
       - run: pyenv local 3.6.5
