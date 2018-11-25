@@ -1,9 +1,12 @@
 version: 2
 jobs:
   integration_tests:
-    machine:
-        image: circleci/classic:201808-01
     working_directory: ~/cilantro
+    docker:
+      - image: circleci/python:3.6.5
+      - image: lamden/cilantro
+    # machine:
+        # image: circleci/classic:201808-01
     parallelism: 5
     steps:
       - checkout
@@ -25,8 +28,8 @@ jobs:
           name: Install MySQL Client
           command: |
             sudo rm -f /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock 2>/dev/null
-            sudo rm -f /home/circleci/cilantro/overlay-cmd-ipc-sock-node_* 2>/dev/null
-            sudo rm -f /home/circleci/cilantro/overlay-event-ipc-sock-node_* 2>/dev/null
+            # sudo rm -f /home/circleci/cilantro/overlay-cmd-ipc-sock-node_* 2>/dev/null
+            # sudo rm -f /home/circleci/cilantro/overlay-event-ipc-sock-node_* 2>/dev/null
             sudo rm /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock 2>/dev/null
             sudo dpkg --configure -a
             sudo apt install -y libmysqlclient-dev mysql-client
