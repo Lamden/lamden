@@ -45,6 +45,18 @@ from cilantro.utils.hasher import Hasher
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro.constants.system_config import *
+from enum import Enum, unique
+
+@unique
+class NextBlockState(Enum):
+    NOT_READY  = 0
+    READY      = 1
+    PROCESSING = 2
+
+class NextBlockToMake:
+    def __init__(self, block_index: int=0, state: NextBlockState=NextBlockState.NOT_READY):
+        self.next_block_index = block_index
+        self.state = state
 
 # This is a convenience struct to hold all data related to a sub-block in one place.
 # Since we have more than one sub-block per process, SBB'er will hold an array of SubBlockManager objects
@@ -55,7 +67,6 @@ class SubBlockManager:
         self.processed_txs_timestamp = processed_txs_timestamp
         self.pending_txs = LinkedHashTable()
         self.num_pending_sb = 0
-        self.merkle = None
 
 
 class SubBlockBuilder(Worker):
@@ -77,6 +88,7 @@ class SubBlockBuilder(Worker):
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
         self._create_sub_sockets()
+        self._next_block_to_make = NextBlockToMake()
 
         self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {} num_sb_per_builder {}"
                         .format(sbb_index, NUM_SUB_BLOCKS, NUM_BLOCKS, NUM_SB_BUILDERS, NUM_SB_PER_BLOCK, NUM_SB_PER_BUILDER))
@@ -120,6 +132,10 @@ class SubBlockBuilder(Worker):
 
         msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
         self.log.debugv("SBB received an IPC message {}".format(msg))
+
+        # if isinstance(msg, StartNextBlock):
+            # self._start_next_sub_block()
+        # elif isinstance(msg, MakeNextBlock):
 
         if isinstance(msg, MakeNextBlock):
             self._make_next_sub_block()
