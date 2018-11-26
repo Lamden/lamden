@@ -75,7 +75,7 @@ jobs:
       - checkout
       - run: sudo rm -rf /usr/local/seneca
       - run: sudo mkdir /usr/local/seneca
-      - run: sudo mkdir -p /home/circleci/cilantro/src/seneca/logs
+      - run: sudo mkdir -p -mod 777 /home/circleci/cilantro/src/seneca/logs
       - run: sudo chown -R circleci:circleci /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
