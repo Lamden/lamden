@@ -44,4 +44,4 @@ RUN apt-get update \
     && apt autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
-CMD bash ./scripts/start_mongo.sh
+ENTRYPOINT ["./scripts/start_mongo.sh"]

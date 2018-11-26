@@ -9,12 +9,9 @@ export PYTHONPATH=$(pwd)
 # pip3 install vmnet --upgrade --no-cache-dir
 
 echo "Waiting for mongo on localhost"
-mkdir -p ./data/$HOST_NAME/db/logs
-touch ./data/$HOST_NAME/db/logs/log_mongo.log
+mkdir -p ./data/$HOST_NAME/logs
+touch ./data/$HOST_NAME/logs/mongo.log
 echo 'Dir created'
 
-mongod --dbpath ./data/db --logpath ./data/db/logs/mongo.log --bind_ip_all &
-sleep 1
-echo 'started mongod'
-
-sudo python3 ./scripts/create_user.py
+python3 ./scripts/create_user.py &
+mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all

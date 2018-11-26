@@ -67,6 +67,7 @@ def start_mgmt():
     import os, asyncio, zmq, time, zmq.asyncio
     from cilantro.logger.base import get_logger
 
+    time.sleep(5)
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(loop)
 
@@ -103,7 +104,6 @@ class TestZMQPair(BaseNetworkTestCase):
     def test_store(self):
 
         self.execute_python('mgmt', start_mgmt)
-        time.sleep(1)
         key = TESTNET_MASTERNODES[0]['vk']
 
         for node in self.groups['mn']:
