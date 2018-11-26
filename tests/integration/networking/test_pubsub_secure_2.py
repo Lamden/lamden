@@ -37,14 +37,14 @@ class TestPubSubSecure(MPTestCase):
         msg1 = b'*falcon1 noise*'
         msg2 = b'*falcon2 noise*'
 
-        BLOCK = True
+        BLOCK = False
         time.sleep(1*CI_FACTOR)
 
         pub1 = MPPubSubAuth(sk=PUB1_SK, name='PUB1', block_until_rdy=BLOCK)
         pub2 = MPPubSubAuth(sk=PUB2_SK, name='PUB2', block_until_rdy=BLOCK)
-        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=BLOCK)
+        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=True)
 
-        time.sleep(2*CI_FACTOR)
+        time.sleep(8*CI_FACTOR)
 
         pub1.add_pub_socket(ip=pub1.ip, secure=True)
         pub2.add_pub_socket(ip=pub2.ip, secure=True)

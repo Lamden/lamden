@@ -28,13 +28,13 @@ class TestRouterSecure(MPTestCase):
 
         msg = b'*falcon noise*'
 
-        BLOCK = True
+        BLOCK = False
         time.sleep(1*CI_FACTOR)
 
         router1 = MPRouterAuth(sk=PUB1_SK, name='ROUTER 1', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
-        router2 = MPRouterAuth(sk=PUB2_SK, name='ROUTER 2', block_until_rdy=BLOCK)
+        router2 = MPRouterAuth(sk=PUB2_SK, name='ROUTER 2', block_until_rdy=True)
 
-        time.sleep(2*CI_FACTOR)
+        time.sleep(8*CI_FACTOR)
 
         for r in (router1, router2):
             r.create_router_socket(identity=r.ip.encode(), secure=True)
@@ -58,13 +58,13 @@ class TestRouterSecure(MPTestCase):
 
         # THIS TEST IS PASSING, BUT SHOULD IT BE? LOOKS LIKE ONLY ONE GET IS GETTING THE MSG
 
-        BLOCK = True
+        BLOCK = False
         time.sleep(1*CI_FACTOR)
 
         router1 = MPRouterAuth(sk=PUB1_SK, name='ROUTER 1', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
-        router2 = MPRouterAuth(sk=PUB2_SK, name='ROUTER 2', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
+        router2 = MPRouterAuth(sk=PUB2_SK, name='ROUTER 2', config_fn=config_node, assert_fn=assert_router, block_until_rdy=True)
 
-        time.sleep(2*CI_FACTOR)
+        time.sleep(8*CI_FACTOR)
 
         for r in (router1, router2):
             r.create_router_socket(identity=r.ip.encode(), secure=True, name='Router-{}'.format(r.ip))
