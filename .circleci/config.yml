@@ -86,12 +86,10 @@ jobs:
       - run:
           name: Install Mongo
           command: |
+            sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5
+            echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.6 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.6.list
             sudo apt-get update
-            sudo apt-get install curl
-            curl -O https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.4.9.tgz
-            tar -zxvf mongodb-linux-x86_64-3.4.9.tgz
-            mkdir -p mongodb
-            sudo ln -s mongodb-linux-x86_64-3.4.9/bin /usr/local/bin
+            sudo apt-get install -y mongodb-org
 
       - run:
           name: Install Cilantro Requirements
