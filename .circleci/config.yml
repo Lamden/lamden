@@ -20,6 +20,13 @@ jobs:
             cd redis-4.0.6 && make
 
       - run:
+          name: Install MongoDB
+          command: |
+            sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
+            sudo add-apt-repository 'deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse'
+            sudo apt-get install -y mongodb-org
+
+      - run:
           name: Install Cilantro Requirements
           command: |
              pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
@@ -74,6 +81,14 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
+
+      - run:
+          name: Install MongoDB
+          command: |
+            sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
+            sudo add-apt-repository 'deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse'
+            sudo apt-get install -y mongodb-org
+
       - run:
           name: Install Cilantro Requirements
           command: |

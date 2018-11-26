@@ -3,6 +3,11 @@ set -ex
 
 export PYTHONPATH=$(pwd)
 
+if [ "$CIRCLECI" == "true" ]
+then
+  export $HOST_NAME="."
+fi
+
 # echo "Updating seneca..."
 # pip3 install seneca --upgrade --no-cache-dir
 # echo "Updating vmnet..."
