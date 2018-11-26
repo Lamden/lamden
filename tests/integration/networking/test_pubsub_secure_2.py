@@ -5,7 +5,7 @@ from cilantro.constants.test_suites import CI_FACTOR
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 import unittest, time
 
 
