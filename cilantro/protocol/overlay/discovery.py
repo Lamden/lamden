@@ -58,8 +58,7 @@ class Discovery:
             cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
             cls.connect(get_ip_range(start_ip))
             try_count += 1
-            if (len(cls.discovered_nodes) == 0 and Auth.vk in VKBook.get_masternodes()) \
-                and cls.is_connected:
+            if (len(cls.discovered_nodes) == 0 and Auth.vk in VKBook.get_masternodes()) and cls.is_connected:
                 cls.log.important('Bootstrapping as the only masternode.'.format(
                     len(cls.discovered_nodes)
                 ))
@@ -78,6 +77,8 @@ class Discovery:
                 ))
                 return False
             await asyncio.sleep(DISCOVERY_TIMEOUT)
+
+        # @falcon/raghu, this code below is unreachable is it not?? --davis
         await asyncio.sleep(3 if cls.is_master_node else 6)
 
     # raghu these class methods are not thread-safe. Not sure why we want them to be class methods rather than instance methods
