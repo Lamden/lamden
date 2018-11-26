@@ -92,7 +92,6 @@ jobs:
             tar -zxvf mongodb-linux-x86_64-3.4.9.tgz
             mkdir -p mongodb
             cp -R -n mongodb-linux-x86_64-3.4.9/ mongodb
-            export PATH=mongodb/bin:$PATH
 
       - run:
           name: Install Cilantro Requirements
@@ -111,6 +110,7 @@ jobs:
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
+            export PATH=mongodb/bin:$PATH
             python3 ./scripts/make_test_config.py
             bash ./scripts/start_mongo.sh
             python3.6 ~/cilantro/tests/run_tests.py --integration 0 --unit 1
