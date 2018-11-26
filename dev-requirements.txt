@@ -5,5 +5,4 @@ scipy
 vprof
 # Non-Cythonized for CI
 pynacl
-#pyzmq
 vmnet
