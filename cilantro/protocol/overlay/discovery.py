@@ -7,6 +7,7 @@ from cilantro.protocol.overlay.auth import Auth
 from cilantro.logger import get_logger
 from cilantro.storage.vkbook import VKBook
 
+
 class Discovery:
     log = get_logger('Discovery')
     host_ip = HOST_IP
@@ -38,8 +39,13 @@ class Discovery:
         while True:
             try:
                 msg = await cls.sock.recv_multipart()
+                cls.log.spam("Got msg over discovery socket: {}".format(msg))
                 ip, pepper = msg[:2]
-                assert pepper == cls.pepper, 'Node not using cilantro'
+
+                if pepper != cls.pepper:
+                    cls.log.warning("Node with ip {} tried to connect using incorrect pepper {}!".format(ip, pepper))
+                    continue
+
                 if len(msg) == 2:
                     cls.reply(ip)
                 elif len(msg) == 3:

@@ -27,7 +27,7 @@ class TestLargeNetwork(MPTestCase):
         """
         def assert_sub(test_obj):
             c_args = test_obj.handle_sub.call_args_list
-            assert len(c_args) == 4, "Expected 7 messages (one from each node). Instead, got:\n{}".format(c_args)
+            assert len(c_args) == 4, "Expected 4 messages (one from each node). Instead, got:\n{}".format(c_args)
 
         BLOCK = False
         time.sleep(1*CI_FACTOR)
@@ -55,7 +55,7 @@ class TestLargeNetwork(MPTestCase):
         for n in all_nodes:
             n.add_pub_socket(ip=n.ip, secure=True)
 
-        time.sleep(10*CI_FACTOR)  # Nap while nodes hookup
+        time.sleep(4*CI_FACTOR)  # Nap while nodes add their pub sockets
 
         # Each node SUBs to everyone else (except themselves)
         for i, n in enumerate(all_nodes):
