@@ -81,8 +81,7 @@ class OverlayServer(object):
     @async_reply
     async def get_node_from_vk(self, event_id, vk, domain='*', secure='False'):
         # TODO perhaps return an event instead of throwing an error in production
-        assert vk in VKBook.get_all(), "Attempted to look up VK {} that is not in VKBook {}".format(vk,
-                                                                                                    VKBook.get_all())
+        assert vk in VKBook.get_all(), "Attempted to look up VK {} that is not in VKBook {}".format(vk, VKBook.get_all())
 
         ip = await self.interface.lookup_ip(vk)
         if not ip:
