@@ -18,5 +18,5 @@ mkdir -p ./data/$HOST_NAME/logs
 touch ./data/$HOST_NAME/logs/mongo.log
 echo 'Dir created'
 
+mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all &
 python3 ./scripts/create_user.py &
-mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all
