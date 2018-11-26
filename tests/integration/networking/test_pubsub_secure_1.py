@@ -38,7 +38,7 @@ class TestPubSubSecure(MPTestCase):
         sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB1', block_until_rdy=BLOCK)
         sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB2', block_until_rdy=True)
 
-        time.sleep(8*CI_FACTOR)
+        time.sleep(5*CI_FACTOR)
 
         pub.add_pub_socket(ip=pub.ip)
         time.sleep(1)
@@ -48,11 +48,11 @@ class TestPubSubSecure(MPTestCase):
             sub.connect_sub(vk=PUB1_VK)
             time.sleep(1)
 
-        time.sleep(35*CI_FACTOR)  # Allow time for VK lookup
+        time.sleep(8*CI_FACTOR)  # Allow time for VK lookup
 
         pub.send_pub(msg)
 
-        self.start(timeout=30*CI_FACTOR)
+        self.start(timeout=10*CI_FACTOR)
 
     @vmnet_test
     def test_pubsub_1_pub_2_sub_auth(self):
@@ -68,7 +68,7 @@ class TestPubSubSecure(MPTestCase):
         sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB1', block_until_rdy=BLOCK)
         sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB2_SK, name='SUB2', block_until_rdy=True)
 
-        time.sleep(8*CI_FACTOR)
+        time.sleep(5*CI_FACTOR)
 
         pub.add_pub_socket(ip=pub.ip, secure=True)
 
@@ -76,11 +76,11 @@ class TestPubSubSecure(MPTestCase):
             sub.add_sub_socket(secure=True)
             sub.connect_sub(vk=PUB1_VK)
 
-        time.sleep(35*CI_FACTOR)  # Allow time for VK lookup
+        time.sleep(8*CI_FACTOR)  # Allow time for VK lookup
 
         pub.send_pub(msg)
 
-        self.start(timeout=30*CI_FACTOR)
+        self.start(timeout=10*CI_FACTOR)
 
 
 if __name__ == '__main__':

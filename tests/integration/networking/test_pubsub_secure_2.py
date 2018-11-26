@@ -44,7 +44,7 @@ class TestPubSubSecure(MPTestCase):
         pub2 = MPPubSubAuth(sk=PUB2_SK, name='PUB2', block_until_rdy=BLOCK)
         sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=True)
 
-        time.sleep(8*CI_FACTOR)
+        time.sleep(5*CI_FACTOR)
 
         pub1.add_pub_socket(ip=pub1.ip, secure=True)
         pub2.add_pub_socket(ip=pub2.ip, secure=True)
@@ -53,12 +53,12 @@ class TestPubSubSecure(MPTestCase):
         sub.connect_sub(vk=PUB1_VK)
         sub.connect_sub(vk=PUB2_VK)
 
-        time.sleep(15*CI_FACTOR)  # Allow time for VK lookup
+        time.sleep(8*CI_FACTOR)  # Allow time for VK lookup
 
         pub1.send_pub(msg1)
         pub2.send_pub(msg2)
 
-        self.start(timeout=20*CI_FACTOR)
+        self.start(timeout=10*CI_FACTOR)
 
 
 if __name__ == '__main__':

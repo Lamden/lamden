@@ -44,12 +44,12 @@ class TestPubSubBadActor(MPTestCase):
         sub.add_sub_socket(secure=False, socket_key='sub1')
         sub.connect_sub(vk=PUB1_VK, socket_key='sub1')
 
-        time.sleep(15*CI_FACTOR)  # Allow time for VK lookup
+        time.sleep(8*CI_FACTOR)  # Allow time for VK lookup
 
         pub.send_pub(msg)
         time.sleep(2)
 
-        self.start(timeout=20*CI_FACTOR)
+        self.start(timeout=10*CI_FACTOR)
 
     # @vmnet_test
     # def test_pubsub_1_pub_1_sub_mixed_auth_unsecure_bad_pub(self):
