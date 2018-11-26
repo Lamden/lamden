@@ -7,6 +7,11 @@ WORKDIR /app
 
 ENV DEBIAN_FRONTEND noninteractive
 
+# Install Redis
+RUN wget http://download.redis.io/releases/redis-4.0.6.tar.gz \
+    && tar xzf redis-4.0.6.tar.gz \
+    && cd redis-4.0.6 && make
+
 # Install Python requirements
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

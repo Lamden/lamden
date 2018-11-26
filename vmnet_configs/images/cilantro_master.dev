@@ -7,6 +7,7 @@ WORKDIR /app
 
 ENV DEBIAN_FRONTEND noninteractive
 
+# Install Mongo
 RUN apt-get update \
     && apt-get install -y software-properties-common \
     && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4 \
@@ -14,6 +15,11 @@ RUN apt-get update \
     && apt-get remove -y software-properties-common \
     && apt-get update \
     && apt-get install -y mongodb-org
+
+# Install Redis
+RUN wget http://download.redis.io/releases/redis-4.0.6.tar.gz \
+    && tar xzf redis-4.0.6.tar.gz \
+    && cd redis-4.0.6 && make
 
 # Install Python requirements
 RUN apt-get update \
