@@ -1,12 +1,8 @@
 coloredlogs
 coverage
 numpy
-pymongo
 scipy
 vprof
-docker
-dill
 # Non-Cythonized for CI
 pynacl
-pyzmq
-vmnet==0.2.33
+vmnet

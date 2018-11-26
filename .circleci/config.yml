@@ -21,14 +21,6 @@ jobs:
             wget http://download.redis.io/releases/redis-4.0.6.tar.gz
             tar xzf redis-4.0.6.tar.gz
             cd redis-4.0.6 && make
-      - run:
-          name: Install MySQL Client
-          command: |
-            # sudo rm -f /home/circleci/cilantro/overlay-cmd-ipc-sock-node_* 2>/dev/null
-            # sudo rm -f /home/circleci/cilantro/overlay-event-ipc-sock-node_* 2>/dev/null
-            sudo rm -f /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock 2>/dev/null
-            sudo dpkg --configure -a
-            sudo apt install -y libmysqlclient-dev mysql-client
 
       - run:
           name: Install Cilantro Requirements
@@ -51,11 +43,6 @@ jobs:
             chmod +x ~/docker-compose
             sudo mv ~/docker-compose /usr/local/bin/docker-compose
 
-      - run:
-          name: set temp credentials file (aka db config stuff)
-          command: |
-             ./scripts/make_test_config.py --password buttcoins --username cilantro_user --database cilantro_dev --hostname 127.0.0.1
-
       - save_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
           paths:
@@ -69,15 +56,16 @@ jobs:
             ./redis-4.0.6/src/redis-server --daemonize yes
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
+            python3 ./scripts/make_test_config.py
             python3.6 ~/cilantro/tests/run_tests.py --integration 1 --unit 0
 
   unit_tests:
     working_directory: ~/cilantro
     docker:
       - image: circleci/python:3.6.5
+      - image: circleci/mongo:4.0.4
       - image: redis:4.0.6
       - image: lamden/cilantro-mn
-      - image: lamden/cilantro-db
         environment:
           username: cilantro_user
           password: buttcoins
@@ -95,34 +83,27 @@ jobs:
       - run:
           name: Install Cilantro Requirements
           command: |
-             pip3 install -r requirements.txt --upgrade --no-cache-dir --exists-action w
-             pip3 install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
-      - run:
-          name: Install Mysql Client
-          command: |
-             sudo apt install -y mysql-client
+             sudo pip3 install -r requirements.txt --upgrade --no-cache-dir --exists-action w
+             sudo pip3 install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
 
-      - run:
-          name: set temp credentials file (aka db config stuff)
-          command: |
-             ./scripts/make_test_config.py --password buttcoins --username cilantro_user --database cilantro_dev --hostname 127.0.0.1
       - save_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
           paths:
             - "/usr/local/bin"
             - "/usr/local/lib/python3.6/site-packages"
-      - run:
-          name: Wait For mysqld
-          command: |
-            dockerize -wait tcp://localhost:3306 -timeout 1m
+
       - run:
           name: Run Tests
           command: |
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
+            python3 ./scripts/make_test_config.py
+            bash ./scripts/start_mongo.sh
             python3.6 ~/cilantro/tests/run_tests.py --integration 0 --unit 1
+
       - run:
           mkdir -p unit-test-results
+
       - store_test_results:
           path: unit-test-results
 

@@ -19,7 +19,7 @@
 
 from cilantro.nodes.base import NodeBase
 from cilantro.nodes.delegate.block_manager import BlockManager
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 
 from cilantro.protocol.states.decorators import *
 from cilantro.protocol.states.state import State

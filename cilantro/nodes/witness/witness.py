@@ -13,7 +13,7 @@ from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.messages.transaction.batch import TransactionBatch
 from cilantro.messages.signals.kill_signal import KillSignal
 
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 from cilantro.utils.hasher import Hasher
 
 import zmq, asyncio

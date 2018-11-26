@@ -1,18 +1,16 @@
 #!/bin/bash
 set -ex
 
+pip3 install seneca --upgrade
+pip3 install vmnet --upgrade
+
 echo "Waiting for mongo on localhost"
-mkdir -p /app/data/db/logs
-touch /app/data/db/logs/log_mongo.log
+mkdir -p ./data/$HOST_NAME/db/logs
+touch ./data/$HOST_NAME/db/logs/log_mongo.log
 echo 'Dir created'
 
-mongod --dbpath /app/data/db --logpath /app/data/db/logs/mongo.log
+mongod --dbpath ./data/db --logpath ./data/db/logs/mongo.log --bind_ip_all &
+sleep 1
 echo 'started mongod'
 
-mongo
-use admin
-db.createUser({user:"lamden",pwd:"pwd",roles:[{role:"root",db:"admin"}]})
-
-echo 'user created'
-
-
+python3 ./scripts/create_user.py
