@@ -74,12 +74,16 @@ class BlockAggregator(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_delegates():
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
+            time.sleep(1)
             self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
+            time.sleep(1)
 
         for vk in VKBook.get_masternodes():
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
+                time.sleep(1)
                 self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+                time.sleep(1)
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])

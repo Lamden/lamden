@@ -36,24 +36,24 @@ class KademliaProtocol(RPCProtocol):
         return self.sourceNode.id
 
     def rpc_find_node(self, sender, nodeid, key):
-        log.info("finding neighbors of %i in local table",
-                 int(nodeid.hex(), 16))
+        log.info("finding neighbors of {} in local table for {}".format(key, sender))
         source = Node(nodeid, sender[0], sender[1], sender[2])
         self.welcomeIfNewNode(source)
-        node = Node(key)
-        neighbors = self.router.findNeighbors(node, exclude=source)
+        node = Node(digest(key))
+        neighbors = self.router.findNode(node)
         return list(map(tuple, neighbors))
 
     async def callFindNode(self, nodeToAsk, nodeToFind):
         address = (nodeToAsk.ip, nodeToAsk.port, self.sourceNode.vk)
         result = await self.find_node(address, self.sourceNode.id,
-                                      nodeToFind.id)
+                                      nodeToFind.vk)
         return self.handleCallResponse(result, nodeToAsk)
 
     async def callPing(self, nodeToAsk):
-        address = (nodeToAsk.ip, nodeToAsk.port, self.sourceNode.vk)
-        result = await self.ping(address, self.sourceNode.id)
-        return self.handleCallResponse(result, nodeToAsk)
+        # address = (nodeToAsk.ip, nodeToAsk.port, self.sourceNode.vk)
+        # result = await self.ping(address, self.sourceNode.id)
+        # return self.handleCallResponse(result, nodeToAsk)
+        pass
 
     def welcomeIfNewNode(self, node):
         """
@@ -80,11 +80,16 @@ class KademliaProtocol(RPCProtocol):
         If we get a response, add the node to the routing table.  If
         we get no response, make sure it's removed from the routing table.
         """
+        nodes = []
         if not result[0]:
             log.warning("no response from %s, removing from router", node)
             self.router.removeContact(node)
-            return result
+            return nodes
 
-        log.info("got successful response from %s", node)
+        log.info("got successful response from {} and response {}".format(node, result))
         self.welcomeIfNewNode(node)
-        return result
+        for t in result[1]:
+            n = Node(digest(t[3]), ip=t[1], port=t[2], vk=t[3])
+            self.welcomeIfNewNode(n)
+            nodes.append(n)
+        return nodes
