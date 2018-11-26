@@ -19,4 +19,8 @@ touch ./data/$HOST_NAME/logs/mongo.log
 echo 'Dir created'
 
 python3 ./scripts/create_user.py &
-mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all
+
+if [ "$CIRCLECI" != "true" ]
+then
+  mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all
+fi
