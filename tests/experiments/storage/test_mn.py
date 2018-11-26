@@ -28,7 +28,7 @@ def start_mn(verifing_key):
 
     store = MDB()
     store.query_db()
-    
+
     ctx = zmq.Context()
     socket = ctx.socket(socket_type=zmq.PAIR)
     url = "tcp://{}:10200".format(os.getenv('MGMT'))

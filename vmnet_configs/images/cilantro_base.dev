@@ -37,4 +37,4 @@ RUN apt-get update \
 #    && apt autoremove -y \
 #    && rm -rf /var/lib/apt/lists/*
 
-CMD pip3 install seneca --upgrade; pip3 install vmnet --upgrade
+CMD pip3 install seneca --upgrade --no-cache-dir; pip3 install vmnet --upgrade --no-cache-dir

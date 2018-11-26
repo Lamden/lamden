@@ -23,6 +23,13 @@ import os
 class MPPubSubAuth(MPTesterBase):
     @classmethod
     def build_obj(cls, sk, name='') -> tuple:
+
+        # DEBUG -- TODO DELETE
+        print("VKBook on REMOTE MACHINE")
+        from cilantro.storage.vkbook import VKBook
+        VKBook.test_print_nodes()
+        # END DEBUG
+
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
 

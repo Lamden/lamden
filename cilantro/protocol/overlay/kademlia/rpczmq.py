@@ -49,7 +49,7 @@ class RPCProtocol:
         sock.setsockopt(zmq.IDENTITY, self.identity)
         sock.connect('tcp://{}:{}'.format(addr[0], addr[1]))
         log.spam("sending request %s for msg id %s to %s",
-                  msg, b64encode(msgID), addr)
+                  msg, msgID, addr)
         sock.send_multipart([msg])
         response = await sock.recv_multipart()
         data = response[0]
@@ -58,7 +58,7 @@ class RPCProtocol:
         return res
 
     async def datagram_received(self, data, addr):
-        log.spam("received datagram from %s", addr)
+        log.spam("received datagram data {} from addr {}".format(data, addr))
         return await self._solveDatagram(data, addr)
 
     async def _solveDatagram(self, datagram, address):
@@ -82,13 +82,15 @@ class RPCProtocol:
     def _acceptResponse(self, msgID, data, address):
         msgargs = (b64encode(msgID), address)
         log.spam("received response %s for message "
-                  "id %s from %s", data, *msgargs)
+                  "id %s from %s", data, msgID, address)
         return data
 
+    # raghu - need more protection against DOS?? like known string encrypted with its vk?
     async def _acceptRequest(self, msgID, data, address):
         if not isinstance(data, list) or len(data) != 2:
             raise MalformedMessage("Could not read packet: %s" % data)
         funcname, args = data
+        log.spam("accepting request by executing {} addr {} data {}".format(funcname, address, data))
         f = getattr(self, "rpc_%s" % funcname, None)
         if f is None or not callable(f):
             msgargs = (self.__class__.__name__, funcname)
@@ -100,7 +102,7 @@ class RPCProtocol:
             f = asyncio.coroutine(f)
         response = await f(address, *args)
         log.spam("sending response %s for msg id %s to %s",
-                  response, b64encode(msgID), address)
+                  response, msgID, address)
         txdata = b'\x01' + msgID + umsgpack.packb(response)
         identity = '{}:{}:{}'.format(address[0], address[1], address[2]).encode()
         self.sock.send_multipart([identity, txdata])
@@ -109,6 +111,7 @@ class RPCProtocol:
         args = (b64encode(msgID), self._waitTimeout)
         log.warning("Did not received reply for msg "
                   "id %s within %i seconds", *args)
+        # raghu why even set this if we are going to delete it in the next stmt?
         self._outstanding[msgID][0].set_result((False, None))
         del self._outstanding[msgID]
 

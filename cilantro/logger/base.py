@@ -21,8 +21,8 @@ req_log.propagate = True
 def get_main_log_path():
     import cilantro
 
-    root = cilantro.__file__  # resolves to '/Users/davishaba/Developer/seneca/seneca/logger/__init__.py'
-    log_path = '/'.join(root.split('/')[:-3]) + '/logs/cilantro.log'
+    root = cilantro.__file__  # resolves to '/Users/davishaba/Developer/cilantro/cilantro/__init__.py'
+    log_path = '/'.join(root.split('/')[:-2]) + '/logs/cilantro.log'
 
     # Create log directory if it does not exist
     log_dir = os.path.dirname(log_path)
@@ -136,7 +136,9 @@ def get_logger(name=''):
 
     filedir = "logs/{}".format(os.getenv('TEST_NAME', 'test'))
     filename = "{}/{}.log".format(filedir, os.getenv('HOST_NAME', name))
-    os.makedirs(filedir, exist_ok=True)
+
+    if not os.path.exists(filedir):
+        os.makedirs(filedir, exist_ok=True)
 
     filehandlers = [
         logging.FileHandler(get_main_log_path(), delay=True),

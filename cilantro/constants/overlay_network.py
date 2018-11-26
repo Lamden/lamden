@@ -6,13 +6,13 @@ ALPHA = 3
 KSIZE = 20
 MAX_PEERS = 64
 
-AUTH_TIMEOUT = 8 * CI_FACTOR  # Times-out after retrying auth for the interval
+AUTH_TIMEOUT = 20 * CI_FACTOR  # Times-out after retrying auth for the interval
 RPC_TIMEOUT = 10
-CLIENT_SETUP_TIMEOUT = 25  # How long OverlayClient should wait for a rdy sig from the OverlayServer until we timeout
-DISCOVERY_TIMEOUT = 2 * CI_FACTOR
+CLIENT_SETUP_TIMEOUT = 120  # How long OverlayClient should wait for a rdy sig from the OverlayServer until we timeout
+DISCOVERY_TIMEOUT = 3
 
-DISCOVERY_RETRIES = 3
-MIN_BOOTSTRAP_NODES = 2
+DISCOVERY_RETRIES = 100
+MIN_BOOTSTRAP_NODES = 1
 
 if env('HOST_IP'):
     HOST_IP = env('HOST_IP')

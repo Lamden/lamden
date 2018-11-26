@@ -5,6 +5,7 @@ from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
 from cilantro.logger.base import get_logger
 
+
 def masternode(idx):
     from cilantro.constants.testnet import TESTNET_MASTERNODES
     from cilantro.protocol.overlay.interface import OverlayInterface
@@ -21,6 +22,7 @@ def masternode(idx):
     oi = OverlayInterface(TESTNET_MASTERNODES[idx]['sk'])
     oi.tasks.append(check())
     oi.start()
+
 
 def witness(idx):
     from cilantro.constants.testnet import TESTNET_WITNESSES
@@ -39,6 +41,7 @@ def witness(idx):
     oi.tasks.append(check())
     oi.start()
 
+
 def delegate(idx):
     from cilantro.constants.testnet import TESTNET_DELEGATES
     from cilantro.protocol.overlay.interface import OverlayInterface
@@ -56,8 +59,8 @@ def delegate(idx):
     oi.tasks.append(check())
     oi.start()
 
-class TestInterface(BaseTestCase):
 
+class TestInterface(BaseTestCase):
     log = get_logger(__name__)
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
     enable_ui = False
@@ -72,7 +75,7 @@ class TestInterface(BaseTestCase):
         self.assertEqual(self.nodes_complete, self.all_nodes)
 
     def test_interface(self):
-        self.all_nodes = set(self.groups['masternode']+self.groups['witness']+self.groups['delegate'])
+        self.all_nodes = set(self.groups['masternode'] + self.groups['witness'] + self.groups['delegate'])
         self.nodes_complete = set()
         for idx, node in enumerate(self.groups['masternode']):
             self.execute_python(node, wrap_func(masternode, idx))
@@ -82,6 +85,7 @@ class TestInterface(BaseTestCase):
             self.execute_python(node, wrap_func(delegate, idx))
 
         file_listener(self, self.callback, self.timeout, 30)
+
 
 if __name__ == '__main__':
     unittest.main()
