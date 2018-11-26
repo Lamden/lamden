@@ -17,7 +17,9 @@ RUN apt-get update \
     && apt-get install -y mongodb-org
 
 # Install Redis
-RUN wget http://download.redis.io/releases/redis-4.0.6.tar.gz \
+RUN apt-get update \
+    && apt-get install wget \
+    && wget http://download.redis.io/releases/redis-4.0.6.tar.gz \
     && tar xzf redis-4.0.6.tar.gz \
     && cd redis-4.0.6 && make
 

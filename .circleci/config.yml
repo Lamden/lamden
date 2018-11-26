@@ -72,6 +72,7 @@ jobs:
       - image: circleci/python:3.6.5
       - image: redis:4.0.6
       - image: lamden/cilantro-mn
+      - image: circleci/mongo:4.0.4
         environment:
           username: cilantro_user
           password: buttcoins
