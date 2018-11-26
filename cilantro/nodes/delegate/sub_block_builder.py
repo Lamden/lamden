@@ -88,6 +88,7 @@ class SubBlockBuilder(Worker):
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
         self._create_sub_sockets()
+        # need to tie with catchup state to initialize next_block_to_make
         self._next_block_to_make = NextBlockToMake()
 
         self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_per_blder {} num_sb_per_block {} num_sb_per_builder {}"
