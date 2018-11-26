@@ -20,15 +20,6 @@ jobs:
             cd redis-4.0.6 && make
 
       - run:
-          name: Install Mongo
-          command: |
-            sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A14518585931BC711F9BA15703C6
-            echo "deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.4.list
-            sudo apt-get update
-            sudo apt-get install -y mongodb-org mongodb-org-shell mongodb-org-server mongodb-org-mongos mongodb-org-tools
-            sudo apt-get autoremove
-
-      - run:
           name: Install Cilantro Requirements
           command: |
              pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
@@ -71,7 +62,7 @@ jobs:
       - image: circleci/python:3.6.5
       - image: redis:4.0.6
       - image: lamden/cilantro-mn
-      - image: circleci/mongo:4.0.4
+      - image: circleci/mongo:4.0.4-xenial
         environment:
           username: cilantro_user
           password: buttcoins
@@ -83,15 +74,6 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
-
-      - run:
-          name: Install Mongo
-          command: |
-            sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A14518585931BC711F9BA15703C6
-            echo "deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.4.list
-            sudo apt-get update
-            sudo apt-get install -y mongodb-org mongodb-org-shell mongodb-org-server mongodb-org-mongos mongodb-org-tools libssl-dev
-            sudo apt-get autoremove
 
       - run:
           name: Install Cilantro Requirements
