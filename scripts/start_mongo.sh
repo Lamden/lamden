@@ -20,9 +20,4 @@ echo 'Dir created'
 
 python3 ./scripts/create_user.py &
 
-if [ "$CIRCLECI" == "true" ]
-then
-  sudo service mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all
-else
-  mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all
-fi
+mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all
