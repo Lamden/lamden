@@ -1,6 +1,9 @@
 from pymongo import MongoClient
 import configparser
 import os
+import time
+
+time.sleep(1)
 
 settings = configparser.ConfigParser()
 settings._interpolation = configparser.ExtendedInterpolation()
@@ -14,5 +17,3 @@ db.add_user(
     settings.get('MN_DB', 'password'),
     roles=[{'role': 'userAdminAnyDatabase', 'db': 'admin'}]
 )
-
-print('user created')
