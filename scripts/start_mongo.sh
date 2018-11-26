@@ -5,7 +5,7 @@ export PYTHONPATH=$(pwd)
 
 if [ "$CIRCLECI" == "true" ]
 then
-  export $HOST_NAME="."
+  export HOST_NAME="."
 fi
 
 # echo "Updating seneca..."
