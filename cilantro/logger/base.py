@@ -135,7 +135,9 @@ def get_logger(name=''):
 
     filedir = "logs/{}".format(os.getenv('TEST_NAME', 'test'))
     filename = "{}/{}.log".format(filedir, os.getenv('HOST_NAME', name))
-    os.makedirs(filedir, exist_ok=True)
+
+    if not os.path.exists(filedir):
+        os.makedirs(filedir, exist_ok=True)
 
     filehandlers = [
         logging.FileHandler(get_main_log_path(), delay=True),
