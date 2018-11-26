@@ -72,24 +72,25 @@ class OverlayServer(object):
 
     @async_reply
     async def get_node_from_vk(self, event_id, vk, domain='*', secure='False'):
-        if vk in VKBook.get_all():
-            ip = await self.interface.lookup_ip(vk)
-            if not ip:
-                return {
-                    'event': 'not_found',
-                    'event_id': event_id,
-                    'vk': vk
-                }
+        # TODO perhaps return an event instead of throwing an error in production
+        assert vk in VKBook.get_all(), "Attempted to look up VK {} that is not in VKBook {}".format(vk, VKBook.get_all())
 
-            authorized = await self.interface.authenticate(ip, vk, domain) \
-                if secure == 'True' else True
+        ip = await self.interface.lookup_ip(vk)
+        if not ip:
             return {
-                'event': 'got_ip' if authorized else 'unauthorized_ip',
+                'event': 'not_found',
                 'event_id': event_id,
-                'ip': ip,
                 'vk': vk
             }
 
+        authorized = await self.interface.authenticate(ip, vk, domain) \
+            if secure == 'True' else True
+        return {
+            'event': 'got_ip' if authorized else 'unauthorized_ip',
+            'event_id': event_id,
+            'ip': ip,
+            'vk': vk
+        }
 
     @reply
     def get_service_status(self, event_id):
