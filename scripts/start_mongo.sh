@@ -3,7 +3,7 @@ set -ex
 
 export PYTHONPATH=$(pwd)
 
-if [ "$CIRCLECI" == "true" ]
+if [ "$CIRCLECI" == "true" && "$HOST_NAME" == "" ]
 then
   export HOST_NAME="."
 fi
