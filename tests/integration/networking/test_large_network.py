@@ -76,14 +76,13 @@ class TestLargeNetwork(MPTestCase):
                 n.connect_sub(vk=m_vk)
             it = it + 1
 
-        time.sleep(15*CI_FACTOR)  # Allow time for VK lookups
+        time.sleep(10*CI_FACTOR)  # Allow time for VK lookups
 
         # Make each node pub a msg
         for n in all_nodes:
             n.send_pub("hi from {} with ip {}".format(n.name, n.ip).encode())
 
         self.start(timeout=30)
-
         time.sleep(2*CI_FACTOR)  # Allow time to shut down properly
 
 

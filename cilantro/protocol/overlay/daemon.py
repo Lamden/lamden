@@ -6,6 +6,7 @@ from cilantro.logger.base import get_logger
 from cilantro.protocol.overlay.event import Event
 from collections import deque
 
+
 def command(fn):
     def _command(self, *args, **kwargs):
         event_id = uuid.uuid4().hex
@@ -14,7 +15,9 @@ def command(fn):
             [arg.encode() if hasattr(arg, 'encode') else str(arg).encode() for arg in args] + \
             [kwargs[k].encode() if hasattr(kwargs[k], 'encode') else str(kwargs[k]).encode() for k in kwargs])
         return event_id
+
     return _command
+
 
 def reply(fn):
     def _reply(self, *args, **kwargs):
@@ -24,7 +27,9 @@ def reply(fn):
             id_frame,
             json.dumps(res).encode()
         ])
+
     return _reply
+
 
 def async_reply(fn):
     def _reply(self, *args, **kwargs):
@@ -33,10 +38,13 @@ def async_reply(fn):
                 id_frame,
                 json.dumps(fut.result()).encode()
             ])
+
         id_frame = args[0]
         fut = asyncio.ensure_future(fn(self, *args[1:], **kwargs))
         fut.add_done_callback(_done)
+
     return _reply
+
 
 class OverlayServer(object):
     def __init__(self, sk, loop=None, ctx=None, start=True):
@@ -73,7 +81,8 @@ class OverlayServer(object):
     @async_reply
     async def get_node_from_vk(self, event_id, vk, domain='*', secure='False'):
         # TODO perhaps return an event instead of throwing an error in production
-        assert vk in VKBook.get_all(), "Attempted to look up VK {} that is not in VKBook {}".format(vk, VKBook.get_all())
+        assert vk in VKBook.get_all(), "Attempted to look up VK {} that is not in VKBook {}".format(vk,
+                                                                                                    VKBook.get_all())
 
         ip = await self.interface.lookup_ip(vk)
         if not ip:
@@ -109,8 +118,10 @@ class OverlayServer(object):
         try:
             self.evt_sock.close()
             self.cmd_sock.close()
-            try: self.fut.set_result('done')
-            except: self.fut.cancel()
+            try:
+                self.fut.set_result('done')
+            except:
+                self.fut.cancel()
             self.interface.teardown()
             self.log.notice('Overlay service stopped.')
         except:
@@ -157,10 +168,12 @@ class OverlayClient(object):
         await asyncio.wait_for(wait_until_ready(), CLIENT_SETUP_TIMEOUT)
 
     @command
-    def get_node_from_vk(self, *args, **kwargs): pass
+    def get_node_from_vk(self, *args, **kwargs):
+        pass
 
     @command
-    def get_service_status(self, *args, **kwargs): pass
+    def get_service_status(self, *args, **kwargs):
+        pass
 
     async def event_listener(self, event_handler):
         self.log.info('Listening for overlay events over {}'.format(EVENT_URL))
@@ -178,10 +191,10 @@ class OverlayClient(object):
             self.log.info("OverlayClient received reply {}".format(msg))
             event = json.loads(msg[-1])
             if event.get('event') == 'service_status' and \
-                event.get('status') == 'ready':
+                    event.get('status') == 'ready':
                 self._ready = True
             elif event.get('event') == 'service_status' and \
-                event.get('status') == 'not_ready':
+                    event.get('status') == 'not_ready':
                 self.log.info("OverlayClient received not ready. Reissuing service status command ...")
                 await asyncio.sleep(2)
                 self.get_service_status()

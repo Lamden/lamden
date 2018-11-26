@@ -5,6 +5,7 @@ from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
 from cilantro.logger.base import get_logger
 
+
 def masternode(idx):
     from vmnet.comm import send_to_file
     from cilantro.constants.testnet import TESTNET_MASTERNODES
@@ -29,6 +30,7 @@ def masternode(idx):
         check_nodes()
     ))
     loop.run_until_complete(tasks)
+
 
 def witness(idx):
     from vmnet.comm import send_to_file
@@ -56,6 +58,7 @@ def witness(idx):
     ))
     loop.run_until_complete(tasks)
 
+
 def delegate(idx):
     from vmnet.comm import send_to_file
     from cilantro.constants.testnet import TESTNET_DELEGATES
@@ -82,8 +85,8 @@ def delegate(idx):
     ))
     loop.run_until_complete(tasks)
 
-class TestDiscovery(BaseTestCase):
 
+class TestDiscovery(BaseTestCase):
     log = get_logger(__name__)
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
     enable_ui = False
@@ -98,7 +101,7 @@ class TestDiscovery(BaseTestCase):
         self.assertEqual(self.nodes_complete, self.all_nodes)
 
     def test_discovery(self):
-        self.all_nodes = set(self.groups['masternode']+self.groups['witness']+self.groups['delegate'])
+        self.all_nodes = set(self.groups['masternode'] + self.groups['witness'] + self.groups['delegate'])
         self.nodes_complete = set()
         for idx, node in enumerate(self.groups['masternode']):
             self.execute_python(node, wrap_func(masternode, idx))
@@ -107,6 +110,7 @@ class TestDiscovery(BaseTestCase):
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(delegate, idx))
         file_listener(self, self.callback, self.timeout, 30)
+
 
 if __name__ == '__main__':
     unittest.main()
