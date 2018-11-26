@@ -70,7 +70,6 @@ jobs:
     working_directory: ~/cilantro
     docker:
       - image: circleci/python:3.6.5
-      - image: circleci/mongo:4.0.4
       - image: redis:4.0.6
       - image: lamden/cilantro-mn
         environment:
@@ -84,16 +83,6 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
       - restore_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
-
-      - run:
-          name: Install MongoDB
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y software-properties-common apt-transport-https
-            sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
-            sudo add-apt-repository 'deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse'
-            sudo apt-get update
-            sudo apt-get install -y mongodb-org mongodb-org-server
 
       - run:
           name: Install Cilantro Requirements
