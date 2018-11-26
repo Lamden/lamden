@@ -33,7 +33,7 @@ class TestPubSubUnsecure(MPTestCase):
         msg = b'*falcon noise*'
         time.sleep(1*CI_FACTOR)
 
-        BLOCK = False
+        BLOCK = True
 
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB', block_until_rdy=BLOCK)
         sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB1', block_until_rdy=BLOCK)
@@ -67,7 +67,7 @@ class TestPubSubUnsecure(MPTestCase):
         msg2 = b'*falcon2 noise*'
         time.sleep(1*CI_FACTOR)
 
-        BLOCK = False
+        BLOCK = True
 
         pub1 = MPPubSubAuth(sk=PUB1_SK, name='PUB1', block_until_rdy=BLOCK)
         pub2 = MPPubSubAuth(sk=PUB2_SK, name='PUB2', block_until_rdy=BLOCK)
