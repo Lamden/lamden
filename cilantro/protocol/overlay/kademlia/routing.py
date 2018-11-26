@@ -2,9 +2,12 @@ import heapq
 import time
 import operator
 import asyncio
+import logging
 
 from collections import OrderedDict
 from cilantro.protocol.overlay.kademlia.utils import OrderedSet, sharedPrefix, bytesToBitString
+
+log = logging.getLogger(__name__)
 
 
 class KBucket(object):
@@ -45,6 +48,9 @@ class KBucket(object):
 
     def isNewNode(self, node):
         return node.id not in self.nodes
+
+    def isFull(self):
+        return len(self) < self.ksize
 
     def addNode(self, node):
         """
@@ -121,10 +127,9 @@ class RoutingTable(object):
         self.node = node
         self.protocol = protocol
         self.ksize = ksize
-        self.flush()
-
-    def flush(self):
         self.buckets = [KBucket(0, 2 ** 160, self.ksize)]
+        self.addContact(node)
+
 
     def splitBucket(self, index):
         one, two = self.buckets[index].split()
@@ -153,15 +158,15 @@ class RoutingTable(object):
 
         # this will succeed unless the bucket is full
         if bucket.addNode(node):
-            return
+            return True
 
         # Per section 4.2 of paper, split if the bucket has the node
         # in its range or if the depth is not congruent to 0 mod 5
         if bucket.hasInRange(self.node) or bucket.depth() % 5 != 0:
             self.splitBucket(index)
             self.addContact(node)
-        else:
-            asyncio.ensure_future(self.protocol.callPing(bucket.head()))
+            return True
+        return False
 
     def getBucketFor(self, node):
         """
@@ -170,6 +175,21 @@ class RoutingTable(object):
         for index, bucket in enumerate(self.buckets):
             if node.long_id < bucket.range[1]:
                 return index
+
+    def findNode(self, node, k=None):
+        if node.id == self.node.id:
+            return [self.node]
+        bucket = self.buckets[self.getBucketFor(node)]
+        item = bucket.nodes.get(node.id, None)
+        if item and node.id == item.id:
+            return [item]
+        k = k or self.ksize
+        nodes = []
+        for neighbor in TableTraverser(self, node):
+            nodes.append(neighbor)
+            if len(nodes) == k:
+                break
+        return nodes
 
     def findNeighbors(self, node, k=None, exclude=None):
         k = k or self.ksize
@@ -182,3 +202,13 @@ class RoutingTable(object):
                 break
 
         return list(map(operator.itemgetter(1), heapq.nsmallest(k, nodes)))
+
+    def getNeighbors(self, node):
+        nodes = []
+        for neighbor in TableTraverser(self, node):
+            nodes.append(neighbor)
+
+        return nodes
+
+    def getNumBuckets(self):
+        return len(self.buckets)

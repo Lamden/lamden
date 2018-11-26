@@ -1,3 +1,5 @@
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('2-2-4.json')
 from vmnet.comm import file_listener
 from vmnet.testcase import BaseTestCase
 import unittest, time, random, vmnet, cilantro, asyncio, ujson as json
@@ -5,6 +7,7 @@ from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
 from cilantro.logger.base import get_logger
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
+
 
 def nodefn(node_type, idx):
     from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
@@ -39,6 +42,7 @@ def nodefn(node_type, idx):
             *[node['vk'] for node in TESTNET_WITNESSES],
             *[node['vk'] for node in TESTNET_DELEGATES]
         ]:
+            await asyncio.sleep(1)
             client.get_node_from_vk(vk)
 
     loop = asyncio.get_event_loop()
@@ -48,6 +52,7 @@ def nodefn(node_type, idx):
     client.tasks.append(lookup_ip())
     client.start()
     loop.run_forever()
+
 
 class TestDaemon(BaseTestCase):
 

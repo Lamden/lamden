@@ -16,7 +16,7 @@ import math
 from cilantro.logger import get_logger
 from functools import wraps
 
-log = get_logger("DB")
+log = get_logger("VKBook")
 
 from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_WITNESSES, TESTNET_MASTERNODES
 class VKBook:
@@ -44,3 +44,11 @@ class VKBook:
     @staticmethod
     def get_delegate_majority():
         return math.ceil(len(VKBook.get_delegates()) * 2/3)
+
+    @staticmethod
+    def test_print_nodes():
+        log.notice("masternodes: {}".format(VKBook.get_masternodes()))
+        log.notice("witnesses: {}".format(VKBook.get_witnesses()))
+        log.notice("delegates: {}".format(VKBook.get_delegates()))
+
+

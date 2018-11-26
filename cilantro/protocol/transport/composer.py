@@ -78,7 +78,7 @@ class Composer:
     def _handle_overlay_event(self, e):
         self.log.spam("Composer got overlay event {}".format(e))
 
-        if e['event'] == 'service_started' or (e['event'] == 'service_status' and e['status'] == 'ready'):
+        if (e['event'] == 'service_status' and e['status'] == 'ready'):
             if self.overlay_ready:
                 self.log.debugv("Overlay is already ready. Not flushing commands")
                 return

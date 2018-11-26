@@ -3,6 +3,7 @@ from cilantro.protocol.multiprocessing.worker import Worker
 import os
 import asyncio
 import zmq.asyncio
+import time
 
 
 PORT = 9432
@@ -57,6 +58,7 @@ class PubSubAuthTester(Worker):
 
         sock = self.sub_sockets[socket_key]
         sock.connect(port=port, protocol=protocol, vk=vk, ip=ip)
+        time.sleep(2)
 
     def start_publishing(self, num_msgs=50, interval=1, filter=b''):
         assert len(self.pub_sockets) > 0, "Must add at least 1 pub socket to start publishing"
