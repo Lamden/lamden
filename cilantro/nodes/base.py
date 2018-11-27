@@ -4,6 +4,7 @@ from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.protocol.overlay.daemon import OverlayServer
 from cilantro.utils.lprocess import LProcess
+from cilantro.storage.vkbook import VKBook
 
 import asyncio
 import os
@@ -52,6 +53,12 @@ class NodeBase(StateMachine, Worker):
 
 class NewNodeBase(Worker):
 
+    # For dev, we require all nodes to be online. IRL this could perhaps be 2/3 node for each role  --davis
+    # These constants can be overwritten by subclasses
+    REQ_MNS = len(VKBook.get_masternodes())
+    REQ_DELS = len(VKBook.get_delegates())
+    REQ_WITS = len(VKBook.get_witnesses())
+
     def __init__(self, ip, signing_key, loop=None, name='Node'):
         self.log = get_logger(name)
         self.ip = ip
@@ -71,5 +78,13 @@ class NewNodeBase(Worker):
         self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
 
         # TODO wait for necessary num of nodes to come online
+        self.log.notice("Waiting for necessary nodes to boot...")
+        start = time.time()
+        self.loop.run_until_complete()
+        self.log.notice("Done waiting for necessary nodes to boot! Secs spent waiting: {}".format(time.time()-start))
         # TODO run biz logic
+
+    async def wait_for_network_rdy(self):
+
+        pass
 
