@@ -5,10 +5,13 @@ from cilantro.storage.contracts import seed_contracts
 from cilantro.storage.mongo import MDB
 from seneca.engine.interface import SenecaInterface
 from cilantro.constants.overlay_network import HOST_IP
+
+
 def _build_block_schema(should_reset):
     MDB.setup_db()
     if should_reset:
         MDB.reset_db()
+
 
 class NodeFactory:
     @staticmethod

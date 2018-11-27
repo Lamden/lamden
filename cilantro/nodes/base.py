@@ -16,7 +16,7 @@ from cilantro.protocol import wallet
 # limits the number of re-auth attempts and lookup retries
 BOOT_DELAY = 5
 
-PING_RETRY = 8  # How often nodes should send
+PING_RETRY = 8  # How often (in seconds) a node should ping others to check if they are online
 
 
 def take_a_nice_relaxing_nap(log):
@@ -83,7 +83,12 @@ class NewNodeBase(Worker):
         self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
         self.add_overlay_handler_fn('node_offline', self._node_offline_event)
         self.add_overlay_handler_fn('node_online', self._node_online_event)
+
         self._wait_for_nodes()
+        self.start()
+
+    def start(self):
+        pass
 
     def _node_offline_event(self, event: dict):
         assert event['event'] == 'node_offline', "Wrong handler wrong event wtf"  # TODO remove
@@ -102,8 +107,8 @@ class NewNodeBase(Worker):
         self.log.notice("Done waiting for necessary nodes to boot! Time spent waiting: {}s".format(time.time()-start))
 
     async def _wait_for_network_rdy(self):
-        elasped = 0
-        while not self._quorum_reached() and elasped < MAX_BOOT_WAIT:
+        elapsed = 0
+        while not self._quorum_reached() and elapsed < MAX_BOOT_WAIT:
             # Get missing node set, and try and ping them all (no auth)
             missing_vks = self._get_missing_nodes()
             self.log.spam("Querying status of nodes with vks: {}".format(missing_vks))
@@ -111,9 +116,9 @@ class NewNodeBase(Worker):
                 self.manager.overlay_client.check_node_status(vk)
 
             await asyncio.sleep(PING_RETRY)
-            elasped += PING_RETRY
+            elapsed += PING_RETRY
 
-        if elasped > MAX_BOOT_WAIT:
+        if elapsed > MAX_BOOT_WAIT:
             err = "Node could not connect to reach required qourum in timeout of {}s!\nMn set: {}\nDelegate set: {}" \
                   "\nWitness set: {}".format(MAX_BOOT_WAIT, self.online_mns, self.online_dels, self.online_wits)
             self.log.fatal(err)
