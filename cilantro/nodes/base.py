@@ -10,7 +10,11 @@ import os
 import time
 from cilantro.protocol import wallet
 
-BOOT_DELAY = 5  # MANDATORY NAP TIME (How long each node sleeps after starting its overlay server)
+# MANDATORY NAP TIME (How long each node sleeps after starting its overlay server)
+# Technically, the system will work without this nap but allowing some padding time for dynamic discovery and such
+# limits the number of re-auth attempts and lookup retries
+BOOT_DELAY = 5
+
 
 def take_a_nice_relaxing_nap(log):
     log.important("Taking a nice relaxing {} second nap while I wait for everybody to boot".format(BOOT_DELAY))
@@ -33,13 +37,8 @@ class NodeBase(StateMachine, Worker):
         # TODO remove this once we implement a 'Staging' state for all nodes
         take_a_nice_relaxing_nap(self.log)
 
-        # TODO -- block here until the OverlayServer is ready. That way Workers never have to wait
-
         # Init Super Classes (we had to start the Overlay Server first)
-
-        self.log.important3("NodeBase instantiating Worker superclass! (blocking call)")
         Worker.__init__(self, signing_key=signing_key, loop=loop, name=name)
-        self.log.important3("NodeBase finished instantiating Worker superclass.")
 
         StateMachine.__init__(self)
 
@@ -49,3 +48,26 @@ class NodeBase(StateMachine, Worker):
         self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
 
         super().start()  # Start the state machine
+
+
+class NewNodeBase(Worker):
+
+    def __init__(self, ip, signing_key, loop=None, name='Node'):
+        self.log = get_logger(name)
+
+        self.loop = loop or asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+        self.log.notice("Starting overlay service")
+        self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key})
+        self.overlay_proc.start()
+
+        # TODO remove this once we implement a 'Staging' state for all nodes
+        take_a_nice_relaxing_nap(self.log)
+        Worker.__init__(self, signing_key=signing_key, loop=loop, name=name)
+
+        self.ip = ip
+        self.name = name
+
+        self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
+
