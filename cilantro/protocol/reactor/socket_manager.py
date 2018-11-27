@@ -15,8 +15,7 @@ from cilantro.protocol.overlay.auth import Auth
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 from nacl.signing import SigningKey
 
-# TODO Better name for SocketManager? SocketManager is also responsible for handling the OverlayClient, so maybe we
-# should name it something that makes that more obvious
+
 class SocketManager:
 
     def __init__(self, signing_key: str, context=None, loop=None):
