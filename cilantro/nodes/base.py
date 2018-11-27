@@ -1,5 +1,5 @@
 from cilantro.logger import get_logger
-from cilantro.protocol.transport import Composer
+from cilantro.constants.system_config import MAX_BOOT_WAIT
 from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.protocol.overlay.daemon import OverlayServer
@@ -15,6 +15,8 @@ from cilantro.protocol import wallet
 # Technically, the system will work without this nap but allowing some padding time for dynamic discovery and such
 # limits the number of re-auth attempts and lookup retries
 BOOT_DELAY = 5
+
+PING_RETRY = 10  # How often nodes should send
 
 
 def take_a_nice_relaxing_nap(log):
@@ -67,24 +69,66 @@ class NewNodeBase(Worker):
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
+        # Variables to track connected nodes when booting
+        self.online_mns, self.online_dels, self.online_wits = set(), set(), set()
+
         self.log.notice("Starting overlay service")
         self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key})
         self.overlay_proc.start()  # TODO should we make this proc a daemon?
 
         # TODO remove this once we implement a 'Staging' state for all nodes
         take_a_nice_relaxing_nap(self.log)
+        # NOTE: We do not call super() init first thing b/c we must start the OverlayServer before starting the
+        # OverlayClient, which happens in Worker's init
         super().__init__(signing_key=signing_key, loop=loop, name=name)
-
         self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
 
-        # TODO wait for necessary num of nodes to come online
-        self.log.notice("Waiting for necessary nodes to boot...")
+        self._wait_for_nodes()
+        # self.run()
+
+    # def run(self):
+    #     raise NotImplementedError
+
+    def _wait_for_nodes(self):
+        assert not self.loop.is_running(), "Event loop should not be running when _wait_for_nodes is called!"
         start = time.time()
-        self.loop.run_until_complete()
-        self.log.notice("Done waiting for necessary nodes to boot! Secs spent waiting: {}".format(time.time()-start))
-        # TODO run biz logic
+        self.log.notice("Waiting for necessary nodes to boot...")
+        self.loop.run_until_complete(self._wait_for_network_rdy())
+        self.log.notice("Done waiting for necessary nodes to boot! Time spent waiting: {}s".format(time.time()-start))
 
-    async def wait_for_network_rdy(self):
+    async def _wait_for_network_rdy(self):
+        elasped = 0
+        while not self._quorum_reached() and elasped < MAX_BOOT_WAIT:
+            # Get missing node set, and try and ping them all (no auth)
+            pass
 
-        pass
+        if elasped > MAX_BOOT_WAIT:
+            err = "Node could not connect to reach required qourum in timeout of {}s!\nMn set: {}\nDelegate set: {}" \
+                  "\nWitness set: {}".format(MAX_BOOT_WAIT, self.online_mns, self.online_dels, self.online_wits)
+            self.log.fatal(err)
+            raise Exception(err)
+
+    def _get_missing_nodes(self) -> set:
+        missing_dels = set(VKBook.get_delegates()) - self.online_dels
+        missing_mns = set(VKBook.get_masternodes()) - self.online_mns
+        missing_wits = set(VKBook.get_witnesses()) - self.online_wits
+
+        return missing_dels.union(missing_mns).union(missing_wits)
+
+    def _quorum_reached(self) -> bool:
+        return (self.REQ_MNS <= len(self.online_mns)) and (self.REQ_DELS <= len(self.online_dels)) and \
+               (self.REQ_WITS <= len(self.online_wits))
+
+    def _add_online_vk(self, vk: str):
+        # Dev check (maybe dont do this IRL)
+        assert vk in VKBook.get_all(), "VK {} not in VKBook vks {}".format(vk, VKBook.get_all())
+        self.log.debugv("Adding vk {} to online nodes".format(vk))
+
+        if vk in VKBook.get_witnesses():
+            self.online_wits.add(vk)
+        if vk in VKBook.get_delegates():
+            self.online_dels.add(vk)
+        if vk in VKBook.get_masternodes():
+            self.online_mns.add(vk)
+
 
