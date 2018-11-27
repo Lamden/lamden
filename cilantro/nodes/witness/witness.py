@@ -1,4 +1,5 @@
 from cilantro.nodes.base import NodeBase
+from cilantro.nodes.base import NewNodeBase
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, WITNESS_DELEGATE_FILTER
 from cilantro.constants.ports import MN_TX_PUB_PORT, SBB_PORT_START
 from cilantro.constants.testnet import *
@@ -26,6 +27,47 @@ import zmq, asyncio
     then go ahead and pass the transaction along to TESTNET_DELEGATES to include in a block. They will also facilitate
     transactions that include stake reserves being spent by users staking on the network.
 """
+
+class NewWitness(NewNodeBase):
+
+    def start(self):
+        self._create_sub_socket()
+        self._create_pub_socket()
+
+    def _create_sub_socket(self):
+        # Sub to assigned Masternode
+        mn_vk = WITNESS_MN_MAP[self.verifying_key]
+        self.log.notice("Witness w/ vk {} subscribing to MN with vk {}".format(self.verifying_key, mn_vk))
+
+        self.sub = self.manager.create_socket(socket_type=zmq.SUB, name='MN-Subscriber', secure=True)
+        self.sub.connect(vk=mn_vk, port=MN_TX_PUB_PORT)
+        self.sub.setsockopt(zmq.SUBSCRIBE, WITNESS_MASTERNODE_FILTER.encode())
+
+        self.sub.add_handler(self._handle_sub_msg)
+
+    def _create_pub_socket(self):
+        # Connect PUB socket to SBBs
+        self.pub = self.manager.create_socket(socket_type=zmq.PUB, name='SBB-Publisher', secure=True)
+
+        mn_vk = WITNESS_MN_MAP[self.verifying_key]
+        mn_idx = VKBook.get_masternodes().index(mn_vk)
+        port = SBB_PORT_START + mn_idx
+
+        self.log.notice("Witness /w vk {} BINDING sub socket to port {}".format(self.verifying_key, port))
+
+        for delegate_vk in VKBook.get_delegates():
+            self.pub.connect(vk=delegate_vk, port=port)
+
+    def _handle_sub_msg(self, frames):
+        # Deserialize to check envelope date. This might be unnecessary in prod
+        env = Envelope.from_bytes(frames[-1])
+
+        assert type(env.message) is TransactionBatch, "Witness expected to receive only TransactionBatch messages, but " \
+                                                      "got unknown type {}".format(type(env.message))
+        self.log.info(
+            "Witness sending out transaction batch with input hash {} and {} transactions".format(Hasher.hash(env), len(
+                env.message.transactions)))
+        self.pub.send_multipart([b'', frames[-1]])
 
 
 class Witness(NodeBase):
