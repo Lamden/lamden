@@ -54,20 +54,22 @@ class NewNodeBase(Worker):
 
     def __init__(self, ip, signing_key, loop=None, name='Node'):
         self.log = get_logger(name)
+        self.ip = ip
+        self.name = name
 
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
         self.log.notice("Starting overlay service")
         self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key})
-        self.overlay_proc.start()
+        self.overlay_proc.start()  # TODO should we make this proc a daemon?
 
         # TODO remove this once we implement a 'Staging' state for all nodes
         take_a_nice_relaxing_nap(self.log)
-        Worker.__init__(self, signing_key=signing_key, loop=loop, name=name)
-
-        self.ip = ip
-        self.name = name
+        super().__init__(signing_key=signing_key, loop=loop, name=name)
 
         self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
+
+        # TODO wait for necessary num of nodes to come online
+        # TODO run biz logic
 
