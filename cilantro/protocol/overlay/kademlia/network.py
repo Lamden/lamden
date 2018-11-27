@@ -60,7 +60,7 @@ class Network(object):
         self.tasks = [
             self.protocol.listen(),
             self.refresh_table(),
-            self.saveStateRegularly()
+            # self.saveStateRegularly()
         ]
 
     def start(self):
