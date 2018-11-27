@@ -194,6 +194,10 @@ class OverlayClient(object):
     def get_service_status(self, *args, **kwargs):
         pass
 
+    @command
+    def check_node_status(self, *args, **kwargs):
+        pass
+
     async def event_listener(self, event_handler):
         self.log.info('Listening for overlay events over {}'.format(EVENT_URL))
         while True:

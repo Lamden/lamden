@@ -16,7 +16,7 @@ from cilantro.protocol import wallet
 # limits the number of re-auth attempts and lookup retries
 BOOT_DELAY = 5
 
-PING_RETRY = 10  # How often nodes should send
+PING_RETRY = 8  # How often nodes should send
 
 
 def take_a_nice_relaxing_nap(log):
@@ -61,7 +61,7 @@ class NewNodeBase(Worker):
     REQ_DELS = len(VKBook.get_delegates())
     REQ_WITS = len(VKBook.get_witnesses())
 
-    def __init__(self, ip, signing_key, loop=None, name='Node'):
+    def __init__(self, ip, signing_key, loop=None, name='Node', start=True):
         self.log = get_logger(name)
         self.ip = ip
         self.name = name
@@ -76,18 +76,24 @@ class NewNodeBase(Worker):
         self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key})
         self.overlay_proc.start()  # TODO should we make this proc a daemon?
 
-        # TODO remove this once we implement a 'Staging' state for all nodes
-        take_a_nice_relaxing_nap(self.log)
         # NOTE: We do not call super() init first thing b/c we must start the OverlayServer before starting the
         # OverlayClient, which happens in Worker's init
         super().__init__(signing_key=signing_key, loop=loop, name=name)
+
         self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
+        self.add_overlay_handler_fn('node_offline', self._node_offline_event)
+        self.add_overlay_handler_fn('node_online', self._node_online_event)
+        if start:
+            self._wait_for_nodes()
 
-        self._wait_for_nodes()
-        # self.run()
+    def _node_offline_event(self, event: dict):
+        assert event['event'] == 'node_offline', "Wrong handler wrong event wtf"  # TODO remove
+        self.log.spam("Node with vk {} is still offline.".format(event['vk']))
 
-    # def run(self):
-    #     raise NotImplementedError
+    def _node_online_event(self, event: dict):
+        assert event['event'] == 'node_online', "Wrong handler wrong event wtf"  # TODO remove
+        self.log.debugv("Node with vk {} is online with ip {}!".format(event['vk'], event['ip']))
+        self._add_online_vk(event['vk'])
 
     def _wait_for_nodes(self):
         assert not self.loop.is_running(), "Event loop should not be running when _wait_for_nodes is called!"
@@ -100,7 +106,13 @@ class NewNodeBase(Worker):
         elasped = 0
         while not self._quorum_reached() and elasped < MAX_BOOT_WAIT:
             # Get missing node set, and try and ping them all (no auth)
-            pass
+            missing_vks = self._get_missing_nodes()
+            self.log.spam("Querying status of nodes with vks: {}".format(missing_vks))
+            for vk in missing_vks:
+                self.manager.overlay_client.check_node_status(vk)
+
+            await asyncio.sleep(PING_RETRY)
+            elasped += PING_RETRY
 
         if elasped > MAX_BOOT_WAIT:
             err = "Node could not connect to reach required qourum in timeout of {}s!\nMn set: {}\nDelegate set: {}" \
