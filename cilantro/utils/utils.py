@@ -2,6 +2,7 @@ import hashlib
 import re, os
 from decimal import Decimal, getcontext
 
+
 class Encoder:
     @staticmethod
     def encode(o):
@@ -74,6 +75,7 @@ class Encoder:
         :param s: A compact string representing the tuple
         :return: A tuple
         """
+
         def attempt_convert_float(possible_float: str):
             try:
                 f = float(possible_float)
@@ -100,6 +102,7 @@ def is_valid_hex(hex_str: str, length=0) -> bool:
     except:
         return False
 
+
 def int_to_bytes(x):
     return x.to_bytes((x.bit_length() + 7) // 8, 'big')
 
@@ -107,11 +110,11 @@ def int_to_bytes(x):
 def bytes_to_int(xbytes):
     return int.from_bytes(xbytes, 'big')
 
-def make_n_tup(d):
-    return namedtuple('_', ' '.join(d.keys()))(**d)
 
 class IPUtils:
-    url_pattern = re.compile(r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})', flags=re.IGNORECASE)
+    url_pattern = re.compile(
+        r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})',
+        flags=re.IGNORECASE)
 
     @staticmethod
     def interpolate_url(vk_url: str, ip_addr: str) -> str:
@@ -143,6 +146,7 @@ class IPUtils:
             return ip
         except:
             return False
+
 
 class ErrorWithArgs(Exception):
     def __init__(self, *args):
