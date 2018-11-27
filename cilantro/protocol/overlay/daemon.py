@@ -100,6 +100,26 @@ class OverlayServer(object):
             'vk': vk
         }
 
+    @async_reply
+    async def check_node_status(self, event_id, vk):
+        # TODO perhaps return an event instead of throwing an error in production
+        assert vk in VKBook.get_all(), "Attempted to look up VK {} that is not in VKBook {}".format(vk, VKBook.get_all())
+
+        ip = await self.interface.lookup_ip(vk)
+        if not ip:
+            return {
+                'event': 'node_offline',
+                'event_id': event_id,
+                'vk': vk
+            }
+        else:
+            return {
+                'event': 'node_online',
+                'event_id': event_id,
+                'ip': ip,
+                'vk': vk
+            }
+
     @reply
     def get_service_status(self, event_id):
         if self.interface.started:
