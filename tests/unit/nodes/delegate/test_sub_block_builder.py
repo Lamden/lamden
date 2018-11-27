@@ -82,7 +82,9 @@ class TestSubBlockBuilder(TestCase):
         input_hash = 'A' * 64
         sbb_idx = 0
 
-        empty_sbc = sbb._create_empty_sbc(input_hash, sbb_idx)
+        cr_context = CRContext(sbb.client.available_dbs[0], sbb.client.master_db, sbb_idx)
+       
+        empty_sbc = sbb._create_empty_sbc(cr_context)
         self.assertEqual(empty_sbc.input_hash, input_hash)
         self.assertEqual(empty_sbc.sb_index, sbb_idx)
         self.assertTrue(empty_sbc.is_empty)
