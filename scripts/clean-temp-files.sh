@@ -7,3 +7,5 @@ find . -name 'LProcess-*' -delete
 find . -name '*tmp_exec_code_*' -delete
 find . -name '*mptest-ipc-*' -delete
 find . -name '*-ipc-sock*' -delete
+find . -name 'fsock' -delete
+find . -name '.coverage' -delete

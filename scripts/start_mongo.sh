@@ -1,18 +1,28 @@
 #!/bin/bash
 set -ex
 
+export PYTHONPATH=$(pwd)
+
+if [ "$CIRCLECI" == "true" && "$HOST_NAME" == "" ]
+then
+  export HOST_NAME="."
+fi
+
+# echo "Updating seneca..."
+# pip3 install seneca --upgrade --no-cache-dir
+# echo "Updating vmnet..."
+# pip3 install vmnet --upgrade --no-cache-dir
+
 echo "Waiting for mongo on localhost"
-mkdir -p /app/data/db/logs
-touch /app/data/db/logs/log_mongo.log
+mkdir -p ./data/$HOST_NAME/logs
+touch ./data/$HOST_NAME/logs/mongo.log
 echo 'Dir created'
 
-mongod --dbpath /app/data/db --logpath /app/data/db/logs/mongo.log
-echo 'started mongod'
+python3 ./scripts/create_user.py &
 
-mongo
-use admin
-db.createUser({user:"lamden",pwd:"pwd",roles:[{role:"root",db:"admin"}]})
-
-echo 'user created'
-
-
+if [ "$CIRCLECI" == "true" ]
+then
+  mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log &
+else
+  mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all
+fi

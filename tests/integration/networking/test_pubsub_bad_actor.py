@@ -3,8 +3,9 @@ set_testnet_config('2-2-4.json')
 from cilantro.constants.testnet import *
 from cilantro.constants.test_suites import CI_FACTOR
 
-from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test
+from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
+from cilantro.storage.vkbook import VKBook
 import unittest, time
 
 
@@ -21,6 +22,7 @@ def config_sub(test_obj):
 
 
 class TestPubSubBadActor(MPTestCase):
+    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
 
     @vmnet_test
     def test_pubsub_1_pub_1_sub_mixed_auth_unsecure_bad_sub(self):
@@ -33,21 +35,21 @@ class TestPubSubBadActor(MPTestCase):
         time.sleep(1*CI_FACTOR)
 
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB1', block_until_rdy=BLOCK)
-        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=BLOCK)
+        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=True)
 
-        time.sleep(15*CI_FACTOR)
+        time.sleep(8*CI_FACTOR)
 
         pub.add_pub_socket(ip=pub.ip, secure=True)
 
         sub.add_sub_socket(secure=False, socket_key='sub1')
         sub.connect_sub(vk=PUB1_VK, socket_key='sub1')
 
-        time.sleep(15*CI_FACTOR)  # Allow time for VK lookup
+        time.sleep(8*CI_FACTOR)  # Allow time for VK lookup
 
         pub.send_pub(msg)
         time.sleep(2)
 
-        self.start(timeout=20*CI_FACTOR)
+        self.start(timeout=10*CI_FACTOR)
 
     # @vmnet_test
     # def test_pubsub_1_pub_1_sub_mixed_auth_unsecure_bad_pub(self):

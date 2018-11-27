@@ -8,7 +8,7 @@ from cilantro.protocol.overlay.event import Event
 from cilantro.protocol.overlay.ip import *
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.logger import get_logger
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 from collections import defaultdict
 
 class Handshake:
@@ -71,7 +71,7 @@ class Handshake:
             except asyncio.TimeoutError:
                 if cls.check_previously_authorized(ip, vk, domain):
                     authorized = True
-                    cls.log.notice('Complete (took {}s): {} <=o= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
+                    cls.log.notice('Complete2 (took {}s): {} <=o= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
                 else:
                     cls.log.warning('Timeout (took {}s): {} <=:= {} (vk={})'.format(time.time()-start, cls.host_ip, ip, vk))
                     cls.log.warning('Authorized nodes: {}'.format(cls.authorized_nodes[domain]))

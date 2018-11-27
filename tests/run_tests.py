@@ -130,6 +130,8 @@ def main(args):
 
             suite = loader.discover(test)  # finds all unit tests in the testgroup directory
 
+
+
             # Skip tests functions specified in command line args
             skip_tests(suite, skip_test_names)
 

@@ -1,6 +1,6 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.base import TransactionBase
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 
 import capnp
 import transaction_capnp
@@ -51,7 +51,7 @@ class OrderingContainer(MessageBase):
 
 
 def build_test_container(masternode_vk=None):
-    from cilantro.storage.db import VKBook
+    from cilantro.storage.vkbook import VKBook
     from cilantro.messages.transaction.base import build_test_transaction
 
     if not masternode_vk:

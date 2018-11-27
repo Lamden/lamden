@@ -1,6 +1,5 @@
 from unittest import TestCase
 import unittest
-from cilantro.constants.db import DB_SETTINGS
 from cilantro.storage.contracts import *
 from seneca.engine.interface import SenecaInterface
 
@@ -37,7 +36,6 @@ class TestContracts(TestCase):
         from cilantro.logger.base import get_logger
         import capnp
         import envelope_capnp
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -13,9 +13,9 @@
 """
 
 from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder
-from cilantro.storage.driver import StorageDriver
+from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.logger.base import get_logger
-from cilantro.storage.db import VKBook
+from cilantro.storage.vkbook import VKBook
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.utils.lprocess import LProcess
 from cilantro.utils.hasher import Hasher
@@ -140,7 +140,9 @@ class BlockManager(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
+            time.sleep(1)
             self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+            time.sleep(1)
 
     def catchup_db_state(self):
         # do catch up logic here

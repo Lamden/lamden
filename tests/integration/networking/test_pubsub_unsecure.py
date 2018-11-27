@@ -5,6 +5,7 @@ from cilantro.constants.test_suites import CI_FACTOR
 
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
+from cilantro.storage.vkbook import VKBook
 import unittest, time
 
 
@@ -21,6 +22,7 @@ def config_sub(test_obj):
 
 
 class TestPubSubUnsecure(MPTestCase):
+    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
 
     @vmnet_test
     def test_pubsub_1_pub_2_sub_unsecure(self):
@@ -35,9 +37,9 @@ class TestPubSubUnsecure(MPTestCase):
 
         pub = MPPubSubAuth(sk=PUB1_SK, name='PUB', block_until_rdy=BLOCK)
         sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB1', block_until_rdy=BLOCK)
-        sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB2', block_until_rdy=BLOCK)
+        sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB2', block_until_rdy=True)
 
-        time.sleep(15*CI_FACTOR)
+        time.sleep(5*CI_FACTOR)
 
         pub.add_pub_socket(ip=pub.ip)
 
@@ -45,11 +47,11 @@ class TestPubSubUnsecure(MPTestCase):
             sub.add_sub_socket()
             sub.connect_sub(vk=PUB1_VK)
 
-        time.sleep(15*CI_FACTOR)  # Allow time for VK lookup
+        time.sleep(8*CI_FACTOR)  # Allow time for VK lookup
 
         pub.send_pub(msg)
 
-        self.start(timeout=20*CI_FACTOR)
+        self.start(timeout=10*CI_FACTOR)
 
     @vmnet_test
     def test_pubsub_1_pub_1_sub_mixed_auth_unsecure(self):
@@ -61,6 +63,9 @@ class TestPubSubUnsecure(MPTestCase):
             ]
             test_obj.handle_sub.assert_has_calls(expected_frames, any_order=True)
 
+        self.log.important2("VKBook on host machine")
+        VKBook.test_print_nodes()
+
         msg1 = b'*falcon1 noise*'
         msg2 = b'*falcon2 noise*'
         time.sleep(1*CI_FACTOR)
@@ -69,9 +74,9 @@ class TestPubSubUnsecure(MPTestCase):
 
         pub1 = MPPubSubAuth(sk=PUB1_SK, name='PUB1', block_until_rdy=BLOCK)
         pub2 = MPPubSubAuth(sk=PUB2_SK, name='PUB2', block_until_rdy=BLOCK)
-        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=BLOCK)
+        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=True)
 
-        time.sleep(15*CI_FACTOR)
+        time.sleep(5*CI_FACTOR)
 
         pub1.add_pub_socket(ip=pub1.ip, secure=True)
         pub2.add_pub_socket(ip=pub2.ip, secure=False)
@@ -81,12 +86,12 @@ class TestPubSubUnsecure(MPTestCase):
         sub.connect_sub(vk=PUB1_VK, socket_key='sub1')
         sub.connect_sub(vk=PUB2_VK, socket_key='sub2')
 
-        time.sleep(15*CI_FACTOR)  # Allow time for VK lookup
+        time.sleep(8*CI_FACTOR)  # Allow time for VK lookup
 
         pub1.send_pub(msg1)
         pub2.send_pub(msg2)
 
-        self.start(timeout=20*CI_FACTOR)
+        self.start(timeout=10*CI_FACTOR)
 
 if __name__ == '__main__':
     unittest.main()

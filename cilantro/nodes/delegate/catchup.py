@@ -5,7 +5,7 @@
 # from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 # from cilantro.messages.envelope.envelope import Envelope
 # from cilantro.messages.transaction.contract import ContractTransaction
-# from cilantro.storage.db import VKBook
+# from cilantro.storage.vkbook import VKBook
 # from cilantro.constants.delegate import CATCHUP_TIMEOUT, BLOCK_REQ_TIMEOUT, TX_REQ_TIMEOUT
 # from cilantro.utils.hasher import Hasher
 #

@@ -2,8 +2,9 @@ from cilantro.logger.base import get_logger
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 
-from cilantro.storage.db import VKBook
-from cilantro.storage.driver import StorageDriver
+from cilantro.storage.state import StateDriver
+from cilantro.storage.vkbook import VKBook
+from cilantro.nodes.masternode.mn_api import StorageDriver
 
 from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MASTER_FILTER, DEFAULT_FILTER
 from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
@@ -73,12 +74,16 @@ class BlockAggregator(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_delegates():
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
+            time.sleep(1)
             self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
+            time.sleep(1)
 
         for vk in VKBook.get_masternodes():
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
+                time.sleep(1)
                 self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+                time.sleep(1)
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -177,7 +182,6 @@ class BlockAggregator(Worker):
                 len(self.result_hashes[sbc.result_hash]['_merkle_leaves_']):
             self.log.info('SubBlock is validated and consensus reached (result_hash={})'.format(sbc.result_hash))
             self.result_hashes[sbc.result_hash]['_consensus_reached_'] = True
-            self.store_sub_block(sbc, self.result_hashes[sbc.result_hash]['_valid_signatures_'].values())
             self.store_full_block()
         else:
             self.log.info('Saved valid sub block into memory (result_hash={}, signatures:{}/{}, transactions:{}/{})'.format(
@@ -195,9 +199,6 @@ class BlockAggregator(Worker):
                 if self.result_hashes[result_hash]['_lastest_valid_'] <= SUB_BLOCK_VALID_PERIOD + time.time() and \
                     not self.result_hashes[result_hash].get('_committed_')
         }
-
-    def store_sub_block(self, sbc: SubBlockContender, signatures: List[MerkleSignature]):
-        StorageDriver.store_sub_block(sbc, list(signatures))
 
     def store_full_block(self):
         sub_blocks = {
@@ -228,6 +229,7 @@ class BlockAggregator(Worker):
             assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} SBs/per/block" \
                                                           .format(len(merkle_roots), NUM_SB_PER_BLOCK)
             # TODO wrap storage in try/catch. Add logic for storage failure
+            StateDriver.update_with_block(block_data)
             StorageDriver.store_block(block_data)
             self.curr_block_hash = block_hash
             self.log.success("STORED BLOCK WITH HASH {}".format(block_hash))
