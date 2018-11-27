@@ -55,13 +55,13 @@ class NodeBase(StateMachine, Worker):
 
 class NewNodeBase(Worker):
 
-    # For dev, we require all nodes to be online. IRL this could perhaps be 2/3 node for each role  --davis
     # These constants can be overwritten by subclasses
+    # For dev, we require all nodes to be online. IRL this could perhaps be 2/3 node for each role  --davis
     REQ_MNS = len(VKBook.get_masternodes())
     REQ_DELS = len(VKBook.get_delegates())
     REQ_WITS = len(VKBook.get_witnesses())
 
-    def __init__(self, ip, signing_key, loop=None, name='Node', start=True):
+    def __init__(self, ip, signing_key, loop=None, name='Node'):
         self.log = get_logger(name)
         self.ip = ip
         self.name = name
@@ -83,8 +83,7 @@ class NewNodeBase(Worker):
         self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
         self.add_overlay_handler_fn('node_offline', self._node_offline_event)
         self.add_overlay_handler_fn('node_online', self._node_online_event)
-        if start:
-            self._wait_for_nodes()
+        self._wait_for_nodes()
 
     def _node_offline_event(self, event: dict):
         assert event['event'] == 'node_offline', "Wrong handler wrong event wtf"  # TODO remove
