@@ -107,10 +107,6 @@ class TestBlockManager(TestCase):
         bm.handle_new_block.assert_called_with(mock_env.message)
 
 
-
-
-
-
 if __name__ == "__main__":
     import unittest
     unittest.main()

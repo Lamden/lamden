@@ -7,9 +7,6 @@ from enum import Enum, auto
 import capnp
 import transaction_capnp
 
-class Status(Enum):
-    SUCCESS = auto()
-    FAILURE = auto()
 
 class TransactionData(MessageBase):
 
@@ -21,15 +18,16 @@ class TransactionData(MessageBase):
         return transaction_capnp.TransactionData.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, contract_tx: ContractTransaction, status: str, state: str):
+    def create(cls, contract_tx: MessageBase, status: str, state: str):
         assert issubclass(type(contract_tx), ContractTransaction), "contract_tx must be of type ContractTransaction"
         assert type(contract_tx) in MessageBase.registry, "MessageBase class {} not found in registry {}"\
             .format(type(contract_tx), MessageBase.registry)
 
         data = transaction_capnp.TransactionData.new_message()
         data.contractTransaction = contract_tx._data
-        data.status = Status[status].value
+        data.status = status
         data.state = state
+        data.contractType = MessageBase.registry[type(contract_tx)]
 
         return cls(data)
 
@@ -39,7 +37,11 @@ class TransactionData(MessageBase):
 
     @property
     def status(self) -> str:
-        return Status(self._data.status).name
+        return self._data.status
+
+    @property
+    def contract_type(self) -> type:
+        return MessageBase.registry[self._data.contractType]
 
     @property
     def state(self) -> str:

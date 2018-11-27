@@ -52,6 +52,7 @@ class OverlayInterface:
 
     async def bootup(self):
         await self.discover()
+        Discovery.is_listen_ready = True
         self.log.success('''
 ###########################################################################
 #   DISCOVERY COMPLETE
@@ -64,8 +65,9 @@ class OverlayInterface:
 #   BOOTSTRAP COMPLETE
 ###########################################################################\
         ''')
-        Event.emit({ 'event': 'service_status', 'status': 'ready' })
         self.started = True
+        Event.emit({ 'event': 'service_status', 'status': 'ready' })
+        
 
     async def discover(self):
         if not await Discovery.discover_nodes(Discovery.host_ip):
@@ -75,12 +77,16 @@ x   DISCOVERY FAILED: Cannot find enough nodes ({}/{}) and not a masternode
 x       Retrying...
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
             '''.format(len(Discovery.discovered_nodes), MIN_BOOTSTRAP_NODES))
+            raise Exception('Failed to discover any nodes. Killing myself with shame!')
 
     async def bootstrap(self):
-        addrs = [(Discovery.discovered_nodes[vk], self.network.port) \
-            for vk in Discovery.discovered_nodes]
+        if len(Discovery.discovered_nodes) == 0:
+            raise Exception("Don't know how I ended up here. Can't bootstrap with no nodes discovered! Killing myself with shame!")
+        addrs = [Node(digest(vk), ip=Discovery.discovered_nodes[vk], port=self.network.port, vk=vk) \
+            for vk in Discovery.discovered_nodes if vk is not Auth.vk]
         await self.network.bootstrap(addrs)
-        self.network.cached_vks.update(self.neighbors)
+        # await asyncio.sleep(1)
+        # self.network.cached_vks.update(self.neighbors)
 
     async def authenticate(self, ip, vk, domain='*'):
         return await Handshake.initiate_handshake(ip, vk, domain)

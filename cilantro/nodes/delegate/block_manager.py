@@ -140,7 +140,9 @@ class BlockManager(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
+            time.sleep(1)
             self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+            time.sleep(1)
 
     def catchup_db_state(self):
         # do catch up logic here
