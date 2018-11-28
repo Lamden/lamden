@@ -1,2 +1,1 @@
-cd ..
-find . -name 'certs' | xargs rm -rf
+find . -name 'certs' | xargs rm -r
