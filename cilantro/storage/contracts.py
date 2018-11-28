@@ -1,6 +1,7 @@
 from cilantro.logger import get_logger
 from cilantro.utils import Hasher
 from seneca.engine.interface import SenecaInterface
+from seneca.engine.interpreter import SenecaInterpreter
 import datetime
 import os
 
@@ -20,22 +21,21 @@ def seed_contracts():
     Seeds the contracts table with all contracts found in cilantro/contracts
     """
     log.debugv("Setting up SenecaInterface to publish contracts.")
-    interface = SenecaInterface()
-    interface.setup()
 
-    log.debug("Inserting contract code...")
-    # Insert contract code from files in file system into database table
-    for contract_id, code_str in _read_contract_files():
-        log.spam("Publishing contract with id {}".format(contract_id))
-        interface.publish_code_str(contract_id, GENESIS_AUTHOR, code_str)
+    with SenecaInterface(concurrent_mode=False) as interface:
+        log.debug("Inserting contract code...")
+        # Insert contract code from files in file system into database table
+        for contract_id, code_str in _read_contract_files():
+            log.spam("Publishing contract with id {}".format(contract_id))
+            interface.publish_code_str(contract_id, GENESIS_AUTHOR, code_str)
 
-    log.debug("Seeding contracts...")
-    # Run contracts
-    for contract_id, code_str in _read_contract_files():
-        code_obj = interface.get_code_obj(contract_id)
+        log.debug("Seeding contracts...")
+        # Run contracts
+        for contract_id, code_str in _read_contract_files():
+            code_obj = SenecaInterpreter.get_code_obj(contract_id)
 
-    log.debug("Done seeding contracts. Tearing down SenecaInterface.")
-    interface.teardown()
+        log.debug("Done seeding contracts. Tearing down SenecaInterface.")
+        interface.teardown()  # TODO @falcon do we need this? --davis
 
 
 def _read_contract_files() -> list:
@@ -57,13 +57,6 @@ def _read_contract_files() -> list:
             contract_id = _contract_id_for_filename(filename)
 
             contracts.append((contract_id, code_str))
-
-            # TODO remove this (debug lines)
-            # max_len = min(len(code_str), 60)
-            # log.debug("[inside _read_contract_files] filename {} has contract_id {} has author {} and code has code: "
-            #           "\n {} ....[SNIPPED TRUNCATED]"
-            #           .format(filename, contract_id, GENESIS_AUTHOR, code_str[0:max_len]))
-            # end debug
 
     return contracts
 
