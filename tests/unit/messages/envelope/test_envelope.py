@@ -4,9 +4,12 @@ from unittest.mock import MagicMock
 from cilantro.messages.envelope.envelope import Envelope, MessageMeta, Seal
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.contract import ContractTransactionBuilder
+from cilantro.nodes.base import NodeTypes
 
 from cilantro.protocol.structures import EnvelopeAuth
 from cilantro.protocol import wallet
+
+from cilantro.constants.testnet import *
 
 
 class TestEnvelopefromObjects(TestCase):
@@ -169,8 +172,41 @@ class TestEnvelopefromObjects(TestCase):
 
         self.assertRaises(Exception, EnvelopeAuth.seal, sk, meta, message)  # auth fails b/c message is not string
 
+    def test_is_from_group_with_one_group(self):
+        meta = self._default_meta()
+        message = self._default_msg()
+        sk, vk = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
 
-class TestEnvelopefromMessage(TestCase):
+        signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
+        seal = Seal.create(signature=signature, verifying_key=vk)
+        env = Envelope._create_from_objects(seal=seal, meta=meta, message=message.serialize())
+
+        self.assertTrue(env.is_from_group(NodeTypes.MN))
+
+    def test_is_from_group_with_two_group(self):
+        meta = self._default_meta()
+        message = self._default_msg()
+        sk, vk = TESTNET_WITNESSES[0]['sk'], TESTNET_WITNESSES[0]['vk']
+
+        signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
+        seal = Seal.create(signature=signature, verifying_key=vk)
+        env = Envelope._create_from_objects(seal=seal, meta=meta, message=message.serialize())
+
+        self.assertTrue(env.is_from_group([NodeTypes.MN, NodeTypes.WITNESS]))
+
+    def test_is_from_no_groups(self):
+        meta = self._default_meta()
+        message = self._default_msg()
+        sk, vk = TESTNET_DELEGATES[0]['sk'], TESTNET_DELEGATES[0]['vk']
+
+        signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
+        seal = Seal.create(signature=signature, verifying_key=vk)
+        env = Envelope._create_from_objects(seal=seal, meta=meta, message=message.serialize())
+
+        self.assertFalse(env.is_from_group([NodeTypes.MN, NodeTypes.WITNESS]))
+
+
+class TestEnvelopeFromMessage(TestCase):
     """Envelope tests using Envelope.create_from_message() to create envelopes (the intended way)"""
     def _default_meta(self):
         """

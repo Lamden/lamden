@@ -11,6 +11,25 @@ import os
 import time
 from cilantro.protocol import wallet
 
+
+class NodeTypes:
+    MN = 'mn'
+    WITNESS = 'w'
+    DELEGATE = 'd'
+
+    _ALL_TYPES = {MN, WITNESS, DELEGATE}
+
+    @classmethod
+    def check_vk_in_group(cls, vk: str, group: str):
+        assert group in cls._ALL_TYPES, "Group '{}' not a valid node type. Must be in {}".format(group, cls._ALL_TYPES)
+        if group == cls.MN:
+            return vk in VKBook.get_masternodes()
+        if group == cls.WITNESS:
+            return vk in VKBook.get_witnesses()
+        if group == cls.DELEGATE:
+            return vk in VKBook.get_delegates()
+
+
 # MANDATORY NAP TIME (How long each node sleeps after starting its overlay server)
 # Technically, the system will work without this nap but allowing some padding time for dynamic discovery and such
 # limits the number of re-auth attempts and lookup retries
