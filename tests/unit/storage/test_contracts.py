@@ -3,6 +3,7 @@ import unittest
 from cilantro.storage.contracts import *
 from seneca.engine.interface import SenecaInterface
 
+
 class TestContracts(TestCase):
 
     def setUp(self):
