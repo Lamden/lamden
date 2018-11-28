@@ -26,6 +26,7 @@ def seed_contracts():
     log.debug("Inserting contract code...")
     # Insert contract code from files in file system into database table
     for contract_id, code_str in _read_contract_files():
+        log.spam("Publishing contract with id {}".format(contract_id))
         interface.publish_code_str(contract_id, GENESIS_AUTHOR, code_str)
 
     log.debug("Seeding contracts...")
