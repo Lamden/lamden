@@ -1,4 +1,3 @@
-cd ..
 find . -name '*-ReactorIPC-*' -delete
 find . -name '*TestableProcess-*' -delete
 find . -name '*TestableProcess_*' -delete
