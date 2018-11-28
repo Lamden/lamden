@@ -18,7 +18,6 @@ from cilantro.nodes.masternode.webserver import start_webserver
 from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro.nodes.masternode.master_store import MasterOps
-
 import os
 
 

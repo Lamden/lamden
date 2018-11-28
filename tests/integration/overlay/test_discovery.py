@@ -4,7 +4,7 @@ import unittest, time, random, vmnet, cilantro, asyncio, ujson as json
 from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
 from cilantro.logger.base import get_logger
-
+from cilantro.constants.test_suites import CI_FACTOR
 
 def masternode(idx):
     from vmnet.comm import send_to_file
@@ -109,6 +109,7 @@ class TestDiscovery(BaseTestCase):
             self.execute_python(node, wrap_func(witness, idx))
         for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(delegate, idx))
+        time.sleep(15*CI_FACTOR)
         file_listener(self, self.callback, self.timeout, 30)
 
 

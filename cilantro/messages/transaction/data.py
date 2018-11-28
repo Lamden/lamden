@@ -1,5 +1,5 @@
 from cilantro.messages.base.base import MessageBase
-from cilantro.messages.transaction.contract import ContractTransaction, ContractTransactionBuilder
+from cilantro.messages.transaction.contract import ContractTransaction, TransactionBase, ContractTransactionBuilder
 from cilantro.utils.lazy_property import lazy_property
 from cilantro.utils.hasher import Hasher
 import uuid
@@ -23,15 +23,16 @@ class TransactionData(MessageBase):
         return transaction_capnp.TransactionData.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, contract_tx: ContractTransaction, status: str, state: str):
-        assert issubclass(type(contract_tx), ContractTransaction), "contract_tx must be of type ContractTransaction"
+    def create(cls, contract_tx: TransactionBase, status: str, state: str):
+        assert issubclass(type(contract_tx), TransactionBase), "contract_tx must be a subclass of TransactionBase"
         assert type(contract_tx) in MessageBase.registry, "MessageBase class {} not found in registry {}"\
             .format(type(contract_tx), MessageBase.registry)
 
         data = transaction_capnp.TransactionData.new_message()
         data.contractTransaction = contract_tx._data
-        data.status = Status[status].value
+        data.status = status
         data.state = state
+        data.contractType = MessageBase.registry[type(contract_tx)]
 
         return cls(data)
 
@@ -41,7 +42,11 @@ class TransactionData(MessageBase):
 
     @property
     def status(self) -> str:
-        return Status(self._data.status).name
+        return self._data.status
+
+    @property
+    def contract_type(self) -> type:
+        return MessageBase.registry[self._data.contractType]
 
     @property
     def state(self) -> str:

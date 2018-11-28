@@ -8,6 +8,11 @@ WORKDIR /app
 ENV DEBIAN_FRONTEND noninteractive
 ENV PYTHONPATH /app/venv/src/seneca:/app/venv/src/vmnet
 
+# Install Redis
+RUN wget http://download.redis.io/releases/redis-4.0.6.tar.gz \
+    && tar xzf redis-4.0.6.tar.gz \
+    && cd redis-4.0.6 && make
+
 # Install Python requirements
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -27,14 +32,14 @@ RUN apt-get update \
         && cythonize -ki src/nacl \
         && python3 setup.py install \
         && cd - \
-    && rm -rf pynacl capnproto
-#    && apt-get remove -y --allow-remove-essential \
-#        build-essential \
-#        gcc g++ \
-#        libffi-dev libtool \
-#        gsl-bin zlib1g-dev libboost-all-dev \
-#        autoconf automake \
-#    && apt autoremove -y \
-#    && rm -rf /var/lib/apt/lists/*
+    && rm -rf pynacl capnproto \
+    && apt-get remove -y --allow-remove-essential \
+        build-essential \
+        gcc g++ \
+        libffi-dev libtool \
+        gsl-bin zlib1g-dev libboost-all-dev \
+        autoconf automake \
+    && apt autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
 
-CMD pip3 install seneca --upgrade --no-cache-dir; pip3 install vmnet --upgrade --no-cache-dir
+#CMD pip3 install seneca --upgrade --no-cache-dir; pip3 install vmnet --upgrade --no-cache-dir
