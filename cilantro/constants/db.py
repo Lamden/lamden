@@ -5,7 +5,7 @@ import configparser
 settings = configparser.ConfigParser()
 settings._interpolation = configparser.ExtendedInterpolation()
 this_dir = os.path.dirname(__file__)
-db_conf_path = os.path.join(this_dir, '../../db_conf.ini')
+db_conf_path = os.path.join(this_dir, '../../mn_db_conf.ini')
 
 settings.read(db_conf_path)
 
@@ -19,8 +19,8 @@ if os.getenv('HOST_IP'):
                    }
 # Otherwise, this code is being run locally for unit test or on CI. In this case, we use our DB config file
 else:
-    DB_SETTINGS = {'username': settings.get('DB', 'username'),
-                   'password': settings.get('DB', 'password'),
-                   'db': settings.get('DB', 'database'),
-                   'host': settings.get('DB', 'hostname')
+    DB_SETTINGS = {'username': settings.get('MN_DB', 'username'),
+                   'password': settings.get('MN_DB', 'password'),
+                   'db': settings.get('MN_DB', 'database'),
+                   'host': settings.get('MN_DB', 'hostname')
                    }

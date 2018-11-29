@@ -25,6 +25,7 @@ cilantro/faucet.json
 **/logs
 
 # Data
+data
 cilantro/protocol/networks/data
 certs
 tests/vmnet/docker-compose.yml

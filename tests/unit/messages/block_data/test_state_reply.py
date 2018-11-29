@@ -9,7 +9,7 @@ from unittest import mock
 class StateReplyTest(TestCase):
 
     def test_init(self):
-        fbmds = [BlockDataBuilder.create_block(sub_block_count=1) for _ in range(4)]
+        fbmds = [BlockDataBuilder.create_block(blk_num=1, sub_block_count=1) for _ in range(4)]
 
         sr = StateUpdateReply.create(fbmds)
 
@@ -19,7 +19,7 @@ class StateReplyTest(TestCase):
         """
         Tests serialize and from_bytes are inverse operations
         """
-        fbmds = [BlockDataBuilder.create_block(sub_block_count=1) for _ in range(4)]
+        fbmds = [BlockDataBuilder.create_block(blk_num=1, sub_block_count=1) for _ in range(4)]
 
         sr = StateUpdateReply.create(fbmds)
         sr_bin = sr.serialize()

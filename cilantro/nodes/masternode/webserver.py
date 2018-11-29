@@ -15,6 +15,7 @@ from cilantro.storage.driver import StorageDriver
 from cilantro.protocol.multiprocessing.sanic import SanicSingleton
 from seneca.engine.interpreter import SenecaInterpreter
 from seneca.engine.interface import SenecaInterface
+from cilantro.nodes.masternode.mn_api import StorageDriver
 
 app = SanicSingleton.app
 interface = SanicSingleton.interface

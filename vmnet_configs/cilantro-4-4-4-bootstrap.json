@@ -2,7 +2,7 @@
     "services": [
         {
             "name": "masternode",
-            "image": "lamden/cilantro",
+            "image": "lamden/cilantro-mn",
             "count": 4,
             "ports": [
                 10200, 8080, 4319

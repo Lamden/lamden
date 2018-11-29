@@ -55,14 +55,11 @@ class SocketManager:
     def _handle_overlay_event(self, e):
         self.log.debugv("SocketManager got overlay event {}".format(e))
 
-        if e['event'] == 'got_ip':
-            assert e['event_id'] in self.pending_lookups, "Overlay returned event {} that is not in pending_lookups {}!"\
-                                                          .format(e, self.pending_lookups)
-
+        if e['event'] == 'authorized':
+            Auth.configure_auth(self.auth, e['domain'])
+        elif e['event'] == 'got_ip':
             sock = self.pending_lookups.pop(e['event_id'])
             sock.handle_overlay_event(e)
-        elif e['event'] == 'authorized':
-            Auth.configure_auth(self.auth, e['domain'])
         else:
             # TODO handle all events. Or write code to only subscribe to certain events
             self.log.debug("Composer got overlay event {} that it does not know how to handle. Ignoring.".format(e))

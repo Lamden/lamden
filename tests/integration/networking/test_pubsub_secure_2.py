@@ -3,8 +3,9 @@ set_testnet_config('2-2-4.json')
 from cilantro.constants.testnet import *
 from cilantro.constants.test_suites import CI_FACTOR
 from cilantro.protocol.overlay.auth import Auth
-from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test
+from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
+from cilantro.storage.vkbook import VKBook
 import unittest, time
 
 
@@ -21,6 +22,7 @@ def config_sub(test_obj):
 
 
 class TestPubSubSecure(MPTestCase):
+    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
 
     @vmnet_test
     def test_pubsub_2_pub_1_sub_auth(self):
@@ -36,12 +38,13 @@ class TestPubSubSecure(MPTestCase):
         msg2 = b'*falcon2 noise*'
 
         BLOCK = False
+        time.sleep(1*CI_FACTOR)
 
         pub1 = MPPubSubAuth(sk=PUB1_SK, name='PUB1', block_until_rdy=BLOCK)
         pub2 = MPPubSubAuth(sk=PUB2_SK, name='PUB2', block_until_rdy=BLOCK)
-        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=BLOCK)
+        sub = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB', block_until_rdy=True)
 
-        time.sleep(15*CI_FACTOR)
+        time.sleep(5*CI_FACTOR)
 
         pub1.add_pub_socket(ip=pub1.ip, secure=True)
         pub2.add_pub_socket(ip=pub2.ip, secure=True)
@@ -50,12 +53,12 @@ class TestPubSubSecure(MPTestCase):
         sub.connect_sub(vk=PUB1_VK)
         sub.connect_sub(vk=PUB2_VK)
 
-        time.sleep(15*CI_FACTOR)  # Allow time for VK lookup
+        time.sleep(8*CI_FACTOR)  # Allow time for VK lookup
 
         pub1.send_pub(msg1)
         pub2.send_pub(msg2)
 
-        self.start(timeout=20*CI_FACTOR)
+        self.start(timeout=10*CI_FACTOR)
 
 
 if __name__ == '__main__':
