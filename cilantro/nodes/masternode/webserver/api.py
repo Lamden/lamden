@@ -1,5 +1,3 @@
-from sanic.response import json, text
-from sanic.exceptions import ServerError
 from cilantro.logger.base import get_logger, overwrite_logger_level
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.container import TransactionContainer
@@ -11,8 +9,10 @@ import traceback, multiprocessing, os, asyncio
 from multiprocessing import Queue
 from os import getenv as env
 
-from cilantro.storage.driver import StorageDriver
-from cilantro.protocol.multiprocessing.sanic import SanicSingleton
+from sanic.response import json, text
+from sanic.exceptions import ServerError
+from cilantro.nodes.masternode.webserver.sanic import SanicSingleton
+from cilantro.nodes.masternode.webserver.validation import *
 from seneca.engine.interpreter import SenecaInterpreter
 from seneca.engine.interface import SenecaInterface
 from cilantro.nodes.masternode.mn_api import StorageDriver
@@ -35,11 +35,14 @@ async def contract_tx(request):
 
 @app.route("/submit-contract", methods=["POST",])
 async def submit_contract(request):
-    contract_name = request.json['contract_name']
-    author = request.json['author']
-    code_str = request.json['code_str']
-    interface.publish_code_str()
-    pass
+    try:
+        contract_name = is_valid_contract_name(request.json['contract_name'])
+        author = is_valid_author(request.json['author'])
+        code_str = request.json['code_str']
+        interface.publish_code_str(contract_name, author, code_str)
+    except Exception as e:
+        return json({'status': 'failure', 'msg': e})
+    return json({'status': 'success', 'contract_name'})
 
 @app.route("/run-contract", methods=["POST",])
 async def run_contract(request):

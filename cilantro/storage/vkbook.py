@@ -50,5 +50,3 @@ class VKBook:
         log.notice("masternodes: {}".format(VKBook.get_masternodes()))
         log.notice("witnesses: {}".format(VKBook.get_witnesses()))
         log.notice("delegates: {}".format(VKBook.get_delegates()))
-
-
