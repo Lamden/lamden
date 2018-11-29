@@ -110,7 +110,7 @@ jobs:
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
             python3 ./scripts/make_test_config.py
-            bash ./scripts/start_mongo.sh
+            bash ./scripts/start_redis_mongo.sh
             python3.6 ~/cilantro/tests/run_tests.py --integration 0 --unit 1
 
       - run:

@@ -1,4 +1,4 @@
-FROM cilantro_base.dev:latest
+FROM lamden/cilantro
 
 MAINTAINER Falcon Wong version: 0.1
 
