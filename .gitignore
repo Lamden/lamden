@@ -33,6 +33,7 @@ tests/vmnet/docker-compose.yml
 certs
 state.tmp
 seneca
+*.dat
 **/profiles/**
 **/tmp_exec_code*.py
 data
