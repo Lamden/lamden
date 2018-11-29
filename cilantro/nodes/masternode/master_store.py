@@ -94,6 +94,22 @@ class MasterOps:
         pool_sz = round(cls.active_masters/cls.rep_factor)
         return pool_sz
 
+    '''
+        builds list master wrs base on mn id [0 - len(master)]
+    '''
+
+    @classmethod
+    def build_wr_list( cls, curr_node_idx = None, jump_idx = 1 ):
+        all_mn = VKBook.get_masternodes()
+        tot_mn = len(all_mn)
+        mn_list = []
+
+        while curr_node_idx < tot_mn:
+            mn_list.append(all_mn[curr_node_idx])
+            curr_node_idx += jump_idx
+
+        return mn_list
+
     @classmethod
     def evaluate_wr(cls, entry=None):
         if entry is None:
@@ -113,8 +129,7 @@ class MasterOps:
             MDB.insert_record(entry)
 
         # build list of mn_sign of master nodes updating index db
-
-        mn_list = None
+        mn_list = cls.build_wr_list(curr_node_idx = writers, jump_idx = pool_sz)
 
         # create index records and update entry
         return cls.update_idx(inserted_blk=entry, node_list=mn_list)
