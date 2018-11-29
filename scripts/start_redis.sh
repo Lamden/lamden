@@ -13,5 +13,4 @@ REDIS_PASSWORD=$REDIS_PASSWORD
 " > docker/redis.env
 
 echo "Starting Redis server..."
-pkill -9 redis-server
 redis-server
