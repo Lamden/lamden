@@ -16,5 +16,4 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y mongodb-org
 
-CMD bash ./scripts/start_redis.sh \
-  && bash ./scripts/start_mongo.sh
+CMD bash ./scripts/start_redis_mongo.sh

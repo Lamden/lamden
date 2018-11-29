@@ -14,7 +14,4 @@ REDIS_PASSWORD=$REDIS_PASSWORD
 
 echo "Starting Redis server..."
 pkill -9 redis-server
-redis-server docker/redis.conf --port $REDIS_PORT --requirepass $REDIS_PASSWORD 2>/dev/null >/dev/null &
-redis-server 2>/dev/null >/dev/null &
-sleep 1
-echo "Done."
+redis-server
