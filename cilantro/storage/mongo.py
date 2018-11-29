@@ -1,5 +1,6 @@
 import cilantro
 import os
+import capnp
 from configparser import SafeConfigParser
 from pymongo import MongoClient
 from cilantro.logger.base import get_logger
