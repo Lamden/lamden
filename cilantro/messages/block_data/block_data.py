@@ -69,6 +69,12 @@ class BlockData(MessageBase):
         return [TransactionData.from_bytes(tx) for tx in self._data.transactions]
 
     @lazy_property
+    def indexed_transactions(self) -> dict:
+        return {
+            TransactionData.from_bytes(tx).hash: tx for tx in self._data.transactions
+        }
+
+    @lazy_property
     def masternode_signature(self) -> MerkleSignature:
         return MerkleSignature.from_bytes(self._data.masternodeSignature)
 

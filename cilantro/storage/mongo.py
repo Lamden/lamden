@@ -126,9 +126,11 @@ class MDB:
 
     # move this to util
     @classmethod
-    def get_dict(cls, capnp_struct, ignore=[]):
-        ignore = set(ignore)
-        return capnp_struct._data.to_dict()
+    def get_dict(cls, capnp_struct):
+        obj = capnp_struct._data.to_dict()
+        if isinstance(capnp_struct, BlockData):
+            obj['transactions'] = capnp_struct.indexed_transactions
+        return obj
 
 
     '''
