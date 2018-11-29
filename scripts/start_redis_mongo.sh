@@ -3,15 +3,10 @@ set -ex
 
 export PYTHONPATH=$(pwd)
 
-if [ "$CIRCLECI" == "true" && "$HOST_NAME" == "" ]
+if [[ "$CIRCLECI" == "true" && "$HOST_NAME" == "" ]]
 then
   export HOST_NAME="."
 fi
-
-# echo "Updating seneca..."
-# pip3 install seneca --upgrade --no-cache-dir
-# echo "Updating vmnet..."
-# pip3 install vmnet --upgrade --no-cache-dir
 
 echo "Waiting for mongo on localhost"
 mkdir -p ./data/$HOST_NAME/logs
@@ -24,5 +19,7 @@ if [ "$CIRCLECI" == "true" ]
 then
   mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log &
 else
-  mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all
+  mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all &
 fi
+
+bash ./scripts/start_redis.sh

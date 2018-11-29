@@ -32,10 +32,9 @@ def seed_contracts():
         log.debug("Seeding contracts...")
         # Run contracts
         for contract_id, code_str in _read_contract_files():
-            code_obj = SenecaInterpreter.get_code_obj(contract_id)
+            code_obj = interface.get_code_obj(contract_id)
 
-        log.debug("Done seeding contracts. Tearing down SenecaInterface.")
-        interface.teardown()  # TODO @falcon do we need this? --davis
+        log.debug("Done seeding contracts.")
 
 
 def _read_contract_files() -> list:
