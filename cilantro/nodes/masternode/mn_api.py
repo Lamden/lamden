@@ -24,9 +24,7 @@ class StorageDriver:
             block.validate()
 
         block_dict = MDB.get_dict(block)
-        if MasterOps.evaluate_wr(entry=block_dict) is True:
-            return True
-        return False
+        return bool(MasterOps.evaluate_wr(entry=block_dict))
 
     @classmethod
     def get_transactions(cls, block_hash=None, raw_tx_hash=None, status=None):
