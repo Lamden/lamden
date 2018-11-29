@@ -93,6 +93,11 @@ jobs:
             sudo apt-get install -y mongodb
 
       - run:
+          name: Install Redis
+          command: |
+            sudo apt install -y redis-server
+
+      - run:
           name: Install Cilantro Requirements
           command: |
              sudo pip3 install -r requirements.txt --upgrade --no-cache-dir --exists-action w
