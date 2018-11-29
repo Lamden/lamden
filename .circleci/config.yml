@@ -64,7 +64,6 @@ jobs:
     docker:
       - image: circleci/python:3.6.5
       - image: lamden/cilantro-mn
-      - image: circleci/mongo:4.0.4-xenial
         environment:
           username: cilantro_user
           password: buttcoins
