@@ -14,7 +14,7 @@ from multiprocessing import Queue
 from cilantro.utils.lprocess import LProcess
 
 from cilantro.nodes.base import NodeBase
-from cilantro.nodes.masternode.webserver import start_webserver
+from cilantro.protocol.webserver.masternode import start_webserver
 from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro.nodes.masternode.master_store import MasterOps
@@ -31,7 +31,7 @@ class MNBaseState(State):
 
 @Masternode.register_init_state
 class MNBootState(MNBaseState):
-     
+
     def reset_attrs(self):
         pass
 
@@ -76,6 +76,3 @@ class MNRunState(MNBaseState):
             self.start_block_agg()
         else:
             self.log.warning("MN_MOCK env var is set! Not starting block aggregator or tx batcher.")
-
-
-

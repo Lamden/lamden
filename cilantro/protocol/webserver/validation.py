@@ -4,8 +4,10 @@ import re
 def _is_valid_name(name_type, name):
     assert re.match(r'^[\w]{6,64}$', name), '{} must be 6 - 64 alphanumeric characters'.format(name_type)
 
-def is_valid_contract_name(name):
+def validate_contract_name(name):
     _is_valid_name('Contract name', name)
+    return name
 
-def is_valid_author(name):
+def validate_author(name):
     _is_valid_name('Author', name)
+    return name
