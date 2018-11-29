@@ -5,6 +5,7 @@ MAINTAINER Falcon Wong version: 0.1
 COPY . /app
 WORKDIR /app
 
+ENV DOCKERIZE_VERSION v0.6.1
 ENV DEBIAN_FRONTEND noninteractive
 
 # Install Mongo
@@ -17,3 +18,4 @@ RUN apt-get update \
     && apt-get install -y mongodb-org
 
 CMD bash ./scripts/start_redis_mongo.sh
+
