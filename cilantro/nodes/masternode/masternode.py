@@ -14,10 +14,10 @@ from multiprocessing import Queue
 from cilantro.utils.lprocess import LProcess
 
 from cilantro.nodes.base import NodeBase
-from cilantro.protocol.webserver.masternode import start_webserver
 from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro.nodes.masternode.master_store import MasterOps
+from cilantro.protocol.webserver.masternode import start_webserver
 import os
 
 

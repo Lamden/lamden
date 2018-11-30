@@ -2,11 +2,10 @@ from cilantro.protocol.webserver.sanic import SanicSingleton
 from sanic.response import json, text
 from sanic.exceptions import ServerError
 from cilantro.logger.base import get_logger
+from cilantro.messages.transaction.publish import PublishTransaction
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.constants.masternode import WEB_SERVER_PORT
-from cilantro.protocol.states.statemachine import StateMachine
-from cilantro.protocol.states.state import StateInput
 from cilantro.messages.signals.kill_signal import KillSignal
 import traceback, multiprocessing, os, asyncio, traceback
 from multiprocessing import Queue
