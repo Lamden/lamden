@@ -1,4 +1,5 @@
 from cilantro.storage.vkbook import VKBook
+from seneca.libs.datatypes import DATATYPES
 import re
 
 def _is_valid_name(name_type, name):
@@ -14,4 +15,8 @@ def validate_contract_call(name):
 
 def validate_author(name):
     _is_valid_name('Author', name)
+    return name
+
+def validate_key_name(name):
+    _is_valid_name('Key', name)
     return name

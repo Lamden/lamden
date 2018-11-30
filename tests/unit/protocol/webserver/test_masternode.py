@@ -1,6 +1,6 @@
 import unittest, sys, asyncio
 from unittest import TestCase
-from cilantro.protocol.webserver.masternode import start_webserver
+from cilantro.nodes.masternode.webserver import start_webserver
 from cilantro.constants.testnet import TESTNET_MASTERNODES
 from cilantro.logger.base import get_logger
 from multiprocessing import Process
@@ -47,7 +47,11 @@ class TestMasterNodeWebserver(TestCase):
     def test_get_contract_meta(self):
         r = tools.get_contract_meta('currency', server_url)
         self.assertEqual(self.currency, r['code_str'])
-        self.assertEqual(set(['balances', 'allowed', 'market']), set(r['datatypes'].keys()))
+        self.assertEqual(set([
+            'balances',
+            'allowed',
+            'market'
+        ]), set(r['datatypes'].keys()))
         self.assertEqual(set([
             'submit_stamps',
             'balance_of',
@@ -57,6 +61,10 @@ class TestMasterNodeWebserver(TestCase):
             'allowance',
             'mint'
         ]), set(r['exports']))
+
+    def test_get_contract_state(self):
+        r = tools.get_contract_state('currency', 'balances', 'lorde', server_url)
+        self.assertEqual(r, 10000)
 
 #     def submit_poll_contract(self):
 #         TransactionContainer.create()

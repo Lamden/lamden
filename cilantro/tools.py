@@ -4,6 +4,11 @@ from cilantro.messages.transaction.container import TransactionContainer
 from seneca.engine.interpreter import Seneca, SenecaInterpreter
 from seneca.engine.interface import SenecaInterface
 
+def get_contract_state(contract_name, datatype, key, server_url):
+    j = {'contract_name': contract_name, 'datatype': datatype, 'key': key}
+    r = requests.get('http://{}/state'.format(server_url), json=j)
+    return r.json()
+
 def get_contract_meta(contract_name, server_url):
     j = {'contract_name': contract_name}
     r = requests.get('http://{}/contract-meta'.format(server_url), json=j)
@@ -20,7 +25,6 @@ def get_transaction(tx_hash, server_url):
     j = {'hash': tx_hash}
     r = requests.get('http://{}/transaction'.format(server_url), json=j)
     return r
-
 
 def get_transactions(block_hash, server_url):
     j = {'hash': block_hash}
@@ -60,4 +64,4 @@ def parse_code_str(code_str):
         for k, v in Seneca.exports.items():
             if not k.startswith('seneca.libs'):
                 exports.append(k)
-        return {'datatypes': datatypes, 'exports': exports}
+        return { 'datatypes': datatypes, 'exports': exports }

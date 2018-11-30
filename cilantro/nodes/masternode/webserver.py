@@ -13,6 +13,8 @@ from os import getenv as env
 from sanic.exceptions import ServerError
 from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.protocol.webserver.validation import *
+from seneca.libs import datatypes
+from cilantro.tools import parse_code_str
 
 app = SanicSingleton.app
 interface = SanicSingleton.interface
@@ -56,8 +58,19 @@ async def contract_tx(request):
 #     except Exception as e:
 #         raise ServerError(e, status_code=500)
 
+@app.route("/state", methods=["GET",])
+async def get_contract_state(request):
+    contract_name = validate_contract_name(request.json['contract_name'])
+    meta = interface.get_contract_meta(contract_name)
+    meta.update(parse_code_str(meta['code_str']))
+    datatype = meta['datatypes'].get(request.json['datatype'])
+    if not datatype:
+        raise ServerError('Datatype "{}" not found'.format(datatype), status_code=500)
+    key = validate_key_name(request.json['key'])
+    return text(datatype.get(key))
+
 @app.route("/contract-meta", methods=["GET",])
-async def get_contract(request):
+async def get_contract_meta(request):
     contract_name = validate_contract_name(request.json['contract_name'])
     return json(interface.get_contract_meta(contract_name))
 
