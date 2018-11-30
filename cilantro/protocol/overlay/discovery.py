@@ -57,6 +57,7 @@ class Discovery:
 
     @classmethod
     async def discover_nodes(cls, start_ip):
+        is_masternode = Auth.vk in VKBook.get_masternodes()
         try_count = 0
         if cls.is_listen_ready:
             await asyncio.sleep(3)
@@ -64,7 +65,8 @@ class Discovery:
             cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
             cls.connect(get_ip_range(start_ip))
             try_count += 1
-            if (len(cls.discovered_nodes) == 0 and Auth.vk in VKBook.get_masternodes()) and cls.is_connected:
+            if (is_masternode and len(VKBook.get_masternodes()) == 1)) or \
+                    (len(cls.discovered_nodes)) == 0 and is_masternode and cls.is_connected):
                 cls.log.important('Bootstrapping as the only masternode.'.format(
                     len(cls.discovered_nodes)
                 ))

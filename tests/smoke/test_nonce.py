@@ -1,5 +1,5 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('4-4-4.json')
+set_testnet_config('1-0-0.json')
 
 from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random, vmnet, cilantro
@@ -59,18 +59,20 @@ def run_user():
 
 class TestNonce(BaseNetworkTestCase):
 
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-2.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro_mn.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)
     def test_dump(self):
         log = get_logger("test_dump")
 
-        log.info("Starting masternode")
-        self.execute_python('node_1', wrap_func(run_mn), async=True, profiling=self.PROFILE_TYPE)
+        log.important3("Starting masternode")
+        self.execute_python('mn', wrap_func(run_mn), async=True, profiling=self.PROFILE_TYPE)
 
-        log.info("Starting user")
-        self.execute_python('node_2', wrap_func(run_user), async=True, profiling=self.PROFILE_TYPE)
+        input("Press key to start mgmt")
+
+        log.important3("Starting mgmt")
+        self.execute_python('mgmt', wrap_func(run_user), async=True, profiling=self.PROFILE_TYPE)
 
         input("Press any key to exit...")
 
