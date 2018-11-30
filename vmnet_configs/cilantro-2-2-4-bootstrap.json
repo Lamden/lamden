@@ -2,7 +2,7 @@
     "services": [
         {
             "name": "masternode",
-            "image": "lamden/cilantro:mn-0.1",
+            "image": "lamden/cilantro",
             "count": 2,
             "ports": [
                 10200, 8080, 4319
@@ -10,7 +10,7 @@
         },
         {
             "name": "witness",
-            "image": "lamden/cilantro:mn-0.1",
+            "image": "lamden/cilantro",
             "count": 2,
             "ports": [
                 10200, 8080, 4319
@@ -18,7 +18,7 @@
         },
         {
             "name": "delegate",
-            "image": "lamden/cilantro:mn-0.1",
+            "image": "lamden/cilantro",
             "count": 4,
             "ports": [
                 10200, 8080, 4319
@@ -26,7 +26,7 @@
         },
         {
             "name": "mgmt",
-            "image": "lamden/cilantro:mn-0.1",
+            "image": "lamden/cilantro",
             "count": 1,
             "ports": [
                 10200, 8080, 4319
