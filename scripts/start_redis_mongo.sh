@@ -3,11 +3,6 @@ set -ex
 
 export PYTHONPATH=$(pwd)
 
-if [[ "$CIRCLECI" == "true" && "$HOST_NAME" == "" ]]
-then
-  export HOST_NAME="."
-fi
-
 echo "Waiting for mongo on localhost"
 mkdir -p ./data/$HOST_NAME/logs
 touch ./data/$HOST_NAME/logs/mongo.log
