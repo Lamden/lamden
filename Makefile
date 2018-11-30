@@ -2,7 +2,7 @@
 # 	./scripts/make_test_config.py
 
 start-db:# test_db_conf.ini
-	./scripts/start_mongo.sh &
+	./scripts/start_redis_mongo.sh &
 
 start: start-db
 
@@ -38,7 +38,10 @@ clean-temps:
 clean-certs:
 	./scripts/clean-certs.sh
 
-clean: clean-logs clean-temps clean-certs
+clean-dbs:
+	./scripts/clean-db.sh
+
+clean: clean-logs clean-temps clean-certs clean-dbs
 
 pump:
 	python3 ./tests/vmnet/test_pump.py

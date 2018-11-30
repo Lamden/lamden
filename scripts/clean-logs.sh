@@ -1,2 +1,1 @@
-cd ..
-find . -name 'logs' | xargs rm -rf
+find . -name 'logs' | xargs rm -r
