@@ -1,4 +1,4 @@
-if [ -z "$CIRCLECI" ]
+if [ -z "$CIRCLECI" ] && [ "$HOST_NAME" != "" ]
 then
   for package in "seneca" "vmnet"
   do
