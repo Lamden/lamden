@@ -8,7 +8,7 @@ NUM_WITNESSES = len(TESTNET_WITNESSES)
 NUM_DELEGATES = len(TESTNET_DELEGATES)
 
 # How long each Node will wait for the rest of the network to come online before an error is raised
-MAX_BOOT_WAIT = 300
+MAX_BOOT_WAIT = 180
 
 
 # ///////////////////////////////////////////////
