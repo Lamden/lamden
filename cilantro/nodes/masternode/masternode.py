@@ -31,7 +31,7 @@ class Masternode(NewNodeBase):
 
         if not os.getenv('MN_MOCK'):
             self._start_batcher()
-            self._start_block_agg()
+            self._start_block_agg()  # This call blocks!
         else:
             self.log.warning("MN_MOCK env var is set! Not starting block aggregator or tx batcher.")
 
@@ -51,10 +51,12 @@ class Masternode(NewNodeBase):
     def _start_block_agg(self):
         # # TODO Start the BlockAggregator in this process by passing in our SocketManager instead of spinning up an LProc
         self.log.info("Masternode starting BlockAggregator Process")
-        self.block_agg_proc = LProcess(target=BlockAggregator,
-                                       kwargs={'ip': self.ip, 'signing_key': self.signing_key},
-                                       name='BlockAggProc')
-        self.block_agg_proc.start()
+        self.block_agg = BlockAggregator(ip=self.ip, manager=self.manager, name='BlockAgg')
+
+        # self.block_agg_proc = LProcess(target=BlockAggregator,
+        #                                kwargs={'ip': self.ip, 'signing_key': self.signing_key},
+        #                                name='BlockAggProc')
+        # self.block_agg_proc.start()
 
 
 # class MNBaseState(State):
