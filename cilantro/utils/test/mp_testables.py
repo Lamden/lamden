@@ -9,6 +9,7 @@ from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.nodes.masternode.masternode import Masternode
 from cilantro.nodes.delegate.delegate import Delegate
 from cilantro.nodes.witness.witness import Witness
+from cilantro.nodes.base import NodeBase
 from cilantro.protocol.overlay.daemon import OverlayServer
 from cilantro.utils.lprocess import LProcess
 # from cilantro.storage.db import DB
@@ -19,17 +20,27 @@ import zmq.asyncio
 import os
 
 
+@mp_testable(NodeBase)
+class MPNodeBase(MPTesterBase):
+    @classmethod
+    def build_obj(cls, sk, name='Node'):
+        ip = os.getenv('HOST_IP', '127.0.0.1')
+        loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(loop)
+        obj = NodeBase(ip=ip, signing_key=sk, loop=loop, name=name)
+
+        return obj, loop, []
+
+
 @mp_testable(PubSubAuthTester)
 class MPPubSubAuth(MPTesterBase):
     @classmethod
     def build_obj(cls, sk, name='') -> tuple:
-
-        # DEBUG -- TODO DELETE
-        print("VKBook on REMOTE MACHINE")
-        from cilantro.storage.vkbook import VKBook
-        VKBook.test_print_nodes()
-        # END DEBUG
-
+        # # DEBUG -- TODO DELETE
+        # print("VKBook on REMOTE MACHINE")
+        # from cilantro.storage.vkbook import VKBook
+        # VKBook.test_print_nodes()
+        # # END DEBUG
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
 

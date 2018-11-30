@@ -3,6 +3,7 @@ import unittest
 from cilantro.storage.contracts import *
 from seneca.engine.interface import SenecaInterface
 
+
 class TestContracts(TestCase):
 
     def setUp(self):
@@ -12,8 +13,8 @@ class TestContracts(TestCase):
     def test_seed_contracts_get_code_str(self):
         seed_contracts()
         with SenecaInterface() as interface:
-            self.assertTrue(interface.code_obj_exists('kv_currency'))
-            self.assertTrue(interface.code_obj_exists('sample'))
+            self.assertTrue(bool(interface.get_code_obj('kv_currency')))
+            self.assertTrue(bool(interface.get_code_obj('sample')))
 
             expected_snipped = 'UNITTEST_FLAG_CURRENCY_SENECA 1729'
             actual_code = interface.get_code_str('kv_currency')

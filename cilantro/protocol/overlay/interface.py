@@ -67,7 +67,6 @@ class OverlayInterface:
         ''')
         self.started = True
         Event.emit({ 'event': 'service_status', 'status': 'ready' })
-        
 
     async def discover(self):
         if not await Discovery.discover_nodes(Discovery.host_ip):

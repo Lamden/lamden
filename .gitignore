@@ -33,6 +33,7 @@ tests/vmnet/docker-compose.yml
 certs
 state.tmp
 seneca
+*.dat
 **/profiles/**
 **/tmp_exec_code*.py
 
@@ -41,6 +42,8 @@ db_conf.ini
 
 # Docker
 docker-compose.yml
+dump.rdb
+docker/redis.env
 
 # Docs
 docs/sphinx/_build
