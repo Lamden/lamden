@@ -38,10 +38,7 @@ DelegateCatchupState = "DelegateCatchupState"
 class Delegate(NewNodeBase):
 
     def start(self):
-        self.log.notice("Delegate Starting BlockManager Process")
-        # TODO do this in the same proc by passing in the SocketManager into the BlockManager creation
-        self.bm_proc = LProcess(target=BlockManager, kwargs={'ip': self.ip, 'signing_key': self.signing_key})
-        self.bm_proc.start()
+        self.bm = BlockManager(ip=self.ip, manager=self.manager)  # This blocks
 
 #
 # class Delegate(NodeBase):
