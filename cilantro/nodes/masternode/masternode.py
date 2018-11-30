@@ -51,7 +51,7 @@ class MNRunState(MNBaseState):
         # Create a worker to do transaction batching
         self.log.debug("Masternode starting transaction batcher process")
         self.parent.batcher = LProcess(target=TransactionBatcher, name='TxBatcherProc',
-                                       kwargs={'queue': q, 'signing_key': self.parent.signing_key,
+                                       kwargs={'queue': self.parent.tx_queue, 'signing_key': self.parent.signing_key,
                                                'ip': self.parent.ip})
         self.parent.batcher.start()
 
