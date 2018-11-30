@@ -15,12 +15,6 @@ jobs:
       - restore_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
       - run: pyenv local 3.6.5
-      - run:
-          name: Install Redis
-          command: |
-            wget http://download.redis.io/releases/redis-4.0.6.tar.gz
-            tar xzf redis-4.0.6.tar.gz
-            cd redis-4.0.6 && make
 
       - run:
           name: Install Cilantro Requirements
