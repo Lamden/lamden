@@ -19,18 +19,22 @@ MASTERNODE_MAJORITY = math.ceil(NUM_MASTERS * 2 / 3)
 # Block and Sub-block
 # ///////////////////////////////////////////////
 _MAX_SUB_BLOCK_BUILDERS = 4
-_MAX_BLOCKS = 1
+_MAX_BLOCKS = 2
 
 SUB_BLOCK_VALID_PERIOD = 60 * 10 # sub-blocks contenders are valid for 10 minutes from the latest contender received
 TRANSACTIONS_PER_SUB_BLOCK = 100
 NUM_SUB_BLOCKS = NUM_MASTERS  # same as num masternodes for now
 NUM_BLOCKS = min(_MAX_BLOCKS, NUM_SUB_BLOCKS)
 NUM_SB_PER_BLOCK = (NUM_SUB_BLOCKS + NUM_BLOCKS - 1) // NUM_BLOCKS
-NUM_SB_BUILDERS = min(_MAX_SUB_BLOCK_BUILDERS, NUM_SB_PER_BLOCK)
+# NUM_SB_BUILDERS = min(_MAX_SUB_BLOCK_BUILDERS, NUM_SB_PER_BLOCK)
+# todo - until we fix seneca client management in sub-block-builder, use it same as NUM_SB_PER_BLOCK
+NUM_SB_BUILDERS = NUM_SB_PER_BLOCK
 NUM_SB_PER_BUILDER = (NUM_SUB_BLOCKS + NUM_SB_BUILDERS - 1) // NUM_SB_BUILDERS
+NUM_SB_PER_BLOCK_PER_BUILDER = (NUM_SB_PER_BLOCK + NUM_SB_BUILDERS - 1) // NUM_SB_BUILDERS
 
 assert NUM_SUB_BLOCKS >= NUM_BLOCKS, "num_blocks {} cannot be more than num_sub_blocks {}".format(NUM_BLOCKS, NUM_SUB_BLOCKS)
 assert NUM_SUB_BLOCKS/NUM_SB_PER_BLOCK == NUM_BLOCKS, "NUM_SUB_BLOCKS/NUM_SB_PER_BLOCK should equal NUM_BLOCKS"
+assert NUM_SB_PER_BLOCK_PER_BUILDER >= 1, "num_sub_blocks_per_block_per_builder {} cannot less than 1".format(NUM_SB_PER_BLOCK_PER_BUILDER)
 
 
 # ///////////////////////////////////////////////

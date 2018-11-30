@@ -74,10 +74,12 @@ class BlockManager(Worker):
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
-                        "num_sb_builders={num_sb_builders}\n"
+                        "num_sb_builders={num_sb_builders}\nsub_blocks_per_builder={sb_per_builder}\n"
+                        "sub_blocks_per_block_per_builder={sb_per_block_per_builder}\n"
                         .format(vk=self.verifying_key, sb_index=self.sb_index, num_sb=NUM_SUB_BLOCKS,
                                 num_blocks=NUM_BLOCKS, sb_per_block=NUM_SB_PER_BLOCK,
-                                num_sb_builders=NUM_SB_BUILDERS))
+                                num_sb_builders=NUM_SB_BUILDERS, sb_per_builder=NUM_SB_PER_BUILDER,
+                                sb_per_block_per_builder=NUM_SB_PER_BLOCK_PER_BUILDER))
 
         # Define Sockets (these get set in build_task_list)
         self.router, self.ipc_router, self.pub, self.sub = None, None, None, None

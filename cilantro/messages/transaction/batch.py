@@ -35,8 +35,12 @@ class TransactionBatch(MessageBase):
         return cls.from_data(batch)
 
     @lazy_property
-    def transactions(self) -> List[OrderingContainer]:
+    def ordered_transactions(self) -> List[OrderingContainer]:
         return [OrderingContainer.from_data(oc) for oc in self._data.transactions]
+
+    @lazy_property
+    def transactions(self) -> List[OrderingContainer]:
+        return [ordered_tx.transaction for ordered_tx in self.ordered_transactions]
 
     @property
     def is_empty(self):
