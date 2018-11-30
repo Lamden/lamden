@@ -3,12 +3,15 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.message_meta import MessageMeta
 from cilantro.messages.envelope.seal import Seal
 from cilantro.protocol.structures import EnvelopeAuth
+
 import time
+from typing import Union
 
 import envelope_capnp
 
 from cilantro.protocol import wallet
 from cilantro.utils import Hasher  # Just for debugging (used in __repr__)
+
 
 
 class Envelope(MessageBase):
@@ -142,6 +145,23 @@ class Envelope(MessageBase):
         """
         return self.seal.verifying_key
 
+    def is_from_group(self, groups: Union[list, str]) -> bool:
+        """
+        Returns True if this envelope is from a group of 
+        :param groups: A str, representing a type from enum NodeTypes, or a list of a said strings
+        :return: True if this envelope is from a sender who belongs to the specified groups, False otherwise
+        """
+        from cilantro.nodes.base import NodeTypes  # To avoid cyclic imports (i apologize for my sins --davis)
+
+        if type(groups) is str:
+            groups = (groups,)
+
+        for g in groups:
+            if NodeTypes.check_vk_in_group(vk=self.sender, group=g):
+                return True
+
+        return False
+
     def __repr__(self):
         """
         Printing the full capnp struct (which is the default MessageBase __repr__ behvaior) is way to verbose for
@@ -153,10 +173,10 @@ class Envelope(MessageBase):
         seal_vk = self.seal.verifying_key
         uuid = self.meta.uuid
 
-        repr = "\nEnvelope from sender {}".format(seal_vk)
-        repr += "\n\tuuid: {}".format(uuid)
-        repr += "\n\tmessage type: {}".format(msg_type)
-        repr += "\n\tmessage hash: {}".format(msg_hash)
+        rep = "\nEnvelope from sender {}".format(seal_vk)
+        rep += "\n\tuuid: {}".format(uuid)
+        rep += "\n\tmessage type: {}".format(msg_type)
+        rep += "\n\tmessage hash: {}".format(msg_hash)
 
-        return repr
+        return rep
 
