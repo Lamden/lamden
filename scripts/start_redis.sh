@@ -2,6 +2,12 @@
 port=$(python3 ./scripts/free_port.py)
 pw=$(python3 ./scripts/random_password.py)
 
+if [[ "$CIRCLECI" == "true" ]]
+then
+    chmod 777 ./venv/bin/activate
+    ./venv/bin/activate
+fi
+
 # Configure env files
 export PYTHONPATH=$(pwd)
 export REDIS_PORT=$port

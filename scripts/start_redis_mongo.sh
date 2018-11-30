@@ -3,9 +3,15 @@ set -ex
 
 export PYTHONPATH=$(pwd)
 
-if [[ "$CIRCLECI" == "true" && "$HOST_NAME" == "" ]]
+if [[ "$CIRCLECI" == "true" ]]
 then
-  export HOST_NAME="."
+    chmod 777 ./venv/bin/activate
+    ./venv/bin/activate
+
+    if [[ "$HOST_NAME" == "" ]]
+    then
+       export HOST_NAME="."
+    fi
 fi
 
 echo "Waiting for mongo on localhost"

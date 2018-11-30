@@ -16,7 +16,7 @@ from cilantro.messages.signals.kill_signal import KillSignal
 from cilantro.storage.vkbook import VKBook
 from cilantro.utils.hasher import Hasher
 
-import zmq, asyncio
+import zmq, asyncio, time
 
 """
     Witness

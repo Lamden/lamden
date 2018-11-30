@@ -26,7 +26,7 @@ class BlockData(MessageBase):
     def validate(self):
         assert self._data.blockHash, 'No field "blockHash"'
         assert hasattr(self._data, 'blockNum'), 'No field "blockNum"'
-        assert self._data.transactions, 'No field "transactions"'
+        # assert self._data.transactions, 'No field "transactions"'
         assert self._data.prevBlockHash, 'No field "prevBlockHash"'
         assert self._data.masternodeSignature, 'No field "masternodeSignature"'
         assert self.masternode_signature.sender in VKBook.get_masternodes(), 'Not a valid masternode'

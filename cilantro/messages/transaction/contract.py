@@ -102,7 +102,7 @@ class ContractTransactionBuilder:
     Utility methods to construct ContractTransactions. We use this exclusively for testing, as IRL this should be done by
     users via some JS library or something.
     """
-    CURRENCY_CONTRACT_NAME = 'kv_currency'
+    CURRENCY_CONTRACT_NAME = 'currency'
 
     @staticmethod
     def create_currency_tx(sender_sk: str, receiver_vk: str, amount: Union[int, Decimal], stamps=1000):

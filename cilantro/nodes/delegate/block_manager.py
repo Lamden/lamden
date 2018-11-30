@@ -91,12 +91,6 @@ class BlockManager(Worker):
         self.build_task_list()
         self.log.info("Block Manager starting...")
         self.start_sbb_procs()
-        self.log.info("Catching up...")
-        self.catchup_db_state()
-
-        # here we fix call to send_updated_db_msg until we properly send back StateUpdateReply from Masternodes
-        # TODO -- remove once Masternodes can reply to StateUpdateRequest
-        self.send_updated_db_msg()
 
         # DEBUG -- TODO DELETE
         # self.tasks.append(self.spam_sbbs())
@@ -138,6 +132,8 @@ class BlockManager(Worker):
         self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BM-Sub", secure=True)
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
+        self.tasks.append(self.catchup_db_state())
+
         # Listen to Masternodes
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
@@ -146,7 +142,8 @@ class BlockManager(Worker):
             self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
             time.sleep(1)
 
-    def catchup_db_state(self):
+    async def catchup_db_state(self):
+        self.log.info("Catching up...")
         # do catch up logic here
         # only when one can connect to quorum masters and get db update, move to next step
         # at the end, it has updated its db state to consensus latest
@@ -161,7 +158,11 @@ class BlockManager(Worker):
         #     self.router.send_msg(envelope, header=vk.encode())
 
         # no need to wait for the replys as we have added a handler
-        pass
+
+        # here we fix call to send_updated_db_msg until we properly send back StateUpdateReply from Masternodes
+        # TODO -- remove once Masternodes can reply to StateUpdateRequest
+        time.sleep(5)
+        self.send_updated_db_msg()
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):
