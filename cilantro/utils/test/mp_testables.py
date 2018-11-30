@@ -9,7 +9,7 @@ from cilantro.protocol.states.statemachine import StateMachine
 from cilantro.nodes.masternode.masternode import Masternode
 from cilantro.nodes.delegate.delegate import Delegate
 from cilantro.nodes.witness.witness import Witness
-from cilantro.nodes.base import NewNodeBase
+from cilantro.nodes.base import NodeBase
 from cilantro.protocol.overlay.daemon import OverlayServer
 from cilantro.utils.lprocess import LProcess
 # from cilantro.storage.db import DB
@@ -20,14 +20,14 @@ import zmq.asyncio
 import os
 
 
-@mp_testable(NewNodeBase)
+@mp_testable(NodeBase)
 class MPNodeBase(MPTesterBase):
     @classmethod
     def build_obj(cls, sk, name='Node'):
         ip = os.getenv('HOST_IP', '127.0.0.1')
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
-        obj = NewNodeBase(ip=ip, signing_key=sk, loop=loop, name=name)
+        obj = NodeBase(ip=ip, signing_key=sk, loop=loop, name=name)
 
         return obj, loop, []
 
