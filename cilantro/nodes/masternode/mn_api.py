@@ -24,15 +24,7 @@ class StorageDriver:
             block.validate()
 
         block_dict = MDB.get_dict(block)
-
-        if MasterOps.evaluate_wr(entry = block_dict) is True:
-            return True
-        # block_dict = MDB.get_dict(block)
-        # MDB.mn_db['blocks'].insert_one(block_dict)
-        # MDB.mn_db['state'].update_one({'_id': cls.state_id}, {'$set': {
-        #     '_id': cls.state_id,
-        #     'lastest_block_hash': block_dict['block_hash']
-        # }}, upsert=True)
+        return bool(MasterOps.evaluate_wr(entry=block_dict))
 
     @classmethod
     def get_transactions(cls, block_hash=None, raw_tx_hash=None, status=None):
@@ -60,7 +52,7 @@ class StorageDriver:
         #     return GENESIS_HASH
 
     @classmethod
-    def get_blocks(cls, block_hash):
+    def get_n_blocks(cls, block_hash):
         # TODO verify
         pass
         # block_dict = MDB.mn_db['blocks'].find_one({
@@ -70,3 +62,7 @@ class StorageDriver:
         # return MDB.mn_db['blocks'].find({
         #     'block_num': {'$gt': block_dict['block_num']}
         # })
+
+    @classmethod
+    def get_n_index(cls):
+        pass

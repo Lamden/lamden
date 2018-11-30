@@ -20,17 +20,11 @@
 #
 #     log = get_logger('Node_{}'.format(idx+1))
 #
-#     # sourceNode = Node(
-#         # digest(os.getenv('HOST_IP')),
-#         # ip=os.getenv('HOST_IP'),
-#         # port=DHT_PORT
-#     # )
 #     neighbors = (os.getenv('NODE').split(',') * 2)[idx+1:idx+4]
 #     keys = [
-#     	   *[(node['sk'], node['vk']) for node in TESTNET_MASTERNODES],
-# 	   *[(node['sk'], node['vk']) for node in TESTNET_WITNESSES],
-# 	   *[(node['sk'], node['vk']) for node in TESTNET_DELEGATES]
-#           ]
+#     	   *[(node['sk'], node['vk']) for node in [TESTNET_MASTERNODES[0]]],
+#     	   *[(node['sk'], node['vk']) for node in TESTNET_DELEGATES[:3]]
+#        ]
 #
 #     async def bootstrap_nodes(ipsToAsk):
 #         await network.bootstrap([Node(digest(ip), ip=ip, port=DHT_PORT, vk=keys[i][1]) for i, ip in enumerate(ipsToAsk)])
@@ -77,7 +71,7 @@
 # class TestProtocol(BaseTestCase):
 #
 #     log = get_logger(__name__)
-#     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-8.json')
+#     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-4.json')
 #     enable_ui = True
 #
 #     def callback(self, data):

@@ -19,10 +19,10 @@ class MasterOps:
     cfg = SafeConfigParser()
     cfg.read('{}/mn_db_conf.ini'.format(path))
 
-    mn_id = cfg.get('MN_DB', 'mn_id')
-    rep_factor = cfg.get('MN_DB','replication')
-    active_masters = cfg.get('MN_DB','total_mn')
-    quorum_needed = cfg.get('MN_DB','quorum')
+    mn_id = int(cfg.get('MN_DB', 'mn_id'))
+    rep_factor = int(cfg.get('MN_DB','replication'))
+    active_masters = int(cfg.get('MN_DB','total_mn'))
+    quorum_needed = int(cfg.get('MN_DB','quorum'))
     test_hook = cfg.get('MN_DB','test_hook')
     init_state = False
 
@@ -94,8 +94,24 @@ class MasterOps:
         pool_sz = round(cls.active_masters/cls.rep_factor)
         return pool_sz
 
+    '''
+        builds list master wrs base on mn id [0 - len(master)]
+    '''
+
     @classmethod
-    def evaluate_wr(cls, entry = None):
+    def build_wr_list( cls, curr_node_idx = None, jump_idx = 1 ):
+        all_mn = VKBook.get_masternodes()
+        tot_mn = len(all_mn)
+        mn_list = []
+
+        while curr_node_idx < tot_mn:
+            mn_list.append(all_mn[curr_node_idx])
+            curr_node_idx += jump_idx
+
+        return mn_list
+
+    @classmethod
+    def evaluate_wr(cls, entry=None):
         if entry is None:
             return False
 
@@ -107,31 +123,31 @@ class MasterOps:
 
         pool_sz = cls.rep_pool_sz()
         mn_idx = cls.mn_id % pool_sz
-        writers = entry.get('block_num') % pool_sz
+        writers = entry.get('blockNum') % pool_sz
 
         if mn_idx == writers:
             MDB.insert_record(entry)
 
         # build list of mn_sign of master nodes updating index db
-
-        mn_list = None
+        mn_list = cls.build_wr_list(curr_node_idx = writers, jump_idx = pool_sz)
 
         # create index records and update entry
-        return cls.update_idx(block_dict=entry, node_list=mn_list)
+        return cls.update_idx(inserted_blk=entry, node_list=mn_list)
 
     @classmethod
     def update_idx(cls, inserted_blk=None, node_list=None):
 
-        entry = {'block_num': inserted_blk.get('block_num'), 'block_hash': inserted_blk.get('block_hash'),
+        entry = {'block_num': inserted_blk.get('blockNum'), 'block_hash': inserted_blk.get('blockHash'),
                  'master_nodes': node_list}
         MDB.insert_idx_record(entry)
 
     '''
-        Read for particular block hash, does first read
-        to index db if block is local
+        Read for particular block hash, expects to return empty if there is no block stored locally
     '''
     @staticmethod
-    def read_bucket_entry(block_hash):
+    def read_store_entry(block_hash):
         my_query = {'block_hash', block_hash}
         outcome = MDB.query_db(query=my_query)
         return outcome
+
+
