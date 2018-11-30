@@ -217,6 +217,7 @@ class BlockManager(Worker):
         msg = envelope.message
         msg_hash = envelope.message_hash
 
+        self.log.important3("BM got notification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
         if isinstance(msg, NewBlockNotification):
             self.log.important3("BM got NewBlockNotification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
             self.handle_new_block(msg)

@@ -33,6 +33,8 @@ class SubBlockContender(MessageBase):
         assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
         assert self._data.inputHash, "input hash field missing from data {}".format(self._data)
         assert self._data.signature, "Signature field missing from data {}".format(self._data)
+        assert self.transactions, "Transactions field missing from data {}".format(self._data)
+
         assert hasattr(self._data, 'subBlockIdx'), "Sub-block index field missing from data {}".format(self._data)
 
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
@@ -117,6 +119,8 @@ class SubBlockContender(MessageBase):
 
     @property
     def transactions(self) -> List[TransactionData]:
+        print("transactions dump:")
+        print(self._data.transactions)
         return [TransactionData.from_bytes(tx) for tx in self._data.transactions]
 
     def __eq__(self, other):
