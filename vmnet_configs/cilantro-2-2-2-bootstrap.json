@@ -19,7 +19,7 @@
         {
             "name": "delegate",
             "image": "lamden/cilantro",
-            "count": 4,
+            "count": 2,
             "ports": [
                 10200, 8080, 4319
             ]
