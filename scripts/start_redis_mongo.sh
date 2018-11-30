@@ -3,15 +3,16 @@ set -ex
 
 export PYTHONPATH=$(pwd)
 
-if [[ "$CIRCLECI" == "true" ]]
+if [ -z "$CIRCLECI" ]
 then
-    chmod 777 ./venv/bin/activate
-    ./venv/bin/activate
-
-    if [[ "$HOST_NAME" == "" ]]
-    then
-       export HOST_NAME="."
-    fi
+  for package in "seneca" "vmnet"
+  do
+    cp -r ./venv/lib/python3.6/site-packages/$package /usr/local/lib/python3.6/dist-packages
+  done
+  if [[ "$HOST_NAME" == "" ]]
+  then
+    export HOST_NAME="."
+  fi
 fi
 
 echo "Waiting for mongo on localhost"
