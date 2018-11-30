@@ -39,11 +39,8 @@ class TestLargeNetwork(MPTestCase):
         wit_1 = MPPubSubAuth(sk=TESTNET_WITNESSES[1]['sk'], name='[node_4]WITNESS_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
 
         del_0 = MPPubSubAuth(sk=TESTNET_DELEGATES[0]['sk'], name='[node_5]DELEGATE_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        # del_1 = MPPubSubAuth(sk=TESTNET_DELEGATES[1]['sk'], name='[node_6]DELEGATE_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        # del_2 = MPPubSubAuth(sk=TESTNET_DELEGATES[2]['sk'], name='[node_7]DELEGATE_2', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        # del_3 = MPPubSubAuth(sk=TESTNET_DELEGATES[3]['sk'], name='[node_8]DELEGATE_3', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
 
-        time.sleep(10*CI_FACTOR)  # Nap while nodes hookup
+        time.sleep(12*CI_FACTOR)  # Nap while nodes hookup
 
         all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0)
         # all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0, del_1, del_2, del_3)
@@ -55,7 +52,7 @@ class TestLargeNetwork(MPTestCase):
         for n in all_nodes:
             n.add_pub_socket(ip=n.ip, secure=True)
 
-        time.sleep(4*CI_FACTOR)  # Nap while nodes add their pub sockets
+        time.sleep(5*CI_FACTOR)  # Nap while nodes add their pub sockets
 
         # Each node SUBs to everyone else (except themselves)
         for i, n in enumerate(all_nodes):
@@ -76,14 +73,13 @@ class TestLargeNetwork(MPTestCase):
                 n.connect_sub(vk=m_vk)
             it = it + 1
 
-        time.sleep(10*CI_FACTOR)  # Allow time for VK lookups
+        time.sleep(12*CI_FACTOR)  # Allow time for VK lookups
 
         # Make each node pub a msg
         for n in all_nodes:
             n.send_pub("hi from {} with ip {}".format(n.name, n.ip).encode())
 
         self.start(timeout=30)
-        time.sleep(2*CI_FACTOR)  # Allow time to shut down properly
 
 
 if __name__ == '__main__':
