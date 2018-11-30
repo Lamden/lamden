@@ -42,6 +42,8 @@ db_conf.ini
 
 # Docker
 docker-compose.yml
+dump.rdb
+docker/redis.env
 
 # Docs
 docs/sphinx/_build

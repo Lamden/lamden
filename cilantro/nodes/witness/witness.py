@@ -28,11 +28,16 @@ import zmq, asyncio, time
     transactions that include stake reserves being spent by users staking on the network.
 """
 
+
 class Witness(NewNodeBase):
 
     def start(self):
+        self.tasks = []
+
         self._create_sub_socket()
         self._create_pub_socket()
+
+        self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def _create_sub_socket(self):
         # Sub to assigned Masternode
@@ -43,7 +48,7 @@ class Witness(NewNodeBase):
         self.sub.connect(vk=mn_vk, port=MN_TX_PUB_PORT)
         self.sub.setsockopt(zmq.SUBSCRIBE, WITNESS_MASTERNODE_FILTER.encode())
 
-        self.sub.add_handler(self._handle_sub_msg)
+        self.tasks.append(self.sub.add_handler(self._handle_sub_msg))
 
     def _create_pub_socket(self):
         # Connect PUB socket to SBBs

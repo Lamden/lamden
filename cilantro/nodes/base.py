@@ -121,9 +121,9 @@ class NewNodeBase(Worker):
     def _wait_for_nodes(self):
         assert not self.loop.is_running(), "Event loop should not be running when _wait_for_nodes is called!"
         start = time.time()
-        self.log.notice("Waiting for necessary nodes to boot...")
+        self.log.info("Waiting for necessary nodes to boot...")
         self.loop.run_until_complete(self._wait_for_network_rdy())
-        self.log.notice("Done waiting for necessary nodes to boot! Time spent waiting: {}s".format(time.time()-start))
+        self.log.success("Done waiting for necessary nodes to boot! Time spent waiting: {}s".format(time.time()-start))
 
     async def _wait_for_network_rdy(self):
         elapsed = 0

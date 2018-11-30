@@ -26,6 +26,7 @@ import os
 class Masternode(NewNodeBase):
 
     def start(self):
+        self.tx_queue = Queue()
         self._start_web_server()
 
         if not os.getenv('MN_MOCK'):
@@ -36,15 +37,14 @@ class Masternode(NewNodeBase):
 
     def _start_web_server(self):
         self.log.debug("Masternode starting REST server on port 8080")
-        self.tx_queue = q = Queue()
-        self.server = LProcess(target=start_webserver, name='WebServerProc', args=(q,))
+        self.server = LProcess(target=start_webserver, name='WebServerProc', args=(self.tx_queue,))
         self.server.start()
 
     def _start_batcher(self):
         # Create a worker to do transaction batching
         self.log.info("Masternode starting transaction batcher process")
         self.batcher = LProcess(target=TransactionBatcher, name='TxBatcherProc',
-                                kwargs={'queue': q, 'signing_key': self.signing_key,
+                                kwargs={'queue': self.tx_queue, 'signing_key': self.signing_key,
                                         'ip': self.ip})
         self.batcher.start()
 
