@@ -5,6 +5,7 @@ from cilantro.storage.contracts import seed_contracts
 from cilantro.storage.mongo import MDB
 from cilantro.nodes.masternode.master_store import MasterOps
 from seneca.engine.interface import SenecaInterface
+
 from cilantro.constants.overlay_network import HOST_IP
 
 def _build_block_schema(should_reset):

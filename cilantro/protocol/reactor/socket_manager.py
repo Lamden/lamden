@@ -1,22 +1,13 @@
-import zmq.asyncio
-import asyncio
+from cilantro.logger import get_logger
 from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
 from cilantro.protocol.reactor.lsocket import LSocket
-from cilantro.logger import get_logger
-from collections import deque
-from cilantro.constants.overlay_network import CLIENT_SETUP_TIMEOUT
-from cilantro.utils.utils import is_valid_hex
-from cilantro.protocol import wallet
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.base.base import MessageBase
-from cilantro.protocol.structures import EnvelopeAuth
-
 from cilantro.protocol.overlay.auth import Auth
-from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
-from nacl.signing import SigningKey
+from cilantro.utils.utils import is_valid_hex
 
-# TODO Better name for SocketManager? SocketManager is also responsible for handling the OverlayClient, so maybe we
-# should name it something that makes that more obvious
+from collections import defaultdict
+import asyncio, zmq.asyncio
+
+
 class SocketManager:
 
     def __init__(self, signing_key: str, context=None, loop=None):
@@ -37,6 +28,7 @@ class SocketManager:
 
         self.sockets = []
         self.pending_lookups = {}   # A dict of 'event_id' to socket instance
+        self.overlay_callbacks = defaultdict(set)
 
         # Instantiating an OverlayClient blocks until the OverlayServer is ready
         self.overlay_client = OverlayClient(self._handle_overlay_event, loop=self.loop, ctx=self.context, start=True)
@@ -55,12 +47,18 @@ class SocketManager:
     def _handle_overlay_event(self, e):
         self.log.debugv("SocketManager got overlay event {}".format(e))
 
+        # Execute socket manager specific functionality
         if e['event'] == 'authorized':
             Auth.configure_auth(self.auth, e['domain'])
         elif e['event'] == 'got_ip':
             sock = self.pending_lookups.pop(e['event_id'])
             sock.handle_overlay_event(e)
         else:
-            # TODO handle all events. Or write code to only subscribe to certain events
-            self.log.debug("Composer got overlay event {} that it does not know how to handle. Ignoring.".format(e))
-            return
+            self.log.debugv("SocketManager got overlay event {} that it does not know how to handle. Ignoring."
+                            .format(e['event']))
+
+        # Now, run any custom handlers added by Worker subclasses
+        if e['event'] in self.overlay_callbacks:
+            self.log.debugv("Custom handler(s) found for overlay event {}".format(e['event']))
+            for handler in self.overlay_callbacks[e['event']]:
+                handler(e)

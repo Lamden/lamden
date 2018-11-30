@@ -9,8 +9,8 @@ from cilantro.utils.hasher import Hasher
 from cilantro.constants.testnet import TESTNET_DELEGATES
 
 from cilantro.constants.testnet import TESTNET_DELEGATES
-DEL_SK = TESTNET_DELEGATES[0]['sk']
-DEL_VK = TESTNET_DELEGATES[0]['vk']
+DEL_SK = TESTNET_DELEGATES[0]['sk'] if len(TESTNET_DELEGATES) > 0 else 'A' * 64
+DEL_VK = TESTNET_DELEGATES[0]['vk'] if len(TESTNET_DELEGATES) > 0 else wallet.get_vk('A' * 64)
 from typing import List
 
 import capnp

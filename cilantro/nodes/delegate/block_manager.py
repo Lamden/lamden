@@ -161,7 +161,7 @@ class BlockManager(Worker):
 
         # here we fix call to send_updated_db_msg until we properly send back StateUpdateReply from Masternodes
         # TODO -- remove once Masternodes can reply to StateUpdateRequest
-        time.sleep(5)
+        await asyncio.sleep(5)
         self.send_updated_db_msg()
 
     def start_sbb_procs(self):
