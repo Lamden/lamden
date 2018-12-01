@@ -118,7 +118,6 @@ class SubBlockBuilder(Worker):
             self.initialize_next_block_to_make(self._next_block_to_make.next_block_index + 1)
         return self._next_block_to_make.state == NextBlockState.READY
 
-
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
         self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
                       .format(ip, port, identity))
@@ -233,7 +232,6 @@ class SubBlockBuilder(Worker):
         # Send to block manager
         self._send_msg_over_ipc(sbc)
 
-
     def _create_sbc_from_batch(self, cr_context: CRContext):
         """
         Creates a Sub Block Contender from a TransactionBatch
@@ -257,7 +255,6 @@ class SubBlockBuilder(Worker):
         # Send to block manager
         self._send_msg_over_ipc(sbc)
 
-
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
     def _execute_next_sb(self, input_hash: str, tx_batch: TransactionBatch, sbb_idx: int):
         self.log.debug("SBB {} attempting to build {} block with sub block index {}".format(self.sbb_index, "empty sub" if tx_batch.is_empty else "sub", sbb_idx))
@@ -267,7 +264,6 @@ class SubBlockBuilder(Worker):
             self._next_block_to_make.state = NextBlockState.PROCESSED
             return True
         return False
-
 
     def _make_next_sb(self):
         if not self.move_next_block_to_make():
@@ -294,7 +290,6 @@ class SubBlockBuilder(Worker):
                 self.sb_managers[sb_idx].num_pending_sb += 1
                 self.log.debug("No transaction bag available yet. Wait ...")
                 # self.pending_block_index = self.cur_block_index
-
 
     def _make_next_sub_block(self):
         self.log.info("Merge pending db to master db")
