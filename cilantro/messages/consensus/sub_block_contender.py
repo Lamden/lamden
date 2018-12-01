@@ -56,25 +56,15 @@ class SubBlockContender(MessageBase):
         :return: A SubBlockContender object
         """
         assert isinstance(signature, MerkleSignature), "signature must be of MerkleSignature"
-        print("SBC 1")
         struct = subblock_capnp.SubBlockContender.new_message()
-        print("SBC 2")
         struct.init('merkleLeaves', len(merkle_leaves))
-        print("SBC 3")
         struct.init('transactions', len(transactions))
-        print("SBC 4")
         struct.resultHash = result_hash
-        print("SBC 5")
         struct.inputHash = input_hash
-        print("SBC 6")
         struct.merkleLeaves = merkle_leaves
-        print("SBC 7")
         struct.signature = signature.serialize()
-        print("SBC 8")
         struct.transactions = [tx.serialize() for tx in transactions]
-        print("SBC 9")
         struct.subBlockIdx = sub_block_index
-        print("SBC 10")
 
         return cls.from_data(struct)
 
