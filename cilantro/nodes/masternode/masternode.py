@@ -5,30 +5,12 @@ from cilantro.storage.vkbook import VKBook
 from cilantro.nodes.base import NodeBase
 from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
-from cilantro.nodes.masternode.master_store import MasterOps
 from cilantro.nodes.masternode.webserver import start_webserver
+
 import os
 
 
 class Masternode(NodeBase):
-    pass
-
-
-class MNBaseState(State):
-    pass
-
-
-@Masternode.register_init_state
-class MNBootState(MNBaseState):
-
-    def reset_attrs(self):
-        pass
-
-    @enter_from_any
-    def enter_any(self, prev_state):
-        # TODO -- get quorum before we transition to RunState
-
-        self.parent.transition(MNRunState)
 
     def start(self):
         self.tx_queue = Queue()
@@ -39,7 +21,6 @@ class MNBootState(MNBaseState):
             self._start_block_agg()  # This call blocks!
         else:
             self.log.warning("MN_MOCK env var is set! Not starting block aggregator or tx batcher.")
-
 
     def _start_web_server(self):
         self.log.debug("Masternode starting REST server on port 8080")
