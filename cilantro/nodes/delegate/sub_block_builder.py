@@ -239,24 +239,28 @@ class SubBlockBuilder(Worker):
         """
         self.log.info("Building sub block contender for input hash {}".format(cr_context.input_hash))
 
-        sb_data = cr_context.get_subblock_rep()
-        txs_data = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[2]).serialize() for d in sb_data]
-        txs = [d[0] for d in sb_data]
+        try:
+            sb_data = cr_context.get_subblock_rep()
+            txs_data = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[2]).serialize() for d in sb_data]
+            txs = [d[0] for d in sb_data]
 
-        merkle = MerkleTree.from_raw_transactions(txs_data)
-        signature = wallet.sign(self.signing_key, merkle.root)
-        merkle_sig = MerkleSignature.create(sig_hex=signature,
-                                            timestamp=str(time.time()),
-                                            sender=self.verifying_key)
+            merkle = MerkleTree.from_raw_transactions(txs_data)
+            signature = wallet.sign(self.signing_key, merkle.root)
+            merkle_sig = MerkleSignature.create(sig_hex=signature,
+                                                timestamp=str(time.time()),
+                                                sender=self.verifying_key)
 
-        sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=cr_context.input_hash,
-                                       merkle_leaves=merkle.leaves, sub_block_index=cr_context.sbb_idx,
-                                       signature=merkle_sig, transactions=txs)
+            sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=cr_context.input_hash,
+                                           merkle_leaves=merkle.leaves, sub_block_index=cr_context.sbb_idx,
+                                           signature=merkle_sig, transactions=txs)
 
-        # Send to block manager
-        self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
-                            .format(len(txs), cr_context.input_hash))
-        self._send_msg_over_ipc(sbc)
+            # Send to block manager
+            self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
+                                .format(len(txs), cr_context.input_hash))
+            self._send_msg_over_ipc(sbc)
+        except Exception as e:
+            self.log.fatal("GOT EXP BUILDING SB: {}".format(e))
+            raise e
 
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
     def _execute_next_sb(self, input_hash: str, tx_batch: TransactionBatch, sbb_idx: int):
