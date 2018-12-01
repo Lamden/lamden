@@ -118,7 +118,6 @@ class SubBlockBuilder(Worker):
             self.initialize_next_block_to_make(self._next_block_to_make.next_block_index + 1)
         return self._next_block_to_make.state == NextBlockState.READY
 
-
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
         self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
                       .format(ip, port, identity))
@@ -231,8 +230,8 @@ class SubBlockBuilder(Worker):
         sbc = SubBlockContender.create_empty_sublock(input_hash=cr_context.input_hash,
                                                      sub_block_index=cr_context.sbb_idx, signature=merkle_sig)
         # Send to block manager
+        self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(cr_context.input_hash))
         self._send_msg_over_ipc(sbc)
-
 
     def _create_sbc_from_batch(self, cr_context: CRContext):
         """
@@ -240,34 +239,39 @@ class SubBlockBuilder(Worker):
         """
         self.log.info("Building sub block contender for input hash {}".format(cr_context.input_hash))
 
-        sb_data = cr_context.get_subblock_rep()
-        txs_data = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[2]).serialize() for d in sb_data]
-        txs = [d[0] for d in sb_data]
+        try:
+            sb_data = cr_context.get_subblock_rep()
+            txs_data = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[2]).serialize() for d in sb_data]
+            txs = [d[0] for d in sb_data]
 
-        merkle = MerkleTree.from_raw_transactions(txs_data)
-        signature = wallet.sign(self.signing_key, merkle.root)
-        merkle_sig = MerkleSignature.create(sig_hex=signature,
-                                            timestamp=str(time.time()),
-                                            sender=self.verifying_key)
+            merkle = MerkleTree.from_raw_transactions(txs_data)
+            signature = wallet.sign(self.signing_key, merkle.root)
+            merkle_sig = MerkleSignature.create(sig_hex=signature,
+                                                timestamp=str(time.time()),
+                                                sender=self.verifying_key)
 
-        sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=cr_context.input_hash,
-                                       merkle_leaves=merkle.leaves, sub_block_index=cr_context.sbb_idx,
-                                       signature=merkle_sig, transactions=txs)
+            sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=cr_context.input_hash,
+                                           merkle_leaves=merkle.leaves, sub_block_index=cr_context.sbb_idx,
+                                           signature=merkle_sig, transactions=txs)
 
-        # Send to block manager
-        self._send_msg_over_ipc(sbc)
-
+            # Send to block manager
+            self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
+                                .format(len(txs), cr_context.input_hash))
+            self._send_msg_over_ipc(sbc)
+        except Exception as e:
+            self.log.fatal("GOT EXP BUILDING SB: {}".format(e))
+            raise e
 
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
     def _execute_next_sb(self, input_hash: str, tx_batch: TransactionBatch, sbb_idx: int):
-        self.log.debug("SBB {} attempting to build {} block with sub block index {}".format(self.sbb_index, "empty sub" if tx_batch.is_empty else "sub", sbb_idx))
+        self.log.debug("SBB {} attempting to build {} block with sub block index {}"
+                       .format(self.sbb_index, "empty sub" if tx_batch.is_empty else "sub", sbb_idx))
 
         if self.client.execute_sb(input_hash, tx_batch.transactions, self._create_empty_sbc \
                                      if tx_batch.is_empty else self._create_sbc_from_batch):
             self._next_block_to_make.state = NextBlockState.PROCESSED
             return True
         return False
-
 
     def _make_next_sb(self):
         if not self.move_next_block_to_make():
@@ -294,7 +298,6 @@ class SubBlockBuilder(Worker):
                 self.sb_managers[sb_idx].num_pending_sb += 1
                 self.log.debug("No transaction bag available yet. Wait ...")
                 # self.pending_block_index = self.cur_block_index
-
 
     def _make_next_sub_block(self):
         self.log.info("Merge pending db to master db")
