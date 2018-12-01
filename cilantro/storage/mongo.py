@@ -127,6 +127,9 @@ class MDB:
     @classmethod
     def get_dict(cls, capnp_struct):
         obj = capnp_struct._data.to_dict()
+
+        bk_hsh = capnp_struct._data.blockHash.decode()
+        cls.log.info("test blk_hash{}".format(bk_hsh))
         if isinstance(capnp_struct, BlockData):
             obj['transactions'] = capnp_struct.indexed_transactions
         return obj
@@ -134,6 +137,13 @@ class MDB:
     '''
         reading from index or store
     '''
+
+    def query_index(self, n_blks=None):
+        blk_delta = self.mn_coll_idx.find().limit(n_blks).sort("block_num", -1)
+        for blk in blk_delta:
+            self.log.info('requested block delta {}'.format(blk))
+        return blk_delta
+
     def query_db(self, type=None, query=None):
 
         if query is None:
@@ -154,9 +164,6 @@ class MDB:
                 self.log.info("result {}".format(x))
             return result
 
-    def query_index(self, blk_num = None, blk_hash = None, latest = True):
-        if latest is True:
-            pass
     def query_store(self, blk_num = None):
         response = self.mn_collection.find(blk_num)
 

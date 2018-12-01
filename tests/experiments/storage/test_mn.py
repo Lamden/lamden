@@ -63,6 +63,9 @@ def start_mn(verifing_key):
 
     log.info('print DB states')
     store.query_db()
+
+    log.info('print latest index entry')
+    store.query_index(n_blks = 1)
     socket.close()
 
 
