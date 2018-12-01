@@ -15,6 +15,7 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.batch import TransactionBatch, build_test_transaction_batch
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender, SubBlockContenderBuilder
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
+from cilantro.messages.transaction.contract import ContractTransactionBuilder
 from cilantro.messages.signals.delegate import MakeNextBlock
 #
 from unittest import TestCase
@@ -216,6 +217,41 @@ class TestSubBlockBuilder(TestCase):
 #
         # sbb._execute_next_sb.assert_called_with(input_hash1, tx_batch_env.message, 0)
         sbb._execute_next_sb.assert_called()
+
+
+    @SBBTester.test
+    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
+    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
+    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
+    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
+    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
+    @mock.patch("cilantro.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
+    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
+    def test_create_sbc_from_batch(self, *args):
+        num_txs = 4
+        input_hash = 'A' * 64
+        sbb_idx = 0
+        # create a few contract txs
+        contract_txs, states, statuses = [], [], []
+        for _ in range(num_txs):
+            contract_txs.append(ContractTransactionBuilder.create_currency_tx('A' * 64, 'B' * 64, 100))
+            states.append('SET MONEY OVER 9000')
+            statuses.append('SUCC')
+
+        sb_rep = [(c, status, state) for c, state, status, in zip(contract_txs, states, statuses)]
+
+        sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
+        sbb._send_msg_over_ipc = MagicMock()
+
+        mock_cr_ctx = MagicMock()
+        mock_cr_ctx.get_subblock_rep.return_value = sb_rep
+        mock_cr_ctx.input_hash = input_hash
+        mock_cr_ctx.sbb_idx = sbb_idx
+
+        sbb._create_sbc_from_batch(mock_cr_ctx)
+
+        # TODO assert tis was called with the expected SBC passed in
+        sbb._send_msg_over_ipc.assert_called()
 #
 #
 if __name__ == "__main__":

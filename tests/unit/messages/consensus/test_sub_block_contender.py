@@ -6,7 +6,10 @@ from cilantro.messages.transaction.data import TransactionDataBuilder
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from unittest import TestCase
+
 import unittest
+from unittest.mock import MagicMock
+
 import secrets
 from unittest.mock import patch
 
