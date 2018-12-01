@@ -54,6 +54,7 @@ class TransactionData(MessageBase):
     def __hash__(self):
         return int(self.hash,16)
 
+
 class TransactionDataBuilder:
     @classmethod
     def create_random_tx(cls, status='SUCCESS', state='SET x 1'):
