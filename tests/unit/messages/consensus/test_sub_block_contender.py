@@ -84,7 +84,7 @@ class TestSubBlockContender(TestCase):
         if len(sbc.merkle_leaves) > 0:
             print("This SubBlockContender have num of merkle leaves!")
             print(len(sbc.merkle_leaves))
-            if MerkleTree.verify_tree_from_bytes(sbc.merkle_leaves, root=sbc.result_hash):
+            if MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash):
                 for tx in sbc.transactions:
                     if not tx.hash in sbc.merkle_leaves:
                         print('Received malicious transactions that does not match any merkle leaves!')
