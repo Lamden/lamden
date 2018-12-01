@@ -58,5 +58,7 @@ class TestContractTransaction(TestCase):
         self.assertEquals(contract_tx.kwargs['to'], vk2)
         self.assertEquals(contract_tx.kwargs['amount'], amount)
 
+        clone = ContractTransaction.from_bytes(contract_tx.serialize())
+        self.assertEqual(contract_tx, clone)
 
 

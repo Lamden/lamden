@@ -23,6 +23,10 @@ class TransactionData(MessageBase):
         assert type(contract_tx) in MessageBase.registry, "MessageBase class {} not found in registry {}"\
             .format(type(contract_tx), MessageBase.registry)
 
+        # DEBUG
+        assert type(contract_tx) is ContractTransaction, "Yo this thing {} is not a contract tx".format(contract_tx)
+        # END DEBUG
+
         data = transaction_capnp.TransactionData.new_message()
         data.contractTransaction = contract_tx._data
         data.status = status
