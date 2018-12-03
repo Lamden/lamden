@@ -2,7 +2,7 @@ from cilantro.utils.lazy_property import lazy_property
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.utils import validate_hex
 from cilantro.protocol import wallet
-from cilantro.storage.templating import ContractTemplate
+from cilantro.utils import is_valid_hex
 from cilantro.protocol.pow import SHA3POW
 from decimal import *
 import random
@@ -27,16 +27,12 @@ class ContractTransaction(TransactionBase):
     represents the code of the smart contract to be run, as plain text.
     """
 
-    def validate_payload(self):
-        validate_hex(self.sender, 64, 'sender')
-        assert self.gas_supplied > 0, "Must supply positive gas amount u silly billy"
-
     @classmethod
     def _deserialize_data(cls, data: bytes):
         return transaction_capnp.ContractTransaction.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, sender_sk: str, gas_supplied: int, contract_name: str,  func_name: str, *args, **kwargs):
+    def create(cls, sender_sk: str, gas_supplied: int, contract_name: str,  func_name: str, nonce: str, *args, **kwargs):
         assert len(args) == 0, "Contract must be created with key word args only (no positional args sorry)"
         assert gas_supplied > 0, "Must supply positive gas amount u silly billy"
 
@@ -46,6 +42,7 @@ class ContractTransaction(TransactionBase):
         struct.payload.gasSupplied = gas_supplied
         struct.payload.contractName = contract_name
         struct.payload.functionName = func_name
+        struct.payload.nonce = nonce
 
         struct.payload.kwargs.init('entries', len(kwargs))
         for i, key in enumerate(kwargs):
@@ -80,10 +77,6 @@ class ContractTransaction(TransactionBase):
 
         return d
 
-    @lazy_property
-    def sender(self):
-        return self._data.payload.sender.decode()
-
     @property
     def contract_name(self):
         return self._data.payload.contractName
@@ -91,10 +84,6 @@ class ContractTransaction(TransactionBase):
     @property
     def func_name(self):
         return self._data.payload.functionName
-
-    @property
-    def gas_supplied(self):
-        return self._data.payload.gasSupplied
 
 
 class ContractTransactionBuilder:
@@ -105,10 +94,13 @@ class ContractTransactionBuilder:
     CURRENCY_CONTRACT_NAME = 'kv_currency'
 
     @staticmethod
-    def create_currency_tx(sender_sk: str, receiver_vk: str, amount: Union[int, Decimal], gas=1000):
+    def create_currency_tx(sender_sk: str, receiver_vk: str, amount: Union[int, Decimal], gas=1000, nonce=None):
+        vk = wallet.get_vk(sender_sk)
+        nonce = nonce or "{}:{}".format(vk, 'A' * 64)
+
         return ContractTransaction.create(sender_sk=sender_sk, gas_supplied=gas,
                                           contract_name=ContractTransactionBuilder.CURRENCY_CONTRACT_NAME,
-                                          func_name='transfer', to=receiver_vk, amount=amount)
+                                          func_name='transfer', nonce=nonce, to=receiver_vk, amount=amount)
 
     @staticmethod
     def random_currency_tx():
@@ -119,8 +111,3 @@ class ContractTransactionBuilder:
         amount = random.randint(1, 2 ** 8)
         return ContractTransactionBuilder.create_currency_tx(sender[0], receiver[1], amount)
 
-    # @staticmethod
-    # def create_dummy_tx(sender_sk: str, receiver_vk: str, fail: bool):
-    #
-    #     code_str = ContractTemplate.interpolate_template('dummy', fail=fail)
-    #     return ContractTransactionBuilder.create_contract_tx(sender_sk, code_str)

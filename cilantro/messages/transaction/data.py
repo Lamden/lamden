@@ -1,11 +1,16 @@
 from cilantro.messages.base.base import MessageBase
-from cilantro.messages.transaction.contract import ContractTransaction, ContractTransactionBuilder
+from cilantro.messages.transaction.contract import ContractTransaction, TransactionBase, ContractTransactionBuilder
 from cilantro.utils.lazy_property import lazy_property
 from cilantro.utils.hasher import Hasher
 import uuid
 from enum import Enum, auto
 import capnp
 import transaction_capnp
+
+
+class Status(Enum):
+    SUCCESS = auto()
+    FAILURE = auto()
 
 
 class TransactionData(MessageBase):
@@ -18,8 +23,8 @@ class TransactionData(MessageBase):
         return transaction_capnp.TransactionData.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, contract_tx: MessageBase, status: str, state: str):
-        assert issubclass(type(contract_tx), ContractTransaction), "contract_tx must be of type ContractTransaction"
+    def create(cls, contract_tx: TransactionBase, status: str, state: str):
+        assert issubclass(type(contract_tx), TransactionBase), "contract_tx must be a subclass of TransactionBase"
         assert type(contract_tx) in MessageBase.registry, "MessageBase class {} not found in registry {}"\
             .format(type(contract_tx), MessageBase.registry)
 
@@ -53,6 +58,7 @@ class TransactionData(MessageBase):
 
     def __hash__(self):
         return int(self.hash,16)
+
 
 class TransactionDataBuilder:
     @classmethod
