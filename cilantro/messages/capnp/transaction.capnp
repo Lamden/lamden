@@ -19,7 +19,22 @@ struct ContractTransaction {
         contractName @1 :Text;
         functionName @2 :Text;
         gasSupplied @3 :UInt64;
-        kwargs @4 :V.Map(Text, V.Value);
+        nonce @4 :Text;
+        kwargs @5 :V.Map(Text, V.Value);
+    }
+}
+
+
+struct PublishTransaction {
+    metadata @0: MetaData;
+    payload @1: Payload;
+
+    struct Payload {
+        sender @0 :Data;
+        contractName @1 :Text;
+        contractCode @2 :Text;
+        gasSupplied @3 :UInt64;
+        nonce @4 :Text;
     }
 }
 

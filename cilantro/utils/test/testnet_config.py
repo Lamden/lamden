@@ -35,6 +35,9 @@ def set_testnet_config(testnet_json_file='2-2-4.json'):
     with open(CONFIG_FILE_PATH, 'w+') as f:
         config.write(f)
 
+    from cilantro.constants.testnet import set_testnet_nodes
+    set_testnet_nodes()
+
 
 def get_testnet_json_path():
     config = configparser.ConfigParser()

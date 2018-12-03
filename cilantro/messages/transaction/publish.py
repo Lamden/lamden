@@ -45,3 +45,5 @@ class PublishTransaction(TransactionBase):
     @property
     def contract_code(self):
         return self._data.payload.contractCode
+
+

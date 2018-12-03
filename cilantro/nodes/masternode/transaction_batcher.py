@@ -11,6 +11,7 @@ from cilantro.messages.transaction.batch import TransactionBatch
 import zmq.asyncio
 import asyncio
 
+
 class TransactionBatcher(Worker):
 
     def __init__(self, queue, ip, *args, **kwargs):

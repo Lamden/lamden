@@ -34,16 +34,14 @@ class Hasher:
         from cilantro.messages.transaction.data import TransactionData
         from cilantro.utils import int_to_bytes
 
+        assert data is not None, "Cannot hash a None type!"
+
         t = type(data)
 
         if t is str:
             data = data.encode()
         elif t is int:
             data = int_to_bytes(data)
-            # try:
-            #     data = bytes.fromhex(hex(data)[2:])
-            # except:
-            #     data = bytes.fromhex('0' + hex(data)[2:])
         elif issubclass(t, MessageBase):
             data = data.serialize()
 

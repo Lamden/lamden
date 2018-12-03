@@ -71,25 +71,6 @@ class God:
 
     def __init__(self, loop=None):
         raise NotImplementedError("use class methods. __init__ does not work rn")
-    #     self.log = get_logger("GOD")
-    #
-    #     self.loop = loop or asyncio.new_event_loop()
-    #     asyncio.set_event_loop(self.loop)
-    #
-    #
-    #     # a dict of composer_sk to composer object
-    #     self.composers = {}
-    #
-    # def _get_or_create_composer(self, signing_key):
-    #     # TODO fix this ... this is horribly old and likely broken untested code
-    #     if signing_key in self.composers:
-    #         self.log.debug("Existing Composer object found for signing key {}".format(signing_key))
-    #         return self.composers[signing_key]
-    #     else:
-    #         self.log.debug("Creating new Composer object for signing key {}".format(signing_key))
-    #         c = Composer(manager=self.interface, signing_key=signing_key, name='God-Composer-{}'.format(signing_key[:4]))
-    #         self.composers[signing_key] = c
-    #         return c
 
     @classmethod
     def teardown_all(cls, masternode_url):
@@ -104,21 +85,13 @@ class God:
     @classmethod
     def set_mn_url(cls, ip='localhost', port=8080):
         raise NotImplementedError("This is deprecated!!!")
-        # url = "http://{}:{}".format(ip, port)
-        # cls.log.notice("Setting masternode URL to {}".format(url))
-        # cls.mn_urls = url
 
     @classmethod
-    def create_currency_tx(cls, sender: tuple, receiver: tuple, amount: int):
+    def create_currency_tx(cls, sender: tuple, receiver: tuple, amount: int, nonce=None):
         if type(receiver) is tuple:
             receiver = receiver[1]
 
-        return ContractTransactionBuilder.create_currency_tx(sender[0], receiver, amount)
-
-    @classmethod
-    def send_std_tx(cls, sender: tuple, receiver: tuple, amount: int):
-        tx = cls.create_std_tx(sender, receiver, amount)
-        cls.send_tx(tx)
+        return ContractTransactionBuilder.create_currency_tx(sender[0], receiver, amount, nonce=nonce)
 
     @classmethod
     def send_currency_contract(cls, sender: tuple, receiver: tuple, amount:int):
@@ -127,18 +100,13 @@ class God:
 
     @classmethod
     def send_tx(cls, tx: TransactionBase):
-        if cls.multi_master:
-            mn_url = cls.mn_urls[cls._current_mn_idx]
-            cls._current_mn_idx = (cls._current_mn_idx + 1) % len(cls.mn_urls)
-            cls.log.debug("Multi-master detected. Using Masternode at IP {}".format(mn_url))
-        else:
-            mn_url = cls.mn_urls[0]
-
+        mn_url = cls._get_mn_url()
         try:
             r = requests.post(mn_url, data=TransactionContainer.create(tx).serialize())
             cls.log.spam("POST request to MN at URL {} has status code: {}".format(mn_url, r.status_code))
         except Exception as e:
             cls.log.warning("Error attempt to send transaction to Masternode at URL {}\nerror={}".format(mn_url, e))
+        return r
 
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
@@ -201,11 +169,16 @@ class God:
         cls.log.important2("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
 
     @classmethod
-    def random_std_tx(cls):
-        sender, receiver = random.sample(ALL_WALLETS, 2)
-        amount = random.randint(1, 1260)
+    def request_nonce(cls, vk):
+        mn_url = cls._get_mn_url() + '/nonce'
+        try:
+            r = requests.get(mn_url, json={'verifyingKey': vk})
+            cls.log.debugv("GET request to MN at URL {} has status code: {}".format(mn_url, r.status_code))
+            return r.json()
 
-        return cls.create_std_tx(sender=sender, receiver=receiver, amount=amount)
+        except Exception as e:
+            cls.log.warning("Error attempt to send transaction to Masternode at URL {}\nerror={}".format(mn_url, e))
+            return 'error: {}'.format(e)
 
     @classmethod
     def random_contract_tx(cls):
@@ -214,11 +187,13 @@ class God:
 
         return cls.create_currency_tx(sender=sender, receiver=receiver, amount=amount)
 
-    def send_block_contender(self, url, bc):
-        pass
-
-    def send_merkle_sig(self, url, merkle_sig):
-        pass
-
-    def send_status_request(self, url, status_req):
-        pass
+    @classmethod
+    def _get_mn_url(cls):
+        if cls.multi_master:
+            mn_url = cls.mn_urls[cls._current_mn_idx]
+            cls._current_mn_idx = (cls._current_mn_idx + 1) % len(cls.mn_urls)
+            cls._current_mn_idx += 1
+            cls.log.debug("Multi-master detected. Using Masternode at IP {}".format(mn_url))
+        else:
+            mn_url = cls.mn_urls[0]
+        return mn_url
