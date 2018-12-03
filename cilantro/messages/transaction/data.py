@@ -1,4 +1,5 @@
 from cilantro.messages.base.base import MessageBase
+from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.transaction.contract import ContractTransaction, ContractTransactionBuilder
 from cilantro.utils.lazy_property import lazy_property
 from cilantro.utils.hasher import Hasher
@@ -19,13 +20,12 @@ class TransactionData(MessageBase):
 
     @classmethod
     def create(cls, contract_tx: MessageBase, status: str, state: str):
-        assert issubclass(type(contract_tx), ContractTransaction), "contract_tx must be of type ContractTransaction"
+
+        # TODO this must be agnostic to all transctions types, not just ContractTransactions (publish tx too)
+
+        assert issubclass(type(contract_tx), TransactionBase), "contract_tx must a subclass of TransactionBase"
         assert type(contract_tx) in MessageBase.registry, "MessageBase class {} not found in registry {}"\
             .format(type(contract_tx), MessageBase.registry)
-
-        # DEBUG
-        assert type(contract_tx) is ContractTransaction, "Yo this thing {} is not a contract tx".format(contract_tx)
-        # END DEBUG
 
         data = transaction_capnp.TransactionData.new_message()
         data.contractTransaction = contract_tx._data

@@ -70,14 +70,7 @@ class TransactionBase(MessageBase):
 
     @property
     def proof(self):
-        # return self._data.metadata.proof.decode()
-        # DEBUG
-        try:
-            return self._data.metadata.proof.decode()
-        except Exception as e:
-            raise e
-
-        # END DEBUG
+        return self._data.metadata.proof.decode()
 
     @property
     def signature(self):
