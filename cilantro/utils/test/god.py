@@ -87,11 +87,11 @@ class God:
         raise NotImplementedError("This is deprecated!!!")
 
     @classmethod
-    def create_currency_tx(cls, sender: tuple, receiver: tuple, amount: int):
+    def create_currency_tx(cls, sender: tuple, receiver: tuple, amount: int, nonce=None):
         if type(receiver) is tuple:
             receiver = receiver[1]
 
-        return ContractTransactionBuilder.create_currency_tx(sender[0], receiver, amount)
+        return ContractTransactionBuilder.create_currency_tx(sender[0], receiver, amount, nonce=nonce)
 
     @classmethod
     def send_currency_contract(cls, sender: tuple, receiver: tuple, amount:int):
@@ -106,6 +106,7 @@ class God:
             cls.log.spam("POST request to MN at URL {} has status code: {}".format(mn_url, r.status_code))
         except Exception as e:
             cls.log.warning("Error attempt to send transaction to Masternode at URL {}\nerror={}".format(mn_url, e))
+        return r
 
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
@@ -169,15 +170,15 @@ class God:
 
     @classmethod
     def request_nonce(cls, vk):
-        mn_url = cls._get_mn_url() + '/'
+        mn_url = cls._get_mn_url() + '/nonce'
         try:
-            r = requests.get(mn_url, params={'verifyingKey': vk})
-            cls.log.spam("GET request to MN at URL {} has status code: {}".format(mn_url, r.status_code))
+            r = requests.get(mn_url, json={'verifyingKey': vk})
+            cls.log.debugv("GET request to MN at URL {} has status code: {}".format(mn_url, r.status_code))
+            return r.json()
+
         except Exception as e:
             cls.log.warning("Error attempt to send transaction to Masternode at URL {}\nerror={}".format(mn_url, e))
-
-        return r.json()
-        # assert 'success' in r.json
+            return 'error: {}'.format(e)
 
     @classmethod
     def random_contract_tx(cls):

@@ -20,8 +20,8 @@ import os
 
 from cilantro.nodes.masternode.mn_api import StorageDriver
 
-app = Sanic(__name__)
-log = get_logger(__name__)
+app = Sanic("MN-WebServer")
+log = get_logger("MN-WebServer")
 
 if os.getenv('NONCE_DISABLED'):
     log.warning("NONCE_DISABLED env var set! Nonce checking will be disabled!")

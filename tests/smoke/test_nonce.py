@@ -45,16 +45,29 @@ def run_user():
     from cilantro.protocol import wallet
     import logging
 
+    # Fix masternode URL on God
+    God.multi_master = False
+    God.mn_urls = ['http://172.29.0.1:8080']
+
     log = get_logger("TestUser")
     # overwrite_logger_level(logging.WARNING)
 
     sk, vk = wallet.new()
+    sk2, vk2 = wallet.new()
 
+    # Request the nonce
     log.important("requesting nonce for vk: {}".format(vk))
     nonce = God.request_nonce(vk)
     log.important("got nonce return {}".format(nonce))
+    assert 'success' in nonce, "'success' key not in nonce payload {}".format(nonce)
+    assert 'nonce' in nonce, "'nonce' key not in nonce payload {}".format(nonce)
 
-    input("dont die pls")
+    log.notice("creating tx with nonce {}".format(nonce['nonce']))
+    tx = God.create_currency_tx(sender=(sk, vk), receiver=(sk2, vk2), amount=10, nonce=nonce['nonce'])
+    log.important("sending tx: {}".format(tx))
+    r = God.send_tx(tx)
+
+    log.important2("Got reply from sending tx: {} ... with json {}".format(r, r.json()))
 
 
 class TestNonce(BaseNetworkTestCase):
