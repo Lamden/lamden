@@ -7,8 +7,8 @@ then
 fi
 
 # Find a free port to use
-port=6397
-pw=
+port=$(python3 ./scripts/free_port.py)
+pw=$(python3 ./scripts/random_password.py)
 
 # Configure env files
 export PYTHONPATH=$(pwd)
