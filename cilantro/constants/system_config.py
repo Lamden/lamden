@@ -7,6 +7,9 @@ NUM_MASTERS = len(TESTNET_MASTERNODES)
 NUM_WITNESSES = len(TESTNET_WITNESSES)
 NUM_DELEGATES = len(TESTNET_DELEGATES)
 
+# How long each Node will wait for the rest of the network to come online before an error is raised
+MAX_BOOT_WAIT = 180
+
 
 # ///////////////////////////////////////////////
 # Consensus
@@ -51,13 +54,4 @@ MIN_NEW_BLOCK_MN_QOURUM = math.ceil(NUM_MASTERS * 2 / 3)  # Number of NewBlockNo
 # ///////////////////////////////////////////////
 # Seneca Interpreter
 # ///////////////////////////////////////////////
-# If MOCK_INTERPRET_RANDOM_MODE=False, we use MOCK_INTERPRET_TIME
-MOCK_INTERPRET_TIME = 0.05
-
-# If MOCK_INTERPRET_RANDOM_MODE=True, we use a random value between MIN_MOCK_INTERPRET_TIME and MAX_MOCK_INTERPRET_TIME
-MOCK_INTERPRET_RANDOM_MODE = True
-MIN_MOCK_INTERPRET_TIME = 0.01
-MAX_MOCK_INTERPRET_TIME = 0.1
-
-# This level of decimal precision for fixed point
 DECIMAL_PRECISION = 18

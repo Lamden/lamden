@@ -60,7 +60,7 @@ class Network(object):
         self.tasks = [
             self.protocol.listen(),
             self.refresh_table(),
-            self.saveStateRegularly()
+            # self.saveStateRegularly()
         ]
 
     def start(self):
@@ -85,7 +85,6 @@ class Network(object):
         await asyncio.gather(*ds)
         await asyncio.sleep(3600)
         await self.refresh_table()
-
 
     def bootstrappableNeighbors(self):
         """
@@ -125,7 +124,6 @@ class Network(object):
             processed.add(addr.vk)
             await self.protocol.callFindNode(addr, self.node)
         
-
     async def bootstrap_node(self, addr):
         result = await self.protocol.ping(addr, self.node.id)
         return Node(result[1], addr[0], addr[1]) if result[0] else None

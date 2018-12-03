@@ -163,6 +163,10 @@ class TestBlockAggregatorStorage(TestCase):
     def setUp(self):
         MDB.reset_db()
 
+    @classmethod
+    def setUpClass(cls):
+        MDB.start_db()
+
     @BlockAggTester.test
     @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)
     @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)

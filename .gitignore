@@ -36,12 +36,16 @@ seneca
 *.dat
 **/profiles/**
 **/tmp_exec_code*.py
+data
 
 # Config files
 db_conf.ini
+testnet_configs/testnet.ini
 
 # Docker
 docker-compose.yml
+dump.rdb
+docker/redis.env
 
 # Docs
 docs/sphinx/_build

@@ -6,6 +6,7 @@ COPY . /app
 WORKDIR /app
 
 ENV DEBIAN_FRONTEND noninteractive
+ENV PYTHONPATH /app/venv/src/seneca:/app/venv/src/vmnet
 
 # Install Python requirements
 RUN apt-get update \
