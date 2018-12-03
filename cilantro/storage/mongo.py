@@ -69,7 +69,7 @@ class MDB:
                 cls.mn_client_idx = MongoClient(uri)
                 cls.mn_db_idx = MongoClient(uri).get_database()
                 cls.mn_coll_idx = cls.mn_db_idx['index']
-                idx = {'block_num': cls.genesis_blk.get('blockNum'), 'block_hash': cls.genesis_blk.get('blockHash'),
+                idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash'),
                        'mn_sign': cls.genesis_blk.get('masternodeSignature')}
                 cls.log.debug('print index {}'.format(idx))
 
@@ -139,7 +139,7 @@ class MDB:
     '''
 
     def query_index(self, n_blks=None):
-        blk_delta = self.mn_coll_idx.find().limit(n_blks).sort("block_num", -1)
+        blk_delta = self.mn_coll_idx.find().limit(n_blks).sort("blockNum",-1)
         for blk in blk_delta:
             self.log.info('requested block delta {}'.format(blk))
         return blk_delta

@@ -111,7 +111,15 @@ class MasterOps:
         return mn_list
 
     @classmethod
-    def evaluate_wr(cls, entry=None):
+    def evaluate_wr(cls, entry=None, node_id=None):
+        """
+        Function is used to check if currently node is suppose to write given entry
+
+        :param entry: given block input to be stored
+        :param node_id: master id None is default current master, if specified is for catch up case
+        :return:
+        """
+
         if entry is None:
             return False
 
@@ -124,6 +132,14 @@ class MasterOps:
         pool_sz = cls.rep_pool_sz()
         mn_idx = cls.mn_id % pool_sz
         writers = entry.get('blockNum') % pool_sz
+
+        # TODO
+        # need gov here to check if given node is voted out
+
+        if node_id:
+            mn_idx = node_id % pool_sz  # overwriting mn_idx
+            if mn_idx == writers:
+                return True
 
         if mn_idx == writers:
             MDB.insert_record(entry)
