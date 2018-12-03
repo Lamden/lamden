@@ -121,9 +121,12 @@ class NodeBase(Worker):
 
         if vk in VKBook.get_witnesses():
             self.online_wits.add(vk)
+            time.sleep(1)
         if vk in VKBook.get_delegates():
             self.online_dels.add(vk)
+            time.sleep(1)
         if vk in VKBook.get_masternodes():
             self.online_mns.add(vk)
+            time.sleep(1)
 
 
