@@ -47,7 +47,6 @@ jobs:
       - run:
           name: Run Tests
           command: |
-            ./redis-4.0.6/src/redis-server --daemonize yes
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
             python3 ./scripts/make_test_config.py
