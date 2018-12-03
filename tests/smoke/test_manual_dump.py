@@ -27,6 +27,9 @@ def run_mn(slot_num):
     import os
     import logging
 
+    # Disable nonces
+    os.environ["NONCE_DISABLED"] = "1"
+
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
     overwrite_logger_level(11)
@@ -87,7 +90,6 @@ class TestManualDump(BaseNetworkTestCase):
     @vmnet_test(run_webui=True)
     def test_dump(self):
         log = get_logger("Dumpatron")
-        log.important3("DUMPATRON REPORTING FOR DUTY")
 
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
