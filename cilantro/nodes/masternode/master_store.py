@@ -111,7 +111,15 @@ class MasterOps:
         return mn_list
 
     @classmethod
-    def evaluate_wr(cls, entry=None):
+    def evaluate_wr(cls, entry=None, node_id=None):
+        """
+        Function is used to check if currently node is suppose to write given entry
+
+        :param entry: given block input to be stored
+        :param node_id: master id None is default current master, if specified is for catch up case
+        :return:
+        """
+
         if entry is None:
             return False
 
@@ -125,6 +133,14 @@ class MasterOps:
         mn_idx = cls.mn_id % pool_sz
         writers = entry.get('blockNum') % pool_sz
 
+        # TODO
+        # need gov here to check if given node is voted out
+
+        if node_id:
+            mn_idx = node_id % pool_sz  # overwriting mn_idx
+            if mn_idx == writers:
+                return True
+
         if mn_idx == writers:
             MDB.insert_record(entry)
 
@@ -137,17 +153,33 @@ class MasterOps:
     @classmethod
     def update_idx(cls, inserted_blk=None, node_list=None):
 
-        entry = {'block_num': inserted_blk.get('blockNum'), 'block_hash': inserted_blk.get('blockHash'),
+        entry = {'blockNum': inserted_blk.get('blockNum'), 'blockHash': inserted_blk.get('blockHash'),
                  'master_nodes': node_list}
         MDB.insert_idx_record(entry)
+        return
 
     '''
         Read for particular block hash, expects to return empty if there is no block stored locally
     '''
     @staticmethod
-    def read_store_entry(block_hash):
-        my_query = {'block_hash', block_hash}
+    def get_full_blk(blk_num=None, blk_hash=None):
+        if blk_hash:
+            my_query = {'blockHash', blk_hash}
+
+        if blk_num:
+            my_query = {'blockNum', blk_num}
+
         outcome = MDB.query_db(query=my_query)
         return outcome
 
+    @staticmethod
+    def get_blk_idx(n_blk=None):
+        idx_entry = MDB.query_index(n_blks=n_blk)
+        return idx_entry
 
+    @staticmethod
+    def get_blk_num_frm_blk_hash(blk_hash=None):
+        my_query = {'blockHash', blk_hash}
+        outcome = MDB.query_db(type='idx', query = my_query)
+        blk_num = outcome.get('blockNum')
+        return blk_num

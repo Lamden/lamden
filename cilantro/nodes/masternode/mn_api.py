@@ -40,29 +40,42 @@ class StorageDriver:
         #     query['status'] = status
         # return MDB.mn_db['transactions'].find(query)
 
+    '''
+        api returns full block if stored locally else would return list of Master nodes responsible for
+        it
+    '''
+    @classmethod
+    def get_latest_block(cls, my_key=None):
+        idx_entry = MasterOps.get_blk_idx(n_blks=1, my_key=my_key)
+
+        for key in idx_entry.get('master_nodes'):
+            if key == my_key:
+                blk_entry = MasterOps.get_full_blk(blk_num = idx_entry.get('blockNum'))
+                return blk_entry
+
+        # return idx entry if blk is not stored locally
+        return idx_entry
+
     @classmethod
     def get_latest_block_hash(cls):
-        return '0' * 64
-        # TODO verify
-        pass
-        # state = MDB.mn_db['state'].find_one({'_id': cls.state_id})
-        # if state:
-        #     return state['lastest_block_hash']
-        # else:
-        #     return GENESIS_HASH
+        idx_entry = MasterOps.get_blk_idx(n_blk=1)
+        blk_hash = idx_entry.get('blockHash')
+        return blk_hash
 
     @classmethod
-    def get_n_blocks(cls, block_hash):
-        # TODO verify
-        pass
-        # block_dict = MDB.mn_db['blocks'].find_one({
-        #     'block_hash': start_block_hash
-        # })
-        # assert block_dict.get(block_num), 'Block for block_hash "{}" is not found'.format(start_block_hash)
-        # return MDB.mn_db['blocks'].find({
-        #     'block_num': {'$gt': block_dict['block_num']}
-        # })
+    def catch_me_up(cls, node_type=None, my_blk_hash=None):
+        if node_type is 'mn':
+            given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = my_blk_hash)
+            latest_blk = MasterOps.get_blk_idx(n_blks = 1)
+            latest_blk_num = latest_blk.get('blockNum')
 
-    @classmethod
-    def get_n_index(cls):
-        pass
+            if given_blk_num == latest_blk_num:
+                cls.log.debug('given block is already latest')
+                return None
+            else:
+                idx_delta = MasterOps.get_blk_idx(n_blks = (latest_blk_num - given_blk_num))
+                return idx_delta
+
+        if node_type is 'dn':
+            # TODO
+            pass
