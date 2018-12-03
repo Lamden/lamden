@@ -1,4 +1,5 @@
 from cilantro.messages.base.base import MessageBase
+from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.messages.transaction.ordering import build_test_container
 from cilantro.utils import lazy_property
@@ -39,7 +40,7 @@ class TransactionBatch(MessageBase):
         return [OrderingContainer.from_data(oc) for oc in self._data.transactions]
 
     @lazy_property
-    def transactions(self) -> List[OrderingContainer]:
+    def transactions(self) -> List[TransactionBase]:
         return [ordered_tx.transaction for ordered_tx in self.ordered_transactions]
 
     @property
