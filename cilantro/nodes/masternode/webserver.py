@@ -2,7 +2,7 @@ from cilantro.logger.base import get_logger, overwrite_logger_level
 
 from sanic import Sanic
 from sanic.response import json, text
-from sanic.exceptions import ServerError
+from sanic_limiter import Limiter, get_remote_address
 
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.publish import PublishTransaction
@@ -21,6 +21,8 @@ import os
 from cilantro.nodes.masternode.mn_api import StorageDriver
 
 app = Sanic("MN-WebServer")
+limiter = Limiter(app, key_func=get_remote_address)
+
 log = get_logger("MN-WebServer")
 
 if os.getenv('NONCE_DISABLED'):
@@ -30,6 +32,7 @@ else:
 
 
 @app.route("/", methods=["POST",])
+@limiter.limit("60/minute")
 async def submit_transaction(request):
     if app.queue.full():
         return json({'error': "Queue full! Cannot process any more requests"})
@@ -66,6 +69,7 @@ async def submit_transaction(request):
 
 
 @app.route("/nonce", methods=['GET',])
+@limiter.limit("60/minute")
 async def request_nonce(request):
     user_vk = request.json.get('verifyingKey')
     if not user_vk:
@@ -77,12 +81,14 @@ async def request_nonce(request):
 
 
 @app.route("/latest_block", methods=["GET",])
+@limiter.limit("10/minute")
 async def get_latest_block(request):
     latest_block_hash = StorageDriver.get_latest_block_hash()
     return text('{}'.format(latest_block_hash))
 
 
 @app.route('/blocks', methods=["GET", ])
+@limiter.limit("10/minute")
 async def get_block(request):
     if 'number' in request.json:
         num = request.json['number']
@@ -99,6 +105,7 @@ async def get_block(request):
 
 
 @app.route('/transaction', methods=['GET', ])
+@limiter.limit("60/minute")
 async def get_transaction(request):
     _hash = request.json['hash']
     tx = StorageDriver.get_transactions(raw_tx_hash=_hash)
@@ -108,6 +115,7 @@ async def get_transaction(request):
 
 
 @app.route('/transactions', methods=['GET', ])
+@limiter.limit("60/minute")
 async def get_transactions(request):
     _hash = request.json['hash']
     txs = StorageDriver.get_transactions(block_hash=_hash)
