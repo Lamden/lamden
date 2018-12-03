@@ -69,7 +69,7 @@ class MDB:
                 cls.mn_client_idx = MongoClient(uri)
                 cls.mn_db_idx = MongoClient(uri).get_database()
                 cls.mn_coll_idx = cls.mn_db_idx['index']
-                idx = {'block_num': cls.genesis_blk.get('blockNum'), 'block_hash': cls.genesis_blk.get('blockHash'),
+                idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash'),
                        'mn_sign': cls.genesis_blk.get('masternodeSignature')}
                 cls.log.debug('print index {}'.format(idx))
 
@@ -127,6 +127,9 @@ class MDB:
     @classmethod
     def get_dict(cls, capnp_struct):
         obj = capnp_struct._data.to_dict()
+
+        bk_hsh = capnp_struct._data.blockHash.decode()
+        cls.log.info("test blk_hash{}".format(bk_hsh))
         if isinstance(capnp_struct, BlockData):
             obj['transactions'] = capnp_struct.indexed_transactions
         return obj
@@ -134,6 +137,16 @@ class MDB:
     '''
         reading from index or store
     '''
+
+    def query_index(self, n_blks=None):
+        if n_blks is None:
+            return
+
+        blk_delta = self.mn_coll_idx.find().limit(n_blks).sort("blockNum",-1)
+        for blk in blk_delta:
+            self.log.info('requested block delta {}'.format(blk))
+        return blk_delta
+
     def query_db(self, type=None, query=None):
 
         if query is None:
@@ -154,9 +167,6 @@ class MDB:
                 self.log.info("result {}".format(x))
             return result
 
-    def query_index(self, blk_num = None, blk_hash = None, latest = True):
-        if latest is True:
-            pass
     def query_store(self, blk_num = None):
         response = self.mn_collection.find(blk_num)
 

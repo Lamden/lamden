@@ -63,6 +63,9 @@ def start_mn(verifing_key):
 
     log.info('print DB states')
     store.query_db()
+    #bhash = StorageDriver.get_latest_block_hash()
+    #log.info('print latest index entry {}'.format(bhash))
+
     socket.close()
 
 
