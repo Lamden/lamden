@@ -9,7 +9,6 @@ from vmnet.testcase import BaseNetworkTestCase
 from cilantro.utils.test.mp_test_case import vmnet_test
 from cilantro.constants.testnet import TESTNET_MASTERNODES
 from cilantro.storage.mongo import MDB
-from cilantro.nodes.masternode.masternode import MasterOps
 from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.messages.block_data.block_data import BlockDataBuilder
 
