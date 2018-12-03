@@ -18,7 +18,7 @@ default_directory = '~/cilantro'
 default_crawl = '127.0.0.1'
 
 _cil_text = \
-    '''
+    r'''
           _ _             _
       ___(_) | __ _ _ __ | |_ _ __ ___
      / __| | |/ _` | '_ \| __| '__/ _ \
