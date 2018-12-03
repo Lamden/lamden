@@ -65,8 +65,8 @@ class Discovery:
             cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
             cls.connect(get_ip_range(start_ip))
             try_count += 1
-            if (is_masternode and len(VKBook.get_masternodes()) == 1)) or \
-                    (len(cls.discovered_nodes)) == 0 and is_masternode and cls.is_connected):
+            if (is_masternode and len(VKBook.get_masternodes()) == 1) or \
+                    (len(cls.discovered_nodes) == 0 and is_masternode and cls.is_connected):
                 cls.log.important('Bootstrapping as the only masternode.'.format(
                     len(cls.discovered_nodes)
                 ))
@@ -123,7 +123,6 @@ class Discovery:
 #            MIN_BOOTSTRAP_NODES
 #        ))
 #        return False
-
 
     @classmethod
     def request(cls, ip):
