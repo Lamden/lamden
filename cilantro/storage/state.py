@@ -22,3 +22,5 @@ class StateDriver:
             else:
                 raise Exception('A transaction must be ContractTransaction or PublishTransaction')
         pipe.execute()
+
+    

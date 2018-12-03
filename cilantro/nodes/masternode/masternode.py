@@ -3,9 +3,9 @@ from cilantro.utils.lprocess import LProcess
 from cilantro.storage.vkbook import VKBook
 
 from cilantro.nodes.base import NodeBase
-from cilantro.nodes.masternode.webserver import start_webserver
 from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
+from cilantro.nodes.masternode.webserver import start_webserver
 
 import os
 
