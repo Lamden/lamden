@@ -19,14 +19,14 @@ default_crawl = '127.0.0.1'
 
 _cil_text = \
     '''
-          _ _             _             
-      ___(_) | __ _ _ __ | |_ _ __ ___  
-     / __| | |/ _` | '_ \| __| '__/ _ \ 
+          _ _             _
+      ___(_) | __ _ _ __ | |_ _ __ ___
+     / __| | |/ _` | '_ \| __| '__/ _ \
     | (__| | | (_| | | | | |_| | | (_) |
-     \___|_|_|\__,_|_| |_|\__|_|  \___/ 
-    
+     \___|_|_|\__,_|_| |_|\__|_|  \___/
+
      = = = = A N A R C H Y N E T = = = =
-    
+
     '''
 
 
@@ -114,6 +114,12 @@ def get_balance(address):
 def get_contract(contract_address, server_url):
     r = tools.get_contract(contract_address, server_url)
     print(r.text)
+
+@get.command('contract_meta')
+@click.argument('contract_address')
+def get_contract_meta(contract_address, server_url):
+    r = tools.get_contract_meta(contract_address, server_url)
+    print(r)
 
 @get.command('state')
 @click.argument('contract')

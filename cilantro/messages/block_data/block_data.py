@@ -12,6 +12,7 @@ from cilantro.storage.vkbook import VKBook
 import time, uuid
 
 import capnp
+
 import blockdata_capnp
 
 log = get_logger(__name__)

@@ -36,6 +36,7 @@ seneca
 *.dat
 **/profiles/**
 **/tmp_exec_code*.py
+data
 
 # Config files
 db_conf.ini
