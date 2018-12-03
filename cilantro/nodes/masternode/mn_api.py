@@ -58,7 +58,7 @@ class StorageDriver:
 
     @classmethod
     def get_latest_block_hash(cls):
-        idx_entry = MasterOps.get_blk_idx(n_blks=1)
+        idx_entry = MasterOps.get_blk_idx(n_blk=1)
         blk_hash = idx_entry.get('blockHash')
         return blk_hash
 

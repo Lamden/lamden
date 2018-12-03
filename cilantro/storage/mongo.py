@@ -139,6 +139,9 @@ class MDB:
     '''
 
     def query_index(self, n_blks=None):
+        if n_blks is None:
+            return
+
         blk_delta = self.mn_coll_idx.find().limit(n_blks).sort("blockNum",-1)
         for blk in blk_delta:
             self.log.info('requested block delta {}'.format(blk))

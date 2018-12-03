@@ -173,8 +173,8 @@ class MasterOps:
         return outcome
 
     @staticmethod
-    def get_blk_idx(n_blks=None):
-        idx_entry = MDB.query_index(n_blks = n_blks)
+    def get_blk_idx(n_blk=None):
+        idx_entry = MDB.query_index(n_blks=n_blk)
         return idx_entry
 
     @staticmethod
