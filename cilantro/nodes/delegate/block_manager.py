@@ -108,7 +108,13 @@ class BlockManager(Worker):
 
     def build_task_list(self):
         # Create a TCP Router socket for comm with other nodes
-        self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-Router", secure=True)
+        # self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-Router", secure=True)
+        self.router = self.manager.create_socket(
+            socket_type=zmq.ROUTER,
+            name="BM-Router-{}".format(self.verifying_key[-8:]),
+            secure=True,
+            domain="sb-contender"
+        )
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
@@ -123,13 +129,25 @@ class BlockManager(Worker):
         # Create PUB socket to publish new sub_block_contenders to all masters
         # Falcon - is it secure and has a different pub port ??
         #          do we have a corresponding sub at master that handles this properly ?
-        self.pub = self.manager.create_socket(socket_type=zmq.PUB, name='SB Publisher', secure=True)
+        # self.pub = self.manager.create_socket(socket_type=zmq.PUB, name='SB Publisher', secure=True)
+        self.pub = self.manager.create_socket(
+            socket_type=zmq.PUB,
+            name="BM-Pub-{}".format(self.verifying_key[-8:]),
+            secure=True,
+            domain="sb-contender"
+        )
         self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
 
         # Create SUB socket to
         # 1) listen for subblock contenders from other delegates
         # 2) listen for NewBlockNotifications from masternodes
-        self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BM-Sub", secure=True)
+        self.sub = self.manager.create_socket(
+            socket_type=zmq.SUB,
+            name="BM-Sub-{}".format(self.verifying_key[-8:]),
+            secure=True,
+            domain="sb-contender"
+        )
+        # self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BM-Sub", secure=True)
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
         self.tasks.append(self.catchup_db_state())
@@ -292,11 +310,11 @@ class BlockManager(Worker):
         our_block_hash = BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.cur_block_hash)
         if (our_block_hash == self.db_state.next_block_hash):
             # we have consensus
-            self.log.success2("BlockManager achieved consensus on NewBlockNotification!")
-            self.send_updated_db_msg()
-            self.db_state.cur_block_hash = our_block_hash
+            self.log.success2("BlockManager has consensus with NewBlockNotification!")
             self.db_state.sub_block_hash_map.clear()
             self.db_state.next_block.clear()
+            self.send_updated_db_msg()
+            self.db_state.cur_block_hash = our_block_hash
         else:
             # we can't handle this with current Seneca. TODO
             self.log.fatal("Error: mismatch between current db state with masters!! my est bh {} and masters bh {}".format(our_block_hash, self.db_state.next_block_hash))

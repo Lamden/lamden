@@ -51,12 +51,15 @@ class BlockAggregator(Worker):
             secure=True,
             domain="sb-contender"
         )
+        # self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BA-Sub", secure=True)
+        # self.pub = self.manager.create_socket(socket_type=zmq.PUB, name="BA-Pub", secure=True)
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
             name="BA-Pub-{}".format(self.verifying_key[-8:]),
             secure=True,
             domain="sb-contender"
         )
+        # self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BA-router", secure=True)
         self.router = self.manager.create_socket(
             socket_type=zmq.ROUTER,
             name="BA-Router-{}".format(self.verifying_key[-8:]),
