@@ -7,29 +7,19 @@ setup(
     version=__version__,
     packages=find_packages(exclude=['docs', 'tests']),
     install_requires=[
-        'aenum==2.0.8',
-        'aiodns==1.1.1',
-        'aiohttp',
-        'aioprocessing==1.0.1',
-        'coloredlogs',
-        'Cython',
-        'idna==2.6',
-        'mysql-connector-python',
-        'ntplib==0.3.3',
+        'Cython==0.29',
         'pycapnp==0.6.3',
-        '#PyNaCl==1.2.1',
-        'pytest==3.5.0',
-        'pytest-aiohttp==0.3.0',
-        '#pyzmq==17.0.0',
-        'requests==2.18.4',
-        'six==1.11.0',
-        'urllib3==1.22',
+        #PyNaCl==1.2.1
+        'pyzmq==17.0.0',
+        'requests==2.20.0',
         'uvloop==0.9.1',
         'u-msgpack-python==2.5.0',
         'yarl==1.1.0',
+        'seneca',
         'click',
         'simple-crypt',
-        'git+https://github.com/Lamden/seneca.git@dev#egg=seneca'
+        'sanic',
+        'pymongo==3.7.2'
     ],
     extras_require={
         'dev': open('dev-requirements.txt').readlines()
