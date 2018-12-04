@@ -24,6 +24,7 @@ from typing import List
 import asyncio, zmq, os, time, itertools
 from collections import defaultdict
 
+
 class BlockAggregator(Worker):
 
     def __init__(self, ip, *args, **kwargs):
