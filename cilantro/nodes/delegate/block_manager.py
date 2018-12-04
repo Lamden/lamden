@@ -12,22 +12,24 @@
 
 """
 
+from cilantro.logger.base import get_logger
+
 from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder
 from cilantro.nodes.masternode.mn_api import StorageDriver
-from cilantro.logger.base import get_logger
+
 from cilantro.storage.vkbook import VKBook
+from cilantro.storage.state import StateDriver
 from cilantro.protocol.multiprocessing.worker import Worker
+
 from cilantro.utils.lprocess import LProcess
 from cilantro.utils.hasher import Hasher
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
-# from cilantro.protocol.interpreter import SenecaInterpreter
-from cilantro.messages.block_data.block_data import BlockData
-from typing import List
 
 from cilantro.constants.system_config import *
 from cilantro.constants.zmq_filters import DEFAULT_FILTER
 from cilantro.constants.ports import *
 
+from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
@@ -35,18 +37,17 @@ from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
 from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
 
-import asyncio
-import zmq
-import os
-import time
-import random
+import asyncio, zmq, os, time, random
 from collections import defaultdict
+from typing import List
+
 
 IPC_IP = 'block-manager-ipc-sock'
 IPC_PORT = 6967
 
-# convenience struct to maintain db snapshot state data in one place
+
 class DBState:
+    """ convenience struct to maintain db snapshot state data in one place """
     def __init__(self, cur_block_hash):
         self.cur_block_hash = cur_block_hash
         self.next_block_hash = cur_block_hash

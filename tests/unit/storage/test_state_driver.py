@@ -3,6 +3,8 @@ import unittest
 from seneca.engine.interface import SenecaInterface
 from cilantro.storage.state import StateDriver
 from cilantro.messages.block_data.block_data import BlockDataBuilder
+from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH
+
 
 class TestStateDriver(TestCase):
 
@@ -38,6 +40,17 @@ class TestStateDriver(TestCase):
         self.assertEqual(StateDriver.r.get('cranberry'), b'juice')
         self.assertEqual(StateDriver.r.get('optic'), b'fiber')
         self.assertEqual(StateDriver.r.get('before'), b'after')
+
+    def test_get_latest_block_hash_with_none_set(self):
+        b_hash = StateDriver.get_latest_block_hash()
+        self.assertEqual(GENESIS_BLOCK_HASH, b_hash)
+
+    def test_set_get_latest_block_hash(self):
+        b_hash = 'ABCD' * 16
+        StateDriver.set_latest_block_hash(b_hash)
+
+        self.assertEqual(StateDriver.get_latest_block_hash(), b_hash)
+
 
 if __name__ == '__main__':
     unittest.main()
