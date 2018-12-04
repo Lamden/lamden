@@ -161,8 +161,8 @@ class MasterOps:
     '''
         Read for particular block hash, expects to return empty if there is no block stored locally
     '''
-    @staticmethod
-    def get_full_blk(blk_num=None, blk_hash=None):
+    @classmethod
+    def get_full_blk(cls, blk_num=None, blk_hash=None):
         if blk_hash:
             my_query = {'blockHash', blk_hash}
 
@@ -172,13 +172,13 @@ class MasterOps:
         outcome = MDB.query_db(query=my_query)
         return outcome
 
-    @staticmethod
-    def get_blk_idx(n_blk=None):
-        idx_entry = MDB.query_index(n_blks=n_blk)
-        return idx_entry
+    @classmethod
+    def get_blk_idx(cls, n_blk=None):
+        idx_entries = MDB.query_index(n_blks=n_blk)
+        return idx_entries
 
-    @staticmethod
-    def get_blk_num_frm_blk_hash(blk_hash=None):
+    @classmethod
+    def get_blk_num_frm_blk_hash(cls, blk_hash=None):
         my_query = {'blockHash', blk_hash}
         outcome = MDB.query_db(type='idx', query = my_query)
         blk_num = outcome.get('blockNum')
