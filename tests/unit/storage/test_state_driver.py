@@ -18,7 +18,6 @@ class TestStateDriver(TestCase):
             'SET land sea;',
             'SET xxx holic;',
             'SET beyonce sings;',
-
             'SET cow poo;',
             'SET anthropologist discovers;',
             'SET cranberry juice;',
