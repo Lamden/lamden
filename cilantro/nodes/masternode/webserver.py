@@ -32,6 +32,7 @@ if os.getenv('NONCE_DISABLED'):
 else:
     log.info("Nonces enabled.")
 
+
 @app.route("/", methods=["POST",])
 async def submit_transaction(request):
     if app.queue.full():
@@ -78,31 +79,6 @@ async def request_nonce(request):
     log.spam("Creating nonce {}".format(nonce))
     return json({'success': True, 'nonce': nonce})
 
-# @app.route("/submit-contract", methods=["POST",])
-# async def submit_contract(request):
-#     try:
-#         contract_name = validate_contract_name(request.json['contract_name'])
-#         author = validate_author(request.json['author'])
-#         code_str = request.json['code_str']
-#         interface.publish_code_str(contract_name, author, code_str)
-#     except Exception as e:
-#         raise ServerError(e, status_code=500)
-#     return json({'status': 'success', 'contract_name': contract_name})
-#
-# @app.route("/run-contract", methods=["POST",])
-# async def run_contract(request):
-#     try:
-#         contract_call = validate_contract_call(request.json['contract_call'])
-#         sender = validate_author(request.json['sender'])
-#         stamps = request.json['stamps']
-#         assert stamps != None, 'Must send in stamps'
-#         params = request.json['parameters']
-#         r = interface.execute_function('seneca.contracts.{}'.format(contract_call),
-#             sender, stamps, **params
-#         )
-#         return json(r)
-#     except Exception as e:
-#         raise ServerError(e, status_code=500)
 
 @app.route("/state", methods=["GET",])
 async def get_contract_state(request):
@@ -115,10 +91,12 @@ async def get_contract_state(request):
     key = validate_key_name(request.json['key'])
     return text(datatype.get(key))
 
+
 @app.route("/contract-meta", methods=["GET",])
 async def get_contract_meta(request):
     contract_name = validate_contract_name(request.json['contract_name'])
     return json(interface.get_contract_meta(contract_name))
+
 
 @app.route("/latest_block", methods=["GET",])
 async def get_latest_block(request):
