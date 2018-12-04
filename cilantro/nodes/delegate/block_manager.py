@@ -15,7 +15,6 @@
 from cilantro.logger.base import get_logger
 
 from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder
-from cilantro.nodes.masternode.mn_api import StorageDriver
 
 from cilantro.storage.vkbook import VKBook
 from cilantro.storage.state import StateDriver
@@ -69,8 +68,7 @@ class BlockManager(Worker):
 
         # raghu todo tie to initial catch up logic as well as right place to do this
         # Falcon needs to add db interface modifications
-        # self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
-        self.db_state = DBState(StorageDriver.get_latest_block_hash())
+        self.db_state = DBState(StateDriver.get_latest_block_hash())
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
@@ -127,7 +125,7 @@ class BlockManager(Worker):
         # Create PUB socket to publish new sub_block_contenders to all masters
         # Falcon - is it secure and has a different pub port ??
         #          do we have a corresponding sub at master that handles this properly ?
-        self.pub = self.manager.create_socket(socket_type=zmq.PUB, name='SB Publisher', secure=True)
+        self.pub = self.manager.create_socket(socket_type=zmq.PUB, name='SB-Publisher', secure=True)
         self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
 
         # Create SUB socket to
