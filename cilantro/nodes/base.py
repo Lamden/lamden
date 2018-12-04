@@ -87,6 +87,7 @@ class NodeBase(Worker):
 
     async def _wait_for_network_rdy(self):
         elapsed = 0
+        time.sleep(120)
         while not self._quorum_reached() and elapsed < MAX_BOOT_WAIT:
             # Get missing node set, and try and ping them all (no auth)
             missing_vks = self._get_missing_nodes()
