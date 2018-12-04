@@ -16,6 +16,7 @@ PROTOCOL_TESTS = [
     'tests.unit.protocol.structures',
     'tests.unit.protocol.states',
     'tests.unit.protocol.wallets'
+    'tests.unit.protocol.multiprocessing'
     ]
 
 NODE_TESTS = [
