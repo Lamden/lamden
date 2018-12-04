@@ -19,7 +19,7 @@ NUM_DELEGATES = 4
 
 log = get_logger("TestnetNodeBuilder")
 
-DEFAULT_TESTNET_FILE_NAME = '2-2-4.json'
+DEFAULT_TESTNET_FILE_NAME = '2-2-2.json'
 TESTNET_JSON_DIR = cilantro.__path__[0] + '/../testnet_configs/'
 
 TESTNET_KEY = 'testnet'
@@ -28,7 +28,7 @@ CONFIG_FILE_NAME = 'testnet.ini'
 CONFIG_FILE_PATH = TESTNET_JSON_DIR + CONFIG_FILE_NAME
 
 
-def set_testnet_config(testnet_json_file='2-2-4.json'):
+def set_testnet_config(testnet_json_file='2-2-2.json'):
     config = configparser.ConfigParser()
     config[TESTNET_KEY] = {TESTNET_JSON_KEY: testnet_json_file}
 
