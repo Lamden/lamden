@@ -138,40 +138,47 @@ class MDB:
         reading from index or store
     '''
 
-    def query_index(self, n_blks=None):
+    @classmethod
+    def query_index(cls, n_blks=None):
         if n_blks is None:
             return
+        blk_dict = {}
 
-        blk_delta = self.mn_coll_idx.find().limit(n_blks).sort("blockNum",-1)
+        blk_delta = cls.mn_coll_idx.find().limit(n_blks).sort("blockNum", -1)
         for blk in blk_delta:
-            self.log.info('requested block delta {}'.format(blk))
-        return blk_delta
+            cls.log.info('requested block delta {}'.format(blk))
+            blk_dict.update(blk)
 
-    def query_db(self, type=None, query=None):
+        cls.log.debug("return dict {}".format(blk_dict))
+        return blk_dict
+
+    @classmethod
+    def query_db(cls, type=None, query=None):
 
         if query is None:
             if type is None or type is "MDB":
-                block_list = self.mn_collection.find({})
+                block_list = cls.mn_collection.find({})
                 for x in block_list:
-                    self.log.info("{}".format(x))
+                    cls.log.info("{}".format(x))
 
             if type is None or type is "index":
-                index_list = self.mn_coll_idx.find({})
+                index_list = cls.mn_coll_idx.find({})
                 for y in index_list:
-                    self.log.info("{}".format(y))
+                    cls.log.info("{}".format(y))
             return
 
         if type is 'idx' and query is not None:
-            result = self.mn_coll_idx.find(query)
+            result = cls.mn_coll_idx.find(query)
             for x in result:
-                self.log.info("result {}".format(x))
+                cls.log.info("result {}".format(x))
             return result
 
-    def query_store(self, blk_num = None):
-        response = self.mn_collection.find(blk_num)
+    @classmethod
+    def query_store(cls, blk_num = None):
+        response = cls.mn_collection.find(blk_num)
 
         if response is None:
-            self.log.error('given blk not present in db')
+            cls.log.error('given blk not present in db')
             return
 
         return response

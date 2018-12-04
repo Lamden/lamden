@@ -25,14 +25,14 @@ def wrap_func(fn, *args, **kwargs):
 def start_mn(verifing_key):
     import os, zmq, time
     from cilantro.logger.base import get_logger
-    from tests.experiments.storage.test_master_store import MasterOps
+    from cilantro.nodes.masternode.master_store import MasterOps
 
     log = get_logger(os.getenv('MN'))
     log.info('init master')
-    store = MDB()
+    MasterOps.init_master(key = verifing_key)
+#    store = MDB()
     log.info('query db init state ')
-    store.query_db()
-
+#    store.query_db()
     log.info('starting zmq setup')
     ctx = zmq.Context()
     socket = ctx.socket(socket_type=zmq.PAIR)
@@ -58,11 +58,12 @@ def start_mn(verifing_key):
         log.info("wr status {}".format(success))
         time.sleep(1)
         blk_id += 1
-
+        lasthash = StorageDriver.get_latest_block_hash()
+        log.info('prev hash {}'.format(lasthash))
     log.info('end! writes')
 
     log.info('print DB states')
-    store.query_db()
+#    store.query_db()
     #bhash = StorageDriver.get_latest_block_hash()
     #log.info('print latest index entry {}'.format(bhash))
 
