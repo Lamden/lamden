@@ -2,7 +2,7 @@
     "services": [
         {
             "name": "mn",
-            "image": "lamden/cilantro-mn:latest",
+            "image": "lamden/cilantro-mn",
             "count": 1,
             "ports": [
                 27017, 10200, 8080, 4319

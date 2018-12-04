@@ -1,5 +1,7 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-4.json')
+from cilantro.constants.testnet import set_testnet_nodes
+set_testnet_nodes()
 
 from cilantro.logger.base import get_logger
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
@@ -156,16 +158,16 @@ class TestBlockAggregator(TestCase):
 
 class TestBlockAggregatorStorage(TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        MDB.start_db()
-
-    def setUp(self):
-        MDB.reset_db()
-
-    @classmethod
-    def setUpClass(cls):
-        MDB.start_db()
+    # @classmethod
+    # def setUpClass(cls):
+    #     MDB.start_db()
+    #
+    # def setUp(self):
+    #     MDB.reset_db()
+    #
+    # @classmethod
+    # def setUpClass(cls):
+    #     MDB.start_db()
 
     @BlockAggTester.test
     @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)
