@@ -45,8 +45,7 @@ class TestLargeNetwork(MPTestCase):
         all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0)
         # all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0, del_1, del_2, del_3)
         all_vks = (TESTNET_MASTERNODES[0]['vk'], TESTNET_MASTERNODES[1]['vk'], TESTNET_WITNESSES[0]['vk'],
-                   TESTNET_WITNESSES[1]['vk'], TESTNET_DELEGATES[0]['vk'], TESTNET_DELEGATES[1]['vk'],
-                   TESTNET_DELEGATES[2]['vk'], TESTNET_DELEGATES[3]['vk'],)
+                   TESTNET_WITNESSES[1]['vk'], TESTNET_DELEGATES[0]['vk'], TESTNET_DELEGATES[1]['vk'],)
 
         # Each node PUBS on its own IP
         for n in all_nodes:
