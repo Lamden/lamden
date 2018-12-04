@@ -15,6 +15,10 @@ OID = '5bef52cca4259d4ca5607661'
 
 
 class StorageDriver:
+    """
+    APIs for BlockStorage. This class should only be used by Masternodes, since it interfaces with MongoDB.
+    Note: If a Delegate/Witness needs to get_latest_block_hash, they should use StateDriver instead.
+    """
 
     state_id = ObjectId(OID)
 

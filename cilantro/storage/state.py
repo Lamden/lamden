@@ -10,7 +10,7 @@ from typing import List
 
 
 class StateDriver:
-
+    
     BLOCK_HASH_KEY = '_current_block_hash'
     r = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
     log = get_logger("StateDriver")

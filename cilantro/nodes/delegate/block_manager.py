@@ -71,7 +71,6 @@ class BlockManager(Worker):
         # Falcon needs to add db interface modifications
         # self.db_state = DBState(BlockStorageDriver.get_latest_block_hash())
         self.db_state = DBState(StorageDriver.get_latest_block_hash())
-        # self.interpreter = SenecaInterpreter()
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
