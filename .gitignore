@@ -40,7 +40,7 @@ data
 
 # Config files
 db_conf.ini
-testnet_configs/testnet.ini
+cilantro/testnet_configs/testnet.ini
 
 # Docker
 docker-compose.yml
