@@ -94,19 +94,7 @@ class BlockManager(Worker):
         # TODO -- remove once Masternodes can reply to StateUpdateRequest
         self.send_updated_db_msg()
 
-        # DEBUG -- TODO DELETE
-        # self.tasks.append(self.spam_sbbs())
-        # END DEBUG
-
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
-
-    async def spam_sbbs(self):
-        while True:
-            await asyncio.sleep(4)
-            for i in self.sb_builders:
-                id_frame = str(i).encode()
-                self.log.spam("sending test ipc msg to sb_builder id {}".format(id_frame))
-                self.ipc_router.send_multipart([id_frame, int_to_bytes(1), b'hi its me the block manager'])
 
     def build_task_list(self):
         # Create a TCP Router socket for comm with other nodes
@@ -180,10 +168,6 @@ class BlockManager(Worker):
         raise Exception("Delegate VK {} not found in VKBook {}".format(self.verifying_key, VKBook.get_delegates()))
 
     def handle_ipc_msg(self, frames):
-        # DEBUG -- TODO DELETE
-        # self.log.important2("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
-        # return
-        # END DEBUG
         self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
         assert len(frames) == 3, "Expected 3 frames: (id, msg_type, msg_blob). Got {} instead.".format(frames)
 
@@ -218,7 +202,6 @@ class BlockManager(Worker):
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
-        # Last frame, frames[-1] will be the envelope binary
 
     def handle_router_msg(self, frames):
         # self.log.important("Got msg over tcp ROUTER socket with frames: {}".format(frames))
