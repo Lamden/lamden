@@ -29,7 +29,7 @@ class NodeTypes:
             return vk in VKBook.get_delegates()
 
 
-PING_RETRY = 8  # How often (in seconds) a node should ping others to check if they are online
+PING_RETRY = 15  # How often (in seconds) a node should ping others to check if they are online
 
 
 class NodeBase(Worker):
@@ -94,6 +94,7 @@ class NodeBase(Worker):
             self.log.spam("Querying status of nodes with vks: {}".format(missing_vks))
             for vk in missing_vks:
                 self.manager.overlay_client.check_node_status(vk)
+                await asyncio.sleep(0.5)
 
             await asyncio.sleep(PING_RETRY)
             elapsed += PING_RETRY
@@ -122,12 +123,9 @@ class NodeBase(Worker):
 
         if vk in VKBook.get_witnesses():
             self.online_wits.add(vk)
-            time.sleep(1)
         if vk in VKBook.get_delegates():
             self.online_dels.add(vk)
-            time.sleep(1)
         if vk in VKBook.get_masternodes():
             self.online_mns.add(vk)
-            time.sleep(1)
 
 
