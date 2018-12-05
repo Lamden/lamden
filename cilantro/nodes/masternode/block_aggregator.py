@@ -255,8 +255,10 @@ class BlockAggregator(Worker):
         self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
         block_hash = block_data.block_hash
         self.log.info('Published new block with hash "{}"'.format(block_hash))
+
         if self.full_blocks.get(block_hash):
             self.log.info('Already received block hash "{}", adding to consensus count.'.format(block_hash))
+
         else:
             self.log.info('Created resultant block-hash "{}"'.format(block_hash))
             self.full_blocks[block_hash] = {
@@ -270,6 +272,7 @@ class BlockAggregator(Worker):
     def recv_new_block_notif(self, nbc: NewBlockNotification):
         block_hash = nbc.block_hash
         signature = nbc.masternode_signature
+
         if not self.full_blocks.get(block_hash):
             self.log.info('Received NEW block hash "{}", did not yet receive valid sub blocks from delegates.'.format(block_hash))
             self.full_blocks[block_hash] = {
@@ -277,9 +280,11 @@ class BlockAggregator(Worker):
                 '_consensus_reached_': False,
                 '_master_signatures_': {signature.signature: signature}
             }
+
         elif signature.signature in self.full_blocks[block_hash]['_master_signatures_']:
             self.log.warning('Already received the NewBlockNotification with block_hash "{}"'.format(block_hash))
-        elif self.full_blocks[block_hash].get('consensus_reached') != True:
+
+        elif not self.full_blocks[block_hash].get('consensus_reached'):
             self.log.info('Received KNOWN block hash "{}", adding to consensus count.'.format(block_hash))
             self.full_blocks[block_hash]['_master_signatures_'][signature.signature] = signature
             if len(self.full_blocks[block_hash]['_master_signatures_']) >= MASTERNODE_MAJORITY:
@@ -288,6 +293,7 @@ class BlockAggregator(Worker):
                 if not len(bmd.merkle_roots) == NUM_SB_PER_BLOCK:
                     # TODO Request blocks from other masternodes
                     pass
+
         else:
             self.log.info('Received KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
 
