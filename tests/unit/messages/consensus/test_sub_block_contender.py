@@ -30,7 +30,7 @@ class TestSubBlockContender(TestCase):
         signature = build_test_merkle_sig(msg=tree.root, sk=DEL_SK, vk=DEL_VK)
 
         sbc1 = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
-                                       signature=signature, transactions=txs, sub_block_index=0, prev_block_hash='0'*64)
+                                        signature=signature, transactions=txs, sub_block_index=0, prev_block_hash='0'*64)
         sbc2 = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
                                         signature=signature, transactions=txs, sub_block_index=0, prev_block_hash='0'*64)
         self.assertFalse(sbc1.is_empty)
