@@ -25,14 +25,15 @@ from cilantro.protocol.webserver.validation import *
 from cilantro.tools import parse_code_str
 
 app = SanicSingleton.app
-limiter = Limiter(app, key_func=get_remote_address)
 interface = SanicSingleton.interface
 log = get_logger("MN-WebServer")
 
 if os.getenv('NONCE_DISABLED'):
-    log.warning("NONCE_DISABLED env var set! Nonce checking will be disabled!")
+    log.warning("NONCE_DISABLED env var set! Nonce checking as well as will be disabled!")
+    limiter = Limiter(app, key_func=get_remote_address)
 else:
     log.info("Nonces enabled.")
+    limiter = Limiter(app, global_limits=['60/minute'], key_func=get_remote_address)
 
 
 @app.route("/", methods=["POST",])
