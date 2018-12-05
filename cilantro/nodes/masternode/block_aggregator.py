@@ -109,27 +109,27 @@ class BlockAggregator(Worker):
         self.log.info("Received a sbc with result hash {} and input hash {}".format(sbc.result_hash, sbc.input_hash))
         if self.result_hashes.get(sbc.result_hash):
             if self.result_hashes[sbc.result_hash].get('_consensus_reached_') or self.sub_blocks.get(sbc.result_hash):
-                self.log.spam('Already validated this SubBlock (result_hash={})'.format(
+                self.log.debugv('Already validated this SubBlock (result_hash={})'.format(
                     sbc.result_hash))
             elif self.check_alredy_verified(sbc):
-                self.log.spam('Already received and verified this SubBlockContender (result_hash={}, input_hash={})'.format(
-                    sbc.result_hash, sbc.input_hash))
+                self.log.debugv('Already received and verified this SubBlockContender (result_hash={}, input_hash={})'
+                                .format(sbc.result_hash, sbc.input_hash))
             else:
                 if self.verify_sbc(sbc):
-                    self.log.info('Received SubBlockContender for an existing result hash (result_hash={}, input_hash={})'.format(
-                        sbc.result_hash, sbc.input_hash))
+                    self.log.info('Received SubBlockContender for an existing result hash (result_hash={}, '
+                                  'input_hash={})'.format(sbc.result_hash, sbc.input_hash))
                     self.aggregate_sub_block(sbc)
                 else:
-                    self.log.warning('Not a valid SubBlockContender for existing result hash (result_hash={}, input_hash={})'.format(
-                        sbc.result_hash, sbc.input_hash))
+                    self.log.warning('Not a valid SubBlockContender for existing result hash (result_hash={}, '
+                                     'input_hash={})'.format(sbc.result_hash, sbc.input_hash))
         else:
             if self.verify_sbc(sbc):
-                self.log.info('Received SubBlockContender for a new result hash (result_hash={}, input_hash={})'.format(
-                    sbc.result_hash, sbc.input_hash))
+                self.log.info('Received SubBlockContender for a new result hash (result_hash={}, input_hash={})'
+                              .format(sbc.result_hash, sbc.input_hash))
                 self.aggregate_sub_block(sbc)
             else:
-                self.log.warning('Not a valid SubBlockContender for new result hash (result_hash={}, input_hash={})'.format(
-                    sbc.result_hash, sbc.input_hash))
+                self.log.warning('Not a valid SubBlockContender for new result hash (result_hash={}, input_hash={})'
+                                 .format(sbc.result_hash, sbc.input_hash))
 
     def check_alredy_verified(self, sbc: SubBlockContender):
         if sbc.signature.signature in self.result_hashes.get(sbc.result_hash, {}).get('_valid_signatures_'):
