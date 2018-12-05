@@ -3,7 +3,6 @@ set_testnet_config('2-2-2.json')
 from cilantro.constants.testnet import set_testnet_nodes
 set_testnet_nodes()
 
-from cilantro.logger.base import get_logger
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro.storage.vkbook import VKBook
 
@@ -29,6 +28,10 @@ from cilantro.utils.hasher import Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.protocol import wallet
 from cilantro.storage.mongo import MDB
+
+# time and logger are for debugging
+import time
+from cilantro.logger.base import get_logger
 
 
 class BlockAggTester:
@@ -79,10 +82,17 @@ MERKLE_LEAVES2 = TREE2.leaves
 RESULT_HASH1 = TREE1.root_as_hex
 RESULT_HASH2 = TREE2.root_as_hex
 
-log = get_logger('BlockAggregator')
+log = get_logger('BlockAggregatorTester')
 
 
 class TestBlockAggregator(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        MDB.start_db()
+
+    def setUp(self):
+        MDB.reset_db()
 
     @BlockAggTester.test
     def test_build_task_list_connect_and_bind(self, *args):
@@ -166,14 +176,6 @@ class TestBlockAggregator(TestCase):
         signature = build_test_merkle_sig(msg=bytes.fromhex(INPUT_HASH1), sk=DEL_SK, vk=DEL_VK)
         sbc = SubBlockContender.create_empty_sublock(INPUT_HASH1, sub_block_index=0, signature=signature,
                                                      prev_block_hash=GENESIS_BLOCK_HASH)
-
-
-    @classmethod
-    def setUpClass(cls):
-        MDB.start_db()
-
-    def setUp(self):
-        MDB.reset_db()
 
     @BlockAggTester.test
     @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)
