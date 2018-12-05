@@ -74,10 +74,12 @@ class BlockManager(Worker):
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
-                        "num_sb_builders={num_sb_builders}\n"
+                        "num_sb_builders={num_sb_builders}\nsub_blocks_per_builder={sb_per_builder}\n"
+                        "sub_blocks_per_block_per_builder={sb_per_block_per_builder}\n"
                         .format(vk=self.verifying_key, sb_index=self.sb_index, num_sb=NUM_SUB_BLOCKS,
                                 num_blocks=NUM_BLOCKS, sb_per_block=NUM_SB_PER_BLOCK,
-                                num_sb_builders=NUM_SB_BUILDERS))
+                                num_sb_builders=NUM_SB_BUILDERS, sb_per_builder=NUM_SB_PER_BUILDER,
+                                sb_per_block_per_builder=NUM_SB_PER_BLOCK_PER_BUILDER))
 
         # Define Sockets (these get set in build_task_list)
         self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
@@ -89,12 +91,6 @@ class BlockManager(Worker):
         self.build_task_list()
         self.log.info("Block Manager starting...")
         self.start_sbb_procs()
-        self.log.info("Catching up...")
-        self.catchup_db_state()
-
-        # here we fix call to send_updated_db_msg until we properly send back StateUpdateReply from Masternodes
-        # TODO -- remove once Masternodes can reply to StateUpdateRequest
-        self.send_updated_db_msg()
 
         # DEBUG -- TODO DELETE
         # self.tasks.append(self.spam_sbbs())
@@ -112,7 +108,13 @@ class BlockManager(Worker):
 
     def build_task_list(self):
         # Create a TCP Router socket for comm with other nodes
-        self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-Router", secure=True)
+        # self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-Router", secure=True)
+        self.router = self.manager.create_socket(
+            socket_type=zmq.ROUTER,
+            name="BM-Router-{}".format(self.verifying_key[-8:]),
+            secure=True,
+            domain="sb-contender"
+        )
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
@@ -127,14 +129,28 @@ class BlockManager(Worker):
         # Create PUB socket to publish new sub_block_contenders to all masters
         # Falcon - is it secure and has a different pub port ??
         #          do we have a corresponding sub at master that handles this properly ?
-        self.pub = self.manager.create_socket(socket_type=zmq.PUB, name='SB Publisher', secure=True)
+        # self.pub = self.manager.create_socket(socket_type=zmq.PUB, name='SB Publisher', secure=True)
+        self.pub = self.manager.create_socket(
+            socket_type=zmq.PUB,
+            name="BM-Pub-{}".format(self.verifying_key[-8:]),
+            secure=True,
+            domain="sb-contender"
+        )
         self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
 
         # Create SUB socket to
         # 1) listen for subblock contenders from other delegates
         # 2) listen for NewBlockNotifications from masternodes
-        self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BM-Sub", secure=True)
+        self.sub = self.manager.create_socket(
+            socket_type=zmq.SUB,
+            name="BM-Sub-{}".format(self.verifying_key[-8:]),
+            secure=True,
+            domain="sb-contender"
+        )
+        # self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BM-Sub", secure=True)
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
+
+        self.tasks.append(self.catchup_db_state())
 
         # Listen to Masternodes
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
@@ -144,7 +160,8 @@ class BlockManager(Worker):
             self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
             time.sleep(1)
 
-    def catchup_db_state(self):
+    async def catchup_db_state(self):
+        self.log.info("Catching up...")
         # do catch up logic here
         # only when one can connect to quorum masters and get db update, move to next step
         # at the end, it has updated its db state to consensus latest
@@ -159,7 +176,11 @@ class BlockManager(Worker):
         #     self.router.send_msg(envelope, header=vk.encode())
 
         # no need to wait for the replys as we have added a handler
-        pass
+
+        # here we fix call to send_updated_db_msg until we properly send back StateUpdateReply from Masternodes
+        # TODO -- remove once Masternodes can reply to StateUpdateRequest
+        await asyncio.sleep(5)
+        self.send_updated_db_msg()
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):
@@ -214,6 +235,7 @@ class BlockManager(Worker):
         msg = envelope.message
         msg_hash = envelope.message_hash
 
+        self.log.important3("BM got notification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
         if isinstance(msg, NewBlockNotification):
             self.log.important3("BM got NewBlockNotification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
             self.handle_new_block(msg)
@@ -288,11 +310,11 @@ class BlockManager(Worker):
         our_block_hash = BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.cur_block_hash)
         if (our_block_hash == self.db_state.next_block_hash):
             # we have consensus
-            self.log.success2("BlockManager achieved consensus on NewBlockNotification!")
-            self.send_updated_db_msg()
-            self.db_state.cur_block_hash = our_block_hash
+            self.log.success2("BlockManager has consensus with NewBlockNotification!")
             self.db_state.sub_block_hash_map.clear()
             self.db_state.next_block.clear()
+            self.send_updated_db_msg()
+            self.db_state.cur_block_hash = our_block_hash
         else:
             # we can't handle this with current Seneca. TODO
             self.log.fatal("Error: mismatch between current db state with masters!! my est bh {} and masters bh {}".format(our_block_hash, self.db_state.next_block_hash))

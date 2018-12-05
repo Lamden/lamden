@@ -1,5 +1,5 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-4.json')
+set_testnet_config('2-2-2.json')
 from cilantro.constants.testnet import *
 from cilantro.constants.test_suites import CI_FACTOR
 

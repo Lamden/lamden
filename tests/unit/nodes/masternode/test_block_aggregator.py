@@ -1,5 +1,5 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-4.json')
+set_testnet_config('2-2-2.json')
 from cilantro.constants.testnet import set_testnet_nodes
 set_testnet_nodes()
 
@@ -156,7 +156,16 @@ class TestBlockAggregator(TestCase):
         self.assertTrue(sbc.signature.signature in ba.result_hashes[RESULT_HASH1]['_valid_signatures_'])
 
 
-class TestBlockAggregatorStorage(TestCase):
+    @BlockAggTester.test
+    def test_recv_empty_sub_block_contender(self, *args):
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+
+        ba.manager = MagicMock()
+        ba.build_task_list()
+
+        signature = build_test_merkle_sig(msg=bytes.fromhex(INPUT_HASH1), sk=DEL_SK, vk=DEL_VK)
+        sbc = SubBlockContender.create_empty_sublock(INPUT_HASH1, sub_block_index=0, signature=signature)
+
 
     @classmethod
     def setUpClass(cls):

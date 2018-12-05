@@ -14,6 +14,8 @@ class StateDriver:
             if tx.contract_type is ContractTransaction:
                 cmds = tx.state.split(';')
                 for cmd in cmds:
+                    if cmd.strip() == '':
+                        continue
                     pipe.execute_command(cmd)
             elif tx.contract_type is PublishTransaction:
                 pass # No need to update state
