@@ -28,11 +28,10 @@ def start_mn(verifing_key):
     from cilantro.nodes.masternode.master_store import MasterOps
 
     log = get_logger(os.getenv('MN'))
-    log.info('init master')
+    log.info('Test 1 : init master')
     MasterOps.init_master(key = verifing_key)
-#    store = MDB()
     log.info('query db init state ')
-#    store.query_db()
+    MDB.query_db()
     log.info('starting zmq setup')
     ctx = zmq.Context()
     socket = ctx.socket(socket_type=zmq.PAIR)
@@ -45,7 +44,7 @@ def start_mn(verifing_key):
     msg = socket.recv_pyobj()
     log.debug('received: {}'.format(msg))
 
-    log.info('writing 5 blocks')
+    log.info('Test 2 : writing 5 blocks')
 
     blk_id = 1
     while blk_id <= 5:
@@ -58,14 +57,18 @@ def start_mn(verifing_key):
         log.info("wr status {}".format(success))
         time.sleep(1)
         blk_id += 1
-        lasthash = StorageDriver.get_latest_block_hash()
-        log.info('prev hash {}'.format(lasthash))
     log.info('end! writes')
 
     log.info('print DB states')
-#    store.query_db()
-    #bhash = StorageDriver.get_latest_block_hash()
-    #log.info('print latest index entry {}'.format(bhash))
+    MDB.query_db()
+
+    log.info('Test 3: verify lookup api')
+    lasthash = StorageDriver.get_latest_block_hash()
+    log.info('latest hash entry {}'.format(lasthash))
+
+    log.info('Test 3.1 blk num from last blk hash')
+    bk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = lasthash)
+    log.info ('result {}'.format(bk_num))
 
     socket.close()
 

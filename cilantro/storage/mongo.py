@@ -3,8 +3,10 @@ import os
 import capnp
 from configparser import SafeConfigParser
 from pymongo import MongoClient
+from cilantro.utils.utils import MongoTools
 from cilantro.logger.base import get_logger
 from cilantro.messages.block_data.block_data import BlockDataBuilder, BlockData, MessageBase
+
 
 
 class MDB:
@@ -150,11 +152,12 @@ class MDB:
             blk_dict.update(blk)
 
         cls.log.debug("return dict {}".format(blk_dict))
+        l = MongoTools.get_results(data = blk_delta)
+        cls.log.debug("testing dump util {}".format(l))
         return blk_dict
 
     @classmethod
     def query_db(cls, type=None, query=None):
-
         if query is None:
             if type is None or type is "MDB":
                 block_list = cls.mn_collection.find({})
@@ -169,12 +172,25 @@ class MDB:
 
         if type is 'idx' and query is not None:
             result = cls.mn_coll_idx.find(query)
+            MongoTools.get_results(result)
+            cls.log.info("count {}".format(MongoTools.get_count(result)))
+            for x in result:
+                cls.log.info("result {}".format(x))
+            return result
+
+        if type is 'MDB' and query is not None:
+            result = cls.mn_collection.find(query)
             for x in result:
                 cls.log.info("result {}".format(x))
             return result
 
     @classmethod
     def query_store(cls, blk_num = None):
+        """
+        Returns locally stored block by blk_num
+        :param blk_num:
+        :return:
+        """
         response = cls.mn_collection.find(blk_num)
 
         if response is None:

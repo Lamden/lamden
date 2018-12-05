@@ -30,15 +30,6 @@ class StorageDriver:
     def get_transactions(cls, block_hash=None, raw_tx_hash=None, status=None):
         # TODO verify
         pass
-        # assert block_hash or raw_tx_hash or status, 'Must provide at least one search criteria'
-        # query = {}
-        # if block_hash:
-        #     query['block_hash'] = block_hash
-        # if raw_tx_hash:
-        #     query['raw_tx_hash'] = raw_tx_hash
-        # if status:
-        #     query['status'] = status
-        # return MDB.mn_db['transactions'].find(query)
 
     '''
         api returns full block if stored locally else would return list of Master nodes responsible for
@@ -60,8 +51,6 @@ class StorageDriver:
     def get_latest_block_hash(cls):
         idx_entry = MasterOps.get_blk_idx(n_blk=1)
         blk_hash = idx_entry.get('blockHash')
-        print("######")
-        print(blk_hash)
         return blk_hash
 
     @classmethod

@@ -1,7 +1,7 @@
 import hashlib
 import re, os
 from decimal import Decimal, getcontext
-
+from pymongo.cursor import Cursor
 
 class Encoder:
     @staticmethod
@@ -151,3 +151,40 @@ class IPUtils:
 class ErrorWithArgs(Exception):
     def __init__(self, *args):
         self.args = [a for a in args]
+
+
+class MongoTools:
+    @classmethod
+    def _convert_obj_ids_to_strings(cls, data):
+        if isinstance(data, list):
+            for doc in data:
+                doc['_id'] = str(doc['_id'])
+        elif isinstance(data, dict):
+            data['_id'] = str(data['_id'])
+
+        return data
+
+    @classmethod
+    def get_count(cls, data):
+        if isinstance(data, Cursor):
+            return data.count()
+
+    @classmethod
+    def get_results(cls, data):
+        if isinstance(data, Cursor):
+            data = list(data)
+        return cls._convert_obj_ids_to_strings(data)
+
+    @classmethod
+    def get_results_and_count(cls, data):
+        count = cls.get_count(data)
+        results = cls.get_results(data)
+        return {
+            'count': count,
+            'results': results,
+        }
+
+    @classmethod
+    def get_doc_ids(cls, results):
+        docs = cls.get_results(results)
+        return [doc['_id'] for doc in docs]
