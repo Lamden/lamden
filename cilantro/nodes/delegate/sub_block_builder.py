@@ -23,6 +23,7 @@ from typing import List
 
 from cilantro.logger import get_logger
 from cilantro.storage.vkbook import VKBook
+from cilantro.storage.state import StateDriver
 from cilantro.constants.ports import SBB_PORT_START
 
 from cilantro.messages.base.base import MessageBase
@@ -228,7 +229,8 @@ class SubBlockBuilder(Worker):
                                             timestamp=str(int(time.time())),
                                             sender=self.verifying_key)
         sbc = SubBlockContender.create_empty_sublock(input_hash=cr_context.input_hash,
-                                                     sub_block_index=cr_context.sbb_idx, signature=merkle_sig)
+                                                     sub_block_index=cr_context.sbb_idx, signature=merkle_sig,
+                                                     prev_block_hash=StateDriver.get_latest_block_hash())
         # Send to block manager
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(cr_context.input_hash))
         self._send_msg_over_ipc(sbc)
@@ -257,7 +259,8 @@ class SubBlockBuilder(Worker):
 
             sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=cr_context.input_hash,
                                            merkle_leaves=merkle.leaves, sub_block_index=cr_context.sbb_idx,
-                                           signature=merkle_sig, transactions=txs_data)
+                                           signature=merkle_sig, transactions=txs_data,
+                                           prev_block_hash=StateDriver.get_latest_block_hash())
 
             # Send to block manager
             self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
