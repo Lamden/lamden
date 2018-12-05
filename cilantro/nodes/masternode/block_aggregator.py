@@ -52,8 +52,6 @@ class BlockAggregator(Worker):
             secure=True,
             domain="sb-contender"
         )
-        # self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BA-Sub", secure=True)
-        # self.pub = self.manager.create_socket(socket_type=zmq.PUB, name="BA-Pub", secure=True)
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
             name="BA-Pub-{}".format(self.verifying_key[-8:]),
@@ -114,8 +112,7 @@ class BlockAggregator(Worker):
     def recv_sub_block_contender(self, sbc: SubBlockContender):
         self.log.info("Received a sbc with result hash {} and input hash {}".format(sbc.result_hash, sbc.input_hash))
         if self.result_hashes.get(sbc.result_hash):
-            if self.result_hashes[sbc.result_hash].get('_consensus_reached_') or \
-                self.sub_blocks.get(sbc.result_hash):
+            if self.result_hashes[sbc.result_hash].get('_consensus_reached_') or self.sub_blocks.get(sbc.result_hash):
                 self.log.spam('Already validated this SubBlock (result_hash={})'.format(
                     sbc.result_hash))
             elif self.check_alredy_verified(sbc):
@@ -242,9 +239,9 @@ class BlockAggregator(Worker):
             res = StorageDriver.store_block(block_data, validate=True)
 
             self.log.important2("Result of storing block hash {} .... {}".format(block_hash, res))
-            assert StorageDriver.get_latest_block_hash() == block_hash, "Storage driver latest block hash {} does not " \
-                                                                        "match newly created block hash {}".format(
-                                                                    StorageDriver.get_latest_block_hash(), block_hash)
+            assert StorageDriver.get_latest_block_hash() == block_hash, \
+                "Storage driver latest block hash {} does not match newly created block hash {}"\
+                .format(StorageDriver.get_latest_block_hash(), block_hash)
 
             self.curr_block_hash = block_hash
             self.log.success("STORED BLOCK WITH HASH {}".format(block_hash))
