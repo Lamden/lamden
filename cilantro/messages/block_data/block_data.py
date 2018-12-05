@@ -110,7 +110,8 @@ class BlockDataBuilder:
     DEL_VK = TESTNET_MASTERNODES[0]['vk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
 
     @classmethod
-    def create_block(cls, blk_num=0, prev_block_hash=GENESIS_BLOCK_HASH, merkle_roots=None, all_transactions=[], tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK, states=None):
+    def create_block(cls, blk_num=0, prev_block_hash=GENESIS_BLOCK_HASH, merkle_roots=None, all_transactions=[],
+                     tx_count=5, sub_block_count=2, mn_sk=MN_SK, mn_vk=MN_VK, del_sk=DEL_SK, states=None):
         merkle_roots = []
         input_hashes = []
         create_new_transactions = len(all_transactions) == 0

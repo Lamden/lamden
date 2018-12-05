@@ -36,7 +36,7 @@ class BlockAggregator(Worker):
         self.result_hashes = {}
         self.sub_blocks = {}
         self.full_blocks = {}
-        self.curr_block_hash = '0' * 64
+        self.curr_block_hash = StorageDriver.get_latest_block_hash()
 
         self.run()
 
@@ -236,9 +236,16 @@ class BlockAggregator(Worker):
                                                             "block hash {}".format(self.curr_block_hash, prev_block_hash)
             assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} SBs/per/block" \
                                                           .format(len(merkle_roots), NUM_SB_PER_BLOCK)
+
             # TODO wrap storage in try/catch. Add logic for storage failure
             StateDriver.update_with_block(block_data)
-            StorageDriver.store_block(block_data)
+            res = StorageDriver.store_block(block_data)
+
+            self.log.important2("Result of storing block hash {} .... {}".format(block_hash, res))
+            assert StorageDriver.get_latest_block_hash() == block_hash, "Storage driver latest block hash {} does not " \
+                                                                        "match newly created block hash {}".format(
+                                                                    StorageDriver.get_latest_block_hash(), block_hash)
+
             self.curr_block_hash = block_hash
             self.log.success("STORED BLOCK WITH HASH {}".format(block_hash))
             self.send_new_block_notification(block_data)

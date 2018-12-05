@@ -32,7 +32,7 @@ def run_mn(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
-    overwrite_logger_level(11)
+    # overwrite_logger_level(11)
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[slot_num]['sk']
@@ -48,7 +48,7 @@ def run_witness(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
-    overwrite_logger_level(11)
+    # overwrite_logger_level(11)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -64,7 +64,7 @@ def run_delegate(slot_num):
     import logging
 
     overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(11)
+    # overwrite_logger_level(11)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
