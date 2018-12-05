@@ -115,7 +115,7 @@ class BlockAggregator(Worker):
                 self.log.spam('Already received and verified this SubBlockContender (result_hash={}, input_hash={})'.format(
                     sbc.result_hash, sbc.input_hash))
             else:
-                if self.verify_sub_block_contender(sbc):
+                if self.verify_sbc(sbc):
                     self.log.info('Received SubBlockContender for an existing result hash (result_hash={}, input_hash={})'.format(
                         sbc.result_hash, sbc.input_hash))
                     self.aggregate_sub_block(sbc)
@@ -123,7 +123,7 @@ class BlockAggregator(Worker):
                     self.log.warning('Not a valid SubBlockContender for existing result hash (result_hash={}, input_hash={})'.format(
                         sbc.result_hash, sbc.input_hash))
         else:
-            if self.verify_sub_block_contender(sbc):
+            if self.verify_sbc(sbc):
                 self.log.info('Received SubBlockContender for a new result hash (result_hash={}, input_hash={})'.format(
                     sbc.result_hash, sbc.input_hash))
                 self.aggregate_sub_block(sbc)
@@ -136,7 +136,7 @@ class BlockAggregator(Worker):
             return True
         return False
 
-    def verify_sub_block_contender(self, sbc: SubBlockContender):
+    def verify_sbc(self, sbc: SubBlockContender):
         if not sbc.signature.verify(bytes.fromhex(sbc.result_hash)):
             self.log.info('This SubBlockContender does not have a correct signature!')
             return False
