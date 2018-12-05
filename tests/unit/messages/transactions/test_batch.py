@@ -26,7 +26,7 @@ class TestTransactionBatch(TestCase):
         containers = [build_test_container() for _ in range(4)]
         batch = TransactionBatch.create(containers)
 
-        self.assertEqual(batch.transactions, containers)
+        self.assertEqual(batch.ordered_transactions, containers)
         self.assertFalse(batch.is_empty)
 
     def test_serialize_deserialize(self):
@@ -35,7 +35,7 @@ class TestTransactionBatch(TestCase):
         clone = TransactionBatch.from_bytes(batch.serialize())
 
         self.assertEqual(batch, clone)
-        self.assertEqual(clone.transactions, containers)
+        self.assertEqual(clone.ordered_transactions, containers)
 
     def test_create_with_non_ordering_container(self):
         not_containers = ['sup im a string. no OrderingContainer here, no sir', 'hi fren']

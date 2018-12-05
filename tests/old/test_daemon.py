@@ -1,5 +1,5 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-4.json')
+set_testnet_config('2-2-2.json')
 from vmnet.comm import file_listener
 from vmnet.testcase import BaseTestCase
 import unittest, time, random, vmnet, cilantro, asyncio, ujson as json
