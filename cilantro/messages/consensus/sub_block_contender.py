@@ -33,20 +33,23 @@ class SubBlockContender(MessageBase):
         assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
         assert self._data.inputHash, "input hash field missing from data {}".format(self._data)
         assert self._data.signature, "Signature field missing from data {}".format(self._data)
+        assert self._data.prevBlockHash, "prevBlockHash field missing from data {}".format(self._data)
         assert hasattr(self._data, 'subBlockIdx'), "Sub-block index field missing from data {}".format(self._data)
 
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
                                                           "expected 64 char hex string".format(self.result_hash)
         assert is_valid_hex(self.input_hash, length=64), "Invalid input sub-block hash {} .. " \
                                                          "expected 64 char hex string".format(self.input_hash)
+        assert is_valid_hex(self.prev_block_hash, length=64), "Invalid prev block hash {} .. " \
+                                                              "expected 64 char hex string".format(self.prev_block_hash)
 
         # Ensure merkle leaves are valid hex - this may not be present in all cases
         for leaf in self.merkle_leaves:
             assert is_valid_hex(leaf, length=64), "Invalid Merkle leaf {} ... expected 64 char hex string".format(leaf)
 
     @classmethod
-    def create(cls, result_hash: str, input_hash: str, merkle_leaves: List[bytes],
-                    signature: MerkleSignature, transactions: List[TransactionData], sub_block_index: int):
+    def create(cls, result_hash: str, input_hash: str, merkle_leaves: List[bytes], signature: MerkleSignature,
+               transactions: List[TransactionData], sub_block_index: int, prev_block_hash: str):
         """
         Delegages create a new sub-block contender and propose to master nodes
         :param result_hash: The hash of the root of this sub-block
@@ -66,13 +69,15 @@ class SubBlockContender(MessageBase):
         struct.signature = signature.serialize()
         struct.transactions = [tx.serialize() for tx in transactions]
         struct.subBlockIdx = sub_block_index
+        struct.prevBlockHash = prev_block_hash
 
         return cls.from_data(struct)
 
     @classmethod
-    def create_empty_sublock(cls, input_hash: str, signature: MerkleSignature, sub_block_index: int):
+    def create_empty_sublock(cls, input_hash: str, signature: MerkleSignature, sub_block_index: int, prev_block_hash: str):
         return cls.create(result_hash=input_hash, input_hash=input_hash, signature=signature,
-                          sub_block_index=sub_block_index, merkle_leaves=[], transactions=[])
+                          sub_block_index=sub_block_index, merkle_leaves=[], transactions=[],
+                          prev_block_hash=prev_block_hash)
 
     @classmethod
     def _chunks(cls, l, n=64):
@@ -94,6 +99,10 @@ class SubBlockContender(MessageBase):
     @property
     def sb_index(self) -> int:
         return self._data.subBlockIdx
+
+    @property
+    def prev_block_hash(self) -> str:
+        return self._data.prevBlockHash
 
     @lazy_property
     def signature(self) -> MerkleSignature:
@@ -134,5 +143,6 @@ class SubBlockContenderBuilder:
         tree = MerkleTree.from_raw_transactions(raw_txs)
         signature = build_test_merkle_sig(msg=tree.root, sk=del_sk, vk=wallet.get_vk(del_sk))
         sbc = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
-                                       signature=signature, transactions=transactions, sub_block_index=sb_index)
+                                       signature=signature, transactions=transactions, sub_block_index=sb_index,
+                                       prev_block_hash='0' * 64)
         return sbc
