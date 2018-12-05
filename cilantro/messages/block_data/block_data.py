@@ -90,6 +90,19 @@ class BlockData(MessageBase):
         return [input_hash.decode() for input_hash in self._data.inputHashes]
 
 
+class GenesisBlockData(BlockData):
+
+    def validate(self):
+        pass  # no validation for genesis block hash
+
+    @classmethod
+    def create(cls):
+        struct = blockdata_capnp.BlockData.new_message()
+        struct.blockHash = GENESIS_BLOCK_HASH
+        struct.blockNum = 0
+        return cls.from_data(struct)
+
+
 class BlockDataBuilder:
     MN_SK = TESTNET_MASTERNODES[0]['sk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
     MN_VK = TESTNET_MASTERNODES[0]['vk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
@@ -126,3 +139,4 @@ class BlockDataBuilder:
                                  input_hashes=input_hashes)
 
         return block
+

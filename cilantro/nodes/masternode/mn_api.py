@@ -64,9 +64,9 @@ class StorageDriver:
     def get_latest_block_hash(cls):
         idx_entry = MasterOps.get_blk_idx(n_blk=1)
         blk_hash = idx_entry.get('blockHash')
-        print("######")
-        print(blk_hash)
-        return blk_hash
+        # print("######")
+        # print(blk_hash)
+        return blk_hash.decode()
 
     @classmethod
     def catch_me_up(cls, node_type=None, my_blk_hash=None):

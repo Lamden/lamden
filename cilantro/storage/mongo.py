@@ -4,7 +4,7 @@ import capnp
 from configparser import SafeConfigParser
 from pymongo import MongoClient
 from cilantro.logger.base import get_logger
-from cilantro.messages.block_data.block_data import BlockDataBuilder, BlockData, MessageBase
+from cilantro.messages.block_data.block_data import GenesisBlockData, BlockData, MessageBase
 
 
 class MDB:
@@ -55,7 +55,7 @@ class MDB:
             uri = cls.setup_db(db_type = 'MDB')
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client.get_database()
-            block = BlockDataBuilder.create_block(blk_num=0)
+            block = GenesisBlockData.create()
             #print("just created block {}".format(block))
             cls.genesis_blk = cls.get_dict(capnp_struct = block)
             #cls.log.spam("storing genesis block... {}".format(cls.genesis_blk))
@@ -65,7 +65,7 @@ class MDB:
             cls.log.debug('flipping the bit {}'.format(cls.init_mdb))
 
             if cls.init_mdb is True:
-                uri = cls.setup_db(db_type = 'index')
+                uri = cls.setup_db(db_type='index')
                 cls.mn_client_idx = MongoClient(uri)
                 cls.mn_db_idx = MongoClient(uri).get_database()
                 cls.mn_coll_idx = cls.mn_db_idx['index']
