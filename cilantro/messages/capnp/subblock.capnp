@@ -16,6 +16,7 @@ struct SubBlockContender {
     signature @3 :Data;
     transactions @4: List(Data);
     subBlockIdx @5: UInt8;
+    prevBlockHash @5: Text;
 }
 
 struct EmptySubBlockContender {
