@@ -19,7 +19,7 @@ class TransactionBatcher(Worker):
         self.queue, self.ip = queue, ip
 
         # Create Pub socket to broadcast to witnesses
-        self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcherPUB", secure=True)
+        self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
         self.pub_sock.bind(port=MN_TX_PUB_PORT, ip=self.ip)
 
         # TODO create PAIR socket to orchestrate w/ main process?
@@ -39,7 +39,7 @@ class TransactionBatcher(Worker):
         skip_turns = MAX_SKIP_TURNS
 
         while True:
-            self.log.spam("Batcher resting for {} seconds".format(BATCH_INTERVAL))
+            # self.log.spam("Batcher resting for {} seconds".format(BATCH_INTERVAL))
             await asyncio.sleep(BATCH_INTERVAL + self.delta_extra)
 
             num_txns = self.queue.qsize()
@@ -47,11 +47,12 @@ class TransactionBatcher(Worker):
             if (num_txns >= TRANSACTIONS_PER_SUB_BLOCK) or (skip_turns < 1):
                 for _ in range(min(TRANSACTIONS_PER_SUB_BLOCK, num_txns)):
                     tx = OrderingContainer.from_bytes(self.queue.get())
-                    self.log.spam("masternode bagging transaction from sender {}".format(tx.sender))
+                    # self.log.spam("masternode bagging transaction from sender {}".format(tx.transaction.sender))
 
                     tx_list.append(tx)
                     skip_turns = MAX_SKIP_TURNS  # reset to max again
             else:
+                self.log.spam("Skipping this batch (skip_turns={})".format(skip_turns))
                 skip_turns = skip_turns - 1
                 continue
 
