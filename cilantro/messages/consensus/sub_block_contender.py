@@ -136,7 +136,8 @@ class SubBlockContender(MessageBase):
 
 class SubBlockContenderBuilder:
     @classmethod
-    def create(cls, transactions: List[TransactionData]=None, tx_count=5, input_hash='A'*64, sb_index=0, del_sk=DEL_SK):
+    def create(cls, transactions: List[TransactionData] = None, tx_count=5, input_hash='A' * 64, sb_index=0,
+               del_sk=DEL_SK, prev_block_hash='0' * 64):
         if not transactions:
             transactions = [TransactionDataBuilder.create_random_tx() for _ in range(tx_count)]
         raw_txs = [tx.serialize() for tx in transactions]
@@ -144,5 +145,5 @@ class SubBlockContenderBuilder:
         signature = build_test_merkle_sig(msg=tree.root, sk=del_sk, vk=wallet.get_vk(del_sk))
         sbc = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
                                        signature=signature, transactions=transactions, sub_block_index=sb_index,
-                                       prev_block_hash='0' * 64)
+                                       prev_block_hash=prev_block_hash)
         return sbc
