@@ -38,6 +38,8 @@ class BlockAggregator(Worker):
         self.full_blocks = {}
         self.curr_block_hash = StorageDriver.get_latest_block_hash()
 
+        self.pub, self.sub, self.router = None, None, None
+
         self.run()
 
     def run(self):
@@ -58,13 +60,13 @@ class BlockAggregator(Worker):
             secure=True,
             domain="sb-contender"
         )
-        # self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BA-router", secure=True)
         self.router = self.manager.create_socket(
             socket_type=zmq.ROUTER,
             name="BA-Router-{}".format(self.verifying_key[-8:]),
             secure=True,
             domain="sb-contender"
         )
+
         self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
@@ -111,7 +113,7 @@ class BlockAggregator(Worker):
             if self.result_hashes[sbc.result_hash].get('_consensus_reached_') or self.sub_blocks.get(sbc.result_hash):
                 self.log.debugv('Already validated this SubBlock (result_hash={})'.format(
                     sbc.result_hash))
-            elif self.check_alredy_verified(sbc):
+            elif self.check_sbc_already_verified(sbc):
                 self.log.debugv('Already received and verified this SubBlockContender (result_hash={}, input_hash={})'
                                 .format(sbc.result_hash, sbc.input_hash))
             else:
@@ -131,34 +133,38 @@ class BlockAggregator(Worker):
                 self.log.warning('Not a valid SubBlockContender for new result hash (result_hash={}, input_hash={})'
                                  .format(sbc.result_hash, sbc.input_hash))
 
-    def check_alredy_verified(self, sbc: SubBlockContender):
-        if sbc.signature.signature in self.result_hashes.get(sbc.result_hash, {}).get('_valid_signatures_'):
-            return True
-        return False
+    def check_sbc_already_verified(self, sbc: SubBlockContender) -> bool:
+        return sbc.signature.signature in self.result_hashes.get(sbc.result_hash, {}).get('_valid_signatures_')
 
-    def verify_sbc(self, sbc: SubBlockContender):
+    def verify_sbc(self, sbc: SubBlockContender) -> bool:
+        # Validate signature
         if not sbc.signature.verify(bytes.fromhex(sbc.result_hash)):
-            self.log.info('This SubBlockContender does not have a correct signature!')
+            self.log.warning('This SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))
             return False
-        if len(sbc.merkle_leaves) > 0:
-            self.log.info("This SubBlockContender have {} num of merkle leaves!".format(len(sbc.merkle_leaves)))
-            if MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash) \
-                and self.validate_transactions(sbc):
-                self.log.info('This SubBlockContender is valid!')
-                return True
-            else:
-                self.log.warning('This SubblockContender is INVALID!')
-        else:
-            self.log.info('This SubBlockContender is empty.')
-            return True
-        return False
 
-    def validate_transactions(self, sbc):
-        self.log.info("This sbc txns {}".format(sbc._data.transactions))
-        for tx in sbc.transactions:
-            if not tx.hash in sbc.merkle_leaves:
-                self.log.warning('Received malicious transactions that does not match any merkle leaves!')
+        # Validate sbc prev block hash matches our current block hash
+        if sbc.prev_block_hash != self.curr_block_hash:
+            self.log.warning("SBC prev block hash {} does not match our current block hash {}! SBC: {}"
+                             .format(sbc.prev_block_hash, self.curr_block_hash, sbc))
+            return False
+
+        # Validate merkle leaves
+        if len(sbc.merkle_leaves) > 0:
+            self.log.spam("This SubBlockContender have {} num of merkle leaves!".format(len(sbc.merkle_leaves)))
+            if MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash) and self.validate_txs(sbc):
+                self.log.spam('This SubBlockContender is valid!')
+            else:
+                self.log.warning('Could not verify Merkle tree for SBC {}'.format(sbc))
                 return False
+
+        return True
+
+    def validate_txs(self, sbc) -> bool:
+        for tx in sbc.transactions:
+            if tx.hash not in sbc.merkle_leaves:
+                self.log.warning('Received malicious txs that does not match merkle leaves! SBC: {}'.format(sbc))
+                return False
+
         return True
 
     def aggregate_sub_block(self, sbc):
