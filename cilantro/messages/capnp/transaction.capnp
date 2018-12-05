@@ -53,16 +53,15 @@ struct Transactions {
 
 
 struct TransactionContainer {
-    type @0 :UInt32;
+    type @0 :UInt16;
     payload @1 :Data;
 }
 
 
 struct OrderingContainer {
-    type @0 :UInt32;
+    type @0 :UInt16;
     transaction @1 :Data;
-    masternodeVk @2 :Data;
-    utcTimeMs @3 :UInt64;
+    utcTimeMs @2 :UInt64;
 }
 
 

@@ -9,6 +9,7 @@ from sanic_limiter import Limiter, get_remote_address
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.publish import PublishTransaction
 from cilantro.messages.transaction.container import TransactionContainer
+from cilantro.messages.transaction.ordering import OrderingContainer
 from multiprocessing import Queue
 
 from cilantro.nodes.masternode.nonce import NonceManager
@@ -61,8 +62,9 @@ async def submit_transaction(request):
         log.spam("Removing nonce {}".format(tx.nonce))
         NonceManager.delete_nonce(tx.nonce)
 
-    # TODO why do we need this if we check the queue at the start of this func? --davis
-    try: app.queue.put_nowait(tx)
+    # TODO @faclon why do we need this if we check the queue at the start of this func? --davis
+    ord_container = OrderingContainer.create(tx)
+    try: app.queue.put_nowait(ord_container.serialize())
     except: return json({'error': "Queue full! Cannot process any more requests"})
 
     # log.important("proc id {} just put a tx in queue! queue = {}".format(os.getpid(), app.queue))

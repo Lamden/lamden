@@ -46,10 +46,10 @@ class TransactionBatcher(Worker):
             tx_list = []
             if (num_txns >= TRANSACTIONS_PER_SUB_BLOCK) or (skip_turns < 1):
                 for _ in range(min(TRANSACTIONS_PER_SUB_BLOCK, num_txns)):
-                    tx = self.queue.get()
+                    tx = OrderingContainer.from_bytes(self.queue.get())
                     self.log.spam("masternode bagging transaction from sender {}".format(tx.sender))
 
-                    tx_list.append(OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key))
+                    tx_list.append(tx)
                     skip_turns = MAX_SKIP_TURNS  # reset to max again
             else:
                 skip_turns = skip_turns - 1
