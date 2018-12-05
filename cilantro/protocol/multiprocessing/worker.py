@@ -1,8 +1,9 @@
 from cilantro.logger import get_logger
 from cilantro.protocol import wallet
 from cilantro.protocol.reactor.socket_manager import SocketManager
+from cilantro.messages.envelope.envelope import Envelope
 
-from typing import Callable
+from typing import Callable, Union
 import zmq.asyncio, asyncio
 
 import uvloop
@@ -40,3 +41,30 @@ class Worker:
         The handler function is called with a single arguement, a dictionary containing info about the overlay event
         """
         self.manager.overlay_callbacks[key].add(handler)
+
+    def open_envelope(self, env_bytes: bytes, validate=True, sender_groups: Union[tuple, str]=None) -> Union[Envelope, bool]:
+        """
+        Attempts to deserialize an envelope, returning False if an error occurs or if the envelope is not from a valid
+        sender. 'sender_groups' can be passed in to also verify that the envelope was from an appropriate node type
+        (ie to check if this envelope was indeed from a masternode/witness/delegate)
+        :param env_bytes: A serialized envelope, in bytes
+        :param validate: If true validate the envelope (ie check seal, make sure meta/message deserialize, ect)
+        :param sender_groups: A str, representing a type from enum NodeTypes, or a list of a said strings
+        :return: The deserialized envelope if all validation passes, or False if it does not
+        """
+        try:
+            env = Envelope.from_bytes(env_bytes, validate=validate)
+        except Exception as e:
+            self.log.warning("Error deserializing/validating envelope! Error: {}\nEnvelope binary: {}".format(e, env_bytes))
+            return False
+
+        if sender_groups and not env.is_from_group(sender_groups):
+            self.log.warning("Could not verify sender is from group(s) <{}> for envelope {}".format(sender_groups, env))
+            return False
+
+        # If we did not validate it, still check the seal
+        if not validate and not env.verify_seal:
+            self.log.warning("Could not verify seal on envelope! Envelope: {}".format(env))
+            return False
+
+        return env

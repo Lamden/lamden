@@ -15,6 +15,7 @@
 # DEL_SK = TESTNET_DELEGATES[0]['sk']
 # DEL_VK = TESTNET_DELEGATES[0]['vk']
 #
+#
 # class TestStorageDriver(TestCase):
 #
 #     @classmethod
@@ -23,7 +24,7 @@
 #         cls.driver = StorageDriver()
 #
 #     def setUp(self):
-#         MDB.drop_db()
+#         MDB.reset_db()
 #
 #     @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
 #     def test_store_block(self):
@@ -41,7 +42,7 @@
 #         blocks = []
 #         for i in range(5):
 #             if len(blocks) > 0:
-#                 block = BlockDataBuilder.create_block(prev_block_hash=blocks[-1].block_hash)
+#                 block = BlockDataBuilder.create_block(prev_block_hash=blocks[-1].block_hash, blk_num=len(blocks)+1)
 #             else:
 #                 block = BlockDataBuilder.create_block()
 #             blocks.append(block)

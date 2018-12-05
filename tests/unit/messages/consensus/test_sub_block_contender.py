@@ -35,9 +35,9 @@ class TestSubBlockContender(TestCase):
         signature = build_test_merkle_sig(msg=tree.root, sk=DEL_SK, vk=DEL_VK)
 
         sbc1 = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
-                                       signature=signature, transactions=txs, sub_block_index=0)
+                                        signature=signature, transactions=txs, sub_block_index=0, prev_block_hash='0'*64)
         sbc2 = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
-                                        signature=signature, transactions=txs, sub_block_index=0)
+                                        signature=signature, transactions=txs, sub_block_index=0, prev_block_hash='0'*64)
         self.assertFalse(sbc1.is_empty)
         self.assertFalse(sbc2.is_empty)
         self.assertEqual(sbc1, sbc2)
@@ -51,7 +51,7 @@ class TestSubBlockContender(TestCase):
         signature = build_test_merkle_sig(msg=tree.root, sk=DEL_SK, vk=DEL_VK)
 
         sbc = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
-                                       signature=signature, transactions=txs, sub_block_index=0)
+                                       signature=signature, transactions=txs, sub_block_index=0, prev_block_hash='0'*64)
         clone = SubBlockContender.from_bytes(sbc.serialize())
 
         self.assertEqual(clone, sbc)
@@ -60,7 +60,8 @@ class TestSubBlockContender(TestCase):
         input_hash = 'B' * 64  # in reality this would be the env hash. we can just make something up
         signature = build_test_merkle_sig(msg=bytes.fromhex(input_hash), sk=DEL_SK, vk=DEL_VK)
 
-        sbc = SubBlockContender.create_empty_sublock(input_hash=input_hash, signature=signature, sub_block_index=0)
+        sbc = SubBlockContender.create_empty_sublock(input_hash=input_hash, signature=signature, sub_block_index=0,
+                                                     prev_block_hash='0' * 64)
 
         self.assertTrue(sbc.is_empty)
 
@@ -73,7 +74,7 @@ class TestSubBlockContender(TestCase):
         signature = build_test_merkle_sig(msg=tree.root, sk=DEL_SK, vk=DEL_VK)
 
         sbc1 = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
-                                       signature=signature, transactions=txs, sub_block_index=0)
+                                       signature=signature, transactions=txs, sub_block_index=0, prev_block_hash='0'*64)
         self.assertFalse(sbc1.is_empty)
         msg_type = MessageBase.registry[type(sbc1)]
         sbc2 = MessageBase.registry[msg_type].from_bytes(sbc1.serialize())
