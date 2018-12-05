@@ -239,7 +239,7 @@ class BlockAggregator(Worker):
 
             # TODO wrap storage in try/catch. Add logic for storage failure
             StateDriver.update_with_block(block_data)
-            res = StorageDriver.store_block(block_data)
+            res = StorageDriver.store_block(block_data, validate=True)
 
             self.log.important2("Result of storing block hash {} .... {}".format(block_hash, res))
             assert StorageDriver.get_latest_block_hash() == block_hash, "Storage driver latest block hash {} does not " \
