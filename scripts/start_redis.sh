@@ -28,5 +28,7 @@ REDIS_PORT=$REDIS_PORT
 REDIS_PASSWORD=$REDIS_PASSWORD
 " > docker/redis.env
 
+rm ./dump.rdb
+
 echo "Starting Redis server..."
 redis-server
