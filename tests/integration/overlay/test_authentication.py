@@ -1,5 +1,5 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-4.json')
+set_testnet_config('2-2-2.json')
 from vmnet.comm import file_listener
 from vmnet.testcase import BaseTestCase
 import unittest, time, random, vmnet, cilantro, asyncio, ujson as json
@@ -85,9 +85,10 @@ class TestAuthentication(BaseTestCase):
         self.all_nodes = set(self.groups['node'])
         node_count = len(self.groups['node'])
         self.nodes_complete = set()
-        all_vks = [TESTNET_MASTERNODES[0]['vk']] + [n['vk'] for n in TESTNET_DELEGATES[:3]]
+        all_vks = [TESTNET_MASTERNODES[0]['vk']] + [TESTNET_MASTERNODES[1]['vk']] + [n['vk'] for n in TESTNET_DELEGATES[:2]]
         self.execute_python(self.groups['node'][0], wrap_func(masternode, 0, node_count, all_vks))
-        for idx, node in enumerate(self.groups['node'][1:]):
+        self.execute_python(self.groups['node'][1], wrap_func(masternode, 1, node_count, all_vks))
+        for idx, node in enumerate(self.groups['node'][2:]):
             self.execute_python(node, wrap_func(delegates, idx, node_count, all_vks))
 
         file_listener(self, self.callback, self.timeout, 90)

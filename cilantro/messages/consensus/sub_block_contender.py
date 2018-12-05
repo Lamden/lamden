@@ -27,7 +27,7 @@ class SubBlockContender(MessageBase):
     """
 
     def validate(self):
-
+        self.transactions # Will throw an error if it cannot be deserialized
         assert self.signature.sender in VKBook.get_delegates(), 'Not a valid delegate'
         assert self.signature.verify(bytes.fromhex(self.result_hash)), 'Cannot verify signature'
         assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
@@ -35,7 +35,6 @@ class SubBlockContender(MessageBase):
         assert self._data.signature, "Signature field missing from data {}".format(self._data)
         assert self._data.prevBlockHash, "prevBlockHash field missing from data {}".format(self._data)
         assert hasattr(self._data, 'subBlockIdx'), "Sub-block index field missing from data {}".format(self._data)
-
         assert is_valid_hex(self.result_hash, length=64), "Invalid sub-block result hash {} .. " \
                                                           "expected 64 char hex string".format(self.result_hash)
         assert is_valid_hex(self.input_hash, length=64), "Invalid input sub-block hash {} .. " \
@@ -126,6 +125,8 @@ class SubBlockContender(MessageBase):
 
     @property
     def transactions(self) -> List[TransactionData]:
+        print("transactions dump:")
+        print(self._data.transactions)
         return [TransactionData.from_bytes(tx) for tx in self._data.transactions]
 
     def __eq__(self, other):

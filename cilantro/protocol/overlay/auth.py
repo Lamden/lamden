@@ -61,9 +61,9 @@ class Auth:
         if vk: public_key = cls.vk2pk(vk)
         public_key_filename = "{0}.key".format(public_key.hex())
         public_key_dir = join(cls.base_dir, cls.default_domain_dir if domain == '*' else domain)
+        os.makedirs(public_key_dir, exist_ok=True)
         public_key_file = join(public_key_dir, public_key_filename)
         now = datetime.datetime.now()
-        os.makedirs(public_key_dir, exist_ok=True)
         zmq.auth.certs._write_key_file(public_key_file,
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)

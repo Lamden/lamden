@@ -39,7 +39,7 @@ class TestNodeBootStage(MPTestCase):
         all_vks = (TESTNET_MASTERNODES[0]['vk'], TESTNET_MASTERNODES[1]['vk'], TESTNET_WITNESSES[0]['vk'],
                    TESTNET_WITNESSES[1]['vk'], TESTNET_DELEGATES[0]['vk'], TESTNET_DELEGATES[1]['vk'],)
 
-        self.start(timeout=CI_FACTOR*60)
+        self.start(timeout=CI_FACTOR*200)
 
 
 if __name__ == '__main__':
