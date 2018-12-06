@@ -28,11 +28,10 @@ def start_mn(verifing_key):
     from cilantro.nodes.masternode.master_store import MasterOps
 
     log = get_logger(os.getenv('MN'))
-    log.info('init master')
+    log.info('Test 1 : init master')
     MasterOps.init_master(key = verifing_key)
-#    store = MDB()
-    log.info('query db init state ')
-#    store.query_db()
+    log.info('result query db init state ')
+    MDB.query_db()
     log.info('starting zmq setup')
     ctx = zmq.Context()
     socket = ctx.socket(socket_type=zmq.PAIR)
@@ -41,32 +40,43 @@ def start_mn(verifing_key):
     time.sleep(1)
     log.info("CLIENT CONNECTING TO {}".format(url))
     socket.connect(url)
-    log.debug("waiting for msg...")
+    log.info("waiting for msg...")
     msg = socket.recv_pyobj()
     log.debug('received: {}'.format(msg))
 
-    log.info('writing 5 blocks')
+    log.info('Test 2 : writing 5 blocks')
 
     blk_id = 1
-    while blk_id <= 5:
+    while blk_id <= 1:
         log.debug("waiting for msg...")
         msg = socket.recv_pyobj()
         log.info("got msg {}".format(msg))
+
+        last_blk_hash = bool(StorageDriver.get_latest_block_hash())
+        print("WHY-WHY-WHY")
+        print(last_blk_hash)
+        print(StorageDriver.get_latest_block_hash())
+        print("**********************")
 
         block = BlockDataBuilder.create_block(blk_num = blk_id)
         success = StorageDriver.store_block(block, validate=False)
         log.info("wr status {}".format(success))
         time.sleep(1)
         blk_id += 1
-        lasthash = StorageDriver.get_latest_block_hash()
-        log.info('prev hash {}'.format(lasthash))
     log.info('end! writes')
 
     log.info('print DB states')
-#    store.query_db()
-    #bhash = StorageDriver.get_latest_block_hash()
-    #log.info('print latest index entry {}'.format(bhash))
+    MDB.query_db()
 
+    log.info('Test 3: verify lookup api')
+    lasthash = StorageDriver.get_latest_block_hash()
+    log.info('latest hash entry -> {}'.format(lasthash))
+
+    log.info('Test 3.1 blk num from last blk hash')
+    bk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = lasthash)
+    log.info('blk num from lookup {}'.format(bk_num))
+
+    log.info('end test')
     socket.close()
 
 
@@ -94,7 +104,7 @@ def start_mgmt():
     socket.send_pyobj("hello for the first time")
 
     blk_num = 1
-    while blk_num <= 5:
+    while blk_num <= 1:
         msg = blk_num
         log.debug("sending msg {}".format(msg))
         socket.send_pyobj(msg)
@@ -120,6 +130,7 @@ class TestZMQPair(BaseNetworkTestCase):
         self.execute_python(node,wrap_func(start_mn, verifing_key = key))
 
         input("\n\nEnter any key to terminate")
+
 
 if __name__ == '__main__':
     unittest.main()
