@@ -184,7 +184,7 @@ class God:
     @classmethod
     def random_contract_tx(cls):
         sender, receiver = random.sample(ALL_WALLETS, 2)
-        amount = random.randint(1, 1260)
+        amount = random.randint(1, 100)
 
         return cls.create_currency_tx(sender=sender, receiver=receiver, amount=amount)
 
