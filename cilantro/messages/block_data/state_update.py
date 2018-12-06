@@ -56,6 +56,7 @@ class BlockIndexRequest(MessageBaseJson):
 class BlockIndexReply(MessageBaseJson):
 
     def validate(self):
+        # TODO do validation logic here, not in create
         pass
 
     @classmethod
