@@ -67,8 +67,7 @@ async def submit_transaction(request):
     try: app.queue.put_nowait(ord_container.serialize())
     except: return json({'error': "Queue full! Cannot process any more requests"})
 
-    # log.important("proc id {} just put a tx in queue! queue = {}".format(os.getpid(), app.queue))
-    # TODO return transaction hash or some unique identifier here
+    # Return transaction hash and nonce to users (not sure which they will need) --davis
     return json({'success': 'Transaction successfully submitted to the network.',
                  'nonce': tx.nonce, 'hash': Hasher.hash(tx)})
 

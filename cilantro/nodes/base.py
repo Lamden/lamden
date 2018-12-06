@@ -73,11 +73,9 @@ class NodeBase(Worker):
         pass
 
     def _node_offline_event(self, event: dict):
-        assert event['event'] == 'node_offline', "Wrong handler wrong event wtf"  # TODO remove
         self.log.spam("Node with vk {} is still offline.".format(event['vk']))
 
     def _node_online_event(self, event: dict):
-        assert event['event'] == 'node_online', "Wrong handler wrong event wtf"  # TODO remove
         self.log.debugv("Node with vk {} is online with ip {}!".format(event['vk'], event['ip']))
         self._add_online_vk(event['vk'])
 
@@ -90,8 +88,15 @@ class NodeBase(Worker):
 
     async def _wait_for_network_rdy(self):
         elapsed = 0
-        num_nodes = min(2, len(self._get_missing_nodes()))
+        # @raghu arnt we are going to sleep for 10 second all the time? proof:
+        # max(10, min(2, len(missing_nodes)) ) = max(10, at most 2) = 10
+        # num_nodes = min(2, len(self._get_missing_nodes()))
+        # time.sleep(max(10, num_nodes))
+
+        # did you mean max(2, len(missing_nodes) ??
+        num_nodes = max(2, len(self._get_missing_nodes()))
         time.sleep(max(10, num_nodes))
+
         while not self._quorum_reached() and elapsed < MAX_BOOT_WAIT:
             # Get missing node set, and try and ping them all (no auth)
             missing_vks = self._get_missing_nodes()

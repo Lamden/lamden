@@ -29,10 +29,11 @@ def run_mn(slot_num):
     from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_MASTERNODES
 
+    # NOTE setting the log level below 11 does not work for some reason --davis
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
     # overwrite_logger_level(11)
-    # overwrite_logger_level(4)  # suppress 'spam' log level
+    overwrite_logger_level(11)  # suppress 'spam' log level
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[slot_num]['sk']
