@@ -18,7 +18,7 @@ struct ContractTransaction {
         sender @0 :Data;
         contractName @1 :Text;
         functionName @2 :Text;
-        gasSupplied @3 :UInt64;
+        stampsSupplied @3 :UInt64;
         nonce @4 :Text;
         kwargs @5 :V.Map(Text, V.Value);
     }
@@ -33,7 +33,7 @@ struct PublishTransaction {
         sender @0 :Data;
         contractName @1 :Text;
         contractCode @2 :Text;
-        gasSupplied @3 :UInt64;
+        stampsSupplied @3 :UInt64;
         nonce @4 :Text;
     }
 }
