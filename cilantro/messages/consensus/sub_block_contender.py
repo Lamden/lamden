@@ -132,6 +132,10 @@ class SubBlockContender(MessageBase):
         return self.input_hash == other.input_hash and \
             self.result_hash == other.result_hash
 
+    def __repr__(self):
+        return "SubblockContender with\tsubblock_index={}, prev_block_hash={}, input_hash={}, result_hash={}, num_leaves={}" \
+               .format(self.sb_index, self.prev_block_hash, self.input_hash, self.result_hash, len(self.transactions))
+
 
 class SubBlockContenderBuilder:
     @classmethod
