@@ -26,7 +26,7 @@ def deposit_to_all_wallets():
     RAGHU = ('b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668',
              'c1f845ad8967b93092d59e4ef56aef3eba49c33079119b9c856a5354e9ccdf84')
 
-    SEED_AMOUNT = 2 ** 64 - 1
+    SEED_AMOUNT = 2 ** 63
     ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL, RAGHU]
 
     # this is hella silly lmao look what i have to do to just to seed a list of wallets. we should really just allow
