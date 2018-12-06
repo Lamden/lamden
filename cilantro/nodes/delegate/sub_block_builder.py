@@ -244,25 +244,24 @@ class SubBlockBuilder(Worker):
 
         try:
             sb_data = cr_context.get_subblock_rep()
-
-            self.log.important3("GOT SB DATA: {}".format(sb_data))
+            # self.log.important3("GOT SB DATA: {}".format(sb_data))
 
             txs_data = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[2]) for d in sb_data]
             txs_data_serialized = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[2]).serialize() for d in sb_data]
             txs = [d[0] for d in sb_data]
 
+            # build sbc
             merkle = MerkleTree.from_raw_transactions(txs_data_serialized)
             signature = wallet.sign(self.signing_key, merkle.root)
             merkle_sig = MerkleSignature.create(sig_hex=signature,
                                                 timestamp=str(time.time()),
                                                 sender=self.verifying_key)
-
             sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=cr_context.input_hash,
                                            merkle_leaves=merkle.leaves, sub_block_index=cr_context.sbb_idx,
                                            signature=merkle_sig, transactions=txs_data,
                                            prev_block_hash=StateDriver.get_latest_block_hash())
 
-            # Send to block manager
+            # Send sbc to block manager
             self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
                                 .format(len(txs), cr_context.input_hash))
             self._send_msg_over_ipc(sbc)

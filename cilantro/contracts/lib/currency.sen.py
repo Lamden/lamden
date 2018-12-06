@@ -10,7 +10,8 @@ market = hmap('market', str, int)
 @seed
 def deposit_to_all_wallets():
     market['stamps_to_tau'] = 1
-    # balances['lorde'] = 666
+    assert market['stamps_to_tau'] == 1, 'whaaaaaathjgklg'
+    balances['black_hole'] = 0
 
     STU = ('db929395f15937f023b4682995634b9dc19b1a2b32799f1f67d6f080b742cdb1',
            '324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502')
@@ -25,14 +26,19 @@ def deposit_to_all_wallets():
     RAGHU = ('b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668',
              'c1f845ad8967b93092d59e4ef56aef3eba49c33079119b9c856a5354e9ccdf84')
 
-    SEED_AMOUNT = 10 ** 5
+    SEED_AMOUNT = 10 ** 20
     ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL, RAGHU]
 
     # this is hella silly lmao look what i have to do to just to seed a list of wallets. we should really just allow
     # for loops, i see little point in disallowing them
     def seed_wallet(wallet):
-        balances[wallet[0]] = SEED_AMOUNT
-    map(lambda w: seed_wallet(w), ALL_WALLETS)
+        print('seeding wallet {}'.format(wallet[1]))
+        balances[wallet[1]] = SEED_AMOUNT
+    list(map(seed_wallet, ALL_WALLETS))
+
+    balances[STU[1]] = SEED_AMOUNT
+    assert balances.get(STU[1]) == SEED_AMOUNT, "Seeding did not work!"
+    assert balances.get(DAVIS[1]) == SEED_AMOUNT, "Seeding did not work!"
 
 @export
 def submit_stamps(stamps):

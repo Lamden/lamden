@@ -59,6 +59,7 @@ def run_witness(slot_num):
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
+    from seneca.libs.logger import overwrite_logger_level as sen_overwrite_log
     from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_DELEGATES
     import os
@@ -66,6 +67,7 @@ def run_delegate(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(11)
+    sen_overwrite_log(11)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')

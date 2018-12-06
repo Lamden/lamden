@@ -30,7 +30,8 @@ class NodeTypes:
             return vk in VKBook.get_delegates()
 
 
-PING_RETRY = 15  # How often (in seconds) a node should ping others to check if they are online
+# How often (in seconds) a node should ping others to check if they are online
+PING_RETRY = min(15, len(VKBook.get_all()))
 
 
 class NodeBase(Worker):
@@ -88,8 +89,10 @@ class NodeBase(Worker):
 
     async def _wait_for_network_rdy(self):
         elapsed = 0
+
         # @raghu arnt we are going to sleep for 10 second all the time? proof:
         # max(10, min(2, len(missing_nodes)) ) = max(10, at most 2) = 10
+        #
         # num_nodes = min(2, len(self._get_missing_nodes()))
         # time.sleep(max(10, num_nodes))
 
