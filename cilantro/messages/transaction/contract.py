@@ -32,14 +32,14 @@ class ContractTransaction(TransactionBase):
         return transaction_capnp.ContractTransaction.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, sender_sk: str, gas_supplied: int, contract_name: str,  func_name: str, nonce: str, *args, **kwargs):
+    def create(cls, sender_sk: str, stamps_supplied: int, contract_name: str, func_name: str, nonce: str, *args, **kwargs):
         assert len(args) == 0, "Contract must be created with key word args only (no positional args sorry)"
-        assert gas_supplied > 0, "Must supply positive gas amount u silly billy"
+        assert stamps_supplied > 0, "Must supply positive gas amount u silly billy"
 
         struct = transaction_capnp.ContractTransaction.new_message()
 
         struct.payload.sender = wallet.get_vk(sender_sk)
-        struct.payload.gasSupplied = gas_supplied
+        struct.payload.stampsSupplied = stamps_supplied
         struct.payload.contractName = contract_name
         struct.payload.functionName = func_name
         struct.payload.nonce = nonce
@@ -98,7 +98,7 @@ class ContractTransactionBuilder:
         vk = wallet.get_vk(sender_sk)
         nonce = nonce or "{}:{}".format(vk, 'A' * 64)
 
-        return ContractTransaction.create(sender_sk=sender_sk, gas_supplied=gas,
+        return ContractTransaction.create(sender_sk=sender_sk, stamps_supplied=gas,
                                           contract_name=ContractTransactionBuilder.CURRENCY_CONTRACT_NAME,
                                           func_name='transfer', nonce=nonce, to=receiver_vk, amount=amount)
 
