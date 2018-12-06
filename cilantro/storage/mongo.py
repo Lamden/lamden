@@ -58,7 +58,7 @@ class MDB:
             # we only do this on containers
             if os.getenv('HOST_IP'):
                 time.sleep(5)
-                
+
             uri = cls.setup_db(db_type = 'MDB')
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client.get_database()

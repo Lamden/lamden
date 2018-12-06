@@ -15,10 +15,10 @@ from typing import List, Union
 
 class CatchupManager:
     def __init__(self, verifying_key: str, pub_socket: LSocket, router: LSocket, store_full_blocks=True):
+        self.log = get_logger("CatchupManager")
         self.pub, self.router = pub_socket, router
         self.verifying_key = verifying_key
         self.store_full_blocks = store_full_blocks
-        self.log = get_logger("CatchupManager")
         self.all_masters = set(VKBook.get_masternodes()) - set(self.verifying_key)
 
     def recv_state_update_req(self, requester_vk: str, request: BlockIndexRequest):
@@ -38,7 +38,7 @@ class CatchupManager:
         # TODO handle
         pass
 
-    def recv_index_fetch_reply(self, reply: SomeReplyType):
+    def recv_index_fetch_reply(self, reply: BlockIndexReply):
         # TODO what to do here?
         pass
 
