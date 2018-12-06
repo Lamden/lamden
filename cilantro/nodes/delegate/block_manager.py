@@ -34,7 +34,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
-from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
+from cilantro.messages.block_data.state_update import StateUpdateReply, BlockIndexRequest
 
 import asyncio, zmq, os, time, random
 from collections import defaultdict
@@ -153,14 +153,14 @@ class BlockManager(Worker):
 
         # TODO add this code when we can ensure block manager's router is properly set up...
 
-        # envelope = StateUpdateRequest.create(block_hash=self.db_state.cur_block_hash)
+        # envelope = BlockIndexRequest.create(block_hash=self.db_state.cur_block_hash)
         # for vk in VKBook.get_masternodes():
         #     self.router.send_msg(envelope, header=vk.encode())
 
         # no need to wait for the replys as we have added a handler
 
         # here we fix call to send_updated_db_msg until we properly send back StateUpdateReply from Masternodes
-        # TODO -- remove once Masternodes can reply to StateUpdateRequest
+        # TODO -- remove once Masternodes can reply to BlockIndexRequest
         await asyncio.sleep(5)
         self.send_updated_db_msg()
 

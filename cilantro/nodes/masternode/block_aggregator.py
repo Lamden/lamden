@@ -16,7 +16,7 @@ from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
-from cilantro.messages.block_data.state_update import StateUpdateReply, StateUpdateRequest
+from cilantro.messages.block_data.state_update import StateUpdateReply, BlockIndexRequest
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
 from typing import List
@@ -104,7 +104,7 @@ class BlockAggregator(Worker):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
 
-        if isinstance(msg, StateUpdateRequest):
+        if isinstance(msg, BlockIndexRequest):
             self.recv_state_update_request(id_frame=frames[0], req=msg)
         else:
             raise Exception("BlockAggregator got message type {} from ROUTER socket that it does not know how to handle"
@@ -290,7 +290,7 @@ class BlockAggregator(Worker):
         else:
             self.log.info('Received KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
 
-    def recv_state_update_request(self, id_frame: bytes, req: StateUpdateRequest):
+    def recv_state_update_request(self, id_frame: bytes, req: BlockIndexRequest):
         blocks = StorageDriver.get_latest_blocks(req.block_hash)
         reply = StateUpdateReply.create(blocks)
         self.router.send_multipart([])

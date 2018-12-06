@@ -1,4 +1,4 @@
-from cilantro.messages.block_data.state_update import StateUpdateRequest
+from cilantro.messages.block_data.state_update import BlockIndexRequest
 from unittest import TestCase
 
 
@@ -11,10 +11,10 @@ class StateRequestTest(TestCase):
         b_hash = 'A' * 64
         b_num = 1260
 
-        sr = StateUpdateRequest.create(block_num=b_num, block_hash=b_hash)
+        sr = BlockIndexRequest.create(block_num=b_num, block_hash=b_hash)
         sr_bin = sr.serialize()
 
-        sr_clone = StateUpdateRequest.from_bytes(sr_bin)
+        sr_clone = BlockIndexRequest.from_bytes(sr_bin)
 
         self.assertEqual(sr, sr_clone)
 
@@ -24,10 +24,10 @@ class StateRequestTest(TestCase):
         """
         b_num = 1260
 
-        sr = StateUpdateRequest.create(block_num=b_num)
+        sr = BlockIndexRequest.create(block_num=b_num)
         sr_bin = sr.serialize()
 
-        sr_clone = StateUpdateRequest.from_bytes(sr_bin)
+        sr_clone = BlockIndexRequest.from_bytes(sr_bin)
 
         self.assertEqual(sr, sr_clone)
         self.assertTrue(sr_clone.block_hash is None)

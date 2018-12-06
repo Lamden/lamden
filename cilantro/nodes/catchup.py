@@ -3,7 +3,7 @@ from cilantro.logger import get_logger
 from cilantro.constants.zmq_filters import *
 
 from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
-from cilantro.messages.block_data.state_update import StateUpdateRequest, StateUpdateReply
+from cilantro.messages.block_data.state_update import BlockIndexRequest, StateUpdateReply
 
 from cilantro.storage.state import StateDriver
 from cilantro.storage.vkbook import VKBook
@@ -29,10 +29,10 @@ class CatchupManager:
         curr_hash = StateDriver.get_latest_block_hash()
         self.log.info("Requesting fetch requests from masternode with current block hash {}".format(curr_hash))
 
-        req = StateUpdateRequest.create(block_hash=curr_hash)
+        req = BlockIndexRequest.create(block_hash=curr_hash)
         self.pub.send_msg(req, header=MASTER_MASTER_FILTER.encode())
 
-    def recv_index_fetch_req(self, request: StateUpdateRequest):
+    def recv_index_fetch_req(self, request: BlockIndexRequest):
         # TODO handle
         pass
 

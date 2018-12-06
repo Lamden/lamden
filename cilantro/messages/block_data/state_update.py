@@ -8,7 +8,7 @@ import capnp
 import blockdata_capnp
 
 
-class StateUpdateRequest(MessageBaseJson):
+class BlockIndexRequest(MessageBaseJson):
     """
     State Requests are sent from TESTNET_DELEGATES to TESTNET_MASTERNODES. Delegates use this to get the latest state of the block chain.
     A delegate may need to do this if it is:
@@ -27,7 +27,7 @@ class StateUpdateRequest(MessageBaseJson):
 
     @classmethod
     def create(cls, block_num=None, block_hash=None):
-        assert block_hash or block_num, "StateUpdateRequest must be created with a block hash or block number"
+        assert block_hash or block_num, "BlockIndexRequest must be created with a block hash or block number"
 
         data = {}
         if block_num:
