@@ -23,6 +23,10 @@ class TestBlockIndexReply(TestCase):
         reply, data = self._build_reply(return_data=True)
         self.assertEqual(reply.indices, data)
 
+    def test_create_with_empty(self):
+        reply = BlockIndexReply.create([])
+        self.assertEqual(reply.indices, [])
+
     def test_serialization(self):
         reply = self._build_reply()
         self.assertEqual(reply, BlockIndexReply.from_bytes(reply.serialize()))

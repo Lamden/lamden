@@ -60,7 +60,7 @@ class BlockIndexReply(MessageBaseJson):
         pass
 
     @classmethod
-    def create(cls, block_indices: List[tuple]):
+    def create(cls, block_indices: List[list]):
         # For dev, validate creation
         assert type(block_indices) is list, 'block_indices must be a list of tuples not {}'.format(type(block_indices))
         for t in block_indices:
