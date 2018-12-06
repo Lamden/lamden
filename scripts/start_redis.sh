@@ -7,8 +7,16 @@ then
 fi
 
 # Find a free port to use
-port=$(python3 ./scripts/free_port.py)
-pw=$(python3 ./scripts/random_password.py)
+# port=$(python3 ./scripts/free_port.py)
+port=6379
+pw=
+# pw=$(python3 ./scripts/random_password.py)
+
+if [[ "$CIRCLECI" == "true" ]]
+then
+    chmod 777 ./venv/bin/activate
+    ./venv/bin/activate
+fi
 
 # Configure env files
 export PYTHONPATH=$(pwd)
@@ -20,5 +28,9 @@ REDIS_PORT=$REDIS_PORT
 REDIS_PASSWORD=$REDIS_PASSWORD
 " > docker/redis.env
 
+rm ./dump.rdb
+
 echo "Starting Redis server..."
 redis-server
+#redis-server docker/redis.conf --port $REDIS_PORT --requirepass $REDIS_PASSWORD 2>/dev/null >/dev/null &
+#redis-server 2>/dev/null >/dev/null &

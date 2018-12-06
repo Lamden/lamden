@@ -88,7 +88,7 @@ class Envelope(MessageBase):
         data.meta = meta._data
         data.message = message
 
-        obj = cls.from_data(data)
+        obj = cls.from_data(data, validate=False)
 
         set_lazy_property(obj, 'seal', seal)
         set_lazy_property(obj, 'meta', meta)
@@ -96,11 +96,12 @@ class Envelope(MessageBase):
         return obj
 
     def validate(self):
-        pass
-        # assert self.seal
-        # assert self.meta
-        # assert self.message
-        # assert self.verify_seal(), "Seal is invalid!"
+        # Any of these 3 lines will throw an exception if the seal/meta/message cannot be deserialized
+        assert self.seal
+        assert self.meta
+        assert self.message
+
+        assert self.verify_seal(), "Seal is invalid!"
 
     def verify_seal(self) -> bool:
         """

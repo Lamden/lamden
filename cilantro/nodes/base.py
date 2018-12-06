@@ -29,7 +29,7 @@ class NodeTypes:
             return vk in VKBook.get_delegates()
 
 
-PING_RETRY = 8  # How often (in seconds) a node should ping others to check if they are online
+PING_RETRY = 15  # How often (in seconds) a node should ping others to check if they are online
 
 
 class NodeBase(Worker):
@@ -87,12 +87,15 @@ class NodeBase(Worker):
 
     async def _wait_for_network_rdy(self):
         elapsed = 0
+        num_nodes = min(2, len(self._get_missing_nodes()))
+        time.sleep(max(10, num_nodes))
         while not self._quorum_reached() and elapsed < MAX_BOOT_WAIT:
             # Get missing node set, and try and ping them all (no auth)
             missing_vks = self._get_missing_nodes()
             self.log.spam("Querying status of nodes with vks: {}".format(missing_vks))
             for vk in missing_vks:
                 self.manager.overlay_client.check_node_status(vk)
+                await asyncio.sleep(0.1)
 
             await asyncio.sleep(PING_RETRY)
             elapsed += PING_RETRY

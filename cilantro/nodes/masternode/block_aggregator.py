@@ -24,6 +24,7 @@ from typing import List
 import asyncio, zmq, os, time, itertools
 from collections import defaultdict
 
+
 class BlockAggregator(Worker):
 
     def __init__(self, ip, *args, **kwargs):
@@ -35,7 +36,7 @@ class BlockAggregator(Worker):
         self.result_hashes = {}
         self.sub_blocks = {}
         self.full_blocks = {}
-        self.curr_block_hash = '0' * 64
+        self.curr_block_hash = StorageDriver.get_latest_block_hash()
 
         self.run()
 
@@ -51,12 +52,15 @@ class BlockAggregator(Worker):
             secure=True,
             domain="sb-contender"
         )
+        # self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BA-Sub", secure=True)
+        # self.pub = self.manager.create_socket(socket_type=zmq.PUB, name="BA-Pub", secure=True)
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
             name="BA-Pub-{}".format(self.verifying_key[-8:]),
             secure=True,
             domain="sb-contender"
         )
+        # self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BA-router", secure=True)
         self.router = self.manager.create_socket(
             socket_type=zmq.ROUTER,
             name="BA-Router-{}".format(self.verifying_key[-8:]),
@@ -144,6 +148,7 @@ class BlockAggregator(Worker):
             self.log.info('This SubBlockContender does not have a correct signature!')
             return False
         if len(sbc.merkle_leaves) > 0:
+            self.log.info("This SubBlockContender have {} num of merkle leaves!".format(len(sbc.merkle_leaves)))
             if MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash) \
                 and self.validate_transactions(sbc):
                 self.log.info('This SubBlockContender is valid!')
@@ -156,6 +161,7 @@ class BlockAggregator(Worker):
         return False
 
     def validate_transactions(self, sbc):
+        self.log.info("This sbc txns {}".format(sbc._data.transactions))
         for tx in sbc.transactions:
             if not tx.hash in sbc.merkle_leaves:
                 self.log.warning('Received malicious transactions that does not match any merkle leaves!')
@@ -163,7 +169,8 @@ class BlockAggregator(Worker):
         return True
 
     def aggregate_sub_block(self, sbc):
-        if not self.result_hashes.get(sbc.result_hash):
+        # if not self.result_hashes.get(sbc.result_hash):
+        if not sbc.result_hash in self.result_hashes:
             self.result_hashes[sbc.result_hash] = {
                 '_committed_': False,
                 '_consensus_reached_': False,
@@ -174,6 +181,7 @@ class BlockAggregator(Worker):
                 '_sb_index_': sbc.sb_index,
                 '_lastest_valid_': time.time()
             }
+        self.log.info("Adding signature to sub-block result_hashes")
         self.result_hashes[sbc.result_hash]['_valid_signatures_'][sbc.signature.signature] = sbc.signature
         for tx in sbc.transactions:
             self.result_hashes[sbc.result_hash]['_transactions_'][tx.hash] = tx
@@ -228,9 +236,16 @@ class BlockAggregator(Worker):
                                                             "block hash {}".format(self.curr_block_hash, prev_block_hash)
             assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} SBs/per/block" \
                                                           .format(len(merkle_roots), NUM_SB_PER_BLOCK)
+
             # TODO wrap storage in try/catch. Add logic for storage failure
             StateDriver.update_with_block(block_data)
-            StorageDriver.store_block(block_data)
+            res = StorageDriver.store_block(block_data, validate=True)
+
+            self.log.important2("Result of storing block hash {} .... {}".format(block_hash, res))
+            assert StorageDriver.get_latest_block_hash() == block_hash, "Storage driver latest block hash {} does not " \
+                                                                        "match newly created block hash {}".format(
+                                                                    StorageDriver.get_latest_block_hash(), block_hash)
+
             self.curr_block_hash = block_hash
             self.log.success("STORED BLOCK WITH HASH {}".format(block_hash))
             self.send_new_block_notification(block_data)
@@ -240,7 +255,9 @@ class BlockAggregator(Worker):
 
     def send_new_block_notification(self, block_data):
         new_block_notif = NewBlockNotification.create_from_block_data(block_data)
+        self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
         block_hash = block_data.block_hash
+        self.log.info('Published new block with hash "{}"'.format(block_hash))
         if self.full_blocks.get(block_hash):
             self.log.info('Already received block hash "{}", adding to consensus count.'.format(block_hash))
         else:
@@ -251,9 +268,7 @@ class BlockAggregator(Worker):
                 '_master_signatures_': {block_data.masternode_signature.signature: block_data.masternode_signature}
             }
 
-        self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
-
-        return new_block_notif
+        # return new_block_notif
 
     def recv_new_block_notif(self, nbc: NewBlockNotification):
         block_hash = nbc.block_hash

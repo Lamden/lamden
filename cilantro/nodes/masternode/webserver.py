@@ -1,38 +1,41 @@
+from cilantro.logger.base import get_logger
+
+from sanic import Sanic
 from cilantro.protocol.webserver.sanic import SanicSingleton
 from sanic.response import json, text
 from sanic.exceptions import ServerError
-from cilantro.logger.base import get_logger
+from sanic_limiter import Limiter, get_remote_address
+
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.publish import PublishTransaction
 from cilantro.messages.transaction.container import TransactionContainer
-import traceback, multiprocessing, os, asyncio, traceback
 from multiprocessing import Queue
-from os import getenv as env
-from cilantro.messages.signals.kill_signal import KillSignal
 
 from cilantro.nodes.masternode.nonce import NonceManager
 
 from cilantro.constants.masternode import WEB_SERVER_PORT, NUM_WORKERS
 from cilantro.utils.hasher import Hasher
 
-import traceback, multiprocessing, os, asyncio
 from multiprocessing import Queue
 import os
+
 from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.protocol.webserver.validation import *
-from seneca.libs import datatypes
 from cilantro.tools import parse_code_str
 
 app = SanicSingleton.app
+limiter = Limiter(app, key_func=get_remote_address)
 interface = SanicSingleton.interface
-log = get_logger(__name__)
+log = get_logger("MN-WebServer")
 
 if os.getenv('NONCE_DISABLED'):
     log.warning("NONCE_DISABLED env var set! Nonce checking will be disabled!")
 else:
     log.info("Nonces enabled.")
 
+
 @app.route("/", methods=["POST",])
+# @limiter.limit("60/minute")
 async def submit_transaction(request):
     if app.queue.full():
         return json({'error': "Queue full! Cannot process any more requests"})
@@ -69,6 +72,7 @@ async def submit_transaction(request):
 
 
 @app.route("/nonce", methods=['GET',])
+@limiter.limit("60/minute")
 async def request_nonce(request):
     user_vk = request.json.get('verifyingKey')
     if not user_vk:
@@ -78,33 +82,9 @@ async def request_nonce(request):
     log.spam("Creating nonce {}".format(nonce))
     return json({'success': True, 'nonce': nonce})
 
-# @app.route("/submit-contract", methods=["POST",])
-# async def submit_contract(request):
-#     try:
-#         contract_name = validate_contract_name(request.json['contract_name'])
-#         author = validate_author(request.json['author'])
-#         code_str = request.json['code_str']
-#         interface.publish_code_str(contract_name, author, code_str)
-#     except Exception as e:
-#         raise ServerError(e, status_code=500)
-#     return json({'status': 'success', 'contract_name': contract_name})
-#
-# @app.route("/run-contract", methods=["POST",])
-# async def run_contract(request):
-#     try:
-#         contract_call = validate_contract_call(request.json['contract_call'])
-#         sender = validate_author(request.json['sender'])
-#         stamps = request.json['stamps']
-#         assert stamps != None, 'Must send in stamps'
-#         params = request.json['parameters']
-#         r = interface.execute_function('seneca.contracts.{}'.format(contract_call),
-#             sender, stamps, **params
-#         )
-#         return json(r)
-#     except Exception as e:
-#         raise ServerError(e, status_code=500)
 
 @app.route("/state", methods=["GET",])
+@limiter.limit("60/minute")
 async def get_contract_state(request):
     contract_name = validate_contract_name(request.json['contract_name'])
     meta = interface.get_contract_meta(contract_name)
@@ -115,18 +95,23 @@ async def get_contract_state(request):
     key = validate_key_name(request.json['key'])
     return text(datatype.get(key))
 
+
 @app.route("/contract-meta", methods=["GET",])
+@limiter.limit("60/minute")
 async def get_contract_meta(request):
     contract_name = validate_contract_name(request.json['contract_name'])
     return json(interface.get_contract_meta(contract_name))
 
+
 @app.route("/latest_block", methods=["GET",])
+@limiter.limit("10/minute")
 async def get_latest_block(request):
     latest_block_hash = StorageDriver.get_latest_block_hash()
     return text('{}'.format(latest_block_hash))
 
 
 @app.route('/blocks', methods=["GET", ])
+@limiter.limit("10/minute")
 async def get_block(request):
     if 'number' in request.json:
         num = request.json['number']
@@ -143,6 +128,7 @@ async def get_block(request):
 
 
 @app.route('/transaction', methods=['GET', ])
+@limiter.limit("60/minute")
 async def get_transaction(request):
     _hash = request.json['hash']
     tx = StorageDriver.get_transactions(raw_tx_hash=_hash)
@@ -152,6 +138,7 @@ async def get_transaction(request):
 
 
 @app.route('/transactions', methods=['GET', ])
+@limiter.limit("60/minute")
 async def get_transactions(request):
     _hash = request.json['hash']
     txs = StorageDriver.get_transactions(block_hash=_hash)
@@ -171,6 +158,7 @@ def start_webserver(q):
     app.queue = q
     log.info("Creating REST server on port {}".format(WEB_SERVER_PORT))
     app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False)
+
 
 if __name__ == '__main__':
     import pyximport; pyximport.install()

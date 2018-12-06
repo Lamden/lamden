@@ -1,5 +1,5 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-4.json')
+set_testnet_config('2-2-2.json')
 from cilantro.constants.testnet import *
 from cilantro.constants.test_suites import CI_FACTOR
 
@@ -45,8 +45,7 @@ class TestLargeNetwork(MPTestCase):
         all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0)
         # all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0, del_1, del_2, del_3)
         all_vks = (TESTNET_MASTERNODES[0]['vk'], TESTNET_MASTERNODES[1]['vk'], TESTNET_WITNESSES[0]['vk'],
-                   TESTNET_WITNESSES[1]['vk'], TESTNET_DELEGATES[0]['vk'], TESTNET_DELEGATES[1]['vk'],
-                   TESTNET_DELEGATES[2]['vk'], TESTNET_DELEGATES[3]['vk'],)
+                   TESTNET_WITNESSES[1]['vk'], TESTNET_DELEGATES[0]['vk'], TESTNET_DELEGATES[1]['vk'],)
 
         # Each node PUBS on its own IP
         for n in all_nodes:
@@ -80,6 +79,8 @@ class TestLargeNetwork(MPTestCase):
             n.send_pub("hi from {} with ip {}".format(n.name, n.ip).encode())
 
         self.start(timeout=30)
+
+        time.sleep(2*CI_FACTOR)  # Allow time to shut down properly
 
 
 if __name__ == '__main__':
