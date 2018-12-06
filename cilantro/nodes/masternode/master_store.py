@@ -20,10 +20,10 @@ class MasterOps:
     cfg.read('{}/mn_db_conf.ini'.format(path))
 
     mn_id = int(cfg.get('MN_DB', 'mn_id'))
-    rep_factor = int(cfg.get('MN_DB','replication'))
-    active_masters = int(cfg.get('MN_DB','total_mn'))
-    quorum_needed = int(cfg.get('MN_DB','quorum'))
-    test_hook = cfg.get('MN_DB','test_hook')
+    rep_factor = int(cfg.get('MN_DB', 'replication'))
+    active_masters = int(cfg.get('MN_DB', 'total_mn'))
+    quorum_needed = int(cfg.get('MN_DB', 'quorum'))
+    test_hook = cfg.get('MN_DB', 'test_hook')
     init_state = False
 
     '''
@@ -39,7 +39,7 @@ class MasterOps:
 
             # start/setup mongodb
             MDB.start_db()
-            cls.log.info("db initiated")
+            cls.log.info("************db initiated*************")
             cls.init_state = True
 
     '''
@@ -153,10 +153,10 @@ class MasterOps:
     @classmethod
     def update_idx(cls, inserted_blk=None, node_list=None):
 
-        entry = {'blockNum': inserted_blk.get('blockNum'), 'blockHash': inserted_blk.get('blockHash'),
+        entry = {'blockNum': inserted_blk.get('blockNum'), 'blockHash': inserted_blk.get('blockHash').decode(),
                  'master_nodes': node_list}
         MDB.insert_idx_record(entry)
-        return
+        return True
 
     '''
         Read for particular block hash, expects to return empty if there is no block stored locally
@@ -170,16 +170,20 @@ class MasterOps:
             my_query = {'blockNum', blk_num}
 
         outcome = MDB.query_db(query=my_query)
+        cls.log.info("print outcome {}".format(outcome))
         return outcome
 
     @classmethod
     def get_blk_idx(cls, n_blk=None):
+        #assert n_blk == 0, "invalid api call n_blk cannot be zero".format(n_blk)
         idx_entries = MDB.query_index(n_blks=n_blk)
         return idx_entries
 
     @classmethod
     def get_blk_num_frm_blk_hash(cls, blk_hash=None):
-        my_query = {'blockHash', blk_hash}
+        #assert blk_hash is None, "invalid api call blk_hash cannot be None".format(blk_hash)
+        my_query = {'blockHash': blk_hash}
         outcome = MDB.query_db(type='idx', query = my_query)
+        cls.log.info("print outcome {}".format(outcome))
         blk_num = outcome.get('blockNum')
         return blk_num

@@ -192,7 +192,7 @@ class God:
         if cls.multi_master:
             mn_url = cls.mn_urls[cls._current_mn_idx]
             cls._current_mn_idx = (cls._current_mn_idx + 1) % len(cls.mn_urls)
-            cls._current_mn_idx += 1
+            # cls._current_mn_idx += 1
             cls.log.debug("Multi-master detected. Using Masternode at IP {}".format(mn_url))
         else:
             mn_url = cls.mn_urls[0]
