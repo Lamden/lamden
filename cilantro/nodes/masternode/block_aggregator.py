@@ -6,7 +6,7 @@ from cilantro.storage.state import StateDriver
 from cilantro.storage.vkbook import VKBook
 from cilantro.nodes.masternode.mn_api import StorageDriver
 
-from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MASTER_FILTER, DEFAULT_FILTER
+from cilantro.constants.zmq_filters import *
 from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
 from cilantro.constants.system_config import *
 
@@ -50,36 +50,39 @@ class BlockAggregator(Worker):
     def build_task_list(self):
         self.sub = self.manager.create_socket(
             socket_type=zmq.SUB,
-            name="BA-Sub-{}".format(self.verifying_key[-8:]),
+            name="BA-Sub-{}".format(self.verifying_key[-4:]),
             secure=True,
-            domain="sb-contender"
+            # domain="sb-contender"
         )
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
-            name="BA-Pub-{}".format(self.verifying_key[-8:]),
+            name="BA-Pub-{}".format(self.verifying_key[-4:]),
             secure=True,
-            domain="sb-contender"
+            # domain="sb-contender"
         )
+        self.pub.bind(ip=self.ip, port=MASTER_PUB_PORT)
+
         self.router = self.manager.create_socket(
             socket_type=zmq.ROUTER,
-            name="BA-Router-{}".format(self.verifying_key[-8:]),
+            name="BA-Router-{}".format(self.verifying_key[-4:]),
             secure=True,
-            domain="sb-contender"
+            # domain="sb-contender"
         )
-
         self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
+        self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
+        self.router.bind(ip=self.ip, port=MASTER_ROUTER_PORT)
+
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
-        self.router.bind(ip=self.ip, port=MASTER_ROUTER_PORT)
-        self.pub.bind(ip=self.ip, port=MASTER_PUB_PORT)
-
-        # Listen to delegates for sub block contenders
+        # Listen to delegates for sub block contenders and state update requests
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_delegates():
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
             self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
 
+        # Listen to masternodes for new block notifs and state update requests
+        self.sub.setsockopt(zmq.SUBSCRIBE, MASTER_MASTER_FILTER.encode())
         for vk in VKBook.get_masternodes():
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MASTER_PUB_PORT)

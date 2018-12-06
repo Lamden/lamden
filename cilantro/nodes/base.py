@@ -68,6 +68,7 @@ class NodeBase(Worker):
         self.add_overlay_handler_fn('node_online', self._node_online_event)
 
         self._wait_for_nodes()
+
         self.start()
 
     def start(self):

@@ -97,12 +97,12 @@ class BlockManager(Worker):
         # self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-Router", secure=True)
         self.router = self.manager.create_socket(
             socket_type=zmq.ROUTER,
-            name="BM-Router-{}".format(self.verifying_key[-8:]),
+            name="BM-Router-{}".format(self.verifying_key[-4:]),
             secure=True,
-            domain="sb-contender"
+            # domain="sb-contender"
         )
-        self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
+        self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
@@ -117,9 +117,9 @@ class BlockManager(Worker):
         #          do we have a corresponding sub at master that handles this properly ?
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
-            name="BM-Pub-{}".format(self.verifying_key[-8:]),
+            name="BM-Pub-{}".format(self.verifying_key[-4:]),
             secure=True,
-            domain="sb-contender"
+            # domain="sb-contender"
         )
         self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
 
@@ -128,22 +128,19 @@ class BlockManager(Worker):
         # 2) listen for NewBlockNotifications from masternodes
         self.sub = self.manager.create_socket(
             socket_type=zmq.SUB,
-            name="BM-Sub-{}".format(self.verifying_key[-8:]),
+            name="BM-Sub-{}".format(self.verifying_key[-4:]),
             secure=True,
-            domain="sb-contender"
+            # domain="sb-contender"
         )
-        # self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BM-Sub", secure=True)
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
         self.tasks.append(self.catchup_db_state())
 
-        # Listen to Masternodes
+        # Listen to Masternodes over sub and connect router for catchup communication
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
-            time.sleep(1)
             self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
-            time.sleep(1)
 
     async def catchup_db_state(self):
         self.log.info("Catching up...")
