@@ -103,7 +103,7 @@ class NodeBase(Worker):
             self.log.spam("Querying status of nodes with vks: {}".format(missing_vks))
             for vk in missing_vks:
                 self.manager.overlay_client.check_node_status(vk)
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.1)  # sleep to try not flood overlay server with too many requests
 
             await asyncio.sleep(PING_RETRY)
             elapsed += PING_RETRY
