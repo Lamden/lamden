@@ -295,8 +295,12 @@ class BlockManager(Worker):
 
             self.db_state.sub_block_hash_map.clear()
             self.db_state.next_block.clear()
-            StateDriver.set_latest_block_hash(our_block_hash)
             self.db_state.cur_block_hash = our_block_hash
+
+            StateDriver.set_latest_block_info(our_block_hash, block_data.block_num)
+            self.log.notice("Setting latest block number to {} and block hash to {}"
+                            .format(block_data.block_num, our_block_hash))
+            
             self.send_updated_db_msg()
 
         # TODO handle this case. Here we computed the wrong block hash and need to catchup
