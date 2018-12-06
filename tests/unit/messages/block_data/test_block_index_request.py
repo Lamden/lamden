@@ -2,7 +2,7 @@ from cilantro.messages.block_data.state_update import BlockIndexRequest
 from unittest import TestCase
 
 
-class StateRequestTest(TestCase):
+class TestBlockIndexRequest(TestCase):
 
     def test_serialization(self):
         """
