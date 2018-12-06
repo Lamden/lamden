@@ -21,14 +21,15 @@ def wrap_func(fn, *args, **kwargs):
 
 
 def run_mn(slot_num):
+    # We must set this env var before we import anything from cilantro
+    import os
+    os.environ["NONCE_DISABLED"] = "1"
+
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_MASTERNODES
-    import os
-    import logging
 
     # Disable nonces
-    os.environ["NONCE_DISABLED"] = "1"
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
@@ -48,7 +49,7 @@ def run_witness(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
-    # overwrite_logger_level(11)
+    overwrite_logger_level(11)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -63,8 +64,8 @@ def run_delegate(slot_num):
     import os
     import logging
 
-    overwrite_logger_level(logging.WARNING)
-    # overwrite_logger_level(11)
+    # overwrite_logger_level(logging.WARNING)
+    overwrite_logger_level(11)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')

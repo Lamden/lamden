@@ -37,7 +37,6 @@ else:
 
 
 @app.route("/", methods=["POST",])
-@limiter.limit("60/minute")
 async def submit_transaction(request):
     if app.queue.full():
         return json({'error': "Queue full! Cannot process any more requests"})
@@ -75,7 +74,6 @@ async def submit_transaction(request):
 
 
 @app.route("/nonce", methods=['GET',])
-@limiter.limit("60/minute")
 async def request_nonce(request):
     user_vk = request.json.get('verifyingKey')
     if not user_vk:
@@ -87,7 +85,6 @@ async def request_nonce(request):
 
 
 @app.route("/state", methods=["GET",])
-@limiter.limit("60/minute")
 async def get_contract_state(request):
     contract_name = validate_contract_name(request.json['contract_name'])
     meta = interface.get_contract_meta(contract_name)
@@ -100,7 +97,6 @@ async def get_contract_state(request):
 
 
 @app.route("/contract-meta", methods=["GET",])
-@limiter.limit("60/minute")
 async def get_contract_meta(request):
     contract_name = validate_contract_name(request.json['contract_name'])
     return json(interface.get_contract_meta(contract_name))
@@ -131,7 +127,6 @@ async def get_block(request):
 
 
 @app.route('/transaction', methods=['GET', ])
-@limiter.limit("60/minute")
 async def get_transaction(request):
     _hash = request.json['hash']
     tx = StorageDriver.get_transactions(raw_tx_hash=_hash)
@@ -141,7 +136,6 @@ async def get_transaction(request):
 
 
 @app.route('/transactions', methods=['GET', ])
-@limiter.limit("60/minute")
 async def get_transactions(request):
     _hash = request.json['hash']
     txs = StorageDriver.get_transactions(block_hash=_hash)
