@@ -3,7 +3,7 @@ from cilantro.logger import get_logger
 from cilantro.constants.zmq_filters import *
 
 from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
-from cilantro.messages.block_data.state_update import BlockIndexRequest, StateUpdateReply
+from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply
 
 from cilantro.storage.state import StateDriver
 from cilantro.storage.vkbook import VKBook
@@ -21,9 +21,11 @@ class CatchupManager:
         self.log = get_logger("CatchupManager")
         self.all_masters = set(VKBook.get_masternodes()) - set(self.verifying_key)
 
-    def recv_state_update_req(self, request: SomeRequestType):
+    def recv_state_update_req(self, requester_vk: str, request: BlockIndexRequest):
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
-        # TODO reply properly
+
+        # get list of of lists of (blocks, blocks num, masternode_vks), and build block index reply
+        # reply on router socket to requester vks via router socket
 
     def send_index_fetch_req(self):
         curr_hash = StateDriver.get_latest_block_hash()
