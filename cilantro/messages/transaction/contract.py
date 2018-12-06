@@ -93,7 +93,7 @@ class ContractTransactionBuilder:
     CURRENCY_CONTRACT_NAME = 'currency'
 
     @staticmethod
-    def create_currency_tx(sender_sk: str, receiver_vk: str, amount: Union[int, Decimal], gas=1000, nonce=None):
+    def create_currency_tx(sender_sk: str, receiver_vk: str, amount: Union[int, Decimal], gas=1000000, nonce=None):
         vk = wallet.get_vk(sender_sk)
         nonce = nonce or "{}:{}".format(vk, 'A' * 64)
 
