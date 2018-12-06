@@ -63,7 +63,7 @@ def run_delegate(slot_num):
     import os
     import logging
 
-    overwrite_logger_level(logging.WARNING)
+    # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(11)
 
     d_info = TESTNET_DELEGATES[slot_num]

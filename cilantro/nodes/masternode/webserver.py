@@ -35,7 +35,7 @@ else:
 
 
 @app.route("/", methods=["POST",])
-@limiter.limit("60/minute")
+# @limiter.limit("60/minute")
 async def submit_transaction(request):
     if app.queue.full():
         return json({'error': "Queue full! Cannot process any more requests"})

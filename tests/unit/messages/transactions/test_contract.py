@@ -15,11 +15,11 @@ class TestContractTransaction(TestCase):
         func_name = 'transfer'
         nonce = vk + ':' + 'A' * 64
 
-        contract_tx = ContractTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
+        contract_tx = ContractTransaction.create(sender_sk=sk, stamps_supplied=gas, contract_name=contract_name,
                                                  func_name=func_name, nonce=nonce, **kwargs)
 
         self.assertEquals(contract_tx.sender, vk)
-        self.assertEquals(contract_tx.gas_supplied, gas)
+        self.assertEquals(contract_tx.stamps_supplied, gas)
         self.assertEquals(contract_tx.contract_name, contract_name)
         self.assertEquals(contract_tx.func_name, func_name)
         self.assertEquals(contract_tx.nonce, nonce)
@@ -32,7 +32,7 @@ class TestContractTransaction(TestCase):
         func_name = 'transfer'
         nonce = vk + ':' + 'A' * 64
 
-        contract_tx = ContractTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
+        contract_tx = ContractTransaction.create(sender_sk=sk, stamps_supplied=gas, contract_name=contract_name,
                                                  func_name=func_name, nonce=nonce, **kwargs)
         clone = ContractTransaction.from_bytes(contract_tx.serialize())
 
@@ -46,7 +46,7 @@ class TestContractTransaction(TestCase):
         func_name = 'transfer'
         nonce = vk + ':' + 'A' * 64
 
-        contract_tx = ContractTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
+        contract_tx = ContractTransaction.create(sender_sk=sk, stamps_supplied=gas, contract_name=contract_name,
                                                  func_name=func_name, nonce=nonce, **kwargs)
 
         self.assertEqual(contract_tx.kwargs, kwargs)
