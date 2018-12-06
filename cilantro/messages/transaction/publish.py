@@ -19,14 +19,14 @@ class PublishTransaction(TransactionBase):
         return transaction_capnp.PublishTransaction.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, sender_sk: str, gas_supplied: int, contract_name: str,  contract_code: str, nonce: str, *args, **kwargs):
+    def create(cls, sender_sk: str, stamps_supplied: int, contract_name: str, contract_code: str, nonce: str, *args, **kwargs):
         assert len(args) == 0, "Contract must be created with key word args only (no positional args sorry)"
-        assert gas_supplied > 0, "Must supply positive gas amount u silly billy"
+        assert stamps_supplied > 0, "Must supply positive gas amount u silly billy"
 
         struct = transaction_capnp.PublishTransaction.new_message()
 
         struct.payload.sender = wallet.get_vk(sender_sk)
-        struct.payload.gasSupplied = gas_supplied
+        struct.payload.stampsSupplied = stamps_supplied
         struct.payload.contractName = contract_name
         struct.payload.contractCode = contract_code
         struct.payload.nonce = nonce

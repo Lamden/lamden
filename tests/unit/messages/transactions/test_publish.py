@@ -14,7 +14,7 @@ class TestPublishTransaction(TestCase):
         contract_code = 'transfer'
         nonce = vk + ':' + 'A' * 64
 
-        tx = PublishTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
+        tx = PublishTransaction.create(sender_sk=sk, stamps_supplied=gas, contract_name=contract_name,
                                        contract_code=contract_code, nonce=nonce)
 
         self.assertEquals(tx.sender, vk)
@@ -31,7 +31,7 @@ class TestPublishTransaction(TestCase):
         contract_code = 'transfer'
         nonce = vk + ':' + 'A' * 64
 
-        tx = PublishTransaction.create(sender_sk=sk, gas_supplied=gas, contract_name=contract_name,
+        tx = PublishTransaction.create(sender_sk=sk, stamps_supplied=gas, contract_name=contract_name,
                                        contract_code=contract_code, nonce=nonce)
         clone = PublishTransaction.from_bytes(tx.serialize())
 
