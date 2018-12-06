@@ -54,7 +54,7 @@ class MDB:
             init block store, store_index
         """
         if cls.init_mdb is False:
-            time.sleep(5)  # @tejas why?
+            time.sleep(5)  # @tejas why? race with create user in start script :)
             uri = cls.setup_db(db_type = 'MDB')
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client.get_database()
@@ -67,14 +67,13 @@ class MDB:
 
             cls.log.debug('start_db init set {}'.format(cls.init_mdb))
 
-            # @tejas dude isnt this 'if init_mdb is True' nested under a 'init_mdb is False' lol
             if cls.init_mdb is True:
                 uri = cls.setup_db(db_type='index')
                 cls.mn_client_idx = MongoClient(uri)
                 cls.mn_db_idx = MongoClient(uri).get_database()
                 cls.mn_coll_idx = cls.mn_db_idx['index']
                 idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash').decode(),
-                       'mn_sign': cls.genesis_blk.get('masternodeSignature')}
+                       'mn_blk_owner': cls.genesis_blk.get('masternodeSignature')}
                 cls.log.debug('start_db init index {}'.format(idx))
                 cls.init_idx_db = cls.insert_idx_record(my_dict=idx)
 
@@ -102,7 +101,6 @@ class MDB:
             cls.mn_client.drop_database(cls.mn_db)
             cls.mn_client_idx.drop_database(cls.mn_db_idx)
             cls.init_mdb = cls.init_idx_db = False
-
 
     '''
         Wr to store or index

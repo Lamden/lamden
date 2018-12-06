@@ -99,7 +99,7 @@ class MasterOps:
     '''
 
     @classmethod
-    def build_wr_list( cls, curr_node_idx = None, jump_idx = 1 ):
+    def build_wr_list(cls, curr_node_idx = None, jump_idx = 1):
         all_mn = VKBook.get_masternodes()
         tot_mn = len(all_mn)
         mn_list = []
@@ -154,7 +154,7 @@ class MasterOps:
     def update_idx(cls, inserted_blk=None, node_list=None):
 
         entry = {'blockNum': inserted_blk.get('blockNum'), 'blockHash': inserted_blk.get('blockHash').decode(),
-                 'master_nodes': node_list}
+                 'mn_blk_owner': node_list}
         MDB.insert_idx_record(entry)
         return True
 
@@ -174,9 +174,9 @@ class MasterOps:
         return outcome
 
     @classmethod
-    def get_blk_idx(cls, n_blk=None):
+    def get_blk_idx(cls, n_blks=None):
         #assert n_blk == 0, "invalid api call n_blk cannot be zero".format(n_blk)
-        idx_entries = MDB.query_index(n_blks=n_blk)
+        idx_entries = MDB.query_index(n_blks=n_blks)
         return idx_entries
 
     @classmethod

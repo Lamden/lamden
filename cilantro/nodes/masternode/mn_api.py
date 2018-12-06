@@ -57,7 +57,7 @@ class StorageDriver:
     '''
     @classmethod
     def get_latest_block(cls, my_key=None):
-        idx_entry = MasterOps.get_blk_idx(n_blks=1, my_key=my_key)
+        idx_entry = MasterOps.get_blk_idx(n_blks=1)
 
         for key in idx_entry.get('master_nodes'):
             if key == my_key:
@@ -69,7 +69,7 @@ class StorageDriver:
 
     @classmethod
     def get_latest_block_hash(cls):
-        idx_entry = MasterOps.get_blk_idx(n_blk=1)
+        idx_entry = MasterOps.get_blk_idx(n_blks=1)
         cls.log.debug("get_latest_block_hash idx_entry -> {}".format(idx_entry))
         blk_hash = idx_entry.get('blockHash')
         cls.log.debug("get_latest_block_hash blk_hash ->{}".format(blk_hash))
