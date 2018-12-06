@@ -36,13 +36,18 @@ class TransactionBatcher(Worker):
         # TODO - do we need skip_turns? we need it with assumption that it is more efficient to skip very small batch
         # Instead of two small batches, it is more efficient to have one empty one and second one with combined one.
         # need to verify this assumption when Seneca is fully operational
-        skip_turns = MAX_SKIP_TURNS
+        skip_turns = 100 * MAX_SKIP_TURNS
+        sent_empty_bag = True
+        # raghu: need to tie this with new block notifications for better efficiency?, but for now:
+        num_bags_sent = 0
 
         while True:
-            # self.log.spam("Batcher resting for {} seconds".format(BATCH_INTERVAL))
-            await asyncio.sleep(BATCH_INTERVAL + self.delta_extra)
-
             num_txns = self.queue.qsize()
+            if (num_txns < TRANSACTIONS_PER_SUB_BLOCK) or (num_bags_sent > 3):
+                await asyncio.sleep(BATCH_INTERVAL + self.delta_extra)
+                if num_bags_sent > 0:
+                    num_bags_sent = num_bags_sent - 1
+
             tx_list = []
             if (num_txns >= TRANSACTIONS_PER_SUB_BLOCK) or (skip_turns < 1):
                 for _ in range(min(TRANSACTIONS_PER_SUB_BLOCK, num_txns)):
@@ -51,15 +56,23 @@ class TransactionBatcher(Worker):
 
                     tx_list.append(tx)
                     skip_turns = MAX_SKIP_TURNS  # reset to max again
+                    sent_empty_bag = False
             else:
                 self.log.spam("Skipping this batch (skip_turns={})".format(skip_turns))
                 skip_turns = skip_turns - 1
-                continue
+                # continue
 
             # send either empty or some txns capping at TRANSACTIONS_PER_SUB_BLOCK
+            if sent_empty_bag:
+                self.log.info("Skipping sending transaction batch")
+                continue
+
+            batch = TransactionBatch.create(transactions=tx_list)
+            self.pub_sock.send_msg(msg=batch, header=WITNESS_MASTERNODE_FILTER.encode())
             if len(tx_list):
                 self.log.info("Sending {} transactions in batch".format(len(tx_list)))
             else:
                 self.log.info("Sending an empty transaction batch")
-            batch = TransactionBatch.create(transactions=tx_list)
-            self.pub_sock.send_msg(msg=batch, header=WITNESS_MASTERNODE_FILTER.encode())
+                sent_empty_bag = True
+
+            num_bags_sent = num_bags_sent + 1
