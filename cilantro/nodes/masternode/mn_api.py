@@ -31,7 +31,7 @@ class StorageDriver:
     @classmethod
     def store_block(cls, merkle_roots=None, verifying_key=None, sign_key=None, transactions=None, input_hashes=None ):
         prev_block_hash = cls.get_latest_block_hash()
-        cls.log.critical("store_block_new - prv block hash - {}".format(prev_block_hash))
+        cls.log.important("store_block_new - prv block hash - {}".format(prev_block_hash))
         block_hash = BlockData.compute_block_hash(sbc_roots=merkle_roots, prev_block_hash=prev_block_hash)
         blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = prev_block_hash) + 1
         sig = MerkleSignature.create(sig_hex = wallet.sign(sign_key, block_hash.encode()),
