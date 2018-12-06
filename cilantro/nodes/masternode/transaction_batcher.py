@@ -58,13 +58,12 @@ class TransactionBatcher(Worker):
                     skip_turns = MAX_SKIP_TURNS  # reset to max again
                     sent_empty_bag = False
             else:
-                self.log.spam("Skipping this batch (skip_turns={})".format(skip_turns))
                 skip_turns = skip_turns - 1
                 # continue
 
             # send either empty or some txns capping at TRANSACTIONS_PER_SUB_BLOCK
             if sent_empty_bag:
-                self.log.info("Skipping sending transaction batch")
+                self.log.spam("Skipping this batch (skip_turns={}, num_bags_sent={})".format(skip_turns, num_bags_sent))
                 continue
 
             batch = TransactionBatch.create(transactions=tx_list)

@@ -125,8 +125,6 @@ class SubBlockContender(MessageBase):
 
     @property
     def transactions(self) -> List[TransactionData]:
-        print("transactions dump:")
-        print(self._data.transactions)
         return [TransactionData.from_bytes(tx) for tx in self._data.transactions]
 
     def __eq__(self, other):

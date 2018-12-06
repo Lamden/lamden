@@ -32,7 +32,7 @@ def run_mn(slot_num):
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
     # overwrite_logger_level(11)
-    overwrite_logger_level(4)  # suppress 'spam' log level
+    # overwrite_logger_level(4)  # suppress 'spam' log level
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[slot_num]['sk']
