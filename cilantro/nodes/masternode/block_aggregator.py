@@ -221,33 +221,20 @@ class BlockAggregator(Worker):
             merkle_roots = sorted(unordered_merkle_roots, key=lambda result_hash: self.result_hashes[result_hash]['_sb_index_'])
             input_hashes = [self.result_hashes[result_hash]['_input_hash_'] for result_hash in merkle_roots]
             transactions = list(itertools.chain.from_iterable([sub_blocks[mr]['_transactions_'].values() for mr in merkle_roots]))
-            prev_block_hash = StorageDriver.get_latest_block_hash()
-            block_hash = BlockData.compute_block_hash(sbc_roots=merkle_roots, prev_block_hash=prev_block_hash)
-            sig = MerkleSignature.create(sig_hex=wallet.sign(self.signing_key, block_hash.encode()),
-                                         sender=self.verifying_key, timestamp=str(time.time()))
-            block_data = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash,
-                                          transactions=transactions, masternode_signature=sig,
-                                          merkle_roots=merkle_roots, input_hashes=input_hashes)
 
-            self.log.info("Attempting to store block with hash {} and prev_block_hash {}".format(block_hash, prev_block_hash))
-            # DEBUG Development sanity checks
-            assert prev_block_hash == self.curr_block_hash, "Current block hash {} does not match StorageDriver previous " \
-                                                            "block hash {}".format(self.curr_block_hash, prev_block_hash)
             assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} SBs/per/block" \
                                                           .format(len(merkle_roots), NUM_SB_PER_BLOCK)
 
             # TODO wrap storage in try/catch. Add logic for storage failure
+
+            block_data = StorageDriver.store_block(merkle_roots=merkle_roots, verifying_key = self.verifying_key,
+                                                   sign_key = self.signing_key, transactions=transactions,
+                                                   input_hashes=input_hashes)
+            assert block_data.prev_block_hash == self.curr_block_hash, "Current block hash {} does not match StorageDriver previous " \
+                                                            "block hash {}".format(self.curr_block_hash, block_data.prev_block_hash)
+            self.curr_block_hash = block_data.block_hash
             StateDriver.update_with_block(block_data)
-            res = StorageDriver.store_block(block_data, validate=True)
-
-            # TODO comment this back in ... disabled so unit tests will pass
-            # self.log.important2("Result of storing block hash {} .... {}".format(block_hash, res))
-            # assert StorageDriver.get_latest_block_hash() == block_hash, \
-            #     "Storage driver latest block hash {} does not match newly created block hash {}"\
-            #     .format(StorageDriver.get_latest_block_hash(), block_hash)
-
-            self.curr_block_hash = block_hash
-            self.log.success("STORED BLOCK WITH HASH {}".format(block_hash))
+            self.log.success("STORED BLOCK WITH HASH {}".format(block_data.block_hash))
             self.send_new_block_notification(block_data)
             for result_hash in merkle_roots:
                 self.sub_blocks[result_hash] = True

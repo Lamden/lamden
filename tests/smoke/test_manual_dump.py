@@ -29,8 +29,6 @@ def run_mn(slot_num):
     from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_MASTERNODES
 
-    # Disable nonces
-
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
     # overwrite_logger_level(11)
@@ -54,7 +52,6 @@ def run_witness(slot_num):
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
-
 
     NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'], reset_db=True)
 
