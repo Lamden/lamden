@@ -19,7 +19,7 @@ class TestContractTransaction(TestCase):
                                                  func_name=func_name, nonce=nonce, **kwargs)
 
         self.assertEquals(contract_tx.sender, vk)
-        self.assertEquals(contract_tx.gas_supplied, gas)
+        self.assertEquals(contract_tx.stamps_supplied, gas)
         self.assertEquals(contract_tx.contract_name, contract_name)
         self.assertEquals(contract_tx.func_name, func_name)
         self.assertEquals(contract_tx.nonce, nonce)

@@ -18,7 +18,7 @@ class TestPublishTransaction(TestCase):
                                        contract_code=contract_code, nonce=nonce)
 
         self.assertEquals(tx.sender, vk)
-        self.assertEquals(tx.gas_supplied, gas)
+        self.assertEquals(tx.stamps_supplied, gas)
         self.assertEquals(tx.contract_name, contract_name)
         self.assertEquals(tx.contract_code, contract_code)
         self.assertEquals(tx.nonce, nonce)
