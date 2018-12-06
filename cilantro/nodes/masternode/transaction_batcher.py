@@ -19,7 +19,7 @@ class TransactionBatcher(Worker):
         self.queue, self.ip = queue, ip
 
         # Create Pub socket to broadcast to witnesses
-        self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcherPUB", secure=True)
+        self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
         self.pub_sock.bind(port=MN_TX_PUB_PORT, ip=self.ip)
 
         # TODO create PAIR socket to orchestrate w/ main process?
@@ -42,9 +42,7 @@ class TransactionBatcher(Worker):
         num_bags_sent = 0
 
         while True:
-            self.log.spam("Batcher resting for {} seconds".format(BATCH_INTERVAL))
             num_txns = self.queue.qsize()
-
             if (num_txns < TRANSACTIONS_PER_SUB_BLOCK) or (num_bags_sent > 3):
                 await asyncio.sleep(BATCH_INTERVAL + self.delta_extra)
                 if num_bags_sent > 0:
@@ -53,19 +51,19 @@ class TransactionBatcher(Worker):
             tx_list = []
             if (num_txns >= TRANSACTIONS_PER_SUB_BLOCK) or (skip_turns < 1):
                 for _ in range(min(TRANSACTIONS_PER_SUB_BLOCK, num_txns)):
-                    tx = self.queue.get()
-                    self.log.spam("masternode bagging transaction from sender {}".format(tx.sender))
+                    tx = OrderingContainer.from_bytes(self.queue.get())
+                    # self.log.spam("masternode bagging transaction from sender {}".format(tx.transaction.sender))
 
-                    tx_list.append(OrderingContainer.create(tx=tx, masternode_vk=self.verifying_key))
-                skip_turns = MAX_SKIP_TURNS  # reset to max again
-                sent_empty_bag = False
+                    tx_list.append(tx)
+                    skip_turns = MAX_SKIP_TURNS  # reset to max again
+                    sent_empty_bag = False
             else:
                 skip_turns = skip_turns - 1
                 # continue
 
             # send either empty or some txns capping at TRANSACTIONS_PER_SUB_BLOCK
             if sent_empty_bag:
-                self.log.info("Skipping sending transaction batch")
+                self.log.spam("Skipping this batch (skip_turns={}, num_bags_sent={})".format(skip_turns, num_bags_sent))
                 continue
 
             batch = TransactionBatch.create(transactions=tx_list)
@@ -75,4 +73,5 @@ class TransactionBatcher(Worker):
             else:
                 self.log.info("Sending an empty transaction batch")
                 sent_empty_bag = True
+
             num_bags_sent = num_bags_sent + 1

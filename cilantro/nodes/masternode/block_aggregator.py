@@ -38,6 +38,8 @@ class BlockAggregator(Worker):
         self.full_blocks = {}
         self.curr_block_hash = StorageDriver.get_latest_block_hash()
 
+        self.pub, self.sub, self.router = None, None, None
+
         self.run()
 
     def run(self):
@@ -52,21 +54,19 @@ class BlockAggregator(Worker):
             secure=True,
             domain="sb-contender"
         )
-        # self.sub = self.manager.create_socket(socket_type=zmq.SUB, name="BA-Sub", secure=True)
-        # self.pub = self.manager.create_socket(socket_type=zmq.PUB, name="BA-Pub", secure=True)
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
             name="BA-Pub-{}".format(self.verifying_key[-8:]),
             secure=True,
             domain="sb-contender"
         )
-        # self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BA-router", secure=True)
         self.router = self.manager.create_socket(
             socket_type=zmq.ROUTER,
             name="BA-Router-{}".format(self.verifying_key[-8:]),
             secure=True,
             domain="sb-contender"
         )
+
         self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
@@ -110,58 +110,61 @@ class BlockAggregator(Worker):
     def recv_sub_block_contender(self, sbc: SubBlockContender):
         self.log.info("Received a sbc with result hash {} and input hash {}".format(sbc.result_hash, sbc.input_hash))
         if self.result_hashes.get(sbc.result_hash):
-            if self.result_hashes[sbc.result_hash].get('_consensus_reached_') or \
-                self.sub_blocks.get(sbc.result_hash):
-                self.log.spam('Already validated this SubBlock (result_hash={})'.format(
+            if self.result_hashes[sbc.result_hash].get('_consensus_reached_') or self.sub_blocks.get(sbc.result_hash):
+                self.log.debugv('Already validated this SubBlock (result_hash={})'.format(
                     sbc.result_hash))
-            elif self.check_alredy_verified(sbc):
-                self.log.spam('Already received and verified this SubBlockContender (result_hash={}, input_hash={})'.format(
-                    sbc.result_hash, sbc.input_hash))
+            elif self.check_sbc_already_verified(sbc):
+                self.log.debugv('Already received and verified this SubBlockContender (result_hash={}, input_hash={})'
+                                .format(sbc.result_hash, sbc.input_hash))
             else:
-                if self.verify_sub_block_contender(sbc):
-                    self.log.info('Received SubBlockContender for an existing result hash (result_hash={}, input_hash={})'.format(
-                        sbc.result_hash, sbc.input_hash))
+                if self.verify_sbc(sbc):
+                    self.log.info('Received SubBlockContender for an existing result hash (result_hash={}, '
+                                  'input_hash={})'.format(sbc.result_hash, sbc.input_hash))
                     self.aggregate_sub_block(sbc)
                 else:
-                    self.log.warning('Not a valid SubBlockContender for existing result hash (result_hash={}, input_hash={})'.format(
-                        sbc.result_hash, sbc.input_hash))
+                    self.log.warning('Not a valid SubBlockContender for existing result hash (result_hash={}, '
+                                     'input_hash={})'.format(sbc.result_hash, sbc.input_hash))
         else:
-            if self.verify_sub_block_contender(sbc):
-                self.log.info('Received SubBlockContender for a new result hash (result_hash={}, input_hash={})'.format(
-                    sbc.result_hash, sbc.input_hash))
+            if self.verify_sbc(sbc):
+                self.log.info('Received SubBlockContender for a new result hash (result_hash={}, input_hash={})'
+                              .format(sbc.result_hash, sbc.input_hash))
                 self.aggregate_sub_block(sbc)
             else:
-                self.log.warning('Not a valid SubBlockContender for new result hash (result_hash={}, input_hash={})'.format(
-                    sbc.result_hash, sbc.input_hash))
+                self.log.warning('Not a valid SubBlockContender for new result hash (result_hash={}, input_hash={})'
+                                 .format(sbc.result_hash, sbc.input_hash))
 
-    def check_alredy_verified(self, sbc: SubBlockContender):
-        if sbc.signature.signature in self.result_hashes.get(sbc.result_hash, {}).get('_valid_signatures_'):
-            return True
-        return False
+    def check_sbc_already_verified(self, sbc: SubBlockContender) -> bool:
+        return sbc.signature.signature in self.result_hashes.get(sbc.result_hash, {}).get('_valid_signatures_')
 
-    def verify_sub_block_contender(self, sbc: SubBlockContender):
+    def verify_sbc(self, sbc: SubBlockContender) -> bool:
+        # Validate signature
         if not sbc.signature.verify(bytes.fromhex(sbc.result_hash)):
-            self.log.info('This SubBlockContender does not have a correct signature!')
+            self.log.warning('This SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))
             return False
-        if len(sbc.merkle_leaves) > 0:
-            self.log.info("This SubBlockContender have {} num of merkle leaves!".format(len(sbc.merkle_leaves)))
-            if MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash) \
-                and self.validate_transactions(sbc):
-                self.log.info('This SubBlockContender is valid!')
-                return True
-            else:
-                self.log.warning('This SubblockContender is INVALID!')
-        else:
-            self.log.info('This SubBlockContender is empty.')
-            return True
-        return False
 
-    def validate_transactions(self, sbc):
-        self.log.info("This sbc txns {}".format(sbc._data.transactions))
-        for tx in sbc.transactions:
-            if not tx.hash in sbc.merkle_leaves:
-                self.log.warning('Received malicious transactions that does not match any merkle leaves!')
+        # Validate sbc prev block hash matches our current block hash
+        if sbc.prev_block_hash != self.curr_block_hash:
+            self.log.warning("SBC prev block hash {} does not match our current block hash {}! SBC: {}"
+                             .format(sbc.prev_block_hash, self.curr_block_hash, sbc))
+            return False
+
+        # Validate merkle leaves
+        if len(sbc.merkle_leaves) > 0:
+            self.log.spam("This SubBlockContender have {} num of merkle leaves!".format(len(sbc.merkle_leaves)))
+            if MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash) and self.validate_txs(sbc):
+                self.log.spam('This SubBlockContender is valid!')
+            else:
+                self.log.warning('Could not verify Merkle tree for SBC {}'.format(sbc))
                 return False
+
+        return True
+
+    def validate_txs(self, sbc) -> bool:
+        for tx in sbc.transactions:
+            if tx.hash not in sbc.merkle_leaves:
+                self.log.warning('Received malicious txs that does not match merkle leaves! SBC: {}'.format(sbc))
+                return False
+
         return True
 
     def aggregate_sub_block(self, sbc):
@@ -242,8 +245,10 @@ class BlockAggregator(Worker):
         self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
         block_hash = block_data.block_hash
         self.log.info('Published new block with hash "{}"'.format(block_hash))
+
         if self.full_blocks.get(block_hash):
             self.log.info('Already received block hash "{}", adding to consensus count.'.format(block_hash))
+
         else:
             self.log.info('Created resultant block-hash "{}"'.format(block_hash))
             self.full_blocks[block_hash] = {
@@ -257,6 +262,7 @@ class BlockAggregator(Worker):
     def recv_new_block_notif(self, nbc: NewBlockNotification):
         block_hash = nbc.block_hash
         signature = nbc.masternode_signature
+
         if not self.full_blocks.get(block_hash):
             self.log.info('Received NEW block hash "{}", did not yet receive valid sub blocks from delegates.'.format(block_hash))
             self.full_blocks[block_hash] = {
@@ -264,9 +270,11 @@ class BlockAggregator(Worker):
                 '_consensus_reached_': False,
                 '_master_signatures_': {signature.signature: signature}
             }
+
         elif signature.signature in self.full_blocks[block_hash]['_master_signatures_']:
             self.log.warning('Already received the NewBlockNotification with block_hash "{}"'.format(block_hash))
-        elif self.full_blocks[block_hash].get('consensus_reached') != True:
+
+        elif not self.full_blocks[block_hash].get('consensus_reached'):
             self.log.info('Received KNOWN block hash "{}", adding to consensus count.'.format(block_hash))
             self.full_blocks[block_hash]['_master_signatures_'][signature.signature] = signature
             if len(self.full_blocks[block_hash]['_master_signatures_']) >= MASTERNODE_MAJORITY:
@@ -275,6 +283,7 @@ class BlockAggregator(Worker):
                 if not len(bmd.merkle_roots) == NUM_SB_PER_BLOCK:
                     # TODO Request blocks from other masternodes
                     pass
+
         else:
             self.log.info('Received KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
 

@@ -3,7 +3,7 @@ import zmq.asyncio
 from vmnet.launch import launch
 from vmnet.webserver import start_ui
 from vmnet.testcase import BaseNetworkTestCase
-from cilantro.logger import get_logger
+from cilantro.logger.base import get_logger
 from .mp_test import SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC, SIG_START
 from os.path import dirname, join
 from functools import wraps

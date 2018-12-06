@@ -9,6 +9,7 @@ from sanic_limiter import Limiter, get_remote_address
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.publish import PublishTransaction
 from cilantro.messages.transaction.container import TransactionContainer
+from cilantro.messages.transaction.ordering import OrderingContainer
 from multiprocessing import Queue
 
 from cilantro.nodes.masternode.nonce import NonceManager
@@ -24,18 +25,18 @@ from cilantro.protocol.webserver.validation import *
 from cilantro.tools import parse_code_str
 
 app = SanicSingleton.app
-limiter = Limiter(app, key_func=get_remote_address)
 interface = SanicSingleton.interface
 log = get_logger("MN-WebServer")
 
 if os.getenv('NONCE_DISABLED'):
-    log.warning("NONCE_DISABLED env var set! Nonce checking will be disabled!")
+    log.warning("NONCE_DISABLED env var set! Nonce checking as well as rate limiting will be disabled!")
+    limiter = Limiter(app, key_func=get_remote_address)
 else:
     log.info("Nonces enabled.")
+    limiter = Limiter(app, global_limits=['60/minute'], key_func=get_remote_address)
 
 
 @app.route("/", methods=["POST",])
-# @limiter.limit("60/minute")
 async def submit_transaction(request):
     if app.queue.full():
         return json({'error': "Queue full! Cannot process any more requests"})
@@ -61,18 +62,17 @@ async def submit_transaction(request):
         log.spam("Removing nonce {}".format(tx.nonce))
         NonceManager.delete_nonce(tx.nonce)
 
-    # TODO why do we need this if we check the queue at the start of this func? --davis
-    try: app.queue.put_nowait(tx)
+    # TODO @faclon why do we need this if we check the queue at the start of this func? --davis
+    ord_container = OrderingContainer.create(tx)
+    try: app.queue.put_nowait(ord_container.serialize())
     except: return json({'error': "Queue full! Cannot process any more requests"})
 
-    # log.important("proc id {} just put a tx in queue! queue = {}".format(os.getpid(), app.queue))
-    # TODO return transaction hash or some unique identifier here
+    # Return transaction hash and nonce to users (not sure which they will need) --davis
     return json({'success': 'Transaction successfully submitted to the network.',
                  'nonce': tx.nonce, 'hash': Hasher.hash(tx)})
 
 
 @app.route("/nonce", methods=['GET',])
-@limiter.limit("60/minute")
 async def request_nonce(request):
     user_vk = request.json.get('verifyingKey')
     if not user_vk:
@@ -84,7 +84,6 @@ async def request_nonce(request):
 
 
 @app.route("/state", methods=["GET",])
-@limiter.limit("60/minute")
 async def get_contract_state(request):
     contract_name = validate_contract_name(request.json['contract_name'])
     meta = interface.get_contract_meta(contract_name)
@@ -97,7 +96,6 @@ async def get_contract_state(request):
 
 
 @app.route("/contract-meta", methods=["GET",])
-@limiter.limit("60/minute")
 async def get_contract_meta(request):
     contract_name = validate_contract_name(request.json['contract_name'])
     return json(interface.get_contract_meta(contract_name))
@@ -128,7 +126,6 @@ async def get_block(request):
 
 
 @app.route('/transaction', methods=['GET', ])
-@limiter.limit("60/minute")
 async def get_transaction(request):
     _hash = request.json['hash']
     tx = StorageDriver.get_transactions(raw_tx_hash=_hash)
@@ -138,7 +135,6 @@ async def get_transaction(request):
 
 
 @app.route('/transactions', methods=['GET', ])
-@limiter.limit("60/minute")
 async def get_transactions(request):
     _hash = request.json['hash']
     txs = StorageDriver.get_transactions(block_hash=_hash)

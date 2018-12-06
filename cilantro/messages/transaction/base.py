@@ -5,6 +5,7 @@ from cilantro.utils import lazy_property, is_valid_hex
 from cilantro.protocol import wallet as W
 from cilantro.protocol.pow import SHA3POW
 
+
 class TransactionBase(MessageBase):
     """
     This class encapsulates the abstract data model for Transactions.

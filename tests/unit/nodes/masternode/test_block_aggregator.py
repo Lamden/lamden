@@ -3,7 +3,6 @@ set_testnet_config('2-2-2.json')
 from cilantro.constants.testnet import set_testnet_nodes
 set_testnet_nodes()
 
-from cilantro.logger.base import get_logger
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro.storage.vkbook import VKBook
 
@@ -29,6 +28,10 @@ from cilantro.utils.hasher import Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.protocol import wallet
 from cilantro.storage.mongo import MDB
+
+# time and logger are for debugging
+import time
+from cilantro.logger.base import get_logger
 
 
 class BlockAggTester:
@@ -79,25 +82,41 @@ MERKLE_LEAVES2 = TREE2.leaves
 RESULT_HASH1 = TREE1.root_as_hex
 RESULT_HASH2 = TREE2.root_as_hex
 
-log = get_logger('BlockAggregator')
+log = get_logger('BlockAggregatorTester')
 
 
 class TestBlockAggregator(TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        log.critical("startdb")
+        MDB.start_db()
+        log.critical("--- startdb")
+
+    def setUp(self):
+        log.critical("resetdb")
+        MDB.reset_db()
+        log.critical("--- resetdb")
+
     @BlockAggTester.test
     def test_build_task_list_connect_and_bind(self, *args):
+        log.critical("1")
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
 
         mock_manager = MagicMock()
         ba.manager = mock_manager
+        log.critical("2")
 
         mock_pub, mock_sub, mock_router = MagicMock(), MagicMock(), MagicMock()
         mock_manager.create_socket = MagicMock(side_effect=[mock_sub, mock_pub, mock_router])
+        log.critical("3")
 
         mock_sub_handler_task = MagicMock()
         mock_sub.add_handler = MagicMock(return_value=mock_sub_handler_task)
+        log.critical("4")
 
         ba.build_task_list()
+        log.critical("5")
 
         self.assertEqual(ba.sub, mock_sub)
         self.assertEqual(ba.pub, mock_pub)
@@ -108,6 +127,7 @@ class TestBlockAggregator(TestCase):
             len([vk for vk in VKBook.get_masternodes() if TEST_VK != vk]) + \
                 len([vk for vk in VKBook.get_delegates() if TEST_VK != vk]))
 
+        log.critical("6")
         mock_pub.bind.assert_called_with(ip=TEST_IP, port=MASTER_PUB_PORT)
 
     @BlockAggTester.test
@@ -166,14 +186,6 @@ class TestBlockAggregator(TestCase):
         signature = build_test_merkle_sig(msg=bytes.fromhex(INPUT_HASH1), sk=DEL_SK, vk=DEL_VK)
         sbc = SubBlockContender.create_empty_sublock(INPUT_HASH1, sub_block_index=0, signature=signature,
                                                      prev_block_hash=GENESIS_BLOCK_HASH)
-
-
-    @classmethod
-    def setUpClass(cls):
-        MDB.start_db()
-
-    def setUp(self):
-        MDB.reset_db()
 
     @BlockAggTester.test
     @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)

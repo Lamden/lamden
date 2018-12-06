@@ -281,21 +281,29 @@ class BlockManager(Worker):
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
-    def update_db(self):
+    def update_db(self, block_data: NewBlockNotification):
+        # TODO: We need to handle this for real incase nodes miss a block. Throwing assertion for now.
+        assert block_data.prev_block_hash == self.db_state.cur_block_hash, \
+            "update_db called but our current block hash {} does not match the new block notification's prev block " \
+            "hash {}".format(self.db_state.cur_block_hash, block_data.prev_block_hash)
+
         # first sort the sb result hashes based on sub block index
         sorted_sb_hashes = sorted(self.db_state.sub_block_hash_map.keys(),
                                   key=lambda result_hash: self.db_state.sub_block_hash_map[result_hash])
         # append prev block hash
         our_block_hash = BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.cur_block_hash)
-        if (our_block_hash == self.db_state.next_block_hash):
-            # we have consensus
+
+        if our_block_hash == self.db_state.next_block_hash:
             self.log.success2("BlockManager has consensus with NewBlockNotification!")
+
             self.db_state.sub_block_hash_map.clear()
             self.db_state.next_block.clear()
-            self.send_updated_db_msg()
+            StateDriver.set_latest_block_hash(our_block_hash)
             self.db_state.cur_block_hash = our_block_hash
+            self.send_updated_db_msg()
+
+        # TODO handle this case. Here we computed the wrong block hash and need to catchup
         else:
-            # we can't handle this with current Seneca. TODO
             self.log.fatal("Error: mismatch between current db state with masters!! my est bh {} and masters bh {}".format(our_block_hash, self.db_state.next_block_hash))
 
     def update_db_if_ready(self, block_data: NewBlockNotification):
@@ -305,8 +313,13 @@ class BlockManager(Worker):
         if (num_sb < NUM_SB_PER_BLOCK):  # don't have all sub-blocks
             self.log.info("I don't have all SBs")
             # since we don't have a way to sync Seneca with full data from master, just wait for sub-blocks done
+            # TODO what do we do here?
+            # - Tell each SBB to abort current sub-block, then do catchup logic?
+            # or
+            # - Let SBB finish current sub block, and instantly send a make next block notification if their current
+            #   state is correct?
             return
-        self.update_db()
+        self.update_db(block_data)
 
     # update current db state to the new block
     def handle_new_block(self, block_data: NewBlockNotification):

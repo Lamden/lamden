@@ -54,7 +54,7 @@ class MDB:
             init block store, store_index
         """
         if cls.init_mdb is False:
-            time.sleep(5)
+            time.sleep(5)  # @tejas why?
             uri = cls.setup_db(db_type = 'MDB')
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client.get_database()
@@ -67,6 +67,7 @@ class MDB:
 
             cls.log.debug('start_db init set {}'.format(cls.init_mdb))
 
+            # @tejas dude isnt this 'if init_mdb is True' nested under a 'init_mdb is False' lol
             if cls.init_mdb is True:
                 uri = cls.setup_db(db_type='index')
                 cls.mn_client_idx = MongoClient(uri)

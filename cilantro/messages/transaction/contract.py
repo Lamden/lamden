@@ -12,7 +12,7 @@ import capnp
 import transaction_capnp
 
 
-NUMERIC_TYPES = {int, Decimal}
+NUMERIC_TYPES = {int, Decimal, float}  # should float be in here? we lose the precision as soon as its represented
 VALUE_TYPE_MAP = {
     str: 'text',
     bytes: 'data',
@@ -23,8 +23,7 @@ VALUE_TYPE_MAP = {
 class ContractTransaction(TransactionBase):
     """
     ContractTransactions are sent into the system by users who wish to execute smart contracts. IRL, they should be
-    build by some front end framework/library. Apart from the metadata, they contain one field called "code", which
-    represents the code of the smart contract to be run, as plain text.
+    build by some front end framework/library.
     """
 
     @classmethod
@@ -34,7 +33,7 @@ class ContractTransaction(TransactionBase):
     @classmethod
     def create(cls, sender_sk: str, stamps_supplied: int, contract_name: str, func_name: str, nonce: str, *args, **kwargs):
         assert len(args) == 0, "Contract must be created with key word args only (no positional args sorry)"
-        assert stamps_supplied > 0, "Must supply positive gas amount u silly billy"
+        assert stamps_supplied > 0, "Must supply positive stamps amount"
 
         struct = transaction_capnp.ContractTransaction.new_message()
 

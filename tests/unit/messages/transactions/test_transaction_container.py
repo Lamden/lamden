@@ -6,7 +6,7 @@ from cilantro.messages.transaction.contract import ContractTransactionBuilder
 from cilantro.messages.transaction.container import TransactionContainer
 
 
-class TransactionContainerTest(TestCase):
+class TestTransactionContainer(TestCase):
     def _convenience_build_standard_transaction(self):
         """These transactions get POSTed directly to masternodes by TAU wallet software"""
         tx = ContractTransactionBuilder.random_currency_tx()

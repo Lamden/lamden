@@ -21,18 +21,19 @@ def wrap_func(fn, *args, **kwargs):
 
 
 def run_mn(slot_num):
+    # We must set this env var before we import anything from cilantro
+    import os
+    os.environ["NONCE_DISABLED"] = "1"
+
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_MASTERNODES
-    import os
-    import logging
 
-    # Disable nonces
-    os.environ["NONCE_DISABLED"] = "1"
-
+    # NOTE setting the log level below 11 does not work for some reason --davis
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
     # overwrite_logger_level(11)
+    overwrite_logger_level(11)  # suppress 'spam' log level
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[slot_num]['sk']
@@ -48,7 +49,7 @@ def run_witness(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
-    # overwrite_logger_level(11)
+    overwrite_logger_level(11)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -58,13 +59,15 @@ def run_witness(slot_num):
 
 def run_delegate(slot_num):
     from cilantro.logger import get_logger, overwrite_logger_level
+    from seneca.libs.logger import overwrite_logger_level as sen_overwrite_log
     from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_DELEGATES
     import os
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    # overwrite_logger_level(11)
+    overwrite_logger_level(11)
+    sen_overwrite_log(11)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
