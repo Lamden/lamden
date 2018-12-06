@@ -24,7 +24,8 @@ class OverlayInterface:
         self.loop = loop or asyncio.get_event_loop()
         # asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
-        Auth.setup(sk_hex=sk_hex, reset_auth_folder=True)
+        # reset_auth_folder should always be False and True has to be at highest level without any processes
+        Auth.setup(sk_hex=sk_hex, reset_auth_folder=False)
 
         self.network = Network(loop=self.loop, node_id=digest(Auth.vk))
         Discovery.setup(ctx=self.ctx)
