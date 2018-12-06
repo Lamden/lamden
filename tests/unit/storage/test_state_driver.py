@@ -50,11 +50,28 @@ class TestStateDriver(TestCase):
         b_hash = StateDriver.get_latest_block_hash()
         self.assertEqual(GENESIS_BLOCK_HASH, b_hash)
 
+    def test_get_latest_block_num_with_none_set(self):
+        b_num = StateDriver.get_latest_block_num()
+        self.assertEqual(0, b_num)
+
     def test_set_get_latest_block_hash(self):
         b_hash = 'ABCD' * 16
         StateDriver.set_latest_block_hash(b_hash)
 
         self.assertEqual(StateDriver.get_latest_block_hash(), b_hash)
+
+    def test_set_get_latest_block_num(self):
+        b_num = 9001
+        StateDriver.set_latest_block_num(b_num)
+
+        self.assertEqual(StateDriver.get_latest_block_num(), b_num)
+
+    def test_set_get_latest_info(self):
+        b_num = 9001
+        b_hash = 'ABCD' * 16
+
+        StateDriver.set_latest_block_info(b_hash, b_num)
+        self.assertEqual(StateDriver.get_latest_block_info(), (b_hash, b_num))
 
 
 if __name__ == '__main__':
