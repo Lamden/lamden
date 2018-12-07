@@ -14,6 +14,10 @@ class TransactionBase(MessageBase):
     def __init__(self, data):
         super().__init__(data)
 
+    @classmethod
+    def _deserialize_payload(cls, data: bytes):
+        raise NotImplementedError()
+
     def validate(self):
         """
         Validates the underlying data, raising an exception if something is wrong
@@ -34,7 +38,7 @@ class TransactionBase(MessageBase):
         If the POW is valid, this method returns nothing.
         :raises: An exception if the POW is not valid.
         """
-        if not SHA3POW.check(self._payload_binary, self._data.metadata.proof.decode()):
+        if not SHA3POW.check(self._payload_binary, self.proof):
             raise Exception("Invalid proof of work for tx: {}".format(self._data))
 
     def validate_signature(self):
@@ -67,10 +71,11 @@ class TransactionBase(MessageBase):
 
     @lazy_property
     def _payload_binary(self):
-        if hasattr(self._data.payload, 'copy'):
-            return self._data.payload.copy().to_bytes()
-        else:
-            return self._data.payload.as_builder().copy().to_bytes()
+        return self._data.payload
+
+    @lazy_property
+    def payload(self):
+        return self._deserialize_payload(self._data.payload)
 
     @property
     def proof(self):
@@ -86,15 +91,15 @@ class TransactionBase(MessageBase):
 
     @property
     def sender(self):
-        return self._data.payload.sender.decode()
+        return self.payload.sender
 
     @property
     def nonce(self):
-        return self._data.payload.nonce
+        return self.payload.nonce
 
     @property
     def stamps_supplied(self):
-        return self._data.payload.stampsSupplied
+        return self.payload.stampsSupplied
 
 
 def build_test_transaction() -> TransactionBase:

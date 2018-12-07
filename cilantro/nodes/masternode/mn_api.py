@@ -1,5 +1,6 @@
 from cilantro.storage.mongo import MDB
 from cilantro.protocol import wallet
+from cilantro.storage.vkbook import VKBook
 from cilantro.nodes.masternode.master_store import MasterOps
 from cilantro.storage.state import StateDriver
 from cilantro.logger.base import get_logger
@@ -29,7 +30,17 @@ class StorageDriver:
     log = get_logger("StorageDriver")
 
     @classmethod
-    def store_block(cls, merkle_roots=None, verifying_key=None, sign_key=None, transactions=None, input_hashes=None ):
+    def store_block(cls, merkle_roots=None, verifying_key=None, sign_key=None, transactions=None, input_hashes=None):
+        """
+        Triggered after 2/3rd consensus we create block and store to permanent storage
+
+        :param merkle_roots:
+        :param verifying_key:   vk for master
+        :param sign_key:        sk for master
+        :param transactions:
+        :param input_hashes:
+        :return:
+        """
         prev_block_hash = cls.get_latest_block_hash()
         cls.log.important("store_block_new - prv block hash - {}".format(prev_block_hash))
         block_hash = BlockData.compute_block_hash(sbc_roots=merkle_roots, prev_block_hash=prev_block_hash)
@@ -52,33 +63,63 @@ class StorageDriver:
         pass
 
     '''
-        api returns full block if stored locally else would return list of Master nodes responsible for
-        it
+        api returns full block if stored locally else would return list of Master nodes responsible for it
     '''
     @classmethod
-    def get_latest_block(cls, my_key=None):
-        idx_entry = MasterOps.get_blk_idx(n_blks=1, my_key=my_key)
+    def get_nth_full_block(cls, give_blk=None, mn_vk=None):
+        """
+        API gets request for block num, this api assumes requested block is stored locally
+        else asserts
 
-        for key in idx_entry.get('master_nodes'):
-            if key == my_key:
+        :param give_blk: block num on chain
+        :param mn_vk:    requester's vk
+        :return:         None for incorrect, only full blk if block found else assert
+        """
+
+        valid_mn_id = VKBook.get_masternodes().index(mn_vk)
+        if valid_mn_id is None:
+            return None
+
+        # check my index if my vk is listed in idx
+        idx_entry = MasterOps.get_blk_idx(n_blks=give_blk)
+
+        for key in idx_entry.get('mn_blk_owners'):
+            if key == mn_vk:
                 blk_entry = MasterOps.get_full_blk(blk_num = idx_entry.get('blockNum'))
-                return blk_entry
 
-        # return idx entry if blk is not stored locally
-        return idx_entry
+        assert isinstance(blk_entry), "fn get_nth_full_block failed to return blk {} for index".format(blk_entry,
+                                                                                                       idx_entry)
+        return blk_entry
 
     @classmethod
     def get_latest_block_hash(cls):
-        idx_entry = MasterOps.get_blk_idx(n_blk=1)
+        """
+        looks up mn_index returns latest hash
+
+        :return: block hash of last block on block chain
+        """
+        idx_entry = MasterOps.get_blk_idx(n_blks=1)
         cls.log.debug("get_latest_block_hash idx_entry -> {}".format(idx_entry))
         blk_hash = idx_entry.get('blockHash')
         cls.log.debug("get_latest_block_hash blk_hash ->{}".format(blk_hash))
         return blk_hash
 
     @classmethod
-    def catch_me_up(cls, node_type=None, my_blk_hash=None):
-        if node_type is 'mn':
-            given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = my_blk_hash)
+    def process_catch_up_idx(cls, vk=None, curr_blk_hash=None):
+        """
+        API gets latest hash requester has and responds with delta block index
+
+        :param vk: mn or dl verifying key
+        :param curr_blk_hash:
+        :return:
+        """
+
+        # check if requester is master or del
+
+        valid_node = bool(VKBook.get_masternodes().index(vk)) & bool(VKBook.get_masternodes().index(vk))
+
+        if valid_node is True:
+            given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = curr_blk_hash)
             latest_blk = MasterOps.get_blk_idx(n_blks = 1)
             latest_blk_num = latest_blk.get('blockNum')
 
@@ -89,6 +130,11 @@ class StorageDriver:
                 idx_delta = MasterOps.get_blk_idx(n_blks = (latest_blk_num - given_blk_num))
                 return idx_delta
 
-        if node_type is 'dn':
-            # TODO
-            pass
+        assert valid_node is True, "invalid vk given key is not of master or delegate dumpting vk {}".format(vk)
+
+    @classmethod
+    def send_block_index_req(cls):
+        curr_blk_hash = cls.get_latest_block_hash()
+        pass
+
+

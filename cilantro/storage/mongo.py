@@ -21,6 +21,9 @@ class MDB:
     pwd = cfg.get('MN_DB', 'password')
     port = cfg.get('MN_DB', 'port')
 
+    # master
+    sign_key = None
+    verify_key = None
     # master store db
 
     mn_client = None
@@ -36,8 +39,10 @@ class MDB:
     mn_coll_idx = None
     init_idx_db = False
 
-    def __init__(self, reset=False):
+    def __init__(self, s_key, reset=False):
         if self.init_mdb is False:
+            MDB.sign_key = s_key
+            MDB.verify_key = wallet.get_vk(s_key)
             self.start_db()
             return
 
@@ -77,7 +82,7 @@ class MDB:
                 cls.mn_db_idx = MongoClient(uri).get_database()
                 cls.mn_coll_idx = cls.mn_db_idx['index']
                 idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash').decode(),
-                       'mn_sign': cls.genesis_blk.get('masternodeSignature')}
+                       'mn_blk_owner': (cls.genesis_blk.get('masternodeSignature')).decode()}
                 cls.log.debug('start_db init index {}'.format(idx))
                 cls.init_idx_db = cls.insert_idx_record(my_dict=idx)
 
@@ -105,7 +110,6 @@ class MDB:
             cls.mn_client.drop_database(cls.mn_db)
             cls.mn_client_idx.drop_database(cls.mn_db_idx)
             cls.init_mdb = cls.init_idx_db = False
-
 
     '''
         Wr to store or index
@@ -154,10 +158,6 @@ class MDB:
 
         cls.log.debug("query_index returning dict {}".format(blk_dict))
         return blk_dict
-
-        # if blk_hash:
-        #     blk_dict = {'blockHash': blk_hash}
-        #     block =
 
     @classmethod
     def query_db(cls, type=None, query=None):
