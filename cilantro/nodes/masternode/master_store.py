@@ -38,7 +38,10 @@ class MasterOps:
                 cls.log.info("failed to get id")
 
             # start/setup mongodb
-            MDB.start_db()
+            # MDB.start_db(s_key = key)
+            host = bool(MDB(s_key = key))
+            assert host is True, "failed db init - {}".format(mn)
+
             cls.log.info("************db initiated*************")
             cls.init_state = True
 
@@ -175,13 +178,12 @@ class MasterOps:
 
     @classmethod
     def get_blk_idx(cls, n_blks=None):
-        #assert n_blk == 0, "invalid api call n_blk cannot be zero".format(n_blk)
+        assert n_blks > 0, "invalid api call n_blk cannot be zero".format(n_blks)
         idx_entries = MDB.query_index(n_blks=n_blks)
         return idx_entries
 
     @classmethod
     def get_blk_num_frm_blk_hash(cls, blk_hash=None):
-        #assert blk_hash is None, "invalid api call blk_hash cannot be None".format(blk_hash)
         my_query = {'blockHash': blk_hash}
         outcome = MDB.query_db(type='idx', query = my_query)
         cls.log.info("print outcome {}".format(outcome))
