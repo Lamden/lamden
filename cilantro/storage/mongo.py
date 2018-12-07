@@ -79,7 +79,7 @@ class MDB:
                 cls.mn_db_idx = MongoClient(uri).get_database()
                 cls.mn_coll_idx = cls.mn_db_idx['index']
                 idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash').decode(),
-                       'mn_blk_owner': cls.genesis_blk.get('masternodeSignature')}
+                       'mn_blk_owner': (cls.genesis_blk.get('masternodeSignature')).decode()}
                 cls.log.debug('start_db init index {}'.format(idx))
                 cls.init_idx_db = cls.insert_idx_record(my_dict=idx)
 

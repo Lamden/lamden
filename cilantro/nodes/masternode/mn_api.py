@@ -132,3 +132,9 @@ class StorageDriver:
 
         assert valid_node is True, "invalid vk given key is not of master or delegate dumpting vk {}".format(vk)
 
+    @classmethod
+    def send_block_index_req(cls):
+        curr_blk_hash = cls.get_latest_block_hash()
+        pass
+
+
