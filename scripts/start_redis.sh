@@ -23,6 +23,7 @@ export PYTHONPATH=$(pwd)
 export REDIS_PORT=$port
 export REDIS_PASSWORD=$pw
 
+mkdir -p docker
 echo "
 REDIS_PORT=$REDIS_PORT
 REDIS_PASSWORD=$REDIS_PASSWORD
