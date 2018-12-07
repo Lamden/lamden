@@ -45,7 +45,7 @@ struct PublishTransaction {
 
 
 struct TransactionData {
-    contractTransaction @0 :ContractTransaction;
+    transaction @0 :Data;
     status @1: Text;
     state @2: Text;
     contractType @3: UInt16;

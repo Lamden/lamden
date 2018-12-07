@@ -13,7 +13,7 @@ class TestBlockData(TestCase):
                 sender_sk=TEST_SK, receiver_vk='A' * 64, amount=10),
             status='SUCCESS', state='SET x 1')
 
-        self.assertTrue(isinstance(td.contract_tx, ContractTransaction))
+        self.assertTrue(isinstance(td.transaction, ContractTransaction))
 
     def test_serialize_deserialize(self):
         td = TransactionData.create(

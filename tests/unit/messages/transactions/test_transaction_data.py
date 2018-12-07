@@ -14,7 +14,7 @@ class TestTransactionData(TestCase):
 
         tx_data = TransactionData.create(contract_tx=tx, status=status, state=state)
 
-        self.assertEqual(tx_data.contract_tx, tx)
+        self.assertEqual(tx_data.transaction, tx)
         self.assertEqual(tx_data.status, status)
         self.assertEqual(tx_data.state, state)
 

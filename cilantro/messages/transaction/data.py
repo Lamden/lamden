@@ -16,7 +16,7 @@ class Status(Enum):
 class TransactionData(MessageBase):
 
     def validate(self):
-        self.contract_tx  # validates the ContractTransaction
+        self.transaction  # validates the Transaction
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
@@ -24,12 +24,12 @@ class TransactionData(MessageBase):
 
     @classmethod
     def create(cls, contract_tx: TransactionBase, status: str, state: str):
-        assert issubclass(type(contract_tx), TransactionBase), "contract_tx must be a subclass of TransactionBase"
+        assert issubclass(type(contract_tx), TransactionBase), "transaction must be a subclass of TransactionBase"
         assert type(contract_tx) in MessageBase.registry, "MessageBase class {} not found in registry {}"\
             .format(type(contract_tx), MessageBase.registry)
 
         data = transaction_capnp.TransactionData.new_message()
-        data.contractTransaction = contract_tx._data
+        data.transaction = contract_tx.serialize()
         data.status = status
         data.state = state
         data.contractType = MessageBase.registry[type(contract_tx)]
@@ -37,8 +37,8 @@ class TransactionData(MessageBase):
         return cls(data)
 
     @lazy_property
-    def contract_tx(self) -> ContractTransaction:
-        return ContractTransaction.from_data(self._data.contractTransaction)
+    def transaction(self) -> ContractTransaction:
+        return self.contract_type.from_bytes(self._data.transaction)
 
     @property
     def status(self) -> str:
