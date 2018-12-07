@@ -27,7 +27,7 @@ mkdir -p docker
 echo "
 REDIS_PORT=$REDIS_PORT
 REDIS_PASSWORD=$REDIS_PASSWORD
-" > docker/redis.env
+" | sudo tee docker/redis.env
 
 rm -f ./dump.rdb
 
