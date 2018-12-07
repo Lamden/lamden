@@ -47,7 +47,7 @@ def vmnet_test(*args, **kwargs):
                 klass = parent_klass
 
             klass.test_name = klass.__name__
-            config_dict = launch(config_file, klass.test_name)
+            config_dict = launch(config_file, klass.test_name, run=True)
             klass._set_configs(klass, config_dict)
 
             # Create log directory for test name
@@ -203,4 +203,3 @@ class MPTestCase(BaseNetworkTestCase):
             time.sleep(TESTER_POLL_FREQ)
 
         return actives, passives, fails, timeout
-

@@ -52,6 +52,8 @@ def balance_of(wallet_id):
 @export
 def transfer(to, amount):
     print("transfering from {} to {} with amount {}".format(rt['sender'], to, amount))
+    assert market['stamps_to_tau'] == 1, 'whaaaaaathjgklg'
+
     balances[rt['sender']] -= amount
     balances[to] += amount
     sender_balance = balances[rt['sender']]
@@ -84,4 +86,3 @@ def mint(to, amount):
     assert rt['sender'] == rt['author'], 'Only the original contract author can mint!'
 
     balances[to] += amount
-

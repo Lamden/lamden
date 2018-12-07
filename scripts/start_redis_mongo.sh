@@ -5,7 +5,7 @@ export PYTHONPATH=$(pwd)
 
 echo "Waiting for mongo on localhost"
 mkdir -p ./data/$HOST_NAME/logs
-touch ./data/$HOST_NAME/logs/mongo.log
+touch ./data/$HOST_NAME/logs/mongo.log 2>/dev/null
 echo 'Dir created'
 
 python3 ./scripts/create_user.py &
