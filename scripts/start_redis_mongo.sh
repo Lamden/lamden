@@ -12,9 +12,9 @@ python3 ./scripts/create_user.py &
 
 if [ "$CIRCLECI" == "true" ]
 then
-  mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log &
+  sudo mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log &
 else
-  mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all &
+  sudo mongod --dbpath ./data/$HOST_NAME --logpath ./data/$HOST_NAME/logs/mongo.log --bind_ip_all &
 fi
 
 bash ./scripts/start_redis.sh
