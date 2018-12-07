@@ -8,6 +8,7 @@ from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 import dill, ujson as json, textwrap, bson
 from bson.objectid import ObjectId
+from collections import defaultdict
 from typing import List
 from cilantro.utils import Hasher
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
@@ -16,6 +17,7 @@ from cilantro.messages.transaction.data import TransactionData
 
 import time
 
+REPLICATION = 3             # TODO hard coded for now needs to change
 GENESIS_HASH = '0' * 64
 OID = '5bef52cca4259d4ca5607661'
 
@@ -28,6 +30,9 @@ class StorageDriver:
 
     state_id = ObjectId(OID)
     log = get_logger("StorageDriver")
+
+    block_index_delta = defaultdict(dict)
+    send_req_blk_num = 0
 
     @classmethod
     def store_block(cls, merkle_roots=None, verifying_key=None, sign_key=None, transactions=None, input_hashes=None):
@@ -131,6 +136,54 @@ class StorageDriver:
                 return idx_delta
 
         assert valid_node is True, "invalid vk given key is not of master or delegate dumpting vk {}".format(vk)
+
+    @classmethod
+    def process_given_idx(cls, blk_idx_dict=None):
+        """
+        API goes list dict and sends out blk req for each blk num
+        :param blk_idx_dict:
+        :return:
+        """
+        last_elm_curr_list = sorted(cls.block_index_delta.keys())[-1]
+        last_elm_new_list = sorted(blk_idx_dict.keys())[-1]
+
+        if last_elm_curr_list > last_elm_new_list:
+            cls.log.critical("incoming block delta is stale ignore continue wrk on old")
+            return
+
+        if last_elm_curr_list == last_elm_new_list:
+            cls.log.info("delta is same returning")
+            return
+                  
+        if last_elm_curr_list < last_elm_new_list:
+            cls.log.critical("we have stale list update working list ")
+            cls.block_index_delta = blk_idx_dict
+            last_elm_curr_list = last_elm_new_list
+
+        while cls.send_req_blk_num < last_elm_curr_list:
+            # look for active master in vk list
+            avail_copies = len(cls.block_index_delta[cls.send_req_blk_num])
+            if avail_copies < REPLICATION:
+                cls.log.critical("block is under protected needs to re protect")
+
+            while avail_copies > 0:
+                vk = cls.block_index_delta[cls.send_req_blk_num][avail_copies - 1]
+                if vk in VKBook.get_masternodes():
+                    cls.process_send_blk_request(dest_vk = vk, blk_num = cls.send_req_blk_num)
+                    break
+                avail_copies = avail_copies - 1  # decrement count check for another master
+
+            cls.send_req_blk_num += 1
+            # TODO we should somehow check time out for these requests
+
+
+    @classmethod
+    def process_send_blk_request(cls, dest_vk=None, blk_num=None):
+        pass
+
+    @classmethod
+    def process_given_block(cls, block):
+        update_blk_result = bool(MasterOps.evaluate_wr(entry=block))
 
     @classmethod
     def send_block_index_req(cls):
