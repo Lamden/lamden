@@ -41,7 +41,7 @@ def sign(s: str, msg: bytes) -> str:
     return s.sign(msg).signature.hex()
 
 
-def verify(v: str, msg, sig) -> bool:
+def verify(v: str, msg: bytes, sig: str) -> bool:
     v = bytes.fromhex(v)
     sig = bytes.fromhex(sig)
     v = nacl.signing.VerifyKey(v)

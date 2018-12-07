@@ -1,4 +1,4 @@
-@0x8cff3844f3101ec9;
+@0x921d030365beff8c;
 
 using V = import "values.capnp";
 
@@ -10,32 +10,37 @@ struct MetaData {
 }
 
 
+struct ContractPayload {
+    sender @0 :Text;
+    nonce @1 :Text;
+    stampsSupplied @2 :UInt64;
+
+    contractName @3 :Text;
+    functionName @4 :Text;
+    kwargs @5 :V.Map(Text, V.Value);
+}
+
+
 struct ContractTransaction {
     metadata @0: MetaData;
-    payload @1: Payload;
+    payload @1: Data;
+}
 
-    struct Payload {
-        sender @0 :Data;
-        contractName @1 :Text;
-        functionName @2 :Text;
-        stampsSupplied @3 :UInt64;
-        nonce @4 :Text;
-        kwargs @5 :V.Map(Text, V.Value);
-    }
+
+struct PublishPayload {
+    sender @0 :Text;
+    nonce @1 :Text;
+    stampsSupplied @2 :UInt64;
+
+    contractName @3 :Text;
+    contractCode @4 :Text;
+
 }
 
 
 struct PublishTransaction {
     metadata @0: MetaData;
-    payload @1: Payload;
-
-    struct Payload {
-        sender @0 :Data;
-        contractName @1 :Text;
-        contractCode @2 :Text;
-        stampsSupplied @3 :UInt64;
-        nonce @4 :Text;
-    }
+    payload @1: Data;
 }
 
 
