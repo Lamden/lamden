@@ -32,6 +32,6 @@ REDIS_PASSWORD=$REDIS_PASSWORD
 rm -f ./dump.rdb
 
 echo "Starting Redis server..."
-redis-server
-#redis-server docker/redis.conf --port $REDIS_PORT --requirepass $REDIS_PASSWORD 2>/dev/null >/dev/null &
+# redis-server
+redis-server docker/redis.conf --port $REDIS_PORT --requirepass $REDIS_PASSWORD 2>/dev/null >/dev/null &
 #redis-server 2>/dev/null >/dev/null &
