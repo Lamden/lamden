@@ -61,9 +61,19 @@ class Discovery:
         try_count = 0
         if cls.is_listen_ready:
             await asyncio.sleep(3)
+
+        cls.bootnodes = []
+        for node_type in ['MASTER', 'DELEGATE', 'WITNESS']:
+            if env(node_type):
+                cls.bootnodes.append(env(node_type))
+
         while True:
-            cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
-            cls.connect(get_ip_range(start_ip))
+            if try_count == 0:
+                cls.log.info('Connecting to boot nodes: {}'.format(cls.bootnodes))
+                cls.connect(cls.bootnodes)
+            else:
+                cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
+                cls.connect(get_ip_range(start_ip))
             try_count += 1
             if (is_masternode and len(VKBook.get_masternodes()) == 1) or \
                     (len(cls.discovered_nodes) == 0 and is_masternode and cls.is_connected):
