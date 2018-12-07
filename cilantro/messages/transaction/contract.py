@@ -12,7 +12,7 @@ import capnp
 import transaction_capnp
 
 
-NUMERIC_TYPES = {int, Decimal, float}  # should float be in here? we lose the precision as soon as its represented
+NUMERIC_TYPES = {int, Decimal}
 VALUE_TYPE_MAP = {
     str: 'text',
     bytes: 'data',

@@ -67,7 +67,7 @@ def run_delegate(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(11)
-    sen_overwrite_log(11)
+    # sen_overwrite_log(11)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
