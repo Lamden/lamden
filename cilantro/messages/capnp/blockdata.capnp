@@ -27,5 +27,5 @@ struct StateUpdateRequest {
 }
 
 struct StateUpdateReply {
-    blockData @0 :List(BlockData);
+    blockData @0 :BlockData;
 }

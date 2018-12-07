@@ -53,6 +53,9 @@ class BlockIndexRequest(MessageBaseJson):
         return self._data.get(self.B_HASH)
 
 
+
+
+
 class BlockIndexReply(MessageBaseJson):
 
     def validate(self):
@@ -79,6 +82,10 @@ class BlockIndexReply(MessageBaseJson):
         return self._data
 
 
+class BlockDataRequest(BlockIndexRequest):
+    pass
+
+
 class StateUpdateReply(MessageBase):
 
     def validate(self):
@@ -89,11 +96,11 @@ class StateUpdateReply(MessageBase):
         return blockdata_capnp.StateUpdateReply.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, block_data: List[BlockData]):
+    def create(cls, block_data: BlockData):
         struct = blockdata_capnp.StateUpdateReply.new_message()
-        struct.blockData = [b._data for b in block_data]
+        struct.blockData = block_data._data
         return cls.from_data(struct)
 
     @lazy_property
-    def block_data(self) -> List[BlockData]:
-        return [BlockData.from_data(d) for d in self._data.blockData]
+    def block_data(self) -> BlockData:
+        return BlockData.from_data(self._data.blockData)
