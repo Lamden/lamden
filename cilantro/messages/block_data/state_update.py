@@ -53,9 +53,6 @@ class BlockIndexRequest(MessageBaseJson):
         return self._data.get(self.B_HASH)
 
 
-
-
-
 class BlockIndexReply(MessageBaseJson):
 
     def validate(self):
