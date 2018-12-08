@@ -1,5 +1,10 @@
 #!/bin/bash
 set -ex
+echo "XXXXX
+
+$VMNET
+
+XXXXX"
 
 if [ -z "$CIRCLECI" ] && [ "$HOST_NAME" != "" ]
 then
@@ -20,7 +25,6 @@ export PYTHONPATH=$(pwd)
 rm -f ./dump.rdb
 
 echo "Starting Redis server..."
-echo "$VMNET"
 
 if [ "$HOST_NAME" != "" ] || [ "$VMNET" != "" ]
 then
