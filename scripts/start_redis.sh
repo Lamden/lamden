@@ -1,6 +1,7 @@
 #!/bin/bash
 set -ex
 
+source .env
 echo "XXXXX
 
 $VMNET
