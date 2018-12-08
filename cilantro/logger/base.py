@@ -159,7 +159,7 @@ def get_logger(name=''):
     log = logging.getLogger(name)
     log.setLevel(_LOG_LVL)
 
-    if os.getenv('HOST_IP'):
+    if os.getenv('HOST_IP') and not os.getenv('VMNET'):
         sys.stdout = LoggerWriter(log.debug)
         sys.stderr = LoggerWriter(log.error)
 
