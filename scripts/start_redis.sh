@@ -24,7 +24,7 @@ if [ "$CIRCLECI" == "true" ] || [ "$HOST_NAME" == "" ]
 then
     pkill -9 redis-server
     redis-server &
-elif [[ "$HOST_NAME" != "" ]]
+elif [ "$HOST_NAME" != "" ] || [ "$VMNET" != "" ]
 then
     export REDIS_PORT=$(python3 ./scripts/free_port.py)
     export REDIS_PASSWORD=$(python3 ./scripts/random_password.py)

@@ -64,11 +64,10 @@ class TestCloud(AWSTestCase):
     timeout = 60
 
     def test_aws(self):
-        self.all_nodes = set(self.groups['node'])
-        self.nodes_complete = set()
-        self.execute_python(self.groups['node'][0], wrap_func(masternode, 0))
-        self.execute_python(self.groups['node'][1], wrap_func(masternode, 1))
-        for idx, node in enumerate(self.groups['node'][2:]):
+        for idx, node in enumerate(self.groups['masternode'][2:]):
+            print('here', node)
+            self.execute_python(node, wrap_func(masternode, idx))
+        for idx, node in enumerate(self.groups['delegate'][2:]):
             self.execute_python(node, wrap_func(delegates, idx))
 
 if __name__ == '__main__':
