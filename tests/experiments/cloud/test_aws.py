@@ -64,10 +64,9 @@ class TestCloud(AWSTestCase):
     timeout = 60
 
     def test_aws(self):
-        for idx, node in enumerate(self.groups['masternode'][2:]):
-            print('here', node)
+        for idx, node in enumerate(self.groups['masternode']):
             self.execute_python(node, wrap_func(masternode, idx))
-        for idx, node in enumerate(self.groups['delegate'][2:]):
+        for idx, node in enumerate(self.groups['delegate']):
             self.execute_python(node, wrap_func(delegates, idx))
 
 if __name__ == '__main__':
