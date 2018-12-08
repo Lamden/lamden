@@ -167,7 +167,7 @@ class Composer:
 
         If you wish to stop subscribing to a URL, but not necessarily a filter, then call this method and pass in an
         empty string to FILTER. For example, a delegate might want to stop subscribing to a particular witness, but not
-        all TESTNET_WITNESSES.
+        all witnesses.
 
         :param filter: The filter to subscribe to. Only multipart messages with this filter as the first frame will be
         received

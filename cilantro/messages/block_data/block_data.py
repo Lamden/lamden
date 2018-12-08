@@ -4,7 +4,6 @@ from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_
 from cilantro.utils import lazy_property, Hasher, lazy_func
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.messages.utils import validate_hex
-from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
 from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
 from typing import List
 from cilantro.logger import get_logger
@@ -104,6 +103,8 @@ class GenesisBlockData(BlockData):
 
 
 class BlockDataBuilder:
+
+    from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
     MN_SK = TESTNET_MASTERNODES[0]['sk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
     MN_VK = TESTNET_MASTERNODES[0]['vk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
     DEL_SK = TESTNET_DELEGATES[0]['sk'] if len(TESTNET_DELEGATES) > 0 else 'A' * 64
@@ -140,4 +141,3 @@ class BlockDataBuilder:
                                  input_hashes=input_hashes)
 
         return block
-

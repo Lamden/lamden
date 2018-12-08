@@ -1,49 +1,66 @@
-"""The storage module for delegate is for bootstrapping the in-memory database for delegate nodes to store scratch and
-execute smart contracts
-
-Functions include:
--create_db
--execute (execute smart contract query)
-
-Classes include:
--DBSingletonMeta
--DB (which inherits from DBSingletonMeta)
-"""
-
-from multiprocessing import Lock
-import os
-import math
+import os, math, redis
+from seneca.constants.config import *
 from cilantro.logger import get_logger
-from functools import wraps
+from cilantro.constants.vmnet import get_constitution
+from cilantro.utils.utils import is_valid_hex
 
 log = get_logger("VKBook")
 
-from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_WITNESSES, TESTNET_MASTERNODES
 class VKBook:
 
-    MASTERNODES = [node['vk'] for node in TESTNET_MASTERNODES]
-    WITNESSES = [node['vk'] for node in TESTNET_WITNESSES]
-    DELEGATES = [node['vk'] for node in TESTNET_DELEGATES]
+    r = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
+    node_types = ('masternodes', 'witnesses', 'delegates')
+
+    @classmethod
+    def setup(cls, constitution_json=None):
+        cls.constitution = get_constitution(constitution_json)
+        for node_type in cls.node_types:
+            [cls.r.hset(node_type, node['vk'], node.get('ip', 1)) for node in cls.constitution[node_type]]
+        cls.bootnodes = []
+        for node_type in cls.node_types:
+            if env(node_type.upper()):
+                cls.bootnodes += env(node_type).split(',')
+
+    @staticmethod
+    def blind_trust_vk(vk, node_type, ip=None):
+        assert node_type in VKBook.node_types, 'Invalid node type!'
+        assert is_valid_hex(vk, length=64), 'Invalid VK!'
+        creds = {'vk': vk}
+        if ip:
+            encoded_ip = ip.encode()
+            creds.update({'ip': ip})
+        else:
+            encoded_ip = 1
+        VKBook.hset(node_type, vk, encoded_ip)
+        cls.constitution[node_type].append(creds)
 
     @staticmethod
     def get_all():
-        return VKBook.MASTERNODES + VKBook.DELEGATES + VKBook.WITNESSES
+        nodes = {}
+        for node_type in VKBook.node_types:
+            nodes.update(VKBook.r.hgetall(node_type))
+        return list(nodes.keys())
 
     @staticmethod
     def get_masternodes():
-        return VKBook.MASTERNODES
+        return list(VKBook.r.hgetall('masternodes').keys())
 
     @staticmethod
     def get_delegates():
-        return VKBook.DELEGATES
+        return list(VKBook.r.hgetall('witnesses').keys())
 
     @staticmethod
     def get_witnesses():
-        return VKBook.WITNESSES
+        return list(VKBook.r.hgetall('delegates').keys())
+
+    @staticmethod
+    def is_node_type(node_type, vk):
+        assert node_type in VKBook.node_types, 'Invalid node type!'
+        return VKBook.r.hget(node_type, vk)
 
     @staticmethod
     def get_delegate_majority():
-        return math.ceil(len(VKBook.get_delegates()) * 2/3)
+        return math.ceil(len(VKBook.r.hgetall('delegates')) * 2/3)
 
     @staticmethod
     def test_print_nodes():

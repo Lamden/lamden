@@ -26,7 +26,7 @@ class Discovery:
             cls.ctx = ctx or zmq.asyncio.Context()
             cls.sock = cls.ctx.socket(zmq.ROUTER)
             cls.is_connected = False
-            if Auth.vk in VKBook.get_masternodes():
+            if VKBook.is_node_type('masternodes', Auth.vk):
                 # cls.discovered_nodes[Auth.vk] = cls.host_ip
                 cls.is_listen_ready = True
                 cls.is_master_node = True
@@ -57,20 +57,15 @@ class Discovery:
 
     @classmethod
     async def discover_nodes(cls, start_ip):
-        is_masternode = Auth.vk in VKBook.get_masternodes()
+        is_masternode = VKBook.is_node_type('masternodes', Auth.vk)
         try_count = 0
         if cls.is_listen_ready:
             await asyncio.sleep(3)
 
-        cls.bootnodes = []
-        for node_type in ['MASTER', 'DELEGATE', 'WITNESS']:
-            if env(node_type):
-                cls.bootnodes.append(env(node_type))
-
         while True:
-            if try_count == 0:
-                cls.log.info('Connecting to boot nodes: {}'.format(cls.bootnodes))
-                cls.connect(cls.bootnodes)
+            if try_count == 0 and len(VKBook.bootnodes) > 0:
+                cls.log.info('Connecting to boot nodes: {}'.format(VKBook.bootnodes))
+                cls.connect(VKBook.bootnodes)
             else:
                 cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
                 cls.connect(get_ip_range(start_ip))

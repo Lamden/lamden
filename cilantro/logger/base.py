@@ -130,7 +130,7 @@ class MockLogger:
         return _ignore
 
 
-def get_logger(name=''):
+def get_logger(name='', lvl=logging.INFO):
     if _LOG_LVL == 0:
         return MockLogger()
 
@@ -149,7 +149,7 @@ def get_logger(name=''):
     logging.basicConfig(
         format=format,
         handlers=filehandlers,
-        level=logging.DEBUG
+        level=lvl
     )
 
     log = logging.getLogger(name)
