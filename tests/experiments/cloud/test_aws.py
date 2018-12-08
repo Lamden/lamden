@@ -8,7 +8,7 @@ CONSTITUION_JSON = '2-2-2.json'
 def masternode(idx):
     from cilantro.protocol.overlay.discovery import Discovery
     from cilantro.protocol.overlay.auth import Auth
-    import asyncio, os, ujson as json, sys
+    import asyncio, os, ujson as json, sys, logging
     from cilantro.storage.vkbook import VKBook
     VKBook.setup(CONSTITUION_JSON)
 
@@ -35,7 +35,7 @@ def delegates(idx):
     from cilantro.protocol.overlay.discovery import Discovery
     from cilantro.protocol.overlay.auth import Auth
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
-    import asyncio, os, ujson as json, sys
+    import asyncio, os, ujson as json, sys, logging
     from cilantro.storage.vkbook import VKBook
     VKBook.setup(CONSTITUION_JSON)
 
