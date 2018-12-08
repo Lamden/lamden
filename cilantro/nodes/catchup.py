@@ -74,11 +74,12 @@ class CatchupManager:
         :return:
         """
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
-        StorageDriver.process_catch_up_idx(vk = requester_vk, curr_blk_hash = request.block_hash)
+        delta_index = StorageDriver.process_catch_up_idx(vk = requester_vk, curr_blk_hash = request.block_hash)
+        self.send_block_idx_reply()
 
     def recv_block_index_reply(self, sender_vk: str, reply: BlockIndexReply):
         self.mns_replied_index.add(sender_vk)
-
+        # plugin TODO process_received_idx
         if not reply.indices:
             self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
             return
@@ -87,11 +88,11 @@ class CatchupManager:
             block_hash, block_num, mn_vks = t
             self._add_pending_blocks(block_num, block_hash, mn_vks)
 
-    def recv_block_request(self):
+    def recv_block_request(self, requester_vk: str):
         pass
 
-    def recv_block_reply(self):
-        pass
+    def recv_block_reply(self, reply: BlockData):
+        StorageDriver.process_received_block(block = reply)
 
     # other
 

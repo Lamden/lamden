@@ -2,6 +2,7 @@ from cilantro.storage.mongo import MDB
 from cilantro.protocol import wallet
 from cilantro.storage.vkbook import VKBook
 from cilantro.nodes.masternode.master_store import MasterOps
+from cilantro.nodes.catchup import CatchupManager
 from cilantro.storage.state import StateDriver
 from cilantro.logger.base import get_logger
 from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
@@ -91,10 +92,10 @@ class StorageDriver:
         for key in idx_entry.get('mn_blk_owners'):
             if key == mn_vk:
                 blk_entry = MasterOps.get_full_blk(blk_num = idx_entry.get('blockNum'))
+                return blk_entry
 
-        assert isinstance(blk_entry), "fn get_nth_full_block failed to return blk {} for index".format(blk_entry,
-                                                                                                       idx_entry)
-        return blk_entry
+        # assert isinstance(blk_entry), "fn get_nth_full_block failed to return blk {} for index".format(blk_entry,
+        #                                                                                                idx_entry)
 
     @classmethod
     def get_latest_block_hash(cls):
@@ -138,7 +139,7 @@ class StorageDriver:
         assert valid_node is True, "invalid vk given key is not of master or delegate dumpting vk {}".format(vk)
 
     @classmethod
-    def process_given_idx(cls, blk_idx_dict=None):
+    def process_received_idx(cls, blk_idx_dict=None):
         """
         API goes list dict and sends out blk req for each blk num
         :param blk_idx_dict:
@@ -169,25 +170,17 @@ class StorageDriver:
             while avail_copies > 0:
                 vk = cls.block_index_delta[cls.send_req_blk_num][avail_copies - 1]
                 if vk in VKBook.get_masternodes():
-                    cls.process_send_blk_request(dest_vk = vk, blk_num = cls.send_req_blk_num)
+                    CatchupManager.send_block_req(mn_vk = vk, req_blk_num = cls.send_req_blk_num)
                     break
                 avail_copies = avail_copies - 1  # decrement count check for another master
 
             cls.send_req_blk_num += 1
             # TODO we should somehow check time out for these requests
 
-
     @classmethod
-    def process_send_blk_request(cls, dest_vk=None, blk_num=None):
-        pass
-
-    @classmethod
-    def process_given_block(cls, block):
-        update_blk_result = bool(MasterOps.evaluate_wr(entry=block))
-
-    @classmethod
-    def send_block_index_req(cls):
-        curr_blk_hash = cls.get_latest_block_hash()
-        pass
+    def process_received_block(cls, block=None):
+        block_dict = MDB.get_dict(block)
+        update_blk_result = bool(MasterOps.evaluate_wr(entry=block_dict))
+        assert update_blk_result is True, "failed to update block"
 
 
