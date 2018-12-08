@@ -6,6 +6,7 @@ import logging, coloredlogs
 import os, sys
 
 logging.getLogger("paramiko").setLevel(logging.WARNING)
+logging.getLogger('boto').setLevel(logging.WARNING)
 
 VALID_LVLS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 _LOG_LVL = os.getenv('LOG_LEVEL', None)
