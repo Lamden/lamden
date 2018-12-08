@@ -6,9 +6,12 @@ from vmnet.cloud.testcase import AWSTestCase
 CONSTITUION_JSON = '2-2-2.json'
 
 def masternode(idx):
+    from cilantro.logger import get_logger
+    log = get_logger('MasterNode_{}'.format(idx))
+    log.critical('!!!!')
     from cilantro.protocol.overlay.discovery import Discovery
     from cilantro.protocol.overlay.auth import Auth
-    import asyncio, os, ujson as json, sys, logging
+    import asyncio, os, ujson as json, sys
     from cilantro.storage.vkbook import VKBook
     VKBook.setup(CONSTITUION_JSON)
 
@@ -18,8 +21,7 @@ def masternode(idx):
             if len(Discovery.discovered_nodes) >= 1:
                 quit()
 
-    from cilantro.logger import get_logger
-    log = get_logger('MasterNode_{}'.format(idx))
+
     loop = asyncio.get_event_loop()
     Auth.setup(VKBook.constitution['masternodes'][idx]['sk'])
     Discovery.setup()
@@ -32,10 +34,13 @@ def masternode(idx):
 
 
 def delegates(idx):
+    from cilantro.logger import get_logger
+    log = get_logger('Node_{}'.format(idx))
+    
     from cilantro.protocol.overlay.discovery import Discovery
     from cilantro.protocol.overlay.auth import Auth
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
-    import asyncio, os, ujson as json, sys, logging
+    import asyncio, os, ujson as json, sys
     from cilantro.storage.vkbook import VKBook
     VKBook.setup(CONSTITUION_JSON)
 
@@ -45,8 +50,7 @@ def delegates(idx):
             if len(Discovery.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
                 quit()
 
-    from cilantro.logger import get_logger
-    log = get_logger('Node_{}'.format(idx))
+
     loop = asyncio.get_event_loop()
     Auth.setup(VKBook.constitution['delegates'][idx]['sk'])
     Discovery.setup()
