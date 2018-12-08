@@ -1,7 +1,6 @@
 #!/bin/bash
 set -ex
 
-. .env || true
 echo "XXXXX
 
 $VMNET
