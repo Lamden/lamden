@@ -6,7 +6,6 @@ from vmnet.cloud.testcase import AWSTestCase
 CONSTITUION_JSON = '2-2-2.json'
 
 def masternode(idx):
-    print('this is coming out')
 
     from cilantro.logger import get_logger
     log = get_logger('MasterNode_{}'.format(idx))
@@ -64,7 +63,7 @@ class TestCloud(AWSTestCase):
 
     config_file = get_config_file('cilantro_aws.json')
     keep_up = True
-    timeout = 30
+    timeout = 120
 
     def test_aws(self):
         for idx, node in enumerate(self.groups['masternode']):
