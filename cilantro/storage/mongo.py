@@ -2,6 +2,7 @@ import cilantro
 import os, time
 import capnp
 from configparser import SafeConfigParser
+from cilantro.protocol import wallet
 from pymongo import MongoClient
 from cilantro.utils.utils import MongoTools
 from cilantro.logger.base import get_logger
@@ -21,6 +22,9 @@ class MDB:
     pwd = cfg.get('MN_DB', 'password')
     port = cfg.get('MN_DB', 'port')
 
+    # master
+    sign_key = None
+    verify_key = None
     # master store db
 
     mn_client = None
@@ -36,8 +40,10 @@ class MDB:
     mn_coll_idx = None
     init_idx_db = False
 
-    def __init__(self, reset=False):
+    def __init__(self, s_key, reset=False):
         if self.init_mdb is False:
+            MDB.sign_key = s_key
+            MDB.verify_key = wallet.get_vk(s_key)
             self.start_db()
             return
 
@@ -54,11 +60,11 @@ class MDB:
             init block store, store_index
         """
         if cls.init_mdb is False:
-            time.sleep(5)  # @tejas why?
+            time.sleep(5)  # @tejas why? race with create user in start script :)
             uri = cls.setup_db(db_type = 'MDB')
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client.get_database()
-            block = GenesisBlockData.create()
+            block = GenesisBlockData.create(sk = cls.sign_key, vk = cls.verify_key)
             #print("just created block {}".format(block))
             cls.genesis_blk = cls.get_dict(capnp_struct = block)
             #cls.log.spam("storing genesis block... {}".format(cls.genesis_blk))
@@ -67,14 +73,13 @@ class MDB:
 
             cls.log.debug('start_db init set {}'.format(cls.init_mdb))
 
-            # @tejas dude isnt this 'if init_mdb is True' nested under a 'init_mdb is False' lol
             if cls.init_mdb is True:
                 uri = cls.setup_db(db_type='index')
                 cls.mn_client_idx = MongoClient(uri)
                 cls.mn_db_idx = MongoClient(uri).get_database()
                 cls.mn_coll_idx = cls.mn_db_idx['index']
                 idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash').decode(),
-                       'mn_sign': cls.genesis_blk.get('masternodeSignature')}
+                       'mn_blk_owner': (cls.genesis_blk.get('masternodeSignature')).decode()}
                 cls.log.debug('start_db init index {}'.format(idx))
                 cls.init_idx_db = cls.insert_idx_record(my_dict=idx)
 
@@ -102,7 +107,6 @@ class MDB:
             cls.mn_client.drop_database(cls.mn_db)
             cls.mn_client_idx.drop_database(cls.mn_db_idx)
             cls.init_mdb = cls.init_idx_db = False
-
 
     '''
         Wr to store or index
@@ -151,10 +155,6 @@ class MDB:
 
         cls.log.debug("query_index returning dict {}".format(blk_dict))
         return blk_dict
-
-        # if blk_hash:
-        #     blk_dict = {'blockHash': blk_hash}
-        #     block =
 
     @classmethod
     def query_db(cls, type=None, query=None):
