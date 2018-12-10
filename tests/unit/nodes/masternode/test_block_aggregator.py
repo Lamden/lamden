@@ -11,7 +11,7 @@ from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
 
-from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER, MASTER_MASTER_FILTER, DEFAULT_FILTER
+from cilantro.constants.zmq_filters import *
 from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
 from cilantro.constants.system_config import *
 

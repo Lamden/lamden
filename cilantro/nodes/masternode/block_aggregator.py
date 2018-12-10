@@ -4,21 +4,20 @@ from cilantro.protocol.structures.merkle_tree import MerkleTree
 
 from cilantro.storage.state import StateDriver
 from cilantro.storage.vkbook import VKBook
-from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.nodes.catchup import CatchupManager
+from cilantro.nodes.masternode.mn_api import StorageDriver
 
 from cilantro.constants.zmq_filters import *
 from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
 from cilantro.constants.system_config import *
 
 from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.consensus.sub_block import SubBlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.block_data.block_data import BlockData
-from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataReply, BlockDataRequest
-from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
-from cilantro.messages.block_data.state_update import BlockDataReply, BlockIndexRequest
+from cilantro.messages.block_data.state_update import *
+from cilantro.messages.block_data.block_metadata import NewBlockNotification
+
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
 from typing import List
@@ -42,12 +41,18 @@ class BlockAggregator(Worker):
 
         self.pub, self.sub, self.router = None, None, None  # Set in build_task_list
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
+        self.is_catching_up = False
 
         self.run()
 
     def run(self):
         self.log.info("Block Aggregator starting...")
         self.build_task_list()
+
+        self.log.notice("starting initial catchup...")
+        self.is_catching_up = True
+        self.catchup_manager.send_block_idx_req()
+
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def build_task_list(self):
@@ -100,11 +105,15 @@ class BlockAggregator(Worker):
         msg = envelope.message
 
         if isinstance(msg, SubBlockContender):
-            self.recv_sub_block_contender(msg)
+            if self.is_catching_up:
+                self.log.warning("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
+                return
+            else:
+                self.recv_sub_block_contender(msg)
 
         elif isinstance(msg, NewBlockNotification):
             self.recv_new_block_notif(msg)
-            # TODO send this to the catchpu manager
+            # TODO send this to the catchup manager
 
         elif isinstance(msg, BlockIndexRequest):
             self.catchup_manager.recv_block_idx_req(envelope.sender, msg)
