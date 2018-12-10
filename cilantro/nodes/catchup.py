@@ -55,12 +55,12 @@ class CatchupManager:
         req = BlockIndexRequest.create(block_hash=curr_hash)
         self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
 
-    def _send_block_idx_reply( self ):
+    def _send_block_idx_reply(self):
         # TODO do i need to build a list ?
         pass
 
     # private method
-    def _send_block_data_req( self, mn_vk, req_blk_num ):
+    def _send_block_data_req(self, mn_vk, req_blk_num ):
         self.log.info("Unicast BlockDateRequests to masternode owner with current block num {} key {}"
                       .format(req_blk_num, mn_vk))
         req = BlockDataRequest.create(block_num = req_blk_num)
@@ -100,7 +100,7 @@ class CatchupManager:
         pass
 
     # BOTH WILL RECV THIS (PHASE 2 REPLY)
-    def recv_block_data_reply( self, reply: BlockData):
+    def recv_block_data_reply(self, reply: BlockData):
         StorageDriver.process_received_block(block = reply)
 
     # other

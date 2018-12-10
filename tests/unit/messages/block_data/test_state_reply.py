@@ -1,4 +1,4 @@
-from cilantro.messages.block_data.state_update import StateUpdateReply
+from cilantro.messages.block_data.state_update import BlockDataReply
 from cilantro.messages.block_data.block_data import BlockDataBuilder
 from cilantro.constants.system_config import NUM_SUB_BLOCKS
 from unittest import TestCase
@@ -11,7 +11,7 @@ class StateReplyTest(TestCase):
     def test_init(self):
         fbmds = [BlockDataBuilder.create_block(blk_num=1, sub_block_count=1) for _ in range(4)]
 
-        sr = StateUpdateReply.create(fbmds)
+        sr = BlockDataReply.create(fbmds)
 
         self.assertEqual(fbmds, sr.block_data)
 
@@ -21,9 +21,9 @@ class StateReplyTest(TestCase):
         """
         fbmds = [BlockDataBuilder.create_block(blk_num=1, sub_block_count=1) for _ in range(4)]
 
-        sr = StateUpdateReply.create(fbmds)
+        sr = BlockDataReply.create(fbmds)
         sr_bin = sr.serialize()
 
-        sr_clone = StateUpdateReply.from_bytes(sr_bin)
+        sr_clone = BlockDataReply.from_bytes(sr_bin)
 
         self.assertEqual(sr, sr_clone)
