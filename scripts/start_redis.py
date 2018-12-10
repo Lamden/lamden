@@ -21,7 +21,7 @@ if env('VMNET'):
 REDIS_PORT={}
 REDIS_PASSWORD={}
         '''.format(port,pw))
-    os.system('redis-server docker/redis.conf --port {} --requirepass {}'.format(port,pw))
+    os.system('redis-server docker/redis.conf --port {} --requirepass {} &'.format(port,pw))
 else:
     os.system('pkill -9 redis-server')
     os.system('redis-server &')
