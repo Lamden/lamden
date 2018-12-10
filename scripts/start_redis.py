@@ -31,4 +31,7 @@ REDIS_PASSWORD={}
     print("Done.")
 
 if __name__ == '__main__':
+    if env('VMNET'):
+        os.system('pip3 install -r requirements.txt')
+        os.system('pip3 install -r dev-requirements.txt')
     start_redis()
