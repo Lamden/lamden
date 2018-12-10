@@ -290,8 +290,11 @@ class BlockManager(Worker):
         # append prev block hash
         our_block_hash = BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.cur_block_hash)
 
+        assert our_block_hash == block_data.block_hash, "Our block hash {} does not match NewBlockNotifcation's hash {}"\
+                                                        .format(our_block_hash, block_data.block_hash)
+
         if our_block_hash == self.db_state.next_block_hash:
-            self.log.success2("BlockManager has consensus with NewBlockNotification!")
+            self.log.success2("BlockManager has consensus with NewBlockNotification block hash {}!".format(our_block_hash))
 
             self.db_state.sub_block_hash_map.clear()
             self.db_state.next_block.clear()
