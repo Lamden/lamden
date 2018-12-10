@@ -9,6 +9,8 @@ def masternode(idx):
 
     from cilantro.logger import get_logger
     log = get_logger('MasterNode_{}'.format(idx))
+    log.critical('log something son')
+    print('yo...')
     from cilantro.protocol.overlay.discovery import Discovery
     from cilantro.protocol.overlay.auth import Auth
     import asyncio, os, ujson as json, sys
@@ -35,7 +37,8 @@ def masternode(idx):
 def delegates(idx):
     from cilantro.logger import get_logger
     log = get_logger('DelegateNode_{}'.format(idx))
-
+    log.critical('log something daughter')
+    print('yo!!!')
     from cilantro.protocol.overlay.discovery import Discovery
     from cilantro.protocol.overlay.auth import Auth
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
