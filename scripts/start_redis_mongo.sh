@@ -1,8 +1,6 @@
 #!/bin/bash
 set -ex
 
-source .env
-
 export PYTHONPATH=$(pwd)
 
 echo "Waiting for mongo on localhost"
