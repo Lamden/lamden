@@ -122,7 +122,7 @@ class StorageDriver:
 
         # check if requester is master or del
 
-        valid_node = bool(VKBook.get_masternodes().index(vk)) & bool(VKBook.get_masternodes().index(vk))
+        valid_node = bool(VKBook.get_masternodes().index(vk)) & bool(VKBook.get_delegates().index(vk))
 
         if valid_node is True:
             given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = curr_blk_hash)
@@ -170,7 +170,7 @@ class StorageDriver:
             while avail_copies > 0:
                 vk = cls.block_index_delta[cls.send_req_blk_num][avail_copies - 1]
                 if vk in VKBook.get_masternodes():
-                    CatchupManager.send_block_req(mn_vk = vk, req_blk_num = cls.send_req_blk_num)
+                    CatchupManager._send_block_data_req(mn_vk = vk, req_blk_num = cls.send_req_blk_num)
                     break
                 avail_copies = avail_copies - 1  # decrement count check for another master
 

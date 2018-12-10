@@ -25,7 +25,7 @@ class CatchupManager:
         self.store_full_blocks = store_full_blocks  # @davis ??
         self.all_masters = set(VKBook.get_masternodes()) - set(self.verifying_key)
 
-        self.mns_replied_index = set()  # a set of masternode vk's who have sent BlockIndexReplies
+        self.mns_replied_idx = set()  # a set of masternode vk's who have sent BlockIndexReplies
 
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
         self.target_blk_num = self.curr_num
@@ -38,9 +38,13 @@ class CatchupManager:
             raise Exception("BlockDataReply for block number {} with data {} not receieved in {} seconds!"
                             .format(block_num, self.pending_block_updates[block_num], BLOCK_REQUEST_TIMEOUT))
 
-    # send messages
+    # BOTH WILL USE THIS
+    def is_db_updated(self) -> bool:
+        # TODO implement. return true when we are caught up
+        return False
 
-    def send_block_index_req(self):
+    # BOTH MASTERNODES AND DELEGATES CALL THIS WHE NTHEY WANT TO CATHCUP. call to start phase 1
+    def send_block_idx_req(self):
         """
         Multi-casting BlockIndexRequests to all masternodes with current block hash
         :return:
@@ -51,22 +55,24 @@ class CatchupManager:
         req = BlockIndexRequest.create(block_hash=curr_hash)
         self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
 
-    def send_block_idx_reply(self):
+    def _send_block_idx_reply( self ):
         # TODO do i need to build a list ?
         pass
 
-    def send_block_req(self, mn_vk, req_blk_num):
+    # private method
+    def _send_block_data_req( self, mn_vk, req_blk_num ):
         self.log.info("Unicast BlockDateRequests to masternode owner with current block num {} key {}"
                       .format(req_blk_num, mn_vk))
         req = BlockDataRequest.create(block_num = req_blk_num)
         self.router.send_msg(req, header=mn_vk.encode())
 
-    def send_block_reply(self):
+    def _send_block_data_reply(self):
         pass
 
-    # receive messages
+    # receive messages (master only func)
 
-    def recv_block_index_req(self, requester_vk: str, request: BlockIndexRequest):
+    # ONLY MASTERNODES USE THIS
+    def recv_block_idx_req(self, requester_vk: str, request: BlockIndexRequest):
         """
         Receive BlockIndexRequests calls storage driver to process req and build response
         :param requester_vk:
@@ -74,11 +80,12 @@ class CatchupManager:
         :return:
         """
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
-        delta_index = StorageDriver.process_catch_up_idx(vk = requester_vk, curr_blk_hash = request.block_hash)
-        self.send_block_idx_reply()
+        delta_idx = StorageDriver.process_catch_up_idx(vk = requester_vk, curr_blk_hash = request.block_hash)
+        self._send_block_idx_reply()
 
-    def recv_block_index_reply(self, sender_vk: str, reply: BlockIndexReply):
-        self.mns_replied_index.add(sender_vk)
+    # BOTH NEED TO PIPE THIS IN
+    def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
+        self.mns_replied_idx.add(sender_vk)
         # plugin TODO process_received_idx
         if not reply.indices:
             self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
@@ -88,10 +95,12 @@ class CatchupManager:
             block_hash, block_num, mn_vks = t
             self._add_pending_blocks(block_num, block_hash, mn_vks)
 
-    def recv_block_request(self, requester_vk: str):
+    # ONLY MASTERNODES WILL USE THIS
+    def recv_block_data_req(self, requester_vk: str, request: BlockDataRequest):
         pass
 
-    def recv_block_reply(self, reply: BlockData):
+    # BOTH WILL RECV THIS (PHASE 2 REPLY)
+    def recv_block_data_reply( self, reply: BlockData):
         StorageDriver.process_received_block(block = reply)
 
     # other
@@ -115,7 +124,7 @@ class CatchupManager:
     #     msg = None  # TODO build foreal
     #     self.router.send_msg(msg, header=mn_vk.encode())
 
-    def _has_enough_index_replies(self):
+    def _has_enough_idx_replies(self):
         # We have enough BlockIndexReplies if 2/3 of Masternodes replied
-        return len(self.mns_replied_index) >= len(VKBook.get_masternodes()) * 2/3
+        return len(self.mns_replied_idx) >= len(VKBook.get_masternodes()) * 2/3
 
