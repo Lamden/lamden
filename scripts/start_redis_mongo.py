@@ -2,21 +2,26 @@ import os
 from os import getenv as env
 from dotenv import load_dotenv
 load_dotenv()
+from start_redis import start
 
-if env('VMNET'):
-    host_name = ''
-else:
-    host_name = env('HOST_NAME', '')
+def start_mongo():
 
-print("Waiting for mongo on localhost")
-os.makedirs('./data/{}/logs'.format(host_name), exist_ok=True)
-with open('./data/{}/logs/mongo.log'.format(host_name), 'w+') as f:
-    print('Dir created')
+    if env('VMNET'):
+        host_name = ''
+    else:
+        host_name = env('HOST_NAME', '')
 
-import create_user
+    print("Waiting for mongo on localhost")
+    os.makedirs('./data/{}/logs'.format(host_name), exist_ok=True)
+    with open('./data/{}/logs/mongo.log'.format(host_name), 'w+') as f:
+        print('Dir created')
 
-os.system('sudo mongod --dbpath ./data/{} --logpath ./data/{}/logs/mongo.log {} &'.format(
-    host_name, host_name, '' if env('CIRCLECI') == 'true' else '--bind_ip_all'
-))
+    import create_user
 
-import start_redis
+    os.system('sudo mongod --dbpath ./data/{} --logpath ./data/{}/logs/mongo.log {} &'.format(
+        host_name, host_name, '' if env('CIRCLECI') == 'true' else '--bind_ip_all'
+    ))
+
+
+start_mongo()
+start_redis()
