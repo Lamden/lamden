@@ -27,6 +27,7 @@ def start_mn(verifing_key):
     from cilantro.logger.base import get_logger
     from cilantro.nodes.masternode.master_store import MasterOps
 
+    MN_SK = TESTNET_MASTERNODES[0]['sk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
     log = get_logger(os.getenv('MN'))
     log.info('Test 1 : init master')
     MasterOps.init_master(key = verifing_key)
@@ -59,7 +60,9 @@ def start_mn(verifing_key):
         print("**********************")
 
         block = BlockDataBuilder.create_block(blk_num = blk_id)
-        success = StorageDriver.store_block(block, validate=False)
+        success = StorageDriver.store_block(merkle_roots = block.merkle_roots, verifying_key = verifing_key,
+                                            sign_key = MN_SK, transactions = block.transactions,
+                                            input_hashes = block.input_hashes)
         log.info("wr status {}".format(success))
         time.sleep(1)
         blk_id += 1

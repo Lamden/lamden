@@ -134,7 +134,7 @@ class TestManualDump(BaseNetworkTestCase):
             self.execute_python('mgmt', wrap_func(dump_it, volume=vol), async=True, profiling=self.PROFILE_TYPE)
 
         log.important3("Dumpatron initiating system teardown")
-        God.teardown_all("http://{}".format(self.ports['masternode']['8080']))
+        God.teardown_all("http://{}".format(self.ports[self.groups['masternode'][0]]['8080']))
 
 
 if __name__ == '__main__':
