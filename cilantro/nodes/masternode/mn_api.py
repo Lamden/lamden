@@ -117,12 +117,7 @@ class StorageDriver:
         :param block_hash: The block hash to check
         :return: True if the block hash exists in our index table, and False otherwise
         """
-        # TODO -- do away with try/except once get_blk_num_frm_blk_hash properly returns None
-        try:
-            exists = MasterOps.get_blk_num_frm_blk_hash(block_hash)
-            return exists is not None
-        except:
-            return False
+        return MasterOps.get_blk_num_frm_blk_hash(block_hash) is not None
 
     @classmethod
     def process_catch_up_idx(cls, vk=None, curr_blk_hash=None):
