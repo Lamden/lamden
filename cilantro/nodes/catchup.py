@@ -6,6 +6,7 @@ from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
 from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest
 from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.storage.state import StateDriver
+from cilantro.nodes.masternode.master_store import MasterOps
 from cilantro.storage.vkbook import VKBook
 from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.protocol.reactor.lsocket import LSocket
@@ -72,14 +73,15 @@ class CatchupManager:
         """
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
         delta_idx = StorageDriver.process_catch_up_idx(vk = requester_vk, curr_blk_hash = request.block_hash)
-        self._send_block_idx_reply()
+        self._send_block_idx_reply(catchup_list = delta_idx)
 
-    def _send_block_idx_reply(self):
+    def _send_block_idx_reply(self, catchup_list=None):
         # TODO do i need to build a list ?
         pass
 
     # ONLY MASTERNODES WILL USE THIS
     def recv_block_data_req(self, requester_vk: str, request: BlockDataRequest):
+        req_blk = MasterOps.get_full_blk(blk_num = request.block_num)
         pass
 
     def _send_block_data_reply(self):
