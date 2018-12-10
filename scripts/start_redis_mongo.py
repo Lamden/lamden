@@ -3,7 +3,10 @@ from os import getenv as env
 from dotenv import load_dotenv
 load_dotenv()
 
-host_name = env('HOST_NAME', '')
+if env('VMNET'):
+    host_name = ''
+else:
+    host_name = env('HOST_NAME', '')
 
 print("Waiting for mongo on localhost")
 os.makedirs('./data/{}/logs'.format(host_name), exist_ok=True)
