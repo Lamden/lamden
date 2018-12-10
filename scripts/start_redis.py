@@ -2,7 +2,7 @@ import os, time
 from os import getenv as env
 
 def start_redis():
-    if not env('CIRCLECI'):
+    if not env('CIRCLECI') and not env('vmnet'):
         for package in ['seneca', 'vmnet']:
             os.system('cp -r ./venv/lib/python3.6/site-packages/{} /usr/local/lib/python3.6/dist-packages'.format(package))
 
@@ -29,7 +29,6 @@ REDIS_PASSWORD={}
     print("Done.")
 
 if __name__ == '__main__':
-    if env('VMNET'):
-        from dotenv import load_dotenv
-        load_dotenv()
+    from dotenv import load_dotenv
+    load_dotenv()
     start_redis()

@@ -21,8 +21,7 @@ def start_mongo():
 
 if __name__ == '__main__':
     from start_redis import start_redis
-    if env('VMNET'):
-        from dotenv import load_dotenv
-        load_dotenv()
+    from dotenv import load_dotenv
+    load_dotenv()
     start_mongo()
     start_redis()
