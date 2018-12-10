@@ -22,6 +22,6 @@ def start_mongo():
         host_name, host_name, '' if env('CIRCLECI') == 'true' else '--bind_ip_all'
     ))
 
-
-start_mongo()
-start_redis()
+if __name__ == '__main__':
+    start_mongo()
+    start_redis()

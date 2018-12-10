@@ -39,9 +39,6 @@
                 "build_ami": "ami-0cf8cc36b8c81c6de",
                 "instance_type": "t2.micro",
                 "build_instance_type": "t2.large",
-                "environment": {
-                    "VMNET": "True"
-                },
                 "run_ami": "ami-00df0631ec2538b3f"
             },
             "cilantro_mn": {
@@ -54,9 +51,6 @@
                 "build_ami": "ami-00df0631ec2538b3f",
                 "instance_type": "t2.micro",
                 "build_instance_type": "t2.large",
-                "environment": {
-                    "VMNET": "True"
-                },
                 "run_ami": "ami-0064aba79e32f0a30"
             }
         }

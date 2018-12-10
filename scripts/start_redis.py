@@ -19,8 +19,8 @@ def start_redis():
         port = free_port()
         with open('docker/redis.env', 'w+') as f:
             f.write('''
-    REDIS_PORT={}
-    REDIS_PASSWORD={}
+REDIS_PORT={}
+REDIS_PASSWORD={}
             '''.format(port,pw))
         os.system('redis-server docker/redis.conf --port {} --requirepass {} &'.format(port,pw))
     else:
@@ -30,4 +30,5 @@ def start_redis():
     time.sleep(1)
     print("Done.")
 
-start_redis()
+if __name__ == '__main__':
+    start_redis()

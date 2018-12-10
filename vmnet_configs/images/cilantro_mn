@@ -5,7 +5,6 @@ MAINTAINER Falcon Wong version: 0.1
 COPY . /app
 WORKDIR /app
 
-ENV DOCKERIZE_VERSION v0.6.1
 ENV DEBIAN_FRONTEND noninteractive
 
 # Install Mongo
