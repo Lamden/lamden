@@ -39,7 +39,7 @@
                 "build_ami": "ami-0cf8cc36b8c81c6de",
                 "instance_type": "t2.micro",
                 "build_instance_type": "t2.large",
-                "run_ami": "ami-00df0631ec2538b3f"
+                "run_ami": "ami-09cb67ed9f20e04e8"
             },
             "cilantro_mn": {
                 "name": "cilantro_mn",
@@ -48,7 +48,7 @@
                 "branch": "vmnet-cloud",
                 "username": "ubuntu",
                 "security_group": "simple_https",
-                "build_ami": "ami-00df0631ec2538b3f",
+                "build_ami": "ami-09cb67ed9f20e04e8",
                 "instance_type": "t2.micro",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0064aba79e32f0a30"
