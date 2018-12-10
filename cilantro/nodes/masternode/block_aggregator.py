@@ -143,6 +143,18 @@ class BlockAggregator(Worker):
 
     def recv_sub_block_contender(self, sbc: SubBlockContender):
         self.log.info("Received a sbc with result hash {} and input hash {}".format(sbc.result_hash, sbc.input_hash))
+        assert not self.is_catching_up, "We should not be receiving SBCs when we are catching up!"
+
+        # If the previous block hash is not in our index table, we could possibly be out of date, and should trigger
+        # a catchup. NOTE -- we should probably get some consensus on these allegedly 'new' prev_block_hashes incase
+        # a bad delegate decides to send us new bad SubBlockContenders and cause us to be in perpetual catchup
+        if not StorageDriver.check_block_exists(sbc.prev_block_hash):
+            self.log.warning("Masternode got SBC with prev block hash {} that does not exist in our index table! "
+                             "Starting catchup\n(SBC={})".format(sbc.prev_block_hash, sbc))
+            self.catchup_manager.send_block_idx_req()
+            self.is_catching_up = True
+            return
+
         if self.result_hashes.get(sbc.result_hash):
             if self.result_hashes[sbc.result_hash].get('_consensus_reached_') or self.sub_blocks.get(sbc.result_hash):
                 self.log.debugv('Already validated this SubBlock (result_hash={})'.format(
