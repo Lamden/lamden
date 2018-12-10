@@ -1,8 +1,5 @@
 import os
 from os import getenv as env
-from dotenv import load_dotenv
-load_dotenv()
-from start_redis import start_redis
 
 def start_mongo():
 
@@ -23,8 +20,9 @@ def start_mongo():
     ))
 
 if __name__ == '__main__':
+    from start_redis import start_redis
     if env('VMNET'):
-        os.system('pip3 install -r requirements.txt')
-        os.system('pip3 install -r dev-requirements.txt')
+        from dotenv import load_dotenv
+        load_dotenv()
     start_mongo()
     start_redis()

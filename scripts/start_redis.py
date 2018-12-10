@@ -1,7 +1,5 @@
 import os, time
 from os import getenv as env
-from dotenv import load_dotenv
-load_dotenv()
 
 def start_redis():
     if not env('CIRCLECI'):
@@ -32,6 +30,6 @@ REDIS_PASSWORD={}
 
 if __name__ == '__main__':
     if env('VMNET'):
-        os.system('pip3 install -r requirements.txt')
-        os.system('pip3 install -r dev-requirements.txt')
+        from dotenv import load_dotenv
+        load_dotenv()
     start_redis()
