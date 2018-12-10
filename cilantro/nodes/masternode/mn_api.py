@@ -2,7 +2,7 @@ from cilantro.storage.mongo import MDB
 from cilantro.protocol import wallet
 from cilantro.storage.vkbook import VKBook
 from cilantro.nodes.masternode.master_store import MasterOps
-from cilantro.nodes.catchup import CatchupManager
+# from cilantro.nodes.catchup import CatchupManager
 from cilantro.storage.state import StateDriver
 from cilantro.logger.base import get_logger
 from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
@@ -109,6 +109,20 @@ class StorageDriver:
         blk_hash = idx_entry.get('blockHash')
         cls.log.debug("get_latest_block_hash blk_hash ->{}".format(blk_hash))
         return blk_hash
+
+    @classmethod
+    def check_block_exists(cls, block_hash: str) -> bool:
+        """
+        Checks if the given block hash exists in our index table
+        :param block_hash: The block hash to check
+        :return: True if the block hash exists in our index table, and False otherwise
+        """
+        # TODO -- do away with try/except once get_blk_num_frm_blk_hash properly returns None
+        try:
+            exists = MasterOps.get_blk_num_frm_blk_hash(block_hash)
+            return exists is not None
+        except:
+            return False
 
     @classmethod
     def process_catch_up_idx(cls, vk=None, curr_blk_hash=None):

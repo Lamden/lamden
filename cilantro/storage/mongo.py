@@ -6,6 +6,7 @@ from pymongo import MongoClient
 from cilantro.utils.utils import MongoTools
 from cilantro.logger.base import get_logger
 from cilantro.messages.block_data.block_data import GenesisBlockData, BlockData, MessageBase
+from cilantro.protocol import wallet
 
 
 
@@ -67,7 +68,7 @@ class MDB:
             uri = cls.setup_db(db_type = 'MDB')
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client.get_database()
-            block = GenesisBlockData.create()
+            block = GenesisBlockData.create(sk=cls.sign_key, vk=cls.verify_key)
             #print("just created block {}".format(block))
             cls.genesis_blk = cls.get_dict(capnp_struct = block)
             #cls.log.spam("storing genesis block... {}".format(cls.genesis_blk))

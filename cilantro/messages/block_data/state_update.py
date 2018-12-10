@@ -83,5 +83,5 @@ class BlockDataRequest(BlockIndexRequest):
     pass
 
 
-class StateUpdateReply(BlockData):
+class BlockDataReply(BlockData):
     pass

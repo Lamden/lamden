@@ -34,7 +34,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
-from cilantro.messages.block_data.state_update import StateUpdateReply, BlockIndexRequest
+from cilantro.messages.block_data.state_update import BlockDataReply, BlockIndexRequest
 
 import asyncio, zmq, os, time, random
 from collections import defaultdict
@@ -159,7 +159,7 @@ class BlockManager(Worker):
 
         # no need to wait for the replys as we have added a handler
 
-        # here we fix call to send_updated_db_msg until we properly send back StateUpdateReply from Masternodes
+        # here we fix call to send_updated_db_msg until we properly send back BlockDataReply from Masternodes
         # TODO -- remove once Masternodes can reply to BlockIndexRequest
         await asyncio.sleep(5)
         self.send_updated_db_msg()
@@ -229,7 +229,7 @@ class BlockManager(Worker):
         msg = envelope.message
         msg_hash = envelope.message_hash
 
-        if isinstance(msg, StateUpdateReply):
+        if isinstance(msg, BlockDataReply):
             self.handle_state_update_reply(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
@@ -243,7 +243,7 @@ class BlockManager(Worker):
         self.db_state.cur_block_hash = block_data.block_hash
         self.log.important("Caught up to block with hash {}".format(self.db_state.cur_block_hash))
 
-    def handle_state_update_reply(self, msg: StateUpdateReply):
+    def handle_state_update_reply(self, msg: BlockDataReply):
         # TODO need to handle the duplicates from a single sender (intentional attack?)
         # sender = envelope.sender
         # TODO also need to worry about quorum, etc
