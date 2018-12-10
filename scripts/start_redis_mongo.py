@@ -2,7 +2,7 @@ import os
 from os import getenv as env
 from dotenv import load_dotenv
 load_dotenv()
-from start_redis import start
+from start_redis import start_redis
 
 def start_mongo():
 
