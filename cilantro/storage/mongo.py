@@ -168,32 +168,34 @@ class MDB:
                 for x in block_list:
                     result.update(x)
                     cls.log.debug("from mdb {}".format(x))
-                    return result
 
-            if type is None or type is "index":
+            if type is None or type is "idx":
                 index_list = cls.mn_coll_idx.find({})
                 for y in index_list:
                     result.update(y)
                     cls.log.debug("from idx {}".format(y))
-                    return result
+        else:
+            if type is 'idx':
+                dump = cls.mn_coll_idx.find(query)
+                cls.log.debug("Mongo tools count {}".format(MongoTools.get_count(dump)))
+                assert MongoTools.get_count(dump) != 0, "lookup failed count is 0 dumping result-{} n query-{}"\
+                    .format(dump, query)
+                for x in dump:
+                    result.update(x)
+                cls.log.debug("result {}".format(result))
+
+            if type is 'MDB':
+                result = cls.mn_collection.find(query)
+                for x in result:
+                    result.update(x)
+                    cls.log.debug("result {}".format(x))
+
+        if len(result) > 0:
+            cls.log.debug("result => {}".format(result))
+            return result
+        else:
+            cls.log.debug("result => {}".format(result))
             return None
-
-        if type is 'idx' and query is not None:
-            dump = cls.mn_coll_idx.find(query)
-            cls.log.debug("Mongo tools count {}".format(MongoTools.get_count(dump)))
-            assert MongoTools.get_count(dump) != 0, "lookup failed count is 0 dumping result-{} n query-{}"\
-                .format(dump, query)
-            for x in dump:
-                result.update(x)
-            cls.log.debug("result {}".format(result))
-            return result
-
-        if type is 'MDB' and query is not None:
-            result = cls.mn_collection.find(query)
-            for x in result:
-                result.update(x)
-                cls.log.debug("result {}".format(x))
-            return result
 
     @classmethod
     def query_store(cls, blk_num = None):
