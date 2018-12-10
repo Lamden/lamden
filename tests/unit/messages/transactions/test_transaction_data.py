@@ -27,4 +27,3 @@ class TestTransactionData(TestCase):
         clone = TransactionData.from_bytes(tx_data.serialize())
 
         self.assertEqual(tx_data, clone)
-
