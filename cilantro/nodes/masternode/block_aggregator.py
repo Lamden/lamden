@@ -18,6 +18,7 @@ from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.block_data.sub_block import SubBlock
 from cilantro.messages.block_data.state_update import *
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
+from cilantro.messages.transaction.data import TransactionData
 
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
@@ -273,27 +274,24 @@ class BlockAggregator(Worker):
         # Build the sub-blocks
         sb_data = []
         for root in merkle_roots:
-            sigs = self.result_hashes[root]['_valid_signatures_'].values()
-            # txs = [self.]
-            sb = SubBlock.create(merkle_roots=root)
+            data = self.result_hashes[root]
+            sigs = data['_valid_signatures_'].values()
+            # TODO change sub-block contender to pass around TransactionData struct instead of binary payloads
+            # or change sub-block to store binary payloads instead of structs
+            txs = [TransactionData.from_bytes(data['_transactions_'][tx_hash]) for tx_hash in data['_merkle_leaves_']]
+            sb = SubBlock.create(merkle_root=root, signatures=sigs, merkle_leaves=data['_merkle_leaves_'],
+                                 sub_block_idx=data['_sb_index_'], input_hash=data['_input_hash_'], transactions=txs)
+            sb_data.append(sb)
 
-        input_hashes = [self.result_hashes[result_hash]['_input_hash_'] for result_hash in merkle_roots]
-
-        # TODO -- these transactions have to be ordered by the merkle leaves.
-        transactions = list(itertools.chain.from_iterable([sub_blocks[mr]['_transactions_'].values() for mr in merkle_roots]))
-
-        assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} SBs/per/block" \
-                                                      .format(len(merkle_roots), NUM_SB_PER_BLOCK)
-
-        # Build sub blocks
+        assert len(sb_data) == NUM_SB_PER_BLOCK, "Aggregator has {} sub blocks but there are {} SBs/per/block" \
+                                                 .format(len(sb_data), NUM_SB_PER_BLOCK)
 
         # TODO wrap storage in try/catch. Add logic for storage failure
 
-        block_data = StorageDriver.store_block(merkle_roots=merkle_roots, verifying_key = self.verifying_key,
-                                               sign_key = self.signing_key, transactions=transactions,
-                                               input_hashes=input_hashes)
+        block_data = StorageDriver.store_block(sb_data)
         assert block_data.prev_block_hash == self.curr_block_hash, "Current block hash {} does not match StorageDriver previous " \
                                                         "block hash {}".format(self.curr_block_hash, block_data.prev_block_hash)
+
         self.curr_block_hash = block_data.block_hash
         StateDriver.update_with_block(block_data)
         self.log.success("STORED BLOCK WITH HASH {}".format(block_data.block_hash))

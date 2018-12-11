@@ -15,6 +15,7 @@ from cilantro.utils import Hasher
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.data import TransactionData
+from cilantro.messages.block_data.sub_block import SubBlock
 
 import time
 
@@ -36,27 +37,21 @@ class StorageDriver:
     send_req_blk_num = 0
 
     @classmethod
-    def store_block(cls, merkle_roots=None, verifying_key=None, sign_key=None, transactions=None, input_hashes=None):
+    def store_block(cls, sub_blocks: List[SubBlock]):
         """
         Triggered after 2/3rd consensus we create block and store to permanent storage
-
-        :param merkle_roots:
-        :param verifying_key:   vk for master
-        :param sign_key:        sk for master
-        :param transactions:
-        :param input_hashes:
-        :return:
         """
         prev_block_hash = cls.get_latest_block_hash()
-        cls.log.important("store_block_new - prv block hash - {}".format(prev_block_hash))
-        block_hash = BlockData.compute_block_hash(sbc_roots=merkle_roots, prev_block_hash=prev_block_hash)
-        blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = prev_block_hash) + 1
-        sig = MerkleSignature.create(sig_hex = wallet.sign(sign_key, block_hash.encode()),
-                                     sender = verifying_key, timestamp = str(time.time()))
+        blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash=prev_block_hash) + 1
+        roots = [sb.merkle_root for sb in sub_blocks]
+        block_hash = BlockData.compute_block_hash(sbc_roots=roots, prev_block_hash=prev_block_hash)
 
-        block_data = BlockData.create(block_hash = block_hash, prev_block_hash = prev_block_hash,
-                                      transactions = transactions, masternode_signature = sig,
-                                      merkle_roots = merkle_roots, input_hashes = input_hashes, block_num = blk_num)
+        cls.log.important("Attempting to store block number {} with hash {} and previous hash {}"
+                          .format(blk_num, block_hash, prev_block_hash))
+
+        # TODO get actual block owners...
+        block_data = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, block_owners=[],
+                                      block_num=blk_num, sub_blocks=sub_blocks)
 
         block_dict = MDB.get_dict(block_data)
         assert (bool(MasterOps.evaluate_wr(entry=block_dict))) is True, "wr to master store failed, dump blk {}"\

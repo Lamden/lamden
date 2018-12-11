@@ -87,10 +87,12 @@ class BlockData(MessageBase):
         return txs
 
     # TODO -- make it list instead of dir
+    # TODO is this a problem using the tx.hash property instead of Hasher(tx) ??? I think we use Hasher(tx) in other
+    # places...
     @lazy_property
     def indexed_transactions(self) -> dict:
         return {
-            TransactionData.from_bytes(tx).hash: tx for tx in self.transactions
+            tx.hash: tx.serialize() for tx in self.transactions
         }
 
     @lazy_property

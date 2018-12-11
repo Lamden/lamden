@@ -40,7 +40,7 @@ class SubBlock(MessageBase):
         for s in signatures:
             assert isinstance(s, MerkleSignature), "'signatures' arg must be a list of signatures, not {}".format(s)
         for t in transactions:
-            assert isinstance(t, TransactionData), "'transactions' must be a list of TransactionData instances, not {}".format(tx)
+            assert isinstance(t, TransactionData), "'transactions' must be a list of TransactionData instances, not {}".format(t)
 
         struct = subblock_capnp.SubBlock.new_message()
         struct.signatures = [sig.serialize() for sig in signatures]

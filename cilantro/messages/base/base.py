@@ -54,9 +54,13 @@ class MessageBase(metaclass=MessageBaseMeta):
 
         # Cast to struct builder if needed (reader does not have to_bytes_packed() method)
         if type(self._data) is capnp.lib.capnp._DynamicStructReader:
-            return self._data.as_builder().to_bytes_packed()
-        else:
-            return self._data.to_bytes_packed()
+            self._data = self._data.as_builder()
+
+        # Really bad hack to copy nested structs ... TODO we need to find a better solution
+        if not self._data.is_root:
+            self._data = self._data.copy()
+
+        return self._data.to_bytes_packed()
 
     def validate(self):
         """

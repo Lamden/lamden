@@ -2,7 +2,7 @@ from cilantro.logger.base import get_logger
 from seneca.engine.interface import SenecaInterface
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.publish import PublishTransaction
-from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH
+from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
 from cilantro.utils.utils import is_valid_hex
 from cilantro.storage.redis import SafeRedis
 from typing import List
@@ -15,7 +15,8 @@ class StateDriver:
     log = get_logger("StateDriver")
 
     @classmethod
-    def update_with_block(cls, block):
+    def update_with_block(cls, block: BlockData):
+        # Update state by running Redis outputs from the block's transactions
         publish_txs = []
         pipe = SafeRedis.pipeline()
         for tx in block.transactions:
@@ -32,6 +33,9 @@ class StateDriver:
         if publish_txs:
             cls._process_publish_txs(publish_txs)
         pipe.execute()
+
+        # Update our block hash and block num
+        cls.set_latest_block_info(block.block_hash, block.block_num)
 
     @classmethod
     def _process_publish_txs(cls, txs: List[PublishTransaction]):
