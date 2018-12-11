@@ -9,9 +9,26 @@ from cilantro.utils.test.god import God
 from cilantro.logger.base import get_logger
 from cilantro.utils.test.god import God
 from cilantro.logger import get_logger, overwrite_logger_level
-import logging
+import logging, os, shutil, time
 
-LOG_LEVEL = 0
+
+if os.getenv('USE_LOCAL_SENECA', 0) != '0':
+    log = get_logger("SenecaCopier")
+    user_sen_path = os.getenv('SENECA_PATH', None)
+    assert user_sen_path, "If USE_LOCAL_SENECA env var is set, SENECA_PATH env var must also be set!"
+
+    import cilantro
+    venv_sen_path = cilantro.__path__[0] + '/../venv/lib/python3.6/site-packages/seneca'
+
+    assert os.path.isdir(venv_sen_path), "Expect virtual env seneca at path {}".format(venv_sen_path)
+    assert os.path.isdir(user_sen_path), "Expect user seneca at path {}".format(user_sen_path)
+
+    print("Removing venv seneca at path {}".format(venv_sen_path))
+    shutil.rmtree(venv_sen_path)
+
+    log.notice("Copying user seneca path {} to venv packages at path {}".format(user_sen_path, venv_sen_path))
+    shutil.copytree(user_sen_path, venv_sen_path)
+    log.notice("Done copying")
 
 
 def wrap_func(fn, *args, **kwargs):
@@ -67,7 +84,7 @@ def run_delegate(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(11)
-    sen_overwrite_log(11)
+    sen_overwrite_log(4)  # disable spam only (lvl 5 is debugv)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -117,7 +134,7 @@ class TestManualDump(BaseNetworkTestCase):
             self.execute_python('mgmt', wrap_func(dump_it, volume=vol), async=True, profiling=self.PROFILE_TYPE)
 
         log.important3("Dumpatron initiating system teardown")
-        God.teardown_all("http://{}".format(self.ports['masternode']['8080']))
+        God.teardown_all("http://{}".format(self.ports[self.groups['masternode'][0]]['8080']))
 
 
 if __name__ == '__main__':

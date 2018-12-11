@@ -12,7 +12,7 @@ import capnp
 import transaction_capnp
 
 
-NUMERIC_TYPES = {int, Decimal, float}  # should float be in here? we lose the precision as soon as its represented
+NUMERIC_TYPES = {int, Decimal}
 VALUE_TYPE_MAP = {
     str: 'text',
     bytes: 'data',
@@ -31,36 +31,42 @@ class ContractTransaction(TransactionBase):
         return transaction_capnp.ContractTransaction.from_bytes_packed(data)
 
     @classmethod
+    def _deserialize_payload(cls, data: bytes):
+        return transaction_capnp.ContractPayload.from_bytes(data)
+
+    @classmethod
     def create(cls, sender_sk: str, stamps_supplied: int, contract_name: str, func_name: str, nonce: str, *args, **kwargs):
         assert len(args) == 0, "Contract must be created with key word args only (no positional args sorry)"
         assert stamps_supplied > 0, "Must supply positive stamps amount"
 
         struct = transaction_capnp.ContractTransaction.new_message()
+        payload = transaction_capnp.ContractPayload.new_message()
 
-        struct.payload.sender = wallet.get_vk(sender_sk)
-        struct.payload.stampsSupplied = stamps_supplied
-        struct.payload.contractName = contract_name
-        struct.payload.functionName = func_name
-        struct.payload.nonce = nonce
+        payload.sender = wallet.get_vk(sender_sk)
+        payload.stampsSupplied = stamps_supplied
+        payload.contractName = contract_name
+        payload.functionName = func_name
+        payload.nonce = nonce
 
-        struct.payload.kwargs.init('entries', len(kwargs))
+        payload.kwargs.init('entries', len(kwargs))
         for i, key in enumerate(kwargs):
-            struct.payload.kwargs.entries[i].key = key
+            payload.kwargs.entries[i].key = key
             value, t = kwargs[key], type(kwargs[key])
 
             # Represent numeric types as strings so we do not lose any precision due to floating point
             if t in NUMERIC_TYPES:
-                struct.payload.kwargs.entries[i].value.fixedPoint = str(value)
+                payload.kwargs.entries[i].value.fixedPoint = str(value)
             else:
                 assert t is not float, "Float types not allowed in kwargs. Used python's decimal.Decimal class instead"
                 assert t in VALUE_TYPE_MAP, "value type {} with value {} not recognized in " \
                                             "types {}".format(t, kwargs[key], list(VALUE_TYPE_MAP.keys()))
-                setattr(struct.payload.kwargs.entries[i].value, VALUE_TYPE_MAP[t], value)
+                setattr(payload.kwargs.entries[i].value, VALUE_TYPE_MAP[t], value)
 
-        payload_binary = struct.payload.copy().to_bytes()
+        payload_binary = payload.to_bytes()
 
         struct.metadata.proof = SHA3POW.find(payload_binary)[0]
         struct.metadata.signature = wallet.sign(sender_sk, payload_binary)
+        struct.payload = payload_binary
 
         return ContractTransaction.from_data(struct)
 
@@ -68,7 +74,7 @@ class ContractTransaction(TransactionBase):
     @lazy_property
     def kwargs(self):
         d = {}
-        for entry in self._data.payload.kwargs.entries:
+        for entry in self.payload.kwargs.entries:
             if entry.value.which() == 'fixedPoint':
                 d[entry.key] = Decimal(entry.value.fixedPoint)
             else:
@@ -78,11 +84,11 @@ class ContractTransaction(TransactionBase):
 
     @property
     def contract_name(self):
-        return self._data.payload.contractName
+        return self.payload.contractName
 
     @property
     def func_name(self):
-        return self._data.payload.functionName
+        return self.payload.functionName
 
 
 class ContractTransactionBuilder:
@@ -93,7 +99,7 @@ class ContractTransactionBuilder:
     CURRENCY_CONTRACT_NAME = 'currency'
 
     @staticmethod
-    def create_currency_tx(sender_sk: str, receiver_vk: str, amount: Union[int, Decimal], stamps=100000, nonce=None):
+    def create_currency_tx(sender_sk: str, receiver_vk: str, amount: Union[int, Decimal], gas=1000000, nonce=None):
         vk = wallet.get_vk(sender_sk)
         nonce = nonce or "{}:{}".format(vk, 'A' * 64)
 

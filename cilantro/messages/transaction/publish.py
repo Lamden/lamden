@@ -19,31 +19,37 @@ class PublishTransaction(TransactionBase):
         return transaction_capnp.PublishTransaction.from_bytes_packed(data)
 
     @classmethod
+    def _deserialize_payload(cls, data: bytes):
+        return transaction_capnp.PublishPayload.from_bytes(data)
+
+    @classmethod
     def create(cls, sender_sk: str, stamps_supplied: int, contract_name: str, contract_code: str, nonce: str, *args, **kwargs):
         assert len(args) == 0, "Contract must be created with key word args only (no positional args sorry)"
         assert stamps_supplied > 0, "Must supply positive gas amount u silly billy"
 
         struct = transaction_capnp.PublishTransaction.new_message()
+        payload = transaction_capnp.PublishPayload.new_message()
 
-        struct.payload.sender = wallet.get_vk(sender_sk)
-        struct.payload.stampsSupplied = stamps_supplied
-        struct.payload.contractName = contract_name
-        struct.payload.contractCode = contract_code
-        struct.payload.nonce = nonce
+        payload.sender = wallet.get_vk(sender_sk)
+        payload.stampsSupplied = stamps_supplied
+        payload.contractName = contract_name
+        payload.contractCode = contract_code
+        payload.nonce = nonce
 
-        payload_binary = struct.payload.copy().to_bytes()
+        payload_binary = payload.to_bytes()
 
         struct.metadata.proof = SHA3POW.find(payload_binary)[0]
         struct.metadata.signature = wallet.sign(sender_sk, payload_binary)
+        struct.payload = payload_binary
 
         return PublishTransaction.from_data(struct)
 
     @property
     def contract_name(self):
-        return self._data.payload.contractName
+        return self.payload.contractName
 
     @property
     def contract_code(self):
-        return self._data.payload.contractCode
+        return self.payload.contractCode
 
 

@@ -145,9 +145,9 @@ async def get_transactions(request):
 
 @app.route("/teardown-network", methods=["POST",])
 async def teardown_network(request):
-    raise NotImplementedError()
+    # raise NotImplementedError()
     # tx = KillSignal.create()
-    # return text('tearing down network')
+    return text('tearing down network')
 
 
 def start_webserver(q):

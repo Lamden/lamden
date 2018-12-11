@@ -3,6 +3,7 @@ from cilantro.messages.transaction.data import TransactionData, TransactionDataB
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
 from cilantro.utils import lazy_property, Hasher, lazy_func
 from cilantro.protocol.structures.merkle_tree import MerkleTree
+from cilantro.protocol import wallet
 from cilantro.messages.utils import validate_hex
 from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
 from typing import List
@@ -95,10 +96,13 @@ class GenesisBlockData(BlockData):
         pass  # no validation for genesis block hash
 
     @classmethod
-    def create(cls):
+    def create(cls, sk, vk):
         struct = blockdata_capnp.BlockData.new_message()
         struct.blockHash = GENESIS_BLOCK_HASH
         struct.blockNum = 0
+        struct.masternodeSignature = (MerkleSignature.create(sig_hex = wallet.sign(sk, GENESIS_BLOCK_HASH.encode()),
+                                     sender = vk, timestamp = str(time.time()))).serialize()
+
         return cls.from_data(struct)
 
 

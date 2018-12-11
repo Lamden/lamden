@@ -90,7 +90,7 @@ class TestBlockAggregator(TestCase):
     @classmethod
     def setUpClass(cls):
         log.critical("startdb")
-        MDB.start_db()
+        MDB(s_key = TEST_SK)
         log.critical("--- startdb")
 
     def setUp(self):
