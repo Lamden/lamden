@@ -3,6 +3,7 @@
 using T = import "transaction.capnp";
 
 
+# SubBlock is intended to be nested inside of BlockData, and never really used on its own
 struct SubBlock {
     merkleRoot @0 :Text;
     signatures @1 :List(Data);
