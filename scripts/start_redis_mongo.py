@@ -1,5 +1,6 @@
 import os
 from os import getenv as env
+from create_user import create_user
 
 def start_mongo():
 
@@ -13,11 +14,14 @@ def start_mongo():
     with open('./data/{}/logs/mongo.log'.format(host_name), 'w+') as f:
         print('Dir created')
 
-    import create_user
 
+    create_user()
+
+    print('Starting mongo server...')
     os.system('mongod --dbpath ./data/{} --logpath ./data/{}/logs/mongo.log {} &'.format(
         host_name, host_name, '' if env('CIRCLECI') == 'true' else '--bind_ip_all'
     ))
+    print('<MONGO>: Started')
 
 if __name__ == '__main__':
     from start_redis import start_redis

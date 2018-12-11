@@ -4,7 +4,7 @@ from os import getenv as env
 def start_redis():
     if not env('CIRCLECI') and not env('VMNET'):
         for package in ['seneca', 'vmnet']:
-            os.system('cp -r ./venv/lib/python3.6/site-packages/{} /usr/local/lib/python3.6/dist-packages'.format(package))
+            os.system('cp -r ./venv/lib/python3.6/site-packages/{} /usr/local/lib/python3.6/dist-packages 2>/dev/null'.format(package))
 
     os.system('rm -f ./dump.rdb')
 
@@ -26,7 +26,7 @@ REDIS_PASSWORD={}
     os.system('redis-server docker/redis.conf --port {} --requirepass {} &'.format(port,pw))
 
     time.sleep(1)
-    print("Done.")
+    print('<REDIS>: Started')
 
 if __name__ == '__main__':
     from dotenv import load_dotenv

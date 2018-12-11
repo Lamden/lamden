@@ -24,7 +24,6 @@ class VKBook:
             [cls.r.hset('masternode', node['vk'], node.get('ip', 1)) for node in TESTNET_MASTERNODES]
             [cls.r.hset('witness', node['vk'], node.get('ip', 1)) for node in TESTNET_WITNESSES]
             [cls.r.hset('delegate', node['vk'], node.get('ip', 1)) for node in TESTNET_DELEGATES]
-            VKBook.test_print_nodes()
         else:
             cls.constitution = get_constitution(constitution_json)
             for node_type in cls.node_types:
@@ -63,11 +62,11 @@ class VKBook:
         return VKBook.decode(VKBook.r.hgetall('masternode').keys())
 
     @staticmethod
-    def get_delegates():
+    def get_witnesses():
         return VKBook.decode(VKBook.r.hgetall('witness').keys())
 
     @staticmethod
-    def get_witnesses():
+    def get_delegates():
         return VKBook.decode(VKBook.r.hgetall('delegate').keys())
 
     @staticmethod
