@@ -10,6 +10,7 @@ class VKBook:
 
     r = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
     node_types = ('masternodes', 'witnesses', 'delegates')
+    node_types_env = ('masternode', 'witness', 'delegate')
 
     @classmethod
     def setup(cls, constitution_json=None):
@@ -17,7 +18,7 @@ class VKBook:
         for node_type in cls.node_types:
             [cls.r.hset(node_type, node['vk'], node.get('ip', 1)) for node in cls.constitution[node_type]]
         cls.bootnodes = []
-        for node_type in cls.node_types:
+        for node_type in cls.node_types_env:
             if env(node_type.upper()):
                 cls.bootnodes += env(node_type).split(',')
 
