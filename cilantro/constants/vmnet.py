@@ -22,6 +22,7 @@ def get_constitution(constitution_json=None):
         pair for yourself when testing=False.
     """
     log = get_logger(__name__)
+
     def _generate_keys(ip):
         assert env('GLOBAL_SEED'), 'No GLOBAL_SEED found.'
         random.seed(int(env('GLOBAL_SEED'), 16)+ip_to_decimal(ip))

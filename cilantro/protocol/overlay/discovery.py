@@ -65,7 +65,7 @@ class Discovery:
         cls.log.important(VKBook.bootnodes)
 
         while True:
-            if try_count == 0 and len(VKBook.bootnodes) > 0:
+            if len(VKBook.bootnodes) > 0: # TODO refine logic post-anarchy-net
                 cls.log.info('Connecting to boot nodes: {}'.format(VKBook.bootnodes))
                 cls.connect(VKBook.bootnodes)
             else:

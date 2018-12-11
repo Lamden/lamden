@@ -24,6 +24,16 @@
                                 "CidrIp": "0.0.0.0/0"
                             }
                         ]
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 20001,
+                        "ToPort": 20004,
+                        "IpRanges": [
+                            {
+                                "CidrIp": "0.0.0.0/0"
+                            }
+                        ]
                     }
                 ]
             }

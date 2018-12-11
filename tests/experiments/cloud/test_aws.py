@@ -62,7 +62,7 @@ def delegates(idx):
 class TestCloud(AWSTestCase):
 
     config_file = get_config_file('cilantro_aws.json')
-    keep_up = True
+    keep_up = False
     timeout = 120
 
     def test_aws(self):
