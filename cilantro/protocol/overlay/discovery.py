@@ -62,7 +62,7 @@ class Discovery:
         if cls.is_listen_ready:
             await asyncio.sleep(3)
 
-        cls.important(VKBook.bootnodes)
+        cls.log.important(VKBook.bootnodes)
 
         while True:
             if try_count == 0 and len(VKBook.bootnodes) > 0:
