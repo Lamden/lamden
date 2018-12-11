@@ -149,16 +149,16 @@ class MDB:
         reading from index or store
     '''
     @classmethod
-    def query_index(cls, n_blks=None, blk_hash=None):
-        blk_dict = {}
+    def query_index(cls, n_blks=None):
+        blk_list = []
 
         blk_delta = cls.mn_coll_idx.find().limit(n_blks).sort("blockNum", -1)
         for blk in blk_delta:
             cls.log.debug('query_index block delta {}'.format(blk))
-            blk_dict.update(blk)
+            blk_list.append(blk)
 
-        cls.log.debug("query_index returning dict {}".format(blk_dict))
-        return blk_dict
+        cls.log.debug("query_index returning dict {}".format(blk_list))
+        return blk_list
 
     @classmethod
     def query_db(cls, type=None, query=None):

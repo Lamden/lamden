@@ -23,7 +23,7 @@ class CatchupManager:
         self.log = get_logger("CatchupManager")
         self.pub, self.router = pub_socket, router_socket
         self.verifying_key = verifying_key
-        self.store_full_blocks = store_full_blocks  # @davis ??
+        self.store_full_blocks = store_full_blocks
         self.all_masters = set(VKBook.get_masternodes()) - set(self.verifying_key)
 
         self.mns_replied_idx = set()  # a set of masternode vk's who have sent BlockIndexReplies
@@ -82,6 +82,7 @@ class CatchupManager:
     # ONLY MASTERNODES WILL USE THIS
     def recv_block_data_req(self, requester_vk: str, request: BlockDataRequest):
         req_blk = MasterOps.get_full_blk(blk_num = request.block_num)
+        self._send_block_data_req(requester_vk, req_blk)
         pass
 
     def _send_block_data_reply(self):
@@ -102,6 +103,12 @@ class CatchupManager:
         self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
 
     def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
+        """
+        We expect to receive this message from all master except requestor
+        :param sender_vk:
+        :param reply:
+        :return:
+        """
         self.mns_replied_idx.add(sender_vk)
         # plugin TODO process_received_idx
         if not reply.indices:
@@ -130,5 +137,6 @@ class CatchupManager:
 
     # BOTH WILL RECV THIS (PHASE 2 REPLY)
     def recv_block_data_reply( self, reply: BlockData):
-        StorageDriver.process_received_block(block = reply)
+        if StorageDriver.process_received_block(block = reply):
+            StateDriver.update_with_block(block = reply)
 
