@@ -18,7 +18,7 @@ from cilantro.constants.system_config import *
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.transaction.contract import ContractTransactionBuilder
-from cilantro.messages.transaction.data import TransactionData
+from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
 
 from cilantro.messages.block_data.block_data import *
 from cilantro.messages.block_data.state_update import *
@@ -51,8 +51,8 @@ TEST_SK = TESTNET_MASTERNODES[0]['sk']
 TEST_VK = TESTNET_MASTERNODES[0]['vk']
 DEL_SK = TESTNET_DELEGATES[0]['sk']
 DEL_VK = TESTNET_DELEGATES[0]['vk']
-INPUT_HASH1 = '1111111111111111111111111111111111111111111111111111111111111111'
-INPUT_HASH2 = '2222222222222222222222222222222222222222222222222222222222222222'
+INPUT_HASH1 = '1' * 64
+INPUT_HASH2 = '2' * 64
 RAWTXS1 = [
     b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
     b'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
@@ -127,6 +127,41 @@ class TestBlockAggregator(TestCase):
 
         log.critical("6")
         mock_pub.bind.assert_called_with(ip=TEST_IP, port=MASTER_PUB_PORT)
+
+    @BlockAggTester.test
+    def test_store_block(self, *args):
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba.manager = MagicMock()
+        ba.build_task_list()
+        ba.is_catching_up = False
+
+        sk1, vk1 = wallet.new()
+        sk2, vk2 = wallet.new()
+        sk3, vk3 = wallet.new()
+        sk4, vk4 = wallet.new()
+
+        sb1_txs = [TransactionDataBuilder.create_random_tx() for _ in range(8)]
+        sb2_txs = [TransactionDataBuilder.create_random_tx() for _ in range(8)]
+
+        tree1 = MerkleTree.from_transactions(sb1_txs)
+        tree2 = MerkleTree.from_transactions(sb2_txs)
+
+        sig1, sig2 = MerkleSignature.create_from_payload(sk1, tree1.root), MerkleSignature.create_from_payload(sk2, tree1.root)
+        sig3, sig4 = MerkleSignature.create_from_payload(sk3, tree2.root), MerkleSignature.create_from_payload(sk4, tree2.root)
+
+        input_hash1 = 'AB' * 32  # Input hashes are the hashes of the transaction bags
+        input_hash2 = 'BA' * 32
+        result_hash1 = tree1.root_as_hex  # Result hashes are the merkle roots
+        result_hash2 = tree2.root_as_hex
+
+        ba.result_hashes[result_hash1] = {'_committed_': False, '_consensus_reached_': True, '_transactions_': sb1_txs,
+                                          '_valid_signatures_': {sig1.signature: sig1, sig2.signature: sig2},
+                                          '_input_hash_': input_hash1, '_merkle_leaves_': tree1.leaves_as_hex,
+                                          '_sb_index_': 0, '_lastest_valid_': time.time()}
+        ba.result_hashes[result_hash2] = {'_committed_': False, '_consensus_reached_': True, '_transactions_': sb2_txs,
+                                          '_valid_signatures_': {sig3.signature: sig3, sig4.signature: sig4},
+                                          '_input_hash_': input_hash2, '_merkle_leaves_': tree2.leaves_as_hex,
+                                          '_sb_index_': 1, '_lastest_valid_': time.time()}
 
     @BlockAggTester.test
     def test_handle_sub_msg_with_sub_block_contender(self, *args):

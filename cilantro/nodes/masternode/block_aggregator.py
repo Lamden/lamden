@@ -15,6 +15,7 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.block_data.block_data import BlockData
+from cilantro.messages.block_data.sub_block import SubBlock
 from cilantro.messages.block_data.state_update import *
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
 
@@ -151,6 +152,7 @@ class BlockAggregator(Worker):
         if not StorageDriver.check_block_exists(sbc.prev_block_hash):
             self.log.warning("Masternode got SBC with prev block hash {} that does not exist in our index table! "
                              "Starting catchup\n(SBC={})".format(sbc.prev_block_hash, sbc))
+            # TODO fix this to use tejas' new CatchupManager API
             self.catchup_manager.send_block_idx_req()
             self.is_catching_up = True
             return
@@ -205,7 +207,7 @@ class BlockAggregator(Worker):
 
         return True
 
-    def validate_txs(self, sbc) -> bool:
+    def validate_txs(self, sbc: SubBlockContender) -> bool:
         for tx in sbc.transactions:
             if tx.hash not in sbc.merkle_leaves:
                 self.log.warning('Received malicious txs that does not match merkle leaves! SBC: {}'.format(sbc))
@@ -213,7 +215,7 @@ class BlockAggregator(Worker):
 
         return True
 
-    def aggregate_sub_block(self, sbc):
+    def aggregate_sub_block(self, sbc: SubBlockContender):
         # if not self.result_hashes.get(sbc.result_hash):
         if not sbc.result_hash in self.result_hashes:
             self.result_hashes[sbc.result_hash] = {
@@ -255,36 +257,50 @@ class BlockAggregator(Worker):
 
     def store_full_block(self):
         sub_blocks = {
-            result_hash: self.result_hashes[result_hash] for result_hash in self.result_hashes \
-                if self.result_hashes[result_hash].get('_consensus_reached_')
+            result_hash: self.result_hashes[result_hash] for result_hash in self.result_hashes
+                if self.result_hashes[result_hash]['_consensus_reached_']
+                and not self.result_hashes[result_hash]['_committed_']
         }
+
         if len(sub_blocks) < NUM_SB_PER_BLOCK:
-            self.log.info('Received {}/{} required sub-blocks so far.'.format(
-                len(sub_blocks), NUM_SB_PER_BLOCK))
-        else:
+            self.log.info('Received {}/{} required sub-blocks so far.'.format(len(sub_blocks), NUM_SB_PER_BLOCK))
+            return
 
-            unordered_merkle_roots = [result_hash for result_hash in sub_blocks][:NUM_SB_PER_BLOCK]
-            merkle_roots = sorted(unordered_merkle_roots, key=lambda result_hash: self.result_hashes[result_hash]['_sb_index_'])
-            input_hashes = [self.result_hashes[result_hash]['_input_hash_'] for result_hash in merkle_roots]
-            transactions = list(itertools.chain.from_iterable([sub_blocks[mr]['_transactions_'].values() for mr in merkle_roots]))
+        # Sort the merkle roots
+        unordered_merkle_roots = [result_hash for result_hash in sub_blocks]
+        merkle_roots = sorted(unordered_merkle_roots, key=lambda result_hash: self.result_hashes[result_hash]['_sb_index_'])
 
-            assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} SBs/per/block" \
-                                                          .format(len(merkle_roots), NUM_SB_PER_BLOCK)
+        # Build the sub-blocks
+        sb_data = []
+        for root in merkle_roots:
+            sigs = self.result_hashes[root]['_valid_signatures_'].values()
+            # txs = [self.]
+            sb = SubBlock.create(merkle_roots=root)
 
-            # TODO wrap storage in try/catch. Add logic for storage failure
+        input_hashes = [self.result_hashes[result_hash]['_input_hash_'] for result_hash in merkle_roots]
 
-            block_data = StorageDriver.store_block(merkle_roots=merkle_roots, verifying_key = self.verifying_key,
-                                                   sign_key = self.signing_key, transactions=transactions,
-                                                   input_hashes=input_hashes)
-            assert block_data.prev_block_hash == self.curr_block_hash, "Current block hash {} does not match StorageDriver previous " \
-                                                            "block hash {}".format(self.curr_block_hash, block_data.prev_block_hash)
-            self.curr_block_hash = block_data.block_hash
-            StateDriver.update_with_block(block_data)
-            self.log.success("STORED BLOCK WITH HASH {}".format(block_data.block_hash))
-            self.send_new_block_notification(block_data)
-            for result_hash in merkle_roots:
-                self.sub_blocks[result_hash] = True
-                self.result_hashes[result_hash]['_committed_'] = True
+        # TODO -- these transactions have to be ordered by the merkle leaves.
+        transactions = list(itertools.chain.from_iterable([sub_blocks[mr]['_transactions_'].values() for mr in merkle_roots]))
+
+        assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} SBs/per/block" \
+                                                      .format(len(merkle_roots), NUM_SB_PER_BLOCK)
+
+        # Build sub blocks
+
+        # TODO wrap storage in try/catch. Add logic for storage failure
+
+        block_data = StorageDriver.store_block(merkle_roots=merkle_roots, verifying_key = self.verifying_key,
+                                               sign_key = self.signing_key, transactions=transactions,
+                                               input_hashes=input_hashes)
+        assert block_data.prev_block_hash == self.curr_block_hash, "Current block hash {} does not match StorageDriver previous " \
+                                                        "block hash {}".format(self.curr_block_hash, block_data.prev_block_hash)
+        self.curr_block_hash = block_data.block_hash
+        StateDriver.update_with_block(block_data)
+        self.log.success("STORED BLOCK WITH HASH {}".format(block_data.block_hash))
+        self.send_new_block_notification(block_data)
+        for result_hash in merkle_roots:
+            self.sub_blocks[result_hash] = True
+            self.result_hashes[result_hash]['_committed_'] = True
 
     def send_new_block_notification(self, block_data):
         new_block_notif = NewBlockNotification.create_from_block_data(block_data)

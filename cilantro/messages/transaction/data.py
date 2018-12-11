@@ -59,6 +59,10 @@ class TransactionData(MessageBase):
     def __hash__(self):
         return int(self.hash,16)
 
+    def __repr__(self):
+        return "<TransactionData with sender={}, contract_type={}, status={}, state={}"\
+               .format(self.contract_tx.sender, self.contract_type, self.status, self.state)
+
 
 class TransactionDataBuilder:
     @classmethod
