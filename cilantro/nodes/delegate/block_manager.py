@@ -14,6 +14,7 @@
 
 from cilantro.logger.base import get_logger
 
+from cilantro.nodes.catchup import CatchupManager
 from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder
 
 from cilantro.storage.vkbook import VKBook
@@ -46,13 +47,19 @@ IPC_PORT = 6967
 
 
 class DBState:
+    CATCHUP = 'in_catchup_phase'
+    CURRENT = 'up_to_date'
+
     """ convenience struct to maintain db snapshot state data in one place """
-    def __init__(self, cur_block_hash):
-        self.cur_block_hash = cur_block_hash
-        self.next_block_hash = cur_block_hash
+    def __init__(self):
+        self.cur_block_hash = None
+        # self.cur_block_num = 0
+        self.my_new_block_hash = None
+        self.new_block_hash = None
+        self.catchup_mgr = None
+        # self.state = DBState.CATCHUP
         self.next_block = {}
         self.sub_block_hash_map = {}
-        # self.cur_timestamp = timestamp   ?? probably not needed
 
 
 class BlockManager(Worker):
@@ -66,9 +73,7 @@ class BlockManager(Worker):
         self.sb_builders = {}  # index -> process
         self.sb_index = self._get_my_index() % NUM_SB_BUILDERS
 
-        # raghu todo tie to initial catch up logic as well as right place to do this
-        # Falcon needs to add db interface modifications
-        self.db_state = DBState(StateDriver.get_latest_block_hash())
+        self.db_state = DBState()
 
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
@@ -123,6 +128,8 @@ class BlockManager(Worker):
         )
         self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
 
+        self.db_state.catchup_mgr = CatchupManager(self.signing_key, self.pub, self.router, False)
+
         # Create SUB socket to
         # 1) listen for subblock contenders from other delegates
         # 2) listen for NewBlockNotifications from masternodes
@@ -142,27 +149,15 @@ class BlockManager(Worker):
             self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
             self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
 
-    async def catchup_db_state(self):
+    def catchup_db_state(self):
         self.log.info("Catching up...")
         # do catch up logic here
         # only when one can connect to quorum masters and get db update, move to next step
         # at the end, it has updated its db state to consensus latest
-        # latest_block_hash, list of mn vks
-        # send msg to each of the connected masters. Do we need to maintain a list of connected vks ??
-        # TODO send this over PUB to all masternodes instead of Router
 
-        # TODO add this code when we can ensure block manager's router is properly set up...
+        time.sleep(5)             # so pub/sub connections can complete
+        self.db_state.catchup_mgr.send_block_idx_req()
 
-        # envelope = BlockIndexRequest.create(block_hash=self.db_state.cur_block_hash)
-        # for vk in VKBook.get_masternodes():
-        #     self.router.send_msg(envelope, header=vk.encode())
-
-        # no need to wait for the replys as we have added a handler
-
-        # here we fix call to send_updated_db_msg until we properly send back BlockDataReply from Masternodes
-        # TODO -- remove once Masternodes can reply to BlockIndexRequest
-        await asyncio.sleep(5)
-        self.send_updated_db_msg()
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):
@@ -174,8 +169,8 @@ class BlockManager(Worker):
             self.sb_builders[i].start()
 
         # Sleep to SBB's IPC sockets are ready for any messages from BlockManager
-        time.sleep(4)
-        self.log.debugv("Done sleeping sleeping after starting SBB procs")
+        time.sleep(1)
+        self.log.info("Done sleeping after starting SBB procs")
 
     def _get_my_index(self):
         for index, vk in enumerate(VKBook.get_delegates()):
@@ -220,52 +215,53 @@ class BlockManager(Worker):
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
 
+    def recv_block_data_reply(self, reply):
+        self.db_state.catchup_mgr.recv_block_data_reply(reply)
+        # will it block? otherwise, it may not work
+        if self.db_state.catchup_mgr.is_db_updated():
+            # TODO update latest block hash (& next one if needed) locally
+            self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
+            # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
+            # self.state = DBState.CURRENT
+            self.send_updated_db_msg()
+
     def handle_router_msg(self, frames):
         # self.log.important("Got msg over tcp ROUTER socket with frames: {}".format(frames))
         # TODO implement
         # TODO verify that the first frame (identity frame) matches the verifying key on the Envelope's seal
 
         envelope = Envelope.from_bytes(frames[-1])
+        sender = envelope.sender
         msg = envelope.message
         msg_hash = envelope.message_hash
 
-        if isinstance(msg, BlockDataReply):
-            self.handle_state_update_reply(msg)
+        if isinstance(msg, BlockIndexReply):
+            self.db_state.catchup_mgr.recv_block_idx_req(sender, msg)
+        elif isinstance(msg, BlockDataReply):
+            self.recv_block_data_reply(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
 
-    def update_db_state(self, block_data: BlockData):
-        txs_list = block_data.transactions
-        # for txn in txs_list:
-        #     self.interpreter.interpret(txn)
-        # self.interpreter.flush()      # save and reset
-        self.db_state.cur_block_hash = block_data.block_hash
-        self.log.important("Caught up to block with hash {}".format(self.db_state.cur_block_hash))
 
-    def handle_state_update_reply(self, msg: BlockDataReply):
-        # TODO need to handle the duplicates from a single sender (intentional attack?)
-        # sender = envelope.sender
-        # TODO also need to worry about quorum, etc
-        # bd_map = {}
-        bd_list = msg.block_data
-        for block_data in bd_list:
-            prev_block_hash = block_data.prev_block_hash
-            if self.db_state.cur_block_hash == prev_block_hash:
-                self.update_db_state(block_data)
-            else:
-                # bd_map[prev_block_hash] = block_data
-                # ignore right now - just log
-                self.log.important("Ignore block data with prev block hash {}".format(prev_block_hash))
+    def _compute_new_block_hash(self):
+        # first sort the sb result hashes based on sub block index
+        sorted_sb_hashes = sorted(self.db_state.sub_block_hash_map.keys(),
+                                  key=lambda result_hash: self.db_state.sub_block_hash_map[result_hash])
+        # append prev block hash
+        return BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.cur_block_hash)
+
 
     def _handle_sbc(self, sbc: SubBlockContender):
-        self.db_state.sub_block_hash_map[sbc.result_hash] = sbc.sb_index
         self.log.important("Got SBC with sb-index {}. Sending to Masternodes.".format(sbc.sb_index))
         self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
-        if self.db_state.next_block_hash != self.db_state.cur_block_hash:
-            num_sb = len(self.db_state.sub_block_hash_map)
-            if num_sb == NUM_SB_PER_BLOCK:  # got all sub_block
-                self.update_db()
+        self.db_state.sub_block_hash_map[sbc.result_hash] = sbc.sb_index
+        num_sb = len(self.db_state.sub_block_hash_map)
+        if num_sb == NUM_SB_PER_BLOCK:  # got all sub_block
+            # compute my new block hash
+            self.db_state.my_new_block_hash = self._compute_new_block_hash()
+            self.update_db_if_ready()
+     
 
     def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
         """
@@ -278,68 +274,79 @@ class BlockManager(Worker):
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
-    def update_db(self, block_data: NewBlockNotification):
-        # TODO: We need to handle this for real incase nodes miss a block. Throwing assertion for now.
-        assert block_data.prev_block_hash == self.db_state.cur_block_hash, \
-            "update_db called but our current block hash {} does not match the new block notification's prev block " \
-            "hash {}".format(self.db_state.cur_block_hash, block_data.prev_block_hash)
+    def align_input_hashes_if_needed(self, block: NewBlockNotification):
+        pass
 
-        # first sort the sb result hashes based on sub block index
-        sorted_sb_hashes = sorted(self.db_state.sub_block_hash_map.keys(),
-                                  key=lambda result_hash: self.db_state.sub_block_hash_map[result_hash])
-        # append prev block hash
-        our_block_hash = BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.cur_block_hash)
-
-        assert our_block_hash == block_data.block_hash, "Our block hash {} does not match NewBlockNotifcation's hash {}"\
-                                                        .format(our_block_hash, block_data.block_hash)
-
-        if our_block_hash == self.db_state.next_block_hash:
-            self.log.success2("BlockManager has consensus with NewBlockNotification block hash {}!".format(our_block_hash))
-
-            self.db_state.sub_block_hash_map.clear()
-            self.db_state.next_block.clear()
-            self.db_state.cur_block_hash = our_block_hash
-
-            StateDriver.set_latest_block_info(our_block_hash, block_data.block_num)
-            self.log.notice("Setting latest block number to {} and block hash to {}"
-                            .format(block_data.block_num, our_block_hash))
-
-            self.send_updated_db_msg()
-
-        # TODO handle this case. Here we computed the wrong block hash and need to catchup
-        else:
-            self.log.fatal("Error: mismatch between current db state with masters!! my est bh {} and masters bh {}".format(our_block_hash, self.db_state.next_block_hash))
-
-    def update_db_if_ready(self, block_data: NewBlockNotification):
-        self.db_state.next_block_hash = block_data.block_hash
-        # check if we have all sub_blocks
-        num_sb = len(self.db_state.sub_block_hash_map)
-        if (num_sb < NUM_SB_PER_BLOCK):  # don't have all sub-blocks
-            self.log.info("I don't have all SBs")
-            # since we don't have a way to sync Seneca with full data from master, just wait for sub-blocks done
-            # TODO what do we do here?
-            # - Tell each SBB to abort current sub-block, then do catchup logic?
-            # or
-            # - Let SBB finish current sub block, and instantly send a make next block notification if their current
-            #   state is correct?
+    def update_db(self):
+        block = self.db_state.next_block[self.db_state.new_block_hash][0]
+        if self.db_state.my_new_block_hash != self.db_state.new_block_hash:    # holy cow - mismatch
+            self.log.important("Out-of-Consensus - NewBlockNotification doesn't match my block!")
+            # need to send block-data to catchup to update
+            self.recv_block_data_reply(block)
+            self.db_state.cur_block_hash = None
+            # check input hashes and send align / skip messages using input-hash
+            self.align_input_hashes_if_needed(block)
             return
-        self.update_db(block_data)
+           
+        assert self.db_state.new_block_hash == self.db_state.my_new_block_hash, \
+            "update_db called but my new block hash {} does not match the new block notification's hash " \
+            "hash {}".format(self.db_state.my_new_block_hash, self.db_state.new_block_hash)
+
+        self.log.success2("BlockManager has consensus with NewBlockNotification!")
+
+        self.db_state.cur_block_hash = self.db_state.new_block_hash
+        self.send_updated_db_msg()
+
+        self.log.notice("Setting latest block number to {} and block hash to {}"
+                            .format(block.block_num, self.db_state.cur_block_hash))
+        StateDriver.set_latest_block_info(self.db_state.cur_block_hash, block.block_num)
+
+
+    def update_db_if_ready(self):
+        if not self.db_state.my_new_block_hash or not self.db_state.new_block_hash:
+            return          # both are not ready
+        # self.db_state.my_new_block_hash == self.db_state.new_block_hash at this point
+        self.update_db()
+
+        # reset all the state info 
+        self.db_state.sub_block_hash_map.clear()
+        self.db_state.next_block.clear()
+        self.db_state.my_new_block_hash = None
+        self.db_state.new_block_hash = None
+
 
     # update current db state to the new block
     def handle_new_block(self, block_data: NewBlockNotification):
         new_block_hash = block_data.block_hash
         self.log.info("Got new block notification with block hash {}...".format(new_block_hash))
 
+        if not self.db_state.cur_block_hash:
+            self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
+        # if block_data.prev_block_hash == self.db_state.cur_block_hash:
+            # self.db_state.state = DBState.CURRENT
+
         if new_block_hash == self.db_state.cur_block_hash:
             self.log.info("New block notification is same as current state. Ignoring.")
             return
 
-        count = self.db_state.next_block.get(new_block_hash, 0) + 1
+        # if (self.db_state.state == DBState.CATCHUP) or \
+            # (block_data.prev_block_hash != self.db_state.cur_block_hash):
+            # self.db_state.state = DBState.CATCHUP
+        if (block_data.prev_block_hash != self.db_state.cur_block_hash):
+            self.db_state.cur_block_hash = None
+            self.recv_block_data_reply(block_data)
+            return
+
+            # mark next block as stale / old ?
+            # how do you align input hashes especially if some aligns but not all?
+
+        count = self.db_state.next_block.get(new_block_hash)[1] + 1 \
+                 if new_block_hash in self.db_state.next_block else 1
+        self.db_state.next_block[new_block_hash] = tuple(block_data, count)
         if count >= MIN_NEW_BLOCK_MN_QOURUM:
             self.log.info("New block quorum met!")
-            self.update_db_if_ready(block_data)
-        else:
-            self.db_state.next_block[new_block_hash] = count
+            self.db_state.new_block_hash = new_block_hash
+            self.update_db_if_ready()
 
     def send_updated_db_msg(self):
         self.log.info("Sending MakeNextBlock message to SBBs")
