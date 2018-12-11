@@ -1,10 +1,9 @@
 import unittest, time, random, cilantro, asyncio, ujson as json, os, sys
 from cilantro.utils.test.mp_test_case import wrap_func
-from cilantro.constants.vmnet import get_constitution, get_config_file
+from cilantro.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
 
 CONSTITUION_JSON = None
-# CONSTITUION_JSON = '2-2-2.json'
 
 def masternode(idx):
     from cilantro.logger import get_logger
