@@ -1,6 +1,6 @@
 @0xc9a01417cf45e892;
 
-using T = import "transaction.capnp";
+using SB = import "subblock.capnp";
 
 struct BlockMetaData {
     blockHash @0 :Data;

@@ -1,18 +1,12 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
-from cilantro.utils import lazy_property, Hasher, lazy_func
+from cilantro.utils import lazy_property, Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro.protocol import wallet
-from cilantro.messages.utils import validate_hex
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
-from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
+from cilantro.messages.block_data.sub_block import SubBlock
 from typing import List
 from cilantro.logger import get_logger
 from cilantro.storage.vkbook import VKBook
-import time, uuid
-
-import capnp
 
 import blockdata_capnp
 
@@ -44,17 +38,15 @@ class BlockData(MessageBase):
         return blockdata_capnp.BlockData.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, block_hash: str, prev_block_hash: str, transactions: List[TransactionData],
-               block_owners: List[str], merkle_roots: List[str], input_hashes: List[str], block_num: int=0):
+    def create(cls, block_hash: str, prev_block_hash: str, block_owners: List[str], block_num: int,
+               sub_blocks: List[SubBlock]):
+
         struct = blockdata_capnp.BlockData.new_message()
-        struct.init('transactions', len(transactions))
-        struct.init('merkleRoots', len(merkle_roots))
         struct.blockHash = block_hash
         struct.blockNum = block_num
-        struct.inputHashes = input_hashes
-        struct.merkleRoots = [mr.encode() for mr in merkle_roots]
         struct.prevBlockHash = prev_block_hash
         struct.blockOwners = block_owners
+
         struct.transactions = [tx.serialize() for tx in transactions]
         return cls.from_data(struct)
 

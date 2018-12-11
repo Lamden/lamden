@@ -2,13 +2,16 @@
 
 using T = import "transaction.capnp";
 
+
 struct SubBlock {
     merkleRoot @0 :Text;
-    signatures @1: List(Data);
-    merkleLeaves @2: List(Text);
-    subBlockIdx @3: UInt8;
-    inputHash @4: Text;
+    signatures @1 :List(Data);
+    merkleLeaves @2 :List(Text);
+    subBlockIdx @3 :UInt8;
+    inputHash @4 :Text;
+    transactions @5 :List(T.TransactionData);
 }
+
 
 struct SubBlockContender {
     resultHash @0 :Data;
@@ -19,6 +22,7 @@ struct SubBlockContender {
     subBlockIdx @5: UInt8;
     prevBlockHash @6: Text;
 }
+
 
 struct EmptySubBlockContender {
     inputHash @0 :Data;

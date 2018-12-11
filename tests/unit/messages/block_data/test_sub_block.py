@@ -1,12 +1,10 @@
-from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro.messages.transaction.contract import ContractTransactionBuilder, ContractTransaction
-from cilantro.messages.block_data.block_data import BlockData, GENESIS_BLOCK_HASH
+from cilantro.messages.transaction.data import TransactionDataBuilder
+from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH
 from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro.messages.consensus.sub_block import SubBlock
+from cilantro.messages.block_data.sub_block import SubBlock
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 
 from unittest import TestCase
-import unittest
 from cilantro.constants.testnet import TESTNET_MASTERNODES
 TEST_SK, TEST_VK = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
 
@@ -19,7 +17,6 @@ class TestSubBlock(TestCase):
             txs.append(TransactionDataBuilder.create_random_tx())
         txs_bin = [tx.serialize() for tx in txs]
 
-        prev_b_hash = GENESIS_BLOCK_HASH
         tree = MerkleTree.from_raw_transactions(txs_bin)
         merkle_root = tree.root_as_hex
         input_hash = 'A'*64
@@ -30,13 +27,39 @@ class TestSubBlock(TestCase):
                 MerkleSignature.create_from_payload(sk2, tree.root)]
 
         sb = SubBlock.create(merkle_root=merkle_root, signatures=sigs, merkle_leaves=tree.leaves_as_hex,
-                             sub_block_idx=sb_idx, input_hash=input_hash)
+                             sub_block_idx=sb_idx, input_hash=input_hash, transactions=txs)
 
         self.assertEqual(sb.merkle_root, merkle_root)
         self.assertEqual(sb.signatures, sigs)
         self.assertEqual(sb.merkle_leaves, tree.leaves_as_hex)
         self.assertEqual(sb.input_hash, input_hash)
         self.assertEqual(sb.sub_block_idx, sb_idx)
+        self.assertEqual(sb.transactions, txs)
+
+    def test_create_no_transactions(self):
+        txs = []
+        for _ in range(8):
+            txs.append(TransactionDataBuilder.create_random_tx())
+        txs_bin = [tx.serialize() for tx in txs]
+
+        tree = MerkleTree.from_raw_transactions(txs_bin)
+        merkle_root = tree.root_as_hex
+        input_hash = 'A'*64
+        sb_idx = 0
+
+        sk1, sk2 = 'AB' * 32, 'BC' * 32
+        sigs = [MerkleSignature.create_from_payload(sk1, tree.root),
+                MerkleSignature.create_from_payload(sk2, tree.root)]
+
+        sb = SubBlock.create(merkle_root=merkle_root, signatures=sigs, merkle_leaves=tree.leaves_as_hex,
+                             sub_block_idx=sb_idx, input_hash=input_hash, transactions=[])
+
+        self.assertEqual(sb.merkle_root, merkle_root)
+        self.assertEqual(sb.signatures, sigs)
+        self.assertEqual(sb.merkle_leaves, tree.leaves_as_hex)
+        self.assertEqual(sb.input_hash, input_hash)
+        self.assertEqual(sb.sub_block_idx, sb_idx)
+        self.assertEqual(sb.transactions, [])
 
     def test_serialize_deserialize(self):
         txs = []
@@ -54,7 +77,7 @@ class TestSubBlock(TestCase):
                 MerkleSignature.create_from_payload(sk2, tree.root)]
 
         sb = SubBlock.create(merkle_root=merkle_root, signatures=sigs, merkle_leaves=tree.leaves_as_hex,
-                             sub_block_idx=sb_idx, input_hash=input_hash)
+                             sub_block_idx=sb_idx, input_hash=input_hash, transactions=txs)
 
         clone = SubBlock.from_bytes(sb.serialize())
         self.assertEqual(sb, clone)
