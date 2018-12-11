@@ -18,6 +18,8 @@ _log = get_logger("TestBlockManager")
 TEST_IP = '127.0.0.1'
 TEST_SK = TESTNET_DELEGATES[0]['sk']
 
+
+
 class TestBlockManager(TestCase):
 
     # TODO we can probly DRY all this patching/setup code in a setup method or something

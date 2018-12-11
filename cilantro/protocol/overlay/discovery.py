@@ -26,7 +26,7 @@ class Discovery:
             cls.ctx = ctx or zmq.asyncio.Context()
             cls.sock = cls.ctx.socket(zmq.ROUTER)
             cls.is_connected = False
-            if VKBook.is_node_type('masternodes', Auth.vk):
+            if VKBook.is_node_type('masternode', Auth.vk):
                 # cls.discovered_nodes[Auth.vk] = cls.host_ip
                 cls.is_listen_ready = True
                 cls.is_master_node = True
@@ -57,7 +57,7 @@ class Discovery:
 
     @classmethod
     async def discover_nodes(cls, start_ip):
-        is_masternode = VKBook.is_node_type('masternodes', Auth.vk)
+        is_masternode = VKBook.is_node_type('masternode', Auth.vk)
         try_count = 0
         if cls.is_listen_ready:
             await asyncio.sleep(3)

@@ -25,7 +25,7 @@ class BlockMetaData(MessageBase):
                                                                 'NUM_SB_PER_BLOCK {}'.format(len(self._data.merkleRoots),
                                                                                              NUM_SB_PER_BLOCK)
         assert type(self._data.timestamp) == int, 'Invalid timestamp'
-        assert self.masternode_signature.sender in VKBook.get_masternodes(), 'Not a valid masternode'
+        assert VKBook.is_node_type('masternode', self.masternode_signature.sender), 'Not a valid masternode'
 
         assert self.masternode_signature.verify(self.block_hash.encode()), 'Cannot verify signature'
         expected_b_hash = BlockData.compute_block_hash(sbc_roots=self.merkle_roots, prev_block_hash=self.prev_block_hash)

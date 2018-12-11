@@ -31,7 +31,7 @@ class BlockData(MessageBase):
         # assert self._data.transactions, 'No field "transactions"'
         assert self._data.prevBlockHash, 'No field "prevBlockHash"'
         assert self._data.masternodeSignature, 'No field "masternodeSignature"'
-        assert self.masternode_signature.sender in VKBook.get_masternodes(), 'Not a valid masternode'
+        assert VKBook.is_node_type('masternode', self.masternode_signature.sender), 'Not a valid masternode'
         assert self.masternode_signature.verify(self.block_hash.encode()), 'Cannot verify signature'
 
     @classmethod

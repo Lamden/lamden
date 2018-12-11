@@ -32,7 +32,7 @@ def get_constitution(constitution_json=None):
         return { 'sk': sk, 'vk': vk, 'ip': ip }
 
 
-    if env('TEST_NAME'):
+    if env('TEST_NAME') or env('__TEST__'):
         log.important('ConstitutionWarning: This is for testing purposes only!')
         fpath = join(dirname(cilantro_path), 'testnet_configs', constitution_json or '')
         if constitution_json and exists(fpath):

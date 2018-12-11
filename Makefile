@@ -2,7 +2,7 @@
 # 	./scripts/make_test_config.py
 
 start-db:# test_db_conf.ini
-	sudo ./scripts/start_redis_mongo.sh
+	python3 ./scripts/start_redis_mongo.py
 
 start: start-db
 

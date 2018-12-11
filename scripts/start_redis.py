@@ -10,20 +10,20 @@ def start_redis():
 
     print("Starting Redis server...")
 
-    if env('VMNET'):
-        from free_port import free_port
-        from random_password import random_password
-        pw = random_password()
-        port = free_port()
-        with open('docker/redis.env', 'w+') as f:
-            f.write('''
+    os.system('sudo pkill redis-server')
+    if not env('VMNET'):
+        os.system('redis-server &')
+
+    from free_port import free_port
+    from random_password import random_password
+    pw = random_password()
+    port = free_port()
+    with open('docker/redis.env', 'w+') as f:
+        f.write('''
 REDIS_PORT={}
 REDIS_PASSWORD={}
-            '''.format(port,pw))
-        os.system('redis-server docker/redis.conf --port {} --requirepass {} &'.format(port,pw))
-    else:
-        os.system('pkill -9 redis-server')
-        os.system('redis-server &')
+        '''.format(port,pw))
+    os.system('redis-server docker/redis.conf --port {} --requirepass {} &'.format(port,pw))
 
     time.sleep(1)
     print("Done.")

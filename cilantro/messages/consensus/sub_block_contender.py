@@ -23,7 +23,7 @@ class SubBlockContender(MessageBase):
 
     def validate(self):
         self.transactions # Will throw an error if it cannot be deserialized
-        assert self.signature.sender in VKBook.get_delegates(), 'Not a valid delegate'
+        assert VKBook.is_node_type('delegate', self.signature.sender), 'Not a valid delegate'
         assert self.signature.verify(bytes.fromhex(self.result_hash)), 'Cannot verify signature'
         assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
         assert self._data.inputHash, "input hash field missing from data {}".format(self._data)

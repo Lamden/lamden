@@ -21,6 +21,7 @@ all tests are run.
 
 log = get_logger("TestRunner")
 delim = '-' * 80
+os.environ['__TEST__'] = 'True'
 
 
 def skip_tests(test_suite: unittest.TestSuite, test_names: list):

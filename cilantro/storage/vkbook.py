@@ -9,19 +9,30 @@ log = get_logger("VKBook")
 class VKBook:
 
     r = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
-    node_types = ('masternodes', 'witnesses', 'delegates')
-    node_types_env = ('masternode', 'witness', 'delegate')
+    node_types = ('masternode', 'witness', 'delegate')
+    node_types_map = {
+        'masternode': 'masternodes',
+        'witness': 'witnesses',
+        'delegate': 'delegates'
+    }
 
     @classmethod
     def setup(cls, constitution_json=None):
-        cls.constitution = get_constitution(constitution_json)
-        for node_type in cls.node_types:
-            [cls.r.hset(node_type, node['vk'], node.get('ip', 1)) for node in cls.constitution[node_type]]
         cls.bootnodes = []
-        for node_type in cls.node_types_env:
-            node_list = env(node_type.upper())
-            if node_list:
-                cls.bootnodes += node_list.split(',')
+        if os.getenv('__TEST__'):
+            from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_WITNESSES, TESTNET_MASTERNODES
+            [cls.r.hset('masternode', node['vk'], node.get('ip', 1)) for node in TESTNET_MASTERNODES]
+            [cls.r.hset('witness', node['vk'], node.get('ip', 1)) for node in TESTNET_WITNESSES]
+            [cls.r.hset('delegate', node['vk'], node.get('ip', 1)) for node in TESTNET_DELEGATES]
+            VKBook.test_print_nodes()
+        else:
+            cls.constitution = get_constitution(constitution_json)
+            for node_type in cls.node_types:
+                [cls.r.hset(node_type, node['vk'], node.get('ip', 1)) for node in cls.constitution[cls.node_types_map[node_type]]]
+            for node_type in cls.node_types:
+                node_list = env(node_type.upper())
+                if node_list:
+                    cls.bootnodes += node_list.split(',')
 
     @staticmethod
     def blind_trust_vk(vk, node_type, ip=None):
@@ -37,23 +48,27 @@ class VKBook:
         cls.constitution[node_type].append(creds)
 
     @staticmethod
+    def decode(l):
+        return [i.decode() for i in l]
+
+    @staticmethod
     def get_all():
         nodes = {}
         for node_type in VKBook.node_types:
             nodes.update(VKBook.r.hgetall(node_type))
-        return list(nodes.keys())
+        return VKBook.decode(nodes.keys())
 
     @staticmethod
     def get_masternodes():
-        return list(VKBook.r.hgetall('masternodes').keys())
+        return VKBook.decode(VKBook.r.hgetall('masternode').keys())
 
     @staticmethod
     def get_delegates():
-        return list(VKBook.r.hgetall('witnesses').keys())
+        return VKBook.decode(VKBook.r.hgetall('witness').keys())
 
     @staticmethod
     def get_witnesses():
-        return list(VKBook.r.hgetall('delegates').keys())
+        return VKBook.decode(VKBook.r.hgetall('delegate').keys())
 
     @staticmethod
     def is_node_type(node_type, vk):
@@ -62,10 +77,13 @@ class VKBook:
 
     @staticmethod
     def get_delegate_majority():
-        return math.ceil(len(VKBook.r.hgetall('delegates')) * 2/3)
+        return math.ceil(len(VKBook.r.hgetall('delegate')) * 2/3)
 
     @staticmethod
     def test_print_nodes():
         log.notice("masternodes: {}".format(VKBook.get_masternodes()))
         log.notice("witnesses: {}".format(VKBook.get_witnesses()))
         log.notice("delegates: {}".format(VKBook.get_delegates()))
+
+if os.getenv('__TEST__'):
+    VKBook.setup()
