@@ -1,5 +1,5 @@
 from cilantro.messages.base.base import MessageBase
-from cilantro.utils import lazy_property, Hasher
+from cilantro.utils import lazy_property, Hasher, set_lazy_property
 from cilantro.messages.utils import validate_hex
 from cilantro.logger import get_logger
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
@@ -20,12 +20,14 @@ class SubBlock(MessageBase):
         assert self._data.signatures
         assert self._data.merkleLeaves
         assert type(self._data.subBlockIdx) == int
+
+        # If this SB contains transactions, make sure they are the same length as merkle leaves
         if len(self.transactions) > 0:
             assert len(self.transactions) == len(
                 self.merkle_leaves), "Length of transactions transactions {} does not match length of merkle leaves {}".format(
                 len(self.transactions), len(self.merkle_leaves))
 
-        # TODO validate signatures
+        # TODO validate signatures, validate merkle tree
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
@@ -48,6 +50,20 @@ class SubBlock(MessageBase):
         struct.inputHash = input_hash
         struct.transactions = [tx._data for tx in transactions]
         return cls.from_data(struct)
+
+    def remove_tx_data(self):
+        """
+        Removes all transaction data (merkle leaves and transactions) from this SubBlock. Used when we want convey
+        metadata over the wire, but are not interested in the actual transactions (ie. for NewBlockNotifications)
+        """
+        # Cast to a StructBuilder if needed so we can modify fields
+        if type(self._data) is capnp.lib.capnp._DynamicStructReader:
+            self._data = self._data.as_builder()
+
+        self._data.transactions = []
+        self._data.merkleLeaves = []
+        set_lazy_property(self, 'transactions', [])
+        set_lazy_property(self, 'merkle_leaves', [])
 
     @lazy_property
     def signatures(self) -> List[MerkleSignature]:
@@ -77,21 +93,22 @@ class SubBlock(MessageBase):
 class SubBlockBuilder:
 
     @staticmethod
-    def create(num_txs=8, input_hash='A'*64, idx=0, signing_keys: List[str]=None):
+    def create(transactions: List[TransactionData]=None, num_txs=8, input_hash='A'*64, idx=0, signing_keys: List[str]=None):
         from cilantro.messages.transaction.data import TransactionDataBuilder
         from cilantro.protocol.structures.merkle_tree import MerkleTree
 
-        txs = []
-        for _ in range(num_txs):
-            txs.append(TransactionDataBuilder.create_random_tx())
-        txs_bin = [tx.serialize() for tx in txs]
+        if not transactions:
+            transactions = []
+            for _ in range(num_txs):
+                transactions.append(TransactionDataBuilder.create_random_tx())
+        transactions_bin = [tx.serialize() for tx in transactions]
 
-        tree = MerkleTree.from_raw_transactions(txs_bin)
+        tree = MerkleTree.from_raw_transactions(transactions_bin)
         merkle_root = tree.root_as_hex
 
         signing_keys = signing_keys or ['AB' * 32, 'BC' * 32]
         sigs = [MerkleSignature.create_from_payload(sk, tree.root) for sk in signing_keys]
 
         sb = SubBlock.create(merkle_root=merkle_root, signatures=sigs, merkle_leaves=tree.leaves_as_hex,
-                             sub_block_idx=idx, input_hash=input_hash, transactions=txs)
+                             sub_block_idx=idx, input_hash=input_hash, transactions=transactions)
         return sb

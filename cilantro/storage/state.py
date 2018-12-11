@@ -26,7 +26,8 @@ class StateDriver:
             elif tx.contract_type is PublishTransaction:
                 publish_txs.append(tx)
             else:
-                raise Exception('A transaction must be ContractTransaction or PublishTransaction')
+                raise Exception('A transaction must be ContractTransaction or PublishTransaction not {}'
+                                .format(tx.contract_type))
 
         if publish_txs:
             cls._process_publish_txs(publish_txs)
