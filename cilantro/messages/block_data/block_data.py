@@ -74,6 +74,7 @@ class BlockData(MessageBase):
     def transactions(self) -> List[TransactionData]:
         return [TransactionData.from_bytes(tx) for tx in self._data.transactions]
 
+    # make it list instead of dir
     @lazy_property
     def indexed_transactions(self) -> dict:
         return {
