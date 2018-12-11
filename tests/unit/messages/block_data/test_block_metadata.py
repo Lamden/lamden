@@ -49,7 +49,6 @@ class TestBlockMetaData(TestCase):
 
         block_owners = [TEST_VK]
 
-
         block_meta = BlockMetaData.create(block_hash=b_hash, merkle_roots=roots, input_hashes=input_hashes,
                                           prev_block_hash=prev_b_hash, block_owners=block_owners, timestamp=timestamp,
                                           block_num=block_num)

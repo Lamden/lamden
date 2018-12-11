@@ -23,6 +23,7 @@ from cilantro.messages.transaction.data import TransactionData
 from cilantro.messages.block_data.block_data import *
 from cilantro.messages.block_data.state_update import *
 from cilantro.messages.block_data.block_metadata import *
+from cilantro.messages.consensus.merkle_signature import *
 
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol.structures.merkle_tree import MerkleTree
