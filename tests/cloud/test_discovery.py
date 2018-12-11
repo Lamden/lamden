@@ -3,8 +3,6 @@ from cilantro.utils.test.mp_test_case import wrap_func
 from cilantro.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
 
-CONSTITUION_JSON = None
-
 def masternode(idx):
     from cilantro.logger import get_logger
     from vmnet.cloud.comm import signal_success
@@ -14,7 +12,7 @@ def masternode(idx):
     from cilantro.protocol.overlay.auth import Auth
     import asyncio, os, ujson as json, sys
     from cilantro.storage.vkbook import VKBook
-    VKBook.setup(CONSTITUION_JSON)
+    VKBook.setup()
 
     async def check_nodes():
         while True:
@@ -42,7 +40,7 @@ def delegates(idx):
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     import asyncio, os, ujson as json, sys
     from cilantro.storage.vkbook import VKBook
-    VKBook.setup(CONSTITUION_JSON)
+    VKBook.setup()
 
     async def check_nodes():
         while True:

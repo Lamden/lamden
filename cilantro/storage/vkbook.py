@@ -21,9 +21,11 @@ class VKBook:
         cls.bootnodes = []
         if os.getenv('__TEST__'):
             from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_WITNESSES, TESTNET_MASTERNODES
-            [cls.r.hset('masternode', node['vk'], node.get('ip', 1)) for node in TESTNET_MASTERNODES]
-            [cls.r.hset('witness', node['vk'], node.get('ip', 1)) for node in TESTNET_WITNESSES]
-            [cls.r.hset('delegate', node['vk'], node.get('ip', 1)) for node in TESTNET_DELEGATES]
+            cls.constitution = {
+                'masternode': [cls.r.hset('masternode', node['vk'], node.get('ip', 1)) for node in TESTNET_MASTERNODES],
+                'witness': [cls.r.hset('witness', node['vk'], node.get('ip', 1)) for node in TESTNET_WITNESSES],
+                'delegate': [cls.r.hset('delegate', node['vk'], node.get('ip', 1)) for node in TESTNET_DELEGATES]
+            }
         else:
             cls.constitution = get_constitution(constitution_json)
             for node_type in cls.node_types:
