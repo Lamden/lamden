@@ -1,9 +1,16 @@
-from cilantro.messages.block_data.state_update import BlockDataReply
-from cilantro.messages.block_data.block_data import BlockDataBuilder
-from cilantro.constants.system_config import NUM_SUB_BLOCKS
-from unittest import TestCase
-import secrets
-from unittest import mock
+"""
+BlockMetaData is just a subclass of BlockData, with no additional fields, so tests should be covered by test_block_data
+
+-- davis
+"""
+
+
+# from cilantro.messages.block_data.state_update import BlockDataReply
+# from cilantro.messages.block_data.block_data import BlockDataBuilder
+# from cilantro.constants.system_config import NUM_SUB_BLOCKS
+# from unittest import TestCase
+# import secrets
+# from unittest import mock
 
 
 # BlockDataReply is a subclass of BlockData, with no additions, so test_block_data should cover all the bases here

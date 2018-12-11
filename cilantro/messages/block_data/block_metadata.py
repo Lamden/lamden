@@ -23,7 +23,7 @@ class BlockMetaData(BlockData):
         super().validate()
 
         # This is just for dev purposes. We check that no one is trying to create this with actual transactions
-        # or merkle leaves
+        # or merkle leaves (use a an ctual BlockData or BlockDataReply for this)
         assert len(self.transactions) == 0, "BlockMetaData should not contain any transactions!"
         assert len(self.merkle_leaves) == 0, "BlockMetaData should not contain any merkle_leaves!"
 

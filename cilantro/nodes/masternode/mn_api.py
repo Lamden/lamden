@@ -5,7 +5,7 @@ from cilantro.nodes.masternode.master_store import MasterOps
 # from cilantro.nodes.catchup import CatchupManager
 from cilantro.storage.state import StateDriver
 from cilantro.logger.base import get_logger
-from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
+from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 import dill, ujson as json, textwrap, bson
 from bson.objectid import ObjectId

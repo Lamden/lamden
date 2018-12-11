@@ -1,6 +1,6 @@
 from cilantro.messages.transaction.data import TransactionData
 from cilantro.messages.transaction.contract import ContractTransactionBuilder, ContractTransaction
-from cilantro.messages.block_data.block_data import BlockData, GENESIS_BLOCK_HASH, BlockDataBuilder
+from cilantro.messages.block_data.block_data import BlockData, GENESIS_BLOCK_HASH
 from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from unittest import TestCase
@@ -53,11 +53,6 @@ class TestBlockData(TestCase):
 
         clone = BlockData.from_bytes(block.serialize())
         self.assertEqual(clone, block)
-
-    def test_builder(self):
-        # Basically we just want make sure this method doesnt blow up cause its used in other tests lol
-        b = BlockDataBuilder.create_block()
-        self.assertTrue(b is not None)
 
 
 if __name__ == '__main__':
