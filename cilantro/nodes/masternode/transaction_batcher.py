@@ -36,8 +36,8 @@ class TransactionBatcher(Worker):
         # TODO - do we need skip_turns? we need it with assumption that it is more efficient to skip very small batch
         # Instead of two small batches, it is more efficient to have one empty one and second one with combined one.
         # need to verify this assumption when Seneca is fully operational
-        skip_turns = 100 * MAX_SKIP_TURNS
-        sent_empty_bag = True
+        skip_turns = MAX_SKIP_TURNS
+        first_bag_sent = False
         # raghu: need to tie this with new block notifications for better efficiency?, but for now:
         num_bags_sent = 0
 
@@ -55,14 +55,15 @@ class TransactionBatcher(Worker):
                     # self.log.spam("masternode bagging transaction from sender {}".format(tx.transaction.sender))
 
                     tx_list.append(tx)
-                    skip_turns = MAX_SKIP_TURNS  # reset to max again
-                    sent_empty_bag = False
+                skip_turns = MAX_SKIP_TURNS  # reset to max again
+                if len(tx_list):
+                    first_bag_sent = True
             else:
                 skip_turns = skip_turns - 1
                 # continue
 
             # send either empty or some txns capping at TRANSACTIONS_PER_SUB_BLOCK
-            if sent_empty_bag:
+            if not first_bag_sent:
                 self.log.spam("Skipping this batch (skip_turns={}, num_bags_sent={})".format(skip_turns, num_bags_sent))
                 continue
 
@@ -72,6 +73,5 @@ class TransactionBatcher(Worker):
                 self.log.info("Sending {} transactions in batch".format(len(tx_list)))
             else:
                 self.log.info("Sending an empty transaction batch")
-                sent_empty_bag = True
 
             num_bags_sent = num_bags_sent + 1

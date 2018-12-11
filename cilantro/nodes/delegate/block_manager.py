@@ -317,7 +317,6 @@ class BlockManager(Worker):
             self.log.info("New block notification is same as current state. Ignoring.")
             return
 
-        # rpcx
         if (self.db_state.state == DBState.CATCHUP) or \
             (block_data.prev_block_hash != self.db_state.cur_block_hash):
             self.db_state.state = DBState.CATCHUP

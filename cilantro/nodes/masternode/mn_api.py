@@ -111,6 +111,15 @@ class StorageDriver:
         return blk_hash
 
     @classmethod
+    def check_block_exists(cls, block_hash: str) -> bool:
+        """
+        Checks if the given block hash exists in our index table
+        :param block_hash: The block hash to check
+        :return: True if the block hash exists in our index table, and False otherwise
+        """
+        return MasterOps.get_blk_num_frm_blk_hash(block_hash) is not None
+
+    @classmethod
     def process_catch_up_idx(cls, vk=None, curr_blk_hash=None):
         """
         API gets latest hash requester has and responds with delta block index
@@ -122,7 +131,7 @@ class StorageDriver:
 
         # check if requester is master or del
 
-        valid_node = bool(VKBook.get_masternodes().index(vk)) & bool(VKBook.get_delegates().index(vk))
+        valid_node = bool(VKBook.get_masternodes().index(vk)) or bool(VKBook.get_delegates().index(vk))
 
         if valid_node is True:
             given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = curr_blk_hash)

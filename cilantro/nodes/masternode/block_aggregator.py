@@ -4,6 +4,7 @@ from cilantro.protocol.structures.merkle_tree import MerkleTree
 
 from cilantro.storage.state import StateDriver
 from cilantro.storage.vkbook import VKBook
+from cilantro.nodes.catchup import CatchupManager
 from cilantro.nodes.masternode.mn_api import StorageDriver
 
 from cilantro.constants.zmq_filters import *
@@ -11,12 +12,12 @@ from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGA
 from cilantro.constants.system_config import *
 
 from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.consensus.sub_block import SubBlockMetaData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.block_data.block_data import BlockData
-from cilantro.messages.block_data.block_metadata import BlockMetaData, NewBlockNotification
-from cilantro.messages.block_data.state_update import StateUpdateReply, BlockIndexRequest
+from cilantro.messages.block_data.state_update import *
+from cilantro.messages.block_data.block_metadata import NewBlockNotification
+
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
 from typing import List
@@ -38,13 +39,20 @@ class BlockAggregator(Worker):
         self.full_blocks = {}
         self.curr_block_hash = StorageDriver.get_latest_block_hash()
 
-        self.pub, self.sub, self.router = None, None, None
+        self.pub, self.sub, self.router = None, None, None  # Set in build_task_list
+        self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
+        self.is_catching_up = False
 
         self.run()
 
     def run(self):
         self.log.info("Block Aggregator starting...")
         self.build_task_list()
+
+        self.log.notice("starting initial catchup...")
+        self.is_catching_up = True
+        self.catchup_manager.send_block_idx_req()
+
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def build_task_list(self):
@@ -81,21 +89,44 @@ class BlockAggregator(Worker):
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
             self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
 
-        # Listen to masternodes for new block notifs and state update requests
-        self.sub.setsockopt(zmq.SUBSCRIBE, MASTER_MASTER_FILTER.encode())
+        # Listen to masters for new block notifs and state update requests from masters/delegates
+        self.sub.setsockopt(zmq.SUBSCRIBE, CATCHUP_MN_DN_FILTER.encode())
+        self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
                 self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+
+        self.catchup_manager = CatchupManager(verifying_key=self.verifying_key, pub_socket=self.pub,
+                                              router_socket=self.router, store_full_blocks=True)
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
 
         if isinstance(msg, SubBlockContender):
-            self.recv_sub_block_contender(msg)
+            if self.is_catching_up:
+                self.log.warning("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
+                return
+            else:
+                self.recv_sub_block_contender(msg)
+
         elif isinstance(msg, NewBlockNotification):
             self.recv_new_block_notif(msg)
+            # TODO send this to the catchup manager
+
+        elif isinstance(msg, BlockIndexRequest):
+            self.catchup_manager.recv_block_idx_req(envelope.sender, msg)
+
+        elif isinstance(msg, BlockIndexReply):
+            self.catchup_manager.recv_block_idx_reply(envelope.sender, msg)
+
+        elif isinstance(msg, BlockDataRequest):
+            self.catchup_manager.recv_block_data_req(envelope.sender, msg)
+
+        elif isinstance(msg, BlockDataReply):
+            self.catchup_manager.recv_block_data_reply(msg)
+
         else:
             raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
@@ -112,6 +143,18 @@ class BlockAggregator(Worker):
 
     def recv_sub_block_contender(self, sbc: SubBlockContender):
         self.log.info("Received a sbc with result hash {} and input hash {}".format(sbc.result_hash, sbc.input_hash))
+        assert not self.is_catching_up, "We should not be receiving SBCs when we are catching up!"
+
+        # If the previous block hash is not in our index table, we could possibly be out of date, and should trigger
+        # a catchup. NOTE -- we should probably get some consensus on these allegedly 'new' prev_block_hashes incase
+        # a bad delegate decides to send us new bad SubBlockContenders and cause us to be in perpetual catchup
+        if not StorageDriver.check_block_exists(sbc.prev_block_hash):
+            self.log.warning("Masternode got SBC with prev block hash {} that does not exist in our index table! "
+                             "Starting catchup\n(SBC={})".format(sbc.prev_block_hash, sbc))
+            self.catchup_manager.send_block_idx_req()
+            self.is_catching_up = True
+            return
+
         if self.result_hashes.get(sbc.result_hash):
             if self.result_hashes[sbc.result_hash].get('_consensus_reached_') or self.sub_blocks.get(sbc.result_hash):
                 self.log.debugv('Already validated this SubBlock (result_hash={})'.format(
@@ -292,5 +335,5 @@ class BlockAggregator(Worker):
 
     def recv_state_update_request(self, id_frame: bytes, req: BlockIndexRequest):
         blocks = StorageDriver.get_latest_blocks(req.block_hash)
-        reply = StateUpdateReply.create(blocks)
+        reply = BlockDataReply.create(blocks)
         self.router.send_multipart([])
