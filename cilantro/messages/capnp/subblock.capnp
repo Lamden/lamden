@@ -24,9 +24,3 @@ struct SubBlockContender {
 }
 
 
-struct EmptySubBlockContender {
-    inputHash @0 :Data;
-    signature @1 :Data;
-    subBlockIdx @2 :UInt8;
-}
-
