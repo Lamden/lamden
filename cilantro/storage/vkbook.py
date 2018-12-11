@@ -19,8 +19,9 @@ class VKBook:
             [cls.r.hset(node_type, node['vk'], node.get('ip', 1)) for node in cls.constitution[node_type]]
         cls.bootnodes = []
         for node_type in cls.node_types_env:
-            if env(node_type.upper()):
-                cls.bootnodes += env(node_type).split(',')
+            node_list = env(node_type.upper())
+            if node_list:
+                cls.bootnodes += node_list.split(',')
 
     @staticmethod
     def blind_trust_vk(vk, node_type, ip=None):

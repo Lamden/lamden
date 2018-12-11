@@ -1,5 +1,5 @@
 import unittest, time, random, cilantro, asyncio, ujson as json, os
-from cilantro.utils.utils import wrap_func
+from cilantro.utils.test.mp_test_case import wrap_func
 from cilantro.constants.vmnet import get_constitution, get_config_file
 from vmnet.cloud.testcase import AWSTestCase
 
