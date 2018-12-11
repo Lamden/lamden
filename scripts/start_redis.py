@@ -13,7 +13,9 @@ def start_redis():
     print("Starting Redis server...")
 
     os.system('sudo pkill redis-server')
-    if not env('VMNET'):
+    if env('CIRCLECI'):
+        os.system('redis-server')
+    elif not env('VMNET'):
         os.system('redis-server &')
 
     if env('CIRCLECI'):
