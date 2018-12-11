@@ -19,8 +19,6 @@ jobs:
             wget http://download.redis.io/releases/redis-4.0.6.tar.gz
             tar xzf redis-4.0.6.tar.gz
             cd redis-4.0.6 && make
-            sudo mv ./redis-4.0.6/src/redis-server /usr/local/bin
-            sudo mv ./redis-4.0.6/src/redis-sentinel /usr/local/bin
 
       - run:
           name: Install Cilantro Requirements
@@ -49,11 +47,12 @@ jobs:
           paths:
             - "/usr/local/bin"
             - "/opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages"
+            - "./redis-4.0.6"
 
       - run:
           name: Run Tests
           command: |
-            redis-server --daemonize yes
+            ./redis-4.0.6/src/redis-server --daemonize yes
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
             python3 ./scripts/make_test_config.py
