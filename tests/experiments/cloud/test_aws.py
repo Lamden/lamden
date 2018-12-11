@@ -1,4 +1,4 @@
-import unittest, time, random, cilantro, asyncio, ujson as json, os
+import unittest, time, random, cilantro, asyncio, ujson as json, os, sys
 from cilantro.utils.test.mp_test_case import wrap_func
 from cilantro.constants.vmnet import get_constitution, get_config_file
 from vmnet.cloud.testcase import AWSTestCase
@@ -8,6 +8,7 @@ CONSTITUION_JSON = None
 
 def masternode(idx):
     from cilantro.logger import get_logger
+    from vmnet.cloud.comm import signal_success
     log = get_logger('MasterNode_{}'.format(idx))
 
     from cilantro.protocol.overlay.discovery import Discovery
@@ -20,7 +21,7 @@ def masternode(idx):
         while True:
             await asyncio.sleep(1)
             if len(Discovery.discovered_nodes) >= 1:
-                quit()
+                signal_success()
 
     loop = asyncio.get_event_loop()
     Auth.setup(VKBook.constitution['masternodes'][idx]['sk'])
@@ -36,6 +37,7 @@ def masternode(idx):
 def delegates(idx):
     from cilantro.logger import get_logger
     log = get_logger('DelegateNode_{}'.format(idx))
+    from vmnet.cloud.comm import signal_success
     from cilantro.protocol.overlay.discovery import Discovery
     from cilantro.protocol.overlay.auth import Auth
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
@@ -47,7 +49,7 @@ def delegates(idx):
         while True:
             await asyncio.sleep(1)
             if len(Discovery.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
-                quit()
+                signal_success()
 
     loop = asyncio.get_event_loop()
     Auth.setup(VKBook.constitution['delegates'][idx]['sk'])
@@ -62,7 +64,7 @@ def delegates(idx):
 class TestCloud(AWSTestCase):
 
     config_file = get_config_file('cilantro_aws.json')
-    keep_up = False
+    keep_up = True
     timeout = 120
 
     def test_aws(self):
