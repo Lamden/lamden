@@ -62,6 +62,8 @@ class Discovery:
         if cls.is_listen_ready:
             await asyncio.sleep(3)
 
+        cls.important(VKBook.bootnodes)
+
         while True:
             if try_count == 0 and len(VKBook.bootnodes) > 0:
                 cls.log.info('Connecting to boot nodes: {}'.format(VKBook.bootnodes))
