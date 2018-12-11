@@ -25,13 +25,19 @@ class BlockData(MessageBase):
         # TODO clean this up, and share subclass with BlockMetaData. Then we can do deep validation in one place
         assert self._data.blockHash, 'No field "blockHash"'
         assert hasattr(self._data, 'blockNum'), 'No field "blockNum"'
-        # assert self._data.transactions, 'No field "transactions"'
         assert self._data.prevBlockHash, 'No field "prevBlockHash"'
+
+        # TODO we should probobly not do this here because VKBook can change over time
         for mn_vk in self.block_owners:
             assert mn_vk in VKBook.get_masternodes(), "Block owner vk {} not in masternode VKBook!".format(mn_vk)
 
+        # Validate block hash
         expected_b_hash = BlockData.compute_block_hash(sbc_roots=self.merkle_roots, prev_block_hash=self.prev_block_hash)
         assert expected_b_hash == self.block_hash, "Block hash could not be verified (does not match computed hash)"
+
+        # Validate sub_block order
+        for i, sb in enumerate(self.sub_blocks):
+            assert sb.index == i, "Sub blocks out of order!"
 
     @classmethod
     def _deserialize_data(cls, data):
@@ -47,30 +53,40 @@ class BlockData(MessageBase):
         struct.prevBlockHash = prev_block_hash
         struct.blockOwners = block_owners
 
-        struct.transactions = [tx.serialize() for tx in transactions]
+        # Sort sub-blocks by index if they are not done so already
+        sub_blocks = sorted(sub_blocks, key=lambda sb: sb.index)
+        struct.subBlocks = [sb._data for sb in sub_blocks]
+
         return cls.from_data(struct)
 
     @lazy_property
     def block_hash(self) -> str:
-        return self._data.blockHash.decode()
+        return self._data.blockHash
 
     @property
     def block_num(self) -> int:
-        return int(self._data.blockNum)
+        return self._data.blockNum
 
     @lazy_property
     def prev_block_hash(self) -> str:
-        return self._data.prevBlockHash.decode()
+        return self._data.prevBlockHash
+
+    @lazy_property
+    def sub_blocks(self) -> List[SubBlock]:
+        return [SubBlock.from_data(sb) for sb in self._data.subBlocks]
 
     @lazy_property
     def transactions(self) -> List[TransactionData]:
-        return [TransactionData.from_bytes(tx) for tx in self._data.transactions]
+        txs = []
+        for sb in self.sub_blocks:
+            txs += sb.transactions
+        return txs
 
-    # make it list instead of dir
+    # TODO -- make it list instead of dir
     @lazy_property
     def indexed_transactions(self) -> dict:
         return {
-            TransactionData.from_bytes(tx).hash: tx for tx in self._data.transactions
+            TransactionData.from_bytes(tx).hash: tx for tx in self.transactions
         }
 
     @lazy_property
@@ -79,11 +95,11 @@ class BlockData(MessageBase):
 
     @lazy_property
     def merkle_roots(self) -> List[str]:
-        return [mr.decode() for mr in self._data.merkleRoots]
+        return [sb.merkle_root for sb in self.sub_blocks]
 
     @lazy_property
     def input_hashes(self) -> List[str]:
-        return [input_hash.decode() for input_hash in self._data.inputHashes]
+        return [sb.input_hash for sb in self.sub_blocks]
 
 
 class GenesisBlockData(BlockData):

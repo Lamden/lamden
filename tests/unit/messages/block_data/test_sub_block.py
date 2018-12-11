@@ -1,7 +1,7 @@
 from cilantro.messages.transaction.data import TransactionDataBuilder
 from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH
 from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro.messages.block_data.sub_block import SubBlock
+from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 
 from unittest import TestCase
@@ -33,7 +33,7 @@ class TestSubBlock(TestCase):
         self.assertEqual(sb.signatures, sigs)
         self.assertEqual(sb.merkle_leaves, tree.leaves_as_hex)
         self.assertEqual(sb.input_hash, input_hash)
-        self.assertEqual(sb.sub_block_idx, sb_idx)
+        self.assertEqual(sb.index, sb_idx)
         self.assertEqual(sb.transactions, txs)
 
     def test_create_no_transactions(self):
@@ -58,7 +58,7 @@ class TestSubBlock(TestCase):
         self.assertEqual(sb.signatures, sigs)
         self.assertEqual(sb.merkle_leaves, tree.leaves_as_hex)
         self.assertEqual(sb.input_hash, input_hash)
-        self.assertEqual(sb.sub_block_idx, sb_idx)
+        self.assertEqual(sb.index, sb_idx)
         self.assertEqual(sb.transactions, [])
 
     def test_serialize_deserialize(self):
@@ -81,3 +81,8 @@ class TestSubBlock(TestCase):
 
         clone = SubBlock.from_bytes(sb.serialize())
         self.assertEqual(sb, clone)
+
+    def test_sub_block_builder(self):
+        # This shoudl not raise an error
+        sb = SubBlockBuilder.create()
+
