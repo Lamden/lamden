@@ -2,7 +2,7 @@ import os, time
 from os import getenv as env
 
 def start_redis():
-    if not env('CIRCLECI') and not env('vmnet'):
+    if not env('CIRCLECI') and not env('VMNET'):
         for package in ['seneca', 'vmnet']:
             os.system('cp -r ./venv/lib/python3.6/site-packages/{} /usr/local/lib/python3.6/dist-packages'.format(package))
 

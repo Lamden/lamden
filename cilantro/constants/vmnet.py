@@ -33,7 +33,7 @@ def get_constitution(constitution_json=None):
 
     if env('TEST_NAME'):
         log.important('ConstitutionWarning: This is for testing purposes only!')
-        fpath = join(dirname(cilantro_path), 'testnet_configs', constitution_json)
+        fpath = join(dirname(cilantro_path), 'testnet_configs', constitution_json or '')
         if constitution_json and exists(fpath):
             log.info('Loading constituion from {}...'.format(fpath))
             with open(fpath) as f:
