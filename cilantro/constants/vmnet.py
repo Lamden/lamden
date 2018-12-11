@@ -27,7 +27,6 @@ def get_constitution(constitution_json=None):
         assert env('GLOBAL_SEED'), 'No GLOBAL_SEED found.'
         random.seed(int(env('GLOBAL_SEED'), 16)+ip_to_decimal(ip))
         sk = '%64x' % random.randrange(16**64)
-        log.critical('{}:{}'.format(sk, ip))
         vk = get_vk(sk)
         random.seed()
         return { 'sk': sk, 'vk': vk, 'ip': ip }
