@@ -16,7 +16,11 @@ jobs:
       - run:
           name: Install Redis
           command: |
-            sudo apt-get install redis-server
+            wget http://download.redis.io/releases/redis-4.0.6.tar.gz
+            tar xzf redis-4.0.6.tar.gz
+            cd redis-4.0.6 && make
+            sudo mv ./redis-4.0.6/src/redis-server /usr/local/bin
+            sudo mv ./redis-4.0.6/src/redis-sentinel /usr/local/bin
 
       - run:
           name: Install Cilantro Requirements
@@ -31,7 +35,7 @@ jobs:
             VER="18.03.1-ce"
             curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
             tar -xz -C /tmp -f /tmp/docker-$VER.tgz
-            sudo mv /tmp/docker/* /usr/bin
+            sudo mv /tmp/docker/* /usr/local/bin
 
       - run:
           name: Install Docker Compose
