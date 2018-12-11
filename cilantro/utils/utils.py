@@ -110,6 +110,11 @@ def int_to_bytes(x):
 def bytes_to_int(xbytes):
     return int.from_bytes(xbytes, 'big')
 
+def wrap_func(fn, *args, **kwargs):
+    def wrapper():
+        return fn(*args, **kwargs)
+    return wrapper
+
 
 class IPUtils:
     url_pattern = re.compile(
