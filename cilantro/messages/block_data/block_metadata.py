@@ -18,6 +18,7 @@ class BlockMetaData(MessageBase):
 
     def validate(self):
         from cilantro.messages.block_data.block_data import BlockData  # avoid cyclic imports
+        from cilantro.storage.vkbook import VKBook
 
         assert validate_hex(self._data.blockHash, 64), 'Invalid hash'
         assert validate_hex(self._data.prevBlockHash, 64), 'Invalid previous block hash'
@@ -25,9 +26,10 @@ class BlockMetaData(MessageBase):
                                                                 'NUM_SB_PER_BLOCK {}'.format(len(self._data.merkleRoots),
                                                                                              NUM_SB_PER_BLOCK)
         assert type(self._data.timestamp) == int, 'Invalid timestamp'
-        assert self.masternode_signature.sender in VKBook.get_masternodes(), 'Not a valid masternode'
 
-        assert self.masternode_signature.verify(self.block_hash.encode()), 'Cannot verify signature'
+        for mn_vk in self.block_owners:
+            assert mn_vk in VKBook.get_masternodes(), "Block owner vk {} not in masternode VKBook!".format(mn_vk)
+
         expected_b_hash = BlockData.compute_block_hash(sbc_roots=self.merkle_roots, prev_block_hash=self.prev_block_hash)
         assert expected_b_hash == self.block_hash, "Block hash could not be verified (does not match computed hash)"
 
@@ -37,7 +39,7 @@ class BlockMetaData(MessageBase):
 
     @classmethod
     def create(cls, block_hash: str, merkle_roots: List[str], prev_block_hash: str,
-               masternode_signature: MerkleSignature, input_hashes: List[str] = [],
+               block_owners: List[str], input_hashes: List[str],
                timestamp: int = 0, block_num: int = 0):
 
         if not timestamp:
@@ -51,14 +53,14 @@ class BlockMetaData(MessageBase):
         struct.inputHashes = input_hashes
         struct.timestamp = int(timestamp)
         struct.blockNum = block_num
-        struct.masternodeSignature = masternode_signature.serialize()
+        struct.blockOwners = block_owners
         return cls.from_data(struct)
 
     @classmethod
     def create_from_block_data(cls, block_data):
         return cls.create(
             block_hash=block_data.block_hash, prev_block_hash=block_data.prev_block_hash,
-            masternode_signature=block_data.masternode_signature,
+            block_owners=block_data.masternode_signature,
             input_hashes=block_data.input_hashes,
             merkle_roots=block_data.merkle_roots, block_num=block_data.block_num
         )
@@ -76,10 +78,6 @@ class BlockMetaData(MessageBase):
         return [h.decode() for h in self._data.inputHashes]
 
     @property
-    def masternode_signature(self) -> MerkleSignature:
-        return MerkleSignature.from_bytes(self._data.masternodeSignature)
-
-    @property
     def prev_block_hash(self) -> str:
         return self._data.prevBlockHash.decode()
 
@@ -90,6 +88,10 @@ class BlockMetaData(MessageBase):
     @property
     def block_num(self) -> int:
         return self._data.blockNum
+
+    @lazy_property
+    def block_owners(self) -> List[str]:
+        return [x for x in self._data.blockOwners]  # Necessary to cast capnp list builder to Python list
 
     def __eq__(self, other):
         return self._data.blockHash == other._data.blockHash and \

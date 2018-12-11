@@ -8,7 +8,7 @@ struct BlockMetaData {
     inputHashes @2 :List(Data);
     prevBlockHash @3 :Data;
     timestamp @4 :UInt64;
-    masternodeSignature @5 :Data;
+    blockOwners @5 :List(Text);
     blockNum @6 :UInt32;
 }
 
@@ -18,7 +18,7 @@ struct BlockData {
     merkleRoots @2 :List(Data);
     inputHashes @3 :List(Data);
     prevBlockHash @4 :Data;
-    masternodeSignature @5 :Data;
+    blockOwners @5 :List(Text);
     transactions @6 :List(Data);
 }
 

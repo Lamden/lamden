@@ -3,10 +3,11 @@
 using T = import "transaction.capnp";
 
 struct SubBlock {
-    merkleRoot @0 :Data;
+    merkleRoot @0 :Text;
     signatures @1: List(Data);
-    merkleLeaves @2: List(Data);
+    merkleLeaves @2: List(Text);
     subBlockIdx @3: UInt8;
+    inputHash @4: Text;
 }
 
 struct SubBlockContender {

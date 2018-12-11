@@ -3,6 +3,8 @@ from unittest.mock import MagicMock
 
 from cilantro.messages.transaction.contract import ContractTransaction, ContractTransactionBuilder
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
+from cilantro.constants.testnet import TESTNET_MASTERNODES
+TEST_SK = TESTNET_MASTERNODES[0]['sk']
 
 
 class TestTransactionData(TestCase):
@@ -27,3 +29,20 @@ class TestTransactionData(TestCase):
         clone = TransactionData.from_bytes(tx_data.serialize())
 
         self.assertEqual(tx_data, clone)
+
+    def test_create(self):
+        td = TransactionData.create(
+            contract_tx=ContractTransactionBuilder.create_currency_tx(
+                sender_sk=TEST_SK, receiver_vk='A' * 64, amount=10),
+            status='SUCCESS', state='SET x 1')
+
+        self.assertTrue(isinstance(td.contract_tx, ContractTransaction))
+
+    def test_serialize_deserialize2(self):
+        td = TransactionData.create(
+            contract_tx=ContractTransactionBuilder.create_currency_tx(
+                sender_sk=TEST_SK, receiver_vk='A' * 64, amount=10),
+            status='SUCCESS', state='SET x 1')
+        clone = TransactionData.from_bytes(td.serialize())
+
+        self.assertEqual(clone, td)

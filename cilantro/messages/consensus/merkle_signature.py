@@ -56,6 +56,12 @@ class MerkleSignature(MessageBase):
         return cls.from_data(data, validate=validate)
 
     @classmethod
+    def create_from_payload(cls, signing_key: str, payload: bytes, verifying_key: str=None, timestamp: str=None):
+        sig_hex = wallet.sign(signing_key, payload)
+        verifying_key = verifying_key or wallet.get_vk(signing_key)
+        return cls.create(sig_hex=sig_hex, sender=verifying_key)
+
+    @classmethod
     def _deserialize_data(cls, data: bytes):
         return json.loads(data.decode())
 

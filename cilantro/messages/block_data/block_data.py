@@ -28,13 +28,16 @@ class BlockData(MessageBase):
         return Hasher.hash_iterable(sbc_roots + [prev_block_hash])
 
     def validate(self):
+        # TODO clean this up, and share subclass with BlockMetaData. Then we can do deep validation in one place
         assert self._data.blockHash, 'No field "blockHash"'
         assert hasattr(self._data, 'blockNum'), 'No field "blockNum"'
         # assert self._data.transactions, 'No field "transactions"'
         assert self._data.prevBlockHash, 'No field "prevBlockHash"'
-        assert self._data.masternodeSignature, 'No field "masternodeSignature"'
-        assert self.masternode_signature.sender in VKBook.get_masternodes(), 'Not a valid masternode'
-        assert self.masternode_signature.verify(self.block_hash.encode()), 'Cannot verify signature'
+        for mn_vk in self.block_owners:
+            assert mn_vk in VKBook.get_masternodes(), "Block owner vk {} not in masternode VKBook!".format(mn_vk)
+
+        expected_b_hash = BlockData.compute_block_hash(sbc_roots=self.merkle_roots, prev_block_hash=self.prev_block_hash)
+        assert expected_b_hash == self.block_hash, "Block hash could not be verified (does not match computed hash)"
 
     @classmethod
     def _deserialize_data(cls, data):
@@ -42,8 +45,7 @@ class BlockData(MessageBase):
 
     @classmethod
     def create(cls, block_hash: str, prev_block_hash: str, transactions: List[TransactionData],
-               masternode_signature: MerkleSignature, merkle_roots: List[str],
-               input_hashes: List[str] = [], block_num: int=0):
+               block_owners: List[str], merkle_roots: List[str], input_hashes: List[str], block_num: int=0):
         struct = blockdata_capnp.BlockData.new_message()
         struct.init('transactions', len(transactions))
         struct.init('merkleRoots', len(merkle_roots))
@@ -52,7 +54,7 @@ class BlockData(MessageBase):
         struct.inputHashes = input_hashes
         struct.merkleRoots = [mr.encode() for mr in merkle_roots]
         struct.prevBlockHash = prev_block_hash
-        struct.masternodeSignature = masternode_signature.serialize()
+        struct.blockOwners = block_owners
         struct.transactions = [tx.serialize() for tx in transactions]
         return cls.from_data(struct)
 
@@ -79,8 +81,8 @@ class BlockData(MessageBase):
         }
 
     @lazy_property
-    def masternode_signature(self) -> MerkleSignature:
-        return MerkleSignature.from_bytes(self._data.masternodeSignature)
+    def block_owners(self) -> List[str]:
+        return [x for x in self._data.blockOwners]  # Necessary to cast capnp list builder to Python list
 
     @lazy_property
     def merkle_roots(self) -> List[str]:
@@ -101,8 +103,7 @@ class GenesisBlockData(BlockData):
         struct = blockdata_capnp.BlockData.new_message()
         struct.blockHash = GENESIS_BLOCK_HASH
         struct.blockNum = 0
-        struct.masternodeSignature = (MerkleSignature.create(sig_hex = wallet.sign(sk, GENESIS_BLOCK_HASH.encode()),
-                                     sender = vk, timestamp = str(time.time()))).serialize()
+        struct.blockOwners = [vk]
 
         return cls.from_data(struct)
 
@@ -138,9 +139,8 @@ class BlockDataBuilder:
 
         block_hash = BlockData.compute_block_hash(merkle_roots, prev_block_hash)
         block_num = blk_num
-        signature = build_test_merkle_sig(msg=block_hash.encode(), sk=mn_sk, vk=mn_vk)
         block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, transactions=all_transactions,
-                                 masternode_signature=signature, merkle_roots=merkle_roots, block_num=block_num,
+                                 block_owners=[mn_vk], merkle_roots=merkle_roots, block_num=block_num,
                                  input_hashes=input_hashes)
 
         return block
