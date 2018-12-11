@@ -7,9 +7,6 @@ jobs:
     parallelism: 5
     steps:
       - checkout
-      - run: sudo rm -rf /usr/local/seneca
-      - run: sudo mkdir /usr/local/seneca
-      - run: sudo chown -R circleci:circleci /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
@@ -21,6 +18,7 @@ jobs:
           command: |
              pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
              pip install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
+
       - run:
           name: Install Docker client
           command: |
@@ -37,6 +35,11 @@ jobs:
             chmod +x ~/docker-compose
             sudo mv ~/docker-compose /usr/local/bin/docker-compose
 
+      - run:
+          name: Install Redis
+          command: |
+            sudo apt install redis-server
+
       - save_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
           paths:
@@ -46,6 +49,7 @@ jobs:
       - run:
           name: Run Tests
           command: |
+            redis-server --daemonize yes
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
             python3 ./scripts/make_test_config.py
@@ -63,13 +67,8 @@ jobs:
     parallelism: 1
     steps:
       - checkout
-      - run: sudo rm -rf /usr/local/seneca
-      - run: sudo mkdir /usr/local/seneca
-      - run: sudo mkdir -p -m 777 /home/circleci/cilantro/src/seneca/logs
-      - run: sudo chown -R circleci:circleci /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
-      - run: sudo chown -R circleci:circleci /home/circleci/cilantro/src/seneca/logs
       - restore_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
 
