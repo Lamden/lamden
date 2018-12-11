@@ -57,7 +57,7 @@ class DBState:
         self.my_new_block_hash = None
         self.new_block_hash = None
         self.catchup_mgr = None
-        self.state = DBState.CATCHUP
+        # self.state = DBState.CATCHUP
         self.next_block = {}
         self.sub_block_hash_map = {}
 
@@ -222,7 +222,7 @@ class BlockManager(Worker):
             # TODO update latest block hash (& next one if needed) locally
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
             # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
-            self.state = DBState.CURRENT
+            # self.state = DBState.CURRENT
             self.send_updated_db_msg()
 
     def handle_router_msg(self, frames):
@@ -274,38 +274,45 @@ class BlockManager(Worker):
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
-    def update_db(self, block_num):
+    def align_input_hashes_if_needed(self, block: NewBlockNotification):
+        pass
+
+    def update_db(self):
+        block = self.db_state.next_block[self.db_state.new_block_hash][0]
+        if self.db_state.my_new_block_hash != self.db_state.new_block_hash:    # holy cow - mismatch
+            self.log.important("Out-of-Consensus - NewBlockNotification doesn't match my block!")
+            # need to send block-data to catchup to update
+            self.recv_block_data_reply(block)
+            self.db_state.cur_block_hash = None
+            # check input hashes and send align / skip messages using input-hash
+            self.align_input_hashes_if_needed(block)
+            return
+           
         assert self.db_state.new_block_hash == self.db_state.my_new_block_hash, \
             "update_db called but my new block hash {} does not match the new block notification's hash " \
             "hash {}".format(self.db_state.my_new_block_hash, self.db_state.new_block_hash)
 
         self.log.success2("BlockManager has consensus with NewBlockNotification!")
 
-        # reset all the state info 
-        self.db_state.sub_block_hash_map.clear()
-        self.db_state.next_block.clear()
         self.db_state.cur_block_hash = self.db_state.new_block_hash
-        self.db_state.my_new_block_hash = None
-        self.db_state.new_block_hash = None
         self.send_updated_db_msg()
 
         self.log.notice("Setting latest block number to {} and block hash to {}"
-                            .format(block_num, self.db_state.cur_block_hash))
-        StateDriver.set_latest_block_info(self.db_state.cur_block_hash, block_num)
+                            .format(block.block_num, self.db_state.cur_block_hash))
+        StateDriver.set_latest_block_info(self.db_state.cur_block_hash, block.block_num)
 
 
     def update_db_if_ready(self):
         if not self.db_state.my_new_block_hash or not self.db_state.new_block_hash:
             return          # both are not ready
-        if self.db_state.my_new_block_hash != self.db_state.new_block_hash:    # holy cow - mismatch
-            self.log.important("Out-of-Consensus - NewBlockNotification doesn't match my block!")
-            return
-            # need to send block-data to catchup
-            # check input hashes and send align / skip messages using input-hash
-           
         # self.db_state.my_new_block_hash == self.db_state.new_block_hash at this point
-        block = self.db_state.next_block[self.db_state.new_block_hash][0]
-        self.update_db(block.block_num)
+        self.update_db()
+
+        # reset all the state info 
+        self.db_state.sub_block_hash_map.clear()
+        self.db_state.next_block.clear()
+        self.db_state.my_new_block_hash = None
+        self.db_state.new_block_hash = None
 
 
     # update current db state to the new block
@@ -313,13 +320,19 @@ class BlockManager(Worker):
         new_block_hash = block_data.block_hash
         self.log.info("Got new block notification with block hash {}...".format(new_block_hash))
 
+        if not self.db_state.cur_block_hash:
+            self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
+        # if block_data.prev_block_hash == self.db_state.cur_block_hash:
+            # self.db_state.state = DBState.CURRENT
+
         if new_block_hash == self.db_state.cur_block_hash:
             self.log.info("New block notification is same as current state. Ignoring.")
             return
 
-        if (self.db_state.state == DBState.CATCHUP) or \
-            (block_data.prev_block_hash != self.db_state.cur_block_hash):
-            self.db_state.state = DBState.CATCHUP
+        # if (self.db_state.state == DBState.CATCHUP) or \
+            # (block_data.prev_block_hash != self.db_state.cur_block_hash):
+            # self.db_state.state = DBState.CATCHUP
+        if (block_data.prev_block_hash != self.db_state.cur_block_hash):
             self.db_state.cur_block_hash = None
             self.recv_block_data_reply(block_data)
             return
