@@ -1,5 +1,7 @@
 import os, time
 from os import getenv as env
+from free_port import free_port
+from random_password import random_password
 
 def start_redis():
     if not env('CIRCLECI') and not env('VMNET'):
@@ -11,19 +13,20 @@ def start_redis():
     print("Starting Redis server...")
 
     os.system('sudo pkill redis-server')
+    if env('CIRCLECI'):
+        os.system('redis-server')
     if not env('VMNET'):
         os.system('redis-server &')
 
-    from free_port import free_port
-    from random_password import random_password
-    pw = random_password()
-    port = free_port()
-    with open('docker/redis.env', 'w+') as f:
-        f.write('''
+    if not env('CIRCLECI'):
+        pw = random_password()
+        port = free_port()
+        with open('docker/redis.env', 'w+') as f:
+            f.write('''
 REDIS_PORT={}
 REDIS_PASSWORD={}
-        '''.format(port,pw))
-    os.system('redis-server docker/redis.conf --port {} --requirepass {} &'.format(port,pw))
+            '''.format(port,pw))
+        os.system('redis-server docker/redis.conf --port {} --requirepass {} &'.format(port,pw))
 
     time.sleep(1)
     print('<REDIS>: Started')
