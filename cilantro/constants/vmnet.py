@@ -41,9 +41,9 @@ def get_constitution(constitution_json=None):
         else:
             log.info('Generating constitution...')
             return {
-                "masternodes": [_generate_keys(ip) for ip in env('MASTERNODE', '').split(',')],
-                "witnesses": [_generate_keys(ip) for ip in env('WITNESS', '').split(',')],
-                "delegates": [_generate_keys(ip) for ip in env('DELEGATE', '').split(',')]
+                "masternodes": [_generate_keys(ip) for ip in env('MASTERNODE', '').split(',') if ip != ''],
+                "witnesses": [_generate_keys(ip) for ip in env('WITNESS', '').split(',') if ip != ''],
+                "delegates": [_generate_keys(ip) for ip in env('DELEGATE', '').split(',') if ip != '']
             }
     elif env('NODE_TYPE'):
         log.important('Deploying as a {}'.format(env('NODE_TYPE')))
