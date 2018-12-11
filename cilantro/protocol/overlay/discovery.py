@@ -62,7 +62,7 @@ class Discovery:
         if cls.is_listen_ready:
             await asyncio.sleep(3)
 
-        cls.log.important(VKBook.bootnodes)
+        cls.log.spam('We have the following bootnodes: {}'.format(VKBook.bootnodes))
 
         while True:
             if len(VKBook.bootnodes) > 0: # TODO refine logic post-anarchy-net

@@ -15,6 +15,7 @@ class VKBook:
         'witness': 'witnesses',
         'delegate': 'delegates'
     }
+    bootnodes = []
 
     @classmethod
     def setup(cls, constitution_json=None):

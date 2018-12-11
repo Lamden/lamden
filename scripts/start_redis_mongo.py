@@ -10,18 +10,19 @@ def start_mongo():
         host_name = env('HOST_NAME', '')
 
     print("Waiting for mongo on localhost")
-    os.makedirs('./data/{}/logs'.format(host_name), exist_ok=True)
-    with open('./data/{}/logs/mongo.log'.format(host_name), 'w+') as f:
-        print('Dir created')
-
-
-    create_user()
+    try:
+        os.makedirs('./data/{}/logs'.format(host_name), exist_ok=True)
+        with open('./data/{}/logs/mongo.log'.format(host_name), 'w+') as f:
+            print('Dir created')
+    except:
+        pass
 
     print('Starting mongo server...')
-    os.system('mongod --dbpath ./data/{} --logpath ./data/{}/logs/mongo.log {} &'.format(
+    os.system('sudo mongod --dbpath ./data/{} --logpath ./data/{}/logs/mongo.log {} &'.format(
         host_name, host_name, '' if env('CIRCLECI') == 'true' else '--bind_ip_all'
     ))
-    print('<MONGO>: Started')
+
+    create_user()
 
 if __name__ == '__main__':
     from start_redis import start_redis
