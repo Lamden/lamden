@@ -30,6 +30,7 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
+from cilantro.messages.consensus.align_input_hash import AlignInputHash
 from cilantro.messages.transaction.batch import TransactionBatch
 from cilantro.messages.transaction.data import TransactionData
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
@@ -67,6 +68,7 @@ class SubBlockManager:
         self.sub_socket = sub_socket
         self.processed_txs_timestamp = processed_txs_timestamp
         self.pending_txs = LinkedHashTable()
+        self.to_finalize_txs = LinkedHashTable()
         self.num_pending_sb = 0
 
 
@@ -146,6 +148,28 @@ class SubBlockBuilder(Worker):
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
+    def align_input_hashes(self, aih: AlignInputHash):
+        self.log.notice("Discarding all pending sub blocks and aligning input hash to {}".format(aih.input_hash))
+        self.client.flush_all()
+        input_hash = aih.input_hash
+        if input_hash in self.sb_managers[0].pending_txs:
+            # clear entirely to_finalize
+            self.to_finalize_txs.clear()
+            ih2 = None
+            while input_hash != ih2:
+                # TODO we may need sb_index if we have more than one sub-block per builder
+                ih2, txs_bag = self.sb_managers[0].pending_txs.pop_front()
+        elif input_hash in self.sb_managers[0].to_finalize_txs:
+            ih2 = None
+            while input_hash != ih2:
+                # TODO we may need sb_index if we have more than one sub-block per builder
+                ih2, txs_bag = self.sb_managers[0].to_finalize_txs.pop_front()
+        # at this point, any bags in to_finalize_txs should go back to the front of pending_txs
+        while len(self.sb_managers[0].to_finalize_txs) > 0:
+            ih, txs_bag = self.sb_managers[0].to_finalize_txs.pop_front()
+            self.sb_managers[0].pending_txs.insert_front(ih, txs_bag)
+        
+
     def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
         assert len(frames) == 2, "Expected 3 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
@@ -161,9 +185,8 @@ class SubBlockBuilder(Worker):
             self._make_next_sub_block()
 
         # if not matched consensus, then discard current state and use catchup flow
-        elif isinstance(msg, DiscardPrevBlock):
-            self.log.notice("Discarding all pending and active sub blocks!")
-            # self.client.flush_all()    # should flush only first pending block, not all of them ??
+        elif isinstance(msg, AlignInputHash):
+            self.align_input_hashes(msg)
 
         else:
             raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
