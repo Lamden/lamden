@@ -30,7 +30,7 @@ class VKBook:
         else:
             cls.constitution = get_constitution(constitution_json)
             for node_type in cls.node_types:
-                [cls.r.hset(node_type, node['vk'], node.get('ip', 1)) for node in cls.constitution[cls.node_types_map[node_type]]]
+                [cls.r.hset(node_type, node['vk'], node.get('ip', 1)) for node in cls.constitution[cls.node_types_map.get(node_type, node_type)]]
             for node_type in cls.node_types:
                 node_list = env(node_type.upper())
                 if node_list:
