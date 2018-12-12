@@ -72,7 +72,7 @@ def run_user():
 
 class TestNonce(BaseNetworkTestCase):
 
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro_mn.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-mn.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)

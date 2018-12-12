@@ -38,7 +38,7 @@ def trigger_mn_wr(blocks):
 class MasterStore(BaseNetworkTestCase):
 
     BLOCKS = 1000
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro_mn.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-mn.json')
 
     @vmnet_test(run_webui=True)
     def mn_store(self):

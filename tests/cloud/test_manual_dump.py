@@ -1,7 +1,7 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
-
-from vmnet.testcase import BaseNetworkTestCase
+from cilantro.constants.vmnet import get_config_file
+from vmnet.cloud.testcase import AWSTestCase
 import unittest, time, random, vmnet, cilantro
 from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test
@@ -23,7 +23,7 @@ if os.getenv('USE_LOCAL_SENECA', '0') != '0':
     assert os.path.isdir(venv_sen_path), "Expect virtual env seneca at path {}".format(venv_sen_path)
     assert os.path.isdir(user_sen_path), "Expect user seneca at path {}".format(user_sen_path)
 
-    log.debugv("Removing venv seneca at path {}".format(venv_sen_path))
+    print("Removing venv seneca at path {}".format(venv_sen_path))
     shutil.rmtree(venv_sen_path)
 
     log.notice("Copying user seneca path {} to venv packages at path {}".format(user_sen_path, venv_sen_path))
@@ -50,7 +50,7 @@ def run_mn(slot_num):
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
     # overwrite_logger_level(11)
-    # overwrite_logger_level(11)  # suppress 'spam' log level
+    overwrite_logger_level(11)  # suppress 'spam' log level
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[slot_num]['sk']
@@ -58,6 +58,7 @@ def run_mn(slot_num):
 
 
 def run_witness(slot_num):
+
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_WITNESSES
@@ -66,7 +67,7 @@ def run_witness(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
-    # overwrite_logger_level(11)
+    overwrite_logger_level(11)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -75,6 +76,7 @@ def run_witness(slot_num):
 
 
 def run_delegate(slot_num):
+
     from cilantro.logger import get_logger, overwrite_logger_level
     from seneca.libs.logger import overwrite_logger_level as sen_overwrite_log
     from cilantro.nodes.factory import NodeFactory
@@ -83,7 +85,7 @@ def run_delegate(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    # overwrite_logger_level(11)
+    overwrite_logger_level(11)
     sen_overwrite_log(4)  # disable spam only (lvl 5 is debugv)
 
     d_info = TESTNET_DELEGATES[slot_num]
@@ -101,27 +103,27 @@ def dump_it(volume, delay=0):
     God.dump_it(volume=volume, delay=delay)
 
 
-class TestManualDump(BaseNetworkTestCase):
+class TestManualDump(AWSTestCase):
 
     VOLUME = 1200  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-2-bootstrap.json')
-    PROFILE_TYPE = None
+    config_file = get_config_file('cilantro-aws-2-2-2.json')
+    keep_up = True
+    timeout = 3600
 
-    @vmnet_test(run_webui=True)
     def test_dump(self):
         log = get_logger("Dumpatron")
 
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
-            self.execute_python(nodename, wrap_func(run_mn, i), async=True, profiling=self.PROFILE_TYPE)
+            self.execute_python(nodename, wrap_func(run_mn, i))
 
         # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):
-            self.execute_python(nodename, wrap_func(run_witness, i), async=True, profiling=self.PROFILE_TYPE)
+            self.execute_python(nodename, wrap_func(run_witness, i))
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
-            self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
+            self.execute_python(nodename, wrap_func(run_delegate, i))
 
         while True:
             user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
@@ -131,11 +133,10 @@ class TestManualDump(BaseNetworkTestCase):
 
             vol = int(user_input) if user_input.isdigit() else self.VOLUME
             log.important3("Dumpatron dumping {} transactions!".format(vol))
-            self.execute_python('mgmt', wrap_func(dump_it, volume=vol), async=True, profiling=self.PROFILE_TYPE)
+            self.execute_python('mgmt', wrap_func(dump_it, volume=vol))
 
         log.important3("Dumpatron initiating system teardown")
         God.teardown_all("http://{}".format(self.ports[self.groups['masternode'][0]]['8080']))
-
 
 if __name__ == '__main__':
     unittest.main()

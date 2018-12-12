@@ -5,7 +5,9 @@ import cilantro
 import configparser
 from cilantro.protocol import wallet
 from cilantro.logger.base import get_logger
-import json
+from cilantro.constants.vmnet import test_dir
+import json, os
+from os.path import join
 
 """
 INSTRUCTIONS FOR BUILDING CUSTOM TESTNET CONFIGS
@@ -18,15 +20,15 @@ NUM_WITNESSES = 4
 NUM_DELEGATES = 4
 
 log = get_logger("TestnetNodeBuilder")
+os.environ['__INHERIT_CONSTITUTION__'] = 'True'
 
 DEFAULT_TESTNET_FILE_NAME = '2-2-2.json'
-TESTNET_JSON_DIR = cilantro.__path__[0] + '/../testnet_configs/'
+TESTNET_JSON_DIR = test_dir
 
 TESTNET_KEY = 'testnet'
 TESTNET_JSON_KEY = 'testnet_json_file_name'
 CONFIG_FILE_NAME = 'testnet.ini'
-CONFIG_FILE_PATH = TESTNET_JSON_DIR + CONFIG_FILE_NAME
-
+CONFIG_FILE_PATH = join(TESTNET_JSON_DIR, CONFIG_FILE_NAME)
 
 def set_testnet_config(testnet_json_file='2-2-2.json'):
     config = configparser.ConfigParser()
@@ -38,12 +40,15 @@ def set_testnet_config(testnet_json_file='2-2-2.json'):
     from cilantro.constants.testnet import set_testnet_nodes
     set_testnet_nodes()
 
+def get_config_filename():
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILE_PATH)
+    return config[TESTNET_KEY][TESTNET_JSON_KEY]
 
 def get_testnet_json_path():
     config = configparser.ConfigParser()
     config.read(CONFIG_FILE_PATH)
-    return TESTNET_JSON_DIR + config[TESTNET_KEY][TESTNET_JSON_KEY]
-
+    return join(TESTNET_JSON_DIR, config[TESTNET_KEY][TESTNET_JSON_KEY])
 
 def generate_testnet_json(num_masters=NUM_MASTERS, num_witnesses=NUM_WITNESSES, num_delegates=NUM_DELEGATES):
     def _build_nodes(num_nodes=64, prefix='node') -> list:

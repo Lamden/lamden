@@ -25,6 +25,7 @@ class Discovery:
             cls.is_setup = True
             cls.ctx = ctx or zmq.asyncio.Context()
             cls.sock = cls.ctx.socket(zmq.ROUTER)
+            cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             cls.is_connected = False
             if VKBook.is_node_type('masternode', Auth.vk):
                 # cls.discovered_nodes[Auth.vk] = cls.host_ip
@@ -33,12 +34,10 @@ class Discovery:
 
     @classmethod
     async def listen(cls):
-        cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
         cls.sock.bind(cls.url)
         cls.log.info('Listening to other nodes on {}'.format(cls.url))
         if cls.is_listen_ready:
-            pass
-            # await asyncio.sleep(0)
+            await asyncio.sleep(3)
         while True:
             try:
                 msg = await cls.sock.recv_multipart()
@@ -146,7 +145,7 @@ class Discovery:
             if ip == cls.host_ip:
                 continue
             url = 'tcp://{}:{}'.format(ip, cls.port)
-            cls.log.spam("Attempting to connect to IP {}".format(url))
+            #  cls.log.spam("Attempting to connect to IP {}".format(url))
             cls.sock.connect(url)
             cls.connections[ip] = url
             cls.request(ip.encode())

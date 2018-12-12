@@ -116,7 +116,7 @@ def start_mgmt():
 
 
 class TestZMQPair(BaseNetworkTestCase):
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro_mn.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-mn.json')
 
     @vmnet_test
     def test_store(self):

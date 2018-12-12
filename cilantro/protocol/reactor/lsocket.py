@@ -1,6 +1,6 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
-from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.structures.envelope_auth import EnvelopeAuth
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.logger.base import get_logger
 import zmq.asyncio, asyncio, os
