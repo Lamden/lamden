@@ -1,14 +1,14 @@
-import os, math, redis
+import os, math
 from seneca.constants.config import *
 from cilantro.logger import get_logger
 from cilantro.constants.vmnet import get_constitution
 from cilantro.utils.utils import is_valid_hex
+from collections import defaultdict
 
 log = get_logger("VKBook")
 
 class VKBook:
 
-    r = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
     node_types = ('masternode', 'witness', 'delegate')
     node_types_map = {
         'masternode': 'masternodes',
@@ -17,26 +17,32 @@ class VKBook:
     }
     bootnodes = []
     constitution = []
+    book = defaultdict(dict)
 
     @classmethod
     def setup(cls, constitution_json=None):
         cls.bootnodes = []
         if os.getenv('__TEST__') or os.getenv('TEST_NAME'):
             from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_WITNESSES, TESTNET_MASTERNODES
-            [cls.r.hset('masternode', node['vk'], 1) for node in TESTNET_MASTERNODES]
-            [cls.r.hset('witness', node['vk'], 1) for node in TESTNET_WITNESSES]
-            [cls.r.hset('delegate', node['vk'], 1) for node in TESTNET_DELEGATES]
+            for node in TESTNET_MASTERNODES:
+                cls.book['masternode'][node['vk']] = True
+            for node in TESTNET_WITNESSES:
+                cls.book['witness'][node['vk']] = True
+            for node in TESTNET_DELEGATES:
+                cls.book['delegate'][node['vk']] = True
         else:
             cls.constitution = get_constitution(constitution_json)
             for node_type in cls.node_types:
-                [cls.r.hset(node_type, node['vk'], node.get('ip', 1)) for node in cls.constitution[cls.node_types_map.get(node_type, node_type)]]
+                nt = cls.node_types_map.get(node_type, node_type)
+                for node in cls.constitution[nt]:
+                    cls.book[nt][node['vk']] = node.get('ip', True)
             for node_type in cls.node_types:
                 node_list = env(node_type.upper())
                 if node_list:
                     cls.bootnodes += node_list.split(',')
 
     @staticmethod
-    def blind_trust_vk(vk, node_type, ip=None):
+    def add_node(vk, node_type, ip=None):
         assert node_type in VKBook.node_types, 'Invalid node type!'
         assert is_valid_hex(vk, length=64), 'Invalid VK!'
         creds = {'vk': vk}
@@ -45,40 +51,35 @@ class VKBook:
             creds.update({'ip': ip})
         else:
             encoded_ip = 1
-        VKBook.hset(node_type, vk, encoded_ip)
-        cls.constitution[node_type].append(creds)
+        cls.book[node_type][vk] = encoded_ip
 
-    @staticmethod
-    def decode(l):
-        return [i.decode() for i in l]
-
-    @staticmethod
-    def get_all():
+    @classmethod
+    def get_all(cls):
         nodes = {}
         for node_type in VKBook.node_types:
-            nodes.update(VKBook.r.hgetall(node_type))
-        return VKBook.decode(nodes.keys())
+            nodes.update(cls.book[node_type])
+        return list(nodes.keys())
 
-    @staticmethod
-    def get_masternodes():
-        return VKBook.decode(VKBook.r.hgetall('masternode').keys())
+    @classmethod
+    def get_masternodes(cls):
+        return list(cls.book['masternode'].keys())
 
-    @staticmethod
-    def get_witnesses():
-        return VKBook.decode(VKBook.r.hgetall('witness').keys())
+    @classmethod
+    def get_witnesses(cls):
+        return list(cls.book['witness'].keys())
 
-    @staticmethod
-    def get_delegates():
-        return VKBook.decode(VKBook.r.hgetall('delegate').keys())
+    @classmethod
+    def get_delegates(cls):
+        return list(cls.book['delegate'].keys())
 
-    @staticmethod
-    def is_node_type(node_type, vk):
-        assert node_type in VKBook.node_types, 'Invalid node type!'
-        return VKBook.r.hget(node_type, vk)
+    @classmethod
+    def is_node_type(cls, node_type, vk):
+        assert node_type in cls.node_types, 'Invalid node type!'
+        return cls.book[node_type].get(vk) != None
 
-    @staticmethod
-    def get_delegate_majority():
-        return math.ceil(len(VKBook.r.hgetall('delegate')) * 2/3)
+    @classmethod
+    def get_delegate_majority(cls):
+        return math.ceil(len(cls.book['delegate']) * 2/3)
 
     @staticmethod
     def test_print_nodes():
