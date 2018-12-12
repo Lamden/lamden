@@ -79,7 +79,7 @@ class CatchupManager:
         # TODO do i need to build a list ?
         pass
 
-    # ONLY MASTERNODES WILL USE THIS
+    # ONLY MASTER NODES WILL USE THIS
     def recv_block_data_req(self, requester_vk: str, request: BlockDataRequest):
         req_blk = MasterOps.get_full_blk(blk_num = request.block_num)
         self._send_block_data_req(requester_vk, req_blk)
@@ -121,7 +121,7 @@ class CatchupManager:
 
     # Phase II start
     # private method
-    def _send_block_data_req( self, mn_vk, req_blk_num ):
+    def _send_block_data_req( self, mn_vk, req_blk_num):
         self.log.info("Unicast BlockDateRequests to masternode owner with current block num {} key {}"
                       .format(req_blk_num, mn_vk))
         req = BlockDataRequest.create(block_num = req_blk_num)

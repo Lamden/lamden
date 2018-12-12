@@ -6,84 +6,10 @@ from cilantro.protocol.reactor.lsocket import LSocket
 from cilantro.storage.vkbook import VKBook
 from cilantro.storage.state import StateDriver
 from cilantro.nodes.masternode.mn_api import StorageDriver
+from cilantro.storage.mongo import MDB
 from cilantro.nodes.masternode.master_store import MasterOps
 from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
 from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest
-
-
-class CatchupUtil:
-    @classmethod
-    def get_delta_idx(cls, vk = None, curr_blk_num =None, sender_blk_hash = None):
-        """
-        API gets latest hash requester has and responds with delta block index
-
-        :param vk: mn or dl verifying key
-        :param curr_blk_hash:
-        :return:
-        """
-        get_latest_block_hash
-        # check if requester is master or del
-        valid_node = bool(VKBook.get_masternodes().index(vk)) or bool(VKBook.get_delegates().index(vk))
-
-        if valid_node is True:
-            given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_blk_hash)
-            latest_blk_num = curr_blk_num
-
-            if given_blk_num == latest_blk_num:
-                cls.log.debug('given block is already latest')
-                return None
-            else:
-                idx_delta = MasterOps.get_blk_idx(n_blks = (latest_blk_num - given_blk_num))
-                return idx_delta
-
-        assert valid_node is True, "invalid vk given key is not of master or delegate dumpting vk {}".format(vk)
-
-    @classmethod
-    def process_received_idx(cls, blk_idx_dict = None):
-        """
-        API goes list dict and sends out blk req for each blk num
-        :param blk_idx_dict:
-        :return:
-        """
-        last_elm_curr_list = sorted(cls.block_index_delta.keys())[-1]
-        last_elm_new_list = sorted(blk_idx_dict.keys())[-1]
-
-        if last_elm_curr_list > last_elm_new_list:
-            cls.log.critical("incoming block delta is stale ignore continue wrk on old")
-            return
-
-        if last_elm_curr_list == last_elm_new_list:
-            cls.log.info("delta is same returning")
-            return
-
-        if last_elm_curr_list < last_elm_new_list:
-            cls.log.critical("we have stale list update working list ")
-            cls.block_index_delta = blk_idx_dict
-            last_elm_curr_list = last_elm_new_list
-
-        while cls.send_req_blk_num < last_elm_curr_list:
-            # look for active master in vk list
-            avail_copies = len(cls.block_index_delta[cls.send_req_blk_num])
-            if avail_copies < REPLICATION:
-                cls.log.critical("block is under protected needs to re protect")
-
-            while avail_copies > 0:
-                vk = cls.block_index_delta[cls.send_req_blk_num][avail_copies - 1]
-                if vk in VKBook.get_masternodes():
-                    CatchupManager._send_block_data_req(mn_vk = vk, req_blk_num = cls.send_req_blk_num)
-                    break
-                avail_copies = avail_copies - 1  # decrement count check for another master
-
-            cls.send_req_blk_num += 1
-            # TODO we should somehow check time out for these requests
-
-
-    @classmethod
-    def process_received_block( cls, block = None ):
-        block_dict = MDB.get_dict(block)
-        update_blk_result = bool(MasterOps.evaluate_wr(entry = block_dict))
-        assert update_blk_result is True, "failed to update block"
-        return update_blk_result
 
 
 class CatchupManager:
@@ -96,14 +22,14 @@ class CatchupManager:
         self.catchup_state = False
         self.store_full_blocks = None
         self.target_blk = {}
-        self.curr_hash, self.curr_num = None, None      # latest blk on redis
-        self.blk_list = []
+        self.last_req_blk_num = self.target_blk_num = self.curr_num
+        self.blk_req_ptr = {}
+        self.blk_req_ptr_idx = None
+        self.block_delta_list = []
+        self.rcv_block_list = {}
         self.all_masters = None
 
-        # self.all_masters = set(VKBook.get_masternodes()) - set(self.verifying_key)
-        # for block zero its going to just return 0x64 hash n 0 blk_num
-        # self.pending_block_updates = defaultdict(dict)
-
+        self.curr_hash, self.curr_num = None, None      # latest blk on redis
         self.run_catchup()
 
     def run_catchup(self, store_full_blocks=True):
@@ -125,7 +51,7 @@ class CatchupManager:
         Multi-casting BlockIndexRequests to all master nodes with current block hash
         :return:
         """
-        self.log.info("Multi cast BlockIndexRequests to all MN with current block hash {}".format(curr_hash))
+        self.log.info("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))
         req = BlockIndexRequest.create(block_hash=self.curr_hash)
         self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
         return True
@@ -142,23 +68,60 @@ class CatchupManager:
             self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
             return
 
-        if not self.blk_list:
-            self.blk_list = reply.indices
-            self.target_blk = self.blk_list[len(self.blk_list)-1]
-        else:
-            count = 0                                                               # num of new blk to update
+        if not self.block_delta_list:                              # for boot phase
+            self.block_delta_list = reply.indices
+            self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
+            self.target_blk_num = self.target_blk.get('blockNum')
+            self.blk_req_ptr_idx = 0
+            self.blk_req_ptr = self.block_delta_list[self.blk_req_ptr_idx]           # 1st blk req to send
+            self.last_req_blk_num = self.blk_req_ptr.get('blockNum')
+        else:                                              # for new request
             tmp_list = reply.indices
             new_target_blk = tmp_list[len(tmp_list)-1]
-            while self.target_blk.get('blockNum') < new_target_blk.get('blockNum'):
-                count = count +1
-                # TODO
-                pass
+            new_blks = new_target_blk.get('blockNum') - self.target_blk.get('blockNum')
+            if new_blks > 0:
+                # find range to be split from new list
+                upper_idx = len(tmp_list) - 1
+                lower_idx = upper_idx - new_blks
+                verify_blk = tmp_list[lower_idx]
+                assert verify_blk.get('blockNum') == new_target_blk.get('blockNum'), "something is wrong split is not" \
+                                                                                     " getting us to current blk"
+                # slicing new list and appending list
+                update_list = tmp_list[lower_idx:len(tmp_list)]
+                self.block_delta_list.append(update_list)
+                self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
+                self.target_blk_num = self.target_blk.get('blockNum')
 
-    def recv_block_data_reply( self, reply: BlockData):
-        if StorageDriver.process_received_block(block = reply):
-            StateDriver.update_with_block(block = reply)
+        self.process_recv_idx()
 
-    # MASTER ONLY CALLS
+    def _send_block_data_req(self, mn_vk, req_blk_num):
+        self.log.info("Unicast BlockDateRequests to masternode owner with current block num {} key {}"
+                      .format(req_blk_num, mn_vk))
+        req = BlockDataRequest.create(block_num = req_blk_num)
+        self.router.send_msg(req, header=mn_vk.encode())
+
+    def recv_block_data_reply(self, reply: BlockData):
+        # check if given block is older thn expected drop this reply
+        # check if given blocknum grter thn current expected blk -> store temp
+        # if given block needs to be stored update state/storage delete frm expected DT
+
+        block_dict = MDB.get_dict(reply)
+        awaited_blk = self.block_delta_list[0]
+        rcv_blk_num = block_dict.get('blockNum')
+
+        if rcv_blk_num <= self.curr_num:
+            self.log.debug("dropping giving blk reply blk-{}:hash-{} ".format(reply.block_num, reply.block_hash))
+            return
+
+        if rcv_blk_num > awaited_blk:
+            self.rcv_block_list[rcv_blk_num] = reply
+
+        if rcv_blk_num == awaited_blk:
+            if self.update_received_block(block = block_dict):
+                StateDriver.update_with_block(block = reply)
+            # TODO clean up self.block_delta_list
+
+    # MASTER ONLY CALL
     def recv_block_idx_req(self, requester_vk: str, request: BlockIndexRequest):
         """
         Receive BlockIndexRequests calls storage driver to process req and build response
@@ -167,18 +130,53 @@ class CatchupManager:
         :return:
         """
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
-        delta_idx = CatchupUtil.get_delta_idx(vk = requester_vk, curr_blk_num = self.curr_num,
-                                              sender_blk_hash = request.block_hash)
+        delta_idx = self.get_delta_idx(vk = requester_vk, curr_blk_num = self.curr_num,
+                                       sender_blk_hash = request.block_hash)
         self._send_block_idx_reply(catchup_list = delta_idx)
 
+    # MASTER ONLY CALL
     def _send_block_idx_reply(self, reply_to_vk = None, catchup_list=None):
         # this func doesnt care abt catchup_state we respond irrespective
         reply = BlockIndexReply.create(block_info = catchup_list)
         self.router.send_msg(reply, header=reply_to_vk.encode())
 
-    def _send_block_data_req(self, mn_vk, req_blk_num):
-        self.log.info("Unicast BlockDateRequests to masternode owner with current block num {} key {}"
-                      .format(req_blk_num, mn_vk))
-        req = BlockDataRequest.create(block_num = req_blk_num)
-        self.router.send_msg(req, header=mn_vk.encode())
+    @classmethod
+    def get_delta_idx(cls, vk = None, curr_blk_num = None, sender_blk_hash = None):
+        """
+        API gets latest hash requester has and responds with delta block index
+
+        :param vk: mn or dl verifying key
+        :param curr_blk_hash:
+        :return:
+        """
+        # check if requester is master or del
+        valid_node = bool(VKBook.get_masternodes().index(vk)) or bool(VKBook.get_delegates().index(vk))
+
+        if valid_node is True:
+            given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_blk_hash)
+            latest_blk_num = curr_blk_num
+
+            if given_blk_num == latest_blk_num:
+                cls.log.debug('given block is already latest')
+                return None
+            else:
+                idx_delta = MasterOps.get_blk_idx(n_blks = (latest_blk_num - given_blk_num))
+                return idx_delta
+
+        assert valid_node is True, "invalid vk given key is not of master or delegate dumpting vk {}".format(vk)
+
+    def process_recv_idx(self):
+        assert self.last_req_blk_num <= self.target_blk_num, "our last request should never overshoot target blk"
+        while self.last_req_blk_num <= self.target_blk_num:
+            mn_list = self.blk_req_ptr.get('blk_req_ptr')
+            for vk in mn_list:
+                self._send_block_data_req(mn_vk = vk, req_blk_num = self.last_req_blk_num)
+
+            self.blk_req_ptr_idx = self.blk_req_ptr_idx + 1
+            self.blk_req_ptr = self.block_delta_list[self.blk_req_ptr_idx]
+            self.last_req_blk_num = self.last_req_blk_num + 1
+
+    def update_received_block(self, block = None):
+        update_blk_result = bool(MasterOps.evaluate_wr(entry = block))
+        assert update_blk_result is True, "failed to update block"
 
