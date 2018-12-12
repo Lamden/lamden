@@ -20,7 +20,7 @@ class VKBook:
     @classmethod
     def setup(cls, constitution_json=None):
         cls.bootnodes = []
-        if os.getenv('__TEST__'):
+        if os.getenv('__TEST__') or os.getenv('TEST_NAME'):
             from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_WITNESSES, TESTNET_MASTERNODES
             cls.constitution = {
                 'masternode': [cls.r.hset('masternode', node['vk'], node.get('ip', 1)) for node in TESTNET_MASTERNODES],
@@ -87,5 +87,5 @@ class VKBook:
         log.notice("witnesses: {}".format(VKBook.get_witnesses()))
         log.notice("delegates: {}".format(VKBook.get_delegates()))
 
-if os.getenv('__TEST__') and not os.getenv('CIRCLECI'):
+if os.getenv('__TEST__'):
     VKBook.setup()
