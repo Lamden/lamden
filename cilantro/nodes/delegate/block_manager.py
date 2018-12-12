@@ -244,9 +244,8 @@ class BlockManager(Worker):
         elif isinstance(msg, BlockDataReply):
             self.recv_block_data_reply(msg)
         else:
-            raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
+            raise Exception("BlockManager got message type {} from ROUTER socket that it does not know how to handle"
                             .format(type(msg)))
-
 
     def _compute_new_block_hash(self):
         # first sort the sb result hashes based on sub block index
@@ -254,7 +253,6 @@ class BlockManager(Worker):
                                   key=lambda result_hash: self.db_state.sub_block_hash_map[result_hash])
         # append prev block hash
         return BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.cur_block_hash)
-
 
     def _handle_sbc(self, sbc: SubBlockContender):
         self.log.important("Got SBC with sb-index {}. Sending to Masternodes.".format(sbc.sb_index))
@@ -267,7 +265,6 @@ class BlockManager(Worker):
             self.db_state.my_new_block_hash = self._compute_new_block_hash()
             self.update_db_if_ready()
      
-
     def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
@@ -332,7 +329,6 @@ class BlockManager(Worker):
         self.db_state.next_block.clear()
         self.db_state.my_new_block_hash = None
         self.db_state.new_block_hash = None
-
 
     # update current db state to the new block
     def handle_new_block(self, block_data: NewBlockNotification):
