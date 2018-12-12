@@ -36,7 +36,8 @@ class Discovery:
         cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
         cls.sock.bind(cls.url)
         cls.log.info('Listening to other nodes on {}'.format(cls.url))
-
+        if cls.is_listen_ready:
+            await asyncio.sleep(3)
         while True:
             try:
                 msg = await cls.sock.recv_multipart()
