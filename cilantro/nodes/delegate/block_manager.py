@@ -34,6 +34,7 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
+from cilantro.messages.consensus.align_input_hash import AlignInputHash
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
 from cilantro.messages.block_data.state_update import BlockDataReply, BlockIndexRequest
 
@@ -60,6 +61,7 @@ class DBState:
         # self.state = DBState.CATCHUP
         self.next_block = {}
         self.sub_block_hash_map = {}
+        self.input_hash_map = {}
 
 
 class BlockManager(Worker):
@@ -236,7 +238,7 @@ class BlockManager(Worker):
         msg_hash = envelope.message_hash
 
         if isinstance(msg, BlockIndexReply):
-            self.db_state.catchup_mgr.recv_block_idx_req(sender, msg)
+            self.db_state.catchup_mgr.recv_block_idx_reply(sender, msg)
         elif isinstance(msg, BlockDataReply):
             self.recv_block_data_reply(msg)
         else:
@@ -255,6 +257,7 @@ class BlockManager(Worker):
     def _handle_sbc(self, sbc: SubBlockContender):
         self.log.important("Got SBC with sb-index {}. Sending to Masternodes.".format(sbc.sb_index))
         self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
+        self.db_state.input_hash_map[sbc.sb_index] = sbc.input_hash
         self.db_state.sub_block_hash_map[sbc.result_hash] = sbc.sb_index
         num_sb = len(self.db_state.sub_block_hash_map)
         if num_sb == NUM_SB_PER_BLOCK:  # got all sub_block
@@ -274,8 +277,22 @@ class BlockManager(Worker):
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
+    def send_input_align_msg(self, block: NewBlockNotification):
+        self.log.info("Sending AlignInputHash message to SBBs")
+        for i, sb in enumerate(block.sub_blocks):
+            # Note: NUM_SB_BUILDERS may not be same as num sub-blocks per block. For anarchy net, it's same
+            #       in that case, it may be beneficial to send in sb_index too
+            sbb_idx = sb.index % NUM_SB_BUILDERS
+            input_hash = sb.input_hash
+            message = AlignInputHash.create(input_hash)
+            self._send_msg_over_ipc(sb_index=sbb_idx, message=message)
+
     def align_input_hashes_if_needed(self, block: NewBlockNotification):
-        pass
+        is_alignment_necessary = False
+        for i, sb in enumerate(block.sub_blocks):
+            if sb.input_hash != self.db_state.input_hash_map[i]:
+                self.send_input_align_msg(block)
+                return
 
     def update_db(self):
         block = self.db_state.next_block[self.db_state.new_block_hash][0]
