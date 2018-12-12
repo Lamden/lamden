@@ -16,20 +16,31 @@ class CatchupManager:
     def __init__(self, verifying_key: str, pub_socket: LSocket, router_socket: LSocket):
         self.log = get_logger("CatchupManager")
 
+        # infra input
         self.pub, self.router = pub_socket, router_socket
         self.verifying_key = verifying_key
-
-        self.catchup_state = False
         self.store_full_blocks = None
-        self.target_blk = {}
-        self.last_req_blk_num = self.target_blk_num = self.curr_num
-        self.blk_req_ptr = {}
-        self.blk_req_ptr_idx = None
-        self.block_delta_list = []
-        self.rcv_block_list = {}
-        self.all_masters = None
+
+        # catchup state
+        self.catchup_state = False
+
+
+        # main list to process
+        self.block_delta_list = []      # list of mn_index dict to process
+        self.target_blk = {}            # last block in list
+        self.target_blk_num = None
+
+        # process send
+        self.blk_req_ptr = {}           # current ptr track send blk req
+        self.blk_req_ptr_idx = None     # idx to track ptr in block_delta_list
+        self.last_req_blk_num = None
 
         self.curr_hash, self.curr_num = None, None      # latest blk on redis
+
+        # received full block could be out of order
+        self.rcv_block_dict = {}
+        self.awaited_blknum = None      # catch up waiting on this blk num
+
         self.run_catchup()
 
     def run_catchup(self, store_full_blocks=True):
@@ -39,7 +50,7 @@ class CatchupManager:
             return
 
         self.store_full_blocks = store_full_blocks
-        self.all_masters = set(VKBook.get_masternodes())
+        #self.all_masters = set(VKBook.get_masternodes())
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
         # starting phase I
@@ -99,6 +110,8 @@ class CatchupManager:
                       .format(req_blk_num, mn_vk))
         req = BlockDataRequest.create(block_num = req_blk_num)
         self.router.send_msg(req, header=mn_vk.encode())
+        if self.awaited_blknum is None:
+            self.awaited_blknum = req_blk_num
 
     def recv_block_data_reply(self, reply: BlockData):
         # check if given block is older thn expected drop this reply
@@ -106,20 +119,23 @@ class CatchupManager:
         # if given block needs to be stored update state/storage delete frm expected DT
 
         block_dict = MDB.get_dict(reply)
-        awaited_blk = self.block_delta_list[0]
+        self.awaited_blknum = self.block_delta_list[0]
         rcv_blk_num = block_dict.get('blockNum')
 
         if rcv_blk_num <= self.curr_num:
             self.log.debug("dropping giving blk reply blk-{}:hash-{} ".format(reply.block_num, reply.block_hash))
             return
 
-        if rcv_blk_num > awaited_blk:
-            self.rcv_block_list[rcv_blk_num] = reply
+        if rcv_blk_num > self.awaited_blknum:
+            self.rcv_block_dict[rcv_blk_num] = reply
 
-        if rcv_blk_num == awaited_blk:
-            if self.update_received_block(block = block_dict):
+        if rcv_blk_num == self.awaited_blknum:
+            if self.update_received_block(block = block_dict) and self.store_full_blocks is True:
                 StateDriver.update_with_block(block = reply)
-            # TODO clean up self.block_delta_list
+            else:
+                StateDriver.update_with_block(block = reply)
+
+            self.update_catchup_state(block_num = rcv_blk_num)
 
     # MASTER ONLY CALL
     def recv_block_idx_req(self, requester_vk: str, request: BlockIndexRequest):
@@ -151,7 +167,6 @@ class CatchupManager:
         """
         # check if requester is master or del
         valid_node = bool(VKBook.get_masternodes().index(vk)) or bool(VKBook.get_delegates().index(vk))
-
         if valid_node is True:
             given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_blk_hash)
             latest_blk_num = curr_blk_num
@@ -163,7 +178,7 @@ class CatchupManager:
                 idx_delta = MasterOps.get_blk_idx(n_blks = (latest_blk_num - given_blk_num))
                 return idx_delta
 
-        assert valid_node is True, "invalid vk given key is not of master or delegate dumpting vk {}".format(vk)
+        assert valid_node is True, "invalid vk given key is not of master or delegate dumping vk {}".format(vk)
 
     def process_recv_idx(self):
         assert self.last_req_blk_num <= self.target_blk_num, "our last request should never overshoot target blk"
@@ -176,7 +191,26 @@ class CatchupManager:
             self.blk_req_ptr = self.block_delta_list[self.blk_req_ptr_idx]
             self.last_req_blk_num = self.last_req_blk_num + 1
 
-    def update_received_block(self, block = None):
+    @staticmethod
+    def update_received_block(block = None):
         update_blk_result = bool(MasterOps.evaluate_wr(entry = block))
         assert update_blk_result is True, "failed to update block"
+        return update_blk_result
+
+    def update_catchup_state(self, block_num=None):
+        """
+        Called when we successfully update state and storage
+
+        - cleans up stale states
+        - updates expected/awaited block requirements
+        - resets state if you are at end of catchup
+        :param block_num:
+        :return:
+        """
+        if block_num in self.rcv_block_dict.keys():
+            self.rcv_block_dict.pop(block_num)
+
+
+
+
 
