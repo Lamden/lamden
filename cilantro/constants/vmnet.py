@@ -31,27 +31,18 @@ def get_constitution(constitution_json=None):
         random.seed()
         return { 'sk': sk, 'vk': vk, 'ip': ip }
 
+    fpath = join(dirname(cilantro_path), 'testnet_configs', constitution_json or '')
+    if constitution_json and exists(fpath):
+        log.info('Loading constituion from {}...'.format(fpath))
+        with open(fpath) as f:
+            return json.loads(f.read())
 
     if env('TEST_NAME') or env('__TEST__'):
-        log.important('ConstitutionWarning: This is for testing purposes only!')
-        fpath = join(dirname(cilantro_path), 'testnet_configs', constitution_json or '')
-        if constitution_json and exists(fpath):
-            log.info('Loading constituion from {}...'.format(fpath))
-            with open(fpath) as f:
-                return json.loads(f.read())
-        else:
-            log.info('Generating constitution...')
-            return {
-                "masternodes": [_generate_keys(ip) for ip in env('MASTERNODE', '').split(',') if ip != ''],
-                "witnesses": [_generate_keys(ip) for ip in env('WITNESS', '').split(',') if ip != ''],
-                "delegates": [_generate_keys(ip) for ip in env('DELEGATE', '').split(',') if ip != '']
-            }
-    elif env('NODE_TYPE'):
-        log.important('Deploying as a {}'.format(env('NODE_TYPE')))
+        log.important('ConstitutionGenerationWarning: This is for testing purposes only!')
         return {
-            "masternodes": [],
-            "witnesses": [],
-            "delegates": []
+            "masternodes": [_generate_keys(ip) for ip in env('MASTERNODE', '').split(',') if ip != ''],
+            "witnesses": [_generate_keys(ip) for ip in env('WITNESS', '').split(',') if ip != ''],
+            "delegates": [_generate_keys(ip) for ip in env('DELEGATE', '').split(',') if ip != '']
         }
     else:
         raise Exception('DeploymentErorr: Not testing or deploying as a single node type!')
