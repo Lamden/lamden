@@ -17,6 +17,7 @@ class Discovery:
     discovered_nodes = {}
     connections = {}
     is_setup = False
+    is_listen_ready = False
 
     @classmethod
     def setup(cls, ctx=None):
@@ -28,6 +29,7 @@ class Discovery:
             if VKBook.is_node_type('masternode', Auth.vk):
                 # cls.discovered_nodes[Auth.vk] = cls.host_ip
                 cls.is_master_node = True
+                cls.is_listen_ready = True
 
     @classmethod
     async def listen(cls):
@@ -50,6 +52,7 @@ class Discovery:
                 elif len(msg) == 3:
                     vk = msg[-1]
                     cls.discovered_nodes[vk.decode()] = ip.decode()
+                    cls.is_listen_ready = True
 
             except Exception as e:
                 cls.log.error(traceback.format_exc())
@@ -134,7 +137,7 @@ class Discovery:
 
     @classmethod
     def reply(cls, ip):
-        if ip != cls.host_ip:
+        if cls.is_listen_ready and ip != cls.host_ip:
             cls.sock.send_multipart([ip, cls.pepper, Auth.vk.encode()])
             cls.is_connected = True
 
