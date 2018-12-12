@@ -13,16 +13,14 @@ def start_redis():
     print("Starting Redis server...")
 
     os.system('sudo pkill redis-server')
-
-    if not env('CIRCLECI'):
-        pw = random_password()
-        port = free_port()
-        with open('docker/redis.env', 'w+') as f:
-            f.write('''
+    pw = random_password()
+    port = free_port()
+    with open('docker/redis.env', 'w+') as f:
+        f.write('''
 REDIS_PORT={}
 REDIS_PASSWORD={}
-            '''.format(port,pw))
-        os.system('redis-server docker/redis.conf --port {} --requirepass {} &'.format(port,pw))
+        '''.format(port,pw))
+    os.system('redis-server docker/redis.conf --port {} --requirepass {} &'.format(port,pw))
 
     if not env('VMNET'):
         os.system('redis-server')
