@@ -35,6 +35,7 @@ from cilantro.messages.transaction.batch import TransactionBatch
 from cilantro.messages.transaction.data import TransactionData
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
 
+from seneca.engine.client import NUM_CACHES
 from seneca.engine.client import SenecaClient
 from seneca.engine.conflict_resolution import CRContext
 from cilantro.protocol import wallet
@@ -154,7 +155,7 @@ class SubBlockBuilder(Worker):
         input_hash = aih.input_hash
         if input_hash in self.sb_managers[0].pending_txs:
             # clear entirely to_finalize
-            self.to_finalize_txs.clear()
+            self.sb_managers[0].to_finalize_txs.clear()
             ih2 = None
             while input_hash != ih2:
                 # TODO we may need sb_index if we have more than one sub-block per builder
@@ -320,6 +321,8 @@ class SubBlockBuilder(Worker):
                 self.log.debug("i {} num_sb_pb_pb {} num_sb_mgrs {} sb_idx {}".format(i, NUM_SB_PER_BLOCK_PER_BUILDER, len(self.sb_managers), sb_idx))
                 return
 
+            if len(self.sb_managers[sb_idx].to_finalize_txs) > NUM_CACHES:
+                self.sb_managers[sb_idx].to_finalize_txs.pop_front()
             if len(self.sb_managers[sb_idx].pending_txs) > 0:
                 input_hash, txs_bag = self.sb_managers[sb_idx].pending_txs.pop_front()
                 self.log.debug("Make next sub-block with input hash {}".format(input_hash))
