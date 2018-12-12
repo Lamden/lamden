@@ -28,7 +28,7 @@ class BlockMetaData(BlockData):
         assert len(self.merkle_leaves) == 0, "BlockMetaData should not contain any merkle_leaves!"
 
     @classmethod
-    def from_block_data(cls, data: BlockData):
+    def create_from_block_data(cls, data: BlockData):
         # Remove the transactions and merkle leaves first
         for sb in data.sub_blocks:
             sb.remove_tx_data()

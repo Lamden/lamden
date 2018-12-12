@@ -1,4 +1,4 @@
-from cilantro.utils.lazy_property import lazy_func
+from cilantro.utils.lazy_property import lazy_func, set_lazy_property
 import capnp
 import hashlib
 
@@ -92,6 +92,7 @@ class MessageBase(metaclass=MessageBaseMeta):
         :return: An instance of MessageBase
         """
         model = cls.from_data(cls._deserialize_data(data), validate=validate)
+        set_lazy_property(model, 'serialize', data)
         return model
 
     @classmethod
