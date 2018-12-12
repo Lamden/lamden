@@ -76,9 +76,8 @@ class Discovery:
             try_count += 1
             if (is_masternode and len(VKBook.get_masternodes()) == 1) or \
                     (len(cls.discovered_nodes) == 0 and is_masternode and cls.is_connected):
-                cls.log.important('Bootstrapping as the only masternode.'.format(
-                    len(cls.discovered_nodes)
-                ))
+                cls.log.important('Bootstrapping as the only masternode. (num_discovered={})'
+                                  .format(len(cls.discovered_nodes)))
                 cls.discovered_nodes[Auth.vk] = cls.host_ip
                 return True
             elif len(cls.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
@@ -93,10 +92,8 @@ class Discovery:
                     MIN_BOOTSTRAP_NODES
                 ))
                 return False
-            await asyncio.sleep(DISCOVERY_TIMEOUT)
 
-        # @falcon/raghu, this code below is unreachable is it not?? --davis
-        await asyncio.sleep(3 if cls.is_master_node else 6)
+            await asyncio.sleep(DISCOVERY_TIMEOUT)
 
     # raghu these class methods are not thread-safe. Not sure why we want them to be class methods rather than instance methods
 #    @classmethod
@@ -149,6 +146,7 @@ class Discovery:
             if ip == cls.host_ip:
                 continue
             url = 'tcp://{}:{}'.format(ip, cls.port)
+            cls.log.spam("Attempting to connect to IP {}".format(url))
             cls.sock.connect(url)
             cls.connections[ip] = url
             cls.request(ip.encode())

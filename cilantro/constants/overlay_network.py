@@ -8,11 +8,17 @@ MAX_PEERS = 64
 
 AUTH_TIMEOUT = 20 * CI_FACTOR  # Times-out after retrying auth for the interval
 RPC_TIMEOUT = 10
-CLIENT_SETUP_TIMEOUT = 20  # How long OverlayClient should wait for a rdy sig from the OverlayServer until we timeout
-DISCOVERY_TIMEOUT = 3
 
-DISCOVERY_RETRIES = 100
 MIN_BOOTSTRAP_NODES = 1
+DISCOVERY_TIMEOUT = 3
+if env('VMNET'):
+    DISCOVERY_RETRIES = 100
+else:
+    DISCOVERY_RETRIES = 10
+
+# How long OverlayClient should wait for a rdy sig from the OverlayServer until we timeout
+CLIENT_SETUP_TIMEOUT = DISCOVERY_TIMEOUT * DISCOVERY_RETRIES
+
 
 if env('HOST_IP'):
     HOST_IP = env('HOST_IP')
