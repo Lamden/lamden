@@ -84,6 +84,7 @@ def run_delegate(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(11)
+    overwrite_logger_level(4)  # disable spam only (lvl 5 is debugv)
     sen_overwrite_log(4)  # disable spam only (lvl 5 is debugv)
 
     d_info = TESTNET_DELEGATES[slot_num]

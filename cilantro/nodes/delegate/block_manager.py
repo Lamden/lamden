@@ -36,7 +36,7 @@ from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.align_input_hash import AlignInputHash
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
-from cilantro.messages.block_data.state_update import BlockDataReply, BlockIndexRequest
+from cilantro.messages.block_data.state_update import *
 
 import asyncio, zmq, os, time, random
 from collections import defaultdict
@@ -96,6 +96,9 @@ class BlockManager(Worker):
         self.build_task_list()
         self.log.info("Block Manager starting...")
         self.start_sbb_procs()
+
+        # TODO -- take this out once catchup is properly implemented
+        self.send_updated_db_msg()
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
@@ -159,7 +162,6 @@ class BlockManager(Worker):
 
         await asyncio.sleep(5)             # so pub/sub connections can complete
         self.db_state.catchup_mgr.send_block_idx_req()
-
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):
