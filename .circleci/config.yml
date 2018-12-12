@@ -72,6 +72,11 @@ jobs:
              sudo pip3 install -r requirements.txt --upgrade --no-cache-dir --exists-action w
              sudo pip3 install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
 
+      - run:
+          name: Install Redis
+          command: |
+             sudo apt-get install redis-server
+
       - save_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
           paths:
