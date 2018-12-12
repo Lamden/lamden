@@ -7,7 +7,19 @@ from collections import defaultdict
 
 log = get_logger("VKBook")
 
-class VKBook:
+
+class VKBookMeta(type):
+    def __new__(cls, clsname, bases, clsdict):
+        clsobj = super().__new__(cls, clsname, bases, clsdict)
+
+        assert hasattr(clsobj, 'setup'), "Class obj {} expected to have method called 'setup'".format(clsobj)
+        log.critical("Metaclass calling setup!")
+        clsobj.setup()
+
+        return clsobj
+
+
+class VKBook(metaclass=VKBookMeta):
 
     node_types = ('masternode', 'witness', 'delegate')
     node_types_map = {
@@ -22,6 +34,7 @@ class VKBook:
     @classmethod
     def setup(cls, constitution_json=None):
         cls.bootnodes = []
+        log.important3("VKBook calling setup!")
         if os.getenv('__TEST__') or os.getenv('TEST_NAME'):
             from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_WITNESSES, TESTNET_MASTERNODES
             for node in TESTNET_MASTERNODES:
@@ -44,8 +57,8 @@ class VKBook:
                 if node_list:
                     cls.bootnodes += node_list.split(',')
 
-    @staticmethod
-    def add_node(vk, node_type, ip=None):
+    @classmethod
+    def add_node(cls, vk, node_type, ip=None):
         assert node_type in VKBook.node_types, 'Invalid node type!'
         assert is_valid_hex(vk, length=64), 'Invalid VK!'
         creds = {'vk': vk}
