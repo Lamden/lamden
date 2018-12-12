@@ -126,7 +126,7 @@ class StorageDriver:
 
         # check if requester is master or del
 
-        valid_node = bool(VKBook.get_masternodes().index(vk)) or bool(VKBook.get_delegates().index(vk))
+        valid_node = vk in VKBook.get_masternodes() + VKBook.get_delegates()
 
         if valid_node is True:
             given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = curr_blk_hash)
