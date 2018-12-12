@@ -151,13 +151,13 @@ class BlockManager(Worker):
             self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
             self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
 
-    def catchup_db_state(self):
+    async def catchup_db_state(self):
         self.log.info("Catching up...")
         # do catch up logic here
         # only when one can connect to quorum masters and get db update, move to next step
         # at the end, it has updated its db state to consensus latest
 
-        time.sleep(5)             # so pub/sub connections can complete
+        await asyncio.sleep(5)             # so pub/sub connections can complete
         self.db_state.catchup_mgr.send_block_idx_req()
 
 
