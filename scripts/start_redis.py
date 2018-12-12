@@ -18,7 +18,7 @@ def start_redis():
         os.system('redis-server')
     elif not env('VMNET'):
         os.system('redis-server &')
-        
+
     pw = random_password()
     port = free_port()
     with open('docker/redis.env', 'w+') as f:
@@ -26,7 +26,7 @@ def start_redis():
 REDIS_PORT={}
 REDIS_PASSWORD={}
         '''.format(port,pw))
-    os.system('redis-server docker/redis.conf --port {} --requirepass {}'.format(port,pw))
+    os.system('redis-server docker/redis.conf --port {} --requirepass {} {}'.format(port, pw, '&' if env('VMNET') else ''))
 
 if __name__ == '__main__':
     from dotenv import load_dotenv
