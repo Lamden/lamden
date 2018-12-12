@@ -13,7 +13,6 @@ class VKBookMeta(type):
         clsobj = super().__new__(cls, clsname, bases, clsdict)
 
         assert hasattr(clsobj, 'setup'), "Class obj {} expected to have method called 'setup'".format(clsobj)
-        log.critical("Metaclass calling setup!")
         clsobj.setup()
 
         return clsobj
@@ -39,6 +38,7 @@ class VKBook(metaclass=VKBookMeta):
         for node_type in cls.node_types_map:
             for node in cls.constitution[cls.node_types_map.get(node_type)]:
                 cls.book[node_type][node['vk']] = node.get('ip', True)
+
         for node_type in cls.node_types:
             node_list = env(node_type.upper())
             if node_list:

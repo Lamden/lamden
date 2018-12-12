@@ -1,4 +1,4 @@
-# from cilantro.protocol.structures import MerkleTree
+# from cilantro.protocol.structures.merkle_tree import MerkleTree
 # from cilantro.protocol import wallet
 # from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
 #

@@ -14,7 +14,7 @@
 # from cilantro.messages.block_data.transaction_data import TransactionRequest, TransactionReply
 # from cilantro.messages.envelope.envelope import Envelope
 #
-# from cilantro.protocol.structures import MerkleTree
+# from cilantro.protocol.structures.merkle_tree import MerkleTree
 # from collections import deque
 # import random
 #
