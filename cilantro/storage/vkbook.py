@@ -87,5 +87,5 @@ class VKBook:
         log.notice("witnesses: {}".format(VKBook.get_witnesses()))
         log.notice("delegates: {}".format(VKBook.get_delegates()))
 
-if os.getenv('__TEST__'):
+if os.getenv('__TEST__') and not os.getenv('CIRCLECI'):
     VKBook.setup()
