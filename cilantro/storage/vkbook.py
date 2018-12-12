@@ -16,7 +16,7 @@ class VKBook:
         'delegate': 'delegates'
     }
     bootnodes = []
-    constitution = []
+    constitution = defaultdict(list)
     book = defaultdict(dict)
 
     @classmethod
@@ -26,10 +26,13 @@ class VKBook:
             from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_WITNESSES, TESTNET_MASTERNODES
             for node in TESTNET_MASTERNODES:
                 cls.book['masternode'][node['vk']] = True
+                cls.constitution['masternodes'].append(node)
             for node in TESTNET_WITNESSES:
                 cls.book['witness'][node['vk']] = True
+                cls.constitution['witnesses'].append(node)
             for node in TESTNET_DELEGATES:
                 cls.book['delegate'][node['vk']] = True
+                cls.constitution['delegates'].append(node)
         else:
             cls.constitution = get_constitution(constitution_json)
             for node_type in cls.node_types:
