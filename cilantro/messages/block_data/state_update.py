@@ -24,7 +24,7 @@ class BlockIndexRequest(MessageBaseJson):
     B_HASH = 'block_hash'
 
     def validate(self):
-        pass
+        assert is_valid_hex(self.block_hash), "Not valid hash: {}".format(self.block_hash)
 
     @classmethod
     def create(cls, block_num=None, block_hash=None):
@@ -74,3 +74,19 @@ class BlockDataRequest(BlockIndexRequest):
 
 class BlockDataReply(BlockData):
     pass
+
+
+class SkipBlockNotification(MessageBaseJson):
+    PREV_B_HASH = 'prev_b_hash'
+
+    def validate(self):
+        assert is_valid_hex(self.prev_block_hash), "Not valid hash: {}".format(self.prev_block_hash)
+
+    @classmethod
+    def create(cls, prev_block_hash: str):
+        data = {cls.PREV_B_HASH: prev_block_hash}
+        return cls.from_data(data)
+
+    @property
+    def prev_block_hash(self):
+        return self._data[self.PREV_B_HASH]
