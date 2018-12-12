@@ -310,6 +310,7 @@ def constitution():
 def _constitution(filename, masternodes, witnesses, delegates, test=False):
     generate_constitution(filename, int(masternodes), int(witnesses), int(delegates), test=test)
 
+
 main.add_command(_constitution)
 main.add_command(get)
 main.add_command(_set)

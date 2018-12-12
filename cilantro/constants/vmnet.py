@@ -31,7 +31,7 @@ def _generate_keys(ip=None):
         keys.update({'ip': ip})
     return keys
 
-def get_constitution(constitution_json=None):
+def get_constitution(constitution_json):
     """
         Either use the json as constitution or use GLOBAL_SEED to generate a
         constitution file when testing=True. Otherwise generate a secret SK, VK
@@ -39,23 +39,12 @@ def get_constitution(constitution_json=None):
     """
     log = get_logger(__name__)
 
-    fpath = join(public_dir, constitution_json or '')
-    
+    fpath = join(public_dir, constitution_json)
+
     if constitution_json and exists(fpath):
         log.info('Loading constituion from {}...'.format(fpath))
         with open(fpath) as f:
             return json.loads(f.read())
-
-    elif env('__GENERATE_CONSTITUTION__'):
-        log.important('ConstitutionGenerationWarning: This is for testing purposes only!')
-        assert env('GLOBAL_SEED'), 'No GLOBAL_SEED found.'
-        random.seed(int(env('GLOBAL_SEED'), 16)+ip_to_decimal(env('HOST_IP')))
-        return {
-            "masternodes": [_generate_keys(ip) for ip in env('MASTERNODE', '').split(',') if ip != ''],
-            "witnesses": [_generate_keys(ip) for ip in env('WITNESS', '').split(',') if ip != ''],
-            "delegates": [_generate_keys(ip) for ip in env('DELEGATE', '').split(',') if ip != '']
-        }
-
     else:
         raise Exception('DeploymentErorr: Not testing or deploying as a single node type!')
 

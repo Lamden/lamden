@@ -40,12 +40,15 @@ def set_testnet_config(testnet_json_file='2-2-2.json'):
     from cilantro.constants.testnet import set_testnet_nodes
     set_testnet_nodes()
 
+def get_config_filename():
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILE_PATH)
+    return config[TESTNET_KEY][TESTNET_JSON_KEY]
 
 def get_testnet_json_path():
     config = configparser.ConfigParser()
     config.read(CONFIG_FILE_PATH)
     return join(TESTNET_JSON_DIR, config[TESTNET_KEY][TESTNET_JSON_KEY])
-
 
 def generate_testnet_json(num_masters=NUM_MASTERS, num_witnesses=NUM_WITNESSES, num_delegates=NUM_DELEGATES):
     def _build_nodes(num_nodes=64, prefix='node') -> list:
