@@ -43,6 +43,11 @@ class NodeBase(Worker):
     REQ_WITS = len(VKBook.get_witnesses())
 
     def __init__(self, ip, signing_key, loop=None, name='Node'):
+        # TODO oh lord plz no this
+        self.REQ_MNS = len(VKBook.get_masternodes())
+        self.REQ_DELS = len(VKBook.get_delegates())
+        self.REQ_WITS = len(VKBook.get_witnesses())
+
         self.log = get_logger(name)
         self.ip = ip
         self.name = name
