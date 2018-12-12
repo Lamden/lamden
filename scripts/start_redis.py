@@ -13,8 +13,13 @@ def start_redis():
     print("Starting Redis server...")
 
     os.system('sudo pkill redis-server')
-    pw = random_password()
-    port = free_port()
+
+    if env('CIRCLECI'):
+        pw = ''
+        port = 6379
+    else:
+        pw = random_password()
+        port = free_port()
     with open('docker/redis.env', 'w+') as f:
         f.write('''
 REDIS_PORT={}
