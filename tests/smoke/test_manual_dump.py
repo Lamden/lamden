@@ -12,7 +12,7 @@ from cilantro.logger import get_logger, overwrite_logger_level
 import logging, os, shutil, time
 
 
-if os.getenv('USE_LOCAL_SENECA', 0) != '0':
+if os.getenv('USE_LOCAL_SENECA', '0') != '0':
     log = get_logger("SenecaCopier")
     user_sen_path = os.getenv('SENECA_PATH', None)
     assert user_sen_path, "If USE_LOCAL_SENECA env var is set, SENECA_PATH env var must also be set!"

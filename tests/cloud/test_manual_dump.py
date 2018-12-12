@@ -58,6 +58,7 @@ def run_mn(slot_num):
 
 
 def run_witness(slot_num):
+
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_WITNESSES
@@ -75,6 +76,7 @@ def run_witness(slot_num):
 
 
 def run_delegate(slot_num):
+
     from cilantro.logger import get_logger, overwrite_logger_level
     from seneca.libs.logger import overwrite_logger_level as sen_overwrite_log
     from cilantro.nodes.factory import NodeFactory

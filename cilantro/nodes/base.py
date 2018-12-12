@@ -139,5 +139,3 @@ class NodeBase(Worker):
             self.online_dels.add(vk)
         if vk in VKBook.get_masternodes():
             self.online_mns.add(vk)
-
-
