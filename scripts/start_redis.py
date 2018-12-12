@@ -17,6 +17,7 @@ def start_redis():
     if env('CIRCLECI'):
         pw = ''
         port = 6379
+        os.system('redis-server docker/redis.conf --port {} --requirepass {}'.format(port,pw))
     else:
         pw = random_password()
         port = free_port()
@@ -25,7 +26,7 @@ def start_redis():
 REDIS_PORT={}
 REDIS_PASSWORD={}
         '''.format(port,pw))
-    os.system('redis-server docker/redis.conf --port {} --requirepass {} &'.format(port,pw))
+        os.system('redis-server docker/redis.conf --port {} --requirepass {} &'.format(port,pw))
 
     if not env('VMNET'):
         os.system('redis-server')

@@ -17,7 +17,6 @@ class Discovery:
     discovered_nodes = {}
     connections = {}
     is_setup = False
-    is_listen_ready = False
 
     @classmethod
     def setup(cls, ctx=None):
@@ -28,7 +27,6 @@ class Discovery:
             cls.is_connected = False
             if VKBook.is_node_type('masternode', Auth.vk):
                 # cls.discovered_nodes[Auth.vk] = cls.host_ip
-                cls.is_listen_ready = True
                 cls.is_master_node = True
 
     @classmethod
@@ -36,6 +34,7 @@ class Discovery:
         cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
         cls.sock.bind(cls.url)
         cls.log.info('Listening to other nodes on {}'.format(cls.url))
+
         while True:
             try:
                 msg = await cls.sock.recv_multipart()
@@ -51,7 +50,7 @@ class Discovery:
                 elif len(msg) == 3:
                     vk = msg[-1]
                     cls.discovered_nodes[vk.decode()] = ip.decode()
-                    cls.is_listen_ready = True
+
             except Exception as e:
                 cls.log.error(traceback.format_exc())
 
@@ -59,8 +58,6 @@ class Discovery:
     async def discover_nodes(cls, start_ip):
         is_masternode = VKBook.is_node_type('masternode', Auth.vk)
         try_count = 0
-        if cls.is_listen_ready:
-            await asyncio.sleep(3)
 
         cls.log.spam('We have the following bootnodes: {}'.format(VKBook.bootnodes))
 
@@ -137,7 +134,7 @@ class Discovery:
 
     @classmethod
     def reply(cls, ip):
-        if cls.is_listen_ready and ip != cls.host_ip:
+        if ip != cls.host_ip:
             cls.sock.send_multipart([ip, cls.pepper, Auth.vk.encode()])
             cls.is_connected = True
 
