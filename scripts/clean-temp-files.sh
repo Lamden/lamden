@@ -8,3 +8,5 @@ find . -name '*mptest-ipc-*' -delete
 find . -name '*-ipc-sock*' -delete
 find . -name 'fsock' -delete
 find . -name '.coverage' -delete
+find . -name '*docker-compose.yml' -delete
+find . -name '*Dockerfile' -delete

@@ -144,7 +144,7 @@ class TestSubBlockBuilder(TestCase):
         print("print tsns")
         print(tx_batch_env.message.transactions[0])
         SBBTester.send_sub_to_sbb(sbb, envelope=tx_batch_env, handler_key=0)
-        
+
 
         sbb._make_next_sub_block()
 

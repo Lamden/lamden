@@ -6,11 +6,6 @@ from cilantro.protocol import wallet
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
 from cilantro.storage.vkbook import VKBook
 from cilantro.utils.hasher import Hasher
-from cilantro.constants.testnet import TESTNET_DELEGATES
-
-from cilantro.constants.testnet import TESTNET_DELEGATES
-DEL_SK = TESTNET_DELEGATES[0]['sk'] if len(TESTNET_DELEGATES) > 0 else 'A' * 64
-DEL_VK = TESTNET_DELEGATES[0]['vk'] if len(TESTNET_DELEGATES) > 0 else wallet.get_vk('A' * 64)
 from typing import List
 
 import capnp
@@ -28,7 +23,7 @@ class SubBlockContender(MessageBase):
 
     def validate(self):
         self.transactions # Will throw an error if it cannot be deserialized
-        assert self.signature.sender in VKBook.get_delegates(), 'Not a valid delegate'
+        assert VKBook.is_node_type('delegate', self.signature.sender), 'Not a valid delegate'
         assert self.signature.verify(bytes.fromhex(self.result_hash)), 'Cannot verify signature'
         assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
         assert self._data.inputHash, "input hash field missing from data {}".format(self._data)
@@ -138,6 +133,11 @@ class SubBlockContender(MessageBase):
 
 
 class SubBlockContenderBuilder:
+
+    from cilantro.constants.testnet import TESTNET_DELEGATES
+    DEL_SK = TESTNET_DELEGATES[0]['sk'] if len(TESTNET_DELEGATES) > 0 else 'A' * 64
+    DEL_VK = TESTNET_DELEGATES[0]['vk'] if len(TESTNET_DELEGATES) > 0 else wallet.get_vk('A' * 64)
+
     @classmethod
     def create(cls, transactions: List[TransactionData] = None, tx_count=5, input_hash='A' * 64, sb_index=0,
                del_sk=DEL_SK, prev_block_hash='0' * 64):

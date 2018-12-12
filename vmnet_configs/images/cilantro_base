@@ -21,14 +21,6 @@ RUN apt-get update \
     && pip3 install -r requirements.txt \
     && pip3 install -r dev-requirements.txt \
     && apt install -y redis-server \
-    && rm -rf pynacl capnproto 2>/dev/null \
-    && apt-get remove -y --allow-remove-essential \
-        build-essential \
-        gcc g++ \
-        libffi-dev libtool \
-        gsl-bin zlib1g-dev libboost-all-dev \
-        autoconf automake \
-    && apt autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf pynacl capnproto 2>/dev/null
 
 CMD python3 ./scripts/start_redis.py

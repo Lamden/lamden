@@ -18,12 +18,14 @@ from cilantro.utils.test.router_auth import RouterAuthTester
 import asyncio
 import zmq.asyncio
 import os
+from cilantro.storage.vkbook import VKBook
 
 
 @mp_testable(NodeBase)
 class MPNodeBase(MPTesterBase):
     @classmethod
     def build_obj(cls, sk, name='Node'):
+        VKBook.setup()
         ip = os.getenv('HOST_IP', '127.0.0.1')
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
@@ -36,6 +38,7 @@ class MPNodeBase(MPTesterBase):
 class MPPubSubAuth(MPTesterBase):
     @classmethod
     def build_obj(cls, sk, name='') -> tuple:
+        VKBook.setup()
         # # DEBUG -- TODO DELETE
         # print("VKBook on REMOTE MACHINE")
         # from cilantro.storage.vkbook import VKBook
@@ -57,6 +60,7 @@ class MPPubSubAuth(MPTesterBase):
 class MPRouterAuth(MPTesterBase):
     @classmethod
     def build_obj(cls, sk, name='') -> tuple:
+        VKBook.setup()
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
 
@@ -73,6 +77,7 @@ class MPRouterAuth(MPTesterBase):
 class MPComposer(MPTesterBase):
     @classmethod
     def build_obj(cls, sk, name='') -> tuple:
+        VKBook.setup()
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
         ctx = zmq.asyncio.Context()
@@ -93,6 +98,7 @@ class MPComposer(MPTesterBase):
 class MPStateMachine(MPTesterBase):
     @classmethod
     def build_obj(cls, sm_class, name=''):
+        VKBook.setup()
         # These 2 lines are probs unnecessary
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
@@ -108,6 +114,7 @@ class MPStateMachine(MPTesterBase):
 class MPGod(MPTesterBase):
     @classmethod
     def build_obj(cls) -> tuple:
+        VKBook.setup()
         loop = asyncio.get_event_loop()
         god = God(loop=loop)
 

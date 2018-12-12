@@ -26,16 +26,18 @@ class Discovery:
             cls.ctx = ctx or zmq.asyncio.Context()
             cls.sock = cls.ctx.socket(zmq.ROUTER)
             cls.is_connected = False
-            if Auth.vk in VKBook.get_masternodes():
+            if VKBook.is_node_type('masternode', Auth.vk):
                 # cls.discovered_nodes[Auth.vk] = cls.host_ip
-                cls.is_listen_ready = True
                 cls.is_master_node = True
+                cls.is_listen_ready = True
 
     @classmethod
     async def listen(cls):
         cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
         cls.sock.bind(cls.url)
         cls.log.info('Listening to other nodes on {}'.format(cls.url))
+        if cls.is_listen_ready:
+            await asyncio.sleep(3)
         while True:
             try:
                 msg = await cls.sock.recv_multipart()
@@ -52,18 +54,24 @@ class Discovery:
                     vk = msg[-1]
                     cls.discovered_nodes[vk.decode()] = ip.decode()
                     cls.is_listen_ready = True
+
             except Exception as e:
                 cls.log.error(traceback.format_exc())
 
     @classmethod
     async def discover_nodes(cls, start_ip):
-        is_masternode = Auth.vk in VKBook.get_masternodes()
+        is_masternode = VKBook.is_node_type('masternode', Auth.vk)
         try_count = 0
-        if cls.is_listen_ready:
-            await asyncio.sleep(3)
+
+        cls.log.spam('We have the following bootnodes: {}'.format(VKBook.bootnodes))
+
         while True:
-            cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
-            cls.connect(get_ip_range(start_ip))
+            if len(VKBook.bootnodes) > 0: # TODO refine logic post-anarchy-net
+                cls.log.info('Connecting to boot nodes: {}'.format(VKBook.bootnodes))
+                cls.connect(VKBook.bootnodes)
+            else:
+                cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
+                cls.connect(get_ip_range(start_ip))
             try_count += 1
             if (is_masternode and len(VKBook.get_masternodes()) == 1) or \
                     (len(cls.discovered_nodes) == 0 and is_masternode and cls.is_connected):

@@ -51,9 +51,10 @@ class BlockAggregator(Worker):
         self.log.info("Block Aggregator starting...")
         self.build_task_list()
 
-        self.log.notice("starting initial catchup...")
-        self.is_catching_up = True
-        self.catchup_manager.send_block_idx_req()
+        # TODO put this back in when Catchup is implemented
+        # self.log.notice("starting initial catchup...")
+        # self.is_catching_up = True
+        # self.catchup_manager.send_block_idx_req()
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 

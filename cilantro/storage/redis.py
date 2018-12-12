@@ -36,6 +36,3 @@ class SafeRedisMeta(type):
 
 class SafeRedis(metaclass=SafeRedisMeta):
     pass
-
-
-
