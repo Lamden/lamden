@@ -18,7 +18,6 @@ class SubBlock(MessageBase):
         validate_hex(self.merkle_root, length=64, field_name='merkle_root')
         validate_hex(self.input_hash, length=64, field_name='input_hash')
         assert self._data.signatures
-        assert self._data.merkleLeaves
         assert type(self._data.subBlockIdx) == int
 
         # If this SB contains transactions, make sure they are the same length as merkle leaves
@@ -40,7 +39,7 @@ class SubBlock(MessageBase):
         for s in signatures:
             assert isinstance(s, MerkleSignature), "'signatures' arg must be a list of signatures, not {}".format(s)
         for t in transactions:
-            assert isinstance(t, TransactionData), "'transactions' must be a list of TransactionData instances, not {}".format(tx)
+            assert isinstance(t, TransactionData), "'transactions' must be a list of TransactionData instances, not {}".format(t)
 
         struct = subblock_capnp.SubBlock.new_message()
         struct.signatures = [sig.serialize() for sig in signatures]

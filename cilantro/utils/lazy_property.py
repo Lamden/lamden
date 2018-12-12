@@ -47,3 +47,12 @@ def lazy_func(fn):
         return getattr(self, func_name)
 
     return _cache_func
+
+
+# def set_lazy_func(obj, fn, value):
+#     func_name = _lp_name(fn.__name__)
+#
+#     def _cache_func(*args, **kwargs):
+#         return value
+#
+#     setattr(obj, func_name, _cache_func)
