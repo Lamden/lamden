@@ -43,7 +43,7 @@ class CatchupManager:
     # BOTH WILL USE THIS
     def is_db_updated(self) -> bool:
         # TODO implement. return true when we are caught up
-        return False
+        return True
 
     # other
     def _add_pending_blocks(self, block_num: int, block_hash: str, mn_vks: List[list]):
