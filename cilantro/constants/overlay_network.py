@@ -8,7 +8,7 @@ MAX_PEERS = 64
 
 AUTH_TIMEOUT = 20 * CI_FACTOR  # Times-out after retrying auth for the interval
 RPC_TIMEOUT = 10
-CLIENT_SETUP_TIMEOUT = 120  # How long OverlayClient should wait for a rdy sig from the OverlayServer until we timeout
+CLIENT_SETUP_TIMEOUT = 20  # How long OverlayClient should wait for a rdy sig from the OverlayServer until we timeout
 DISCOVERY_TIMEOUT = 3
 
 DISCOVERY_RETRIES = 100

@@ -56,6 +56,10 @@ class StorageDriver:
         block_dict = MDB.get_dict(block_data)
         assert (bool(MasterOps.evaluate_wr(entry=block_dict))) is True, "wr to master store failed, dump blk {}"\
             .format(block_dict)
+
+        # Attach the block owners data to the BlockData instance  TODO -- find better solution
+        block_data._data.blockOwners = MasterOps.get_blk_owners(block_hash)
+
         return block_data
 
     @classmethod

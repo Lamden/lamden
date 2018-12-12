@@ -181,8 +181,8 @@ class SubBlockBuilder(Worker):
         msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
         self.log.debugv("SBB received an IPC message {}".format(msg))
 
-
         if isinstance(msg, MakeNextBlock):
+            self.log.important2("Got MakeNextBlock notif from block manager!!!")  # TODO REMOOOVE
             self._make_next_sub_block()
 
         # if not matched consensus, then discard current state and use catchup flow

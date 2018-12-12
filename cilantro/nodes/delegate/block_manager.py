@@ -97,8 +97,6 @@ class BlockManager(Worker):
         self.log.info("Block Manager starting...")
         self.start_sbb_procs()
 
-        # TODO -- take this out once catchup is properly implemented
-        self.send_updated_db_msg()
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
@@ -160,8 +158,10 @@ class BlockManager(Worker):
         # only when one can connect to quorum masters and get db update, move to next step
         # at the end, it has updated its db state to consensus latest
 
-        await asyncio.sleep(5)             # so pub/sub connections can complete
-        self.db_state.catchup_mgr.send_block_idx_req()
+        await asyncio.sleep(8)  # so pub/sub connections can complete
+        # TODO -- take this out once catchup is properly implemented, and call send_block_idx_req instead
+        self.send_updated_db_msg()
+        # self.db_state.catchup_mgr.send_block_idx_req()
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):
@@ -173,7 +173,7 @@ class BlockManager(Worker):
             self.sb_builders[i].start()
 
         # Sleep to SBB's IPC sockets are ready for any messages from BlockManager
-        time.sleep(1)
+        time.sleep(3)
         self.log.info("Done sleeping after starting SBB procs")
 
     def _get_my_index(self):
