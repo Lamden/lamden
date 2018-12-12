@@ -54,28 +54,16 @@ class BlockIndexRequest(MessageBaseJson):
 
 
 class BlockIndexReply(MessageBaseJson):
-
     def validate(self):
         # TODO do validation logic here, not in create
         pass
 
     @classmethod
-    def create(cls, block_indices: List[list]):
-        # For dev, validate creation
-        assert type(block_indices) is list, 'block_indices must be a list of tuples not {}'.format(type(block_indices))
-        for t in block_indices:
-            assert type(t) in (list, tuple), "block_indces must be list of tuples, but element found of type {}".format(type(t))
-            assert len(t) is 3, "tuple must be of length 3 and the form (block hash, block num, list of mn vks)"
-            assert is_valid_hex(t[0], 64), "First element of t must be hash, but got {}".format(t[0])
-            assert type(t[1]) is int and t[1] > 0, "Second element must be a block num greater than 0, not {}".format(t[1])
-            assert type(t[2]) in (list, tuple, set), '3rd element must be a list of masternode vks not {}'.format(t[2])
-            for vk in t[2]:
-                assert is_valid_hex(vk, 64), "3rd element must be list of valid verifying keys, but got {}".format(vk)
-
-        return cls.from_data(block_indices)
+    def create(cls, block_info: List[dict]):
+        return cls.from_data(block_info)
 
     @property
-    def indices(self) -> List[tuple]:
+    def indices(self) -> List[dict]:
         return self._data
 
 

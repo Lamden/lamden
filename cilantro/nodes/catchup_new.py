@@ -95,7 +95,7 @@ class CatchupManager:
 
         self.catchup_state = False
         self.store_full_blocks = None
-        self.target_blk_num = -1
+        self.target_blk = {}
         self.curr_hash, self.curr_num = None, None      # latest blk on redis
         self.blk_list = []
         self.all_masters = None
@@ -130,7 +130,35 @@ class CatchupManager:
         self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
         return True
 
-    # ONLY MASTERNODES USE THIS
+    def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
+        """
+        We expect to receive this message from all mn/dn
+        :param sender_vk:
+        :param reply:
+        :return:
+        """
+
+        if not reply.indices:
+            self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
+            return
+
+        if not self.blk_list:
+            self.blk_list = reply.indices
+            self.target_blk = self.blk_list[len(self.blk_list)-1]
+        else:
+            count = 0                                                               # num of new blk to update
+            tmp_list = reply.indices
+            new_target_blk = tmp_list[len(tmp_list)-1]
+            while self.target_blk.get('blockNum') < new_target_blk.get('blockNum'):
+                count = count +1
+                # TODO
+                pass
+
+    def recv_block_data_reply( self, reply: BlockData):
+        if StorageDriver.process_received_block(block = reply):
+            StateDriver.update_with_block(block = reply)
+
+    # MASTER ONLY CALLS
     def recv_block_idx_req(self, requester_vk: str, request: BlockIndexRequest):
         """
         Receive BlockIndexRequests calls storage driver to process req and build response
@@ -143,6 +171,14 @@ class CatchupManager:
                                               sender_blk_hash = request.block_hash)
         self._send_block_idx_reply(catchup_list = delta_idx)
 
-    def _send_block_idx_reply(self, catchup_list=None):
-        # TODO do i need to build a list ?
-        pass
+    def _send_block_idx_reply(self, reply_to_vk = None, catchup_list=None):
+        # this func doesnt care abt catchup_state we respond irrespective
+        reply = BlockIndexReply.create(block_info = catchup_list)
+        self.router.send_msg(reply, header=reply_to_vk.encode())
+
+    def _send_block_data_req(self, mn_vk, req_blk_num):
+        self.log.info("Unicast BlockDateRequests to masternode owner with current block num {} key {}"
+                      .format(req_blk_num, mn_vk))
+        req = BlockDataRequest.create(block_num = req_blk_num)
+        self.router.send_msg(req, header=mn_vk.encode())
+
