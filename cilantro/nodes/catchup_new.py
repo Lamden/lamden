@@ -5,6 +5,7 @@ from cilantro.constants.zmq_filters import *
 from cilantro.protocol.reactor.lsocket import LSocket
 from cilantro.storage.vkbook import VKBook
 from cilantro.storage.state import StateDriver
+from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.nodes.masternode.master_store import MasterOps
 from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
 from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest
@@ -12,7 +13,7 @@ from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIn
 
 class CatchupUtil:
     @classmethod
-    def process_catch_up_idx(cls, vk = None, curr_blk_hash = None ):
+    def get_delta_idx(cls, vk = None, curr_blk_num =None, sender_blk_hash = None):
         """
         API gets latest hash requester has and responds with delta block index
 
@@ -20,15 +21,13 @@ class CatchupUtil:
         :param curr_blk_hash:
         :return:
         """
-
+        get_latest_block_hash
         # check if requester is master or del
-
         valid_node = bool(VKBook.get_masternodes().index(vk)) or bool(VKBook.get_delegates().index(vk))
 
         if valid_node is True:
-            given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = curr_blk_hash)
-            latest_blk = MasterOps.get_blk_idx(n_blks = 1)
-            latest_blk_num = latest_blk.get('blockNum')
+            given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_blk_hash)
+            latest_blk_num = curr_blk_num
 
             if given_blk_num == latest_blk_num:
                 cls.log.debug('given block is already latest')
@@ -88,25 +87,34 @@ class CatchupUtil:
 
 
 class CatchupManager:
-    def __init__(self, verifying_key: str, pub_socket: LSocket, router_socket: LSocket, store_full_blocks=True):
+    def __init__(self, verifying_key: str, pub_socket: LSocket, router_socket: LSocket):
         self.log = get_logger("CatchupManager")
-        self.catchup_state = False
+
         self.pub, self.router = pub_socket, router_socket
         self.verifying_key = verifying_key
-        self.store_full_blocks = store_full_blocks
-        # self.all_masters = set(VKBook.get_masternodes()) - set(self.verifying_key)
-        self.all_masters = set(VKBook.get_masternodes())
-        # for block zero its going to just return 0x64 hash n 0 blk_num
-        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
+
+        self.catchup_state = False
+        self.store_full_blocks = None
         self.target_blk_num = -1
+        self.curr_hash, self.curr_num = None, None      # latest blk on redis
+        self.blk_list = []
+        self.all_masters = None
+
+        # self.all_masters = set(VKBook.get_masternodes()) - set(self.verifying_key)
+        # for block zero its going to just return 0x64 hash n 0 blk_num
         # self.pending_block_updates = defaultdict(dict)
 
         self.run_catchup()
 
-    def run_catchup(self):
+    def run_catchup(self, store_full_blocks=True):
+        # check if catch up is already running
         if self.catchup_state is True:
             self.log.critical("catch up already running we shouldn't be here")
             return
+
+        self.store_full_blocks = store_full_blocks
+        self.all_masters = set(VKBook.get_masternodes())
+        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
         # starting phase I
         self.catchup_state = self.send_block_idx_req()
@@ -118,7 +126,6 @@ class CatchupManager:
         :return:
         """
         self.log.info("Multi cast BlockIndexRequests to all MN with current block hash {}".format(curr_hash))
-
         req = BlockIndexRequest.create(block_hash=self.curr_hash)
         self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
         return True
@@ -132,5 +139,10 @@ class CatchupManager:
         :return:
         """
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
-        delta_idx = CatchupUtil.process_catch_up_idx(vk = requester_vk, curr_blk_hash = request.block_hash)
+        delta_idx = CatchupUtil.get_delta_idx(vk = requester_vk, curr_blk_num = self.curr_num,
+                                              sender_blk_hash = request.block_hash)
         self._send_block_idx_reply(catchup_list = delta_idx)
+
+    def _send_block_idx_reply(self, catchup_list=None):
+        # TODO do i need to build a list ?
+        pass
