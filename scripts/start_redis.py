@@ -18,9 +18,9 @@ def start_redis():
         os.system('redis-server')
     elif not env('VMNET'):
         os.system('redis-server &')
-    elif not env('CIRCLECI'):
-        pw = random_password()
-        port = free_port()
+        
+    pw = random_password()
+    port = free_port()
     with open('docker/redis.env', 'w+') as f:
         f.write('''
 REDIS_PORT={}
