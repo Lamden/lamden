@@ -112,7 +112,7 @@ def start_mgmt():
 
 class TestMockStore(BaseNetworkTestCase):
 
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro_multi_master.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-multi-master.json')
 
     @vmnet_test
     def test_store(self):
