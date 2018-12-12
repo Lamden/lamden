@@ -7,13 +7,14 @@ from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH
 
 import redis
 from seneca.constants.config import *
-
+from cilantro.storage.vkbook import VKBook
 
 class TestStateDriver(TestCase):
 
     def setUp(self):
         self.r = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
         self.r.flushdb()
+        VKBook.setup()
         tx_count = 5
         sub_block_count = 2
         states = [
@@ -58,4 +59,6 @@ class TestStateDriver(TestCase):
 
 
 if __name__ == '__main__':
+    import os
+    os.environ['__TEST__'] = 'True'
     unittest.main()

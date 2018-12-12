@@ -99,11 +99,11 @@ class ContractTransactionBuilder:
     CURRENCY_CONTRACT_NAME = 'currency'
 
     @staticmethod
-    def create_currency_tx(sender_sk: str, receiver_vk: str, amount: Union[int, Decimal], gas=1000000, nonce=None):
+    def create_currency_tx(sender_sk: str, receiver_vk: str, amount: Union[int, Decimal], stamps=1000000, nonce=None):
         vk = wallet.get_vk(sender_sk)
         nonce = nonce or "{}:{}".format(vk, 'A' * 64)
 
-        return ContractTransaction.create(sender_sk=sender_sk, stamps_supplied=gas,
+        return ContractTransaction.create(sender_sk=sender_sk, stamps_supplied=stamps,
                                           contract_name=ContractTransactionBuilder.CURRENCY_CONTRACT_NAME,
                                           func_name='transfer', nonce=nonce, to=receiver_vk, amount=amount)
 
@@ -115,4 +115,3 @@ class ContractTransactionBuilder:
         sender, receiver = random.sample(ALL_WALLETS, 2)
         amount = random.randint(1, 2 ** 8)
         return ContractTransactionBuilder.create_currency_tx(sender[0], receiver[1], amount)
-

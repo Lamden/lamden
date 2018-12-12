@@ -11,9 +11,10 @@ from cilantro.protocol import wallet
 
 from cilantro.constants.testnet import *
 
-
 class TestEnvelopefromObjects(TestCase):
     """Envelope unit tests using Envelope.create_from_objects() directly to create envelopes"""
+
+
     def _default_meta(self):
         """
         Helper method to build message_meta

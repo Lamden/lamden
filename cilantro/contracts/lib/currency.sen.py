@@ -84,4 +84,3 @@ def mint(to, amount):
     assert rt['sender'] == rt['author'], 'Only the original contract author can mint!'
 
     balances[to] += amount
-

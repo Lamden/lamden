@@ -2,7 +2,7 @@ from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
 
 from cilantro.logger.base import get_logger
-from cilantro.constants.testnet import TESTNET_DELEGATES
+
 from cilantro.nodes.delegate.block_manager import BlockManager, IPC_PORT
 from cilantro.utils import int_to_bytes
 
@@ -15,6 +15,9 @@ from cilantro.messages.block_data.block_metadata import NewBlockNotification
 
 _log = get_logger("TestBlockManager")
 
+from cilantro.storage.vkbook import VKBook
+VKBook.setup()
+from cilantro.constants.testnet import TESTNET_DELEGATES
 TEST_IP = '127.0.0.1'
 TEST_SK = TESTNET_DELEGATES[0]['sk']
 
@@ -28,6 +31,7 @@ class TestBlockManager(TestCase):
     @mock.patch("cilantro.nodes.delegate.block_manager.BlockManager.run", autospec=True)
     def test_build_task_list_creates_ipc_router(self, mock_run_method, mock_bm_asyncio, mock_sbb, mock_manager, mock_worker_asyncio):
         bm = BlockManager(ip=TEST_IP, signing_key=TEST_SK)
+
 
         # Attach a mock SockManager so create_socket calls return mock objects. Whenever a method is called on a mock
         # object, a new mock object is automatically returned

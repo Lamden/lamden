@@ -5,12 +5,12 @@ from cilantro.protocol import wallet
 
 class MerkleSignature(MessageBase):
     """
-    MerkleSignatures are exchanged among TESTNET_DELEGATES during consensus to verify if they all have the same data.
+    MerkleSignatures are exchanged among delegates during consensus to verify if they all have the same data.
     When a delegate starts consensus, it builds a Merkle tree with its entire transaction queue (all transaction that would
     be in the proposed block), signs the hash of the merkle tree, and creates a MerkleSignature with the resulting signature
-    as well as the TESTNET_DELEGATES id and a timestamp.
+    as well as the delegates id and a timestamp.
 
-    Other TESTNET_DELEGATES receive this MerkleSignature, and attempt to verify it using the sender's verifying key and the receiving
+    Other delegates receive this MerkleSignature, and attempt to verify it using the sender's verifying key and the receiving
     delegate's own merkle hash (which should be the same as the sender's merkle hash if their blocks have the same
     transactions).
 
