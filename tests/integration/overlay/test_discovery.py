@@ -1,21 +1,21 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-2.json')
 from vmnet.testcase import BaseTestCase
 from vmnet.comm import file_listener
-import unittest, time, random, vmnet, cilantro, asyncio, ujson as json
+import unittest, time, random, vmnet, cilantro, asyncio, ujson as json, os
 from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
 from cilantro.logger.base import get_logger
 from cilantro.constants.test_suites import CI_FACTOR
-from cilantro.storage.vkbook import VKBook
-from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
+from cilantro.constants.vmnet import get_constitution
+
+CONSTITUION_JSON = '2-2-2.json'
 
 def masternode(idx):
     from vmnet.comm import send_to_file
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
     from cilantro.protocol.overlay.discovery import Discovery
     from cilantro.protocol.overlay.auth import Auth
     import asyncio, os, ujson as json
+    from cilantro.storage.vkbook import VKBook
+    VKBook.setup(CONSTITUION_JSON)
 
     async def check_nodes():
         while True:
@@ -26,7 +26,7 @@ def masternode(idx):
     from cilantro.logger import get_logger
     log = get_logger('MasterNode_{}'.format(idx))
     loop = asyncio.get_event_loop()
-    Auth.setup(TESTNET_MASTERNODES[idx]['sk'])
+    Auth.setup(VKBook.constitution['masternodes'][idx]['sk'])
     Discovery.setup()
     tasks = asyncio.ensure_future(asyncio.gather(
         Discovery.listen(),
@@ -38,11 +38,12 @@ def masternode(idx):
 
 def delegates(idx):
     from vmnet.comm import send_to_file
-    from cilantro.constants.testnet import TESTNET_DELEGATES
     from cilantro.protocol.overlay.discovery import Discovery
     from cilantro.protocol.overlay.auth import Auth
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     import asyncio, os, ujson as json
+    from cilantro.storage.vkbook import VKBook
+    VKBook.setup(CONSTITUION_JSON)
 
     async def check_nodes():
         while True:
@@ -53,7 +54,7 @@ def delegates(idx):
     from cilantro.logger import get_logger
     log = get_logger('Node_{}'.format(idx))
     loop = asyncio.get_event_loop()
-    Auth.setup(TESTNET_DELEGATES[idx]['sk'])
+    Auth.setup(VKBook.constitution['delegates'][idx]['sk'])
     Discovery.setup()
     tasks = asyncio.ensure_future(asyncio.gather(
         Discovery.listen(),
