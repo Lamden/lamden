@@ -1,0 +1,26 @@
+{
+    "masternodes":[
+        {
+            "vk":"3c99c2ce0c22d297f93637f66acc708f853e333f27d8a3ef7e2bd60e94567adc"
+        },
+        {
+            "vk":"a696ceadca98b9d883215aa04696e820f7953a7ab6c0fb43d2b8001dc3062bf1"
+        }
+    ],
+    "witnesses":[
+        {
+            "vk":"ac911da637c7efbc6f10b09cf0c0379602f92d9eb2fd2e7c81c1d23540ec0f93"
+        },
+        {
+            "vk":"be00190bbc9b7cc7c525bc3a76b6216db0cae670979273b9633e85423245beb0"
+        }
+    ],
+    "delegates":[
+        {
+            "vk":"6e48cd5f558ec9d2d5b4b83e062118271e295dd6c4b097458255444f8434a172"
+        },
+        {
+            "vk":"2d578ab00a3fd1e9dd8e1890c278332b28b5c7947c5a64ac037c89f263637c77"
+        }
+    ]
+}

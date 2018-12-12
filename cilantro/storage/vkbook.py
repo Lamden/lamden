@@ -22,7 +22,8 @@ class VKBook:
     @classmethod
     def setup(cls, constitution_json=None):
         cls.bootnodes = []
-        if os.getenv('__TEST__') or os.getenv('TEST_NAME'):
+        if os.getenv('__INHERIT_CONSTITUTION__'):
+            log.important('TestnetWarning: Inheriting constitution from testnet...')
             from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_WITNESSES, TESTNET_MASTERNODES
             for node in TESTNET_MASTERNODES:
                 cls.book['masternode'][node['vk']] = True
@@ -89,6 +90,3 @@ class VKBook:
         log.notice("masternodes: {}".format(VKBook.get_masternodes()))
         log.notice("witnesses: {}".format(VKBook.get_witnesses()))
         log.notice("delegates: {}".format(VKBook.get_delegates()))
-
-if os.getenv('__TEST__'):
-    VKBook.setup()

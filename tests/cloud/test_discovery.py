@@ -12,7 +12,7 @@ def masternode(idx):
     from cilantro.protocol.overlay.auth import Auth
     import asyncio, os, ujson as json, sys
     from cilantro.storage.vkbook import VKBook
-    VKBook.setup()
+    VKBook.setup('2-2-2.json')
 
     async def check_nodes():
         while True:
@@ -40,7 +40,7 @@ def delegates(idx):
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     import asyncio, os, ujson as json, sys
     from cilantro.storage.vkbook import VKBook
-    VKBook.setup()
+    VKBook.setup('2-2-2.json')
 
     async def check_nodes():
         while True:

@@ -1,0 +1,32 @@
+{
+    "masternodes":[
+        {
+            "sk":"c767e5448147c54834930217f0823ee6858ad79091bfc65910172567b55cd751",
+            "vk":"3c99c2ce0c22d297f93637f66acc708f853e333f27d8a3ef7e2bd60e94567adc"
+        },
+        {
+            "sk":"973d2aeee09068bdf260439e3fea9fb6b99a6d2c0eac2de7c2a19dc33cd79c71",
+            "vk":"a696ceadca98b9d883215aa04696e820f7953a7ab6c0fb43d2b8001dc3062bf1"
+        }
+    ],
+    "witnesses":[
+        {
+            "sk":"7ecccb081dc1cae13192d6f92f0ff1ae7a392fafa260579b98ca8c78533ddd3c",
+            "vk":"ac911da637c7efbc6f10b09cf0c0379602f92d9eb2fd2e7c81c1d23540ec0f93"
+        },
+        {
+            "sk":"f93655ebbaa7985a61200a5d6cfde86759f7d2847b2177cef795cd04bb2eca85",
+            "vk":"be00190bbc9b7cc7c525bc3a76b6216db0cae670979273b9633e85423245beb0"
+        }
+    ],
+    "delegates":[
+        {
+            "sk":"54e1fd5638b7827030d13265910a08ebc872ffeca9c53c1a1dcc87d4ad904287",
+            "vk":"6e48cd5f558ec9d2d5b4b83e062118271e295dd6c4b097458255444f8434a172"
+        },
+        {
+            "sk":"66eb253b4105758a51a3c67492d90994134da2bdd76b4d650e2ecd40dc19c147",
+            "vk":"2d578ab00a3fd1e9dd8e1890c278332b28b5c7947c5a64ac037c89f263637c77"
+        }
+    ]
+}

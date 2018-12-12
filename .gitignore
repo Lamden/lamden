@@ -28,15 +28,14 @@ cilantro/faucet.json
 data
 cilantro/protocol/networks/data
 certs
-tests/vmnet/docker-compose.yml
 .DS_Store
-certs
 state.tmp
 seneca
 *.dat
 **/profiles/**
 **/tmp_exec_code*.py
 data
+vmnet_configs/constitutions/private
 
 # Config files
 db_conf.ini
