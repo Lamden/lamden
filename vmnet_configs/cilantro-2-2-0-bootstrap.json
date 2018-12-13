@@ -6,7 +6,8 @@
             "count": 2,
             "ports": [
                 10200, 8080, 4319
-            ]
+            ],
+            "environment": {"CONSITUTION_FILE": "2-2-0.json"}
         },
         {
             "name": "witness",
@@ -14,7 +15,8 @@
             "count": 2,
             "ports": [
                 10200, 8080, 4319
-            ]
+            ],
+            "environment": {"CONSITUTION_FILE": "2-2-0.json"}
         },
         {
             "name": "mgmt",
@@ -22,7 +24,8 @@
             "count": 1,
             "ports": [
                 10200, 8080, 4319
-            ]
+            ],
+            "environment": {"CONSITUTION_FILE": "2-2-0.json"}
         }
     ]
 }
