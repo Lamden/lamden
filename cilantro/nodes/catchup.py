@@ -14,13 +14,13 @@ from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIn
 
 
 class CatchupManager:
-    def __init__(self, verifying_key: str, pub_socket: LSocket, router_socket: LSocket):
+    def __init__(self, verifying_key: str, pub_socket: LSocket, router_socket: LSocket, store_full_blocks=True):
         self.log = get_logger("CatchupManager")
 
         # infra input
         self.pub, self.router = pub_socket, router_socket
         self.verifying_key = verifying_key
-        self.store_full_blocks = None
+        self.store_full_blocks = store_full_blocks
 
         # catchup state
         self.catchup_state = False
@@ -43,13 +43,12 @@ class CatchupManager:
 
         self.run_catchup()
 
-    def run_catchup(self, store_full_blocks=True):
+    def run_catchup(self):
         # check if catch up is already running
         if self.catchup_state is True:
             self.log.critical("catch up already running we shouldn't be here")
             return
 
-        self.store_full_blocks = store_full_blocks
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
         # starting phase I
