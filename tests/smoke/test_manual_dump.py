@@ -104,7 +104,7 @@ def dump_it(volume, delay=0):
 class TestManualDump(BaseNetworkTestCase):
 
     NUM_BLOCKS = 2
-    VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_BLOCKS  # Number of transactions to dump
+    VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dump
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-2-bootstrap.json')
     PROFILE_TYPE = None
 

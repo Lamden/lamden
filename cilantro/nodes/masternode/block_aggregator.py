@@ -165,6 +165,7 @@ class BlockAggregator(Worker):
         if self.curr_block.is_empty():
             self.log.success2("Got consensus on empty block! Sending skip block notification")
             self.send_skip_block_notif()
+
         else:
             # TODO wrap storage in try/catch. Add logic for storage failure
             sb_data = self.curr_block.get_sb_data()
@@ -191,11 +192,10 @@ class BlockAggregator(Worker):
 
     def send_skip_block_notif(self):
         skip_notif = SkipBlockNotification.create(prev_block_hash=self.curr_block_hash)
-        self.pub.send_msg(msg=SkipBlockNotification, header=DEFAULT_FILTER.encode())
+        self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.info("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
-        block_hash = notif.block_hash
         self.log.notice("MN got new block notification: {}".format(notif))
         # TODO implement
 
