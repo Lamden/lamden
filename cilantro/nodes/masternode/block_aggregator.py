@@ -337,24 +337,26 @@ class BlockAggregator(Worker):
 
     def recv_new_block_notif(self, sender_vk: str, nbc: NewBlockNotification):
         block_hash = nbc.block_hash
+        self.log.notice("MN got new block notification: {}".format(nbc))
+        # TODO implement
 
-        if not self.full_blocks.get(block_hash):
-            self.log.info('Received NEW block hash "{}", did not yet receive valid sub blocks from delegates.'.format(block_hash))
-            self.full_blocks[block_hash] = {
-                '_block_metadata_': nbc,
-                '_consensus_reached_': False,
-                '_senders_': {sender_vk}
-            }
-
-        if not self.full_blocks[block_hash]['_consensus_reached_']:
-            self.log.info('Received notification for KNOWN block hash "{}", adding to consensus count.'.format(block_hash))
-            self.full_blocks[block_hash]['_senders_'].add(sender_vk)
-            if len(self.full_blocks[block_hash]['_senders_']) >= MASTERNODE_MAJORITY:
-                self.full_blocks[block_hash]['_consensus_reached_'] = True
-                # TODO consensus on new block notif reached here. Do whatever.
-
-        else:
-            self.log.info('Received notification for KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
+        # if not self.full_blocks.get(block_hash):
+        #     self.log.info('Received NEW block hash "{}", did not yet receive valid sub blocks from delegates.'.format(block_hash))
+        #     self.full_blocks[block_hash] = {
+        #         '_block_metadata_': nbc,
+        #         '_consensus_reached_': False,
+        #         '_senders_': {sender_vk}
+        #     }
+        #
+        # if not self.full_blocks[block_hash]['_consensus_reached_']:
+        #     self.log.info('Received notification for KNOWN block hash "{}", adding to consensus count.'.format(block_hash))
+        #     self.full_blocks[block_hash]['_senders_'].add(sender_vk)
+        #     if len(self.full_blocks[block_hash]['_senders_']) >= MASTERNODE_MAJORITY:
+        #         self.full_blocks[block_hash]['_consensus_reached_'] = True
+        #         # TODO consensus on new block notif reached here. Do whatever.
+        #
+        # else:
+        #     self.log.info('Received notification for KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
 
     def recv_state_update_request(self, id_frame: bytes, req: BlockIndexRequest):
         blocks = StorageDriver.get_latest_blocks(req.block_hash)

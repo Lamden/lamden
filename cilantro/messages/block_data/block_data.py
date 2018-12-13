@@ -99,6 +99,7 @@ class BlockData(MessageBase):
     def block_owners(self) -> List[str]:
         return [x for x in self._data.blockOwners]  # Necessary to cast capnp list builder to Python list
 
+    # NOTE -- we use the terminology 'merkle_roots' and 'result_hashes' interchangeably
     @lazy_property
     def merkle_roots(self) -> List[str]:
         return [sb.merkle_root for sb in self.sub_blocks]
@@ -106,6 +107,9 @@ class BlockData(MessageBase):
     @lazy_property
     def input_hashes(self) -> List[str]:
         return [sb.input_hash for sb in self.sub_blocks]
+
+    def __repr__(self):
+        return "{}<block_hash={}, block_num={}, prev_b_hash={}, result_hashes={}, num_leaves={}"
 
 
 class GenesisBlockData(BlockData):
