@@ -132,6 +132,9 @@ class SubBlockContender(MessageBase):
                " num_leaves={})".format(self.sb_index, self.signature.sender, self.prev_block_hash, self.input_hash,
                                         self.result_hash, len(self.transactions))
 
+    def __hash__(self):
+        return int(Hasher.hash(self), 16)
+
 
 class SubBlockContenderBuilder:
 

@@ -64,7 +64,7 @@ class TransactionData(MessageBase):
         return Hasher.hash(self)
 
     def __hash__(self):
-        return int(self.hash, 16)  #  why are we doing this again? --davis
+        return int(self.hash, 16)
 
     def __repr__(self):
         return "<TransactionData with sender={}, hash={}, contract_type={}, status={}, state={}"\

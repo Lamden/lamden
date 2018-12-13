@@ -48,9 +48,10 @@ class SubBlockGroup:
         merkle_root = self.best_rh
         merkle_root = self.best_rh
         contenders = self.rh[merkle_root]
+        c = next(iter(contenders))
         sigs = [c.signature for c in contenders]
-        leaves = contenders[0].merkle_leaves
-        input_hash = contenders[0].input_hash
+        leaves = c.merkle_leaves
+        input_hash = c.input_hash
         txs = self._get_ordered_transactions()
 
         sb = SubBlock.create(merkle_root=merkle_root, signatures=sigs, merkle_leaves=leaves, sub_block_idx=self.sb_idx,
@@ -62,16 +63,27 @@ class SubBlockGroup:
 
         # Also make sure we have all the transactions for the sub block
         if cons_reached:
-            for leaf in self.rh[0].merkle_leaves:
+            for leaf in self._get_merkle_leaves():
                 if leaf not in self.transactions:
-                    self.log.warning("Consensus reached for sb idx {}, but still missing tx with hash {}!".format(self.sb_idx, leaf))
+                    self.log.warning("Consensus reached for sb idx {}, but still missing tx with hash {}! (and possibly"
+                                     " more)".format(self.sb_idx, leaf))
                     return False
 
         return cons_reached
 
+    def is_empty(self):
+        return len(self._get_merkle_leaves()) == 0
+
+    def _get_merkle_leaves(self) -> list:
+        if self.best_rh is None:
+            return []
+
+        # All merkle leaves should be the same, so just chose any contender from the set
+        return next(iter(self.rh[self.best_rh])).merkle_leaves
+
     def _get_ordered_transactions(self):
         assert self.is_consensus_reached(), "Must be in consensus to get ordered transactions"  # TODO remove
-        return [self.transactions[tx_hash] for tx_hash in self.rh[0].merkle_leaves]
+        return [self.transactions[tx_hash] for tx_hash in self._get_merkle_leaves()]
 
     def add_sbc(self, sender_vk: str, sbc: SubBlockContender):
         if not self._verify_sbc(sender_vk, sbc):
@@ -117,7 +129,7 @@ class SubBlockGroup:
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate merkle leaves
         if len(sbc.merkle_leaves) > 0:
-            if not MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash) or not self._validate_txs(sbc):
+            if not MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash):
                 self.log.warning("Could not verify MerkleTree for SBC {}!".format(sbc))
                 return False
 
@@ -130,7 +142,7 @@ class SubBlockGroup:
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate sub block index is in range
-        if sbc.sb_index <= NUM_SB_PER_BLOCK:
+        if sbc.sb_index >= NUM_SB_PER_BLOCK:
             self.log.warning("Got SBC with out of range sb_index {}!\nSBC: {}".format(sbc.sb_index, sbc))
             return False
 
@@ -176,6 +188,15 @@ class BlockContender:
         """
         for sb_idx, sb_group in self.sb_groups.items():
             if not sb_group.is_consensus_possible():
+                return False
+
+        return True
+
+    def is_empty(self):
+        assert self.is_consensus_reached(), "Consensus must be reached to check if this block is empty!"
+
+        for sb_group in self.sb_groups.values():
+            if not sb_group.is_empty():
                 return False
 
         return True
