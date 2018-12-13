@@ -6,7 +6,7 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.contract import ContractTransactionBuilder
 from cilantro.nodes.base import NodeTypes
 
-from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.structures.envelope_auth import EnvelopeAuth
 from cilantro.protocol import wallet
 
 from cilantro.constants.testnet import *

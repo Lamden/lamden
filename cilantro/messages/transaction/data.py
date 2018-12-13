@@ -1,6 +1,6 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.contract import ContractTransaction, TransactionBase, ContractTransactionBuilder
-from cilantro.utils.lazy_property import lazy_property
+from cilantro.utils.lazy_property import lazy_property, set_lazy_property
 from cilantro.utils.hasher import Hasher
 import uuid
 from enum import Enum, auto
@@ -21,6 +21,12 @@ class TransactionData(MessageBase):
     @classmethod
     def _deserialize_data(cls, data: bytes):
         return transaction_capnp.TransactionData.from_bytes_packed(data)
+
+    @classmethod
+    def from_bytes(cls, data: bytes, validate=True):
+        obj = super().from_bytes(data, validate)
+        set_lazy_property(obj, 'hash', Hasher.hash(data))
+        return obj
 
     @classmethod
     def create(cls, contract_tx: TransactionBase, status: str, state: str):
@@ -57,7 +63,7 @@ class TransactionData(MessageBase):
         return Hasher.hash(self)
 
     def __hash__(self):
-        return int(self.hash,16)
+        return int(self.hash, 16)  #  why are we doing this again? --davis
 
     def __repr__(self):
         return "<TransactionData with sender={}, contract_type={}, status={}, state={}"\

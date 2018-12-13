@@ -36,6 +36,5 @@ class BlockMetaData(BlockData):
         return cls.from_data(data._data)
 
 
-
 class NewBlockNotification(BlockMetaData):
     pass

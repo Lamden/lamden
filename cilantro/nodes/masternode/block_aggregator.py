@@ -219,7 +219,8 @@ class BlockAggregator(Worker):
 
     def aggregate_sub_block(self, sbc: SubBlockContender):
         # if not self.result_hashes.get(sbc.result_hash):
-        if not sbc.result_hash in self.result_hashes:
+        if sbc.result_hash not in self.result_hashes:
+            self.log.critical("CREATING DATA FOR RESULT HASH {}".format(sbc.result_hash))  # TODO remove
             self.result_hashes[sbc.result_hash] = {
                 '_committed_': False,
                 '_consensus_reached_': False,
@@ -230,10 +231,19 @@ class BlockAggregator(Worker):
                 '_sb_index_': sbc.sb_index,
                 '_lastest_valid_': time.time()
             }
-        self.log.info("Adding signature to sub-block result_hashes")
+
+        self.log.info("Adding signature {} to sub-block result_hashes from sender {}".format(sbc.signature.signature,
+                                                                                             sbc.signature.sender))
         self.result_hashes[sbc.result_hash]['_valid_signatures_'][sbc.signature.signature] = sbc.signature
+
         for tx in sbc.transactions:
             self.result_hashes[sbc.result_hash]['_transactions_'][tx.hash] = tx
+
+        # DEBUG -- TODO DELETE
+        self.log.important3("Delegate majroity: {}".format(DELEGATE_MAJORITY))
+        self.log.important3("result hash {} has sigs {}".format(sbc.result_hash, self.result_hashes[sbc.result_hash]['_valid_signatures_']))
+        # END DEBUG
+
         if len(self.result_hashes[sbc.result_hash]['_valid_signatures_']) >= DELEGATE_MAJORITY \
             and len(self.result_hashes[sbc.result_hash]['_transactions_']) == \
                 len(self.result_hashes[sbc.result_hash]['_merkle_leaves_']):
@@ -250,12 +260,14 @@ class BlockAggregator(Worker):
         self.cleanup_block_memory()
 
     def cleanup_block_memory(self):
-        self.result_hashes = {
-             result_hash: self.result_hashes[result_hash] \
-                for result_hash in self.result_hashes \
-                if self.result_hashes[result_hash]['_lastest_valid_'] <= SUB_BLOCK_VALID_PERIOD + time.time() and \
-                    not self.result_hashes[result_hash].get('_committed_')
-        }
+        pass
+        # TODO -- fix this!
+        # self.result_hashes = {
+        #     result_hash: self.result_hashes[result_hash] \
+        #     for result_hash in self.result_hashes \
+        #     if self.result_hashes[result_hash]['_lastest_valid_'] <= time.time() - SUB_BLOCK_VALID_PERIOD and
+        #        self.result_hashes[result_hash].get('_committed_')
+        # }
 
     def store_full_block(self):
         sub_blocks = {
@@ -312,6 +324,7 @@ class BlockAggregator(Worker):
             self.full_blocks[block_hash]['_count_'] += 1
 
         else:
+
             self.log.info('Created resultant block-hash "{}"'.format(block_hash))
             self.full_blocks[block_hash] = {
                 '_block_metadata_': new_block_notif,
@@ -337,7 +350,7 @@ class BlockAggregator(Worker):
             self.full_blocks[block_hash]['_senders_'].add(sender_vk)
             if len(self.full_blocks[block_hash]['_senders_']) >= MASTERNODE_MAJORITY:
                 self.full_blocks[block_hash]['_consensus_reached_'] = True
-                # TODO consensus on new block notifcation reached here. Do whatever.
+                # TODO consensus on new block notif reached here. Do whatever.
 
         else:
             self.log.info('Received notification for KNOWN block hash "{}" but consensus already reached.'.format(block_hash))

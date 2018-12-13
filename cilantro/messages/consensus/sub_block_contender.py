@@ -123,7 +123,7 @@ class SubBlockContender(MessageBase):
         return [TransactionData.from_bytes(tx) for tx in self._data.transactions]
 
     def __eq__(self, other):
-        assert isinstance(other, SubBlockContender), "Attempted to compare a BlockContender with a non-BlockContender"
+        assert isinstance(other, SubBlockContender), "Attempted to compare a BlockBuilder with a non-BlockBuilder"
         return self.input_hash == other.input_hash and \
             self.result_hash == other.result_hash
 

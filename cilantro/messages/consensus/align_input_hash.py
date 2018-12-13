@@ -48,7 +48,7 @@ class AlignInputHash(MessageBase):
         return self._data.inputHash.decode()
 
     def __eq__(self, other):
-        assert isinstance(other, AlignInputHash), "Attempted to compare a BlockContender with a non-BlockContender"
+        assert isinstance(other, AlignInputHash), "Attempted to compare a BlockBuilder with a non-BlockBuilder"
         return self.input_hash == other.input_hash 
 
     def __repr__(self):
