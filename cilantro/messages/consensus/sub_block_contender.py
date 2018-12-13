@@ -128,8 +128,12 @@ class SubBlockContender(MessageBase):
             self.result_hash == other.result_hash
 
     def __repr__(self):
-        return "SubblockContender with\tsubblock_index={}, prev_block_hash={}, input_hash={}, result_hash={}, num_leaves={}" \
-               .format(self.sb_index, self.prev_block_hash, self.input_hash, self.result_hash, len(self.transactions))
+        return "SubBlockContender(sb_index={}, sender={}, prev_block_hash={}, input_hash={}, result_hash={}, " \
+               " num_leaves={})".format(self.sb_index, self.signature.sender, self.prev_block_hash, self.input_hash,
+                                        self.result_hash, len(self.transactions))
+
+    def __hash__(self):
+        return int(Hasher.hash(self), 16)
 
 
 class SubBlockContenderBuilder:

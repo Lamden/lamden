@@ -10,6 +10,7 @@ from cilantro.logger.base import get_logger
 from cilantro.utils.test.god import God
 from cilantro.logger import get_logger, overwrite_logger_level
 import logging, os, shutil, time
+from cilantro.constants.system_config import *
 
 
 if os.getenv('USE_LOCAL_SENECA', '0') != '0':
@@ -102,7 +103,8 @@ def dump_it(volume, delay=0):
 
 class TestManualDump(BaseNetworkTestCase):
 
-    VOLUME = 1200  # Number of transactions to dump
+    NUM_BLOCKS = 2
+    VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dump
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
     PROFILE_TYPE = None
 

@@ -42,6 +42,7 @@ class TransactionData(MessageBase):
 
         return cls(data)
 
+    # TODO generalize this for any contract type
     @lazy_property
     def contract_tx(self) -> ContractTransaction:
         return ContractTransaction.from_data(self._data.contractTransaction)
@@ -63,11 +64,11 @@ class TransactionData(MessageBase):
         return Hasher.hash(self)
 
     def __hash__(self):
-        return int(self.hash, 16)  #  why are we doing this again? --davis
+        return int(self.hash, 16)
 
     def __repr__(self):
-        return "<TransactionData with sender={}, contract_type={}, status={}, state={}"\
-               .format(self.contract_tx.sender, self.contract_type, self.status, self.state)
+        return "<TransactionData with sender={}, hash={}, contract_type={}, status={}, state={}"\
+               .format(self.contract_tx.sender, self.hash, self.contract_type, self.status, self.state)
 
 
 class TransactionDataBuilder:

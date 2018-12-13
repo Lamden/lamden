@@ -224,7 +224,7 @@ class BlockManager(Worker):
             self.log.important3("BM got NewBlockNotification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
             self.handle_new_block(msg)
         elif isinstance(msg, SkipBlockNotification):
-            self.log.important3("BM got SkipBlockNotification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
+            self.log.important3("BM got SkipBlockNotification from sender {} with hash {}".format(envelope.sender, msg.prev_block_hash))
             self.handle_skip_block(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
@@ -353,7 +353,10 @@ class BlockManager(Worker):
     # update current db state to the new block
     def handle_new_block(self, block_data: NewBlockNotification):
         new_block_hash = block_data.block_hash
-        self.log.info("Got new block notification with block hash {}...".format(new_block_hash))
+        if self.db_state.num_empty_sbc == NUM_SB_PER_BLOCK:
+            self.log.info("why i got new block notification with block hash {} when I have all empty blocks?".format(new_block_hash))
+        else:
+            self.log.info("Got new block notification with block hash {}...".format(new_block_hash))
 
         if not self.db_state.cur_block_hash:
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
@@ -369,15 +372,14 @@ class BlockManager(Worker):
 
         count = self.db_state.next_block.get(new_block_hash)[1] + 1 \
                  if new_block_hash in self.db_state.next_block else 1
-        self.db_state.next_block[new_block_hash] = tuple(block_data, count)
+        self.db_state.next_block[new_block_hash] = (block_data, count)
         if count >= MIN_NEW_BLOCK_MN_QOURUM:
             self.log.info("New block quorum met!")
             self.db_state.new_block_hash = new_block_hash
             self.update_db_if_ready()
 
     def skip_block(self):
-        if (self.db_state.num_skip_block < MIN_NEW_BLOCK_MN_QOURUM) or \
-            (self.db_state.num_empty_sbc != NUM_SB_PER_BLOCK):
+        if (self.db_state.num_skip_block < MIN_NEW_BLOCK_MN_QOURUM) or (self.db_state.num_empty_sbc != NUM_SB_PER_BLOCK):
             return
         
         # reset all the state info 
@@ -390,7 +392,6 @@ class BlockManager(Worker):
 
         self.send_updated_db_msg()
 
-
     # update current db state to the new block
     def handle_skip_block(self, skip_block: SkipBlockNotification):
         prev_block_hash = skip_block.prev_block_hash
@@ -399,7 +400,9 @@ class BlockManager(Worker):
         if not self.db_state.cur_block_hash:
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
 
-        if (skip_block.prev_block_hash != self.db_state.cur_block_hash):
+        if skip_block.prev_block_hash != self.db_state.cur_block_hash:
+            self.log.warning("Got SkipBlockNotif with prev hash {} that does not match our current hash {}!!!"
+                             .format(skip_block.prev_block_hash, self.db_state.cur_block_hash))
             # self.db_state.cur_block_hash = None
             # self.recv_block_data_reply(block_data)
             return

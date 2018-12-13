@@ -160,8 +160,7 @@ class CatchupManager:
         reply = BlockIndexReply.create(block_info = catchup_list)
         self.router.send_msg(reply, header=reply_to_vk.encode())
 
-    @classmethod
-    def get_delta_idx(cls, vk = None, curr_blk_num = None, sender_blk_hash = None):
+    def get_delta_idx(self, vk = None, curr_blk_num = None, sender_blk_hash = None):
         """
         API gets latest hash requester has and responds with delta block index
 
@@ -176,7 +175,7 @@ class CatchupManager:
             latest_blk_num = curr_blk_num
 
             if given_blk_num == latest_blk_num:
-                print('given block is already latest')
+                self.log.debug('given block is already latest')
                 return None
             else:
                 idx_delta = MasterOps.get_blk_idx(n_blks = (latest_blk_num - given_blk_num))
