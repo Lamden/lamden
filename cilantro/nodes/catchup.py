@@ -170,7 +170,7 @@ class CatchupManager:
         :return:
         """
         # check if requester is master or del
-        valid_node = VKBook.is_node_type('masternode') or VKBook.is_node_type('delegate')
+        valid_node = VKBook.is_node_type('masternode', vk) or VKBook.is_node_type('delegate', vk)
         if valid_node is True:
             given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_blk_hash)
             latest_blk_num = curr_blk_num
