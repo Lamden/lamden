@@ -1,6 +1,7 @@
 @0xc9a01417cf45e892;
 
-using T = import "transaction.capnp";
+using SB = import "subblock.capnp";
+
 
 struct BlockMetaData {
     blockHash @0 :Data;
@@ -8,23 +9,24 @@ struct BlockMetaData {
     inputHashes @2 :List(Data);
     prevBlockHash @3 :Data;
     timestamp @4 :UInt64;
-    masternodeSignature @5 :Data;
+    blockOwners @5 :List(Text);
     blockNum @6 :UInt32;
 }
 
+
 struct BlockData {
-    blockHash @0 :Data;
+    blockHash @0 :Text;
     blockNum @1 :UInt32;
-    merkleRoots @2 :List(Data);
-    inputHashes @3 :List(Data);
-    prevBlockHash @4 :Data;
-    masternodeSignature @5 :Data;
-    transactions @6 :List(Data);
+    blockOwners @2 :List(Text);
+    prevBlockHash @3 :Text;
+    subBlocks @4 :List(SB.SubBlock);
 }
+
 
 struct StateUpdateRequest {
     blockHash @0 :Data;
 }
+
 
 struct StateUpdateReply {
     blockData @0 :BlockData;

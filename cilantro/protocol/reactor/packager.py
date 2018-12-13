@@ -3,7 +3,7 @@ from cilantro.protocol.reactor.executor import ReactorCommand, SubPubExecutor, D
 from cilantro.protocol.reactor.manager import ExecutorManager
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.logger import get_logger
-from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.structures.envelope_auth import EnvelopeAuth
 from cilantro.protocol import wallet
 from cilantro.constants.ports import DEFAULT_PUB_PORT, ROUTER_PORT
 import asyncio

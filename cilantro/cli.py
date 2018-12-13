@@ -7,7 +7,7 @@ import getpass
 import hashlib
 from seneca.engine.client import SenecaClient
 from cilantro.messages.transaction.contract import ContractTransactionBuilder
-
+from cilantro.constants.vmnet import generate_constitution
 from cilantro import tools
 
 configuration_path = '/usr/local/share/lamden/cilantro'
@@ -293,11 +293,26 @@ def mock_contract(code, name, stamp_amount, keyfile):
     # make a contract transaction struct
     s.submit_contract(contract)
 
+############################################################
+# CONSTITUTION COMMANDS SUBGROUP
+# USED FOR CREATING TESTNETS
+############################################################
+@click.group('constitution')
+def constitution():
+    pass
 
+@constitution.command('constitution', short_help='Generates constitution for deployment')
+@click.option('-t', '--test', 'test', is_flag=True)
+@click.argument('filename')
+@click.argument('masternodes')
+@click.argument('witnesses')
+@click.argument('delegates')
+def _constitution(filename, masternodes, witnesses, delegates, test=False):
+    generate_constitution(filename, int(masternodes), int(witnesses), int(delegates), test=test)
+
+
+main.add_command(_constitution)
 main.add_command(get)
 main.add_command(_set)
 main.add_command(_new)
 main.add_command(mock)
-
-if __name__ == '__main__':
-    print('yo2')

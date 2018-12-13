@@ -2,7 +2,7 @@ from cilantro.utils import lazy_property, set_lazy_property
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.message_meta import MessageMeta
 from cilantro.messages.envelope.seal import Seal
-from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.structures.envelope_auth import EnvelopeAuth
 
 import time
 from typing import Union

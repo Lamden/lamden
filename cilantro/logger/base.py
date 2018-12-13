@@ -5,6 +5,10 @@ Functions:
 import logging, coloredlogs
 import os, sys
 
+logging.getLogger("paramiko").setLevel(logging.WARNING)
+logging.getLogger('boto3').setLevel(logging.WARNING)
+logging.getLogger('botocore').setLevel(logging.WARNING)
+
 VALID_LVLS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 _LOG_LVL = os.getenv('LOG_LEVEL', None)
 if _LOG_LVL:
@@ -155,7 +159,7 @@ def get_logger(name=''):
     log = logging.getLogger(name)
     log.setLevel(_LOG_LVL)
 
-    if os.getenv('HOST_IP'):
+    if os.getenv('HOST_IP') or os.getenv('VMNET_CLOUD'):
         sys.stdout = LoggerWriter(log.debug)
         sys.stderr = LoggerWriter(log.error)
 

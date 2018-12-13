@@ -2,7 +2,7 @@ import asyncio, zmq.asyncio, zmq
 from cilantro.logger import get_logger
 from cilantro.constants.zmq_filters import *
 
-from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
+from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest
 from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.storage.state import StateDriver
@@ -43,7 +43,7 @@ class CatchupManager:
     # BOTH WILL USE THIS
     def is_db_updated(self) -> bool:
         # TODO implement. return true when we are caught up
-        return False
+        return True
 
     # other
     def _add_pending_blocks(self, block_num: int, block_hash: str, mn_vks: List[list]):

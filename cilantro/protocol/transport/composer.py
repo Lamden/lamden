@@ -2,7 +2,7 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.protocol.executors.manager import ExecutorManager
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.logger import get_logger
-from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.structures.envelope_auth import EnvelopeAuth
 from cilantro.protocol import wallet
 from cilantro.constants.ports import DEFAULT_PUB_PORT, ROUTER_PORT, PAIR_PORT
 from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
@@ -167,7 +167,7 @@ class Composer:
 
         If you wish to stop subscribing to a URL, but not necessarily a filter, then call this method and pass in an
         empty string to FILTER. For example, a delegate might want to stop subscribing to a particular witness, but not
-        all TESTNET_WITNESSES.
+        all witnesses.
 
         :param filter: The filter to subscribe to. Only multipart messages with this filter as the first frame will be
         received

@@ -82,8 +82,8 @@ class MDB:
                 cls.mn_client_idx = MongoClient(uri)
                 cls.mn_db_idx = MongoClient(uri).get_database()
                 cls.mn_coll_idx = cls.mn_db_idx['index']
-                idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash').decode(),
-                       'mn_blk_owner': (cls.genesis_blk.get('masternodeSignature')).decode()}
+                idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash'),
+                       'mn_blk_owner': cls.verify_key}
                 cls.log.debug('start_db init index {}'.format(idx))
                 cls.init_idx_db = cls.insert_idx_record(my_dict=idx)
 
@@ -139,7 +139,7 @@ class MDB:
     def get_dict(cls, capnp_struct):
         obj = capnp_struct._data.to_dict()
 
-        bk_hsh = capnp_struct._data.blockHash.decode()
+        bk_hsh = capnp_struct._data.blockHash
         cls.log.debug("Fn : Get Dict  blk_hash {}".format(bk_hsh))
         if isinstance(capnp_struct, BlockData):
             obj['transactions'] = capnp_struct.indexed_transactions

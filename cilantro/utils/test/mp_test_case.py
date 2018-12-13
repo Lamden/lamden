@@ -16,7 +16,7 @@ TESTER_POLL_FREQ = 0.1
 
 CILANTRO_PATH = dirname(dirname(cilantro.__path__[0]))
 
-log = get_logger("MPTestCaseBoy")  # TODO delete dat
+log = get_logger("MPTestCase")  # TODO delete dat
 
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
@@ -203,4 +203,3 @@ class MPTestCase(BaseNetworkTestCase):
             time.sleep(TESTER_POLL_FREQ)
 
         return actives, passives, fails, timeout
-

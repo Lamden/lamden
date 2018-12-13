@@ -1,6 +1,6 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
-from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.structures.envelope_auth import EnvelopeAuth
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.logger.base import get_logger
 import zmq.asyncio, asyncio, os
@@ -12,7 +12,7 @@ from os.path import join
 
 
 RDY_WAIT_INTERVAL = 2.0  # TODO move this to constants, and explain it
-MAX_RDY_WAIT = 80.0  # TODO move this to constants, and explain it
+MAX_RDY_WAIT = 20.0  # TODO move this to constants, and explain it
 
 
 def vk_lookup(func):

@@ -12,7 +12,7 @@ from cilantro.logger import get_logger, overwrite_logger_level
 import logging, os, shutil, time
 
 
-if os.getenv('USE_LOCAL_SENECA', 0) != '0':
+if os.getenv('USE_LOCAL_SENECA', '0') != '0':
     log = get_logger("SenecaCopier")
     user_sen_path = os.getenv('SENECA_PATH', None)
     assert user_sen_path, "If USE_LOCAL_SENECA env var is set, SENECA_PATH env var must also be set!"
@@ -23,7 +23,7 @@ if os.getenv('USE_LOCAL_SENECA', 0) != '0':
     assert os.path.isdir(venv_sen_path), "Expect virtual env seneca at path {}".format(venv_sen_path)
     assert os.path.isdir(user_sen_path), "Expect user seneca at path {}".format(user_sen_path)
 
-    print("Removing venv seneca at path {}".format(venv_sen_path))
+    log.debugv("Removing venv seneca at path {}".format(venv_sen_path))
     shutil.rmtree(venv_sen_path)
 
     log.notice("Copying user seneca path {} to venv packages at path {}".format(user_sen_path, venv_sen_path))
@@ -50,7 +50,7 @@ def run_mn(slot_num):
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
     # overwrite_logger_level(11)
-    overwrite_logger_level(11)  # suppress 'spam' log level
+    # overwrite_logger_level(11)  # suppress 'spam' log level
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[slot_num]['sk']
@@ -66,7 +66,7 @@ def run_witness(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
-    overwrite_logger_level(11)
+    # overwrite_logger_level(11)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -83,7 +83,7 @@ def run_delegate(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(11)
+    # overwrite_logger_level(11)
     sen_overwrite_log(4)  # disable spam only (lvl 5 is debugv)
 
     d_info = TESTNET_DELEGATES[slot_num]

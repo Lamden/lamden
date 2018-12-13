@@ -9,6 +9,7 @@ import re
 from cilantro.logger import get_logger, overwrite_logger_level
 import logging
 import argparse
+import random
 
 # Hack to import stuff from groups.py regardless of where this file is run
 try: from .groups import *
@@ -21,7 +22,7 @@ all tests are run.
 
 log = get_logger("TestRunner")
 delim = '-' * 80
-
+os.environ['__INHERIT_CONSTITUTION__'] = 'True'
 
 def skip_tests(test_suite: unittest.TestSuite, test_names: list):
     if not test_names:

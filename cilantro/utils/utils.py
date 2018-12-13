@@ -110,7 +110,6 @@ def int_to_bytes(x):
 def bytes_to_int(xbytes):
     return int.from_bytes(xbytes, 'big')
 
-
 class IPUtils:
     url_pattern = re.compile(
         r'(tcp|http|udp)\:\/\/([0-9A-F]{64}|[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\:([0-9]{4,5})',

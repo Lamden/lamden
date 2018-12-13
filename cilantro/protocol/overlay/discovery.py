@@ -25,17 +25,19 @@ class Discovery:
             cls.is_setup = True
             cls.ctx = ctx or zmq.asyncio.Context()
             cls.sock = cls.ctx.socket(zmq.ROUTER)
+            cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             cls.is_connected = False
-            if Auth.vk in VKBook.get_masternodes():
+            if VKBook.is_node_type('masternode', Auth.vk):
                 # cls.discovered_nodes[Auth.vk] = cls.host_ip
-                cls.is_listen_ready = True
                 cls.is_master_node = True
+                cls.is_listen_ready = True
 
     @classmethod
     async def listen(cls):
-        cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
         cls.sock.bind(cls.url)
         cls.log.info('Listening to other nodes on {}'.format(cls.url))
+        if cls.is_listen_ready:
+            await asyncio.sleep(3)
         while True:
             try:
                 msg = await cls.sock.recv_multipart()
@@ -52,24 +54,29 @@ class Discovery:
                     vk = msg[-1]
                     cls.discovered_nodes[vk.decode()] = ip.decode()
                     cls.is_listen_ready = True
+
             except Exception as e:
                 cls.log.error(traceback.format_exc())
 
     @classmethod
     async def discover_nodes(cls, start_ip):
-        is_masternode = Auth.vk in VKBook.get_masternodes()
+        is_masternode = VKBook.is_node_type('masternode', Auth.vk)
         try_count = 0
-        if cls.is_listen_ready:
-            await asyncio.sleep(3)
+
+        cls.log.spam('We have the following bootnodes: {}'.format(VKBook.bootnodes))
+
         while True:
-            cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
-            cls.connect(get_ip_range(start_ip))
+            if len(VKBook.bootnodes) > 0: # TODO refine logic post-anarchy-net
+                cls.log.info('Connecting to boot nodes: {}'.format(VKBook.bootnodes))
+                cls.connect(VKBook.bootnodes)
+            else:
+                cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
+                cls.connect(get_ip_range(start_ip))
             try_count += 1
             if (is_masternode and len(VKBook.get_masternodes()) == 1) or \
                     (len(cls.discovered_nodes) == 0 and is_masternode and cls.is_connected):
-                cls.log.important('Bootstrapping as the only masternode.'.format(
-                    len(cls.discovered_nodes)
-                ))
+                cls.log.important('Bootstrapping as the only masternode. (num_discovered={})'
+                                  .format(len(cls.discovered_nodes)))
                 cls.discovered_nodes[Auth.vk] = cls.host_ip
                 return True
             elif len(cls.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
@@ -84,10 +91,8 @@ class Discovery:
                     MIN_BOOTSTRAP_NODES
                 ))
                 return False
-            await asyncio.sleep(DISCOVERY_TIMEOUT)
 
-        # @falcon/raghu, this code below is unreachable is it not?? --davis
-        await asyncio.sleep(3 if cls.is_master_node else 6)
+            await asyncio.sleep(DISCOVERY_TIMEOUT)
 
     # raghu these class methods are not thread-safe. Not sure why we want them to be class methods rather than instance methods
 #    @classmethod
@@ -140,6 +145,7 @@ class Discovery:
             if ip == cls.host_ip:
                 continue
             url = 'tcp://{}:{}'.format(ip, cls.port)
+            #  cls.log.spam("Attempting to connect to IP {}".format(url))
             cls.sock.connect(url)
             cls.connections[ip] = url
             cls.request(ip.encode())

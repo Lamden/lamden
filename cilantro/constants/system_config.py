@@ -1,6 +1,10 @@
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES, TESTNET_WITNESSES
 import math
 
+
+POW_COMPLEXITY = ''  # More '0's means more complicated POWs. Empty string basically disables POW
+
+
 # In reality, these should be inferred from VKBook instead of hard-coded, once we start using smart contracts for
 # some of these config constants
 NUM_MASTERS = len(TESTNET_MASTERNODES)

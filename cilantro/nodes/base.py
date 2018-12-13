@@ -43,9 +43,15 @@ class NodeBase(Worker):
     REQ_WITS = len(VKBook.get_witnesses())
 
     def __init__(self, ip, signing_key, loop=None, name='Node'):
+        # TODO oh lord plz no this
+        self.REQ_MNS = len(VKBook.get_masternodes())
+        self.REQ_DELS = len(VKBook.get_delegates())
+        self.REQ_WITS = len(VKBook.get_witnesses())
+
         self.log = get_logger(name)
         self.ip = ip
         self.name = name
+        self.log.important(self.REQ_MNS)
 
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -140,5 +146,3 @@ class NodeBase(Worker):
             self.online_dels.add(vk)
         if vk in VKBook.get_masternodes():
             self.online_mns.add(vk)
-
-

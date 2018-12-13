@@ -3,7 +3,6 @@ import cilantro
 from configparser import SafeConfigParser
 from cilantro.storage.vkbook import VKBook
 from cilantro.logger.base import get_logger
-from cilantro.constants.testnet import TESTNET_MASTERNODES
 from cilantro.storage.mongo import MDB
 
 
@@ -66,22 +65,24 @@ class MasterOps:
         if cls.test_hook is True:
             return cls.mn_id
 
+        masternode_vks = VKBook.get_masternodes()
         for i in range(cls.active_masters):
-            if TESTNET_MASTERNODES[i]['vk'] == vk:
+            if masternode_vks[i] == vk:
                 cls.mn_id = i
                 return True
             else:
                 cls.mn_id = -1
                 return False
 
-    '''
-        Returns sk for nth master node
-        Used for updating index records for wr's
-    '''
-    def get_mn_sk(cls, id):
-        for i in range(cls.active_masters):
-            if i == id:
-                return TESTNET_MASTERNODES['sk']
+    # WARNING: Masternodes do not know each other's SKs
+    # '''
+    #     Returns sk for nth master node
+    #     Used for updating index records for wr's
+    # '''
+    # def get_mn_sk(cls, id):
+    #     for i in range(cls.active_masters):
+    #         if i == id:
+    #             return TESTNET_MASTERNODES['sk']
 
     '''
         Calculates pool sz for replicated writes
@@ -167,7 +168,7 @@ class MasterOps:
     @classmethod
     def update_idx(cls, inserted_blk=None, node_list=None):
 
-        entry = {'blockNum': inserted_blk.get('blockNum'), 'blockHash': inserted_blk.get('blockHash').decode(),
+        entry = {'blockNum': inserted_blk.get('blockNum'), 'blockHash': inserted_blk.get('blockHash'),
                  'mn_blk_owner': node_list}
         MDB.insert_idx_record(entry)
         return True

@@ -1,45 +1,55 @@
-# test_db_conf.ini:
-# 	./scripts/make_test_config.py
+start-db:
+	python3 ./scripts/start_redis_mongo.py
 
-start-db:# test_db_conf.ini
-	./scripts/start_redis_mongo.sh &
-
-start: start-db
-
-console-db: start-db
+mongo: start-db
 	mongo
 
-stop-db:
-	# pkill -9 mongo* 2>/dev/null
-	# docker kill `docker ps --format "table {{.Names}}" --filter "ancestor=lamden/cilantro-db"| tail -n +2` 2>/dev/null; sleep 2
+redis: start-db
+	redis-cli
 
-stop: stop-db
+stop-db: kill-docker
+	pkill mongod || true
+	pkill redis-server || true
 
 restart-db: stop-db start-db
 
 test: restart-db
-	./tests/run_tests.py -v
+	python3 ./tests/run_tests.py -v
+
+test-unit: restart-db
+	python3 ./tests/run_tests.py -v --integration 0 --unit 1
+
+test-integration: restart-db
+	python3 ./tests/run_tests.py -v --integration 1 --unit 0
 
 install:
 	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir
 
-build-base:
-	docker build -t cilantro_base.dev -f vmnet_configs/images/cilantro_base.dev .
+build-base: clean
+	docker build -t cilantro_base -f vmnet_configs/images/cilantro_base.dev .
 
-build-mn:
-	docker build -t cilantro_mn.dev -f vmnet_configs/images/cilantro_master.dev .
+build-mn: clean
+	docker build -t cilantro_mn -f vmnet_configs/images/cilantro_mn .
+
+upload-base:
+	docker tag cilantro_base lamden/cilantro:latest
+	docker push lamden/cilantro:latest
+
+upload-mn:
+	docker tag cilantro_mn lamden/cilantro-mn:latest
+	docker push lamden/cilantro-mn:latest
 
 clean-logs:
-	./scripts/clean-logs.sh
+	sudo bash ./scripts/clean-logs.sh
 
 clean-temps:
-	./scripts/clean-temp-files.sh
+	sudo bash ./scripts/clean-temp-files.sh
 
 clean-certs:
-	./scripts/clean-certs.sh
+	sudo bash ./scripts/clean-certs.sh
 
 clean-dbs:
-	./scripts/clean-db.sh
+	sudo bash ./scripts/clean-db.sh
 
 clean: clean-logs clean-temps clean-certs clean-dbs
 

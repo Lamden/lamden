@@ -1,11 +1,14 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-4.json')
+from cilantro.storage.vkbook import VKBook
+VKBook.setup()
 
 from unittest import TestCase, mock
 from unittest.mock import MagicMock
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.messages.base.base_signal import SignalBase
 from cilantro.messages.envelope.envelope import Envelope
+
 
 from cilantro.constants.testnet import *
 from cilantro.nodes.base import NodeTypes

@@ -15,8 +15,10 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.block_data.block_data import BlockData
+from cilantro.messages.block_data.sub_block import SubBlock
 from cilantro.messages.block_data.state_update import *
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
+from cilantro.messages.transaction.data import TransactionData
 
 from cilantro.utils.hasher import Hasher
 from cilantro.protocol import wallet
@@ -49,9 +51,10 @@ class BlockAggregator(Worker):
         self.log.info("Block Aggregator starting...")
         self.build_task_list()
 
-        self.log.notice("starting initial catchup...")
-        self.is_catching_up = True
-        self.catchup_manager.send_block_idx_req()
+        # TODO put this back in when Catchup is implemented
+        # self.log.notice("starting initial catchup...")
+        # self.is_catching_up = True
+        # self.catchup_manager.send_block_idx_req()
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
@@ -112,7 +115,7 @@ class BlockAggregator(Worker):
                 self.recv_sub_block_contender(msg)
 
         elif isinstance(msg, NewBlockNotification):
-            self.recv_new_block_notif(msg)
+            self.recv_new_block_notif(envelope.sender, msg)
             # TODO send this to the catchup manager
 
         elif isinstance(msg, BlockIndexRequest):
@@ -151,6 +154,7 @@ class BlockAggregator(Worker):
         if not StorageDriver.check_block_exists(sbc.prev_block_hash):
             self.log.warning("Masternode got SBC with prev block hash {} that does not exist in our index table! "
                              "Starting catchup\n(SBC={})".format(sbc.prev_block_hash, sbc))
+            # TODO fix this to use tejas' new CatchupManager API
             self.catchup_manager.send_block_idx_req()
             self.is_catching_up = True
             return
@@ -205,7 +209,7 @@ class BlockAggregator(Worker):
 
         return True
 
-    def validate_txs(self, sbc) -> bool:
+    def validate_txs(self, sbc: SubBlockContender) -> bool:
         for tx in sbc.transactions:
             if tx.hash not in sbc.merkle_leaves:
                 self.log.warning('Received malicious txs that does not match merkle leaves! SBC: {}'.format(sbc))
@@ -213,7 +217,7 @@ class BlockAggregator(Worker):
 
         return True
 
-    def aggregate_sub_block(self, sbc):
+    def aggregate_sub_block(self, sbc: SubBlockContender):
         # if not self.result_hashes.get(sbc.result_hash):
         if not sbc.result_hash in self.result_hashes:
             self.result_hashes[sbc.result_hash] = {
@@ -255,83 +259,88 @@ class BlockAggregator(Worker):
 
     def store_full_block(self):
         sub_blocks = {
-            result_hash: self.result_hashes[result_hash] for result_hash in self.result_hashes \
-                if self.result_hashes[result_hash].get('_consensus_reached_')
+            result_hash: self.result_hashes[result_hash] for result_hash in self.result_hashes
+                if self.result_hashes[result_hash]['_consensus_reached_']
+                and not self.result_hashes[result_hash]['_committed_']
         }
+
         if len(sub_blocks) < NUM_SB_PER_BLOCK:
-            self.log.info('Received {}/{} required sub-blocks so far.'.format(
-                len(sub_blocks), NUM_SB_PER_BLOCK))
-        else:
+            self.log.info('Received {}/{} required sub-blocks so far.'.format(len(sub_blocks), NUM_SB_PER_BLOCK))
+            return
 
-            unordered_merkle_roots = [result_hash for result_hash in sub_blocks][:NUM_SB_PER_BLOCK]
-            merkle_roots = sorted(unordered_merkle_roots, key=lambda result_hash: self.result_hashes[result_hash]['_sb_index_'])
-            input_hashes = [self.result_hashes[result_hash]['_input_hash_'] for result_hash in merkle_roots]
-            transactions = list(itertools.chain.from_iterable([sub_blocks[mr]['_transactions_'].values() for mr in merkle_roots]))
+        # Sort the merkle roots
+        unordered_merkle_roots = [result_hash for result_hash in sub_blocks]
+        merkle_roots = sorted(unordered_merkle_roots, key=lambda result_hash: self.result_hashes[result_hash]['_sb_index_'])
 
-            assert len(merkle_roots) == NUM_SB_PER_BLOCK, "Aggregator has {} merkle roots but there are {} SBs/per/block" \
-                                                          .format(len(merkle_roots), NUM_SB_PER_BLOCK)
+        # Build the sub-blocks
+        sb_data = []
+        for root in merkle_roots:
+            data = self.result_hashes[root]
+            sigs = data['_valid_signatures_'].values()
+            # TODO change sub-block contender to pass around TransactionData struct instead of binary payloads
+            # or change sub-block to store binary payloads instead of structs
+            txs = [data['_transactions_'][tx_hash] for tx_hash in data['_merkle_leaves_']]
+            sb = SubBlock.create(merkle_root=root, signatures=sigs, merkle_leaves=data['_merkle_leaves_'],
+                                 sub_block_idx=data['_sb_index_'], input_hash=data['_input_hash_'], transactions=txs)
+            sb_data.append(sb)
 
-            # TODO wrap storage in try/catch. Add logic for storage failure
+        assert len(sb_data) == NUM_SB_PER_BLOCK, "Aggregator has {} sub blocks but there are {} SBs/per/block" \
+                                                 .format(len(sb_data), NUM_SB_PER_BLOCK)
 
-            block_data = StorageDriver.store_block(merkle_roots=merkle_roots, verifying_key = self.verifying_key,
-                                                   sign_key = self.signing_key, transactions=transactions,
-                                                   input_hashes=input_hashes)
-            assert block_data.prev_block_hash == self.curr_block_hash, "Current block hash {} does not match StorageDriver previous " \
-                                                            "block hash {}".format(self.curr_block_hash, block_data.prev_block_hash)
-            self.curr_block_hash = block_data.block_hash
-            StateDriver.update_with_block(block_data)
-            self.log.success("STORED BLOCK WITH HASH {}".format(block_data.block_hash))
-            self.send_new_block_notification(block_data)
-            for result_hash in merkle_roots:
-                self.sub_blocks[result_hash] = True
-                self.result_hashes[result_hash]['_committed_'] = True
+        # TODO wrap storage in try/catch. Add logic for storage failure
 
-    def send_new_block_notification(self, block_data):
+        block_data = StorageDriver.store_block(sb_data)
+        assert block_data.prev_block_hash == self.curr_block_hash, "Current block hash {} does not match StorageDriver previous " \
+                                                        "block hash {}".format(self.curr_block_hash, block_data.prev_block_hash)
+
+        self.curr_block_hash = block_data.block_hash
+        StateDriver.update_with_block(block_data)
+        self.log.success("STORED BLOCK WITH HASH {}".format(block_data.block_hash))
+        self.send_new_block_notification(block_data)
+        for result_hash in merkle_roots:
+            self.sub_blocks[result_hash] = True
+            self.result_hashes[result_hash]['_committed_'] = True
+
+    def send_new_block_notification(self, block_data: BlockData):
         new_block_notif = NewBlockNotification.create_from_block_data(block_data)
         self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
         block_hash = block_data.block_hash
-        self.log.info('Published new block with hash "{}"'.format(block_hash))
+        self.log.info('Published new block notif with hash "{}"'.format(block_hash))
 
         if self.full_blocks.get(block_hash):
             self.log.info('Already received block hash "{}", adding to consensus count.'.format(block_hash))
+            self.full_blocks[block_hash]['_count_'] += 1
 
         else:
             self.log.info('Created resultant block-hash "{}"'.format(block_hash))
             self.full_blocks[block_hash] = {
                 '_block_metadata_': new_block_notif,
                 '_consensus_reached_': False,
-                '_master_signatures_': {block_data.masternode_signature.signature: block_data.masternode_signature}
+                '_senders_': {self.verifying_key},
             }
 
         # return new_block_notif
 
-    def recv_new_block_notif(self, nbc: NewBlockNotification):
+    def recv_new_block_notif(self, sender_vk: str, nbc: NewBlockNotification):
         block_hash = nbc.block_hash
-        signature = nbc.masternode_signature
 
         if not self.full_blocks.get(block_hash):
             self.log.info('Received NEW block hash "{}", did not yet receive valid sub blocks from delegates.'.format(block_hash))
             self.full_blocks[block_hash] = {
                 '_block_metadata_': nbc,
                 '_consensus_reached_': False,
-                '_master_signatures_': {signature.signature: signature}
+                '_senders_': {sender_vk}
             }
 
-        elif signature.signature in self.full_blocks[block_hash]['_master_signatures_']:
-            self.log.warning('Already received the NewBlockNotification with block_hash "{}"'.format(block_hash))
-
-        elif not self.full_blocks[block_hash].get('consensus_reached'):
-            self.log.info('Received KNOWN block hash "{}", adding to consensus count.'.format(block_hash))
-            self.full_blocks[block_hash]['_master_signatures_'][signature.signature] = signature
-            if len(self.full_blocks[block_hash]['_master_signatures_']) >= MASTERNODE_MAJORITY:
+        elif not self.full_blocks[block_hash]['consensus_reached']:
+            self.log.info('Received notification for KNOWN block hash "{}", adding to consensus count.'.format(block_hash))
+            self.full_blocks[block_hash]['_senders_'].add(sender_vk)
+            if len(self.full_blocks[block_hash]['_senders_']) >= MASTERNODE_MAJORITY:
                 self.full_blocks[block_hash]['_consensus_reached_'] = True
-                bmd = self.full_blocks[block_hash].get('_block_metadata_')
-                if not len(bmd.merkle_roots) == NUM_SB_PER_BLOCK:
-                    # TODO Request blocks from other masternodes
-                    pass
+                # TODO consensus on new block notifcation reached here. Do whatever.
 
         else:
-            self.log.info('Received KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
+            self.log.info('Received notification for KNOWN block hash "{}" but consensus already reached.'.format(block_hash))
 
     def recv_state_update_request(self, id_frame: bytes, req: BlockIndexRequest):
         blocks = StorageDriver.get_latest_blocks(req.block_hash)

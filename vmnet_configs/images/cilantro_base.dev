@@ -6,7 +6,6 @@ COPY . /app
 WORKDIR /app
 
 ENV DEBIAN_FRONTEND noninteractive
-ENV PYTHONPATH /app/venv/src/seneca:/app/venv/src/vmnet
 
 # Install Python requirements
 RUN apt-get update \
@@ -21,11 +20,6 @@ RUN apt-get update \
     && pip3 install --upgrade setuptools wheel \
     && pip3 install -r requirements.txt \
     && pip3 install -r dev-requirements.txt \
-    && git clone https://github.com/pyca/pynacl.git \
-        && cd pynacl \
-        && cythonize -ki src/nacl \
-        && python3 setup.py install \
-        && cd - \
     && apt install -y redis-server \
     && rm -rf pynacl capnproto 2>/dev/null \
     && apt-get remove -y --allow-remove-essential \
@@ -34,6 +28,7 @@ RUN apt-get update \
         libffi-dev libtool \
         gsl-bin zlib1g-dev libboost-all-dev \
         autoconf automake \
+    && apt autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
-CMD bash ./scripts/start_redis.sh
+CMD python3 ./scripts/start_redis.py

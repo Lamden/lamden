@@ -2,12 +2,17 @@
 
 using T = import "transaction.capnp";
 
+
+# SubBlock is intended to be nested inside of BlockData, and never really used on its own
 struct SubBlock {
-    merkleRoot @0 :Data;
-    signatures @1: List(Data);
-    merkleLeaves @2: List(Data);
-    subBlockIdx @3: UInt8;
+    merkleRoot @0 :Text;
+    signatures @1 :List(Data);
+    merkleLeaves @2 :List(Text);
+    subBlockIdx @3 :UInt8;
+    inputHash @4 :Text;
+    transactions @5 :List(T.TransactionData);
 }
+
 
 struct SubBlockContender {
     resultHash @0 :Data;
@@ -19,9 +24,4 @@ struct SubBlockContender {
     prevBlockHash @6: Text;
 }
 
-struct EmptySubBlockContender {
-    inputHash @0 :Data;
-    signature @1 :Data;
-    subBlockIdx @2 :UInt8;
-}
 

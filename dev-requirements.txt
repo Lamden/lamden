@@ -3,6 +3,3 @@ coverage
 numpy
 scipy
 vprof
-# Non-Cythonized for CI
-pynacl
-vmnet

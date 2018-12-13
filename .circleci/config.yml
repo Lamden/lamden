@@ -7,9 +7,6 @@ jobs:
     parallelism: 5
     steps:
       - checkout
-      - run: sudo rm -rf /usr/local/seneca
-      - run: sudo mkdir /usr/local/seneca
-      - run: sudo chown -R circleci:circleci /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
@@ -21,6 +18,7 @@ jobs:
           command: |
              pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
              pip install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
+
       - run:
           name: Install Docker client
           command: |
@@ -28,7 +26,7 @@ jobs:
             VER="18.03.1-ce"
             curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
             tar -xz -C /tmp -f /tmp/docker-$VER.tgz
-            sudo mv /tmp/docker/* /usr/bin
+            sudo mv /tmp/docker/* /usr/local/bin
 
       - run:
           name: Install Docker Compose
@@ -63,13 +61,8 @@ jobs:
     parallelism: 1
     steps:
       - checkout
-      - run: sudo rm -rf /usr/local/seneca
-      - run: sudo mkdir /usr/local/seneca
-      - run: sudo mkdir -p -m 777 /home/circleci/cilantro/src/seneca/logs
-      - run: sudo chown -R circleci:circleci /usr/local/seneca
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
-      - run: sudo chown -R circleci:circleci /home/circleci/cilantro/src/seneca/logs
       - restore_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
 
@@ -78,6 +71,11 @@ jobs:
           command: |
              sudo pip3 install -r requirements.txt --upgrade --no-cache-dir --exists-action w
              sudo pip3 install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
+
+      - run:
+          name: Install Redis
+          command: |
+             sudo apt-get install redis-server
 
       - save_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
@@ -88,6 +86,7 @@ jobs:
       - run:
           name: Run Tests
           command: |
+            redis-server &
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
             python3.6 ~/cilantro/tests/run_tests.py --integration 0 --unit 1 --skip_modules tests.unit.nodes.masternode tests.unit.nodes.delegate
