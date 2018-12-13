@@ -176,7 +176,7 @@ class CatchupManager:
             latest_blk_num = curr_blk_num
 
             if given_blk_num == latest_blk_num:
-                cls.log.debug('given block is already latest')
+                self.log.debug('given block is already latest')
                 return None
             else:
                 idx_delta = MasterOps.get_blk_idx(n_blks = (latest_blk_num - given_blk_num))
