@@ -6,6 +6,7 @@ from cilantro.storage.state import StateDriver
 from cilantro.storage.vkbook import VKBook
 from cilantro.nodes.catchup import CatchupManager
 from cilantro.nodes.masternode.mn_api import StorageDriver
+from cilantro.nodes.masternode.block_contender import BlockContender
 
 from cilantro.constants.zmq_filters import *
 from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
