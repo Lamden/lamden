@@ -353,7 +353,10 @@ class BlockManager(Worker):
     # update current db state to the new block
     def handle_new_block(self, block_data: NewBlockNotification):
         new_block_hash = block_data.block_hash
-        self.log.info("Got new block notification with block hash {}...".format(new_block_hash))
+        if self.db_state.num_empty_sbc == NUM_SB_PER_BLOCK:
+            self.log.info("why i got new block notification with block hash {} when I have all empty blocks?".format(new_block_hash))
+        else:
+            self.log.info("Got new block notification with block hash {}...".format(new_block_hash))
 
         if not self.db_state.cur_block_hash:
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
