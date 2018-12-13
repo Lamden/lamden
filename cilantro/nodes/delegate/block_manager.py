@@ -369,7 +369,7 @@ class BlockManager(Worker):
 
         count = self.db_state.next_block.get(new_block_hash)[1] + 1 \
                  if new_block_hash in self.db_state.next_block else 1
-        self.db_state.next_block[new_block_hash] = tuple(block_data, count)
+        self.db_state.next_block[new_block_hash] = (block_data, count)
         if count >= MIN_NEW_BLOCK_MN_QOURUM:
             self.log.info("New block quorum met!")
             self.db_state.new_block_hash = new_block_hash
