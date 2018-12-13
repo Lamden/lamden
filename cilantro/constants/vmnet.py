@@ -39,7 +39,9 @@ def get_constitution(constitution_json):
     """
     log = get_logger(__name__)
 
-    fpath = join(public_dir, constitution_json)
+    fpath = join(test_dir, constitution_json)
+    if not exists(fpath):
+        fpath = join(public_dir, constitution_json)
 
     if constitution_json and exists(fpath):
         log.info('Loading constituion from {}...'.format(fpath))

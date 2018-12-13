@@ -1,4 +1,5 @@
 {
+    "environment": {"CONSITUTION_FILE": "2-2-2.json"},
     "aws": {
         "security_groups": {
             "simple_https": {
@@ -86,6 +87,14 @@
             "name": "masternode",
             "image": "cilantro_mn",
             "count": 2,
+            "ports": [
+                443
+            ]
+        },
+        {
+            "name": "mgmt",
+            "image": "cilantro_base",
+            "count": 1,
             "ports": [
                 443
             ]

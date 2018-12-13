@@ -50,7 +50,7 @@ def run_mn(slot_num):
     # NOTE setting the log level below 11 does not work for some reason --davis
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
-    # overwrite_logger_level(11)
+    overwrite_logger_level(11)
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[slot_num]['sk']

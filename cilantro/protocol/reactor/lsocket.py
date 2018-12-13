@@ -166,6 +166,7 @@ class LSocket:
         assert protocol in ('tcp', 'ipc'), "Only tcp/ipc protocol is supported, not {}".format(protocol)
         # TODO validate other args (port is an int within some range, ip address is a valid, ect)
 
+        if ip == os.getenv('HOST_IP'): ip = '0.0.0.0'
         url = "{}://{}:{}".format(protocol, ip, port)
         self.log.socket("{} to URL {}".format('CONNECTING' if should_connect else 'BINDING', url))
 

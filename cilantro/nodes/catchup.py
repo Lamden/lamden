@@ -142,7 +142,7 @@ class CatchupManager:
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
         delta_idx = self.get_delta_idx(vk = requester_vk, curr_blk_num = self.curr_num,
                                        sender_blk_hash = request.block_hash)
-        self._send_block_idx_reply(catchup_list = delta_idx)
+        self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
 
     def recv_new_blk_notif(self, update: NewBlockNotification):
         if self.catchup_state is False:
@@ -160,8 +160,7 @@ class CatchupManager:
         reply = BlockIndexReply.create(block_info = catchup_list)
         self.router.send_msg(reply, header=reply_to_vk.encode())
 
-    @classmethod
-    def get_delta_idx(cls, vk = None, curr_blk_num = None, sender_blk_hash = None):
+    def get_delta_idx(self, vk = None, curr_blk_num = None, sender_blk_hash = None):
         """
         API gets latest hash requester has and responds with delta block index
 
@@ -170,13 +169,13 @@ class CatchupManager:
         :return:
         """
         # check if requester is master or del
-        valid_node = VKBook.is_node_type('masternode') or VKBook.is_node_type('delegate')
+        valid_node = VKBook.is_node_type('masternode', vk) or VKBook.is_node_type('delegate', vk)
         if valid_node is True:
             given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_blk_hash)
             latest_blk_num = curr_blk_num
 
             if given_blk_num == latest_blk_num:
-                cls.log.debug('given block is already latest')
+                self.log.debug('given block is already latest')
                 return None
             else:
                 idx_delta = MasterOps.get_blk_idx(n_blks = (latest_blk_num - given_blk_num))
