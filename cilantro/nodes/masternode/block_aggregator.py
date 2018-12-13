@@ -47,19 +47,13 @@ class BlockAggregator(Worker):
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
         assert StateDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
             "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-                .format(StateDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
-
+            .format(StateDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
 
         self.run()
 
     def run(self):
         self.log.info("Block Aggregator starting...")
         self.build_task_list()
-
-        # TODO put this back in when Catchup is implemented
-        # self.log.notice("starting initial catchup...")
-        # self.is_catching_up = True
-        # self.catchup_manager.send_block_idx_req()
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
