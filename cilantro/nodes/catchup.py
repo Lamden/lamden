@@ -142,7 +142,7 @@ class CatchupManager:
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
         delta_idx = self.get_delta_idx(vk = requester_vk, curr_blk_num = self.curr_num,
                                        sender_blk_hash = request.block_hash)
-        self._send_block_idx_reply(catchup_list = delta_idx)
+        self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
 
     def recv_new_blk_notif(self, update: NewBlockNotification):
         if self.catchup_state is False:
@@ -176,7 +176,7 @@ class CatchupManager:
             latest_blk_num = curr_blk_num
 
             if given_blk_num == latest_blk_num:
-                cls.log.debug('given block is already latest')
+                print('given block is already latest')
                 return None
             else:
                 idx_delta = MasterOps.get_blk_idx(n_blks = (latest_blk_num - given_blk_num))
