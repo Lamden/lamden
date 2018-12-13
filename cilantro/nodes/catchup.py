@@ -8,7 +8,8 @@ from cilantro.storage.state import StateDriver
 from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.storage.mongo import MDB
 from cilantro.nodes.masternode.master_store import MasterOps
-from cilantro.messages.block_data.block_data import BlockData, BlockMetaData, NewBlockNotification
+from cilantro.messages.block_data.block_data import BlockData
+from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest
 
 
@@ -49,7 +50,6 @@ class CatchupManager:
             return
 
         self.store_full_blocks = store_full_blocks
-        #self.all_masters = set(VKBook.get_masternodes())
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
         # starting phase I
@@ -146,7 +146,14 @@ class CatchupManager:
         self._send_block_idx_reply(catchup_list = delta_idx)
 
     def recv_new_blk_notif(self, update: NewBlockNotification):
-        pass
+        if self.catchup_state is False:
+            self.log.error("Err we shouldn't be getting new with catchup False")
+            return
+
+        nw_blk_num = update.block_num
+        nw_blk_owners = update.block_owners
+        for vk in nw_blk_owners:
+            self._send_block_data_req(mn_vk = vk, req_blk_num = nw_blk_num)
 
     # MASTER ONLY CALL
     def _send_block_idx_reply(self, reply_to_vk = None, catchup_list=None):
@@ -227,7 +234,7 @@ class CatchupManager:
 
         if len(self.block_delta_list) == 0:
             assert self.curr_num == self.target_blk_num, "Err target blk and curr block are not same"
-            assert self.curr_hash == self.target_blk.get(blockHash), "Err target blk and curr block are not same"
+            assert self.curr_hash == self.target_blk.get('blockHash'), "Err target blk and curr block are not same"
 
             # reset everything
             self.catchup_state = False
