@@ -28,14 +28,23 @@ class BlockContender:
 
         sb_count = 0
         for result_hash in self.result_hashes:
-            if len(self.result_hashes[result_hash]) >= NUM_SB_PER_BLOCK:
+            if len(self.result_hashes[result_hash]) >= DELEGATE_MAJORITY:
                 self.log.spam("Consensus achieved on result hash {}".format(result_hash))
                 sb_count += 1
 
-        return sb_count
+        # Sanity check, it should should impossible to achieve consensus on more than sub-blocks than NUM_SB_PER_BLOCK
+        assert sb_count <= NUM_SB_PER_BLOCK, "Achieved consensus on more than {} sub blocks!!! WHY THO\n" \
+                                             "result_hashes={}".format(NUM_SB_PER_BLOCK, self.result_hashes)
+
+        # 
+
+        self.log.debugv("Achieved consensus on {}/{} subblocks".format(sb_count, NUM_SB_PER_BLOCK))
+        return sb_count == NUM_SB_PER_BLOCK
 
     def is_consensus_possible(self) -> bool:
-        pass
+        # TODO implement
+        # Return true if it is still possible to get 2/3rds consensus
+        return True
 
     def add_sbc(self, sender_vk: str, sbc: SubBlockContender):
         if not self._verify_sbc(sender_vk, sbc):
