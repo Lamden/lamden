@@ -1,4 +1,5 @@
 {
+    "environment": {"CONSITUTION_FILE": "2-2-2.json"},
     "aws": {
         "security_groups": {
             "simple_https": {
@@ -49,8 +50,7 @@
                 "build_ami": "ami-0f65671a86f061fcd",
                 "instance_type": "t2.micro",
                 "build_instance_type": "t2.large",
-                "run_ami": "ami-08a38dd68d54c7ea9",
-                "environment": {"CONSITUTION_FILE": "2-2-2.json"}
+                "run_ami": "ami-08a38dd68d54c7ea9"
             },
             "cilantro_mn": {
                 "name": "cilantro_mn",
@@ -62,8 +62,7 @@
                 "build_ami": "ami-08a38dd68d54c7ea9",
                 "instance_type": "t2.micro",
                 "build_instance_type": "t2.large",
-                "run_ami": "ami-0475e8f109e6a0bb4",
-                "environment": {"CONSITUTION_FILE": "2-2-2.json"}
+                "run_ami": "ami-0475e8f109e6a0bb4"
             }
         }
     },
