@@ -24,7 +24,6 @@ class CatchupManager:
         # catchup state
         self.catchup_state = False
 
-
         # main list to process
         self.block_delta_list = []      # list of mn_index dict to process
         self.target_blk = {}            # last block in list
@@ -118,9 +117,8 @@ class CatchupManager:
         # check if given blocknum grter thn current expected blk -> store temp
         # if given block needs to be stored update state/storage delete frm expected DT
 
-        block_dict = MDB.get_dict(reply)
-        self.awaited_blknum = self.block_delta_list[0]
-        rcv_blk_num = block_dict.get('blockNum')
+        self.awaited_blknum = self.block_delta_list[0].get('blockNum')
+        rcv_blk_num = reply.block_num
 
         if rcv_blk_num <= self.curr_num:
             self.log.debug("dropping giving blk reply blk-{}:hash-{} ".format(reply.block_num, reply.block_hash))
@@ -130,12 +128,9 @@ class CatchupManager:
             self.rcv_block_dict[rcv_blk_num] = reply
 
         if rcv_blk_num == self.awaited_blknum:
-            if self.update_received_block(block = block_dict) and self.store_full_blocks is True:
-                StateDriver.update_with_block(block = reply)
-            else:
-                StateDriver.update_with_block(block = reply)
+            self.update_received_block(block = reply)
 
-            self.update_catchup_state(block_num = rcv_blk_num)
+        self.update_catchup_state(block_num = rcv_blk_num)
 
     # MASTER ONLY CALL
     def recv_block_idx_req(self, requester_vk: str, request: BlockIndexRequest):
@@ -149,6 +144,9 @@ class CatchupManager:
         delta_idx = self.get_delta_idx(vk = requester_vk, curr_blk_num = self.curr_num,
                                        sender_blk_hash = request.block_hash)
         self._send_block_idx_reply(catchup_list = delta_idx)
+
+    def recv_new_blk_notif(self):
+        pass
 
     # MASTER ONLY CALL
     def _send_block_idx_reply(self, reply_to_vk = None, catchup_list=None):
@@ -191,15 +189,21 @@ class CatchupManager:
             self.blk_req_ptr = self.block_delta_list[self.blk_req_ptr_idx]
             self.last_req_blk_num = self.last_req_blk_num + 1
 
-    @staticmethod
-    def update_received_block(block = None):
-        update_blk_result = bool(MasterOps.evaluate_wr(entry = block))
-        assert update_blk_result is True, "failed to update block"
-        return update_blk_result
+    def update_received_block(self, block = None):
+
+        block_dict = MDB.get_dict(block)
+        if self.store_full_blocks is True:
+            update_blk_result = bool(MasterOps.evaluate_wr(entry = block_dict))
+            StateDriver.update_with_block(block = block)
+            assert update_blk_result is True, "failed to update block"
+        else:
+            StateDriver.update_with_block(block = block)
+
+        self.update_catchup_state(block_num = block_dict.get('blockNum'))
 
     def update_catchup_state(self, block_num=None):
         """
-        Called when we successfully update state and storage
+        Recursive Called when we successfully update state and storage
 
         - cleans up stale states
         - updates expected/awaited block requirements
@@ -207,8 +211,42 @@ class CatchupManager:
         :param block_num:
         :return:
         """
+
         if block_num in self.rcv_block_dict.keys():
             self.rcv_block_dict.pop(block_num)
+            self.block_delta_list.pop(0)
+            if self.blk_req_ptr_idx:
+                self.blk_req_ptr_idx = self.blk_req_ptr_idx - 1
+            self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
+
+        if len(self.rcv_block_dict) > 0:
+            self.awaited_blknum = self.awaited_blknum + 1
+            block = self.rcv_block_dict.get(self.awaited_blknum)
+            if block:
+                self.update_received_block(block = block)
+
+        if len(self.block_delta_list) == 0:
+            assert self.curr_num == self.target_blk_num, "Err target blk and curr block are not same"
+            assert self.curr_hash == self.target_blk.get(blockHash), "Err target blk and curr block are not same"
+
+            # reset everything
+            self.catchup_state = False
+
+            # main list to process
+            self.block_delta_list = []              # list of mn_index dict to process
+            self.target_blk = {}                    # last block in list
+            self.target_blk_num = None
+
+            # process send
+            self.blk_req_ptr = {}                   # current ptr track send blk req
+            self.blk_req_ptr_idx = None             # idx to track ptr in block_delta_list
+            self.last_req_blk_num = None
+
+            self.curr_hash, self.curr_num = None, None  # latest blk on redis
+
+            # received full block could be out of order
+            self.rcv_block_dict = {}
+            self.awaited_blknum = None
 
 
 
