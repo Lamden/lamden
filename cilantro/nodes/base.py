@@ -39,7 +39,7 @@ class NodeBase(Worker):
     # These constants can be overwritten by subclasses
     # For dev, we require all nodes to be online. IRL this could perhaps be 2/3 node for each role  --davis
     REQ_MNS = len(VKBook.get_masternodes())
-    REQ_DELS = len(VKBook.get_delegates())
+    REQ_DELS = len(VKBook.get_delegates()) - 1      # remove -1 its to test manual dump.
     REQ_WITS = len(VKBook.get_witnesses())
 
     def __init__(self, ip, signing_key, loop=None, name='Node'):

@@ -1,8 +1,8 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-2.json')
+set_testnet_config('2-2-4.json')
 
 from vmnet.testcase import BaseNetworkTestCase
-import unittest, time, random, vmnet, cilantro
+import unittest, time, random, vmnet, cilantro, os
 from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test
 from cilantro.utils.test.god import God
@@ -103,12 +103,13 @@ def dump_it(volume, delay=0):
 class TestManualDump(BaseNetworkTestCase):
 
     VOLUME = 1200  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-2-bootstrap.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)
     def test_dump(self):
         log = get_logger("Dumpatron")
+        cmd = 'docker container stop $(docker container ls -a -q -f name=delegate_6)'
 
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
@@ -124,6 +125,19 @@ class TestManualDump(BaseNetworkTestCase):
 
         while True:
             user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
+
+            if user_input.lower() == 'c':
+                log.debug("catchup test delegate")
+                self.execute_python(nodename, wrap_func(run_delegate, i), async = True, profiling = self.PROFILE_TYPE)
+
+            if user_input.lower() == 's':
+                log.debug("stoping delegate 6")
+                os.system(cmd)
+
+            if user_input.lower() == 'c':
+                log.debug("Testing catchup start delegate 6")
+                self.execute_python(nodename, wrap_func(run_delegate, 0), async = True, profiling = self.PROFILE_TYPE)
+
             if user_input.lower() == 'x':
                 log.debug("Termination input detected. Breaking")
                 break
