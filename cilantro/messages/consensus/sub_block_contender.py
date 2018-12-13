@@ -82,6 +82,7 @@ class SubBlockContender(MessageBase):
     def _deserialize_data(cls, data: bytes):
         return subblock_capnp.SubBlockContender.from_bytes_packed(data)
 
+    # NOTE -- result_hash is the same as the merkle root
     @lazy_property
     def result_hash(self) -> str:
         return self._data.resultHash.decode()

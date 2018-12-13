@@ -11,6 +11,7 @@ from cilantro.nodes.masternode.block_contender import BlockContender
 from cilantro.constants.zmq_filters import *
 from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
 from cilantro.constants.system_config import *
+from cilantro.constants.masternode import *
 
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
@@ -43,6 +44,7 @@ class BlockAggregator(Worker):
         self.pub, self.sub, self.router = None, None, None  # Set in build_task_list
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.is_catching_up = False
+        self.timeout_fut = None
 
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
         assert StateDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
@@ -148,14 +150,26 @@ class BlockAggregator(Worker):
         self.log.info("Received a sbc with result hash {} and input hash {}".format(sbc.result_hash, sbc.input_hash))
         assert not self.is_catching_up, "We should not be receiving SBCs when we are catching up!"
 
-        self.curr_block.add_sbc(sender_vk, sbc)
+        added_first_sbc = self.curr_block.add_sbc(sender_vk, sbc)
+        if added_first_sbc:
+            self.log.info("First SBC receiver for prev block hash {}! Scheduling timeout".format(self.curr_block_hash))
+            self.timeout_fut = asyncio.ensure_future(self.schedule_block_timeout())
+
         if self.curr_block.is_consensus_reached():
             self.log.success("Consensus reached for prev hash {}!".format(self.curr_block_hash))
             self.store_full_block()
+            return
+
+        if not self.curr_block.is_consensus_possible():
+            self.log.fatal("Consensus not possible for prev block hash {}! Sending skip block notif".format(self.curr_block_hash))
+            self.send_skip_block_notif()
         else:
             self.log.debugv("Consensus not reached yet.")
 
     def store_full_block(self):
+        self.log.info("Canceling block timeout")
+        self.timeout_fut.cancel()
+
         if self.curr_block.is_empty():
             self.log.success2("Got consensus on empty block! Sending skip block notification")
             self.send_skip_block_notif()
@@ -179,10 +193,8 @@ class BlockAggregator(Worker):
     def send_new_block_notif(self, block_data: BlockData):
         new_block_notif = NewBlockNotification.create_from_block_data(block_data)
         self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
-        block_hash = block_data.block_hash
-        self.log.info('Published new block notif with hash "{}"'.format(block_hash))
-
-        # return new_block_notif
+        self.log.info('Published new block notif with hash "{}" and prev hash {}'
+                      .format(block_data.block_hash, block_data.prev_block_hash))
 
     def send_skip_block_notif(self):
         skip_notif = SkipBlockNotification.create(prev_block_hash=self.curr_block_hash)
@@ -196,4 +208,18 @@ class BlockAggregator(Worker):
     def recv_skip_block_notif(self, sender_vk: str, notif: SkipBlockNotification):
         self.log.info("MN got new block notification: {}".format(notif))
         # TODO implement
+
+    async def schedule_block_timeout(self):
+        elapsed = 0
+
+        while elapsed < BLOCK_PRODUCTION_TIMEOUT:
+            await asyncio.sleep(BLOCK_TIMEOUT_POLL)
+            elapsed += BLOCK_TIMEOUT_POLL
+
+        self.log.fatal("Block timeout of {}s reached for block hash {}! Resetting sub block contenders and sending "
+                       "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
+        self.send_skip_block_notif()
+        self.curr_block = BlockContender()
+
+
 

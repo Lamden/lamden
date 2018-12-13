@@ -20,9 +20,9 @@ class SubBlockGroup:
         self.sb_idx, self.curr_block_hash = sb_idx, curr_block_hash
         self.log = get_logger("SBGroup[{}]".format(self.sb_idx))
 
-        self.all_senders = set()  # set of sender VKs
         self.rh = defaultdict(set)  # mapping of result_hash: set of SubBlockContenders
         self.transactions = {}  # tx_hash: TransactionData
+        self.sender_to_sbc = {}  # map of sender_vk: SubBlockContender
 
         self.best_rh = None  # The result hash with the most votes so far
 
@@ -30,13 +30,15 @@ class SubBlockGroup:
         num_votes = 0
         for rh in self.rh:
             votes_for_rh = len(self.rh[rh])
-            if votes_for_rh >= DELEGATE_MAJORITY:  # Consensus reached on this block
+            if votes_for_rh >= DELEGATE_MAJORITY:  # Consensus reached on this sub block
                 return True
             num_votes += votes_for_rh
 
         if num_votes >= DELEGATE_MAJORITY:
             self.log.fatal("Consensus impossible for SB index {}!\nresult hashes: {}".format(self.sb_idx, self.rh))
             return False
+
+        return True
 
     def get_sb(self) -> SubBlock:
         assert self.is_consensus_reached(), "Consensus must be reached to get a SubBlock!"
@@ -90,11 +92,18 @@ class SubBlockGroup:
             self.log.warning("Could not verify SBC from sender {}".format(sender_vk))
             return
 
-        self.all_senders.add(sender_vk)
+        if sender_vk in self.sender_to_sbc:
+            self.log.info("Sender {} has already submitted a contender for sb idx {} with prev hash {}! Removing his "
+                          "old contender before adding a new one".format(sender_vk, self.sb_idx, self.curr_block_hash))
+            existing_sbc = self.sender_to_sbc[sender_vk]
+            self.rh[existing_sbc.result_hash].pop(existing_sbc)
+
+        self.sender_to_sbc[sender_vk] = sbc
         self.rh[sbc.result_hash].add(sbc)
         if (self.best_rh is None) or (len(self.rh[sbc.result_hash]) > len(self.rh[self.best_rh])):
             self.best_rh = sbc.result_hash
 
+        # Just a warning to help debugging
         if len(self.rh) > NUM_SB_PER_BLOCK:
             self.log.warning("More than {} unique result hashes for prev block hash {}!!! Result hashes: {}"
                              .format(NUM_SB_PER_BLOCK, self.curr_block_hash, list(self.rh.keys())))
@@ -144,12 +153,6 @@ class SubBlockGroup:
         # Validate sub block index is in range
         if sbc.sb_index >= NUM_SB_PER_BLOCK:
             self.log.warning("Got SBC with out of range sb_index {}!\nSBC: {}".format(sbc.sb_index, sbc))
-            return False
-
-        # Check we dont have a SBC from this sender already
-        if sender_vk in self.all_senders:
-            self.log.warning("ALERT! Already received SBC from sender {} for sb idx {}!\nSBC: {}"
-                             .format(sender_vk, sbc.sb_index, sbc))
             return False
 
         return True
@@ -216,9 +219,20 @@ class BlockContender:
 
         return sb_data
 
-    def add_sbc(self, sender_vk: str, sbc: SubBlockContender):
+    def get_num_contenders(self):
+        pass
+
+    def add_sbc(self, sender_vk: str, sbc: SubBlockContender) -> bool:
+        """
+        Adds a SubBlockContender to this BlockContender's data.
+        :param sender_vk: The VK of the sender of the SubBlockContender
+        :param sbc: The SubBlockContender instance to add
+        :return: True if this is the first SBC added to this BlockContender, and false otherwise
+        """
+        groups_empty = len(self.sb_groups) == 0
         if sbc.sb_index not in self.sb_groups:
             self.sb_groups[sbc.sb_index] = SubBlockGroup(sb_idx=sbc.sb_index, curr_block_hash=self.curr_block_hash)
 
         self.sb_groups[sbc.sb_index].add_sbc(sender_vk, sbc)
+        return groups_empty
 
