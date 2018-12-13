@@ -1,4 +1,7 @@
 {
+    "environment": {
+        "CONSITUTION_FILE": "2-2-0.json"
+    },
     "services": [
         {
             "name": "masternode",
