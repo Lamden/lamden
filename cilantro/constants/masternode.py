@@ -9,7 +9,6 @@ QUORUM = 3
 MN_ID = 1
 
 # Web Server
-WEB_SERVER_PORT = 8080
 NUM_WORKERS = 2  # Number of Sanic worker procs
 NONCE_EXPIR = 90  # Number of seconds before a nonce requested by a user expires
 
@@ -19,4 +18,3 @@ MAX_BLOCK = 100
 MN_BLK_DATABASE = 'mn_store'
 MN_INDEX_DATABASE = 'mn_index'
 TEST_HOOK = False
-
