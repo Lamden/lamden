@@ -91,6 +91,14 @@
             "ports": [
                 443
             ]
+        },
+        {
+            "name": "mgmt",
+            "image": "cilantro_base",
+            "count": 1,
+            "ports": [
+                443
+            ]
         }
     ]
 }
