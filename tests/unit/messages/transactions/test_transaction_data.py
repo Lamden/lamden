@@ -46,3 +46,12 @@ class TestTransactionData(TestCase):
         clone = TransactionData.from_bytes(td.serialize())
 
         self.assertEqual(clone, td)
+
+    def test_serialize_deserialize_consistent_hash(self):
+        td = TransactionData.create(
+            contract_tx=ContractTransactionBuilder.create_currency_tx(
+                sender_sk=TEST_SK, receiver_vk='A' * 64, amount=10),
+            status='SUCCESS', state='SET x 1')
+        clone = TransactionData.from_bytes(td.serialize())
+
+        self.assertEqual(clone.hash, td.hash)

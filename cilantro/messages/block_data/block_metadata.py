@@ -33,8 +33,7 @@ class BlockMetaData(BlockData):
         for sb in data.sub_blocks:
             sb.remove_tx_data()
 
-        return BlockMetaData.from_data(data._data)
-
+        return cls.from_data(data._data)
 
 
 class NewBlockNotification(BlockMetaData):
