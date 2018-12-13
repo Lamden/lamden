@@ -40,16 +40,16 @@ upload-mn:
 	docker push lamden/cilantro-mn:latest
 
 clean-logs:
-	sudo bash ./scripts/clean-logs.sh
+	bash ./scripts/clean-logs.sh
 
 clean-temps:
-	sudo bash ./scripts/clean-temp-files.sh
+	bash ./scripts/clean-temp-files.sh
 
 clean-certs:
-	sudo bash ./scripts/clean-certs.sh
+	bash ./scripts/clean-certs.sh
 
 clean-dbs:
-	sudo bash ./scripts/clean-db.sh
+	bash ./scripts/clean-db.sh
 
 clean: clean-logs clean-temps clean-certs clean-dbs
 
