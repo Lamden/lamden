@@ -53,7 +53,7 @@ class DBState:
 
     """ convenience struct to maintain db snapshot state data in one place """
     def __init__(self):
-        self.cur_block_hash = None
+        self.cur_block_hash = StateDriver.get_latest_block_hash()
         # self.cur_block_num = 0
         self.my_new_block_hash = None
         self.new_block_hash = None
@@ -96,7 +96,6 @@ class BlockManager(Worker):
         self.build_task_list()
         self.log.info("Block Manager starting...")
         self.start_sbb_procs()
-
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
@@ -251,6 +250,11 @@ class BlockManager(Worker):
         # first sort the sb result hashes based on sub block index
         sorted_sb_hashes = sorted(self.db_state.sub_block_hash_map.keys(),
                                   key=lambda result_hash: self.db_state.sub_block_hash_map[result_hash])
+
+        # TODO remove these
+        assert len(sorted_sb_hashes) > 0, "nooooooo\nsorted_sb_hashes={}\nsb_hash_map={}"\
+            .format(sorted_sb_hashes, self.db_state.sub_block_hash_map)
+
         # append prev block hash
         return BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.cur_block_hash)
 
@@ -316,7 +320,6 @@ class BlockManager(Worker):
         self.log.notice("Setting latest block number to {} and block hash to {}"
                             .format(block.block_num, self.db_state.cur_block_hash))
         StateDriver.set_latest_block_info(self.db_state.cur_block_hash, block.block_num)
-
 
     def update_db_if_ready(self):
         if not self.db_state.my_new_block_hash or not self.db_state.new_block_hash:

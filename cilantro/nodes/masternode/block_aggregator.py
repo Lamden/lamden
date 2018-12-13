@@ -230,7 +230,8 @@ class BlockAggregator(Worker):
                 '_sb_index_': sbc.sb_index,
                 '_lastest_valid_': time.time()
             }
-        self.log.info("Adding signature to sub-block result_hashes")
+        self.log.info("Adding signature {} to sub-block result_hashes from sender {}".format(sbc.signature.signature,
+                                                                                             sbc.signature.sender))
         self.result_hashes[sbc.result_hash]['_valid_signatures_'][sbc.signature.signature] = sbc.signature
         for tx in sbc.transactions:
             self.result_hashes[sbc.result_hash]['_transactions_'][tx.hash] = tx
@@ -251,10 +252,10 @@ class BlockAggregator(Worker):
 
     def cleanup_block_memory(self):
         self.result_hashes = {
-             result_hash: self.result_hashes[result_hash] \
-                for result_hash in self.result_hashes \
-                if self.result_hashes[result_hash]['_lastest_valid_'] <= SUB_BLOCK_VALID_PERIOD + time.time() and \
-                    not self.result_hashes[result_hash].get('_committed_')
+            result_hash: self.result_hashes[result_hash] \
+            for result_hash in self.result_hashes \
+            if self.result_hashes[result_hash]['_lastest_valid_'] <= time.time() - SUB_BLOCK_VALID_PERIOD and
+               self.result_hashes[result_hash].get('_committed_')
         }
 
     def store_full_block(self):

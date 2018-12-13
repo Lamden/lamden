@@ -80,7 +80,7 @@ class VKBook(metaclass=VKBookMeta):
     @classmethod
     def is_node_type(cls, node_type, vk):
         assert node_type in cls.node_types, 'Invalid node type!'
-        return cls.book[node_type].get(vk) != None
+        return cls.book[node_type].get(vk) is not None
 
     @classmethod
     def get_delegate_majority(cls):
