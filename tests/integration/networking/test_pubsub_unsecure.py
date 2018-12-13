@@ -25,35 +25,6 @@ class TestPubSubUnsecure(MPTestCase):
     config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
 
     @vmnet_test
-    def test_pubsub_1_pub_2_sub_unsecure(self):
-        def assert_sub(test_obj):
-            expected_frames = [b'', msg]  # Filter is b''
-            test_obj.handle_sub.assert_called_with(expected_frames)
-
-        msg = b'*falcon noise*'
-        time.sleep(1*CI_FACTOR)
-
-        BLOCK = False
-
-        pub = MPPubSubAuth(sk=PUB1_SK, name='PUB', block_until_rdy=BLOCK)
-        sub1 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB1', block_until_rdy=BLOCK)
-        sub2 = MPPubSubAuth(config_fn=config_sub, assert_fn=assert_sub, sk=SUB1_SK, name='SUB2', block_until_rdy=True)
-
-        time.sleep(5*CI_FACTOR)
-
-        pub.add_pub_socket(ip=pub.ip)
-
-        for sub in (sub1, sub2):
-            sub.add_sub_socket()
-            sub.connect_sub(vk=PUB1_VK)
-
-        time.sleep(8*CI_FACTOR)  # Allow time for VK lookup
-
-        pub.send_pub(msg)
-
-        self.start(timeout=10*CI_FACTOR)
-
-    @vmnet_test
     def test_pubsub_1_pub_1_sub_mixed_auth_unsecure(self):
         def assert_sub(test_obj):
             from unittest.mock import call

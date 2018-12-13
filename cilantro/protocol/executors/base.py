@@ -1,6 +1,6 @@
 from cilantro.logger import get_logger
 from cilantro.messages.envelope.envelope import Envelope
-from cilantro.protocol.structures import CappedSet
+from cilantro.protocol.structures.capped_containers import CappedSet
 import traceback
 from cilantro.protocol.states.state import StateInput
 from cilantro.constants.protocol import DUPE_TABLE_SIZE

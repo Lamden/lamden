@@ -4,6 +4,7 @@ from cilantro.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
 
 def masternode(idx):
+
     from cilantro.logger import get_logger
     from vmnet.cloud.comm import signal_success
     log = get_logger('MasterNode_{}'.format(idx))
@@ -60,7 +61,7 @@ def delegates(idx):
 
 class TestCloud(AWSTestCase):
 
-    config_file = get_config_file('cilantro_aws.json')
+    config_file = get_config_file('cilantro-aws-2-0-2.json')
     keep_up = True
     timeout = 120
 

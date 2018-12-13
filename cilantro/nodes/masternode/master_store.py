@@ -67,7 +67,7 @@ class MasterOps:
 
         masternode_vks = VKBook.get_masternodes()
         for i in range(cls.active_masters):
-            if masternode_vks[i]['vk'] == vk:
+            if masternode_vks[i] == vk:
                 cls.mn_id = i
                 return True
             else:

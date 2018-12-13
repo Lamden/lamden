@@ -1,24 +1,26 @@
-# test_db_conf.ini:
-# 	./scripts/make_test_config.py
-
-start-db:# test_db_conf.ini
+start-db:
 	python3 ./scripts/start_redis_mongo.py
 
-start: start-db
-
-console-db: start-db
+mongo: start-db
 	mongo
 
-stop-db:
-	# pkill -9 mongo* 2>/dev/null
-	# docker kill `docker ps --format "table {{.Names}}" --filter "ancestor=lamden/cilantro-db"| tail -n +2` 2>/dev/null; sleep 2
+redis: start-db
+	redis-cli
 
-stop: stop-db
+stop-db: kill-docker
+	pkill mongod || true
+	pkill redis-server || true
 
 restart-db: stop-db start-db
 
 test: restart-db
-	./tests/run_tests.py -v
+	python3 ./tests/run_tests.py -v
+
+test-unit: restart-db
+	python3 ./tests/run_tests.py -v --integration 0 --unit 1
+
+test-integration: restart-db
+	python3 ./tests/run_tests.py -v --integration 1 --unit 0
 
 install:
 	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir
@@ -38,16 +40,16 @@ upload-mn:
 	docker push lamden/cilantro-mn:latest
 
 clean-logs:
-	./scripts/clean-logs.sh
+	bash ./scripts/clean-logs.sh
 
 clean-temps:
-	./scripts/clean-temp-files.sh
+	bash ./scripts/clean-temp-files.sh
 
 clean-certs:
-	./scripts/clean-certs.sh
+	bash ./scripts/clean-certs.sh
 
 clean-dbs:
-	./scripts/clean-db.sh
+	bash ./scripts/clean-db.sh
 
 clean: clean-logs clean-temps clean-certs clean-dbs
 

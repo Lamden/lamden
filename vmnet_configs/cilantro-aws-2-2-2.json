@@ -1,0 +1,103 @@
+{
+    "environment": {"CONSITUTION_FILE": "2-2-2.json"},
+    "aws": {
+        "security_groups": {
+            "simple_https": {
+                "name": "simple_https",
+                "description": "Simple https security group",
+                "permissions": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 443,
+                        "ToPort": 443,
+                        "IpRanges": [
+                            {
+                                "CidrIp": "0.0.0.0/0"
+                            }
+                        ]
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 22,
+                        "ToPort": 22,
+                        "IpRanges": [
+                            {
+                                "CidrIp": "0.0.0.0/0"
+                            }
+                        ]
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 0,
+                        "ToPort": 65535,
+                        "IpRanges": [
+                            {
+                                "CidrIp": "0.0.0.0/0"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "images": {
+            "cilantro_base": {
+                "name": "cilantro_base",
+                "repo_name": "cilantro",
+                "repo_url": "https://github.com/Lamden/cilantro.git",
+                "branch": "vmnet-cloud",
+                "username": "ubuntu",
+                "security_group": "simple_https",
+                "build_ami": "ami-0f65671a86f061fcd",
+                "instance_type": "t2.micro",
+                "build_instance_type": "t2.large",
+                "run_ami": "ami-08a38dd68d54c7ea9"
+            },
+            "cilantro_mn": {
+                "name": "cilantro_mn",
+                "repo_name": "cilantro",
+                "repo_url": "https://github.com/Lamden/cilantro.git",
+                "branch": "vmnet-cloud",
+                "username": "ubuntu",
+                "security_group": "simple_https",
+                "build_ami": "ami-08a38dd68d54c7ea9",
+                "instance_type": "t2.micro",
+                "build_instance_type": "t2.large",
+                "run_ami": "ami-0475e8f109e6a0bb4"
+            }
+        }
+    },
+    "services": [
+        {
+            "name": "delegate",
+            "image": "cilantro_base",
+            "count": 2,
+            "ports": [
+                443
+            ]
+        },
+        {
+            "name": "witness",
+            "image": "cilantro_base",
+            "count": 2,
+            "ports": [
+                443
+            ]
+        },
+        {
+            "name": "masternode",
+            "image": "cilantro_mn",
+            "count": 2,
+            "ports": [
+                443
+            ]
+        },
+        {
+            "name": "mgmt",
+            "image": "cilantro_base",
+            "count": 1,
+            "ports": [
+                443
+            ]
+        }
+    ]
+}

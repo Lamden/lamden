@@ -1,1 +1,1 @@
-find . -name 'certs' | xargs rm -r
+find . -name './certs' | xargs rm -r

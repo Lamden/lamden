@@ -4,10 +4,20 @@ from cilantro.logger import get_logger
 from cilantro.constants.vmnet import get_constitution
 from cilantro.utils.utils import is_valid_hex
 from collections import defaultdict
+from cilantro.utils.test.testnet_config import get_config_filename
 
 log = get_logger("VKBook")
 
-class VKBook:
+class VKBookMeta(type):
+    def __new__(cls, clsname, bases, clsdict):
+        clsobj = super().__new__(cls, clsname, bases, clsdict)
+
+        assert hasattr(clsobj, 'setup'), "Class obj {} expected to have method called 'setup'".format(clsobj)
+        clsobj.setup()
+
+        return clsobj
+
+class VKBook(metaclass=VKBookMeta):
 
     node_types = ('masternode', 'witness', 'delegate')
     node_types_map = {
@@ -20,29 +30,19 @@ class VKBook:
     book = defaultdict(dict)
 
     @classmethod
-    def setup(cls, constitution_json=None):
+    def setup(cls):
         cls.bootnodes = []
-        if os.getenv('__TEST__') or os.getenv('TEST_NAME'):
-            from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_WITNESSES, TESTNET_MASTERNODES
-            for node in TESTNET_MASTERNODES:
-                cls.book['masternode'][node['vk']] = True
-                cls.constitution['masternodes'].append(node)
-            for node in TESTNET_WITNESSES:
-                cls.book['witness'][node['vk']] = True
-                cls.constitution['witnesses'].append(node)
-            for node in TESTNET_DELEGATES:
-                cls.book['delegate'][node['vk']] = True
-                cls.constitution['delegates'].append(node)
-        else:
-            cls.constitution = get_constitution(constitution_json)
-            for node_type in cls.node_types:
-                nt = cls.node_types_map.get(node_type, node_type)
-                for node in cls.constitution[nt]:
-                    cls.book[nt][node['vk']] = node.get('ip', True)
-            for node_type in cls.node_types:
-                node_list = env(node_type.upper())
-                if node_list:
-                    cls.bootnodes += node_list.split(',')
+        constitution_file = env('CONSITUTION_FILE', get_config_filename())
+        cls.constitution = get_constitution(constitution_file)
+
+        for node_type in cls.node_types_map:
+            for node in cls.constitution[cls.node_types_map.get(node_type)]:
+                cls.book[node_type][node['vk']] = node.get('ip', True)
+
+        for node_type in cls.node_types:
+            node_list = env(node_type.upper())
+            if node_list:
+                cls.bootnodes += node_list.split(',')
 
     @staticmethod
     def add_node(vk, node_type, ip=None):
@@ -89,6 +89,3 @@ class VKBook:
         log.notice("masternodes: {}".format(VKBook.get_masternodes()))
         log.notice("witnesses: {}".format(VKBook.get_witnesses()))
         log.notice("delegates: {}".format(VKBook.get_delegates()))
-
-if os.getenv('__TEST__'):
-    VKBook.setup()

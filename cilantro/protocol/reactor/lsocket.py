@@ -1,6 +1,6 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
-from cilantro.protocol.structures import EnvelopeAuth
+from cilantro.protocol.structures.envelope_auth import EnvelopeAuth
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.logger.base import get_logger
 import zmq.asyncio, asyncio, os
@@ -12,7 +12,7 @@ from os.path import join
 
 
 RDY_WAIT_INTERVAL = 2.0  # TODO move this to constants, and explain it
-MAX_RDY_WAIT = 80.0  # TODO move this to constants, and explain it
+MAX_RDY_WAIT = 30.0  # TODO move this to constants, and explain it
 
 
 def vk_lookup(func):
@@ -166,6 +166,7 @@ class LSocket:
         assert protocol in ('tcp', 'ipc'), "Only tcp/ipc protocol is supported, not {}".format(protocol)
         # TODO validate other args (port is an int within some range, ip address is a valid, ect)
 
+        if ip == os.getenv('HOST_IP'): ip = '0.0.0.0'
         url = "{}://{}:{}".format(protocol, ip, port)
         self.log.socket("{} to URL {}".format('CONNECTING' if should_connect else 'BINDING', url))
 

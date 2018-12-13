@@ -1,7 +1,7 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.utils import lazy_property, set_lazy_property, is_valid_hex
 from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
-from cilantro.protocol.structures import MerkleTree
+from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.protocol import wallet
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
 from cilantro.storage.vkbook import VKBook

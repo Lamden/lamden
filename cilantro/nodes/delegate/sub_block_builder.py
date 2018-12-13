@@ -39,7 +39,7 @@ from seneca.engine.conflict_resolution import CRContext
 from cilantro.protocol import wallet
 from cilantro.protocol.multiprocessing.worker import Worker
 
-from cilantro.protocol.structures import MerkleTree
+from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
 
 from cilantro.utils.hasher import Hasher
