@@ -8,7 +8,7 @@ from cilantro.storage.state import StateDriver
 from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.storage.mongo import MDB
 from cilantro.nodes.masternode.master_store import MasterOps
-from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
+from cilantro.messages.block_data.block_data import BlockData, BlockMetaData, NewBlockNotification
 from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest
 
 
@@ -145,7 +145,7 @@ class CatchupManager:
                                        sender_blk_hash = request.block_hash)
         self._send_block_idx_reply(catchup_list = delta_idx)
 
-    def recv_new_blk_notif(self):
+    def recv_new_blk_notif(self, update: NewBlockNotification):
         pass
 
     # MASTER ONLY CALL
