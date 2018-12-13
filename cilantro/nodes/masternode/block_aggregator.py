@@ -332,7 +332,7 @@ class BlockAggregator(Worker):
                 '_senders_': {sender_vk}
             }
 
-        elif not self.full_blocks[block_hash]['consensus_reached']:
+        if not self.full_blocks[block_hash]['consensus_reached']:
             self.log.info('Received notification for KNOWN block hash "{}", adding to consensus count.'.format(block_hash))
             self.full_blocks[block_hash]['_senders_'].add(sender_vk)
             if len(self.full_blocks[block_hash]['_senders_']) >= MASTERNODE_MAJORITY:
