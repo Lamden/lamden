@@ -7,13 +7,15 @@ from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.transaction.data import TransactionData
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.block_data.sub_block import SubBlock
+from cilantro.messages.block_data.block_data import BlockData
 
 from collections import defaultdict
+from typing import List
 import time
 
 
 class SubBlockGroup:
-    
+
     def __init__(self, sb_idx: int, curr_block_hash: str):
         self.sb_idx, self.curr_block_hash = sb_idx, curr_block_hash
         self.log = get_logger("SBGroup[{}]".format(self.sb_idx))
@@ -36,13 +38,27 @@ class SubBlockGroup:
             self.log.fatal("Consensus impossible for SB index {}!\nresult hashes: {}".format(self.sb_idx, self.rh))
             return False
 
+    def get_sb(self) -> SubBlock:
+        assert self.is_consensus_reached(), "Consensus must be reached to get a SubBlock!"
+
+        # Paranoid dev checks
+        # TODO make sure all merkle leaves are the same, and all result hashes are the same for self.rh[merkle_root],
+        # all sb_idx matches ours, all input hashes are the same
+
+        merkle_root = self.best_rh
+        merkle_root = self.best_rh
+        contenders = self.rh[merkle_root]
+        sigs = [c.signature for c in contenders]
+        leaves = contenders[0].merkle_leaves
+        input_hash = contenders[0].input_hash
+        txs = self._get_ordered_transactions()
+
+        sb = SubBlock.create(merkle_root=merkle_root, signatures=sigs, merkle_leaves=leaves, sub_block_idx=self.sb_idx,
+                             input_hash=input_hash, transactions=txs)
+        return sb
+
     def is_consensus_reached(self) -> bool:
         cons_reached = len(self.rh[self.best_rh]) >= DELEGATE_MAJORITY
-        # for rh in self.rh:
-        #     votes_for_rh = len(self.rh[rh])
-        #     if votes_for_rh >= DELEGATE_MAJORITY:
-        #         cons_reached = True
-        #         break
 
         # Also make sure we have all the transactions for the sub block
         if cons_reached:
@@ -53,8 +69,8 @@ class SubBlockGroup:
 
         return cons_reached
 
-    def get_ordered_transactions(self):
-        assert self.is_consensus_reached(), "Must be in consensus to get ordered transactions"
+    def _get_ordered_transactions(self):
+        assert self.is_consensus_reached(), "Must be in consensus to get ordered transactions"  # TODO remove
         return [self.transactions[tx_hash] for tx_hash in self.rh[0].merkle_leaves]
 
     def add_sbc(self, sender_vk: str, sbc: SubBlockContender):
@@ -164,9 +180,24 @@ class BlockContender:
 
         return True
 
+    def get_sb_data(self) -> List[SubBlock]:
+        assert self.is_consensus_reached(), "Cannot get block data if consensus is not reached!"
+        assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "More sb_groups than subblocks! sb_groups={}".format(self.sb_groups)
+
+        # Build the sub-blocks
+        sb_data = []
+        for sb_idx in range(NUM_SB_PER_BLOCK):
+            sb_group = self.sb_groups[sb_idx]
+            sb_data.append(sb_group.get_sb())
+
+        assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
+                                                 .format(len(sb_data), NUM_SB_PER_BLOCK)
+
+        return sb_data
+
     def add_sbc(self, sender_vk: str, sbc: SubBlockContender):
         if sbc.sb_index not in self.sb_groups:
             self.sb_groups[sbc.sb_index] = SubBlockGroup(sb_idx=sbc.sb_index, curr_block_hash=self.curr_block_hash)
 
-        self.sb_groups[sbc.sbc.sb_index].add_sbc(sender_vk, sbc)
+        self.sb_groups[sbc.sb_index].add_sbc(sender_vk, sbc)
 
