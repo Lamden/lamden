@@ -48,7 +48,7 @@ def start_mn(verifing_key):
     log.info('Test 2 : writing 5 blocks')
 
     blk_id = 1
-    while blk_id <= 1:
+    while blk_id <= 5:
         log.debug("waiting for msg...")
         msg = socket.recv_pyobj()
         log.info("got msg {}".format(msg))
@@ -76,6 +76,10 @@ def start_mn(verifing_key):
     log.info('Test 3.1 blk num from last blk hash')
     bk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = lasthash)
     log.info('blk num from lookup {}'.format(bk_num))
+
+    log.info('Test 3.2 Get list of 3 blocks')
+    blk_delta = MasterOps.get_blk_idx(n_blks = 3)
+    log.info('print blk_delta -> {}'.format(blk_delta))
 
     log.info('end test')
     socket.close()
@@ -105,7 +109,7 @@ def start_mgmt():
     socket.send_pyobj("hello for the first time")
 
     blk_num = 1
-    while blk_num <= 1:
+    while blk_num <= 5:
         msg = blk_num
         log.debug("sending msg {}".format(msg))
         socket.send_pyobj(msg)

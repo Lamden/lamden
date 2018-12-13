@@ -36,7 +36,7 @@ class BlockContender:
         assert sb_count <= NUM_SB_PER_BLOCK, "Achieved consensus on more than {} sub blocks!!! WHY THO\n" \
                                              "result_hashes={}".format(NUM_SB_PER_BLOCK, self.result_hashes)
 
-        # 
+        # TODO -- If we have consensus on the sub-blocks, make sure we have all the transactions
 
         self.log.debugv("Achieved consensus on {}/{} subblocks".format(sb_count, NUM_SB_PER_BLOCK))
         return sb_count == NUM_SB_PER_BLOCK
