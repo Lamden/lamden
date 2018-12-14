@@ -81,9 +81,7 @@ class LSocket:
     def add_handler(self, handler_func, handler_key=None, msg_types: List[MessageBase] = None,
                     start_listening=False) -> asyncio.Future or asyncio.coroutine:
         async def _listen(socket, func, key):
-            self.log.socket("Starting listener on socket {} with handler key {}".format(socket, key))
-            # self.log.socket("Starting listener {} on socket {} with handler key {}".format(func, socket, key))
-            duration_waited = 0
+            self.log.debug("Starting listener handler key {}".format(key))
 
             self.log.debugv("Listener waiting for socket to finish all lookups")
             self._start_wait_rdy()
@@ -247,14 +245,12 @@ class LSocket:
             duration_waited += RDY_WAIT_INTERVAL
 
     def __getattr__(self, item):
-        # self.log.spam("called __getattr__ with item {}".format(item))  # TODO remove this
         assert hasattr(self.socket, item), "Underlying socket object {} has no attribute named {}".format(self.socket, item)
         underlying = getattr(self.socket, item)
 
         # If we are accessing an attribute that does not exist in LSocket, we assume its a attribute on self.socket
         # Otherwise, we assume its a method on self.socket
         if not callable(underlying):
-            # self.log.important2("{} is not callable, returning it as presumably an attribute".format(underlying))  # TODO remmove
             return underlying
 
         # If this socket is not ready (ie it has not bound/connected yet), defer execution of this method
@@ -263,6 +259,7 @@ class LSocket:
             self._start_wait_rdy()
             return self._defer_func(item)
         else:
+            self.log.important("returning underlying atr {} for item {}".format(item, underlying))  # TODO remove
             return underlying
 
     def _start_wait_rdy(self):
