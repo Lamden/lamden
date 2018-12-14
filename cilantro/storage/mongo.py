@@ -9,7 +9,6 @@ from cilantro.messages.block_data.block_data import GenesisBlockData, BlockData,
 from cilantro.protocol import wallet
 
 
-
 class MDB:
     # Config
     log = get_logger("mdb_log")
@@ -25,6 +24,7 @@ class MDB:
     # master
     sign_key = None
     verify_key = None
+    verify_state = None
     # master store db
 
     mn_client = None
@@ -40,16 +40,17 @@ class MDB:
     mn_coll_idx = None
     init_idx_db = False
 
-    def __init__(self, s_key, reset=False):
+    def __init__(self, s_key, prior_state_found=False):
         if self.init_mdb is False:
             MDB.sign_key = s_key
             MDB.verify_key = wallet.get_vk(s_key)
+            MDB.verify_state = prior_state_found
             self.start_db()
             return
 
-        if reset is True and self.init_mdb is True:
-            self.reset_db(db='all')
-            return
+        # if prior_state_found is True and self.init_mdb is True:
+        #     self.reset_db(db='all')
+        #     return
 
     '''
         data base mgmt functionality
@@ -65,40 +66,42 @@ class MDB:
             if os.getenv('HOST_IP'):
                 time.sleep(5)
 
-            uri = cls.setup_db(db_type = 'MDB')
-            cls.mn_client = MongoClient(uri)
-            cls.mn_db = cls.mn_client.get_database()
-            block = GenesisBlockData.create(sk=cls.sign_key, vk=cls.verify_key)
-            #print("just created block {}".format(block))
-            cls.genesis_blk = cls.get_dict(capnp_struct = block)
-            #cls.log.spam("storing genesis block... {}".format(cls.genesis_blk))
-            cls.mn_collection = cls.mn_db['blocks']
-            cls.init_mdb = cls.insert_record(block_dict=cls.genesis_blk)
+        cls.setup_db()
 
-            cls.log.debug('start_db init set {}'.format(cls.init_mdb))
-
-            if cls.init_mdb is True:
-                uri = cls.setup_db(db_type='index')
-                cls.mn_client_idx = MongoClient(uri)
-                cls.mn_db_idx = MongoClient(uri).get_database()
-                cls.mn_coll_idx = cls.mn_db_idx['index']
-                idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash'),
-                       'mn_blk_owner': cls.verify_key}
-                cls.log.debug('start_db init index {}'.format(idx))
-                cls.init_idx_db = cls.insert_idx_record(my_dict=idx)
+        if cls.verify_state is True:
+            pass
+        else:
+            cls.init_idx_db = cls.create_genesis_blk()
 
     @classmethod
-    def setup_db(cls, db_type=None):
-        if db_type == 'MDB':    # fresh setup
-            database = cls.cfg.get('MN_DB', 'mn_blk_database')
-            uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
-            cls.log.debug("uri {}".format(uri))
-            return uri
+    def setup_db(cls):
+        database = cls.cfg.get('MN_DB', 'mn_blk_database')
+        store_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+        cls.log.info("uri {}".format(store_uri))
+        cls.mn_client = MongoClient(store_uri)
+        cls.mn_db = cls.mn_client.get_database()
+        cls.mn_collection = cls.mn_db['blocks']
 
-        if db_type == 'index':
-            database = cls.cfg.get('MN_DB', 'mn_index_database')
-            uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
-            return uri
+        index_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+        cls.mn_client_idx = MongoClient(index_uri)
+        cls.mn_db_idx = MongoClient(index_uri).get_database()
+        cls.mn_coll_idx = cls.mn_db_idx['index']
+
+    @classmethod
+    def create_genesis_blk(cls):
+
+        # create insert genesis blk
+        block = GenesisBlockData.create(sk = cls.sign_key, vk = cls.verify_key)
+        cls.genesis_blk = cls.get_dict(capnp_struct = block)
+        cls.init_mdb = cls.insert_record(block_dict=cls.genesis_blk)
+        assert cls.init_mdb is True, "failed to create genesis block"
+
+        # update index record
+        if cls.init_mdb:
+            idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash'),
+                   'mn_blk_owner': cls.verify_key}
+            cls.log.debugv('start_db init index {}'.format(idx))
+            return cls.insert_idx_record(my_dict = idx)
 
     @classmethod
     def reset_db(cls, db='all'):
@@ -122,7 +125,7 @@ class MDB:
 
         # insert passed dict block to db
         blk_id = cls.mn_collection.insert(block_dict)
-        cls.log.spam("block {}".format(block_dict))
+        cls.log.info("block {}".format(block_dict))
         if blk_id:
             return True
 

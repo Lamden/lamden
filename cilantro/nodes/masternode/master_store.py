@@ -4,6 +4,7 @@ from configparser import SafeConfigParser
 from cilantro.storage.vkbook import VKBook
 from cilantro.logger.base import get_logger
 from cilantro.storage.mongo import MDB
+from cilantro.storage.state import StateDriver
 
 
 class MasterOps:
@@ -36,9 +37,10 @@ class MasterOps:
             if mn_id == -1:
                 cls.log.info("failed to get id")
 
+            #valid_state = bool(StateDriver.get_latest_block_num())
             # start/setup mongodb
             # MDB.start_db(s_key = key)
-            host = bool(MDB(s_key = key))
+            host = bool(MDB(s_key = key, prior_state_found = False))
             assert host is True, "failed db init - {}".format(host)
 
             cls.log.info("************db initiated*************")
@@ -64,7 +66,7 @@ class MasterOps:
     def set_mn_id(cls, vk):
         if cls.test_hook is True:
             return cls.mn_id
-
+        # TODO note active masters need to evaluated in future VK book != active masters
         masternode_vks = VKBook.get_masternodes()
         for i in range(cls.active_masters):
             if masternode_vks[i] == vk:
