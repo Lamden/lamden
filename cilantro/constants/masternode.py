@@ -18,3 +18,6 @@ MAX_BLOCK = 100
 MN_BLK_DATABASE = 'mn_store'
 MN_INDEX_DATABASE = 'mn_index'
 TEST_HOOK = False
+
+# Block Aggregator
+BLOCK_TIMEOUT_POLL = 1.0  # how often BlockAggregator should check if the current block being produced has timed out

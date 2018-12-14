@@ -2,11 +2,11 @@ import cilantro
 import os, time
 import capnp
 from configparser import SafeConfigParser
-from cilantro.protocol import wallet
 from pymongo import MongoClient
 from cilantro.utils.utils import MongoTools
 from cilantro.logger.base import get_logger
 from cilantro.messages.block_data.block_data import GenesisBlockData, BlockData, MessageBase
+from cilantro.protocol import wallet
 
 
 
@@ -60,11 +60,15 @@ class MDB:
             init block store, store_index
         """
         if cls.init_mdb is False:
-            time.sleep(5)  # @tejas why? race with create user in start script :)
+            # Sleep to prevent race conditions with create_user in the start_mongo.sh scripts.
+            # we only do this on containers
+            if os.getenv('HOST_IP'):
+                time.sleep(5)
+
             uri = cls.setup_db(db_type = 'MDB')
             cls.mn_client = MongoClient(uri)
             cls.mn_db = cls.mn_client.get_database()
-            block = GenesisBlockData.create(sk = cls.sign_key, vk = cls.verify_key)
+            block = GenesisBlockData.create(sk=cls.sign_key, vk=cls.verify_key)
             #print("just created block {}".format(block))
             cls.genesis_blk = cls.get_dict(capnp_struct = block)
             #cls.log.spam("storing genesis block... {}".format(cls.genesis_blk))
@@ -78,8 +82,8 @@ class MDB:
                 cls.mn_client_idx = MongoClient(uri)
                 cls.mn_db_idx = MongoClient(uri).get_database()
                 cls.mn_coll_idx = cls.mn_db_idx['index']
-                idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash').decode(),
-                       'mn_blk_owner': (cls.genesis_blk.get('masternodeSignature')).decode()}
+                idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash'),
+                       'mn_blk_owner': cls.verify_key}
                 cls.log.debug('start_db init index {}'.format(idx))
                 cls.init_idx_db = cls.insert_idx_record(my_dict=idx)
 
@@ -135,7 +139,7 @@ class MDB:
     def get_dict(cls, capnp_struct):
         obj = capnp_struct._data.to_dict()
 
-        bk_hsh = capnp_struct._data.blockHash.decode()
+        bk_hsh = capnp_struct._data.blockHash
         cls.log.debug("Fn : Get Dict  blk_hash {}".format(bk_hsh))
         if isinstance(capnp_struct, BlockData):
             obj['transactions'] = capnp_struct.indexed_transactions
@@ -145,16 +149,16 @@ class MDB:
         reading from index or store
     '''
     @classmethod
-    def query_index(cls, n_blks=None, blk_hash=None):
-        blk_dict = {}
+    def query_index(cls, n_blks=None):
+        blk_list = []
 
         blk_delta = cls.mn_coll_idx.find().limit(n_blks).sort("blockNum", -1)
         for blk in blk_delta:
             cls.log.debug('query_index block delta {}'.format(blk))
-            blk_dict.update(blk)
+            blk_list.append(blk)
 
-        cls.log.debug("query_index returning dict {}".format(blk_dict))
-        return blk_dict
+        cls.log.debug("query_index returning dict {}".format(blk_list))
+        return blk_list
 
     @classmethod
     def query_db(cls, type=None, query=None):
@@ -165,32 +169,34 @@ class MDB:
                 for x in block_list:
                     result.update(x)
                     cls.log.debug("from mdb {}".format(x))
-                    return result
 
-            if type is None or type is "index":
+            if type is None or type is "idx":
                 index_list = cls.mn_coll_idx.find({})
                 for y in index_list:
                     result.update(y)
                     cls.log.debug("from idx {}".format(y))
-                    return result
+        else:
+            if type is 'idx':
+                dump = cls.mn_coll_idx.find(query)
+                cls.log.debug("Mongo tools count {}".format(MongoTools.get_count(dump)))
+                assert MongoTools.get_count(dump) != 0, "lookup failed count is 0 dumping result-{} n query-{}"\
+                    .format(dump, query)
+                for x in dump:
+                    result.update(x)
+                cls.log.debug("result {}".format(result))
+
+            if type is 'MDB':
+                result = cls.mn_collection.find(query)
+                for x in result:
+                    result.update(x)
+                    cls.log.debug("result {}".format(x))
+
+        if len(result) > 0:
+            cls.log.debug("result => {}".format(result))
+            return result
+        else:
+            cls.log.debug("result => {}".format(result))
             return None
-
-        if type is 'idx' and query is not None:
-            dump = cls.mn_coll_idx.find(query)
-            cls.log.debug("Mongo tools count {}".format(MongoTools.get_count(dump)))
-            assert MongoTools.get_count(dump) != 0, "lookup failed count is 0 dumping result-{} n query-{}"\
-                .format(dump, query)
-            for x in dump:
-                result.update(x)
-            cls.log.debug("result {}".format(result))
-            return result
-
-        if type is 'MDB' and query is not None:
-            result = cls.mn_collection.find(query)
-            for x in result:
-                result.update(x)
-                cls.log.debug("result {}".format(x))
-            return result
 
     @classmethod
     def query_store(cls, blk_num = None):

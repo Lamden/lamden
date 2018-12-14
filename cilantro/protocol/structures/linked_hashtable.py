@@ -33,6 +33,19 @@ class LinkedHashTable:
     def find(self, key):
         return True if key in self._table else False
 
+    def insert_front(self, key, value):
+        assert key not in self._table, "Attempted to insert key {} that is already in hash table keys {}".format(key, self._table)
+
+        node = Node(next=self._first, previous=None, key=key, value=value)
+        self._table[key] = node
+
+        if self._first:
+            self._first.previous = node
+        self._first = node
+
+        if not self._last:
+            self._last = node
+
     def append(self, key, value):
         assert key not in self._table, "Attempted to insert key {} that is already in hash table keys {}".format(key, self._table)
 
@@ -81,6 +94,18 @@ class LinkedHashTable:
 
         self._table.pop(item.key)
         return item.value
+
+    def pop_back(self):
+        if not self._last:
+            return None
+
+        item = self._last
+        if item.previous:
+            item.previous.next = None
+        self._last = item.previous
+
+        self._table.pop(item.key)
+        return item.key, item.value
 
     def remove(self, key):
         if key not in self._table:

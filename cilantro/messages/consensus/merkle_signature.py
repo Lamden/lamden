@@ -3,20 +3,9 @@ from cilantro.messages.utils import validate_hex
 import json, time
 from cilantro.protocol import wallet
 
+
 class MerkleSignature(MessageBase):
     """
-    MerkleSignatures are exchanged among delegates during consensus to verify if they all have the same data.
-    When a delegate starts consensus, it builds a Merkle tree with its entire transaction queue (all transaction that would
-    be in the proposed block), signs the hash of the merkle tree, and creates a MerkleSignature with the resulting signature
-    as well as the delegates id and a timestamp.
-
-    Other delegates receive this MerkleSignature, and attempt to verify it using the sender's verifying key and the receiving
-    delegate's own merkle hash (which should be the same as the sender's merkle hash if their blocks have the same
-    transactions).
-
-    Once a delegate has enough signature, it creates a BlockContender and sends it to Masternode. The BlockContender
-    contains the merkle tree as well as a list of these collected MerkleSignatures.
-
     TODO -- switch this class to use capnp
     """
 
@@ -54,6 +43,12 @@ class MerkleSignature(MessageBase):
         timestamp = timestamp or str(time.time())
         data = {cls.SIG: sig_hex, cls.TS: timestamp, cls.SENDER: sender}
         return cls.from_data(data, validate=validate)
+
+    @classmethod
+    def create_from_payload(cls, signing_key: str, payload: bytes, verifying_key: str=None, timestamp: str=None):
+        sig_hex = wallet.sign(signing_key, payload)
+        verifying_key = verifying_key or wallet.get_vk(signing_key)
+        return cls.create(sig_hex=sig_hex, sender=verifying_key)
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
