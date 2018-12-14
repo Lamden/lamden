@@ -63,3 +63,11 @@ MIN_NEW_BLOCK_MN_QOURUM = math.ceil(NUM_MASTERS * 2 / 3)  # Number of NewBlockNo
 # Seneca Interpreter
 # ///////////////////////////////////////////////
 DECIMAL_PRECISION = 18
+
+
+# ///////////////////////////////////////////////
+# Test Flags
+# ///////////////////////////////////////////////
+SHOULD_MINT_WALLET = True
+NUM_WALLETS_TO_MINT = 1000
+MINT_AMOUNT = 10 ** 7

@@ -202,7 +202,7 @@ class OverlayClient(object):
         self.log.info('Listening for overlay events over {}'.format(EVENT_URL))
         while True:
             msg = await self.evt_sock.recv_json()
-            self.log.debug("OverlayClient received event {}".format(msg))
+            self.log.debugv("OverlayClient received event {}".format(msg))
             if msg.get('event') == 'service_status' and msg.get('status') == 'ready':
                 self._ready = True
             event_handler(msg)
@@ -211,14 +211,14 @@ class OverlayClient(object):
         self.log.info("Listening for overlay replies over {}".format(CMD_URL))
         while True:
             msg = await self.cmd_sock.recv_multipart()
-            self.log.info("OverlayClient received reply {}".format(msg))
+            self.log.debugv("OverlayClient received reply {}".format(msg))
             event = json.loads(msg[-1])
             if event.get('event') == 'service_status' and \
                     event.get('status') == 'ready':
                 self._ready = True
             elif event.get('event') == 'service_status' and \
                     event.get('status') == 'not_ready':
-                self.log.info("OverlayClient received not ready. Reissuing service status command ...")
+                self.log.debugv("OverlayClient received not ready. Reissuing service status command ...")
                 await asyncio.sleep(2)
                 self.get_service_status()
             event_handler(event)
