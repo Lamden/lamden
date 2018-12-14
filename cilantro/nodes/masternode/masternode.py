@@ -10,12 +10,16 @@ from cilantro.nodes.masternode.webserver import start_webserver
 import os
 
 
+IPC_IP = 'masternode-ipc-sock'
+IPC_PORT = 6967
+
 class Masternode(NodeBase):
 
     def start(self):
         self.tx_queue = Queue()
-        self._start_web_server()
+        self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
 
+        self._start_web_server()
         if not os.getenv('MN_MOCK'):  # TODO @stu do we need this still? --davis
             self._start_batcher()
             self._start_block_agg()  # This call blocks!
@@ -32,9 +36,10 @@ class Masternode(NodeBase):
         self.log.info("Masternode starting transaction batcher process")
         self.batcher = LProcess(target=TransactionBatcher, name='TxBatcherProc',
                                 kwargs={'queue': self.tx_queue, 'signing_key': self.signing_key,
-                                        'ip': self.ip})
+                                        'ip': self.ip, 'ipc_ip': self.ipc_ip, 'ipc_port': IPC_PORT})
         self.batcher.start()
 
     def _start_block_agg(self):
         self.log.info("Masternode starting BlockAggregator Process")
-        self.block_agg = BlockAggregator(ip=self.ip, manager=self.manager, name='BlockAgg')  # this call blocks
+        # this call blocks
+        self.block_agg = BlockAggregator(ip=self.ip, ipc_ip=self.ipc_ip, ipc_port=IPC_PORT, manager=self.manager, name='BlockAgg')
