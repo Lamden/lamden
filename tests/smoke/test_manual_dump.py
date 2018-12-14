@@ -111,7 +111,8 @@ class TestManualDump(BaseNetworkTestCase):
     @vmnet_test(run_webui=True)
     def test_dump(self):
         log = get_logger("Dumpatron")
-        cmd = 'docker container stop $(docker container ls -a -q -f name=delegate_6)'
+        cmd = 'docker container stop $(docker container ls -a -q -f name=delegate_5)'
+        cmd1 = 'docker kill $(docker container ls -a -q -f name=delegate_5)'
 
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
@@ -133,11 +134,14 @@ class TestManualDump(BaseNetworkTestCase):
                 self.execute_python(nodename, wrap_func(run_delegate, i), async = True, profiling = self.PROFILE_TYPE)
 
             if user_input.lower() == 's':
-                log.debug("stoping delegate 6")
+                log.critical("stoping delegate 5")
                 os.system(cmd)
+                time.sleep(5)
+                os.system(cmd1)
+
 
             if user_input.lower() == 'c':
-                log.debug("Testing catchup start delegate 6")
+                log.critical("Testing catchup start delegate 5")
                 self.execute_python(nodename, wrap_func(run_delegate, 0), async = True, profiling = self.PROFILE_TYPE)
 
             if user_input.lower() == 'x':
