@@ -1,4 +1,4 @@
-import timeit
+import time
 from collections import defaultdict
 from cilantro.logger import get_logger
 from cilantro.constants.zmq_filters import *
@@ -24,6 +24,8 @@ class CatchupManager:
 
         # catchup state
         self.catchup_state = False
+        self.timeout_catchup = 0       # 10 sec time we will wait for 2/3rd MN to respond
+        self.node_idx_reply_set = set() # num of master responded to catch up req
 
         # main list to process
         self.block_delta_list = []      # list of mn_index dict to process
@@ -38,7 +40,7 @@ class CatchupManager:
         self.curr_hash, self.curr_num = None, None      # latest blk on redis
 
         # received full block could be out of order
-        self.rcv_block_dict = {}
+        self.rcv_block_dict = {}        # DS stores any Out of order received blocks
         self.awaited_blknum = None      # catch up waiting on this blk num
 
         self.run_catchup()
@@ -52,6 +54,7 @@ class CatchupManager:
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
         # starting phase I
+        self.timeout_catchup = time.time()
         self.catchup_state = self.send_block_idx_req()
 
     # Phase I start
@@ -72,6 +75,11 @@ class CatchupManager:
         :param reply:
         :return:
         """
+
+        if self._check_retry_needed() is True:
+            self.run_catchup()
+        else:
+            self.node_idx_reply_set.add(sender_vk)
 
         if not reply.indices:
             self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
@@ -129,7 +137,7 @@ class CatchupManager:
         if rcv_blk_num == self.awaited_blknum:
             self.update_received_block(block = reply)
 
-        self.update_catchup_state(block_num = rcv_blk_num)
+        self._update_catchup_state(block_num = rcv_blk_num)
 
     # MASTER ONLY CALL
     def recv_block_idx_req(self, requester_vk: str, request: BlockIndexRequest):
@@ -206,9 +214,27 @@ class CatchupManager:
         else:
             StateDriver.update_with_block(block = block)
 
-        self.update_catchup_state(block_num = block_dict.get('blockNum'))
+        self._update_catchup_state(block_num = block_dict.get('blockNum'))
 
-    def update_catchup_state(self, block_num=None):
+    def _check_idx_reply_quorum(self):
+        # We have enough BlockIndexReplies if 2/3 of Masternodes replied
+        return len(self.node_idx_reply_set) >= len(VKBook.get_masternodes()) * 2/3
+
+    def _check_retry_needed(self):
+        # if you have 2/3rd quorum wait for queue pending queue to finsh
+        if self._check_idx_reply_quorum() is True:
+            self.log.debugv("Quorum reached")
+            return False
+
+        # check if we have reached time out and keep retrying.
+        if (time.time() - self.timeout_catchup) < 10:
+            self.log.debugv("Time out not reached")
+            return False
+        else:
+            self.log.debugv("Time out reached retry Snd_BIR")
+            return True
+
+    def _update_catchup_state(self, block_num=None):
         """
         Recursive Called when we successfully update state and storage
 
@@ -219,16 +245,21 @@ class CatchupManager:
         :return:
         """
 
+        # given block_num was stored removing it pending list
         if block_num in self.rcv_block_dict.keys():
+            self.log.debug("removing store block frm pending {}".format(block_num))
             self.rcv_block_dict.pop(block_num)
             self.block_delta_list.pop(0)
             if self.blk_req_ptr_idx:
                 self.blk_req_ptr_idx = self.blk_req_ptr_idx - 1
             self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
+        # if there is any already received out of order block data with us
         if len(self.rcv_block_dict) > 0:
+            self.log.debug("Processing out of order received blocks")
             self.awaited_blknum = self.awaited_blknum + 1
             block = self.rcv_block_dict.get(self.awaited_blknum)
+            # make recursive call to address 1st condition
             if block:
                 self.update_received_block(block = block)
 
@@ -239,8 +270,10 @@ class CatchupManager:
             self.log.success("Finished Catchup state, with latest block hash {}!".format(self.curr_hash))
 
             # reset everything
-            self.catchup_state = False
+            self.catchup_state = self.check_catchup_done()
 
+    def check_catchup_done(self):
+        if self._check_retry_needed() is False:
             # main list to process
             self.block_delta_list = []              # list of mn_index dict to process
             self.target_blk = {}                    # last block in list
@@ -256,7 +289,9 @@ class CatchupManager:
             # received full block could be out of order
             self.rcv_block_dict = {}
             self.awaited_blknum = None
-
+            return False
+        else:
+            return True
 
 
 
