@@ -16,7 +16,7 @@ from decimal import getcontext
 getcontext().prec = DECIMAL_PRECISION
 
 
-# Dark hack to block until mongo/redis is ready, courtesy of mr falcon
+# Dark hack to block until mongo/redis is ready, courtesy of the one and only mr falcon
 if not os.getenv('__SERVERS_READY__') and os.getenv('VMNET_DOCKER'):
     import redis, time
     from pymongo import MongoClient
