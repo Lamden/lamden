@@ -89,9 +89,11 @@ class LSocket:
 
             while True:
                 if duration_waited > MAX_RDY_WAIT and not self.ready:
-                    msg = "Socket failed to bind/connect in {} seconds! Pending lookups={}".format(MAX_RDY_WAIT, self.pending_lookups)
-                    self.log.fatal(msg)
-                    raise Exception(msg)
+                    msg = "Socket failed to bind/connect to url(s) in {} seconds! Pending lookups={}"\
+                          .format(MAX_RDY_WAIT, self.pending_lookups)
+                    self.log.critical(msg)
+                    self.ready = True
+                    # raise Exception(msg)
 
                 # TODO not sure if we need this chunk. tests show we can start recv on a socket before .connect/.bind
                 if not self.ready:
