@@ -91,7 +91,6 @@ class BlockAggregator(Worker):
 
         # Listen to masters for new block notifs and state update requests from masters/delegates
         self.sub.setsockopt(zmq.SUBSCRIBE, CATCHUP_MN_DN_FILTER.encode())
-        self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
@@ -99,6 +98,13 @@ class BlockAggregator(Worker):
 
         self.catchup_manager = CatchupManager(verifying_key=self.verifying_key, pub_socket=self.pub,
                                               router_socket=self.router, store_full_blocks=True)
+        self.tasks.append(self._trigger_catchup())
+
+    async def _trigger_catchup(self):
+        self.log.debugv("Sleeping before triggering catchup...")
+        await asyncio.sleep(4)
+        self.log.info("Triggering catchup")
+        self.catchup_manager.send_block_idx_req()
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])

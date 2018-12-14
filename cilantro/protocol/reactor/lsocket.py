@@ -256,7 +256,7 @@ class LSocket:
             self._start_wait_rdy()
             return self._defer_func(item)
         else:
-            self.log.important("returning underlying atr {} for item {}".format(item, underlying))  # TODO remove
+            # self.log.important("returning underlying atr {} for item {}".format(item, underlying))  # TODO remove
             return underlying
 
     def _start_wait_rdy(self):
