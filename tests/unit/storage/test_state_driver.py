@@ -2,21 +2,21 @@ from unittest import TestCase
 import unittest
 from seneca.engine.interface import SenecaInterface
 from cilantro.storage.state import StateDriver
-from cilantro.messages.block_data.block_data import BlockDataBuilder
-from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH
+from cilantro.messages.transaction.data import TransactionDataBuilder, TransactionData
+from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
+from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
 
 import redis
 from seneca.constants.config import *
-from cilantro.storage.vkbook import VKBook
+
 
 class TestStateDriver(TestCase):
 
     def setUp(self):
         self.r = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
         self.r.flushdb()
-        VKBook.setup()
-        tx_count = 5
-        sub_block_count = 2
+
+    def test_state_updated(self):
         states = [
             'SET hello world;SET goodbye world;',
             'SET entropy regression;',
@@ -29,10 +29,15 @@ class TestStateDriver(TestCase):
             'SET optic fiber;',
             'SET before after;'
         ]
-        self.block = BlockDataBuilder.create_block(sub_block_count=sub_block_count, tx_count=tx_count, states=states, all_transactions=[])
+        txs = []
+        for i in range(len(states) // 2):
+            txs.append(TransactionDataBuilder.create_random_tx(status='SUCC', state=states[i*2] + states[i*2+1]))
 
-    def test_state_updated(self):
-        StateDriver.update_with_block(self.block)
+        sb = SubBlockBuilder.create(transactions=txs)
+        block = BlockData.create(block_hash=BlockData.compute_block_hash([sb.merkle_root], GENESIS_BLOCK_HASH),
+                                 prev_block_hash=GENESIS_BLOCK_HASH, block_owners=['AB'*32], block_num=1, sub_blocks=[sb])
+
+        StateDriver.update_with_block(block)
         self.assertEqual(self.r.get('hello'), b'world')
         self.assertEqual(self.r.get('goodbye'), b'world')
         self.assertEqual(self.r.get('entropy'), b'regression')
@@ -51,14 +56,29 @@ class TestStateDriver(TestCase):
         b_hash = StateDriver.get_latest_block_hash()
         self.assertEqual(GENESIS_BLOCK_HASH, b_hash)
 
+    def test_get_latest_block_num_with_none_set(self):
+        b_num = StateDriver.get_latest_block_num()
+        self.assertEqual(0, b_num)
+
     def test_set_get_latest_block_hash(self):
         b_hash = 'ABCD' * 16
         StateDriver.set_latest_block_hash(b_hash)
 
         self.assertEqual(StateDriver.get_latest_block_hash(), b_hash)
 
+    def test_set_get_latest_block_num(self):
+        b_num = 9001
+        StateDriver.set_latest_block_num(b_num)
+
+        self.assertEqual(StateDriver.get_latest_block_num(), b_num)
+
+    def test_set_get_latest_info(self):
+        b_num = 9001
+        b_hash = 'ABCD' * 16
+
+        StateDriver.set_latest_block_info(b_hash, b_num)
+        self.assertEqual(StateDriver.get_latest_block_info(), (b_hash, b_num))
+
 
 if __name__ == '__main__':
-    import os
-    os.environ['__TEST__'] = 'True'
     unittest.main()

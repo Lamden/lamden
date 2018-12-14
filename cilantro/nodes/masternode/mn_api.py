@@ -2,20 +2,24 @@ from cilantro.storage.mongo import MDB
 from cilantro.protocol import wallet
 from cilantro.storage.vkbook import VKBook
 from cilantro.nodes.masternode.master_store import MasterOps
+# from cilantro.nodes.catchup import CatchupManager
 from cilantro.storage.state import StateDriver
 from cilantro.logger.base import get_logger
-from cilantro.messages.block_data.block_data import BlockData, BlockMetaData
+from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 import dill, ujson as json, textwrap, bson
 from bson.objectid import ObjectId
+from collections import defaultdict
 from typing import List
 from cilantro.utils import Hasher
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.data import TransactionData
+from cilantro.messages.block_data.sub_block import SubBlock
 
 import time
 
+REPLICATION = 3             # TODO hard coded for now needs to change
 GENESIS_HASH = '0' * 64
 OID = '5bef52cca4259d4ca5607661'
 
@@ -29,32 +33,33 @@ class StorageDriver:
     state_id = ObjectId(OID)
     log = get_logger("StorageDriver")
 
+    block_index_delta = defaultdict(dict)
+    send_req_blk_num = 0
+
     @classmethod
-    def store_block(cls, merkle_roots=None, verifying_key=None, sign_key=None, transactions=None, input_hashes=None):
+    def store_block(cls, sub_blocks: List[SubBlock]):
         """
         Triggered after 2/3rd consensus we create block and store to permanent storage
-
-        :param merkle_roots:
-        :param verifying_key:   vk for master
-        :param sign_key:        sk for master
-        :param transactions:
-        :param input_hashes:
-        :return:
         """
         prev_block_hash = cls.get_latest_block_hash()
-        cls.log.important("store_block_new - prv block hash - {}".format(prev_block_hash))
-        block_hash = BlockData.compute_block_hash(sbc_roots=merkle_roots, prev_block_hash=prev_block_hash)
-        blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = prev_block_hash) + 1
-        sig = MerkleSignature.create(sig_hex = wallet.sign(sign_key, block_hash.encode()),
-                                     sender = verifying_key, timestamp = str(time.time()))
+        blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash=prev_block_hash) + 1
+        roots = [sb.merkle_root for sb in sub_blocks]
+        block_hash = BlockData.compute_block_hash(sbc_roots=roots, prev_block_hash=prev_block_hash)
 
-        block_data = BlockData.create(block_hash = block_hash, prev_block_hash = prev_block_hash,
-                                      transactions = transactions, masternode_signature = sig,
-                                      merkle_roots = merkle_roots, input_hashes = input_hashes, block_num = blk_num)
+        cls.log.important("Attempting to store block number {} with hash {} and previous hash {}"
+                          .format(blk_num, block_hash, prev_block_hash))
+
+        # TODO get actual block owners...
+        block_data = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, block_owners=[],
+                                      block_num=blk_num, sub_blocks=sub_blocks)
 
         block_dict = MDB.get_dict(block_data)
         assert (bool(MasterOps.evaluate_wr(entry=block_dict))) is True, "wr to master store failed, dump blk {}"\
             .format(block_dict)
+
+        # Attach the block owners data to the BlockData instance  TODO -- find better solution
+        block_data._data.blockOwners = MasterOps.get_blk_owners(block_hash)
+
         return block_data
 
     @classmethod
@@ -86,10 +91,10 @@ class StorageDriver:
         for key in idx_entry.get('mn_blk_owners'):
             if key == mn_vk:
                 blk_entry = MasterOps.get_full_blk(blk_num = idx_entry.get('blockNum'))
+                return blk_entry
 
-        assert isinstance(blk_entry), "fn get_nth_full_block failed to return blk {} for index".format(blk_entry,
-                                                                                                       idx_entry)
-        return blk_entry
+        # assert isinstance(blk_entry), "fn get_nth_full_block failed to return blk {} for index".format(blk_entry,
+        #                                                                                                idx_entry)
 
     @classmethod
     def get_latest_block_hash(cls):
@@ -98,43 +103,17 @@ class StorageDriver:
 
         :return: block hash of last block on block chain
         """
-        idx_entry = MasterOps.get_blk_idx(n_blks=1)
+        idx_entry = MasterOps.get_blk_idx(n_blks=1)[0]
         cls.log.debug("get_latest_block_hash idx_entry -> {}".format(idx_entry))
         blk_hash = idx_entry.get('blockHash')
         cls.log.debug("get_latest_block_hash blk_hash ->{}".format(blk_hash))
         return blk_hash
 
     @classmethod
-    def process_catch_up_idx(cls, vk=None, curr_blk_hash=None):
+    def check_block_exists(cls, block_hash: str) -> bool:
         """
-        API gets latest hash requester has and responds with delta block index
-
-        :param vk: mn or dl verifying key
-        :param curr_blk_hash:
-        :return:
+        Checks if the given block hash exists in our index table
+        :param block_hash: The block hash to check
+        :return: True if the block hash exists in our index table, and False otherwise
         """
-
-        # check if requester is master or del
-
-        valid_node = bool(VKBook.get_masternodes().index(vk)) & bool(VKBook.get_masternodes().index(vk))
-
-        if valid_node is True:
-            given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = curr_blk_hash)
-            latest_blk = MasterOps.get_blk_idx(n_blks = 1)
-            latest_blk_num = latest_blk.get('blockNum')
-
-            if given_blk_num == latest_blk_num:
-                cls.log.debug('given block is already latest')
-                return None
-            else:
-                idx_delta = MasterOps.get_blk_idx(n_blks = (latest_blk_num - given_blk_num))
-                return idx_delta
-
-        assert valid_node is True, "invalid vk given key is not of master or delegate dumpting vk {}".format(vk)
-
-    @classmethod
-    def send_block_index_req(cls):
-        curr_blk_hash = cls.get_latest_block_hash()
-        pass
-
-
+        return MasterOps.get_blk_num_frm_blk_hash(block_hash) is not None

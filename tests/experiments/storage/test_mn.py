@@ -10,7 +10,6 @@ from cilantro.utils.test.mp_test_case import vmnet_test
 from cilantro.constants.testnet import TESTNET_MASTERNODES
 from cilantro.storage.mongo import MDB
 from cilantro.nodes.masternode.mn_api import StorageDriver
-from cilantro.messages.block_data.block_data import BlockDataBuilder
 
 cilantro_path = dirname(dirname(cilantro.__path__[0]))
 cfg = SafeConfigParser()
@@ -26,6 +25,7 @@ def start_mn(verifing_key):
     import os, zmq, time
     from cilantro.logger.base import get_logger
     from cilantro.nodes.masternode.master_store import MasterOps
+    from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 
     MN_SK = TESTNET_MASTERNODES[0]['sk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
     log = get_logger(os.getenv('MN'))
@@ -48,7 +48,7 @@ def start_mn(verifing_key):
     log.info('Test 2 : writing 5 blocks')
 
     blk_id = 1
-    while blk_id <= 1:
+    while blk_id <= 5:
         log.debug("waiting for msg...")
         msg = socket.recv_pyobj()
         log.info("got msg {}".format(msg))
@@ -59,10 +59,8 @@ def start_mn(verifing_key):
         print(StorageDriver.get_latest_block_hash())
         print("**********************")
 
-        block = BlockDataBuilder.create_block(blk_num = blk_id)
-        success = StorageDriver.store_block(merkle_roots = block.merkle_roots, verifying_key = verifing_key,
-                                            sign_key = MN_SK, transactions = block.transactions,
-                                            input_hashes = block.input_hashes)
+        sub_blocks = [SubBlockBuilder.create(idx=i) for i in range(2)]
+        success = StorageDriver.store_block(sub_blocks)
         log.info("wr status {}".format(success))
         time.sleep(1)
         blk_id += 1
@@ -78,6 +76,10 @@ def start_mn(verifing_key):
     log.info('Test 3.1 blk num from last blk hash')
     bk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = lasthash)
     log.info('blk num from lookup {}'.format(bk_num))
+
+    log.info('Test 3.2 Get list of 3 blocks')
+    blk_delta = MasterOps.get_blk_idx(n_blks = 3)
+    log.info('print blk_delta -> {}'.format(blk_delta))
 
     log.info('end test')
     socket.close()
@@ -107,7 +109,7 @@ def start_mgmt():
     socket.send_pyobj("hello for the first time")
 
     blk_num = 1
-    while blk_num <= 1:
+    while blk_num <= 5:
         msg = blk_num
         log.debug("sending msg {}".format(msg))
         socket.send_pyobj(msg)

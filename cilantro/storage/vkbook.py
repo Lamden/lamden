@@ -8,6 +8,7 @@ from cilantro.utils.test.testnet_config import get_config_filename
 
 log = get_logger("VKBook")
 
+
 class VKBookMeta(type):
     def __new__(cls, clsname, bases, clsdict):
         clsobj = super().__new__(cls, clsname, bases, clsdict)
@@ -16,6 +17,7 @@ class VKBookMeta(type):
         clsobj.setup()
 
         return clsobj
+
 
 class VKBook(metaclass=VKBookMeta):
 
@@ -44,8 +46,8 @@ class VKBook(metaclass=VKBookMeta):
             if node_list:
                 cls.bootnodes += node_list.split(',')
 
-    @staticmethod
-    def add_node(vk, node_type, ip=None):
+    @classmethod
+    def add_node(cls, vk, node_type, ip=None):
         assert node_type in VKBook.node_types, 'Invalid node type!'
         assert is_valid_hex(vk, length=64), 'Invalid VK!'
         creds = {'vk': vk}
@@ -78,7 +80,7 @@ class VKBook(metaclass=VKBookMeta):
     @classmethod
     def is_node_type(cls, node_type, vk):
         assert node_type in cls.node_types, 'Invalid node type!'
-        return cls.book[node_type].get(vk) != None
+        return cls.book[node_type].get(vk) is not None
 
     @classmethod
     def get_delegate_majority(cls):
@@ -89,3 +91,4 @@ class VKBook(metaclass=VKBookMeta):
         log.notice("masternodes: {}".format(VKBook.get_masternodes()))
         log.notice("witnesses: {}".format(VKBook.get_witnesses()))
         log.notice("delegates: {}".format(VKBook.get_delegates()))
+

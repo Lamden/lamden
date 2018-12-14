@@ -168,7 +168,7 @@ class MasterOps:
     @classmethod
     def update_idx(cls, inserted_blk=None, node_list=None):
 
-        entry = {'blockNum': inserted_blk.get('blockNum'), 'blockHash': inserted_blk.get('blockHash').decode(),
+        entry = {'blockNum': inserted_blk.get('blockNum'), 'blockHash': inserted_blk.get('blockHash'),
                  'mn_blk_owner': node_list}
         MDB.insert_idx_record(entry)
         return True
@@ -178,15 +178,18 @@ class MasterOps:
     '''
     @classmethod
     def get_full_blk(cls, blk_num=None, blk_hash=None):
+        outcome = None
         if blk_hash:
-            my_query = {'blockHash', blk_hash}
+            my_query = {'blockHash': blk_hash}
+            outcome = MDB.query_db(query = my_query)
+            return outcome
 
         if blk_num:
-            my_query = {'blockNum', blk_num}
+            my_query = {'blockNum': blk_num}
+            outcome = MDB.query_db(query = my_query)
+            return outcome
 
-        outcome = MDB.query_db(query=my_query)
-        cls.log.info("print outcome {}".format(outcome))
-        return outcome
+        assert outcome is not None, "failed to get full block {}".format(outcome)
 
     @classmethod
     def get_blk_idx(cls, n_blks=None):
@@ -198,6 +201,15 @@ class MasterOps:
     def get_blk_num_frm_blk_hash(cls, blk_hash=None):
         my_query = {'blockHash': blk_hash}
         outcome = MDB.query_db(type='idx', query = my_query)
-        cls.log.info("print outcome {}".format(outcome))
+        cls.log.debug("print outcome {}".format(outcome))
         blk_num = outcome.get('blockNum')
         return blk_num
+
+    @classmethod
+    def get_blk_owners(cls, blk_hash=None):
+        my_query = {'blockHash': blk_hash}
+        outcome = MDB.query_db(type='idx', query = my_query)
+        owners = outcome.get('mn_blk_owner')
+        cls.log.debug("print owners {}".format(outcome))
+        return owners
+

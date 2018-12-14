@@ -1,12 +1,16 @@
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES, TESTNET_WITNESSES
 import math
 
+
+POW_COMPLEXITY = ''  # More '0's means more complicated POWs. Empty string basically disables POW
+
+
 # In reality, these should be inferred from VKBook instead of hard-coded, once we start using smart contracts for
 # some of these config constants
 NUM_MASTERS = len(TESTNET_MASTERNODES)
 NUM_WITNESSES = len(TESTNET_WITNESSES)
 NUM_DELEGATES = len(TESTNET_DELEGATES)
-NUM_NODES = (NUM_MASTERS + NUM_WITNESSES + NUM_DELEGATES)
+NUM_NODES = NUM_MASTERS + NUM_WITNESSES + NUM_DELEGATES
 
 # How long each Node will wait for the rest of the network to come online before an error is raised
 MAX_BOOT_WAIT = 180 + (NUM_NODES * 3)
@@ -25,14 +29,15 @@ MASTERNODE_MAJORITY = math.ceil(NUM_MASTERS * 2 / 3)
 _MAX_SUB_BLOCK_BUILDERS = 4
 _MAX_BLOCKS = 1  # 2
 
-SUB_BLOCK_VALID_PERIOD = 60 * 10 # sub-blocks contenders are valid for 10 minutes from the latest contender received
-TRANSACTIONS_PER_SUB_BLOCK = 20
+TRANSACTIONS_PER_SUB_BLOCK = 100
 NUM_SUB_BLOCKS = NUM_MASTERS  # same as num masternodes for now
 NUM_BLOCKS = min(_MAX_BLOCKS, NUM_SUB_BLOCKS)
+
+# A Masternode expects to produce a block or empty block every BLOCK_TIMEOUT seconds or he will send a SkipBlockNotif
+BLOCK_PRODUCTION_TIMEOUT = 30
+
 NUM_SB_PER_BLOCK = (NUM_SUB_BLOCKS + NUM_BLOCKS - 1) // NUM_BLOCKS
-# NUM_SB_BUILDERS = min(_MAX_SUB_BLOCK_BUILDERS, NUM_SB_PER_BLOCK)
-# todo - until we fix seneca client management in sub-block-builder, use it same as NUM_SB_PER_BLOCK
-NUM_SB_BUILDERS = NUM_SB_PER_BLOCK
+NUM_SB_BUILDERS = NUM_SB_PER_BLOCK  # NUM_SB_BUILDERS = min(_MAX_SUB_BLOCK_BUILDERS, NUM_SB_PER_BLOCK)
 NUM_SB_PER_BUILDER = (NUM_SUB_BLOCKS + NUM_SB_BUILDERS - 1) // NUM_SB_BUILDERS
 NUM_SB_PER_BLOCK_PER_BUILDER = (NUM_SB_PER_BLOCK + NUM_SB_BUILDERS - 1) // NUM_SB_BUILDERS
 

@@ -82,6 +82,7 @@ class SubBlockContender(MessageBase):
     def _deserialize_data(cls, data: bytes):
         return subblock_capnp.SubBlockContender.from_bytes_packed(data)
 
+    # NOTE -- result_hash is the same as the merkle root
     @lazy_property
     def result_hash(self) -> str:
         return self._data.resultHash.decode()
@@ -123,13 +124,17 @@ class SubBlockContender(MessageBase):
         return [TransactionData.from_bytes(tx) for tx in self._data.transactions]
 
     def __eq__(self, other):
-        assert isinstance(other, SubBlockContender), "Attempted to compare a BlockContender with a non-BlockContender"
+        assert isinstance(other, SubBlockContender), "Attempted to compare a BlockBuilder with a non-BlockBuilder"
         return self.input_hash == other.input_hash and \
             self.result_hash == other.result_hash
 
     def __repr__(self):
-        return "SubblockContender with\tsubblock_index={}, prev_block_hash={}, input_hash={}, result_hash={}, num_leaves={}" \
-               .format(self.sb_index, self.prev_block_hash, self.input_hash, self.result_hash, len(self.transactions))
+        return "SubBlockContender(sb_index={}, sender={}, prev_block_hash={}, input_hash={}, result_hash={}, " \
+               " num_leaves={})".format(self.sb_index, self.signature.sender, self.prev_block_hash, self.input_hash,
+                                        self.result_hash, len(self.transactions))
+
+    def __hash__(self):
+        return int(Hasher.hash(self), 16)
 
 
 class SubBlockContenderBuilder:

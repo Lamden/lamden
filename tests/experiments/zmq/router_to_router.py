@@ -21,7 +21,7 @@ def start_sender(identity, url, recv_id):
 
     while True:
         log.debug("sending msg using id frame {}..".format(recv_id.decode()))
-        sock.send_multipart([recv_id, b'hi its me sender -- ' + identity])
+        sock.send_multipart([recv_id, recv_id + b'  -  ' + b'hi its me sender -- ' + identity])
         time.sleep(2)
 
 

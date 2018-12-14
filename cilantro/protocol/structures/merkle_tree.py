@@ -1,3 +1,5 @@
+from cilantro.messages.base.base import MessageBase
+from cilantro.utils import is_valid_hex
 from cilantro.utils import Hasher, lazy_property
 from typing import List
 from cilantro.logger import get_logger
@@ -32,6 +34,14 @@ class MerkleTree:
 
         self.leaves = self.nodes[-len(leaves):]
         self.root = self.nodes[0]
+
+    @classmethod
+    def from_transactions(cls, transactions: List[MessageBase]):
+        # Validate input real quick for dev
+        for t in transactions:
+            assert issubclass(type(t), MessageBase), "Must pass in a list of messages, not {}".format(t)
+
+        return cls.from_raw_transactions([t.serialize() for t in transactions])
 
     @classmethod
     def from_raw_transactions(cls, raw_transactions: List[bytes]):

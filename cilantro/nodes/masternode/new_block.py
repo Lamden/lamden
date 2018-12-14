@@ -9,7 +9,7 @@
 #
 # from cilantro.protocol.states.decorators import enter_from_any, enter_from, input_request, input_timeout, input, timeout_after
 #
-# from cilantro.messages.consensus.block_contender import BlockContender
+# from cilantro.messages.consensus.block_contender import BlockBuilder
 # from cilantro.messages.block_data.block_metadata import NewBlockNotification
 # from cilantro.messages.block_data.transaction_data import TransactionRequest, TransactionReply
 # from cilantro.messages.envelope.envelope import Envelope
@@ -43,7 +43,7 @@
 #                         "but previous state is {}".format(prev_state))
 #
 #     @enter_from(MNRunState)
-#     def enter_from_run(self, block: BlockContender):
+#     def enter_from_run(self, block: BlockBuilder):
 #         self.reset_attrs()
 #         self.log.debug("Entering NewBlockState with block contender {}".format(block))
 #
@@ -82,7 +82,7 @@
 #             self.log.warning("No more pending blocks. Transitioning back to RunState /w success=False")
 #             self.parent.transition(MNRunState, success=False)
 #
-#     def _new_block_procedure(self, block: BlockContender, txs: List[bytes]):
+#     def _new_block_procedure(self, block: BlockBuilder, txs: List[bytes]):
 #         self.log.notice("Masternode attempting to store a new block")
 #
 #         # Attempt to store block
@@ -100,12 +100,12 @@
 #         notif = NewBlockNotification.create(**BlockStorageDriver.get_latest_block(include_number=False))
 #         self.parent.composer.send_pub_msg(filter=MASTERNODE_DELEGATE_FILTER, message=notif, port=MN_NEW_BLOCK_PUB_PORT)
 #
-#     @input_request(BlockContender)
-#     def handle_block_contender(self, block: BlockContender):
+#     @input_request(BlockBuilder)
+#     def handle_block_contender(self, block: BlockBuilder):
 #         if self.validate_block_contender(block):
 #             self.pending_blocks.append(block)
 #
-#     def _validate_sigs(self, block: BlockContender) -> bool:
+#     def _validate_sigs(self, block: BlockBuilder) -> bool:
 #         signatures = block.signatures
 #         msg = MerkleTree.hash_nodes(block.merkle_leaves)
 #
@@ -145,7 +145,7 @@
 #         raise Exception("MNFetchBlockState non-specific entry handler from state {} called! Uh oh!".format(prev_state))
 #
 #     @enter_from(MNNewBlockState)
-#     def enter_from_new_block(self, prev_state, block_contender: BlockContender):
+#     def enter_from_new_block(self, prev_state, block_contender: BlockBuilder):
 #         self.reset_attrs()
 #         self.log.debug("Fetching block data for contender {}".format(block_contender))
 #

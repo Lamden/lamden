@@ -112,8 +112,8 @@
 #             self.log.important("Delegate in consensus!")
 #             self.in_consensus = True
 #
-#             # Create BlockContender and send it to all Masternode(s)
-#             bc = BlockContender.create(signatures=self.signatures, merkle_leaves=self.merkle.leaves_as_hex,
+#             # Create BlockBuilder and send it to all Masternode(s)
+#             bc = BlockBuilder.create(signatures=self.signatures, merkle_leaves=self.merkle.leaves_as_hex,
 #                                        prev_block_hash=self.parent.current_hash)
 #             for mn_vk in VKBook.get_masternodes():
 #                 self.log.debug("Delegate sending block contender to masternode with VK {}".format(mn_vk))

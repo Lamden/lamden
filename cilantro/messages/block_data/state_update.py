@@ -3,12 +3,13 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.block_data.block_data import BlockData
 from cilantro.utils import lazy_property
 from typing import List
+from cilantro.utils import is_valid_hex
 
 import capnp
 import blockdata_capnp
 
 
-class StateUpdateRequest(MessageBaseJson):
+class BlockIndexRequest(MessageBaseJson):
     """
     State Requests are sent from delegates to masternodes. Delegates use this to get the latest state of the block chain.
     A delegate may need to do this if it is:
@@ -23,11 +24,13 @@ class StateUpdateRequest(MessageBaseJson):
     B_HASH = 'block_hash'
 
     def validate(self):
-        pass
+        if self.block_hash:
+            assert is_valid_hex(self.block_hash), "Not valid hash: {}".format(self.block_hash)
+        assert self.block_hash or self.block_num, "must provide block hash or num"
 
     @classmethod
     def create(cls, block_num=None, block_hash=None):
-        assert block_hash or block_num, "StateUpdateRequest must be created with a block hash or block number"
+        assert block_hash or block_num, "BlockIndexRequest must be created with a block hash or block number"
 
         data = {}
         if block_num:
@@ -52,22 +55,39 @@ class StateUpdateRequest(MessageBaseJson):
         return self._data.get(self.B_HASH)
 
 
-class StateUpdateReply(MessageBase):
-
+class BlockIndexReply(MessageBaseJson):
     def validate(self):
+        # TODO do validation logic here, not in create
         pass
 
     @classmethod
-    def _deserialize_data(cls, data: bytes):
-        return blockdata_capnp.StateUpdateReply.from_bytes_packed(data)
+    def create(cls, block_info: List[dict]):
+        return cls.from_data(block_info)
+
+    @property
+    def indices(self) -> List[dict]:
+        return self._data
+
+
+class BlockDataRequest(BlockIndexRequest):
+    pass
+
+
+class BlockDataReply(BlockData):
+    pass
+
+
+class SkipBlockNotification(MessageBaseJson):
+    PREV_B_HASH = 'prev_b_hash'
+
+    def validate(self):
+        assert is_valid_hex(self.prev_block_hash), "Not valid hash: {}".format(self.prev_block_hash)
 
     @classmethod
-    def create(cls, block_data: List[BlockData]):
-        struct = blockdata_capnp.StateUpdateReply.new_message()
-        struct.blockData = [b._data for b in block_data]
+    def create(cls, prev_block_hash: str):
+        data = {cls.PREV_B_HASH: prev_block_hash}
+        return cls.from_data(data)
 
-        return cls.from_data(struct)
-
-    @lazy_property
-    def block_data(self) -> List[BlockData]:
-        return [BlockData.from_data(d) for d in self._data.blockData]
+    @property
+    def prev_block_hash(self):
+        return self._data[self.PREV_B_HASH]

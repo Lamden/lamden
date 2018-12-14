@@ -7,6 +7,7 @@ Available classes:
 
 import hashlib
 import secrets
+from cilantro.constants.system_config import POW_COMPLEXITY
 
 
 class SHA3POW:
@@ -16,7 +17,7 @@ class SHA3POW:
             h = hashlib.sha3_256()
             s = secrets.token_bytes(16)
             h.update(o + s)
-            if h.digest().hex()[0:3] == '000':
+            if h.digest().hex()[0:len(POW_COMPLEXITY)] == POW_COMPLEXITY:
                 return s.hex(), h.digest().hex()
 
     @staticmethod
@@ -25,6 +26,4 @@ class SHA3POW:
         h = hashlib.sha3_256()
         s = bytes.fromhex(proof)
         h.update(o + s)
-        if h.digest().hex()[0:3] == '000':
-            return True
-        return False
+        return h.digest().hex()[0:len(POW_COMPLEXITY)] == POW_COMPLEXITY

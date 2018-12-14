@@ -26,17 +26,18 @@ def run_mn():
     from cilantro.constants.testnet import TESTNET_MASTERNODES
     import os
     import logging
+    import time
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
     # overwrite_logger_level(11)
+    print("sleep sleep before ")
+    time.sleep(10)
 
     ip = os.getenv('HOST_IP')
     print("\n\n\ MN HAS IP {} \n\n".format(ip))
     sk = TESTNET_MASTERNODES[0]['sk']
     NodeFactory.run_masternode(ip=ip, signing_key=sk, reset_db=True)
-
-    input("dont die pls")
 
 
 def run_user():
