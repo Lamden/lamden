@@ -25,6 +25,7 @@ from cilantro.logger import get_logger
 from cilantro.storage.vkbook import VKBook
 from cilantro.storage.state import StateDriver
 from cilantro.constants.ports import SBB_PORT_START
+from cilantro.constants.zmq_filters import *
 
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
@@ -142,7 +143,7 @@ class SubBlockBuilder(Worker):
             port = SBB_PORT_START + sb_idx
             sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
                                              secure=True)
-            sub.setsockopt(zmq.SUBSCRIBE, b'')
+            sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
             sub.bind(port=port, ip=self.ip)
             self.log.info("SBB BINDing to port {} with no filter".format(port))
 
