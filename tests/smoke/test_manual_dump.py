@@ -124,7 +124,7 @@ class TestManualDump(BaseNetworkTestCase):
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
-            log.critical("print i -- {} node name -- {}".format(i, nodename))
+            # log.critical("print i -- {} node name -- {}".format(i, nodename))
             # if i != 3:
             #     log.critical("executing i -- {} node name -- {}".format(i, nodename))
             #     self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
@@ -150,9 +150,6 @@ class TestManualDump(BaseNetworkTestCase):
             vol = int(user_input) if user_input.isdigit() else self.VOLUME
             log.important3("Dumpatron dumping {} transactions!".format(vol))
             self.execute_python('mgmt', wrap_func(dump_it, volume=vol), async=True, profiling=self.PROFILE_TYPE)
-
-        log.important3("Dumpatron initiating system teardown")
-        God.teardown_all("http://{}".format(self.ports[self.groups['masternode'][0]]['8080']))
 
 
 if __name__ == '__main__':
