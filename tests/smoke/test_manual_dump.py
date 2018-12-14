@@ -111,8 +111,8 @@ class TestManualDump(BaseNetworkTestCase):
     @vmnet_test(run_webui=True)
     def test_dump(self):
         log = get_logger("Dumpatron")
-        cmd = 'docker container stop $(docker container ls -a -q -f name=delegate_5)'
-        cmd1 = 'docker kill $(docker container ls -a -q -f name=delegate_5)'
+        cmd = 'docker container stop $(docker container ls -a -q -f name=delegate_8)'
+        cmd1 = 'docker kill $(docker container ls -a -q -f name=delegate_8)'
 
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
@@ -124,14 +124,13 @@ class TestManualDump(BaseNetworkTestCase):
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
-            self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
+            cls.log.critical("print i -- {} node name -- {}".format(i, nodename))
+            if (i != 3):
+                cls.log.critical("executing i -- {} node name -- {}".format(i, nodename))
+                self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
 
         while True:
             user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
-
-            if user_input.lower() == 'c':
-                log.debug("catchup test delegate")
-                self.execute_python(nodename, wrap_func(run_delegate, i), async = True, profiling = self.PROFILE_TYPE)
 
             if user_input.lower() == 's':
                 log.critical("stoping delegate 5")
@@ -139,10 +138,9 @@ class TestManualDump(BaseNetworkTestCase):
                 time.sleep(5)
                 os.system(cmd1)
 
-
             if user_input.lower() == 'c':
-                log.critical("Testing catchup start delegate 5")
-                self.execute_python(nodename, wrap_func(run_delegate, 0), async = True, profiling = self.PROFILE_TYPE)
+                log.critical("Testing catchup start delegate 8")
+                self.execute_python(nodename, wrap_func(run_delegate, 3), async = True, profiling = self.PROFILE_TYPE)
 
             if user_input.lower() == 'x':
                 log.debug("Termination input detected. Breaking")

@@ -45,7 +45,7 @@ class NodeBase(Worker):
     def __init__(self, ip, signing_key, loop=None, name='Node'):
         # TODO oh lord plz no this
         self.REQ_MNS = len(VKBook.get_masternodes())
-        self.REQ_DELS = len(VKBook.get_delegates())
+        self.REQ_DELS = len(VKBook.get_delegates()) - 1
         self.REQ_WITS = len(VKBook.get_witnesses())
 
         self.log = get_logger(name)
@@ -132,7 +132,7 @@ class NodeBase(Worker):
         return missing_dels.union(missing_mns).union(missing_wits)
 
     def _quorum_reached(self) -> bool:
-        return (self.REQ_MNS <= len(self.online_mns)) and (self.REQ_DELS <= len(self.online_dels)) and \
+        return (self.REQ_MNS <= len(self.online_mns)) and (self.REQ_DELS <= len(self.online_dels)-1) and \
                (self.REQ_WITS <= len(self.online_wits))
 
     def _add_online_vk(self, vk: str):
