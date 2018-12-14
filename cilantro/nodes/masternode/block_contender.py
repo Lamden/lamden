@@ -89,11 +89,11 @@ class SubBlockGroup:
 
     def add_sbc(self, sender_vk: str, sbc: SubBlockContender):
         if not self._verify_sbc(sender_vk, sbc):
-            self.log.warning("Could not verify SBC from sender {}".format(sender_vk))
+            self.log.error("Could not verify SBC from sender {}".format(sender_vk))
             return
 
         if sender_vk in self.sender_to_sbc:
-            self.log.info("Sender {} has already submitted a contender for sb idx {} with prev hash {}! Removing his "
+            self.log.debug("Sender {} has already submitted a contender for sb idx {} with prev hash {}! Removing his "
                           "old contender before adding a new one".format(sender_vk, self.sb_idx, self.curr_block_hash))
             existing_sbc = self.sender_to_sbc[sender_vk]
             self.rh[existing_sbc.result_hash].pop(existing_sbc)
@@ -125,34 +125,34 @@ class SubBlockGroup:
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate signature
         if not sbc.signature.verify(bytes.fromhex(sbc.result_hash)):
-            self.log.warning('SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))
+            self.log.error('SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))
             return False
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate sbc prev block hash matches our current block hash
         if sbc.prev_block_hash != self.curr_block_hash:
-            self.log.warning("SBC prev block hash {} does not match our current block hash {}!\nSBC: {}"
-                             .format(sbc.prev_block_hash, self.curr_block_hash, sbc))
+            self.log.error("SBC prev block hash {} does not match our current block hash {}!\nSBC: {}"
+                           .format(sbc.prev_block_hash, self.curr_block_hash, sbc))
             return False
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate merkle leaves
         if len(sbc.merkle_leaves) > 0:
             if not MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash):
-                self.log.warning("Could not verify MerkleTree for SBC {}!".format(sbc))
+                self.log.error("Could not verify MerkleTree for SBC {}!".format(sbc))
                 return False
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate transactions
         for tx in sbc.transactions:
             if tx.hash not in sbc.merkle_leaves:
-                self.log.warning('Received malicious txs that does not match merkle leaves!\nSBC: {}'.format(sbc))
+                self.log.error('Received malicious txs that does not match merkle leaves!\nSBC: {}'.format(sbc))
                 return False
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate sub block index is in range
         if sbc.sb_index >= NUM_SB_PER_BLOCK:
-            self.log.warning("Got SBC with out of range sb_index {}!\nSBC: {}".format(sbc.sb_index, sbc))
+            self.log.error("Got SBC with out of range sb_index {}!\nSBC: {}".format(sbc.sb_index, sbc))
             return False
 
         return True
