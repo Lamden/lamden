@@ -5,9 +5,6 @@ from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
 from cilantro.logger.base import get_logger
 from cilantro.constants.test_suites import CI_FACTOR
-from cilantro.constants.vmnet import get_constitution
-
-CONSTITUION_JSON = '2-2-2.json'
 
 def masternode(idx):
     from vmnet.comm import send_to_file
@@ -67,6 +64,7 @@ def delegates(idx):
 class TestDiscovery(BaseTestCase):
     log = get_logger(__name__)
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-4.json')
+    environment = {'CONSTITUTION_FILE': '2-2-2.json'}
     enable_ui = False
 
     def callback(self, data):
@@ -85,8 +83,14 @@ class TestDiscovery(BaseTestCase):
         self.execute_python(self.groups['node'][1], wrap_func(masternode, 1))
         for idx, node in enumerate(self.groups['node'][2:]):
             self.execute_python(node, wrap_func(delegates, idx))
+
+        # input("Press key to restart node_1")
+        # self.log.important3("Restarting node_1 in 5s...")
+        # self.restart_node('node_1', dead_time=5)
+
         time.sleep(15*CI_FACTOR)
-        file_listener(self, self.callback, self.timeout, 30)
+
+        file_listener(self, self.callback, self.timeout, 3600)
 
 
 if __name__ == '__main__':

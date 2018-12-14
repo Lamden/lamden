@@ -1,5 +1,5 @@
 {
-    "environment": {"CONSITUTION_FILE": "2-2-2.json"},
+    "environment": {"CONSTITUTION_FILE": "2-2-2.json"},
     "aws": {
         "security_groups": {
             "simple_https": {

@@ -4,8 +4,6 @@ import os
 import time
 
 def create_user():
-
-    time.sleep(3)
     print('Creating user for Mongo...')
     settings = configparser.ConfigParser()
     settings._interpolation = configparser.ExtendedInterpolation()
