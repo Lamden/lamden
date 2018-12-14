@@ -24,7 +24,9 @@ class BlockIndexRequest(MessageBaseJson):
     B_HASH = 'block_hash'
 
     def validate(self):
-        assert is_valid_hex(self.block_hash), "Not valid hash: {}".format(self.block_hash)
+        if self.block_hash:
+            assert is_valid_hex(self.block_hash), "Not valid hash: {}".format(self.block_hash)
+        assert self.block_hash or self.block_num, "must provide block hash or num"
 
     @classmethod
     def create(cls, block_num=None, block_hash=None):

@@ -1,8 +1,8 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-2.json')
+set_testnet_config('2-2-4.json')
 
 from vmnet.testcase import BaseNetworkTestCase
-import unittest, time, random, vmnet, cilantro
+import unittest, time, random, vmnet, cilantro, os
 from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test
 from cilantro.utils.test.god import God
@@ -105,12 +105,14 @@ class TestManualDump(BaseNetworkTestCase):
 
     NUM_BLOCKS = 2
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-2-bootstrap.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)
     def test_dump(self):
         log = get_logger("Dumpatron")
+        cmd = 'docker container stop $(docker container ls -a -q -f name=delegate_8)'
+        cmd1 = 'docker kill $(docker container ls -a -q -f name=delegate_8)'
 
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
@@ -122,10 +124,24 @@ class TestManualDump(BaseNetworkTestCase):
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
-            self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
+            log.critical("print i -- {} node name -- {}".format(i, nodename))
+            if (i != 3):
+                log.critical("executing i -- {} node name -- {}".format(i, nodename))
+                self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
 
         while True:
             user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
+
+            if user_input.lower() == 's':
+                log.critical("stoping delegate 5")
+                os.system(cmd)
+                time.sleep(5)
+                os.system(cmd1)
+
+            if user_input.lower() == 'c':
+                log.critical("Testing catchup start delegate 8")
+                self.execute_python('delegate_8', wrap_func(run_delegate, 3), async = True, profiling = self.PROFILE_TYPE)
+
             if user_input.lower() == 'x':
                 log.debug("Termination input detected. Breaking")
                 break
