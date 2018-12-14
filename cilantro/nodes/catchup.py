@@ -61,6 +61,7 @@ class CatchupManager:
         :return:
         """
         self.log.info("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))
+        self.log.important3("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))  # TODO remove
         req = BlockIndexRequest.create(block_hash=self.curr_hash)
         self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
         return True
@@ -72,6 +73,7 @@ class CatchupManager:
         :param reply:
         :return:
         """
+        self.log.important("Got blk index reply from sender {}\nreply: {}".format(sender_vk, reply))
 
         if not reply.indices:
             self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
@@ -115,6 +117,7 @@ class CatchupManager:
         # check if given block is older thn expected drop this reply
         # check if given blocknum grter thn current expected blk -> store temp
         # if given block needs to be stored update state/storage delete frm expected DT
+        self.log.debugv("Got BlockData reply for block hash {}".format(reply.block_hash))
 
         self.awaited_blknum = self.block_delta_list[0].get('blockNum')
         rcv_blk_num = reply.block_num
@@ -140,6 +143,8 @@ class CatchupManager:
         :return:
         """
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
+        self.log.debugv("Got block index request from sender {} requesting block hash {}".format(requester_vk, request.block_hash))
+
         delta_idx = self.get_delta_idx(vk = requester_vk, curr_blk_num = self.curr_num,
                                        sender_blk_hash = request.block_hash)
         self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
@@ -219,6 +224,11 @@ class CatchupManager:
         :return:
         """
 
+        # DEBUG -- TODO DELETE
+        self.log.notice("START update_catchup_state with block num {}\nrecv_block_dict: {}\nblock_delta_list: {}"
+                            .format(block_num, self.rcv_block_dict, self.block_delta_list))
+        # END DEBUG
+
         if block_num in self.rcv_block_dict.keys():
             self.rcv_block_dict.pop(block_num)
             self.block_delta_list.pop(0)
@@ -257,7 +267,7 @@ class CatchupManager:
             self.rcv_block_dict = {}
             self.awaited_blknum = None
 
-
-
-
-
+        # DEBUG -- TODO DELETE
+        self.log.info("END update_catchup_state with block num {}\nrecv_block_dict: {}\nblock_delta_list: {}"
+                        .format(block_num, self.rcv_block_dict, self.block_delta_list))
+        # END DEBUG
