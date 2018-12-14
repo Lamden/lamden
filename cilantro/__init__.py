@@ -17,23 +17,23 @@ getcontext().prec = DECIMAL_PRECISION
 
 
 # Dark hack to block until mongo/redis is ready, courtesy of the one and only mr falcon
-if not os.getenv('__SERVERS_READY__') and os.getenv('VMNET_DOCKER'):
-    import redis, time
-    from pymongo import MongoClient
-    r = redis.StrictRedis()
-    redis_ready = False
-    mongo_ready = False
-    while not redis_ready or not mongo_ready:
-        try:
-            r.client_list()
-            redis_ready = True
-        except:
-            print("Waiting for Redis to be ready...")
-        try:
-            MongoClient()
-            mongo_ready = True
-        except:
-            print("Waiting for Mongo to be ready...")
-        time.sleep(1)
-
-    os.environ['__SERVERS_READY__'] = 'True'
+# if not os.getenv('__SERVERS_READY__') and os.getenv('VMNET_DOCKER'):
+#     import redis, time
+#     from pymongo import MongoClient
+#     r = redis.StrictRedis()
+#     redis_ready = False
+#     mongo_ready = False
+#     while not redis_ready or not mongo_ready:
+#         try:
+#             r.client_list()
+#             redis_ready = True
+#         except:
+#             print("Waiting for Redis to be ready...")
+#         # try:
+#         #     MongoClient()
+#         #     mongo_ready = True
+#         # except:
+#         #     print("Waiting for Mongo to be ready...")
+#         time.sleep(1)
+#
+#     os.environ['__SERVERS_READY__'] = 'True'

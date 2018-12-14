@@ -63,13 +63,11 @@ class BlockAggregator(Worker):
             socket_type=zmq.SUB,
             name="BA-Sub",
             secure=True,
-            # domain="sb-contender"
         )
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
             name="BA-Pub",
             secure=True,
-            # domain="sb-contender"
         )
         self.pub.bind(ip=self.ip, port=MASTER_PUB_PORT)
 
@@ -77,7 +75,6 @@ class BlockAggregator(Worker):
             socket_type=zmq.ROUTER,
             name="BA-Router",
             secure=True,
-            # domain="sb-contender"
         )
         self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
@@ -106,25 +103,27 @@ class BlockAggregator(Worker):
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
+        sender = envelope.sender
+        self.log.spam("Got SUB msg from sender {}\nMessage: {}".format(sender, msg))
 
         if isinstance(msg, SubBlockContender):
             if self.catchup_manager.catchup_state:
                 self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
             else:
-                self.recv_sub_block_contender(envelope.sender, msg)
+                self.recv_sub_block_contender(sender, msg)
 
         elif isinstance(msg, NewBlockNotification):
             if self.catchup_manager.catchup_state:
                 self.catchup_manager.recv_new_blk_notif(msg)
             else:
-                self.recv_new_block_notif(envelope.sender, msg)
+                self.recv_new_block_notif(sender, msg)
             # TODO send this to the catchup manager
 
         elif isinstance(msg, SkipBlockNotification):
-            self.recv_skip_block_notif(envelope.sender, msg)
+            self.recv_skip_block_notif(sender, msg)
 
         elif isinstance(msg, BlockIndexRequest):
-            self.catchup_manager.recv_block_idx_req(envelope.sender, msg)
+            self.catchup_manager.recv_block_idx_req(sender, msg)
 
         else:
             raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
@@ -133,15 +132,17 @@ class BlockAggregator(Worker):
     def handle_router_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
+        sender = envelope.sender
+        self.log.spam("Got ROUTER msg from sender {} with id frame {}\nMessage: {}".format(sender, frames[0], msg))
 
         if isinstance(msg, BlockDataRequest):
-            self.catchup_manager.recv_block_data_req(envelope.sender, msg)
+            self.catchup_manager.recv_block_data_req(sender, msg)
 
         elif isinstance(msg, BlockDataReply):
             self.catchup_manager.recv_block_data_reply(msg)
 
         elif isinstance(msg, BlockIndexReply):
-            self.catchup_manager.recv_block_idx_reply(envelope.sender, msg)
+            self.catchup_manager.recv_block_idx_reply(sender, msg)
 
         else:
             raise Exception("BlockAggregator got message type {} from ROUTER socket that it does not know how to handle"

@@ -158,6 +158,8 @@ class CatchupManager:
     def _send_block_idx_reply(self, reply_to_vk = None, catchup_list=None):
         # this func doesnt care abt catchup_state we respond irrespective
         reply = BlockIndexReply.create(block_info = catchup_list)
+        self.log.debugv("Sending block index reply to vk {}".format(reply_to_vk))
+        self.log.important2("Sending block index reply to vk {}".format(reply_to_vk))  # TODO remove
         self.router.send_msg(reply, header=reply_to_vk.encode())
 
     def get_delta_idx(self, vk = None, curr_blk_num = None, sender_blk_hash = None):
@@ -233,6 +235,8 @@ class CatchupManager:
         if len(self.block_delta_list) == 0:
             assert self.curr_num == self.target_blk_num, "Err target blk and curr block are not same"
             assert self.curr_hash == self.target_blk.get('blockHash'), "Err target blk and curr block are not same"
+
+            self.log.success("Finished Catchup state, with latest block hash {}!".format(self.curr_hash))
 
             # reset everything
             self.catchup_state = False

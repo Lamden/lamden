@@ -94,7 +94,7 @@ def start_sub(url, name):
 if __name__ == '__main__':
     pub = Process(target=start_pub, args=([SUB_URL, SUB2_URL], 'PUB 1'))
     pub2 = Process(target=start_pub, args=([SUB_URL, SUB2_URL], 'PUB 2'))
-    # pub2 = Process(target=start_pub, args=([URL],))
+    # pub2 = Process(target=start_recvr, args=([URL],))
 
     sub = Process(target=start_sub, args=(SUB_URL, 'SUB 1'))
     sub2 = Process(target=start_sub, args=(SUB2_URL, 'SUB 2'))

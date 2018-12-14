@@ -56,7 +56,7 @@ class NodeBase(Worker):
         # Variables to track connected nodes when booting
         self.online_mns, self.online_dels, self.online_wits = set(), set(), set()
 
-        self.log.notice("Starting overlay service")
+        self.log.info("Starting overlay service")
         self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key})
         self.overlay_proc.start()  # TODO should we make this proc a daemon?
 
@@ -64,7 +64,7 @@ class NodeBase(Worker):
         # OverlayClient, which happens in Worker's init
         super().__init__(signing_key=signing_key, loop=loop, name=name)
 
-        self.log.important3("Node with vk {} has ip {}".format(self.verifying_key, ip))
+        self.log.notice("Node with vk {} has ip {}".format(self.verifying_key, ip))
         self.add_overlay_handler_fn('node_offline', self._node_offline_event)
         self.add_overlay_handler_fn('node_online', self._node_online_event)
 
