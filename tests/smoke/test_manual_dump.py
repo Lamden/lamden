@@ -124,9 +124,9 @@ class TestManualDump(BaseNetworkTestCase):
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
-            cls.log.critical("print i -- {} node name -- {}".format(i, nodename))
+            log.critical("print i -- {} node name -- {}".format(i, nodename))
             if (i != 3):
-                cls.log.critical("executing i -- {} node name -- {}".format(i, nodename))
+                log.critical("executing i -- {} node name -- {}".format(i, nodename))
                 self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
 
         while True:
@@ -140,7 +140,7 @@ class TestManualDump(BaseNetworkTestCase):
 
             if user_input.lower() == 'c':
                 log.critical("Testing catchup start delegate 8")
-                self.execute_python(nodename, wrap_func(run_delegate, 3), async = True, profiling = self.PROFILE_TYPE)
+                self.execute_python('delegate_8', wrap_func(run_delegate, 3), async = True, profiling = self.PROFILE_TYPE)
 
             if user_input.lower() == 'x':
                 log.debug("Termination input detected. Breaking")
