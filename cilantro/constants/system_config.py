@@ -29,7 +29,7 @@ MASTERNODE_MAJORITY = math.ceil(NUM_MASTERS * 2 / 3)
 _MAX_SUB_BLOCK_BUILDERS = 4
 _MAX_BLOCKS = 1  # 2
 
-TRANSACTIONS_PER_SUB_BLOCK = 4
+TRANSACTIONS_PER_SUB_BLOCK = 10
 NUM_SUB_BLOCKS = NUM_MASTERS  # same as num masternodes for now
 NUM_BLOCKS = min(_MAX_BLOCKS, NUM_SUB_BLOCKS)
 
@@ -67,3 +67,11 @@ MIN_NEW_BLOCK_MN_QOURUM = math.ceil(NUM_MASTERS * 2 / 3)  # Number of NewBlockNo
 # Seneca Interpreter
 # ///////////////////////////////////////////////
 DECIMAL_PRECISION = 18
+
+
+# ///////////////////////////////////////////////
+# Test Flags
+# ///////////////////////////////////////////////
+SHOULD_MINT_WALLET = True
+NUM_WALLETS_TO_MINT = 25
+MINT_AMOUNT = 10 ** 7
