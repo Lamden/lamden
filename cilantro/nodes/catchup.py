@@ -70,7 +70,8 @@ class CatchupManager:
 
     def _reset_timeout_fut(self):
         if self.timeout_fut:
-            self.timeout_fut.cancel()
+            if not self.timeout_fut.done():
+                self.timeout_fut.cancel()
             self.timeout_fut = None
 
     async def _check_timeout(self):
