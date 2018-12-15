@@ -7,7 +7,7 @@ from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro.nodes.masternode.webserver import start_webserver
 
-import os
+import os, random
 
 
 IPC_IP = 'masternode-ipc-sock'

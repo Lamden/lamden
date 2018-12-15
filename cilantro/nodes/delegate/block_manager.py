@@ -163,7 +163,7 @@ class BlockManager(Worker):
             await asyncio.sleep(5)
 
         self.log.info("Catching up...")
-        self.db_state.catchup_mgr.send_block_idx_req()
+        self.db_state.catchup_mgr.run_catchup()
 
         # TODO needs to be deleted after catchup is working. for now, assume that it is caught up
         self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()

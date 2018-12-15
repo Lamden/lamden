@@ -2,7 +2,7 @@
 from cilantro.constants.system_config import TRANSACTIONS_PER_SUB_BLOCK
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
 from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
-from cilantro.constants.system_config import BATCH_INTERVAL, MAX_SKIP_TURNS
+from cilantro.constants.system_config import BATCH_SLEEP_INTERVAL, NUM_BLOCKS
 from cilantro.messages.signals.master import SendNextBag
 
 from cilantro.protocol.multiprocessing.worker import Worker
@@ -10,7 +10,7 @@ from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.messages.transaction.batch import TransactionBatch
 
 import zmq.asyncio
-import asyncio
+import asyncio, time
 
 
 class TransactionBatcher(Worker):
@@ -18,6 +18,8 @@ class TransactionBatcher(Worker):
     def __init__(self, queue, ip, ipc_ip, ipc_port, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.queue, self.ip = queue, ip
+
+        self.tasks = []
 
         # Create Pub socket to broadcast to witnesses
         self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
@@ -30,9 +32,11 @@ class TransactionBatcher(Worker):
         # TODO create PAIR socket to orchestrate w/ main process?
 
         self.num_bags_sent = 0
+        self.tasks.append(self.compose_transactions())
 
         # Start main event loop
-        self.loop.run_until_complete(self.compose_transactions())
+        # self.loop.run_until_complete(self.compose_transactions())
+        self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
         self.log.info("Connecting to BlockAggregator's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
@@ -61,14 +65,17 @@ class TransactionBatcher(Worker):
             raise Exception("Batcher got message type {} from IPC dealer socket that it does not know how to handle"
                             .format(type(msg)))
 
-    async def compose_transactions(self):
+    def compose_transactions(self):
         self.log.important("Starting TransactionBatcher")
         self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
 
+        time.sleep(BATCH_SLEEP_INTERVAL)
         while True:
-            num_txns = self.queue.qsize()
-            if ((num_txns < TRANSACTIONS_PER_SUB_BLOCK) and (num_bags_sent > 1)) or (num_bags_sent >= 3 * NUMBLOCKS):
-                await asyncio.sleep(BATCH_SLEEP_INTERVAL)
+            num_txns = self.queue.qsize() 
+            if ((num_txns < TRANSACTIONS_PER_SUB_BLOCK) and (self.num_bags_sent > 1)) or \
+                 (self.num_bags_sent >= 3 * NUM_BLOCKS):
+                # await asyncio.sleep(BATCH_SLEEP_INTERVAL)
+                time.sleep(BATCH_SLEEP_INTERVAL)
                 continue
 
             tx_list = []
