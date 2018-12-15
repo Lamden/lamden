@@ -47,6 +47,7 @@ def submit_stamps(stamps):
 
 @export
 def balance_of(wallet_id):
+    # print("wallet {} has balannce {}".format(wallet_id, balances[wallet_id]))
     return balances[wallet_id]
 
 @export
@@ -84,3 +85,5 @@ def mint(to, amount):
     assert rt['sender'] == rt['author'], 'Only the original contract author can mint!'
 
     balances[to] += amount
+
+    # print("wallet {} now has amount {}".format(to, balances[to]))

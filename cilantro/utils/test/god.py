@@ -1,12 +1,11 @@
 from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.messages.transaction.contract import *
 from cilantro.messages.signals.kill_signal import KillSignal
-import asyncio
-from cilantro.protocol.transport import Composer
+from cilantro.constants.system_config import *
 from unittest.mock import MagicMock
 from cilantro.logger import get_logger
 from cilantro.utils.test.mp_test_case import MPTestCase
-import os, requests, time, random
+import os, requests, time, random, asyncio
 
 
 if os.getenv('HOST_IP'):
@@ -38,6 +37,26 @@ RAGHU = ('b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668',
  'c1f845ad8967b93092d59e4ef56aef3eba49c33079119b9c856a5354e9ccdf84')
 
 ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL, RAGHU]
+
+
+def int_to_padded_bytes(i: int) -> bytes:
+    SIZE = 32
+    s = str(i)
+    assert len(s) <= SIZE, "int {} is too long!".format(s)
+
+    padding = SIZE - len(s)
+    s = '0'*padding + s
+    b = s.encode()
+
+    assert len(b) == SIZE, "{} is not size {}".format(b, SIZE)
+
+    return s.encode()
+
+
+if SHOULD_MINT_WALLET:
+    for i in range(NUM_WALLETS_TO_MINT):
+        sk, vk = wallet.new(int_to_padded_bytes(i))
+        ALL_WALLETS.append((sk, vk))
 
 
 def countdown(duration: int, msg: str, log=None, status_update_freq=5):

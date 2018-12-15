@@ -2,11 +2,13 @@ from cilantro.logger import get_logger
 from cilantro.utils import Hasher
 from seneca.engine.interface import SenecaInterface
 from seneca.engine.interpreter import SenecaInterpreter
+from cilantro.constants.system_config import *
 import datetime
 import os
+from cilantro.utils.test.god import ALL_WALLETS
 
 
-log = get_logger("ContractsTable")
+log = get_logger("ContractSeeder")
 
 path = os.path.abspath(__file__)
 dir_path = os.path.dirname(path)
@@ -35,6 +37,14 @@ def seed_contracts():
             code_obj = interface.get_code_obj(contract_id)
 
         log.debug("Done seeding contracts.")
+
+        if SHOULD_MINT_WALLET:
+            log.info("Minting {} wallets with amount {}".format(NUM_WALLETS_TO_MINT, MINT_AMOUNT))
+            for keypair in ALL_WALLETS:
+                sk, vk = keypair
+                interface.execute_function(module_path='seneca.contracts.currency.mint', sender=GENESIS_AUTHOR,
+                                           stamps=None, to=vk, amount=MINT_AMOUNT)
+            log.info("Done minting {} wallets.".format(NUM_WALLETS_TO_MINT))
 
 
 def _read_contract_files() -> list:
