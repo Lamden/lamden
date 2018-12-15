@@ -1,4 +1,4 @@
-import time, asyncio
+import time, asyncio, math
 from collections import defaultdict
 from cilantro.logger import get_logger
 from cilantro.constants.zmq_filters import *
@@ -263,7 +263,7 @@ class CatchupManager:
 
     def _check_idx_reply_quorum(self):
         # We have enough BlockIndexReplies if 2/3 of Masternodes replied
-        return len(self.node_idx_reply_set) >= len(VKBook.get_masternodes()) * 2/3
+        return len(self.node_idx_reply_set) >= math.ceil(len(VKBook.get_masternodes()) * 2/3)
 
     def _check_retry_needed(self):
         # if you have 2/3rd quorum wait for queue pending queue to finsh
