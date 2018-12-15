@@ -71,22 +71,31 @@ class CatchupManager:
     def _reset_timeout_fut(self):
         if self.timeout_fut:
             if not self.timeout_fut.done():
-                self.timeout_fut.cancel()
+                # TODO not sure i need this try/execpt here --davis
+                try: self.timeout_fut.cancel()
+                except: pass
             self.timeout_fut = None
 
     async def _check_timeout(self):
-        elapsed = 0
-        while elapsed < IDX_REPLY_TIMEOUT:
-            elapsed += TIMEOUT_CHECK_INTERVAL
-            await asyncio.sleep(TIMEOUT_CHECK_INTERVAL)
+        async def _timeout():
+            elapsed = 0
+            while elapsed < IDX_REPLY_TIMEOUT:
+                elapsed += TIMEOUT_CHECK_INTERVAL
+                await asyncio.sleep(TIMEOUT_CHECK_INTERVAL)
 
-            if self._check_idx_reply_quorum() is True:
-                self.log.debugv("Quorum reached!")
-                return
+                if self._check_idx_reply_quorum() is True:
+                    self.log.debugv("Quorum reached!")
+                    return
 
-        # If we have not returned from the loop and the this task has not been canceled, initiate a retry
-        self.log.warning("Timeout of {} reached waiting for block idx replies! Resending BlockIndexRequest.")
-        self.run_catchup(ignore=True)
+            # If we have not returned from the loop and the this task has not been canceled, initiate a retry
+            self.log.warning("Timeout of {} reached waiting for block idx replies! Resending BlockIndexRequest".format(IDX_REPLY_TIMEOUT))
+            self.timeout_fut = None
+            self.run_catchup(ignore=True)
+
+        try:
+            await _timeout()
+        except asyncio.CancelledError as e:
+            pass
 
     # Phase I start
     def send_block_idx_req(self):
