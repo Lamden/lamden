@@ -66,7 +66,7 @@ class CatchupManager:
         self.catchup_state = self.send_block_idx_req()
 
         self._reset_timeout_fut()
-        asyncio.ensure_future()
+        self.timeout_fut= asyncio.ensure_future(self._check_timeout())
 
     def _reset_timeout_fut(self):
         if self.timeout_fut:
