@@ -340,3 +340,23 @@ class CatchupManager:
             return False
         else:
             return True
+
+    def dump_debug_info(self):
+        self.log.important3("catchup Status => {}"
+                            "---- data structures state----"
+                            "Pending blk list -> {} "
+                            "----Target-----"
+                            "Target block -> {}"
+                            "target_blk_num -> {}"
+                            "----Current----"
+                            "elf.curr_hash - {}, curr_num-{}"
+                            "----send req----"
+                            "blk_req_ptr - {}"
+                            "blk_req_ptr_idx - {}"
+                            "last_req_blk_num -{}"
+                            "----rcv req-----"
+                            "rcv_block_dict - {}"
+                            "awaited_blknum - {}"
+                            .format(self.catchup_state, self.block_delta_list, self.target_blk, self.target_blk_num,
+                                    self.curr_hash, self.curr_num, self.blk_req_ptr, self.blk_req_ptr_idx,
+                                    self.last_req_blk_num, self.rcv_block_dict, self.awaited_blknum))
