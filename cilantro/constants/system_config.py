@@ -53,7 +53,7 @@ assert NUM_SB_PER_BLOCK_PER_BUILDER >= 1, "num_sub_blocks_per_block_per_builder 
 # MAX_BATCH_DURATION = 8 / NUM_BLOCKS  # just to get back to 8 for now, but it has to be a function of TRANSACTIONS_PER_SUB_BLOCK
 MAX_BATCH_DURATION = 1
 # BATCH_INTERVAL = NUM_BLOCKS * MAX_BATCH_DURATION
-BATCH_INTERVAL = 1
+BATCH_INTERVAL = 10
 MAX_SKIP_TURNS = 5
 
 
