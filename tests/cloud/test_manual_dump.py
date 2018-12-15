@@ -109,7 +109,8 @@ class TestManualDump(AWSTestCase):
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dum
     config_file = get_config_file('cilantro-aws-2-2-2.json')
     keep_up = True
-    timeout = 3600
+    timeout = 999999999999
+    logging = True
 
     def test_dump(self):
         log = get_logger("Dumpatron")
@@ -133,10 +134,10 @@ class TestManualDump(AWSTestCase):
             #     break
             #
             # vol = int(user_input) if user_input.isdigit() else self.VOLUME
+            time.sleep(120)
             vol = self.VOLUME
             log.important3("Dumpatron dumping {} transactions!".format(vol))
-            self.execute_python('mgmt', wrap_func(dump_it, volume=vol))
-            time.sleep(60)
+            self.execute_python('mgmt', wrap_func(dump_it, volume=vol), no_kill=True)
 
         log.important3("Dumpatron initiating system teardown")
         God.teardown_all("http://{}".format(self.ports[self.groups['masternode'][0]]['8080']))
