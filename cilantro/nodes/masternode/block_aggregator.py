@@ -152,7 +152,7 @@ class BlockAggregator(Worker):
         self.log.spam("Got SUB msg from sender {}\nMessage: {}".format(sender, msg))
 
         if isinstance(msg, SubBlockContender):
-            # TODO put this back in when TJ fixes it
+            # TODO put this back in
             # if self.catchup_manager.catchup_state:
             if False:
                 self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
@@ -160,7 +160,7 @@ class BlockAggregator(Worker):
                 self.recv_sub_block_contender(sender, msg)
 
         elif isinstance(msg, NewBlockNotification):
-            # TODO put this back in when TJ fixes it
+            # TODO put this back in
             # if self.catchup_manager.catchup_state:
             if False:
                 self.catchup_manager.recv_new_blk_notif(msg)
@@ -197,7 +197,7 @@ class BlockAggregator(Worker):
                             .format(type(msg)))
 
     def recv_sub_block_contender(self, sender_vk: str, sbc: SubBlockContender):
-        # TODO comment this back in when TJ fixes
+        # TODO put this back in
         # assert not self.catchup_manager.catchup_state, "We should not be receiving SBCs when we are catching up!"
         self.log.debugv("Received a sbc with result hash {} and input hash {}".format(sbc.result_hash, sbc.input_hash))
 

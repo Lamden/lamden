@@ -1,5 +1,5 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-4.json')
+set_testnet_config('2-2-2.json')
 
 from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random, vmnet, cilantro, os
@@ -105,7 +105,7 @@ class TestManualDump(BaseNetworkTestCase):
 
     NUM_BLOCKS = 2
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-2-bootstrap.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)
@@ -125,9 +125,8 @@ class TestManualDump(BaseNetworkTestCase):
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
             # log.critical("print i -- {} node name -- {}".format(i, nodename))
-            # if i != 3:
+            # if (i != 3):
             #     log.critical("executing i -- {} node name -- {}".format(i, nodename))
-            #     self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
             self.execute_python(nodename, wrap_func(run_delegate, i), async=True, profiling=self.PROFILE_TYPE)
 
         while True:

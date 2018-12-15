@@ -1,5 +1,5 @@
 {
-    "environment": {"CONSITUTION_FILE": "4-4-4.json"},
+    "environment": {"CONSTITUTION_FILE": "4-4-4.json"},
     "services": [
         {
             "name": "masternode",

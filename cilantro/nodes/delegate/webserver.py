@@ -3,6 +3,8 @@ from sanic.response import json, text
 from seneca.engine.interpreter import SenecaInterpreter
 from multiprocessing import Queue
 from cilantro.protocol.webserver.validation import *
+from cilantro.constants.ports import WEB_SERVER_PORT
+from cilantro.constants.delegate import NUM_WORKERS
 
 app = SanicSingleton.app
 interface = SanicSingleton.interface
@@ -39,7 +41,7 @@ async def get_contract(request):
 
 def start_webserver(q):
     app.queue = q
-    app.run(host='0.0.0.0', port=8080, workers=2, debug=False, access_log=False)
+    app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False)
 
 if __name__ == '__main__':
     start_webserver(Queue())
