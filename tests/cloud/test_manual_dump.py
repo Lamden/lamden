@@ -127,14 +127,16 @@ class TestManualDump(AWSTestCase):
             self.execute_python(nodename, wrap_func(run_delegate, i))
 
         while True:
-            user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
-            if user_input.lower() == 'x':
-                log.debug("Termination input detected. Breaking")
-                break
-
-            vol = int(user_input) if user_input.isdigit() else self.VOLUME
+            # user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
+            # if user_input.lower() == 'x':
+            #     log.debug("Termination input detected. Breaking")
+            #     break
+            #
+            # vol = int(user_input) if user_input.isdigit() else self.VOLUME
+            vol = self.VOLUME
             log.important3("Dumpatron dumping {} transactions!".format(vol))
             self.execute_python('mgmt', wrap_func(dump_it, volume=vol))
+            time.sleep(60)
 
         log.important3("Dumpatron initiating system teardown")
         God.teardown_all("http://{}".format(self.ports[self.groups['masternode'][0]]['8080']))
