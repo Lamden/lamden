@@ -159,11 +159,11 @@ class BlockManager(Worker):
         # at the end, it has updated its db state to consensus latest
 
         await asyncio.sleep(8)             # so pub/sub connections can complete
-        while not self.db_state.catchup_mgr:
-            await asyncio.sleep(5)
+        # while not self.db_state.catchup_mgr:
+            # await asyncio.sleep(5)
 
         self.log.info("Catching up...")
-        self.db_state.catchup_mgr.run_catchup()
+        # self.db_state.catchup_mgr.run_catchup()
 
         # TODO needs to be deleted after catchup is working. for now, assume that it is caught up
         self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()

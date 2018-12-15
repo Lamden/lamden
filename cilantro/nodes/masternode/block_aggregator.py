@@ -115,7 +115,7 @@ class BlockAggregator(Worker):
         self.log.debugv("Sleeping before triggering catchup...")
         await asyncio.sleep(4)
         self.log.info("Triggering catchup")
-        self.catchup_manager.send_block_idx_req()
+        # self.catchup_manager.send_block_idx_req()
 
      
     def _send_msg_over_ipc(self, message: MessageBase):
