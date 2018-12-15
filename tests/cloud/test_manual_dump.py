@@ -2,7 +2,7 @@ from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
 from cilantro.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
-import unittest, time, random, vmnet, cilantro
+import unittest, time, random, vmnet, cilantro, os
 from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test
 from cilantro.utils.test.god import God
@@ -10,6 +10,7 @@ from cilantro.logger.base import get_logger
 from cilantro.utils.test.god import God
 from cilantro.logger import get_logger, overwrite_logger_level
 import logging, os, shutil, time
+from cilantro.constants.system_config import *
 
 
 if os.getenv('USE_LOCAL_SENECA', '0') != '0':
@@ -23,7 +24,7 @@ if os.getenv('USE_LOCAL_SENECA', '0') != '0':
     assert os.path.isdir(venv_sen_path), "Expect virtual env seneca at path {}".format(venv_sen_path)
     assert os.path.isdir(user_sen_path), "Expect user seneca at path {}".format(user_sen_path)
 
-    print("Removing venv seneca at path {}".format(venv_sen_path))
+    log.debugv("Removing venv seneca at path {}".format(venv_sen_path))
     shutil.rmtree(venv_sen_path)
 
     log.notice("Copying user seneca path {} to venv packages at path {}".format(user_sen_path, venv_sen_path))
@@ -49,8 +50,7 @@ def run_mn(slot_num):
     # NOTE setting the log level below 11 does not work for some reason --davis
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
-    # overwrite_logger_level(11)
-    overwrite_logger_level(11)  # suppress 'spam' log level
+    overwrite_logger_level(11)
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[slot_num]['sk']
@@ -58,7 +58,6 @@ def run_mn(slot_num):
 
 
 def run_witness(slot_num):
-
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_WITNESSES
@@ -76,7 +75,6 @@ def run_witness(slot_num):
 
 
 def run_delegate(slot_num):
-
     from cilantro.logger import get_logger, overwrite_logger_level
     from seneca.libs.logger import overwrite_logger_level as sen_overwrite_log
     from cilantro.nodes.factory import NodeFactory
@@ -86,7 +84,8 @@ def run_delegate(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(11)
-    sen_overwrite_log(4)  # disable spam only (lvl 5 is debugv)
+    # sen_overwrite_log(4)  # disable spam only (lvl 5 is debugv)
+    sen_overwrite_log(11)  # disable spam only (lvl 5 is debugv)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -103,9 +102,11 @@ def dump_it(volume, delay=0):
     God.dump_it(volume=volume, delay=delay)
 
 
+
 class TestManualDump(AWSTestCase):
 
-    VOLUME = 1200  # Number of transactions to dump
+    NUM_BLOCKS = 2
+    VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dum
     config_file = get_config_file('cilantro-aws-2-2-2.json')
     keep_up = True
     timeout = 3600
