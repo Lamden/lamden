@@ -45,9 +45,9 @@ class CatchupManager:
 
         self.run_catchup()
 
-    def run_catchup(self):
+    def run_catchup(self, ignore=False):
         # check if catch up is already running
-        if self.catchup_state is True:
+        if not ignore and self.catchup_state is True:
             self.log.critical("catch up already running we shouldn't be here")
             return
 
@@ -79,7 +79,7 @@ class CatchupManager:
         self.log.important("Got blk index reply from sender {}\nreply: {}".format(sender_vk, reply))
 
         if self._check_retry_needed() is True:
-            self.run_catchup()
+            self.run_catchup(ignore = True)
         else:
             self.node_idx_reply_set.add(sender_vk)
 
