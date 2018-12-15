@@ -63,13 +63,11 @@ class BlockAggregator(Worker):
             socket_type=zmq.SUB,
             name="BA-Sub-{}".format(self.verifying_key[-4:]),
             secure=True,
-            # domain="sb-contender"
         )
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
             name="BA-Pub-{}".format(self.verifying_key[-4:]),
             secure=True,
-            # domain="sb-contender"
         )
         self.pub.bind(ip=self.ip, port=MASTER_PUB_PORT)
 
@@ -77,7 +75,6 @@ class BlockAggregator(Worker):
             socket_type=zmq.ROUTER,
             name="BA-Router-{}".format(self.verifying_key[-4:]),
             secure=True,
-            # domain="sb-contender"
         )
         self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
@@ -108,13 +105,17 @@ class BlockAggregator(Worker):
         msg = envelope.message
 
         if isinstance(msg, SubBlockContender):
-            if self.catchup_manager.catchup_state:
+            # TODO put this back in
+            # if self.catchup_manager.catchup_state:
+            if False:
                 self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
             else:
                 self.recv_sub_block_contender(envelope.sender, msg)
 
         elif isinstance(msg, NewBlockNotification):
-            if self.catchup_manager.catchup_state:
+            # TODO put this back in
+            # if self.catchup_manager.catchup_state:
+            if False:
                 self.catchup_manager.recv_new_blk_notif(msg)
             else:
                 self.recv_new_block_notif(envelope.sender, msg)
@@ -148,7 +149,8 @@ class BlockAggregator(Worker):
                             .format(type(msg)))
 
     def recv_sub_block_contender(self, sender_vk: str, sbc: SubBlockContender):
-        assert not self.catchup_manager.catchup_state, "We should not be receiving SBCs when we are catching up!"
+        # TODO put this back in
+        # assert not self.catchup_manager.catchup_state, "We should not be receiving SBCs when we are catching up!"
         self.log.debugv("Received a sbc with result hash {} and input hash {}".format(sbc.result_hash, sbc.input_hash))
 
         added_first_sbc = self.curr_block.add_sbc(sender_vk, sbc)
