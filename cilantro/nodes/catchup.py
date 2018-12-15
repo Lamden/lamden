@@ -66,7 +66,7 @@ class CatchupManager:
         self.catchup_state = self.send_block_idx_req()
 
         self._reset_timeout_fut()
-        self.timeout_fut= asyncio.ensure_future(self._check_timeout())
+        self.timeout_fut = asyncio.ensure_future(self._check_timeout())
 
     def _reset_timeout_fut(self):
         if self.timeout_fut:
@@ -310,6 +310,7 @@ class CatchupManager:
 
             # reset everything
             self.catchup_state = self.check_catchup_done()
+            self._reset_timeout_fut()
 
             # DEBUG -- TODO DELETE
             self.log.info("END update_catchup_state with block num {}\nrecv_block_dict: {}\nblock_delta_list: {}"
@@ -318,6 +319,8 @@ class CatchupManager:
 
     def check_catchup_done(self):
         if self._check_retry_needed() is False:
+            self._reset_timeout_fut()
+
             # main list to process
             self.block_delta_list = []              # list of mn_index dict to process
             self.target_blk = {}                    # last block in list
