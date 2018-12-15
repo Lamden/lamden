@@ -67,6 +67,8 @@ class CatchupManager:
 
         self._reset_timeout_fut()
         self.timeout_fut = asyncio.ensure_future(self._check_timeout())
+        self.log.important2("run catchup")
+        self.dump_debug_info()
 
     def _reset_timeout_fut(self):
         if self.timeout_fut:
@@ -107,6 +109,9 @@ class CatchupManager:
         self.log.important3("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))  # TODO remove
         req = BlockIndexRequest.create(block_hash=self.curr_hash)
         self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
+
+        self.log.important2("SEND BIR")
+        self.dump_debug_info()
         return True
 
     def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
@@ -151,6 +156,8 @@ class CatchupManager:
                 self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
                 self.target_blk_num = self.target_blk.get('blockNum')
 
+        self.log.important2("RCV BIRp")
+        self.dump_debug_info()
         self.process_recv_idx()
 
     def _send_block_data_req(self, mn_vk, req_blk_num):
@@ -160,6 +167,8 @@ class CatchupManager:
         self.router.send_msg(req, header=mn_vk.encode())
         if self.awaited_blknum is None:
             self.awaited_blknum = req_blk_num
+        self.log.important2("SEND BDRq")
+        self.dump_debug_info()
 
     def recv_block_data_reply(self, reply: BlockData):
         # check if given block is older thn expected drop this reply
@@ -181,6 +190,8 @@ class CatchupManager:
             self.update_received_block(block = reply)
 
         self._update_catchup_state(block_num = rcv_blk_num)
+        self.log.important2("RCV BDRp")
+        self.dump_debug_info()
 
     # MASTER ONLY CALL
     def recv_block_idx_req(self, requester_vk: str, request: BlockIndexRequest):
@@ -196,6 +207,8 @@ class CatchupManager:
         delta_idx = self.get_delta_idx(vk = requester_vk, curr_blk_num = self.curr_num,
                                        sender_blk_hash = request.block_hash)
         self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
+        self.log.important2("RCV BIR")
+        self.dump_debug_info()
 
     def recv_new_blk_notif(self, update: NewBlockNotification):
         if self.catchup_state is False:
@@ -214,6 +227,8 @@ class CatchupManager:
         self.log.debugv("Sending block index reply to vk {}".format(reply_to_vk))
         self.log.important2("Sending block index reply to vk {}".format(reply_to_vk))  # TODO remove
         self.router.send_msg(reply, header=reply_to_vk.encode())
+        self.log.important2("SEND BIRp")
+        self.dump_debug_info()
 
     def get_delta_idx(self, vk = None, curr_blk_num = None, sender_blk_hash = None):
         """
@@ -227,7 +242,7 @@ class CatchupManager:
         valid_node = VKBook.is_node_type('masternode', vk) or VKBook.is_node_type('delegate', vk)
         if valid_node is True:
             given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_blk_hash)
-            latest_blk_num = curr_blk_num
+            latest_blk_num = int(curr_blk_num)
 
             if given_blk_num == latest_blk_num:
                 self.log.debug('given block is already latest')
@@ -312,6 +327,7 @@ class CatchupManager:
             if block:
                 self.update_received_block(block = block)
 
+        # pending list is empty check if you can exit catch up
         if len(self.block_delta_list) == 0:
             assert self.curr_num == self.target_blk_num, "Err target blk and curr block are not same"
             assert self.curr_hash == self.target_blk.get('blockHash'), "Err target blk and curr block are not same"
