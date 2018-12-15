@@ -13,8 +13,8 @@ from cilantro.messages.transaction.ordering import OrderingContainer
 from multiprocessing import Queue
 
 from cilantro.nodes.masternode.nonce import NonceManager
-
-from cilantro.constants.masternode import WEB_SERVER_PORT, NUM_WORKERS
+from cilantro.constants.ports import WEB_SERVER_PORT
+from cilantro.constants.masternode import NUM_WORKERS
 from cilantro.utils.hasher import Hasher
 
 from multiprocessing import Queue

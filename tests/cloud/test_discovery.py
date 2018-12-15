@@ -63,6 +63,7 @@ class TestCloud(AWSTestCase):
 
     config_file = get_config_file('cilantro-aws-2-0-2.json')
     keep_up = True
+    logging = True
     timeout = 120
 
     def test_aws(self):

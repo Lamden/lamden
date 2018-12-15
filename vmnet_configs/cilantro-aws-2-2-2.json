@@ -1,5 +1,5 @@
 {
-    "environment": {"CONSITUTION_FILE": "2-2-2.json"},
+    "environment": {"CONSTITUTION_FILE": "2-2-2.json"},
     "aws": {
         "security_groups": {
             "simple_https": {
@@ -18,6 +18,16 @@
                     },
                     {
                         "IpProtocol": "tcp",
+                        "FromPort": 80,
+                        "ToPort": 80,
+                        "IpRanges": [
+                            {
+                                "CidrIp": "0.0.0.0/0"
+                            }
+                        ]
+                    },
+                    {
+                        "IpProtocol": "tcp",
                         "FromPort": 22,
                         "ToPort": 22,
                         "IpRanges": [
@@ -28,8 +38,8 @@
                     },
                     {
                         "IpProtocol": "tcp",
-                        "FromPort": 0,
-                        "ToPort": 65535,
+                        "FromPort": 10000,
+                        "ToPort": 10100,
                         "IpRanges": [
                             {
                                 "CidrIp": "0.0.0.0/0"

@@ -34,7 +34,7 @@ class VKBook(metaclass=VKBookMeta):
     @classmethod
     def setup(cls):
         cls.bootnodes = []
-        constitution_file = env('CONSITUTION_FILE', get_config_filename())
+        constitution_file = env('CONSTITUTION_FILE', get_config_filename())
         cls.constitution = get_constitution(constitution_file)
 
         for node_type in cls.node_types_map:
