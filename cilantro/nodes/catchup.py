@@ -1,4 +1,4 @@
-import time
+import time, asyncio
 from collections import defaultdict
 from cilantro.logger import get_logger
 from cilantro.constants.zmq_filters import *
@@ -11,6 +11,10 @@ from cilantro.nodes.masternode.master_store import MasterOps
 from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest
+
+
+IDX_REPLY_TIMEOUT = 10
+TIMEOUT_CHECK_INTERVAL = 1
 
 
 class CatchupManager:
@@ -43,6 +47,10 @@ class CatchupManager:
         self.rcv_block_dict = {}        # DS stores any Out of order received blocks
         self.awaited_blknum = None      # catch up waiting on this blk num
 
+        # loop to schedule timeouts
+        self.loop = asyncio.get_event_loop()
+        self.timeout_fut = None
+
         self.run_catchup()
 
     def run_catchup(self):
@@ -56,6 +64,28 @@ class CatchupManager:
         # starting phase I
         self.timeout_catchup = time.time()
         self.catchup_state = self.send_block_idx_req()
+
+        self._reset_timeout_fut()
+        asyncio.ensure_future()
+
+    def _reset_timeout_fut(self):
+        if self.timeout_fut:
+            self.timeout_fut.cancel()
+            self.timeout_fut = None
+
+    async def _check_timeout(self):
+        elapsed = 0
+        while elapsed < IDX_REPLY_TIMEOUT:
+            elapsed += TIMEOUT_CHECK_INTERVAL
+            await asyncio.sleep(TIMEOUT_CHECK_INTERVAL)
+
+            if self._check_idx_reply_quorum() is True:
+                self.log.debugv("Quorum reached!")
+                return
+
+        # If we have not returned from the loop and the this task has not been canceled, initiate a retry
+        self.log.warning("Timeout of {} reached waiting for block idx replies! Resending BlockIndexRequest.")
+        self.run_catchup(ignore=True)
 
     # Phase I start
     def send_block_idx_req(self):
