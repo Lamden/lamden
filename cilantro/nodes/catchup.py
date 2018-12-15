@@ -43,7 +43,7 @@ class CatchupManager:
         self.rcv_block_dict = {}        # DS stores any Out of order received blocks
         self.awaited_blknum = None      # catch up waiting on this blk num
 
-        self.run_catchup()
+        #self.run_catchup()
 
     def run_catchup(self, ignore=False):
         # check if catch up is already running
