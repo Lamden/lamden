@@ -3,6 +3,7 @@ import argparse
 import json
 import time
 from decimal import *
+import random
 
 # Pip installed python imports
 
@@ -33,6 +34,9 @@ if __name__ == "__main__":
         static_config = json.load(df)
     mn_urls = [ 'http://{}:8080'.format(x) for x in static_config['mn-ips'] ]
 
+    # Randomize order of masternodes before setting god to ensure we get an even distribution of calls to all static masternodes
+    random.shuffle(mn_urls)
+
     # Set static config in god module
     god.God.mn_urls = mn_urls
     god.God.multi_master = True
@@ -45,7 +49,7 @@ if __name__ == "__main__":
     # Leverage underlying round robin functionality in God module
     for _ in range(args.retrycount):
         response = god.God.send_tx(currency_tx)
-        if response.status_code == 200:
+        if response and response.status_code == 200:
             break
         print("Waiting {} seconds before continuing".format(waittime))
         time.sleep(waittime)
