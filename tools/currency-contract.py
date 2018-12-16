@@ -45,7 +45,7 @@ if __name__ == "__main__":
     # Leverage underlying round robin functionality in God module
     for _ in range(args.retrycount):
         response = god.God.send_tx(currency_tx)
-        if response.status_code == 200:
+        if response and response.status_code == 200:
             break
         print("Waiting {} seconds before continuing".format(waittime))
         time.sleep(waittime)
