@@ -16,6 +16,8 @@ def setup_argparse(parser):
     # Add non-positional arguments with requirement forced
     parser.add_argument('-a', '--amount', help='amount of tau to send', type=Decimal, required=True)
     parser.add_argument('-s', '--sk', help='the secret key to send the transaction from', type=str, required=True)
+
+    # Add non-positional arguments that are optional
     parser.add_argument('-n', '--nonce', help='the nonce for the transaction, optional if nonces are disabled for the network', type=str, default=None)
     parser.add_argument('--retrycount', help='Set the number of transaction retries', type=int, default=10)
     parser.add_argument('--backoff', help='Set the backoff factor on retries', type=float, default=1.2)
