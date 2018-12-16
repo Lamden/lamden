@@ -13,6 +13,7 @@ from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGA
 from cilantro.constants.system_config import *
 from cilantro.constants.masternode import *
 
+from cilantro.utils.utils import int_to_bytes, bytes_to_int
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.merkle_signature import MerkleSignature

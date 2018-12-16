@@ -1,9 +1,11 @@
 # TODO this file could perhaps be named better
+from cilantro.messages.base.base import MessageBase
 from cilantro.constants.system_config import TRANSACTIONS_PER_SUB_BLOCK
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
 from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
 from cilantro.constants.system_config import BATCH_SLEEP_INTERVAL, NUM_BLOCKS
 from cilantro.messages.signals.master import SendNextBag
+from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.messages.transaction.ordering import OrderingContainer
@@ -58,24 +60,25 @@ class TransactionBatcher(Worker):
         self.log.debugv("Batcher received an IPC message {}".format(msg))
 
         if isinstance(msg, SendNextBag):
-            self.log.spam("Got SendNextBag notif from block aggregator!!!")
+            self.log.important("Got SendNextBag notif from block aggregator!!!")
             self.num_bags_sent = self.num_bags_sent - 1
 
         else:
             raise Exception("Batcher got message type {} from IPC dealer socket that it does not know how to handle"
                             .format(type(msg)))
 
-    def compose_transactions(self):
+    async def compose_transactions(self):
+        # time.sleep(2)
+        await asyncio.sleep(10)
         self.log.important("Starting TransactionBatcher")
         self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
-
-        time.sleep(BATCH_SLEEP_INTERVAL)
         while True:
             num_txns = self.queue.qsize() 
             if ((num_txns < TRANSACTIONS_PER_SUB_BLOCK) and (self.num_bags_sent > 1)) or \
                  (self.num_bags_sent >= 3 * NUM_BLOCKS):
-                # await asyncio.sleep(BATCH_SLEEP_INTERVAL)
-                time.sleep(BATCH_SLEEP_INTERVAL)
+                await asyncio.sleep(BATCH_SLEEP_INTERVAL)
+                self.log.important("Skipping TransactionBatcher {} / {}".format(self.num_bags_sent, NUM_BLOCKS))
+                # time.sleep(BATCH_SLEEP_INTERVAL)
                 continue
 
             tx_list = []
