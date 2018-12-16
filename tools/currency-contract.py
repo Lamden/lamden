@@ -3,6 +3,7 @@ import argparse
 import json
 import time
 from decimal import *
+import random
 
 # Pip installed python imports
 
@@ -32,6 +33,9 @@ if __name__ == "__main__":
     with open('static-config.json') as df:
         static_config = json.load(df)
     mn_urls = [ 'http://{}:8080'.format(x) for x in static_config['mn-ips'] ]
+
+    # Randomize order of masternodes before setting god to ensure we get an even distribution of calls to all static masternodes
+    random.shuffle(mn_urls)
 
     # Set static config in god module
     god.God.mn_urls = mn_urls
