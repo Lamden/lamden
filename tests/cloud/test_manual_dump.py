@@ -1,5 +1,5 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-2.json')
+set_testnet_config('5-5-5.json')
 from cilantro.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
 import unittest, time, random, vmnet, cilantro, os
@@ -107,7 +107,7 @@ class TestManualDump(AWSTestCase):
 
     NUM_BLOCKS = 2
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dum
-    config_file = get_config_file('cilantro-aws-2-2-2.json')
+    config_file = get_config_file('cilantro-aws-5-5-5.json')
     keep_up = True
     timeout = 999999999999
     logging = True
@@ -137,7 +137,7 @@ class TestManualDump(AWSTestCase):
             time.sleep(120)
             vol = self.VOLUME
             log.important3("Dumpatron dumping {} transactions!".format(vol))
-            self.execute_python('mgmt', wrap_func(dump_it, volume=vol), no_kill=True)
+            self.execute_python('mgmt', wrap_func(dump_it, volume=vol), no_kill=False)
 
         log.important3("Dumpatron initiating system teardown")
         God.teardown_all("http://{}".format(self.ports[self.groups['masternode'][0]]['8080']))
