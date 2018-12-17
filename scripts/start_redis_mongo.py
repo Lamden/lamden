@@ -7,7 +7,6 @@ def start_mongo():
     if env('VMNET_CLOUD'):
         host_name = ''
         if env('ANNIHILATE'):
-            print('hello!!!!!!XXXX')
             shutil.rmtree('./data', ignore_errors=True)
     else:
         host_name = env('HOST_NAME', '')
@@ -30,6 +29,8 @@ def start_mongo():
     create_user()
 
 if __name__ == '__main__':
+    print('hello!!!!!!XXXX')
+    print(env('ANNIHILATE'))
     from start_redis import start_redis
     from dotenv import load_dotenv
     load_dotenv()
