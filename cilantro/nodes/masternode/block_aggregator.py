@@ -51,9 +51,9 @@ class BlockAggregator(Worker):
         self.timeout_fut = None
 
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
-        assert StateDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
-            "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-            .format(StateDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
+        assert StateDriver.get_latest_block_hash() == StorageDriver.get_latest_block_hash(), \
+            "StateDriver latest block hash {} does not match StorageDriver latest hash {}" \
+            .format(StateDriver.get_latest_block_hash(), StorageDriver.get_latest_block_hash())
 
         self.run()
 
@@ -116,7 +116,7 @@ class BlockAggregator(Worker):
         self.log.info("Triggering catchup")
         # self.catchup_manager.send_block_idx_req()
 
-     
+
     def _send_msg_over_ipc(self, message: MessageBase):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
@@ -260,6 +260,3 @@ class BlockAggregator(Worker):
                           "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
         self.send_skip_block_notif()
         self.curr_block = BlockContender()
-
-
-
