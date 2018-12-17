@@ -1,4 +1,4 @@
-import os
+import os, shutil
 from os import getenv as env
 from create_user import create_user
 
