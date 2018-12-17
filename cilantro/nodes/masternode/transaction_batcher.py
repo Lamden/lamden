@@ -3,8 +3,8 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.constants.system_config import TRANSACTIONS_PER_SUB_BLOCK
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
 from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
-from cilantro.constants.system_config import BATCH_SLEEP_INTERVAL, NUM_BLOCKS
-from cilantro.messages.signals.master import SendNextBag
+from cilantro.constants.system_config import BATCH_SLEEP_INTERVAL, NO_ACTIVITY_SLEEP, NUM_BLOCKS
+from cilantro.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro.protocol.multiprocessing.worker import Worker
@@ -34,6 +34,8 @@ class TransactionBatcher(Worker):
         # TODO create PAIR socket to orchestrate w/ main process?
 
         self.num_bags_sent = 0
+        self.num_empty_blocks_recvd = 0
+
         self.tasks.append(self.compose_transactions())
 
         # Start main event loop
@@ -59,9 +61,15 @@ class TransactionBatcher(Worker):
         msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
         self.log.debugv("Batcher received an IPC message {}".format(msg))
 
-        if isinstance(msg, SendNextBag):
-            self.log.important("Got SendNextBag notif from block aggregator!!!")
+        if isinstance(msg, EmptyBlockMade):
+            self.log.spam("Got EmptyBlockMade notif from block aggregator!!!")
             self.num_bags_sent = self.num_bags_sent - 1
+            self.num_empty_blocks_recvd = self.num_empty_blocks_recvd + 1
+
+        elif isinstance(msg, NonEmptyBlockMade):
+            self.log.spam("Got NonEmptyBlockMade notif from block aggregator!!!")
+            self.num_bags_sent = self.num_bags_sent - 1
+            self.num_empty_blocks_recvd = 0     # reset
 
         else:
             raise Exception("Batcher got message type {} from IPC dealer socket that it does not know how to handle"
@@ -72,15 +80,21 @@ class TransactionBatcher(Worker):
         await asyncio.sleep(10)
         self.log.important("Starting TransactionBatcher")
         self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
+        total_sleep = 0
+        max_num_bags = 3 * NUM_BLOCKS    # ideally, num_caches * num_blocks
+
         while True:
             num_txns = self.queue.qsize() 
-            if ((num_txns < TRANSACTIONS_PER_SUB_BLOCK) and (self.num_bags_sent > 1)) or \
-                 (self.num_bags_sent >= 3 * NUM_BLOCKS):
+            if (num_txns < TRANSACTIONS_PER_SUB_BLOCK) or (self.num_bags_sent >= 3 * NUM_BLOCKS):
                 await asyncio.sleep(BATCH_SLEEP_INTERVAL)
-                self.log.important("Skipping TransactionBatcher {} / {}".format(self.num_bags_sent, NUM_BLOCKS))
                 # time.sleep(BATCH_SLEEP_INTERVAL)
-                continue
+                total_sleep = total_sleep + BATCH_SLEEP_INTERVAL
+                if ((self.num_bags_sent > 0) or (self.num_empty_blocks_recvd >= NUM_BLOCKS)) and \
+                   (total_sleep < NO_ACTIVITY_SLEEP):
+                    self.log.spam("Skipping TransactionBatcher {} / {}".format(self.num_bags_sent, NUM_BLOCKS))
+                    continue
 
+            total_sleep = 0
             tx_list = []
             for _ in range(min(TRANSACTIONS_PER_SUB_BLOCK, num_txns)):
                 tx = OrderingContainer.from_bytes(self.queue.get())
