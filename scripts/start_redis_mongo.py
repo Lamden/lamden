@@ -3,13 +3,9 @@ from os import getenv as env
 from create_user import create_user
 
 def start_mongo():
-    print(env('VMNET_CLOUD'))
-    print(env('ANNIHILATE'))
-    print(env('HOST_NAME'), 'xoxoxoxoxoxoxoxo')
     if env('VMNET_CLOUD'):
         host_name = ''
         if env('ANNIHILATE'):
-            print(env('HOST_NAME'), 'xoxoxoxoxoxoxoxo')
             shutil.rmtree('./data')
     else:
         host_name = env('HOST_NAME', '')
@@ -22,9 +18,8 @@ def start_mongo():
     except:
         pass
 
-
-
     print('Starting mongo server...')
+    os.system('sudo pkill mongod')
     os.system('sudo mongod --dbpath ./data/{} --logpath ./data/{}/logs/mongo.log {} &'.format(
         host_name, host_name, '' if env('CIRCLECI') == 'true' else '--bind_ip_all'
     ))
