@@ -4,6 +4,8 @@ from create_user import create_user
 
 def start_mongo():
 
+    print('xxoxoxoxoxoxoxx')
+    print(env('ANNIHILATE'))
     if env('VMNET_CLOUD'):
         host_name = ''
         if env('ANNIHILATE'):
