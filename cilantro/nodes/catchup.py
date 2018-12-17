@@ -130,6 +130,8 @@ class CatchupManager:
 
         if not reply.indices:
             self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
+            self.log.important("responded mn - {}".format(self.node_idx_reply_set))
+            self.check_catchup_done()
             return
 
         if not self.block_delta_list:                              # for boot phase
@@ -156,9 +158,9 @@ class CatchupManager:
                 self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
                 self.target_blk_num = self.target_blk.get('blockNum')
 
+        self.process_recv_idx()
         self.log.important2("RCV BIRp")
         self.dump_debug_info()
-        self.process_recv_idx()
 
     def _send_block_data_req(self, mn_vk, req_blk_num):
         self.log.info("Unicast BlockDateRequests to masternode owner with current block num {} key {}"
@@ -204,11 +206,15 @@ class CatchupManager:
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
         self.log.debugv("Got block index request from sender {} requesting block hash {}".format(requester_vk, request.block_hash))
 
-        delta_idx = self.get_delta_idx(vk = requester_vk, curr_blk_num = self.curr_num,
-                                       sender_blk_hash = request.block_hash)
-        self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
+        # delta_idx = self.get_delta_idx(vk = requester_vk, curr_blk_num = self.curr_num,
+        #                                sender_blk_hash = request.block_hash)
+
+        delta_idx = self.get_idx_list(vk = requester_vk, latest_blk_num = self.curr_num,
+                                      sender_bhash = request.block_hash)
+
         self.log.important2("RCV BIR")
         self.dump_debug_info()
+        self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
 
     def recv_new_blk_notif(self, update: NewBlockNotification):
         if self.catchup_state is False:
@@ -230,19 +236,14 @@ class CatchupManager:
         self.log.important2("SEND BIRp")
         self.dump_debug_info()
 
-    def get_delta_idx(self, vk = None, curr_blk_num = None, sender_blk_hash = None):
-        """
-        API gets latest hash requester has and responds with delta block index
-
-        :param vk: mn or dl verifying key
-        :param curr_blk_hash:
-        :return:
-        """
+    def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
         valid_node = VKBook.is_node_type('masternode', vk) or VKBook.is_node_type('delegate', vk)
         if valid_node is True:
-            given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_blk_hash)
-            latest_blk_num = int(curr_blk_num)
+            given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_bhash)
+
+            self.log.debug('given block is already latest hash - {} givenblk - {} curr-{}'
+                           .format(sender_bhash, given_blk_num, latest_blk_num))
 
             if given_blk_num == latest_blk_num:
                 self.log.debug('given block is already latest')
@@ -252,6 +253,7 @@ class CatchupManager:
                 return idx_delta
 
         assert valid_node is True, "invalid vk given key is not of master or delegate dumping vk {}".format(vk)
+        pass
 
     def process_recv_idx(self):
         assert self.last_req_blk_num <= self.target_blk_num, "our last request should never overshoot target blk"

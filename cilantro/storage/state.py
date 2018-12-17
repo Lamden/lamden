@@ -68,8 +68,8 @@ class StateDriver:
     @classmethod
     def get_latest_block_num(cls) -> int:
         """ Returns the latest block num from the Redis database """
-        b_hash = SafeRedis.get(cls.BLOCK_NUM_KEY)
-        return int(b_hash.decode()) if b_hash else 0
+        b_num = SafeRedis.get(cls.BLOCK_NUM_KEY)
+        return int(b_num.decode()) if b_num else 0
 
     @classmethod
     def set_latest_block_num(cls, block_num: int):
