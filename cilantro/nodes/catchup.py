@@ -41,7 +41,7 @@ class CatchupManager:
         self.blk_req_ptr_idx = None     # idx to track ptr in block_delta_list
         self.last_req_blk_num = None
 
-        self.curr_hash, self.curr_num = None, None      # latest blk on redis
+        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
         # received full block could be out of order
         self.rcv_block_dict = {}        # DS stores any Out of order received blocks
@@ -359,7 +359,7 @@ class CatchupManager:
             self.blk_req_ptr_idx = None             # idx to track ptr in block_delta_list
             self.last_req_blk_num = None
 
-            self.curr_hash, self.curr_num = None, None  # latest blk on redis
+            # self.curr_hash, self.curr_num = None, None  # latest blk on redis
 
             # received full block could be out of order
             self.rcv_block_dict = {}
