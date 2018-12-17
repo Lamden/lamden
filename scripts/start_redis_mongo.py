@@ -3,7 +3,7 @@ from os import getenv as env
 from create_user import create_user
 
 def start_mongo():
-
+    print(env('VMNET_CLOUD'))
     print(env('ANNIHILATE'))
     if env('VMNET_CLOUD'):
         host_name = ''
