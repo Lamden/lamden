@@ -13,6 +13,7 @@ def build_router(identity: bytes):
     sock.setsockopt(zmq.IDENTITY, identity)
     return sock
 
+
 def start_sender(identity, url, recv_id):
     log = get_logger("Sender[{}]".format(identity.decode()))
     sock = build_router(identity=identity)

@@ -50,7 +50,7 @@ def run_mn(slot_num):
     # NOTE setting the log level below 11 does not work for some reason --davis
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
-    overwrite_logger_level(11)
+    # overwrite_logger_level(11)
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[slot_num]['sk']
@@ -84,8 +84,7 @@ def run_delegate(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(11)
-    # sen_overwrite_log(4)  # disable spam only (lvl 5 is debugv)
-    sen_overwrite_log(11)  # disable spam only (lvl 5 is debugv)
+    sen_overwrite_log(4)  # disable spam only (lvl 5 is debugv)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -134,25 +133,22 @@ class TestManualDump(BaseNetworkTestCase):
             user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
 
             if user_input.lower() == 's':
-                log.critical("stoping delegate 5")
+                log.important("stoping delegate 5")
                 os.system(cmd)
                 time.sleep(5)
                 os.system(cmd1)
 
             if user_input.lower() == 'c':
-                log.critical("Testing catchup start delegate 8")
-                self.execute_python('delegate_8', wrap_func(run_delegate, 3), async = True, profiling = self.PROFILE_TYPE)
+                log.important("Testing catchup start delegate 8")
+                self.execute_python('delegate_8', wrap_func(run_delegate, 3), async=True, profiling=self.PROFILE_TYPE)
 
             if user_input.lower() == 'x':
-                log.debug("Termination input detected. Breaking")
+                log.important("Termination input detected. Breaking")
                 break
 
             vol = int(user_input) if user_input.isdigit() else self.VOLUME
             log.important3("Dumpatron dumping {} transactions!".format(vol))
             self.execute_python('mgmt', wrap_func(dump_it, volume=vol), async=True, profiling=self.PROFILE_TYPE)
-
-        log.important3("Dumpatron initiating system teardown")
-        God.teardown_all("http://{}".format(self.ports[self.groups['masternode'][0]]['8080']))
 
 
 if __name__ == '__main__':
