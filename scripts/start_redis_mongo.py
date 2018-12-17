@@ -27,6 +27,7 @@ def start_mongo():
     create_user()
 
 if __name__ == '__main__':
+    os.system("find . -name '*-ipc-sock*' -delete")
     from start_redis import start_redis
     from dotenv import load_dotenv
     load_dotenv()
