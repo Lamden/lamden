@@ -1,5 +1,5 @@
 from cilantro.nodes.base import NodeBase, NodeTypes
-from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER, WITNESS_DELEGATE_FILTER
+from cilantro.constants.zmq_filters import *
 from cilantro.constants.ports import MN_TX_PUB_PORT, SBB_PORT_START
 from cilantro.constants.testnet import *
 
@@ -46,9 +46,8 @@ class Witness(NodeBase):
         mn_idx = VKBook.get_masternodes().index(mn_vk)
         port = SBB_PORT_START + mn_idx
 
-        self.log.notice("Witness /w vk {} BINDING sub socket to port {}".format(self.verifying_key, port))
-
         for delegate_vk in VKBook.get_delegates():
+            self.log.info("Witness connecting PUB socket to vk {} on port {}".format(delegate_vk, port))
             self.pub.connect(vk=delegate_vk, port=port)
 
     def _handle_sub_msg(self, frames):
@@ -63,4 +62,4 @@ class Witness(NodeBase):
 
         self.log.info("Witness sending out transaction batch with input hash {} and {} transactions"
                       .format(Hasher.hash(env), len(env.message.transactions)))
-        self.pub.send_multipart([b'', frames[-1]])
+        self.pub.send_multipart([DEFAULT_FILTER.encode(), frames[-1]])
