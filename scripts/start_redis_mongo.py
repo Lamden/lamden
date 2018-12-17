@@ -7,8 +7,8 @@ def start_mongo():
     if env('VMNET_CLOUD'):
         host_name = ''
         if env('ANNIHILATE'):
-            try: shutil.rmtree('./data')
-            except: pass
+            print('hello!!!!!!XXXX')
+            shutil.rmtree('./data', ignore_errors=True)
     else:
         host_name = env('HOST_NAME', '')
 
