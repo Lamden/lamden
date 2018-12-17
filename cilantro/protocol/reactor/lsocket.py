@@ -239,8 +239,13 @@ class LSocket:
             await asyncio.sleep(RDY_WAIT_INTERVAL)
             duration_waited += RDY_WAIT_INTERVAL
 
-        # 'fail' all pending lookups, force ready to True, and flush any pending commands
-        # TODO add pending lookups to socket manager failed lookups
+        # Add all pending lookups to failed lookups
+        for cmd_id, tup in self.pending_lookups.items():
+            cmd_name, args, kwargs = tup
+            assert 'vk' in kwargs, "Cmd tuple {} does not have 'vk' in kwargs".format(tup)
+            self.manager.pending_lookups.pop(cmd_id, None)
+            self.manager.failed_lookups[kwargs['vk']].append((self, cmd_name, args, kwargs))
+
         self.pending_lookups.clear()
         self.ready = True
         self._flush_pending_commands()
