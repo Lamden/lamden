@@ -88,7 +88,7 @@ class StorageDriver:
         # check my index if my vk is listed in idx
         idx_entry = MasterOps.get_blk_idx(n_blks=give_blk)
 
-        for key in idx_entry.get('mn_blk_owners'):
+        for key in idx_entry.get('blockOwners'):
             if key == mn_vk:
                 blk_entry = MasterOps.get_full_blk(blk_num = idx_entry.get('blockNum'))
                 return blk_entry
