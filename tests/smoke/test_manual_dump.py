@@ -66,7 +66,7 @@ def run_witness(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
-    # overwrite_logger_level(11)
+    overwrite_logger_level(11)
 
     w_info = TESTNET_WITNESSES[slot_num]
     w_info['ip'] = os.getenv('HOST_IP')
@@ -83,7 +83,7 @@ def run_delegate(slot_num):
     import logging
 
     # overwrite_logger_level(logging.WARNING)
-    # overwrite_logger_level
+    overwrite_logger_level(11)
     sen_overwrite_log(4)  # disable spam only (lvl 5 is debugv)
 
     d_info = TESTNET_DELEGATES[slot_num]
