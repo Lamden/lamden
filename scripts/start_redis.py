@@ -12,7 +12,7 @@ def start_redis():
 
     print("Starting Redis server...")
 
-    os.system('sudo pkill redis-server')
+    os.system('sudo pkill -9 redis-server')
 
     if env('CIRCLECI'):
         os.system('redis-server')

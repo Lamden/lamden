@@ -19,7 +19,7 @@ def start_mongo():
         pass
 
     print('Starting mongo server...')
-    os.system('sudo pkill mongod')
+    os.system('sudo pkill -9 mongod')
     os.system('sudo mongod --dbpath ./data/{} --logpath ./data/{}/logs/mongo.log {} &'.format(
         host_name, host_name, '' if env('CIRCLECI') == 'true' else '--bind_ip_all'
     ))
