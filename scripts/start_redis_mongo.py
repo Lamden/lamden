@@ -6,6 +6,9 @@ def start_mongo():
 
     if env('VMNET_CLOUD'):
         host_name = ''
+        if env('ANNIHILATE'):
+            try: shutil.rmtree('./data')
+            except: pass
     else:
         host_name = env('HOST_NAME', '')
 
@@ -16,6 +19,8 @@ def start_mongo():
             print('Dir created')
     except:
         pass
+
+
 
     print('Starting mongo server...')
     os.system('sudo mongod --dbpath ./data/{} --logpath ./data/{}/logs/mongo.log {} &'.format(

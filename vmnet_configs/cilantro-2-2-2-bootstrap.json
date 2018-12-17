@@ -1,6 +1,7 @@
 {
     "environment": {
-        "CONSTITUTION_FILE": "2-2-2.json"
+        "CONSTITUTION_FILE": "2-2-2.json",
+        "ANNIHILATE": true
     },
     "services": [
         {

@@ -1,8 +1,9 @@
 {
-    "environment": {"CONSTITUTION_FILE": "2-2-2.json"},
+    "environment": {
+        "CONSTITUTION_FILE": "2-2-2.json",
+        "ANNIHILATE": true,
+    },
     "aws": {
-        "profile_name": "production",
-        "region_name": "us-east-2",
         "use_elastic_ips": true,
         "security_groups": {
             "simple_https": {

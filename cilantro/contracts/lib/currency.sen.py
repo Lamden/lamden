@@ -81,7 +81,7 @@ def allowance(approver, spender):
 
 @export
 def mint(to, amount):
-    print("minting {} to wallet {}".format(amount, to))
+    # print("minting {} to wallet {}".format(amount, to))
     assert rt['sender'] == rt['author'], 'Only the original contract author can mint!'
 
     balances[to] += amount

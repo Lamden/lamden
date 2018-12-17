@@ -97,7 +97,6 @@ class TestPump(AWSTestCase):
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dum
     config_file = get_config_file('cilantro-aws-2-2-2.json')
     keep_up = True
-    timeout = 999999999999
     logging = True
 
     # Avg number of transactions per second we will dump. Set to dump 1 block per BATCH_SLEEP_INTERVAL
