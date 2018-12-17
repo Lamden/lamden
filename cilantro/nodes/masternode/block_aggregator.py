@@ -114,9 +114,8 @@ class BlockAggregator(Worker):
         self.log.debugv("Sleeping before triggering catchup...")
         await asyncio.sleep(4)
         self.log.info("Triggering catchup")
-        # self.catchup_manager.send_block_idx_req()
+        self.catchup_manager.run_catchup()
 
-     
     def _send_msg_over_ipc(self, message: MessageBase):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
@@ -127,7 +126,6 @@ class BlockAggregator(Worker):
         id_frame = str(0).encode()
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
-
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])

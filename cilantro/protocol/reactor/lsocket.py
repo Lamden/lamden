@@ -69,24 +69,23 @@ class LSocket:
     def handle_overlay_event(self, event: dict):
         assert event['event_id'] in self.pending_lookups, "Socket got overlay event {} not in pending lookups {}"\
                                                            .format(event, self.pending_lookups)
-        self.log.debugv("Socket handling overlay event {}".format(event))
+        assert event['event'] in ('got_ip', 'not_found'), "LSocket does not know how to handle event {}".format(event)
+        self.log.spam("Socket handling overlay event {}".format(event))
 
         cmd_name, args, kwargs = self.pending_lookups.pop(event['event_id'])
-        if 'ip' in event:
+
+        if event['event'] == 'got_ip':
             kwargs['ip'] = event['ip']
-        getattr(self, cmd_name)(*args, **kwargs)
+            getattr(self, cmd_name)(*args, **kwargs)
+
+        elif event['event'] == 'not_found':
+            self.log.warning("Socket got not_found event for vk {}. Adding it to failed lookups.".format(event['vk']))
+            self.manager.failed_lookups[event['vk']].append((self, cmd_name, args, kwargs))
+            self._check_if_rdy()
 
     def add_handler(self, handler_func, handler_key=None, start_listening=False) -> Union[asyncio.Future, asyncio.coroutine]:
         async def _listen(socket, func, key):
             self.log.debug("Starting listener handler key {}".format(key))
-
-            # TODO
-            # I dont think we need this. We cant recv ASAP, and conn/bind as needed. Only thing we need to defer are
-            # sends --davis
-            # self.log.debugv("Listener waiting for socket to finish all lookups")
-            # self._start_wait_rdy()
-            # await self.check_rdy_fut
-            # self.log.debugv("Listener done waiting for socket to finish lookups")
 
             while True:
                 try:
@@ -96,7 +95,7 @@ class LSocket:
                     self.log.warning("Socket got asyncio.CancelledError. Breaking from lister loop.")
                     break
 
-                self.log.spam("Socket recv multipart msg:\n{}".format(msg))
+                self.log.spam("Socket recv multipart msg: {}".format(msg))
 
                 if key is not None:
                     func(msg, key)
@@ -105,7 +104,7 @@ class LSocket:
 
         assert not self.handler_added, "Handler already added for socket named {}".format(self.name)
 
-        self.log.debug("Socket adding handler func named {} with handler key {}".format(handler_func, handler_key))
+        self.log.spam("Socket adding handler func named {} with handler key {}".format(handler_func, handler_key))
         self.handler_added = True
         coro = _listen(self.socket, handler_func, handler_key)
 
@@ -164,12 +163,7 @@ class LSocket:
                 Auth.configure_auth(self.manager.auth, self.domain)
             self.socket.bind(url)
 
-        if len(self.pending_lookups) == 0:
-            self.log.debugv("Pending lookups empty. Flushing commands")
-            self.ready = True
-            self._flush_pending_commands()
-        else:
-            self.log.debugv("Not flushing commands yet, pending lookups not empty: {}".format(self.pending_lookups))
+        self._check_if_rdy()
 
     def _flush_pending_commands(self):
         assert len(self.pending_lookups) == 0, 'All lookups must be resolved before we can flush pending commands'
@@ -185,6 +179,16 @@ class LSocket:
             self.log.spam("Socket defered func named {} with args {} and kwargs {}".format(cmd_name, args, kwargs))
             self.pending_commands.append((cmd_name, args, kwargs))
         return _capture_args
+
+    def _check_if_rdy(self):
+        if len(self.pending_lookups) == 0:
+            self.log.debugv("Pending lookups empty. Flushing commands")
+            self.ready = True
+            self._flush_pending_commands()
+            return True
+        else:
+            self.log.spam("Not flushing commands yet, pending lookups not empty: {}".format(self.pending_lookups))
+            return False
 
     # TODO move this to its own module? Kind of annoying to have to pass in signing_key and verifying_key tho....
     def _package_msg(self, msg: MessageBase) -> Envelope:
@@ -223,7 +227,7 @@ class LSocket:
             if duration_waited > MAX_RDY_WAIT:
                 if len(self.pending_lookups) > 0:
                     # TODO trigger callback on Worker class for URL could not be reached or something
-                    msg = "Socket failed to bind/connect to url(s) in {} seconds! Abandoning pending lookups: {}" \
+                    msg = "Socket failed to bind/connect to url(s) in {} seconds! Failing pending lookups: {}" \
                           .format(MAX_RDY_WAIT, self.pending_lookups)
                     self.log.error(msg)
                 else:
@@ -235,6 +239,8 @@ class LSocket:
             await asyncio.sleep(RDY_WAIT_INTERVAL)
             duration_waited += RDY_WAIT_INTERVAL
 
+        # 'fail' all pending lookups, force ready to True, and flush any pending commands
+        # TODO add pending lookups to socket manager failed lookups
         self.pending_lookups.clear()
         self.ready = True
         self._flush_pending_commands()

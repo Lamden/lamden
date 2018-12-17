@@ -27,7 +27,16 @@ class SocketManager:
         self.secure_context, self.auth = Auth.secure_context(async=True)
 
         self.sockets = []
-        self.pending_lookups = {}   # A dict of 'event_id' to socket instance
+
+        # pending_lookups is a dict of 'event_id' to socket instance. We use it to track vk lookups, and the LSockets
+        # instances who started them. This information helps us route overlay events to the appropriate sockets
+        self.pending_lookups = {}
+
+        # failed_lookups is a dict of 'vk' to list of tuples of form (lsocket, func_name, args, kwargs)
+        # We this to reconnect sockets once nodes have come back online
+        self.failed_lookups = defaultdict(list)
+
+        # overlay_callbacks tracks LSockets who have subscribed to certain overlay events with custom handlers
         self.overlay_callbacks = defaultdict(set)
 
         # Instantiating an OverlayClient blocks until the OverlayServer is ready
@@ -50,15 +59,33 @@ class SocketManager:
         # Execute socket manager specific functionality
         if e['event'] == 'authorized':
             Auth.configure_auth(self.auth, e['domain'])
-        elif e['event'] == 'got_ip':
+
+        # Forward 'got_ip' and 'not_found' events to the LSockets who initiated them
+        elif e['event'] in ('got_ip', 'not_found'):
             sock = self.pending_lookups.pop(e['event_id'])
             sock.handle_overlay_event(e)
+
+        # Retry any failed lookups registered by sockets when a node comes online
+        elif e['event'] == 'node_online' and e['vk'] in self.failed_lookups:
+            # TODO change log lvl here
+            self.log.important("sock manager got node_online event for vk {}! Triggering retry for failed lookups {}"
+                               .format(e['vk'], self.failed_lookups[e['vk']]))
+            for cmd_tuple in self.failed_lookups.pop(e['vk']):
+                sock, cmd_name, args, kwargs = cmd_tuple
+                kwargs['ip'] = e['ip']
+                self.log.important2("Retrying failed lookup ")  # TODO change log lvl
+                getattr(sock, cmd_name)(*args, **kwargs)
+
+        elif e['event'] == 'unauthorized_ip':
+            # TODO proper error handling / 'bad actor' logic here
+            self.log.error("SocketManager got unauthorized_ip event {}".format(e))
+
         else:
             self.log.debugv("SocketManager got overlay event {} that it does not know how to handle. Ignoring."
                             .format(e['event']))
 
         # Now, run any custom handlers added by Worker subclasses
         if e['event'] in self.overlay_callbacks:
-            self.log.debugv("Custom handler(s) found for overlay event {}".format(e['event']))
+            self.log.spam("Custom handler(s) found for overlay event {}".format(e['event']))
             for handler in self.overlay_callbacks[e['event']]:
                 handler(e)
