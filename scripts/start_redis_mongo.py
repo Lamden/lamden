@@ -29,8 +29,6 @@ def start_mongo():
     create_user()
 
 if __name__ == '__main__':
-    print('hello!!!!!!XXXX')
-    print(env('ANNIHILATE'))
     from start_redis import start_redis
     from dotenv import load_dotenv
     load_dotenv()
