@@ -16,6 +16,10 @@ class KademliaProtocol(RPCProtocol):
         RPCProtocol.__init__(self, loop, ctx)
         self.router = RoutingTable(self, ksize, sourceNode)
         self.sourceNode = sourceNode
+        self.track_on = False
+
+    def set_track_on(self):
+        self.track_on = True
 
     def getRefreshIDs(self):
         """
@@ -38,7 +42,10 @@ class KademliaProtocol(RPCProtocol):
     def rpc_find_node(self, sender, nodeid, key):
         log.info("finding neighbors of {} in local table for {}".format(key, sender))
         source = Node(nodeid, sender[0], sender[1], sender[2])
+        emit_to_client = self.track_on and self.router.isNewNode(source)
         self.welcomeIfNewNode(source)
+        if emit_to_client:
+            Event.emit({'event': 'node_online', 'vk': source.vk, 'ip': source.ip})
         node = Node(digest(key))
         neighbors = self.router.findNode(node)
         return list(map(tuple, neighbors))
