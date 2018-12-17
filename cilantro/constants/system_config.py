@@ -49,12 +49,8 @@ assert NUM_SB_PER_BLOCK_PER_BUILDER >= 1, "num_sub_blocks_per_block_per_builder 
 # ///////////////////////////////////////////////
 # Transaction Batcher
 # ///////////////////////////////////////////////
-# BATCH_INTERVAL = 8
-# MAX_BATCH_DURATION = 8 / NUM_BLOCKS  # just to get back to 8 for now, but it has to be a function of TRANSACTIONS_PER_SUB_BLOCK
-MAX_BATCH_DURATION = 1
-# BATCH_INTERVAL = NUM_BLOCKS * MAX_BATCH_DURATION
-BATCH_INTERVAL = 10
-MAX_SKIP_TURNS = 5
+NO_ACTIVITY_SLEEP = 32         # every 32 secs, we will send out empty bags if needed to indicate heart beat
+BATCH_SLEEP_INTERVAL = 1
 
 
 # ///////////////////////////////////////////////
@@ -67,3 +63,11 @@ MIN_NEW_BLOCK_MN_QOURUM = math.ceil(NUM_MASTERS * 2 / 3)  # Number of NewBlockNo
 # Seneca Interpreter
 # ///////////////////////////////////////////////
 DECIMAL_PRECISION = 18
+
+
+# ///////////////////////////////////////////////
+# Test Flags
+# ///////////////////////////////////////////////
+SHOULD_MINT_WALLET = True
+NUM_WALLETS_TO_MINT = 1000
+MINT_AMOUNT = 10 ** 7

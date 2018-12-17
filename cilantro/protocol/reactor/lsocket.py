@@ -7,7 +7,7 @@ import zmq.asyncio, asyncio, os
 
 from collections import defaultdict, deque
 from functools import wraps
-from typing import List
+from typing import List, Union
 from os.path import join
 
 
@@ -26,8 +26,9 @@ def vk_lookup(func):
             assert cmd_id not in self.pending_lookups, "Collision! Uuid {} already in pending lookups {}".format(cmd_id, self.pending_lookups)
 
             self.log.socket("Looking up vk {}".format(kwargs['vk']))  # TODO remove
-            self.log.debugv("Looking up vk {}, which returned command id {}".format(kwargs['vk'], cmd_id))
             self.pending_lookups[cmd_id] = (func.__name__, args, kwargs)
+            self.ready = False
+            self._start_wait_rdy()
             self.manager.pending_lookups[cmd_id] = self
 
         # If the 'ip' key is already set in kwargs, no need to do a lookup
@@ -43,6 +44,7 @@ class LSocket:
 
     def __init__(self, socket: zmq.asyncio.Socket, manager, name='LSocket', secure=False, domain='*'):
         self.log = get_logger(name)
+        self.name = name
         self.secure = secure
         self.socket = socket
         self.domain = domain
@@ -61,48 +63,32 @@ class LSocket:
         self.pending_lookups = {}  # A dict of event_id to tuple, where the tuple again represents a command execution
         self.ready = False  # Gets set to True when all pending_lookups have been resolved, and we BIND/CONNECT
 
+        self.handler_added = False
+        self.check_rdy_fut = None
+
     def handle_overlay_event(self, event: dict):
-        # assert event['event_id'] in self.pending_lookups, "Socket got overlay event {} not in pending lookups {}"\
-                                                           # .format(event, self.pending_lookups)
-        # assert event['event'] == 'got_ip', "Socket only knows how to handle got_ip events, but got {}".format(event)
-        # assert 'ip' in event, "got_ip event {} expected to have key 'ip'".format(event)
-        self.log.debug("Socket handling overlay event {}".format(event))
+        assert event['event_id'] in self.pending_lookups, "Socket got overlay event {} not in pending lookups {}"\
+                                                           .format(event, self.pending_lookups)
+        self.log.debugv("Socket handling overlay event {}".format(event))
 
         cmd_name, args, kwargs = self.pending_lookups.pop(event['event_id'])
         if 'ip' in event:
             kwargs['ip'] = event['ip']
         getattr(self, cmd_name)(*args, **kwargs)
 
-    def flush_lookup_commands(self):
-        self.log.debug("Flushing lookup commands:\n{}".format(self.pending_lookups))
-
-        for cmd_name, args, kwargs in self.pending_commands:
-            self.log.spam("Executing pending command {} with args {} and kwargs {}".format(cmd_name, args, kwargs))
-            getattr(self, cmd_name)(*args, **kwargs)
-
-    def add_handler(self, handler_func, handler_key=None, msg_types: List[MessageBase] = None,
-                    start_listening=False) -> asyncio.Future or asyncio.coroutine:
+    def add_handler(self, handler_func, handler_key=None, start_listening=False) -> Union[asyncio.Future, asyncio.coroutine]:
         async def _listen(socket, func, key):
-            self.log.socket("Starting listener on socket {} with handler key {}".format(socket, key))
-            # self.log.socket("Starting listener {} on socket {} with handler key {}".format(func, socket, key))
-            duration_waited = 0
+            self.log.debug("Starting listener handler key {}".format(key))
+
+            # TODO
+            # I dont think we need this. We cant recv ASAP, and conn/bind as needed. Only thing we need to defer are
+            # sends --davis
+            # self.log.debugv("Listener waiting for socket to finish all lookups")
+            # self._start_wait_rdy()
+            # await self.check_rdy_fut
+            # self.log.debugv("Listener done waiting for socket to finish lookups")
 
             while True:
-                if duration_waited > MAX_RDY_WAIT and not self.ready:
-                    msg = "Socket failed to bind/connect to url(s) in {} seconds! Pending lookups={}"\
-                          .format(MAX_RDY_WAIT, self.pending_lookups)
-                    self.log.critical(msg)
-                    self.ready = True
-                    # raise Exception(msg)
-
-                # TODO not sure if we need this chunk. tests show we can start recv on a socket before .connect/.bind
-                if not self.ready:
-                    self.log.spam("Socket not ready yet...waiting {} seconds".format(RDY_WAIT_INTERVAL))  # TODO remove this? it be hella noisy..
-                    await asyncio.sleep(RDY_WAIT_INTERVAL)
-                    if len(self.pending_lookups) > 0:
-                        duration_waited += RDY_WAIT_INTERVAL
-                    continue
-
                 try:
                     self.log.spam("Socket waiting for multipart msg...")
                     msg = await socket.recv_multipart()
@@ -117,7 +103,10 @@ class LSocket:
                 else:
                     func(msg)
 
+        assert not self.handler_added, "Handler already added for socket named {}".format(self.name)
+
         self.log.debug("Socket adding handler func named {} with handler key {}".format(handler_func, handler_key))
+        self.handler_added = True
         coro = _listen(self.socket, handler_func, handler_key)
 
         if start_listening:
@@ -149,19 +138,11 @@ class LSocket:
 
     @vk_lookup
     def connect(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
-        if ip:
             self._connect_or_bind(should_connect=True, port=port, protocol=protocol, ip=ip, vk=vk)
-            return True
-        assert False, "sucks in connect"
-        return False
 
     @vk_lookup
     def bind(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
-        if ip:
-            self._connect_or_bind(should_connect=False, port=port, protocol=protocol, ip=ip, vk=vk)
-            return True
-        assert False, "sucks in bind"
-        return False
+        self._connect_or_bind(should_connect=False, port=port, protocol=protocol, ip=ip, vk=vk)
 
     def _connect_or_bind(self, should_connect: bool, port: int, protocol: str='tcp', ip: str='', vk: str=''):
         assert ip, "Expected ip arg to be present!"
@@ -193,7 +174,7 @@ class LSocket:
     def _flush_pending_commands(self):
         assert len(self.pending_lookups) == 0, 'All lookups must be resolved before we can flush pending commands'
         assert self.ready, "Socket must be ready to flush pending commands!"
-        self.log.debugv("Composer flushing {} commands from queue".format(len(self.pending_commands)))
+        self.log.debugv("Flushing {} commands from queue".format(len(self.pending_commands)))
 
         for cmd_name, args, kwargs in self.pending_commands:
             self.log.spam("Executing pending command named '{}' with args {} and kwargs {}".format(cmd_name, args, kwargs))
@@ -234,20 +215,51 @@ class LSocket:
         return Envelope.create_from_message(message=reply, signing_key=self.manager.signing_key,
                                             verifying_key=self.manager.verifying_key, uuid=reply_uuid)
 
+    async def _wait_socket_rdy(self):
+        self.log.debug("Polling until socket ready...")
+        duration_waited = 0
+
+        while not self.ready:
+            if duration_waited > MAX_RDY_WAIT:
+                if len(self.pending_lookups) > 0:
+                    # TODO trigger callback on Worker class for URL could not be reached or something
+                    msg = "Socket failed to bind/connect to url(s) in {} seconds! Abandoning pending lookups: {}" \
+                          .format(MAX_RDY_WAIT, self.pending_lookups)
+                    self.log.error(msg)
+                else:
+                    self.log.debugv("No connect/bind calls to socket in {} seconds. Setting socket to ready.")
+
+                break  # Break out of loop if we timeout
+
+            self.log.spam("Socket not ready yet...waiting {} seconds".format(RDY_WAIT_INTERVAL))
+            await asyncio.sleep(RDY_WAIT_INTERVAL)
+            duration_waited += RDY_WAIT_INTERVAL
+
+        self.pending_lookups.clear()
+        self.ready = True
+        self._flush_pending_commands()
+        self.check_rdy_fut = None
+
     def __getattr__(self, item):
-        # self.log.spam("called __getattr__ with item {}".format(item))  # TODO remove this
         assert hasattr(self.socket, item), "Underlying socket object {} has no attribute named {}".format(self.socket, item)
         underlying = getattr(self.socket, item)
 
         # If we are accessing an attribute that does not exist in LSocket, we assume its a attribute on self.socket
-        # Otherwise, we assume its a method on self.socket
         if not callable(underlying):
-            # self.log.important2("{} is not callable, returning it as presumably an attribute".format(underlying))  # TODO remmove
             return underlying
+
+        # Otherwise, we assume its a method on self.socket
 
         # If this socket is not ready (ie it has not bound/connected yet), defer execution of this method
         if not self.ready and item in self.DEFERED_FUNCS:
-            self.log.debugv("Socket is not ready yet. Defering method named {}".format(item))
+            self.log.debugv("Socket is not ready yet. Deferring method named {}".format(item))
+            self._start_wait_rdy()
             return self._defer_func(item)
         else:
+            # self.log.important("returning underlying atr {} for item {}".format(item, underlying))  # TODO remove
             return underlying
+
+    def _start_wait_rdy(self):
+        if not self.check_rdy_fut:
+            self.log.debug("Starting future to check for socket ready")
+            self.check_rdy_fut = asyncio.ensure_future(self._wait_socket_rdy())
