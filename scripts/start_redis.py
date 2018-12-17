@@ -31,7 +31,6 @@ REDIS_PASSWORD={}
         run_async = '&'
     else:
         run_async = ''
-    print("Run async: {}".format(run_async))
     os.system('redis-server docker/redis.conf --port {} --requirepass {} {}'.format(port, pw, run_async))
 
 if __name__ == '__main__':
