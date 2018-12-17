@@ -69,6 +69,7 @@ def pump_it(lamd, use_poisson):
 
     God.pump_it(rate=lamd, use_poisson=use_poisson)
 
+
 class TestPump(BaseNetworkTestCase):
 
     TRANSACTION_RATE = 50  # Avg transaction/second. lambda parameter in Poission distribution
