@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM lamden/cilantro
 
 MAINTAINER Falcon Wong version: 0.1
 
@@ -7,20 +7,13 @@ WORKDIR /app
 
 ENV DEBIAN_FRONTEND noninteractive
 
-# Install Python requirements
+# Install Mongo
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        sudo ssh tar gzip ca-certificates curl \
-        openssl python3.6 wget \
-        python3-pip python3.6-dev build-essential \
-        gcc g++ git autoconf automake \
-        libffi-dev libtool dpkg \
-        gsl-bin zlib1g-dev libboost-all-dev \
-        nano vim \
-    && pip3 install --upgrade setuptools wheel \
-    && pip3 install -r requirements.txt \
-    && pip3 install -r dev-requirements.txt \
-    && apt install -y redis-server \
-    && rm -rf pynacl capnproto 2>/dev/null
+    && apt-get install -y software-properties-common \
+    && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4 \
+    && add-apt-repository 'deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse' \
+    && apt-get remove -y software-properties-common \
+    && apt-get update \
+    && apt-get install -y mongodb
 
-CMD python3 ./scripts/start_redis.py
+CMD python3 ./scripts/start_redis_mongo.py
