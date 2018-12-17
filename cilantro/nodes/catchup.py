@@ -19,6 +19,13 @@ TIMEOUT_CHECK_INTERVAL = 1
 
 class CatchupManager:
     def __init__(self, verifying_key: str, pub_socket: LSocket, router_socket: LSocket, store_full_blocks=True):
+        """
+
+        :param verifying_key: host vk
+        :param pub_socket:
+        :param router_socket:
+        :param store_full_blocks: Master node uses this flag to indicate block storage
+        """
         self.log = get_logger("CatchupManager")
 
         # infra input
@@ -199,10 +206,12 @@ class CatchupManager:
         :return:
         """
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
-        self.log.debugv("Got block index request from sender {} requesting block hash {}".format(requester_vk, request.block_hash))
+        self.log.debugv("Got block index request from sender {} requesting block hash {} my_vk {}"
+                        .format(requester_vk, request.block_hash, self.verifying_key))
 
-        # delta_idx = self.get_delta_idx(vk = requester_vk, curr_blk_num = self.curr_num,
-        #                                sender_blk_hash = request.block_hash)
+        if requester_vk == self.verifying_key:
+            self.log.debugv("received request from myself dropping the req")
+            return
 
         delta_idx = self.get_idx_list(vk = requester_vk, latest_blk_num = self.curr_num,
                                       sender_bhash = request.block_hash)
