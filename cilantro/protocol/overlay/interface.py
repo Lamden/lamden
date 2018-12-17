@@ -94,6 +94,9 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     async def lookup_ip(self, vk):
         return await self.network.lookup_ip(vk)
 
+    async def track_new_nodes(self):
+        await self.network.track_and_inform(vk)
+
     def teardown(self):
         self.log.important('Shutting Down.')
         for task in self.tasks:
