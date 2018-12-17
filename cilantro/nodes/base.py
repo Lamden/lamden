@@ -46,7 +46,6 @@ class NodeBase(Worker):
         self.log = get_logger(name)
         self.ip = ip
         self.name = name
-        self.log.important(self.REQ_MNS)
 
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
