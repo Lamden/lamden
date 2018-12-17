@@ -41,25 +41,20 @@ class CatchupManager:
         self.blk_req_ptr_idx = None     # idx to track ptr in block_delta_list
         self.last_req_blk_num = None
 
-        self.curr_hash, self.curr_num = None, None      # latest blk on redis
+        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
         # received full block could be out of order
         self.rcv_block_dict = {}        # DS stores any Out of order received blocks
         self.awaited_blknum = None      # catch up waiting on this blk num
 
         # loop to schedule timeouts
-        self.loop = asyncio.get_event_loop()
         self.timeout_fut = None
-
-        # self.run_catchup()
 
     def run_catchup(self, ignore=False):
         # check if catch up is already running
         if not ignore and self.catchup_state is True:
             self.log.critical("catch up already running we shouldn't be here")
             return
-
-        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
         # starting phase I
         self.timeout_catchup = time.time()
@@ -242,7 +237,7 @@ class CatchupManager:
         if valid_node is True:
             given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_bhash)
 
-            self.log.debug('given block is already latest hash - {} givenblk - {} curr-{}'
+            self.log.debugv('given block is already latest hash - {} givenblk - {} curr-{}'
                            .format(sender_bhash, given_blk_num, latest_blk_num))
 
             if given_blk_num == latest_blk_num:
@@ -359,7 +354,7 @@ class CatchupManager:
             self.blk_req_ptr_idx = None             # idx to track ptr in block_delta_list
             self.last_req_blk_num = None
 
-            self.curr_hash, self.curr_num = None, None  # latest blk on redis
+            #self.curr_hash, self.curr_num = None, None  # latest blk on redis
 
             # received full block could be out of order
             self.rcv_block_dict = {}
