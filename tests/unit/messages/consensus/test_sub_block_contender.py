@@ -1,3 +1,6 @@
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('2-2-2.json')
+
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender, SubBlockContenderBuilder
