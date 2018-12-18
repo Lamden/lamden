@@ -83,7 +83,7 @@ class MDB:
                 cls.mn_db_idx = MongoClient(uri).get_database()
                 cls.mn_coll_idx = cls.mn_db_idx['index']
                 idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash'),
-                       'mn_blk_owner': cls.verify_key}
+                       'blockOwners': cls.verify_key}
                 cls.log.debug('start_db init index {}'.format(idx))
                 cls.init_idx_db = cls.insert_idx_record(my_dict=idx)
 
@@ -92,7 +92,7 @@ class MDB:
         if db_type == 'MDB':    # fresh setup
             database = cls.cfg.get('MN_DB', 'mn_blk_database')
             uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
-            cls.log.info("uri {}".format(uri))
+            cls.log.debug("uri {}".format(uri))
             return uri
 
         if db_type == 'index':
@@ -122,7 +122,7 @@ class MDB:
 
         # insert passed dict block to db
         blk_id = cls.mn_collection.insert(block_dict)
-        cls.log.info("block {}".format(block_dict))
+        cls.log.spam("block {}".format(block_dict))
         if blk_id:
             return True
 

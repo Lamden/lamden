@@ -19,6 +19,13 @@ TIMEOUT_CHECK_INTERVAL = 1
 
 class CatchupManager:
     def __init__(self, verifying_key: str, pub_socket: LSocket, router_socket: LSocket, store_full_blocks=True):
+        """
+
+        :param verifying_key: host vk
+        :param pub_socket:
+        :param router_socket:
+        :param store_full_blocks: Master node uses this flag to indicate block storage
+        """
         self.log = get_logger("CatchupManager")
 
         # infra input
@@ -41,17 +48,14 @@ class CatchupManager:
         self.blk_req_ptr_idx = None     # idx to track ptr in block_delta_list
         self.last_req_blk_num = None
 
-        self.curr_hash, self.curr_num = None, None      # latest blk on redis
+        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
         # received full block could be out of order
         self.rcv_block_dict = {}        # DS stores any Out of order received blocks
         self.awaited_blknum = None      # catch up waiting on this blk num
 
         # loop to schedule timeouts
-        self.loop = asyncio.get_event_loop()
         self.timeout_fut = None
-
-        # self.run_catchup()
 
     def run_catchup(self, ignore=False):
         # check if catch up is already running
@@ -59,14 +63,14 @@ class CatchupManager:
             self.log.critical("catch up already running we shouldn't be here")
             return
 
-        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
-
         # starting phase I
         self.timeout_catchup = time.time()
         self.catchup_state = self.send_block_idx_req()
 
         self._reset_timeout_fut()
         self.timeout_fut = asyncio.ensure_future(self._check_timeout())
+        self.log.important2("run catchup")
+        self.dump_debug_info()
 
     def _reset_timeout_fut(self):
         if self.timeout_fut:
@@ -107,6 +111,9 @@ class CatchupManager:
         self.log.important3("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))  # TODO remove
         req = BlockIndexRequest.create(block_hash=self.curr_hash)
         self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
+
+        self.log.important2("SEND BIR")
+        self.dump_debug_info()
         return True
 
     def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
@@ -125,6 +132,9 @@ class CatchupManager:
 
         if not reply.indices:
             self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
+            self.log.important("responded mn - {}".format(self.node_idx_reply_set))
+            self.check_catchup_done()
+            self.dump_debug_info()
             return
 
         if not self.block_delta_list:                              # for boot phase
@@ -134,6 +144,7 @@ class CatchupManager:
             self.blk_req_ptr_idx = 0
             self.blk_req_ptr = self.block_delta_list[self.blk_req_ptr_idx]           # 1st blk req to send
             self.last_req_blk_num = self.blk_req_ptr.get('blockNum')
+            self.dump_debug_info()
         else:                                              # for new request
             tmp_list = reply.indices
             new_target_blk = tmp_list[len(tmp_list)-1]
@@ -150,8 +161,11 @@ class CatchupManager:
                 self.block_delta_list.append(update_list)
                 self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
                 self.target_blk_num = self.target_blk.get('blockNum')
+                self.dump_debug_info()
 
         self.process_recv_idx()
+        self.log.important2("RCV BIRp")
+        self.dump_debug_info()
 
     def _send_block_data_req(self, mn_vk, req_blk_num):
         self.log.info("Unicast BlockDateRequests to masternode owner with current block num {} key {}"
@@ -160,6 +174,8 @@ class CatchupManager:
         self.router.send_msg(req, header=mn_vk.encode())
         if self.awaited_blknum is None:
             self.awaited_blknum = req_blk_num
+        self.log.important2("SEND BDRq")
+        self.dump_debug_info()
 
     def recv_block_data_reply(self, reply: BlockData):
         # check if given block is older thn expected drop this reply
@@ -181,6 +197,8 @@ class CatchupManager:
             self.update_received_block(block = reply)
 
         self._update_catchup_state(block_num = rcv_blk_num)
+        self.log.important2("RCV BDRp")
+        self.dump_debug_info()
 
     # MASTER ONLY CALL
     def recv_block_idx_req(self, requester_vk: str, request: BlockIndexRequest):
@@ -191,10 +209,18 @@ class CatchupManager:
         :return:
         """
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
-        self.log.debugv("Got block index request from sender {} requesting block hash {}".format(requester_vk, request.block_hash))
+        self.log.debugv("Got block index request from sender {} requesting block hash {} my_vk {}"
+                        .format(requester_vk, request.block_hash, self.verifying_key))
 
-        delta_idx = self.get_delta_idx(vk = requester_vk, curr_blk_num = self.curr_num,
-                                       sender_blk_hash = request.block_hash)
+        if requester_vk == self.verifying_key:
+            self.log.debugv("received request from myself dropping the req")
+            return
+
+        delta_idx = self.get_idx_list(vk = requester_vk, latest_blk_num = self.curr_num,
+                                      sender_bhash = request.block_hash)
+
+        self.log.important2("RCV BIR")
+        self.dump_debug_info()
         self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
 
     def recv_new_blk_notif(self, update: NewBlockNotification):
@@ -214,20 +240,17 @@ class CatchupManager:
         self.log.debugv("Sending block index reply to vk {}".format(reply_to_vk))
         self.log.important2("Sending block index reply to vk {}".format(reply_to_vk))  # TODO remove
         self.router.send_msg(reply, header=reply_to_vk.encode())
+        self.log.important2("SEND BIRp")
+        self.dump_debug_info()
 
-    def get_delta_idx(self, vk = None, curr_blk_num = None, sender_blk_hash = None):
-        """
-        API gets latest hash requester has and responds with delta block index
-
-        :param vk: mn or dl verifying key
-        :param curr_blk_hash:
-        :return:
-        """
+    def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
         valid_node = VKBook.is_node_type('masternode', vk) or VKBook.is_node_type('delegate', vk)
         if valid_node is True:
-            given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_blk_hash)
-            latest_blk_num = curr_blk_num
+            given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_bhash)
+
+            self.log.debugv('given block is already latest hash - {} givenblk - {} curr-{}'
+                           .format(sender_bhash, given_blk_num, latest_blk_num))
 
             if given_blk_num == latest_blk_num:
                 self.log.debug('given block is already latest')
@@ -237,6 +260,7 @@ class CatchupManager:
                 return idx_delta
 
         assert valid_node is True, "invalid vk given key is not of master or delegate dumping vk {}".format(vk)
+        pass
 
     def process_recv_idx(self):
         assert self.last_req_blk_num <= self.target_blk_num, "our last request should never overshoot target blk"
@@ -312,6 +336,7 @@ class CatchupManager:
             if block:
                 self.update_received_block(block = block)
 
+        # pending list is empty check if you can exit catch up
         if len(self.block_delta_list) == 0:
             assert self.curr_num == self.target_blk_num, "Err target blk and curr block are not same"
             assert self.curr_hash == self.target_blk.get('blockHash'), "Err target blk and curr block are not same"
@@ -340,8 +365,6 @@ class CatchupManager:
             self.blk_req_ptr = {}                   # current ptr track send blk req
             self.blk_req_ptr_idx = None             # idx to track ptr in block_delta_list
             self.last_req_blk_num = None
-
-            self.curr_hash, self.curr_num = None, None  # latest blk on redis
 
             # received full block could be out of order
             self.rcv_block_dict = {}

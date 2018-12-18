@@ -9,7 +9,6 @@ QUORUM = 3
 MN_ID = 1
 
 # Web Server
-WEB_SERVER_PORT = 8080
 NUM_WORKERS = 2  # Number of Sanic worker procs
 NONCE_EXPIR = 90  # Number of seconds before a nonce requested by a user expires
 
@@ -22,4 +21,3 @@ TEST_HOOK = False
 
 # Block Aggregator
 BLOCK_TIMEOUT_POLL = 1.0  # how often BlockAggregator should check if the current block being produced has timed out
-

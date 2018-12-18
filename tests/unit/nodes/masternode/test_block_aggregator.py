@@ -103,13 +103,13 @@ class TestBlockAggregator(TestCase):
 
     @BlockAggTester.test
     def test_build_task_list_connect_and_bind(self, *args):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
 
         mock_manager = MagicMock()
         ba.manager = mock_manager
 
-        mock_pub, mock_sub, mock_router = MagicMock(), MagicMock(), MagicMock()
-        mock_manager.create_socket = MagicMock(side_effect=[mock_sub, mock_pub, mock_router])
+        mock_pub, mock_sub, mock_router, mock_ipc_router = MagicMock(), MagicMock(), MagicMock(), MagicMock()
+        mock_manager.create_socket = MagicMock(side_effect=[mock_sub, mock_pub, mock_router, mock_ipc_router])
 
         mock_sub_handler_task = MagicMock()
         mock_sub.add_handler = MagicMock(return_value=mock_sub_handler_task)
@@ -132,7 +132,7 @@ class TestBlockAggregator(TestCase):
     # TODO fix this test --davis
     # @BlockAggTester.test
     # def test_store_block(self, *args):
-    #     ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+    #     ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
     #     ba.manager = MagicMock()
     #     ba.send_new_block_notif = MagicMock()
     #     ba.build_task_list()
@@ -186,7 +186,7 @@ class TestBlockAggregator(TestCase):
 
     @BlockAggTester.test
     def test_handle_sub_msg_with_sub_block_contender(self, *args):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
 
         ba.manager = MagicMock()
         ba.recv_sub_block_contender = MagicMock()
@@ -203,7 +203,7 @@ class TestBlockAggregator(TestCase):
 
     @BlockAggTester.test
     def test_handle_sub_msg_with_new_block_notif(self, *args):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
 
         ba.manager = MagicMock()
         ba.recv_new_block_notif = MagicMock()
@@ -220,7 +220,7 @@ class TestBlockAggregator(TestCase):
 
     @BlockAggTester.test
     def test_recv_sub_block_contender(self, *args):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
 
         ba.manager = MagicMock()
         ba.build_task_list()
@@ -235,7 +235,7 @@ class TestBlockAggregator(TestCase):
 
     @BlockAggTester.test
     def test_recv_empty_sub_block_contender(self, *args):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
 
         ba.manager = MagicMock()
         ba.build_task_list()
@@ -250,7 +250,7 @@ class TestBlockAggregator(TestCase):
     @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
     @mock.patch("cilantro.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 1)
     def test_combine_result_hash_with_one_sb(self, *args):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
         ba.is_catching_up = False
 
         ba.manager = MagicMock()
@@ -273,7 +273,7 @@ class TestBlockAggregator(TestCase):
 
     @BlockAggTester.test
     def test_combine_result_hash_with_multiple_sb(self, *args):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
         ba.is_catching_up = False
 
         ba.manager = MagicMock()
@@ -301,7 +301,7 @@ class TestBlockAggregator(TestCase):
 
     @BlockAggTester.test
     def test_combine_result_hash_with_multiple_sb_with_extras(self, *args):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
         ba.is_catching_up = False
 
         ba.manager = MagicMock()
@@ -333,7 +333,7 @@ class TestBlockAggregator(TestCase):
     @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
     @mock.patch("cilantro.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 1)
     def test_recv_ignore_extra_sub_block_contenders(self, *args):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
         ba.manager = MagicMock()
         ba.build_task_list()
         ba.send_new_block_notif = MagicMock()
@@ -358,7 +358,7 @@ class TestBlockAggregator(TestCase):
     # @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
     # def test_recv_result_hash_multiple_subblocks_consensus(self, *args):
     #
-    #     ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+    #     ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
     #     ba.manager = MagicMock()
     #     ba.build_task_list()
     #     ba.is_catching_up = False
@@ -396,7 +396,7 @@ class TestBlockAggregator(TestCase):
     @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
     @mock.patch("cilantro.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 1)
     def test_combine_result_hash_transactions_missing(self, *args):
-        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK)
+        ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
 
         ba.manager = MagicMock()
         ba.build_task_list()

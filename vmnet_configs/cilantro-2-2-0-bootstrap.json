@@ -1,6 +1,6 @@
 {
     "environment": {
-        "CONSITUTION_FILE": "2-2-0.json"
+        "CONSTITUTION_FILE": "2-2-0.json"
     },
     "services": [
         {
