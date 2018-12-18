@@ -116,7 +116,6 @@ class BlockAggregator(Worker):
         self.log.info("Triggering catchup")
         # self.catchup_manager.send_block_idx_req()
 
-
     def _send_msg_over_ipc(self, message: MessageBase):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
@@ -127,7 +126,6 @@ class BlockAggregator(Worker):
         id_frame = str(0).encode()
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
-
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -226,7 +224,6 @@ class BlockAggregator(Worker):
 
         self.curr_block = BlockContender()  # Reset BlockContender (will this leak memory???)
 
-
     def send_new_block_notif(self, block_data: BlockData):
         message = NonEmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
@@ -242,6 +239,10 @@ class BlockAggregator(Worker):
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
+    def send_fail_block_notif(self):
+        # TODO implemt
+        pass
+
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
         self.log.debugv("MN got new block notification: {}".format(notif))
         # TODO implement
@@ -251,13 +252,16 @@ class BlockAggregator(Worker):
         # TODO implement
 
     async def schedule_block_timeout(self):
-        elapsed = 0
+        try:
+            elapsed = 0
 
-        while elapsed < BLOCK_PRODUCTION_TIMEOUT:
-            await asyncio.sleep(BLOCK_TIMEOUT_POLL)
-            elapsed += BLOCK_TIMEOUT_POLL
+            while elapsed < BLOCK_PRODUCTION_TIMEOUT:
+                await asyncio.sleep(BLOCK_TIMEOUT_POLL)
+                elapsed += BLOCK_TIMEOUT_POLL
 
-        self.log.critical("Block timeout of {}s reached for block hash {}! Resetting sub block contenders and sending "
-                          "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
-        self.send_skip_block_notif()
-        self.curr_block = BlockContender()
+            self.log.critical("Block timeout of {}s reached for block hash {}! Resetting sub block contenders and sending "
+                              "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
+            self.send_skip_block_notif()
+            self.curr_block = BlockContender()
+        except asyncio.CancelledError:
+            pass
