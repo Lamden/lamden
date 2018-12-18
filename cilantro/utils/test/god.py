@@ -128,13 +128,10 @@ class God:
             return None
 
     @classmethod
-    def pump_it(cls, rate: int, gen_func=None, use_poisson=True):
+    def pump_it(cls, rate: int, gen_func=None, use_poisson=True, report_interval=12):
         """
         Pump random transactions from random users to Masternode's REST endpoint at an average rate of 'rate'
         transactions per second. This func blocks.
-        :param rate:
-        :param gen_func:
-        :return:
         """
         if not gen_func:
             gen_func = cls._default_gen_func()
@@ -150,24 +147,24 @@ class God:
         cls.log.important("Starting to pump transactions at an average of {} transactions per second".format(rate))
         cls.log.info("Using generator func {}, with use_possion={}".format(gen_func, use_poisson))
 
+        count = 0
         while True:
             wait = rvs_func()
 
-            cls.log.spam("Sending next transaction in {} seconds".format(wait))
+            # cls.log.spam("Sending next transaction in {} seconds".format(wait))
             time.sleep(wait)
 
             tx = gen_func()
 
-            cls.log.spam("sending transaction {}".format(tx))
+            # cls.log.spam("sending transaction {}".format(tx))
             cls.send_tx(tx)
+            count += 1
+            if count % (rate * report_interval) == 0:
+                cls.log.success("Pumped {} transactions so far".format(count))
 
     @classmethod
     def dump_it(cls, volume: int, delay: int=0, gen_func=None):
-        """
-        Dump it fast. Send
-        :param volume:
-        :return:
-        """
+        """ Dump it fast. """
         assert volume > 0, "You must dump at least 1 transaction silly"
 
         if not gen_func:

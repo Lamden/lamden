@@ -22,9 +22,16 @@ class NodeFactory:
     @staticmethod
     def run_masternode(signing_key, ip, name='Masternode', reset_db=False):
         VKBook.setup()
-        if reset_db: NodeFactory._reset_db()
+        if reset_db:
+            NodeFactory._reset_db()
+            # MDB.drop_db()
         # _build_block_schema(reset_db)
+
+        # MasterOps.init_master(key=signing_key)
+        # MDB.drop_db()
         MasterOps.init_master(key=signing_key)
+
+
         mn = Masternode(ip=ip, name=name, signing_key=signing_key)
 
     @staticmethod

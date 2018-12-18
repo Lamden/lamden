@@ -1,5 +1,6 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('5-5-5.json')
+set_testnet_config('2-2-2.json')
+
 from cilantro.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
 import unittest, time, random, vmnet, cilantro, os
@@ -11,25 +12,6 @@ from cilantro.utils.test.god import God
 from cilantro.logger import get_logger, overwrite_logger_level
 import logging, os, shutil, time
 from cilantro.constants.system_config import *
-
-
-if os.getenv('USE_LOCAL_SENECA', '0') != '0':
-    log = get_logger("SenecaCopier")
-    user_sen_path = os.getenv('SENECA_PATH', None)
-    assert user_sen_path, "If USE_LOCAL_SENECA env var is set, SENECA_PATH env var must also be set!"
-
-    import cilantro
-    venv_sen_path = cilantro.__path__[0] + '/../venv/lib/python3.6/site-packages/seneca'
-
-    assert os.path.isdir(venv_sen_path), "Expect virtual env seneca at path {}".format(venv_sen_path)
-    assert os.path.isdir(user_sen_path), "Expect user seneca at path {}".format(user_sen_path)
-
-    log.debugv("Removing venv seneca at path {}".format(venv_sen_path))
-    shutil.rmtree(venv_sen_path)
-
-    log.notice("Copying user seneca path {} to venv packages at path {}".format(user_sen_path, venv_sen_path))
-    shutil.copytree(user_sen_path, venv_sen_path)
-    log.notice("Done copying")
 
 
 def wrap_func(fn, *args, **kwargs):
@@ -93,27 +75,37 @@ def run_delegate(slot_num):
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'], reset_db=True)
 
 
-def dump_it(volume, delay=0):
+def pump_it(lamd, use_poisson, pump_wait):
     from cilantro.utils.test.god import God
     from cilantro.logger import get_logger, overwrite_logger_level
-    import logging
+    import logging, time
 
     overwrite_logger_level(logging.WARNING)
-    God.dump_it(volume=volume, delay=delay)
+
+    log = get_logger("Pumper")
+
+    log.important("Pumper sleeping {} seconds before starting...".format(pump_wait))
+    time.sleep(pump_wait)
+
+    log.important("Starting the pump..")
+    God.pump_it(rate=lamd, use_poisson=use_poisson)
 
 
-
-class TestManualDump(AWSTestCase):
+class TestPump(AWSTestCase):
 
     NUM_BLOCKS = 2
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dum
-    config_file = get_config_file('cilantro-aws-5-5-5.json')
+    config_file = get_config_file('cilantro-aws-2-2-2.json')
     keep_up = True
-    timeout = 999999999999
     logging = True
 
+    # Avg number of transactions per second we will dump. Set to dump 1 block per BATCH_SLEEP_INTERVAL
+    PUMP_RATE = (TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK) // BATCH_SLEEP_INTERVAL
+    MODEL_AS_POISSON = True
+    PUMP_WAIT = 120  # how long to sleep before we start the pump
+
     def test_dump(self):
-        log = get_logger("Dumpatron")
+        log = get_logger("Pumpatron")
 
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
@@ -127,20 +119,11 @@ class TestManualDump(AWSTestCase):
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, wrap_func(run_delegate, i))
 
-        while True:
-            # user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
-            # if user_input.lower() == 'x':
-            #     log.debug("Termination input detected. Breaking")
-            #     break
-            #
-            # vol = int(user_input) if user_input.isdigit() else self.VOLUME
-            time.sleep(120)
-            vol = self.VOLUME
-            log.important3("Dumpatron dumping {} transactions!".format(vol))
-            self.execute_python('mgmt', wrap_func(dump_it, volume=vol), no_kill=False)
+        # Bootstrap pump
+        self.execute_python('mgmt', wrap_func(pump_it, self.PUMP_RATE, self.MODEL_AS_POISSON, self.PUMP_WAIT))
 
-        log.important3("Dumpatron initiating system teardown")
-        God.teardown_all("http://{}".format(self.ports[self.groups['masternode'][0]]['8080']))
+        # TODO also allow user to dump also??
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,6 +1,10 @@
 {
-    "environment": {"CONSTITUTION_FILE": "2-2-2.json"},
+    "environment": {
+        "CONSTITUTION_FILE": "2-2-2.json",
+        "ANNIHILATE": true
+    },
     "aws": {
+        "use_elastic_ips": true,
         "security_groups": {
             "simple_https": {
                 "name": "simple_https",
@@ -58,7 +62,7 @@
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0f65671a86f061fcd",
-                "instance_type": "t2.micro",
+                "instance_type": "t2.medium",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-08a38dd68d54c7ea9"
             },
@@ -70,7 +74,7 @@
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-08a38dd68d54c7ea9",
-                "instance_type": "t2.micro",
+                "instance_type": "t2.medium",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0475e8f109e6a0bb4"
             }

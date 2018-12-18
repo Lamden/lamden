@@ -34,7 +34,7 @@ NUM_SUB_BLOCKS = NUM_MASTERS  # same as num masternodes for now
 NUM_BLOCKS = min(_MAX_BLOCKS, NUM_SUB_BLOCKS)
 
 # A Masternode expects to produce a block or empty block every BLOCK_TIMEOUT seconds or he will send a SkipBlockNotif
-BLOCK_PRODUCTION_TIMEOUT = 30
+BLOCK_PRODUCTION_TIMEOUT = 60
 
 NUM_SB_PER_BLOCK = (NUM_SUB_BLOCKS + NUM_BLOCKS - 1) // NUM_BLOCKS
 NUM_SB_BUILDERS = NUM_SB_PER_BLOCK  # NUM_SB_BUILDERS = min(_MAX_SUB_BLOCK_BUILDERS, NUM_SB_PER_BLOCK)
@@ -69,5 +69,5 @@ DECIMAL_PRECISION = 18
 # Test Flags
 # ///////////////////////////////////////////////
 SHOULD_MINT_WALLET = True
-NUM_WALLETS_TO_MINT = 1000
-MINT_AMOUNT = 10 ** 7
+NUM_WALLETS_TO_MINT = 5000
+MINT_AMOUNT = 10 ** 10
