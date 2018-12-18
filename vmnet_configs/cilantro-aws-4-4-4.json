@@ -3,7 +3,7 @@
     "aws": {
         "profile_name": "default",
         "region_name": "us-east-2",
-        "use_elastic_ips": true,
+        "use_elastic_ips": false,
         "security_groups": {
             "simple_https": {
                 "name": "simple_https",
