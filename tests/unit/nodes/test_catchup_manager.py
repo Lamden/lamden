@@ -1,5 +1,5 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-2.json')
+set_testnet_config('4-4-4.json')
 
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -37,22 +37,6 @@ class TestCatchupManager(TestCase):
         self.assertEqual(m.curr_hash, StateDriver.get_latest_block_hash())
         self.assertEqual(m.curr_num, StateDriver.get_latest_block_num())
 
-    # def test_catchup_with_no_new_blocks(self):
-    #     cm = self._build_manager()
-    #
-    #     cm.run_catchup()
-    #
-    #     self.assertTrue(cm.catchup_state)
-    #
-    #     reply_data = [{'blockHash': GENESIS_BLOCK_HASH,
-    #                    'blockOwners': [VKBook.get_masternodes()[0], VKBook.get_masternodes()[1]], 'blockNum': 0}, ]
-    #     index_reply = BlockIndexReply.create(reply_data)
-    #
-    #     cm.recv_block_idx_reply(VKBook.get_masternodes()[0], index_reply)
-    #     cm.recv_block_idx_reply(VKBook.get_masternodes()[1], index_reply)
-    #
-    #     self.assertFalse(cm.catchup_state)
-
     def test_catchup_with_new_blocks(self):
         cm = self._build_manager()
         cm.run_catchup()
@@ -62,38 +46,48 @@ class TestCatchupManager(TestCase):
         b2 = 'B' * 64
         vk1 = VKBook.get_masternodes()[0]
         vk2 = VKBook.get_masternodes()[1]
+        vk3 = VKBook.get_masternodes()[2]
 
-        reply_data1 = [{'blockHash': b1, 'blockOwners': [vk1, vk2], 'blockNum': 1},
-                       {'blockHash': b2, 'blockOwners': [vk1, vk2], 'blockNum': 2}]
+        reply_data1 = [{'blockHash': b1, 'blockOwners': [vk1, vk2], 'blockNum': 1}]
         reply_data2 = [{'blockHash': b1, 'blockOwners': [vk1, vk2], 'blockNum': 1},
                        {'blockHash': b2, 'blockOwners': [vk1, vk2], 'blockNum': 2}]
 
         index_reply1 = BlockIndexReply.create(reply_data1)
         index_reply2 = BlockIndexReply.create(reply_data2)
 
+        self.assertEqual(cm.curr_hash, b2)
+        self.assertEqual(cm.curr_num, 2)
+
         cm.recv_block_idx_reply(vk1, index_reply1)
+
+        # catchup_state should be false, as we've only recv 1 out of 2 required responses
         self.assertFalse(cm.catchup_state)
 
-        cm.recv_block_idx_reply(vk2, index_reply1)
+        cm.recv_block_idx_reply(vk2, index_reply2)
+
         self.assertTrue(cm.catchup_state)
+        self.assertEqual(cm.curr_hash, b2)
+        self.assertEqual(cm.curr_num, 2)
 
     def test_catchup_with_no_new_blocks(self):
         cm = self._build_manager()
-
         cm.run_catchup()
-
         self.assertTrue(cm.catchup_state)
+
+        vk1 = VKBook.get_masternodes()[0]
+        vk2 = VKBook.get_masternodes()[1]
+        vk3 = VKBook.get_masternodes()[2]
 
         reply_data = []
         index_reply = BlockIndexReply.create(reply_data)
 
-        # We should still be in catchup until we achieve consensus on IndexReplies
-        cm.recv_block_idx_reply(VKBook.get_masternodes()[0], index_reply)
+        cm.recv_block_idx_reply(vk1, index_reply)
+
+        # catchup_state should be false, as we've only recv 1 out of 2 required responses
         self.assertTrue(cm.catchup_state)
 
-        # Now that we have 2/2 replies, we should be out of Catchup
-        cm.recv_block_idx_reply(VKBook.get_masternodes()[1], index_reply)
-        self.assertFalse(cm.catchup_state)
+        cm.recv_block_idx_reply(vk2, index_reply)
+        self.assertFalse(cm.catchup_state)  # Now that we have 2/2 replies, we should be out of Catchup
 
 """
   9 block index request:

@@ -287,7 +287,8 @@ class CatchupManager:
 
     def _check_idx_reply_quorum(self):
         # We have enough BlockIndexReplies if 2/3 of Masternodes replied
-        return len(self.node_idx_reply_set) >= math.ceil(len(VKBook.get_masternodes()) * 2/3)
+        min_quorum = math.ceil(len(VKBook.get_masternodes()) * 2/3) - 1   # -1 so we dont include ourselves
+        return len(self.node_idx_reply_set) >= min_quorum
 
     def _check_retry_needed(self):
         # if you have 2/3rd quorum wait for queue pending queue to finsh
