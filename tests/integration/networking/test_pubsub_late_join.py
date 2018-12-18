@@ -26,7 +26,7 @@ class TestLateJoining(MPTestCase):
         for vk in sub_list:
             node.connect_sub(vk=vk)
 
-    @vmnet_test(run_webui=True)  # TODO turn of web UI
+    @vmnet_test(run_webui=False)  # TODO turn of web UI
     def test_2_2_2(self):
         """
         Tests creating a network with 2 Masternodes, 2 Witnesses, and 4 Delegates. Ensures everyone can connect to
