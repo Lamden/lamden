@@ -83,6 +83,18 @@ async def request_nonce(request):
     return json({'success': True, 'nonce': nonce})
 
 
+@app.route("/new-state/<contract>/<resource>/<key>", methods=["GET",])
+async def get_state(contract, resource, key):
+    contract_name = validate_contract_name(contract)
+    meta = interface.get_contract_meta(contract_name)
+    meta.update(parse_code_str(meta['code_str']))
+    r = meta['datatypes'].get(resource)
+    if not r:
+        raise ServerError('Datatype "{}" not found'.format(r), status_code=500)
+    k = validate_key_name(key)
+    return text(r.get(k))
+
+
 @app.route("/state", methods=["GET",])
 async def get_contract_state(request):
     contract_name = validate_contract_name(request.json['contract_name'])
