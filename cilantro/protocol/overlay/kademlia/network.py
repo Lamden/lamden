@@ -122,11 +122,14 @@ class Network(object):
             if addr.vk in processed:
                 continue
             processed.add(addr.vk)
-            await self.protocol.callFindNode(addr, self.node)
+            await self.protocol.callFindNode(addr, self.node, False)
         
     async def bootstrap_node(self, addr):
         result = await self.protocol.ping(addr, self.node.id)
         return Node(result[1], addr[0], addr[1]) if result[0] else None
+
+    def track_and_inform(self):
+        self.protocol.set_track_on()
 
     async def lookup_ip(self, vk):
         log.spam('Attempting to look up node with vk="{}"'.format(vk))
@@ -140,11 +143,11 @@ class Network(object):
         else:
             node_to_find = Node(digest(vk), vk=vk)
             nearest = self.protocol.router.findNode(node_to_find)
-            ip = self.get_ip_from_nodes_list(vk, nearest)
-            if ip:
-                log.debug('"{}" resolved to {}'.format(vk, ip))
-                self.cached_vks[vk] = ip
-                return ip
+            nd = self.get_node_from_nodes_list(vk, nearest)
+            if nd:
+                log.debug('"{}" resolved to {}'.format(vk, nd.ip))
+                self.cached_vks[vk] = nd.ip
+                return nd.ip
             processed = set()
             processed.add(self.node.vk)
             while len(nearest) > 0:
@@ -153,20 +156,21 @@ class Network(object):
                     continue
                 processed.add(node.vk)
                 result = await self.protocol.callFindNode(node, node_to_find)
-                ip = self.get_ip_from_nodes_list(vk, result)
-                if ip:
-                    log.debug('"{}" resolved to {}'.format(vk, ip))
-                    self.cached_vks[vk] = ip
-                    return ip
+                nd = self.get_node_from_nodes_list(vk, result)
+                if nd:
+                    log.debug('"{}" resolved to {}'.format(vk, nd.ip))
+                    self.cached_vks[vk] = nd.ip
+                    tmp_res = await self.protocol.callFindNode(nd, node_to_find)
+                    return nd.ip
                 nearest.extend(result)
                 # await asyncio.sleep(1)
 
             return None
 
-    def get_ip_from_nodes_list(self, vk, nodes):
+    def get_node_from_nodes_list(self, vk, nodes):
         for node in nodes:
             if vk == node.vk:
-                return node.ip
+                return node
 
     def saveState(self, fname):
         """

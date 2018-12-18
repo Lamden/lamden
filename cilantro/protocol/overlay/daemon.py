@@ -133,6 +133,9 @@ class OverlayServer(object):
                 'status': 'not_ready'
             }
 
+    def set_new_node_tracking(self, *args, **kwargs):
+        self.interface.track_new_nodes()
+
     def teardown(self):
         try:
             self.evt_sock.close()
@@ -196,6 +199,10 @@ class OverlayClient(object):
 
     @command
     def check_node_status(self, *args, **kwargs):
+        pass
+
+    @command
+    def set_new_node_tracking(self, *args, **kwargs):
         pass
 
     async def event_listener(self, event_handler):
