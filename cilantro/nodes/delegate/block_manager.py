@@ -226,6 +226,9 @@ class BlockManager(Worker):
         elif isinstance(msg, SkipBlockNotification):
             self.log.important3("BM got SkipBlockNotification from sender {} with hash {}".format(envelope.sender, msg.prev_block_hash))
             self.handle_skip_block(msg)
+        elif isinstance(msg, FailBlockNotification):
+            self.log.important3("BM got FailBlockNotification from sender {} with hash {}".format(envelope.sender, msg.prev_block_hash))
+            self.handle_fail_block(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
@@ -313,6 +316,8 @@ class BlockManager(Worker):
             if sb.input_hash != self.db_state.input_hash_map[i]:
                 self.send_input_align_msg(block)
                 return
+        # raghu - will we ever have where alignment is not needed in this flow? If so, how do we advance seneca clients?
+        # enhance alignInputHash message to take a set of input_hashes and handle it.
 
     def update_db(self):
         block = self.db_state.next_block[self.db_state.new_block_hash][0]
@@ -392,7 +397,7 @@ class BlockManager(Worker):
 
         self.send_updated_db_msg()
 
-    # update current db state to the new block
+    # just throw away the current sub-blocks and move forward
     def handle_skip_block(self, skip_block: SkipBlockNotification):
         prev_block_hash = skip_block.prev_block_hash
         self.log.info("Got skip block notification with prev block hash {}...".format(prev_block_hash))
@@ -408,6 +413,36 @@ class BlockManager(Worker):
             return
         self.db_state.num_skip_block = self.db_state.num_skip_block + 1
         self.skip_block()
+
+    # out of consensus at master - make sure input hashes are up to date
+    def handle_fail_block(self, block_data: FailBlockNotification):
+rpc
+        prev_block_hash = block_data.prev_block_hash
+        self.log.info("Got fail block notification with prev block hash {}...".format(prev_block_hash))
+
+        if not self.db_state.cur_block_hash:
+            self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
+
+        if (prev_block_hash != self.db_state.cur_block_hash):
+            self.db_state.cur_block_hash = None
+            self.log.important("DB state is not up to date to block hash {}. Starting catchup process again ...".format(prev_block_hash))
+            # call catch up again
+            # self.db_state.catchup_mgr.run_catchup()
+            return
+
+        # for each sbb, get its input hashes and send align input messages
+        # finally send flush db message
+        input_hashes = block_data.input_hashes
+        for sb_idx, hashes in enumerate(input_hashes):
+
+        count = self.db_state.next_block.get(new_block_hash)[1] + 1 \
+                 if new_block_hash in self.db_state.next_block else 1
+        self.db_state.next_block[new_block_hash] = (block_data, count)
+        if count >= MIN_NEW_BLOCK_MN_QOURUM:
+            self.log.info("New block quorum met!")
+            self.db_state.new_block_hash = new_block_hash
+            self.update_db_if_ready()
+
 
     def send_updated_db_msg(self):
         self.log.info("Sending MakeNextBlock message to SBBs")

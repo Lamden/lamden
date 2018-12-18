@@ -151,6 +151,9 @@ class SubBlockBuilder(Worker):
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
     def align_input_hashes(self, aih: AlignInputHash):
+        # raghu - we need to finish this function fully to make sure all input bags are returned properly and 
+        #         catchup manager has to finish also
+        #  call catchup mgr after this call to ensure that.
         self.log.notice("Discarding all pending sub blocks and aligning input hash to {}".format(aih.input_hash))
         self.client.flush_all()
         input_hash = aih.input_hash
