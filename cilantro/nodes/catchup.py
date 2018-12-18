@@ -134,6 +134,7 @@ class CatchupManager:
             self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
             self.log.important("responded mn - {}".format(self.node_idx_reply_set))
             self.check_catchup_done()
+            self.dump_debug_info()
             return
 
         if not self.block_delta_list:                              # for boot phase
@@ -143,6 +144,7 @@ class CatchupManager:
             self.blk_req_ptr_idx = 0
             self.blk_req_ptr = self.block_delta_list[self.blk_req_ptr_idx]           # 1st blk req to send
             self.last_req_blk_num = self.blk_req_ptr.get('blockNum')
+            self.dump_debug_info()
         else:                                              # for new request
             tmp_list = reply.indices
             new_target_blk = tmp_list[len(tmp_list)-1]
@@ -159,6 +161,7 @@ class CatchupManager:
                 self.block_delta_list.append(update_list)
                 self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
                 self.target_blk_num = self.target_blk.get('blockNum')
+                self.dump_debug_info()
 
         self.process_recv_idx()
         self.log.important2("RCV BIRp")

@@ -46,9 +46,9 @@ class BlockAggregator(Worker):
         self.timeout_fut = None
 
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
-        assert StateDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+        assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
             "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-            .format(StateDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
+            .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
 
         self.run()
 
