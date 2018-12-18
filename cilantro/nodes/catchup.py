@@ -36,7 +36,7 @@ class CatchupManager:
         # catchup state
         self.catchup_state = False
         self.timeout_catchup = 0       # 10 sec time we will wait for 2/3rd MN to respond
-        self.node_idx_reply_set = set() # num of master responded to catch up req
+        self.node_idx_reply_set = set()  # num of master responded to catch up req
 
         # main list to process
         self.block_delta_list = []      # list of mn_index dict to process
@@ -133,7 +133,7 @@ class CatchupManager:
         if not reply.indices:
             self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
             self.log.important("responded mn - {}".format(self.node_idx_reply_set))
-            self.check_catchup_done()
+            self.catchup_state = self.check_catchup_done()
             self.dump_debug_info()
             return
 
