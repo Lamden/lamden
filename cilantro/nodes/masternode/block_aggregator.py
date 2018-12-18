@@ -197,6 +197,7 @@ class BlockAggregator(Worker):
 
         if not self.curr_block.is_consensus_possible():
             self.log.critical("Consensus not possible for prev block hash {}! Sending skip block notif".format(self.curr_block_hash))
+            # raghu todo - use a different notification with ALL input hashes - need to think a way to make them list of lists so BM can send appropriate ones to the right SBBer
             self.send_skip_block_notif()
         else:
             self.log.debugv("Consensus not reached yet.")
