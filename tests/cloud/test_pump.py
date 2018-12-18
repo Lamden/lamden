@@ -1,5 +1,5 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-2.json')
+set_testnet_config('4-4-4.json')
 
 from cilantro.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
@@ -95,16 +95,16 @@ class TestPump(AWSTestCase):
 
     NUM_BLOCKS = 2
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dum
-    config_file = get_config_file('cilantro-aws-2-2-2.json')
+    config_file = get_config_file('cilantro-aws-4-4-4.json')
     keep_up = True
     logging = True
 
-    # Avg number of transactions per second we will dump. Set to dump 1 block per BATCH_SLEEP_INTERVAL
+    # Avg number of transactions per second we will pump. Set to pump 1 block per BATCH_SLEEP_INTERVAL
     PUMP_RATE = (TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK) // BATCH_SLEEP_INTERVAL
     MODEL_AS_POISSON = True
     PUMP_WAIT = 120  # how long to sleep before we start the pump
 
-    def test_dump(self):
+    def test_pump(self):
         log = get_logger("Pumpatron")
 
         # Bootstrap master

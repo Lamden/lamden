@@ -1,0 +1,42 @@
+[
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "52.15.49.78",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:vmnet-cloud:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "18.224.91.179",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:vmnet-cloud:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "52.14.233.87",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:vmnet-cloud:masternode-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "3.16.219.19",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:vmnet-cloud:masternode-run"
+            }
+        ]
+    }
+]

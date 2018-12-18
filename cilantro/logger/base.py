@@ -4,6 +4,11 @@ Functions:
 
 import logging, coloredlogs
 import os, sys
+from os.path import dirname
+from logging.handlers import TimedRotatingFileHandler
+# from vmnet.cloud.aws import S3FileHandler
+import cilantro
+
 
 logging.getLogger("paramiko").setLevel(logging.WARNING)
 logging.getLogger('boto3').setLevel(logging.WARNING)
@@ -109,7 +114,7 @@ class LoggerWriter:
         return
 
 
-class ColoredFileHandler(logging.FileHandler):
+class ColoredFileHandler(TimedRotatingFileHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setFormatter(
@@ -138,16 +143,25 @@ def get_logger(name=''):
     if _LOG_LVL == 0:
         return MockLogger()
 
-    filedir = "logs/{}".format(os.getenv('TEST_NAME', 'test'))
+    filedir = "{}/logs/{}".format(dirname(cilantro.__path__[0]), os.getenv('TEST_NAME', 'test'))
     filename = "{}/{}.log".format(filedir, os.getenv('HOST_NAME', name))
 
     if not os.path.exists(filedir):
         os.makedirs(filedir, exist_ok=True)
 
+    # if os.getenv('VMNET_CLOUD'):
+    #     filelogger = S3FileHandler(filename, when="m", interval=30, backupCount=5)
+    # else:
+    #     filelogger = TimedRotatingFileHandler(filename, when="m", interval=30, backupCount=5)
+    #
+    # filelogger = S3FileHandler(filename, when="m", interval=30, backupCount=5)
+    # S3FileHandler.is_logging = True
+
+    filelogger = TimedRotatingFileHandler(filename, when="m", interval=30, backupCount=5)
+
     filehandlers = [
-        logging.FileHandler(get_main_log_path(), delay=True),
-        logging.FileHandler(filename, delay=True),
-        ColoredFileHandler('{}_color'.format(filename), delay=True),
+        filelogger,
+        ColoredFileHandler('{}_color'.format(filename), delay=True, when="m", interval=30, backupCount=5),
         ColoredStreamHandler()
     ]
     logging.basicConfig(

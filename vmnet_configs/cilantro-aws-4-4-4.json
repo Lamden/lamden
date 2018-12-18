@@ -1,8 +1,6 @@
 {
-    "environment": {"CONSTITUTION_FILE": "5-5-5.json"},
+    "environment": {"CONSTITUTION_FILE": "4-4-4.json"},
     "aws": {
-        "profile_name": "production",
-        "region_name": "us-east-2",
         "use_elastic_ips": true,
         "security_groups": {
             "simple_https": {
@@ -57,11 +55,11 @@
                 "name": "cilantro_base",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "dev-fix",
+                "branch": "test-catchup",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0f65671a86f061fcd",
-                "instance_type": "t2.medium",
+                "instance_type": "t2.micro",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-08a38dd68d54c7ea9"
             },
@@ -69,11 +67,11 @@
                 "name": "cilantro_mn",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "dev-fix",
+                "branch": "test-catchup",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-08a38dd68d54c7ea9",
-                "instance_type": "t2.medium",
+                "instance_type": "t2.micro",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0475e8f109e6a0bb4"
             }
@@ -83,7 +81,7 @@
         {
             "name": "delegate",
             "image": "cilantro_base",
-            "count": 5,
+            "count": 4,
             "ports": [
                 443
             ]
@@ -91,7 +89,7 @@
         {
             "name": "witness",
             "image": "cilantro_base",
-            "count": 5,
+            "count": 4,
             "ports": [
                 443
             ]
@@ -99,7 +97,7 @@
         {
             "name": "masternode",
             "image": "cilantro_mn",
-            "count": 5,
+            "count": 4,
             "ports": [
                 443
             ]
