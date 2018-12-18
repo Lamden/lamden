@@ -34,7 +34,7 @@ REDIS_PASSWORD={}
     os.system('redis-server docker/redis.conf --port {} --requirepass {} {}'.format(port, pw, run_async))
 
 if __name__ == '__main__':
-    os.system("find . -name '*-ipc-sock*' -delete")
+    # os.system("find . -name '*-ipc-sock*' -delete || true")
     from dotenv import load_dotenv
     load_dotenv()
     start_redis()

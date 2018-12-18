@@ -6,7 +6,7 @@ def start_mongo():
     if env('VMNET_CLOUD'):
         host_name = ''
         if env('ANNIHILATE'):
-            shutil.rmtree('./data')
+            shutil.rmtree('./data', ignore_errors=True)
     else:
         host_name = env('HOST_NAME', '')
 
@@ -27,7 +27,7 @@ def start_mongo():
     create_user()
 
 if __name__ == '__main__':
-    os.system("find . -name '*-ipc-sock*' -delete")
+    # os.system("find . -name '*-ipc-sock*' -delete || true")
     from start_redis import start_redis
     from dotenv import load_dotenv
     load_dotenv()
