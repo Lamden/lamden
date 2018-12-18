@@ -37,6 +37,25 @@ class TestCatchupManager(TestCase):
         self.assertEqual(m.curr_hash, StateDriver.get_latest_block_hash())
         self.assertEqual(m.curr_num, StateDriver.get_latest_block_num())
 
+    def test_catchup_with_no_new_blocks(self):
+        cm = self._build_manager()
+        cm.run_catchup()
+        self.assertTrue(cm.catchup_state)
+
+        vk1 = VKBook.get_masternodes()[0]
+        vk2 = VKBook.get_masternodes()[1]
+        vk3 = VKBook.get_masternodes()[2]
+
+        reply_data = []
+        index_reply = BlockIndexReply.create(reply_data)
+
+        cm.recv_block_idx_reply(vk1, index_reply)
+        self.assertTrue(vk1 in cm.node_idx_reply_set)
+        self.assertTrue(cm.catchup_state)  # catchup_state should be false, as we've only recv 1/2 required responses
+
+        cm.recv_block_idx_reply(vk2, index_reply)
+        self.assertFalse(cm.catchup_state)  # Now that we have 2/2 replies, we should be out of Catchup
+
     def test_catchup_with_new_blocks(self):
         cm = self._build_manager()
         cm.run_catchup()
@@ -68,26 +87,6 @@ class TestCatchupManager(TestCase):
         self.assertTrue(cm.catchup_state)
         self.assertEqual(cm.curr_hash, b2)
         self.assertEqual(cm.curr_num, 2)
-
-    def test_catchup_with_no_new_blocks(self):
-        cm = self._build_manager()
-        cm.run_catchup()
-        self.assertTrue(cm.catchup_state)
-
-        vk1 = VKBook.get_masternodes()[0]
-        vk2 = VKBook.get_masternodes()[1]
-        vk3 = VKBook.get_masternodes()[2]
-
-        reply_data = []
-        index_reply = BlockIndexReply.create(reply_data)
-
-        cm.recv_block_idx_reply(vk1, index_reply)
-
-        # catchup_state should be false, as we've only recv 1 out of 2 required responses
-        self.assertTrue(cm.catchup_state)
-
-        cm.recv_block_idx_reply(vk2, index_reply)
-        self.assertFalse(cm.catchup_state)  # Now that we have 2/2 replies, we should be out of Catchup
 
 """
   9 block index request:
