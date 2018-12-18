@@ -94,9 +94,9 @@ class SubBlockGroup:
 
         if sender_vk in self.sender_to_sbc:
             self.log.debug("Sender {} has already submitted a contender for sb idx {} with prev hash {}! Removing his "
-                          "old contender before adding a new one".format(sender_vk, self.sb_idx, self.curr_block_hash))
+                           "old contender before adding a new one".format(sender_vk, self.sb_idx, self.curr_block_hash))
             existing_sbc = self.sender_to_sbc[sender_vk]
-            self.rh[existing_sbc.result_hash].pop(existing_sbc)
+            self.rh[existing_sbc.result_hash].remove(existing_sbc)
 
         self.sender_to_sbc[sender_vk] = sbc
         self.rh[sbc.result_hash].add(sbc)
