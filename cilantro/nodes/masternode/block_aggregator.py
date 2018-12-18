@@ -184,7 +184,8 @@ class BlockAggregator(Worker):
             self.timeout_fut = asyncio.ensure_future(self.schedule_block_timeout())
 
         if self.curr_block.is_consensus_reached():
-            self.log.info("Consensus reached for prev hash {}!".format(self.curr_block_hash))
+            self.log.success("Consensus reached for prev hash {} (is_empty={})"
+                             .format(self.curr_block_hash, self.curr_block.is_empty()))
             self.store_full_block()
             return
 
@@ -199,7 +200,7 @@ class BlockAggregator(Worker):
         self.timeout_fut.cancel()
 
         if self.curr_block.is_empty():
-            self.log.debug("Got consensus on empty block with prev hash {}! Sending skip block notification".format(self.curr_block_hash))
+            self.log.info("Got consensus on empty block with prev hash {}! Sending skip block notification".format(self.curr_block_hash))
             self.send_skip_block_notif()
 
         else:
