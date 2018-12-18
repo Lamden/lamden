@@ -167,7 +167,13 @@ class BlockContender:
         self.curr_block_hash = StateDriver.get_latest_block_hash()
         self.time_created = time.time()
         self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
+        self.log.debug("BlockContender created with curr_block_hash={}".format(self.curr_block_hash))
 
+    def reset(self):
+        self.committed = False
+        self.consensus_reached = False
+        self.curr_block_hash = StateDriver.get_latest_block_hash()
+        self.time_created = time.time()
         self.log.debug("BlockContender created with curr_block_hash={}".format(self.curr_block_hash))
 
     def is_consensus_reached(self) -> bool:
