@@ -1,77 +1,111 @@
 # TODO this file could perhaps be named better
+from cilantro.messages.base.base import MessageBase
 from cilantro.constants.system_config import TRANSACTIONS_PER_SUB_BLOCK
 from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
 from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
-from cilantro.constants.system_config import BATCH_INTERVAL, MAX_SKIP_TURNS
+from cilantro.constants.system_config import BATCH_SLEEP_INTERVAL, NO_ACTIVITY_SLEEP, NUM_BLOCKS
+from cilantro.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
+from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.messages.transaction.batch import TransactionBatch
 
 import zmq.asyncio
-import asyncio
+import asyncio, time
 
 
 class TransactionBatcher(Worker):
 
-    def __init__(self, queue, ip, *args, **kwargs):
+    def __init__(self, queue, ip, ipc_ip, ipc_port, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.queue, self.ip = queue, ip
+
+        self.tasks = []
 
         # Create Pub socket to broadcast to witnesses
         self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
         self.pub_sock.bind(port=MN_TX_PUB_PORT, ip=self.ip)
 
+        # Create DEALER socket to talk to the BlockManager process over IPC
+        self.ipc_dealer = None
+        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(0).encode())
+
         # TODO create PAIR socket to orchestrate w/ main process?
-        # it may be efficient to have this to get delta interval so we won't send more bags than we can handle
-        self.delta_extra = 0   # TODO get this delta from main process (blk aggregator)
+
+        self.num_bags_sent = 0
+        self.num_empty_blocks_recvd = 0
+
+        self.tasks.append(self.compose_transactions())
 
         # Start main event loop
-        self.loop.run_until_complete(self.compose_transactions())
+        # self.loop.run_until_complete(self.compose_transactions())
+        self.loop.run_until_complete(asyncio.gather(*self.tasks))
+
+    def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
+        self.log.info("Connecting to BlockAggregator's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
+                      .format(ip, port, identity))
+        self.ipc_dealer = self.manager.create_socket(socket_type=zmq.DEALER, name="Batcher-IPC-Dealer[{}]".format(0), secure=False)
+        self.ipc_dealer.setsockopt(zmq.IDENTITY, identity)
+        self.ipc_dealer.connect(port=port, protocol='ipc', ip=ip)
+
+        self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
+
+    def handle_ipc_msg(self, frames):
+        self.log.spam("Got msg over Dealer IPC from BlockAggregator with frames: {}".format(frames))
+        assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
+
+        msg_type = bytes_to_int(frames[0])
+        msg_blob = frames[1]
+
+        msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
+        self.log.debugv("Batcher received an IPC message {}".format(msg))
+
+        if isinstance(msg, EmptyBlockMade):
+            self.log.spam("Got EmptyBlockMade notif from block aggregator!!!")
+            self.num_bags_sent = self.num_bags_sent - 1
+            self.num_empty_blocks_recvd = self.num_empty_blocks_recvd + 1
+
+        elif isinstance(msg, NonEmptyBlockMade):
+            self.log.spam("Got NonEmptyBlockMade notif from block aggregator!!!")
+            self.num_bags_sent = self.num_bags_sent - 1
+            self.num_empty_blocks_recvd = 0     # reset
+
+        else:
+            raise Exception("Batcher got message type {} from IPC dealer socket that it does not know how to handle"
+                            .format(type(msg)))
 
     async def compose_transactions(self):
-        self.log.important("Starting TransactionBatcher with a batch interval of {} seconds".format(BATCH_INTERVAL))
+        # time.sleep(2)
+        await asyncio.sleep(10)
+        self.log.important("Starting TransactionBatcher")
         self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
-
-        # TODO - do we need skip_turns? we need it with assumption that it is more efficient to skip very small batch
-        # Instead of two small batches, it is more efficient to have one empty one and second one with combined one.
-        # need to verify this assumption when Seneca is fully operational
-        skip_turns = MAX_SKIP_TURNS
-        first_bag_sent = False
-        # raghu: need to tie this with new block notifications for better efficiency?, but for now:
-        num_bags_sent = 0
+        total_sleep = 0
+        max_num_bags = 3 * NUM_BLOCKS    # ideally, num_caches * num_blocks
 
         while True:
-            num_txns = self.queue.qsize()
-            if (num_txns < TRANSACTIONS_PER_SUB_BLOCK) or (num_bags_sent > 3):
-                await asyncio.sleep(BATCH_INTERVAL + self.delta_extra)
-                if num_bags_sent > 0:
-                    num_bags_sent = num_bags_sent - 1
+            num_txns = self.queue.qsize() 
+            if (num_txns < TRANSACTIONS_PER_SUB_BLOCK) or (self.num_bags_sent >= 3 * NUM_BLOCKS):
+                await asyncio.sleep(BATCH_SLEEP_INTERVAL)
+                # time.sleep(BATCH_SLEEP_INTERVAL)
+                total_sleep = total_sleep + BATCH_SLEEP_INTERVAL
+                if ((self.num_bags_sent > 0) or (self.num_empty_blocks_recvd >= NUM_BLOCKS)) and \
+                   (total_sleep < NO_ACTIVITY_SLEEP):
+                    self.log.spam("Skipping TransactionBatcher {} / {}".format(self.num_bags_sent, NUM_BLOCKS))
+                    continue
 
+            total_sleep = 0
             tx_list = []
-            if (num_txns >= TRANSACTIONS_PER_SUB_BLOCK) or (skip_turns < 1):
-                for _ in range(min(TRANSACTIONS_PER_SUB_BLOCK, num_txns)):
-                    tx = OrderingContainer.from_bytes(self.queue.get())
-                    # self.log.spam("masternode bagging transaction from sender {}".format(tx.transaction.sender))
-
-                    tx_list.append(tx)
-                skip_turns = MAX_SKIP_TURNS  # reset to max again
-                if len(tx_list):
-                    first_bag_sent = True
-            else:
-                skip_turns = skip_turns - 1
-                # continue
-
-            # send either empty or some txns capping at TRANSACTIONS_PER_SUB_BLOCK
-            if not first_bag_sent:
-                self.log.spam("Skipping this batch (skip_turns={}, num_bags_sent={})".format(skip_turns, num_bags_sent))
-                continue
+            for _ in range(min(TRANSACTIONS_PER_SUB_BLOCK, num_txns)):
+                tx = OrderingContainer.from_bytes(self.queue.get())
+                # self.log.spam("masternode bagging transaction from sender {}".format(tx.transaction.sender))
+                tx_list.append(tx)
 
             batch = TransactionBatch.create(transactions=tx_list)
             self.pub_sock.send_msg(msg=batch, header=WITNESS_MASTERNODE_FILTER.encode())
+            self.num_bags_sent = self.num_bags_sent + NUM_BLOCKS
             if len(tx_list):
                 self.log.info("Sending {} transactions in batch".format(len(tx_list)))
             else:
                 self.log.info("Sending an empty transaction batch")
 
-            num_bags_sent = num_bags_sent + 1

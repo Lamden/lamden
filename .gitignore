@@ -25,7 +25,6 @@ cilantro/faucet.json
 **/logs
 
 # Data
-data
 cilantro/protocol/networks/data
 certs
 .DS_Store

@@ -37,11 +37,13 @@ class TestNodeBootStage(MPTestCase):
         wit_0 = MPNodeBase(sk=TESTNET_WITNESSES[0]['sk'], name='[node_3]WITNESS_0', config_fn=None, assert_fn=assert_boot, block_until_rdy=BLOCK)
         wit_1 = MPNodeBase(sk=TESTNET_WITNESSES[1]['sk'], name='[node_4]WITNESS_1', config_fn=None, assert_fn=assert_boot, block_until_rdy=BLOCK)
         del_0 = MPNodeBase(sk=TESTNET_DELEGATES[0]['sk'], name='[node_5]DELEGATE_0', config_fn=None, assert_fn=assert_boot, block_until_rdy=BLOCK)
-        del_1 = MPNodeBase(sk=TESTNET_DELEGATES[1]['sk'], name='[node_5]DELEGATE_1', config_fn=None, assert_fn=assert_boot, block_until_rdy=BLOCK)
+        # del_1 = MPNodeBase(sk=TESTNET_DELEGATES[1]['sk'], name='[node_5]DELEGATE_1', config_fn=None, assert_fn=assert_boot, block_until_rdy=BLOCK)
 
-        all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0, del_1)
+        # all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0, del_1)
+        all_nodes = (mn_0, mn_1, wit_0, wit_1, del_0)
         all_vks = (TESTNET_MASTERNODES[0]['vk'], TESTNET_MASTERNODES[1]['vk'], TESTNET_WITNESSES[0]['vk'],
-                   TESTNET_WITNESSES[1]['vk'], TESTNET_DELEGATES[0]['vk'], TESTNET_DELEGATES[1]['vk'],)
+                   TESTNET_WITNESSES[1]['vk'], TESTNET_DELEGATES[0]['vk'],)
+                   # TESTNET_WITNESSES[1]['vk'], TESTNET_DELEGATES[0]['vk'], TESTNET_DELEGATES[1]['vk'],)
 
         self.start(timeout=CI_FACTOR*60)
 

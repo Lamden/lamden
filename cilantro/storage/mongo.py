@@ -92,7 +92,7 @@ class MDB:
         if db_type == 'MDB':    # fresh setup
             database = cls.cfg.get('MN_DB', 'mn_blk_database')
             uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
-            cls.log.info("uri {}".format(uri))
+            cls.log.debug("uri {}".format(uri))
             return uri
 
         if db_type == 'index':
@@ -122,7 +122,7 @@ class MDB:
 
         # insert passed dict block to db
         blk_id = cls.mn_collection.insert(block_dict)
-        cls.log.info("block {}".format(block_dict))
+        cls.log.spam("block {}".format(block_dict))
         if blk_id:
             return True
 
