@@ -48,17 +48,20 @@ class TestLateJoining(MPTestCase):
         all_vks = [TESTNET_MASTERNODES[0]['vk'], TESTNET_MASTERNODES[1]['vk'], TESTNET_WITNESSES[0]['vk'],
                    TESTNET_WITNESSES[1]['vk'], TESTNET_DELEGATES[0]['vk'], TESTNET_DELEGATES[1]['vk']]
 
+        self.log.test("Configuring nodes 1, 2, and 3")
         for n in (node1, node2, node3):
             self.config_node(n, all_vks)
 
         time.sleep(10*CI_FACTOR)  # Nap while nodes try to add sockets
 
         # Spin up last 2 nodes
+        self.log.test("Spinning up remaining 2 nodes")
         node4 = MPPubSubAuth(sk=TESTNET_WITNESSES[1]['sk'], name='[node_4]WITNESS_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
         node5 = MPPubSubAuth(sk=TESTNET_DELEGATES[0]['sk'], name='[node_5]DELEGATE_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+
         time.sleep(12*CI_FACTOR)  # Nap while nodes hookup
 
-        self.log.test("Spinning up remaining 2 nodes")
+        self.log.test("Configuring nodes 4 and 5")
         for n in (node4, node5):
             self.config_node(n, all_vks)
 

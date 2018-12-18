@@ -71,12 +71,11 @@ class SocketManager:
         # Retry any failed lookups registered by sockets when a node comes online
         elif e['event'] == 'node_online' and e['vk'] in self.failed_lookups:
             # TODO change log lvl here
-            self.log.important("sock manager got node_online event for vk {}! Triggering retry for failed lookups {}"
-                               .format(e['vk'], self.failed_lookups[e['vk']]))
+            self.log.debugv("sock manager got node_online event for vk {}! Triggering retry for failed lookups {}"
+                            .format(e['vk'], self.failed_lookups[e['vk']]))
             for cmd_tuple in self.failed_lookups.pop(e['vk']):
                 sock, cmd_name, args, kwargs = cmd_tuple
                 kwargs['ip'] = e['ip']
-                self.log.important2("Retrying failed lookup ")  # TODO change log lvl
                 getattr(sock, cmd_name)(*args, **kwargs)
 
         elif e['event'] == 'unauthorized_ip':
