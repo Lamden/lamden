@@ -1,0 +1,132 @@
+[
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "3.17.92.82",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:mgmt-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 3,
+        "PublicIpAddress": "3.17.100.194",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "52.14.24.75",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 2,
+        "PublicIpAddress": "18.188.196.114",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "18.224.247.178",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "18.220.17.39",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:witness-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "18.216.10.155",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:witness-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 2,
+        "PublicIpAddress": "18.221.231.90",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:witness-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 3,
+        "PublicIpAddress": "18.224.133.13",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:witness-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 2,
+        "PublicIpAddress": "3.17.83.151",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:masternode-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 3,
+        "PublicIpAddress": "18.221.122.203",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:masternode-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "13.58.34.162",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:masternode-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "18.220.242.129",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-catchup:masternode-run"
+            }
+        ]
+    }
+]

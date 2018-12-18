@@ -1,6 +1,8 @@
 {
     "environment": {"CONSTITUTION_FILE": "4-4-4.json"},
     "aws": {
+        "profile_name": "default",
+        "region_name": "us-east-2",
         "use_elastic_ips": true,
         "security_groups": {
             "simple_https": {
