@@ -206,8 +206,14 @@ class MasterOps:
         return blk_num
 
     @classmethod
-    def get_blk_owners(cls, blk_hash=None):
-        my_query = {'blockHash': blk_hash}
+    def get_blk_owners(cls, blk_hash=None, blk_num = None):
+        if blk_hash is not None:
+            my_query = {'blockHash': blk_hash}
+        elif blk_num is not None:
+            my_query = {'blockNum': blk_num}
+        else:
+            return None
+
         outcome = MDB.query_db(type='idx', query = my_query)
         owners = outcome.get('mn_blk_owner')
         cls.log.debug("print owners {}".format(outcome))
