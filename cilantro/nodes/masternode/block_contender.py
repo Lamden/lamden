@@ -8,6 +8,7 @@ from cilantro.messages.transaction.data import TransactionData
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.block_data.sub_block import SubBlock
 from cilantro.messages.block_data.block_data import BlockData
+from cilantro.messages.block_data.state_update import FailedBlockNotification
 
 from collections import defaultdict
 from typing import List
@@ -73,6 +74,12 @@ class SubBlockGroup:
 
         return cons_reached
 
+    def get_input_hashes(self) -> set:
+        s = set()
+        for sbc in self.sender_to_sbc.values():
+            s.add(sbc.input_hash)
+        return s
+
     def is_empty(self):
         return len(self._get_merkle_leaves()) == 0
 
@@ -104,9 +111,9 @@ class SubBlockGroup:
             self.best_rh = sbc.result_hash
 
         # Just a warning to help debugging
-        if len(self.rh) > NUM_SB_PER_BLOCK:
-            self.log.warning("More than {} unique result hashes for prev block hash {}!!! Result hashes: {}"
-                             .format(NUM_SB_PER_BLOCK, self.curr_block_hash, list(self.rh.keys())))
+        # if len(self.rh) > 1:
+        #     self.log.warning("More than {} unique result hashes for prev block hash {}!!! Result hashes: {}"
+        #                      .format(1, self.curr_block_hash, list(self.rh.keys())))
 
         for tx in sbc.transactions:
             if tx.hash not in self.transactions:
@@ -167,6 +174,7 @@ class BlockContender:
         self.curr_block_hash = StateDriver.get_latest_block_hash()
         self.time_created = time.time()
         self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
+        self.old_input_hashes = set()  # A set of input hashes from the last block.
         self.log.debug("BlockContender created with curr_block_hash={}".format(self.curr_block_hash))
 
     def reset(self):
@@ -174,7 +182,13 @@ class BlockContender:
         self.consensus_reached = False
         self.curr_block_hash = StateDriver.get_latest_block_hash()
         self.time_created = time.time()
-        self.log.debug("BlockContender created with curr_block_hash={}".format(self.curr_block_hash))
+        self.log.info("BlockContender reset with curr_block_hash={}".format(self.curr_block_hash))
+
+        all_input_hashes = set()
+        for s in self._get_input_hashes():
+            all_input_hashes = all_input_hashes.union(s)
+        self.old_input_hashes = all_input_hashes
+        self.log.debugv("Old input hashes set to {}".format(self.old_input_hashes))
 
     def is_consensus_reached(self) -> bool:
         assert len(self.sb_groups) <= NUM_SB_PER_BLOCK, "Got more sub block indices than SB_PER_BLOCK!"
@@ -212,7 +226,7 @@ class BlockContender:
 
     def get_sb_data(self) -> List[SubBlock]:
         assert self.is_consensus_reached(), "Cannot get block data if consensus is not reached!"
-        assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "Num sb groups != num SBs! sb_groups={}".format(self.sb_groups)
+        assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "More sb_groups than subblocks! sb_groups={}".format(self.sb_groups)
 
         # Build the sub-blocks
         sb_data = []
@@ -220,10 +234,14 @@ class BlockContender:
             sb_group = self.sb_groups[sb_idx]
             sb_data.append(sb_group.get_sb())
 
+        assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
+                                                 .format(len(sb_data), NUM_SB_PER_BLOCK)
+
         return sb_data
 
-    def get_num_contenders(self):
-        pass
+    def get_failed_block_notif(self) -> FailedBlockNotification:
+        input_hashes = self._get_input_hashes()
+        return FailedBlockNotification.create(prev_block_hash=self.curr_block_hash, input_hashes=input_hashes)
 
     def add_sbc(self, sender_vk: str, sbc: SubBlockContender) -> bool:
         """
@@ -232,6 +250,11 @@ class BlockContender:
         :param sbc: The SubBlockContender instance to add
         :return: True if this is the first SBC added to this BlockContender, and false otherwise
         """
+        # Make sure this SBC does not refer to the last block created by checking the input hash
+        if sbc.input_hash in self.old_input_hashes:
+            self.log.info("Got SBC from prev block from sender {}! Ignoring.".format(sender_vk))  # TODO change log lvl?
+            return False
+
         groups_empty = len(self.sb_groups) == 0
         if sbc.sb_index not in self.sb_groups:
             self.sb_groups[sbc.sb_index] = SubBlockGroup(sb_idx=sbc.sb_index, curr_block_hash=self.curr_block_hash)
@@ -239,3 +262,12 @@ class BlockContender:
         self.sb_groups[sbc.sb_index].add_sbc(sender_vk, sbc)
         return groups_empty
 
+    def _get_input_hashes(self) -> List[set]:
+        input_hashes = []
+        for i in range(NUM_SUB_BLOCKS):
+            if i not in self.sb_groups:
+                input_hashes.append(set())
+            else:
+                input_hashes.append(self.sb_groups[i].get_input_hashes())
+
+        return input_hashes
