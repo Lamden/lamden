@@ -49,7 +49,6 @@ class SubBlockGroup:
         # all sb_idx matches ours, all input hashes are the same
 
         merkle_root = self.best_rh
-        merkle_root = self.best_rh
         contenders = self.rh[merkle_root]
         c = next(iter(contenders))
         sigs = [c.signature for c in contenders]
@@ -182,6 +181,7 @@ class BlockContender:
         self.consensus_reached = False
         self.curr_block_hash = StateDriver.get_latest_block_hash()
         self.time_created = time.time()
+        self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
         self.log.info("BlockContender reset with curr_block_hash={}".format(self.curr_block_hash))
 
         all_input_hashes = set()
