@@ -206,16 +206,13 @@ class BlockContender:
 
     def get_sb_data(self) -> List[SubBlock]:
         assert self.is_consensus_reached(), "Cannot get block data if consensus is not reached!"
-        assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "More sb_groups than subblocks! sb_groups={}".format(self.sb_groups)
+        assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "Num sb groups != num SBs! sb_groups={}".format(self.sb_groups)
 
         # Build the sub-blocks
         sb_data = []
         for sb_idx in range(NUM_SB_PER_BLOCK):
             sb_group = self.sb_groups[sb_idx]
             sb_data.append(sb_group.get_sb())
-
-        assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
-                                                 .format(len(sb_data), NUM_SB_PER_BLOCK)
 
         return sb_data
 

@@ -218,7 +218,6 @@ class BlockAggregator(Worker):
 
         self.curr_block = BlockContender()  # Reset BlockContender (will this leak memory???)
 
-
     def send_new_block_notif(self, block_data: BlockData):
         message = NonEmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
