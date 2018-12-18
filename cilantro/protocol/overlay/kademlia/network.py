@@ -122,13 +122,13 @@ class Network(object):
             if addr.vk in processed:
                 continue
             processed.add(addr.vk)
-            await self.protocol.callFindNode(addr, self.node)
+            await self.protocol.callFindNode(addr, self.node, False)
         
     async def bootstrap_node(self, addr):
         result = await self.protocol.ping(addr, self.node.id)
         return Node(result[1], addr[0], addr[1]) if result[0] else None
 
-    def network.track_and_inform():
+    def track_and_inform(self):
         self.protocol.set_track_on()
 
     async def lookup_ip(self, vk):

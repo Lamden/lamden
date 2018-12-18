@@ -34,7 +34,7 @@ class TestLateJoining(MPTestCase):
         """
         def assert_sub(test_obj):
             c_args = test_obj.handle_sub.call_args_list
-            assert len(c_args) == 4, "Expected 4 messages (one from each node). Instead, got:\n{}".format(c_args)
+            assert len(c_args) == 5, "Expected 5 messages (one from each node). Instead, got:\n{}".format(c_args)
 
         BLOCK = False
 
@@ -56,12 +56,13 @@ class TestLateJoining(MPTestCase):
         # Spin up last 2 nodes
         node4 = MPPubSubAuth(sk=TESTNET_WITNESSES[1]['sk'], name='[node_4]WITNESS_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
         node5 = MPPubSubAuth(sk=TESTNET_DELEGATES[0]['sk'], name='[node_5]DELEGATE_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+        time.sleep(12*CI_FACTOR)  # Nap while nodes hookup
 
         self.log.test("Spinning up remaining 2 nodes")
         for n in (node4, node5):
             self.config_node(n, all_vks)
 
-        time.sleep(10*CI_FACTOR)  # Nap while the remaining nodes connect
+        time.sleep(20*CI_FACTOR)  # Nap while the remaining nodes connect
 
         # Everyone pubs
         self.log.test("Sending PUB messages from all nodes")

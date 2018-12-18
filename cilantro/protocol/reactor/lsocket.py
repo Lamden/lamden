@@ -81,6 +81,7 @@ class LSocket:
         elif event['event'] == 'not_found':
             self.log.warning("Socket got not_found event for vk {}. Adding it to failed lookups.".format(event['vk']))
             self.manager.failed_lookups[event['vk']].append((self, cmd_name, args, kwargs))
+            self.manager.set_new_node_tracking()
             self._check_if_rdy()
 
     def add_handler(self, handler_func, handler_key=None, start_listening=False) -> Union[asyncio.Future, asyncio.coroutine]:

@@ -7,6 +7,7 @@ from cilantro.protocol.overlay.kademlia.rpczmq import RPCProtocol
 from cilantro.protocol.overlay.kademlia.node import Node
 from cilantro.protocol.overlay.kademlia.routing import RoutingTable
 from cilantro.protocol.overlay.kademlia.utils import digest
+from cilantro.protocol.overlay.event import Event
 
 log = logging.getLogger(__name__)
 
@@ -50,11 +51,11 @@ class KademliaProtocol(RPCProtocol):
         neighbors = self.router.findNode(node)
         return list(map(tuple, neighbors))
 
-    async def callFindNode(self, nodeToAsk, nodeToFind):
+    async def callFindNode(self, nodeToAsk, nodeToFind, updateRoutingTable = True):
         address = (nodeToAsk.ip, nodeToAsk.port, self.sourceNode.vk)
         result = await self.find_node(address, self.sourceNode.id,
                                       nodeToFind.vk)
-        return self.handleCallResponse(result, nodeToAsk)
+        return self.handleCallResponse(result, nodeToAsk, updateRoutingTable)
 
     async def callPing(self, nodeToAsk):
         # address = (nodeToAsk.ip, nodeToAsk.port, self.sourceNode.vk)
@@ -82,7 +83,7 @@ class KademliaProtocol(RPCProtocol):
         log.info("never seen %s before, adding to router", node)
         self.router.addContact(node)
 
-    def handleCallResponse(self, result, node):
+    def handleCallResponse(self, result, node, updateRoutingTable):
         """
         If we get a response, add the node to the routing table.  If
         we get no response, make sure it's removed from the routing table.
@@ -97,6 +98,7 @@ class KademliaProtocol(RPCProtocol):
         self.welcomeIfNewNode(node)
         for t in result[1]:
             n = Node(digest(t[3]), ip=t[1], port=t[2], vk=t[3])
-            self.welcomeIfNewNode(n)
+            if updateRoutingTable:
+                self.welcomeIfNewNode(n)
             nodes.append(n)
         return nodes
