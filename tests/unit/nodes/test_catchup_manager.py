@@ -1,5 +1,8 @@
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('2-2-2.json')
+
 from unittest import TestCase
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from cilantro.nodes.catchup import CatchupManager
 from cilantro.storage.state import StateDriver
@@ -7,8 +10,17 @@ from cilantro.storage.state import StateDriver
 from cilantro.messages.block_data.block_data import *
 from cilantro.messages.block_data.state_update import *
 
+import asyncio
+from cilantro.storage.redis import SafeRedis
+
 
 class TestCatchupManager(TestCase):
+
+    def setUp(self):
+        SafeRedis.flushall()
+
+    def tearDown(self):
+        asyncio.get_event_loop().close()
 
     def _build_manager(self, vk='A'*64, store_blocks=True) -> CatchupManager:
         pub, router = MagicMock(), MagicMock()
@@ -20,20 +32,24 @@ class TestCatchupManager(TestCase):
         self.assertEqual(m.curr_hash, StateDriver.get_latest_block_hash())
         self.assertEqual(m.curr_num, StateDriver.get_latest_block_num())
 
-    def test_recv_block_idx_req(self):
-        # TODO implement
-        pass
+    # TODO fix this
+    # def test_catchup_with_no_new_blocks(self):
+    #     cm = self._build_manager()
+    #
+    #     cm.run_catchup()
+    #
+    #     self.assertTrue(cm.catchup_state)
+    #
+    #     reply_data = [{'blockHash': GENESIS_BLOCK_HASH,
+    #                    'blockOwners': [VKBook.get_masternodes()[0], VKBook.get_masternodes()[1]], 'blockNum': 0}, ]
+    #     index_reply = BlockIndexReply.create(reply_data)
+    #
+    #     cm.recv_block_idx_reply(VKBook.get_masternodes()[0], index_reply)
+    #     cm.recv_block_idx_reply(VKBook.get_masternodes()[1], index_reply)
+    #
+    #     self.assertFalse(cm.catchup_state)
 
-    def test_recv_block_idx_reply(self):
-        mn1 = 'ABCD' * 16
-        mn2 = 'DCBA' * 16
-        mn3 = 'AABB' * 16
-        b1 = 'A' * 64
-        b2 = 'B' * 64
-        b3 = 'C' * 64
-        data = [[b1, 1, [mn1,]], [b2, 2, [mn2, mn1]], [b3, 3, [mn1, mn2, mn3]]]
 
-        req = BlockIndexReply(data)
 
 """
   9 block index request:
