@@ -239,9 +239,9 @@ class BlockContender:
 
         return sb_data
 
-    def get_failed_block_notif(self) -> FailedBlockNotification:
-        input_hashes = self._get_input_hashes()
-        return FailedBlockNotification.create(prev_block_hash=self.curr_block_hash, input_hashes=input_hashes)
+    # def get_failed_block_notif(self) -> FailedBlockNotification:
+    #     input_hashes = self._get_input_hashes()
+    #     return FailedBlockNotification.create(prev_block_hash=self.curr_block_hash, input_hashes=input_hashes)
 
     def add_sbc(self, sender_vk: str, sbc: SubBlockContender) -> bool:
         """
