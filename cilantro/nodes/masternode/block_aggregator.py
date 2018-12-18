@@ -128,7 +128,6 @@ class BlockAggregator(Worker):
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
-
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message

@@ -170,7 +170,6 @@ class SubBlockBuilder(Worker):
         while len(self.sb_managers[0].to_finalize_txs) > 0:
             ih, txs_bag = self.sb_managers[0].to_finalize_txs.pop_front()
             self.sb_managers[0].pending_txs.insert_front(ih, txs_bag)
-        
 
     def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
