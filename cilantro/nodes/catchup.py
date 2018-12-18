@@ -366,8 +366,6 @@ class CatchupManager:
             self.blk_req_ptr_idx = None             # idx to track ptr in block_delta_list
             self.last_req_blk_num = None
 
-            #self.curr_hash, self.curr_num = None, None  # latest blk on redis
-
             # received full block could be out of order
             self.rcv_block_dict = {}
             self.awaited_blknum = None
