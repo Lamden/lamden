@@ -4,6 +4,7 @@ from cilantro.messages.block_data.block_data import BlockData
 from cilantro.utils import lazy_property
 from typing import List
 from cilantro.utils import is_valid_hex
+from cilantro.constants.system_config import NUM_SUB_BLOCKS
 
 import capnp
 import blockdata_capnp
@@ -91,3 +92,42 @@ class SkipBlockNotification(MessageBaseJson):
     @property
     def prev_block_hash(self):
         return self._data[self.PREV_B_HASH]
+
+
+class FailedBlockNotification(MessageBaseJson):
+    PREV_B_HASH = 'prev_b_hash'
+    SB = 'sb'
+
+    def validate(self):
+        assert is_valid_hex(self.prev_block_hash), "Not valid hash: {}".format(self.prev_block_hash)
+        assert len(self.input_hashes) == NUM_SUB_BLOCKS, "Length of input hashes list {} does not match number of " \
+                                                         "sub-blocks {}".format(len(self.input_hashes), NUM_SUB_BLOCKS)
+        for s in self.input_hashes:
+            for ih in s:
+                assert is_valid_hex(ih), "Not valid input hash: {}".format(ih)
+
+    @classmethod
+    def create(cls, prev_block_hash: str, input_hashes: List[set]):
+        # JSON cannot handle sets so we must cast them to lists
+        new_li = []
+        for s in input_hashes:
+            new_li.append(list(s))
+
+        data = {cls.PREV_B_HASH: prev_block_hash, cls.SB: new_li}
+        return cls.from_data(data)
+
+    @property
+    def prev_block_hash(self):
+        return self._data[self.PREV_B_HASH]
+
+    @lazy_property
+    def input_hashes(self) -> List[set]:
+        # We must casts lists back to sets for those fire O(1) lookups
+        new_li = []
+        for li in self._data[self.SB]:
+            new_li.append(set(li))
+        return new_li
+
+
+
+

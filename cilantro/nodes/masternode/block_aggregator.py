@@ -116,18 +116,16 @@ class BlockAggregator(Worker):
         self.log.info("Triggering catchup")
         # self.catchup_manager.send_block_idx_req()
 
-
     def _send_msg_over_ipc(self, message: MessageBase):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
         frame to identify the type of message
         """
-        self.log.spam("Sending msg to batcher")
+        self.log.spam("Sending msg to batcher: {}".format(message))
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
         id_frame = str(0).encode()
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
-
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -153,6 +151,9 @@ class BlockAggregator(Worker):
 
         elif isinstance(msg, SkipBlockNotification):
             self.recv_skip_block_notif(sender, msg)
+
+        elif isinstance(msg, FailedBlockNotification):
+            self.recv_fail_block_notif(sender, msg)
 
         elif isinstance(msg, BlockIndexRequest):
             self.catchup_manager.recv_block_idx_req(sender, msg)
@@ -196,16 +197,14 @@ class BlockAggregator(Worker):
             return
 
         if not self.curr_block.is_consensus_possible():
-            self.log.critical("Consensus not possible for prev block hash {}! Sending skip block notif".format(self.curr_block_hash))
-            # raghu todo - use a different notification with ALL input hashes - need to think a way to make them list of lists so BM can send appropriate ones to the right SBBer
-            self.send_skip_block_notif()
+            self.log.critical("Consensus not possible for prev block hash {}! Sending failed block notif".format(self.curr_block_hash))
+            self.send_fail_block_notif()
+            self._reset_curr_block()
+            # TODO -- how do we filter out new 'late' SBCs that reference this abandoned block?
         else:
             self.log.debugv("Consensus not reached yet.")
 
     def store_full_block(self):
-        self.log.debugv("Canceling block timeout")
-        self.timeout_fut.cancel()
-
         if self.curr_block.is_empty():
             self.log.debug("Got consensus on empty block with prev hash {}! Sending skip block notification".format(self.curr_block_hash))
             self.send_skip_block_notif()
@@ -224,8 +223,7 @@ class BlockAggregator(Worker):
             self.log.success2("STORED BLOCK WITH HASH {}".format(block_data.block_hash))
             self.send_new_block_notif(block_data)
 
-        self.curr_block = BlockContender()  # Reset BlockContender (will this leak memory???)
-
+        self._reset_curr_block()
 
     def send_new_block_notif(self, block_data: BlockData):
         message = NonEmptyBlockMade.create()
@@ -242,6 +240,11 @@ class BlockAggregator(Worker):
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
+    def send_fail_block_notif(self):
+        msg = self.curr_block.get_failed_block_notif()
+        self.pub.send_msg(msg=msg, header=DEFAULT_FILTER.encode())
+        self.log.debug("Uh oh! Sending failed block notif {}".format(msg))
+
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
         self.log.debugv("MN got new block notification: {}".format(notif))
         # TODO implement
@@ -250,14 +253,28 @@ class BlockAggregator(Worker):
         self.log.debugv("MN got new block notification: {}".format(notif))
         # TODO implement
 
+    def recv_fail_block_notif(self, sender_vk: str, notif: FailedBlockNotification):
+        self.log.debugv("MN got new block notification: {}".format(notif))
+        # TODO implement
+
     async def schedule_block_timeout(self):
-        elapsed = 0
+        try:
+            elapsed = 0
 
-        while elapsed < BLOCK_PRODUCTION_TIMEOUT:
-            await asyncio.sleep(BLOCK_TIMEOUT_POLL)
-            elapsed += BLOCK_TIMEOUT_POLL
+            while elapsed < BLOCK_PRODUCTION_TIMEOUT:
+                await asyncio.sleep(BLOCK_TIMEOUT_POLL)
+                elapsed += BLOCK_TIMEOUT_POLL
 
-        self.log.critical("Block timeout of {}s reached for block hash {}! Resetting sub block contenders and sending "
-                          "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
-        self.send_skip_block_notif()
+            self.log.critical("Block timeout of {}s reached for block hash {}! Resetting sub block contenders and sending "
+                              "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
+            self.send_fail_block_notif()
+            self.curr_block = BlockContender()
+        except asyncio.CancelledError:
+            pass
+
+    def _reset_curr_block(self):
         self.curr_block = BlockContender()
+        self.log.debugv("Canceling block timeout")
+        if self.timeout_fut and not self.timeout_fut.done():
+            self.timeout_fut.cancel()
+
