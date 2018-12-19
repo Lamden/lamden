@@ -355,7 +355,7 @@ class BlockManager(Worker):
         if self.db_state.num_empty_sbc == NUM_SB_PER_BLOCK:
             self.log.info("why i got new block notification with block hash {} when I have all empty blocks?".format(new_block_hash))
         else:
-            self.log.info("Got new block notification with block hash {}...".format(new_block_hash))
+            self.log.info("Got new block notification with block hash {}".format(new_block_hash))
 
         if not self.db_state.cur_block_hash:
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
@@ -365,12 +365,14 @@ class BlockManager(Worker):
             return
 
         if (block_data.prev_block_hash != self.db_state.cur_block_hash):
+            self.log.warning("New Block Notif prev hash {} does not match current hash {}!"
+                             .format(block_data.prev_block_hash, self.db_state.cur_block_hash))
+            # TODO should we enter catchup here?
             self.db_state.cur_block_hash = None
             self.recv_block_data_reply(block_data)
             return
 
-        count = self.db_state.next_block.get(new_block_hash)[1] + 1 \
-                 if new_block_hash in self.db_state.next_block else 1
+        count = self.db_state.next_block.get(new_block_hash)[1] + 1 if new_block_hash in self.db_state.next_block else 1
         self.db_state.next_block[new_block_hash] = (block_data, count)
         if count >= MIN_NEW_BLOCK_MN_QOURUM:
             self.log.info("New block quorum met!")
