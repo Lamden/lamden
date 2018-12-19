@@ -80,7 +80,7 @@ def dump_it(volume, delay=0):
     God._dump_it(volume=volume, delay=delay)
 
 
-def pump_it(lamd, use_poisson=True, pump_wait=0):
+def pump_it(*args, pump_wait=0, **kwargs):
     from cilantro.utils.test.god import God
     from cilantro.logger import get_logger, overwrite_logger_level
     import logging, time
@@ -94,4 +94,4 @@ def pump_it(lamd, use_poisson=True, pump_wait=0):
         time.sleep(pump_wait)
 
     log.important("Starting the pump..")
-    God._pump_it(rate=lamd, use_poisson=use_poisson)
+    God._pump_it(*args, **kwargs)
