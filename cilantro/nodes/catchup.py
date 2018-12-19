@@ -112,7 +112,7 @@ class CatchupManager:
         req = BlockIndexRequest.create(block_hash=self.curr_hash)
         self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
 
-        self.log.important2("SEND BIR")
+        # self.log.important2("SEND BIR")
         self.dump_debug_info()
         return True
 
@@ -123,7 +123,7 @@ class CatchupManager:
         :param reply:
         :return:
         """
-        self.log.important("Got blk index reply from sender {}\nreply: {}".format(sender_vk, reply))
+        # self.log.important("Got blk index reply from sender {}\nreply: {}".format(sender_vk, reply))
 
         self.node_idx_reply_set.add(sender_vk)
 
@@ -132,7 +132,7 @@ class CatchupManager:
 
         if not reply.indices:
             self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
-            self.log.important("responded mn - {}".format(self.node_idx_reply_set))
+            # self.log.important("responded mn - {}".format(self.node_idx_reply_set))
             self.catchup_state = not self.check_catchup_done()
             self.dump_debug_info()
             return
@@ -165,7 +165,7 @@ class CatchupManager:
                 self.dump_debug_info()
 
         self.process_recv_idx()
-        self.log.important2("RCV BIRp")
+        # self.log.important2("RCV BIRp")
         self.dump_debug_info()
 
     def _send_block_data_req(self, mn_vk, req_blk_num):
@@ -175,7 +175,7 @@ class CatchupManager:
         self.router.send_msg(req, header=mn_vk.encode())
         if self.awaited_blknum is None:
             self.awaited_blknum = req_blk_num
-        self.log.important2("SEND BDRq")
+        # self.log.important2("SEND BDRq")
         self.dump_debug_info()
 
     def recv_block_data_reply(self, reply: BlockData):
@@ -198,7 +198,7 @@ class CatchupManager:
             self.update_received_block(block = reply)
 
         self._update_catchup_state(block_num = rcv_blk_num)
-        self.log.important2("RCV BDRp")
+        # self.log.important2("RCV BDRp")
         self.dump_debug_info()
 
     # MASTER ONLY CALL
@@ -221,7 +221,7 @@ class CatchupManager:
                                       sender_bhash = request.block_hash)
         self.log.debugv("Delta list {}".format(delta_idx))
 
-        self.log.important2("RCV BIR")
+        # self.log.important2("RCV BIR")
         self.dump_debug_info()
         self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
 
@@ -241,7 +241,7 @@ class CatchupManager:
         reply = BlockIndexReply.create(block_info = catchup_list)
         self.log.debugv("Sending block index reply to vk {}, catchup {}".format(reply_to_vk, catchup_list))
         self.router.send_msg(reply, header=reply_to_vk.encode())
-        self.log.important2("SEND BIRp")
+        # self.log.important2("SEND BIRp")
         self.dump_debug_info()
 
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
@@ -363,7 +363,8 @@ class CatchupManager:
             return False
 
     def dump_debug_info(self):
-        self.log.important3("catchup Status => {}"
+        # TODO change this log to important for debugging
+        self.log.spam("catchup Status => {}"
                             "---- data structures state----"
                             "Pending blk list -> {} "
                             "----Target-----"
