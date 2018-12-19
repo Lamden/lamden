@@ -95,6 +95,15 @@ async def get_state(request, contract, resource, key):
     return text(r.get(k))
 
 
+@app.route("/contracts", methods=["GET", ])
+async def get_contracts():
+    r = interface.r.hkeys('contracts')
+    result = {}
+    r_str = [_r.decode() for _r in r]
+    result['contracts'] = r_str
+    return json(result)
+
+
 @app.route("/contract-meta", methods=["GET",])
 async def get_contract_meta(request):
     contract_name = validate_contract_name(request.json['contract_name'])
