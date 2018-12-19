@@ -97,7 +97,8 @@ class BlockAggregator(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_delegates():
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
-            self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
+            # I dont think we to connect to delegates here as delegates are already connecting in BlockManager --davis
+            # self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
 
         # Listen to masters for new block notifs and state update requests from masters/delegates
         self.sub.setsockopt(zmq.SUBSCRIBE, CATCHUP_MN_DN_FILTER.encode())
@@ -176,7 +177,8 @@ class BlockAggregator(Worker):
 
     def recv_sub_block_contender(self, sender_vk: str, sbc: SubBlockContender):
         assert not self.catchup_manager.catchup_state, "We should not be receiving SBCs when we are catching up!"
-        self.log.debugv("Received a sbc with result hash {} and input hash {}".format(sbc.result_hash, sbc.input_hash))
+        self.log.debugv("Received a sbc from sender {} with result hash {} and input hash {}"
+                        .format(sender_vk, sbc.result_hash, sbc.input_hash))
 
         added_first_sbc = self.curr_block.add_sbc(sender_vk, sbc)
         if added_first_sbc:
@@ -196,11 +198,8 @@ class BlockAggregator(Worker):
             self.log.debugv("Consensus not reached yet.")
 
     def store_full_block(self):
-        self.log.debugv("Canceling block timeout")
-        self.timeout_fut.cancel()
-
         if self.curr_block.is_empty():
-            self.log.info("Got consensus on empty block with prev hash {}! Sending skip block notification".format(self.curr_block_hash))
+            self.log.debug("Got consensus on empty block with prev hash {}! Sending skip block notification".format(self.curr_block_hash))
             self.send_skip_block_notif()
 
         else:
@@ -217,7 +216,7 @@ class BlockAggregator(Worker):
             self.log.success2("STORED BLOCK WITH HASH {}".format(block_data.block_hash))
             self.send_new_block_notif(block_data)
 
-        self.curr_block = BlockContender()  # Reset BlockContender (will this leak memory???)
+        self._reset_curr_block()
 
     def send_new_block_notif(self, block_data: BlockData):
         message = NonEmptyBlockMade.create()
@@ -252,4 +251,10 @@ class BlockAggregator(Worker):
         self.log.critical("Block timeout of {}s reached for block hash {}! Resetting sub block contenders and sending "
                           "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
         self.send_skip_block_notif()
-        self.curr_block = BlockContender()
+        self.curr_block.reset()
+
+    def _reset_curr_block(self):
+        self.curr_block.reset()
+        self.log.debugv("Canceling block timeout")
+        if self.timeout_fut and not self.timeout_fut.done():
+            self.timeout_fut.cancel()
