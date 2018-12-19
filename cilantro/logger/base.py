@@ -6,9 +6,8 @@ import logging, coloredlogs
 import os, sys
 from os.path import dirname
 from logging.handlers import TimedRotatingFileHandler
-# from vmnet.cloud.aws import S3FileHandler
 import cilantro
-
+from vmnet.cloud.aws import S3Handler
 
 logging.getLogger("paramiko").setLevel(logging.WARNING)
 logging.getLogger('boto3').setLevel(logging.WARNING)
@@ -138,7 +137,6 @@ class MockLogger:
     def __getattr__(self, item):
         return _ignore
 
-
 def get_logger(name=''):
     if _LOG_LVL == 0:
         return MockLogger()
@@ -149,21 +147,15 @@ def get_logger(name=''):
     if not os.path.exists(filedir):
         os.makedirs(filedir, exist_ok=True)
 
-    # if os.getenv('VMNET_CLOUD'):
-    #     filelogger = S3FileHandler(filename, when="m", interval=30, backupCount=5)
-    # else:
-    #     filelogger = TimedRotatingFileHandler(filename, when="m", interval=30, backupCount=5)
-    #
-    # filelogger = S3FileHandler(filename, when="m", interval=30, backupCount=5)
-    # S3FileHandler.is_logging = True
-
-    filelogger = TimedRotatingFileHandler(filename, when="m", interval=30, backupCount=5)
-
     filehandlers = [
-        filelogger,
         ColoredFileHandler('{}_color'.format(filename), delay=True, when="m", interval=30, backupCount=5),
         ColoredStreamHandler()
     ]
+
+    if os.getenv('VMNET_CLOUD'):
+        print(os.getenv('VMNET_CLOUD'), 'xxxxxxx')
+        filehandlers.append(S3Handler())
+
     logging.basicConfig(
         format=format,
         handlers=filehandlers,

@@ -1,7 +1,10 @@
 {
     "environment": {"CONSTITUTION_FILE": "4-4-4.json"},
     "aws": {
-        "use_elastic_ips": true,
+        "logging": {
+            "interval": 1800
+        },
+        "use_elastic_ips": false,
         "security_groups": {
             "simple_https": {
                 "name": "simple_https",
@@ -55,11 +58,11 @@
                 "name": "cilantro_base",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "test-catchup",
+                "branch": "aws-fix",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0f65671a86f061fcd",
-                "instance_type": "t2.micro",
+                "instance_type": "t2.medium",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-08a38dd68d54c7ea9"
             },
@@ -67,11 +70,11 @@
                 "name": "cilantro_mn",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "test-catchup",
+                "branch": "aws-fix",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-08a38dd68d54c7ea9",
-                "instance_type": "t2.micro",
+                "instance_type": "t2.medium",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0475e8f109e6a0bb4"
             }
