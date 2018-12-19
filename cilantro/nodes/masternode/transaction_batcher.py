@@ -12,7 +12,7 @@ from cilantro.messages.transaction.ordering import OrderingContainer
 from cilantro.messages.transaction.batch import TransactionBatch
 
 import zmq.asyncio
-import asyncio, time
+import asyncio, time, os
 
 
 class TransactionBatcher(Worker):
@@ -78,11 +78,12 @@ class TransactionBatcher(Worker):
     async def compose_transactions(self):
 
         # We take a long slep so that Nodes can prepare their sockets and run catchup before TX's go through the system
-        self.log.notice("Taking a nap before starting TransactionBatcher...")
-        await asyncio.sleep(30)
-
+        nap = 90 if os.getenv("VMNET_CLOUD") else 24
+        self.log.important("Taking a nap of {}s before starting TransactionBatcher...".format(nap))
+        await asyncio.sleep(nap)
         self.log.important("Starting TransactionBatcher")
         self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
+
         total_sleep = 0
         max_num_bags = 3 * NUM_BLOCKS    # ideally, num_caches * num_blocks
 
