@@ -92,16 +92,14 @@ class MDB:
 
         # create insert genesis blk
         block = GenesisBlockData.create(sk = cls.sign_key, vk = cls.verify_key)
-        cls.genesis_blk = cls.get_dict(capnp_struct = block)
-        cls.init_mdb = cls.insert_record(block_dict=cls.genesis_blk)
+        cls.init_mdb = cls.insert_record(block_dict=block._data.to_dict())
         assert cls.init_mdb is True, "failed to create genesis block"
 
         cls.log.debugv('start_db init set {}'.format(cls.init_mdb))
 
         # update index record
-        if cls.init_mdb:
-            idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash'),
-                   'blockOwners': cls.verify_key}
+        if cls.init_mdb is True:
+            idx = {'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': cls.verify_key}
             cls.log.debugv('start_db init index {}'.format(idx))
             return cls.insert_idx_record(my_dict = idx)
 
@@ -138,17 +136,6 @@ class MDB:
         idx_entry = cls.mn_coll_idx.insert(my_dict)
         cls.log.info("insert_idx_record -> {}".format(idx_entry))
         return True
-
-    # move this to util
-    @classmethod
-    def get_dict(cls, capnp_struct):
-        obj = capnp_struct._data.to_dict()
-
-        bk_hsh = capnp_struct._data.blockHash
-        cls.log.debug("Fn : Get Dict  blk_hash {}".format(bk_hsh))
-        if isinstance(capnp_struct, BlockData):
-            obj['transactions'] = capnp_struct.indexed_transactions
-        return obj
 
     '''
         reading from index or store
