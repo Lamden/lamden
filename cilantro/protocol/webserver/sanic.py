@@ -6,7 +6,7 @@ class SanicSingleton(object):
 
     app = Sanic(__name__)
 
-    interface = SenecaInterface(concurrent_mode=False)
+    interface = SenecaInterface(concurrent_mode=False
 
     def __enter__(self):
         return self.app

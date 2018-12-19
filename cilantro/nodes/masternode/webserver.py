@@ -83,7 +83,42 @@ async def request_nonce(request):
     return json({'success': True, 'nonce': nonce})
 
 
-@app.route("/state/<contract>/<resource>/<key>", methods=["GET",])
+@app.route("/contracts", methods=["GET", ])
+async def get_contracts(request):
+    r = interface.r.hkeys('contracts')
+    result = {}
+    r_str = [_r.decode() for _r in r]
+    result['contracts'] = r_str
+    return json(result)
+
+
+@app.route("/contracts/<contract>", methods=["GET", ])
+async def get_contract_meta(request, contract):
+    contract_name = validate_contract_name(contract)
+    return json(interface.get_contract_meta(contract_name))
+
+
+@app.route("/contracts/<contract>/resources", methods=["GET", ])
+async def get_contract_meta(request, contract):
+    contract_name = validate_contract_name(contract)
+    meta = interface.get_contract_meta(contract_name.encode())
+    meta.update(parse_code_str(meta['code_str']))
+    r = list(meta['datatypes'].keys())
+    return json({'resources': r})
+
+
+@app.route("/contracts/<contract>/<resource>", methods=["GET", ])
+async def get_contract_resource_keys(request, contract, resource):
+    pattern = '{}:{}:*'.format(contract, resource)
+    keys = interface.r.scan(0, pattern)
+    keys = keys[1]
+
+    formatted_keys = [k.decode()[len(pattern)-1:] for k in keys]
+
+    return json({'keys': formatted_keys})
+
+
+@app.route("/contracts/<contract>/<resource>/<key>", methods=["GET",])
 async def get_state(request, contract, resource, key):
     contract_name = validate_contract_name(contract)
     meta = interface.get_contract_meta(contract_name.encode())
@@ -93,21 +128,6 @@ async def get_state(request, contract, resource, key):
         raise ServerError('Datatype "{}" not found'.format(r), status_code=500)
     k = validate_key_name(key)
     return text(r.get(k))
-
-
-@app.route("/contracts", methods=["GET", ])
-async def get_contracts():
-    r = interface.r.hkeys('contracts')
-    result = {}
-    r_str = [_r.decode() for _r in r]
-    result['contracts'] = r_str
-    return json(result)
-
-
-@app.route("/contract-meta", methods=["GET",])
-async def get_contract_meta(request):
-    contract_name = validate_contract_name(request.json['contract_name'])
-    return json(interface.get_contract_meta(contract_name))
 
 
 @app.route("/latest_block", methods=["GET",])
