@@ -81,6 +81,7 @@ class TestBlockManager(TestCase):
 
         # TODO assert handle_ipc_msg does what expected
 
+    # TODO comment this back in when catchup is fixed
     # @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
     # @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
     # @mock.patch("cilantro.nodes.delegate.block_manager.SubBlockBuilder", autospec=True)
