@@ -22,6 +22,9 @@ def wrap_func(fn, *args, **kwargs):
 
 
 def start_mn(verifing_key):
+    # from cilantro.utils.sketch import sketch
+    # sketch()
+
     import os, zmq, time
     from cilantro.logger.base import get_logger
     from cilantro.nodes.masternode.master_store import MasterOps
