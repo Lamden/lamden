@@ -4,7 +4,7 @@
         "ANNIHILATE": true
     },
     "aws": {
-        "use_elastic_ips": false,
+        "use_elastic_ips": true,
         "security_groups": {
             "simple_https": {
                 "name": "simple_https",
