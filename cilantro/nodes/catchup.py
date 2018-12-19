@@ -46,7 +46,7 @@ class CatchupManager:
         # process send
         self.blk_req_ptr = {}           # current ptr track send blk req
         self.blk_req_ptr_idx = None     # idx to track ptr in block_delta_list
-        self.last_req_blk_num = None
+        self.bnum_to_req = None
 
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
@@ -108,7 +108,7 @@ class CatchupManager:
         :return:
         """
         self.log.info("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))
-        self.log.important3("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))  # TODO remove
+        # self.log.important3("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))  # TODO remove
         req = BlockIndexRequest.create(block_hash=self.curr_hash)
         self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
 
@@ -125,25 +125,26 @@ class CatchupManager:
         """
         self.log.important("Got blk index reply from sender {}\nreply: {}".format(sender_vk, reply))
 
-        if self._check_retry_needed() is True:
-            self.run_catchup(ignore = True)
-        else:
-            self.node_idx_reply_set.add(sender_vk)
+        self.node_idx_reply_set.add(sender_vk)
+
+        # if self._check_retry_needed() is True:
+        #     self.run_catchup(ignore = True)
 
         if not reply.indices:
             self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
             self.log.important("responded mn - {}".format(self.node_idx_reply_set))
-            self.catchup_state = self.check_catchup_done()
+            self.catchup_state = not self.check_catchup_done()
             self.dump_debug_info()
             return
 
-        if not self.block_delta_list:                              # for boot phase
+        # for boot phase
+        if not self.block_delta_list:
             self.block_delta_list = reply.indices
             self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
             self.target_blk_num = self.target_blk.get('blockNum')
             self.blk_req_ptr_idx = 0
             self.blk_req_ptr = self.block_delta_list[self.blk_req_ptr_idx]           # 1st blk req to send
-            self.last_req_blk_num = self.blk_req_ptr.get('blockNum')
+            self.bnum_to_req = self.blk_req_ptr.get('blockNum')
             self.dump_debug_info()
         else:                                              # for new request
             tmp_list = reply.indices
@@ -218,6 +219,7 @@ class CatchupManager:
 
         delta_idx = self.get_idx_list(vk = requester_vk, latest_blk_num = self.curr_num,
                                       sender_bhash = request.block_hash)
+        self.log.debugv("Delta list {}".format(delta_idx))
 
         self.log.important2("RCV BIR")
         self.dump_debug_info()
@@ -237,8 +239,7 @@ class CatchupManager:
     def _send_block_idx_reply(self, reply_to_vk = None, catchup_list=None):
         # this func doesnt care abt catchup_state we respond irrespective
         reply = BlockIndexReply.create(block_info = catchup_list)
-        self.log.debugv("Sending block index reply to vk {}".format(reply_to_vk))
-        self.log.important2("Sending block index reply to vk {}".format(reply_to_vk))  # TODO remove
+        self.log.debugv("Sending block index reply to vk {}, catchup {}".format(reply_to_vk, catchup_list))
         self.router.send_msg(reply, header=reply_to_vk.encode())
         self.log.important2("SEND BIRp")
         self.dump_debug_info()
@@ -263,15 +264,16 @@ class CatchupManager:
         pass
 
     def process_recv_idx(self):
-        assert self.last_req_blk_num <= self.target_blk_num, "our last request should never overshoot target blk"
-        while self.last_req_blk_num <= self.target_blk_num:
-            mn_list = self.blk_req_ptr.get('blk_req_ptr')
+        assert self.bnum_to_req <= self.target_blk_num, "our last request should never overshoot target blk"
+        while self.bnum_to_req <= self.target_blk_num:
+            mn_list = self.blk_req_ptr.get('blockOwners')
             for vk in mn_list:
-                self._send_block_data_req(mn_vk = vk, req_blk_num = self.last_req_blk_num)
+                self._send_block_data_req(mn_vk = vk, req_blk_num = self.bnum_to_req)
 
-            self.blk_req_ptr_idx = self.blk_req_ptr_idx + 1
-            self.blk_req_ptr = self.block_delta_list[self.blk_req_ptr_idx]
-            self.last_req_blk_num = self.last_req_blk_num + 1
+            if self.bnum_to_req < self.target_blk_num:
+                self.blk_req_ptr_idx = self.blk_req_ptr_idx + 1
+                self.blk_req_ptr = self.block_delta_list[self.blk_req_ptr_idx]
+                self.bnum_to_req = self.bnum_to_req + 1
 
     def update_received_block(self, block = None):
 
@@ -289,20 +291,6 @@ class CatchupManager:
         # We have enough BlockIndexReplies if 2/3 of Masternodes replied
         min_quorum = math.ceil(len(VKBook.get_masternodes()) * 2/3) - 1   # -1 so we dont include ourselves
         return len(self.node_idx_reply_set) >= min_quorum
-
-    def _check_retry_needed(self):
-        # if you have 2/3rd quorum wait for queue pending queue to finsh
-        if self._check_idx_reply_quorum() is True:
-            self.log.debugv("Quorum reached")
-            return False
-
-        # check if we have reached time out and keep retrying.
-        if (time.time() - self.timeout_catchup) < 10:
-            self.log.debugv("Time out not reached")
-            return False
-        else:
-            self.log.debugv("Time out reached retry Snd_BIR")
-            return True
 
     def _update_catchup_state(self, block_num=None):
         """
@@ -354,7 +342,7 @@ class CatchupManager:
             # END DEBUG
 
     def check_catchup_done(self):
-        if self._check_retry_needed() is False:
+        if self._check_idx_reply_quorum():
             self._reset_timeout_fut()
 
             # main list to process
@@ -365,14 +353,14 @@ class CatchupManager:
             # process send
             self.blk_req_ptr = {}                   # current ptr track send blk req
             self.blk_req_ptr_idx = None             # idx to track ptr in block_delta_list
-            self.last_req_blk_num = None
+            self.bnum_to_req = None
 
             # received full block could be out of order
             self.rcv_block_dict = {}
             self.awaited_blknum = None
-            return False
-        else:
             return True
+        else:
+            return False
 
     def dump_debug_info(self):
         self.log.important3("catchup Status => {}"
@@ -392,4 +380,4 @@ class CatchupManager:
                             "awaited_blknum - {}"
                             .format(self.catchup_state, self.block_delta_list, self.target_blk, self.target_blk_num,
                                     self.curr_hash, self.curr_num, self.blk_req_ptr, self.blk_req_ptr_idx,
-                                    self.last_req_blk_num, self.rcv_block_dict, self.awaited_blknum))
+                                    self.bnum_to_req, self.rcv_block_dict, self.awaited_blknum))
