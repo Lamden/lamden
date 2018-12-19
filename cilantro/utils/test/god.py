@@ -101,7 +101,8 @@ class God:
             return None
 
     @classmethod
-    def _pump_it(cls, rate: int, gen_func=None, use_poisson=True, report_interval=12):
+    def _pump_it(cls, rate: int, gen_func=None, use_poisson=True, sleep_sometimes=False, active_bounds=(120, 240),
+                 sleep_bounds=(20, 60)):
         """
         Pump random transactions from random users to Masternode's REST endpoint at an average rate of 'rate'
         transactions per second. This func blocks.
@@ -120,20 +121,27 @@ class God:
         cls.log.important("Starting to pump transactions at an average of {} transactions per second".format(rate))
         cls.log.info("Using generator func {}, with use_possion={}".format(gen_func, use_poisson))
 
-        count = 0
+        time_since_last_sleep = 0
+        next_sleep = random.randint(active_bounds[0], active_bounds[1])
+
         while True:
             wait = rvs_func()
-
             # cls.log.spam("Sending next transaction in {} seconds".format(wait))
             time.sleep(wait)
+            time_since_last_sleep += wait
 
             tx = gen_func()
-
             # cls.log.spam("sending transaction {}".format(tx))
             cls.send_tx(tx)
-            count += 1
-            if count % (rate * report_interval) == 0:
-                cls.log.success("Pumped {} transactions so far".format(count))
+
+            if sleep_sometimes and time_since_last_sleep >= next_sleep:
+                sleep_time = random.randint(sleep_bounds[0], sleep_bounds[1])
+                cls.log.test("Sleeping for {}s before pumping more...")
+                time.sleep(sleep_time)
+
+                time_since_last_sleep = 0
+                next_sleep = random.randint(active_bounds[0], active_bounds[1])
+                cls.log.test("Done sleeping. Continuing the pump, and triggering next sleep in {}s".format(next_sleep))
 
     @classmethod
     def _dump_it(cls, volume: int, delay: int=0, gen_func=None):
