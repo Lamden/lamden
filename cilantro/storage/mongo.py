@@ -24,7 +24,6 @@ class MDB:
     # master
     sign_key = None
     verify_key = None
-    verify_state = None
     # master store db
 
     mn_client = None
@@ -40,11 +39,10 @@ class MDB:
     mn_coll_idx = None
     init_idx_db = False
 
-    def __init__(self, s_key, prior_state_found=False):
+    def __init__(self, s_key):
         if self.init_mdb is False:
             MDB.sign_key = s_key
             MDB.verify_key = wallet.get_vk(s_key)
-            MDB.verify_state = prior_state_found
             self.start_db()
             return
 
@@ -68,10 +66,13 @@ class MDB:
 
         cls.setup_db()
 
-        if cls.verify_state is True:
-            pass
-        else:
+        prev_idx = cls.query_index(n_blks = 1)
+        cls.log.important('prev idx {}'.format(prev_idx))
+        if len(prev_idx) == 0:
             cls.init_idx_db = cls.create_genesis_blk()
+        else:
+            cls.init_mdb = True
+            cls.init_idx_db = True
 
         assert cls.init_idx_db is True, "failed to init index table"
 
@@ -129,7 +130,7 @@ class MDB:
 
         # insert passed dict block to db
         blk_id = cls.mn_collection.insert(block_dict)
-        cls.log.info("block {}".format(block_dict))
+        cls.log.spam("block {}".format(block_dict))
         if blk_id:
             return True
 
@@ -150,10 +151,10 @@ class MDB:
 
         blk_delta = cls.mn_coll_idx.find().limit(n_blks).sort("blockNum", -1)
         for blk in blk_delta:
-            cls.log.debug('query_index block delta {}'.format(blk))
+            cls.log.spam('query_index block delta {}'.format(blk))
             blk_list.append(blk)
 
-        cls.log.debug("query_index returning dict {}".format(blk_list))
+        cls.log.spam("query_index returning dict {}".format(blk_list))
         return blk_list
 
     @classmethod
@@ -164,13 +165,13 @@ class MDB:
                 block_list = cls.mn_collection.find({})
                 for x in block_list:
                     result.update(x)
-                    cls.log.debug("from mdb {}".format(x))
+                    cls.log.spam("from mdb {}".format(x))
 
             if type is None or type is "idx":
                 index_list = cls.mn_coll_idx.find({})
                 for y in index_list:
                     result.update(y)
-                    cls.log.debug("from idx {}".format(y))
+                    cls.log.spam("from idx {}".format(y))
         else:
             if type is 'idx':
                 dump = cls.mn_coll_idx.find(query)
@@ -185,13 +186,13 @@ class MDB:
                 result = cls.mn_collection.find(query)
                 for x in result:
                     result.update(x)
-                    cls.log.debug("result {}".format(x))
+                    cls.log.spam("result {}".format(x))
 
         if len(result) > 0:
-            cls.log.debug("result => {}".format(result))
+            cls.log.spam("result => {}".format(result))
             return result
         else:
-            cls.log.debug("result => {}".format(result))
+            cls.log.spam("result => {}".format(result))
             return None
 
     @classmethod

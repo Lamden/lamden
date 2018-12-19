@@ -37,10 +37,12 @@ class MasterOps:
             if mn_id == -1:
                 cls.log.info("failed to get id")
 
-            #valid_state = bool(StateDriver.get_latest_block_num())
+            valid_state = bool(StateDriver.get_latest_block_num())
+            cls.log.debugv("state found - {}".format(valid_state))
+
             # start/setup mongodb
             # MDB.start_db(s_key = key)
-            host = bool(MDB(s_key = key, prior_state_found = False))
+            host = bool(MDB(s_key = key))
             assert host is True, "failed db init - {}".format(host)
 
             cls.log.info("************db initiated*************")
