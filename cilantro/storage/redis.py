@@ -21,12 +21,15 @@ class SafeRedisMeta(type):
         return key
 
     def cleanup(cls):
+        print('Redis is cleaning up!')
         cls._shared_state.clear()
 
     def __getattr__(cls, item):
         key = cls._get_key()
         if key in cls._shared_state:
             cur = cls._shared_state[key]
+            try: cur.bgsave()
+            except: pass
         else:
             cur = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
             cls._shared_state[key] = cur

@@ -53,8 +53,8 @@ class StorageDriver:
         block_data = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, block_owners=[],
                                       block_num=blk_num, sub_blocks=sub_blocks)
 
-        assert (bool(MasterOps.evaluate_wr(entry=block_data._data.to_dict()))) is True, "wr to master store failed, dump blk {}"\
-            .format(block_data)
+        assert (bool(MasterOps.evaluate_wr(entry=block_data._data.to_dict()))) is True, \
+            "wr to master store failed, dump blk {}".format(block_data)
 
         # Attach the block owners data to the BlockData instance  TODO -- find better solution
         block_data._data.blockOwners = MasterOps.get_blk_owners(block_hash)
