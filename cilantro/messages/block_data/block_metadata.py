@@ -2,6 +2,7 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.utils import validate_hex
+from cilantro.messages.block_data.sub_block import SubBlock
 from cilantro.utils import lazy_property
 from cilantro.constants.system_config import NUM_SB_PER_BLOCK
 from cilantro.storage.vkbook import VKBook
@@ -38,3 +39,21 @@ class BlockMetaData(BlockData):
 
 class NewBlockNotification(BlockMetaData):
     pass
+
+class SkipBlockNotification(BlockMetaData):
+    pass
+
+    def validate(self):
+        pass     # don't worry about it for now
+
+    @classmethod
+    def create_from_sub_blocks(cls, prev_block_hash: str, sub_blocks: List[SubBlock]):
+        blk_num = 0     # hard code this for now - not really needed
+
+        # Sort sub-blocks by index if they are not done so already
+        sub_blocks = sorted(sub_blocks, key=lambda sb: sb.index)
+
+        roots = [sb.input_hash for sb in sub_blocks]
+        block_hash = BlockData.compute_block_hash(sbc_roots=roots, prev_block_hash=prev_block_hash)
+
+        return cls.create(block_hash, prev_block_hash, [], blk_num, sub_blocks)

@@ -29,6 +29,7 @@ from cilantro.constants.zmq_filters import *
 
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
+from cilantro.messages.block_data.state_update import *
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.align_input_hash import AlignInputHash
@@ -150,26 +151,50 @@ class SubBlockBuilder(Worker):
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
-    def align_input_hashes(self, aih: AlignInputHash):
-        self.log.notice("Discarding all pending sub blocks and aligning input hash to {}".format(aih.input_hash))
-        self.client.flush_all()
-        input_hash = aih.input_hash
+    def _align_to_hash(self, input_hash):
+        num_discards = 0
         if input_hash in self.sb_managers[0].pending_txs:
             # clear entirely to_finalize
+            num_discards = num_discards + len(self.sb_managers[0].to_finalize_txs)
             self.sb_managers[0].to_finalize_txs.clear()
             ih2 = None
             while input_hash != ih2:
                 # TODO we may need sb_index if we have more than one sub-block per builder
                 ih2, txs_bag = self.sb_managers[0].pending_txs.pop_front()
+                num_discards = num_discards + 1
         elif input_hash in self.sb_managers[0].to_finalize_txs:
             ih2 = None
             while input_hash != ih2:
                 # TODO we may need sb_index if we have more than one sub-block per builder
                 ih2, txs_bag = self.sb_managers[0].to_finalize_txs.pop_front()
+                num_discards = num_discards + 1
+        return num_discards
+
+    def align_input_hashes(self, aih: AlignInputHash):
+        self.log.notice("Discarding all pending sub blocks and aligning input hash to {}".format(aih.input_hash))
+        self.client.flush_all()
+        num_discards = self._align_to_hash(aih.input_hash)
+        self.log.debug("Discarded {} input bags to get alignment".format(num_discards))
         # at this point, any bags in to_finalize_txs should go back to the front of pending_txs
         while len(self.sb_managers[0].to_finalize_txs) > 0:
             ih, txs_bag = self.sb_managers[0].to_finalize_txs.pop_front()
             self.sb_managers[0].pending_txs.insert_front(ih, txs_bag)
+        # self._make_next_sb()
+
+    def _fail_block(self, fbn: FailedBlockNotification):
+        self.log.notice("FailedBlockNotification - aligning input hashes")
+        num_discards = 0
+        input_hashes = fbn.input_hashes[self.sbb_index]
+        for input_hash in input_hashes:
+            num_discards = num_discards + self._align_to_hash(input_hash)
+        self.log.debug("Thrown away {} input bags to get alignment".format(num_discards))
+        # at this point, any bags in to_finalize_txs should go back to the front of pending_txs
+        while len(self.sb_managers[0].to_finalize_txs) > 0:
+            ih, txs_bag = self.sb_managers[0].to_finalize_txs.pop_front()
+            self.sb_managers[0].pending_txs.insert_front(ih, txs_bag)
+        self.client.flush_all()
+        self._make_next_sb()
+        
 
     def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
@@ -188,6 +213,10 @@ class SubBlockBuilder(Worker):
         # if not matched consensus, then discard current state and use catchup flow
         elif isinstance(msg, AlignInputHash):
             self.align_input_hashes(msg)
+
+        # if not matched consensus, then discard current state and use catchup flow
+        elif isinstance(msg, FailedBlockNotification):
+            self._fail_block(msg)
 
         else:
             raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
