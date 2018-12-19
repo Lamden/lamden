@@ -169,11 +169,11 @@ class BlockManager(Worker):
         # only when one can connect to quorum masters and get db update, move to next step
         # at the end, it has updated its db state to consensus latest
 
-        await asyncio.sleep(8)  # so pub/sub connections can complete
+        await asyncio.sleep(2)  # so pub/sub connections can complete
+        assert self.db_state.catchup_mgr, "Expected catchup_mgr initialized at this point"
         self.log.info("Catching up...")
+
         self.db_state.catchup_mgr.run_catchup()
-        while not self.db_state.catchup_mgr:
-            await asyncio.sleep(2)
 
         # TODO needs to be deleted after catchup is working. for now, assume that it is caught up
         self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()

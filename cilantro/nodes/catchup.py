@@ -16,6 +16,10 @@ from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIn
 IDX_REPLY_TIMEOUT = 10
 TIMEOUT_CHECK_INTERVAL = 1
 
+# start the catch manager when boot is done
+# when we start catchup when listen is ready, we start the timer - sleep 1 sec
+# broadcast the request. Don't reply to any other requests within 2 secs. use other broadcasts as replies
+# after 2 secs, if we have at least one other request, we can start requesting other masters directly
 
 class CatchupManager:
     def __init__(self, verifying_key: str, pub_socket: LSocket, router_socket: LSocket, store_full_blocks=True):
@@ -57,6 +61,7 @@ class CatchupManager:
         # loop to schedule timeouts
         self.timeout_fut = None
 
+    # should be called only once per node after bootup is done
     def run_catchup(self, ignore=False):
         # check if catch up is already running
         if not ignore and self.catchup_state is True:
@@ -94,7 +99,7 @@ class CatchupManager:
             # If we have not returned from the loop and the this task has not been canceled, initiate a retry
             self.log.warning("Timeout of {} reached waiting for block idx replies! Resending BlockIndexRequest".format(IDX_REPLY_TIMEOUT))
             self.timeout_fut = None
-            self.run_catchup(ignore=True)
+            self.run_catchup(ignore=True)   # should be addressed repeat requests only to targeted nodes - raghu todo
 
         try:
             await _timeout()
@@ -116,6 +121,7 @@ class CatchupManager:
         self.dump_debug_info()
         return True
 
+    # raghu todo - recv functions can return the status of catchup
     def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
         """
         We expect to receive this message from all mn/dn
@@ -131,7 +137,7 @@ class CatchupManager:
         #     self.run_catchup(ignore = True)
 
         if not reply.indices:
-            self.log.info("Received BlockIndexReply with no new blocks from masternode {}".format(sender_vk))
+            self.log.important("Received BlockIndexReply with no index info from masternode {}".format(sender_vk))
             # self.log.important("responded mn - {}".format(self.node_idx_reply_set))
             self.catchup_state = not self.check_catchup_done()
             self.dump_debug_info()
@@ -140,7 +146,8 @@ class CatchupManager:
         # for boot phase
         if not self.block_delta_list:
             self.block_delta_list = reply.indices
-            self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
+            # self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
+            self.target_blk = self.block_delta_list[-1]
             self.target_blk_num = self.target_blk.get('blockNum')
             self.blk_req_ptr_idx = 0
             self.blk_req_ptr = self.block_delta_list[self.blk_req_ptr_idx]           # 1st blk req to send
@@ -148,7 +155,8 @@ class CatchupManager:
             self.dump_debug_info()
         else:                                              # for new request
             tmp_list = reply.indices
-            new_target_blk = tmp_list[len(tmp_list)-1]
+            # new_target_blk = tmp_list[len(tmp_list)-1]
+            new_target_blk = tmp_list[-1]
             new_blks = new_target_blk.get('blockNum') - self.target_blk.get('blockNum')
             if new_blks > 0:
                 # find range to be split from new list
@@ -158,9 +166,12 @@ class CatchupManager:
                 assert verify_blk.get('blockNum') == new_target_blk.get('blockNum'), "something is wrong split is not" \
                                                                                      " getting us to current blk"
                 # slicing new list and appending list
-                update_list = tmp_list[lower_idx:len(tmp_list)]
+                # raghu - is this slicing correct?
+                # update_list = tmp_list[lower_idx:len(tmp_list)]
+                update_list = tmp_list[lower_idx+1:upper_idx]
                 self.block_delta_list.append(update_list)
-                self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
+                # self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
+                self.target_blk = self.block_delta_list[-1]
                 self.target_blk_num = self.target_blk.get('blockNum')
                 self.dump_debug_info()
 
@@ -226,9 +237,10 @@ class CatchupManager:
         self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
 
     def recv_new_blk_notif(self, update: NewBlockNotification):
-        if self.catchup_state is False:
-            self.log.error("Err we shouldn't be getting new with catchup False")
-            return
+        # can get any time - hopefully one incremental request, how do you handle it in all cases?
+        # if self.catchup_state is False:
+            # self.log.error("Err we shouldn't be getting new with catchup False")
+            # return
 
         nw_blk_num = update.block_num
         nw_blk_owners = update.block_owners
@@ -263,6 +275,7 @@ class CatchupManager:
         assert valid_node is True, "invalid vk given key is not of master or delegate dumping vk {}".format(vk)
         pass
 
+    # this can flood if far behind, can we control rate of requests?
     def process_recv_idx(self):
         assert self.bnum_to_req <= self.target_blk_num, "our last request should never overshoot target blk"
         while self.bnum_to_req <= self.target_blk_num:
