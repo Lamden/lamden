@@ -4,6 +4,7 @@ import json
 import time
 from decimal import *
 import random
+import os
 
 # Pip installed python imports
 
@@ -23,16 +24,25 @@ def setup_argparse(parser):
     parser.add_argument('--retrycount', help='Set the number of transaction retries', type=int, default=10)
     parser.add_argument('--backoff', help='Set the backoff factor on retries', type=float, default=1.2)
     parser.add_argument('--baseretry', help='Set the base retry timeout in seconds', type=int, default=5)
+    parser.add_argument('-c', '--netconf', help='The vmnet file containing the network configuration', type=str, default='cilantro-aws-2-2-2.json')
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     setup_argparse(p)
     args = p.parse_args()
 
-    # Read in static config
-    with open('static-config.json') as df:
-        static_config = json.load(df)
-    mn_urls = [ 'http://{}:8080'.format(x) for x in static_config['mn-ips'] ]
+    # Read in static config from vmnet_configs (one point of specification for EIPs
+    with open(os.path.join(os.path.dirname(__file__), "../vmnet_configs/instance_data/", args.netconf)) as df:
+        netconf = json.load(df)
+
+    # Find all masternodes in netconf
+    mn_ips = []
+    for cf in netconf:
+        for t in cf['Tags']:
+            if 'masternode-run' in t['Value']:
+                mn_ips.append(cf['PublicIpAddress'])
+
+    mn_urls = [ 'http://{}:8080'.format(x) for x in mn_ips ]
 
     # Randomize order of masternodes before setting god to ensure we get an even distribution of calls to all static masternodes
     random.shuffle(mn_urls)

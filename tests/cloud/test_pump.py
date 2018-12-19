@@ -1,5 +1,5 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-2.json')
+set_testnet_config('4-4-4.json')
 
 from cilantro.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
@@ -95,7 +95,7 @@ class TestPump(AWSTestCase):
 
     NUM_BLOCKS = 2
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dum
-    config_file = get_config_file('cilantro-aws-2-2-2.json')
+    config_file = get_config_file('cilantro-aws-4-4-4.json')
     keep_up = True
     logging = True
 
