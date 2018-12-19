@@ -1,9 +1,15 @@
-NETWORK_SIZE = '4-4-4'
+NETWORK_SIZE = '2-2-2'
 
 MN_LOG_LVL = 11
-WITNESS_LOG_LVL = 11
+WITNESS_LOG_LVL = 30
 DELEGATE_LOG_LVL = 11
 SENECA_LOG_LVL = 11
+
+# A set of delegate indices who shall behave as bad actors.
+ENABLE_BAD_ACTORS = True
+BAD_ACTOR_SET = {1}
+BAD_SB_SET = {1}
+
 
 from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('{}.json'.format(NETWORK_SIZE))
@@ -64,8 +70,13 @@ class TestManualDump(BaseNetworkTestCase):
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
-            self.execute_python(nodename, God.run_delegate(i, log_lvl=DELEGATE_LOG_LVL, seneca_log_lvl=SENECA_LOG_LVL,
-                                                           reset_db=True), async=True, profiling=self.PROFILE_TYPE)
+            if ENABLE_BAD_ACTORS and i in BAD_ACTOR_SET:
+                self.execute_python(nodename, God.run_delegate(i, log_lvl=DELEGATE_LOG_LVL, seneca_log_lvl=SENECA_LOG_LVL,
+                                    reset_db=True, bad_actor=True, bad_sb_set=BAD_SB_SET), async=True,
+                                    profiling=self.PROFILE_TYPE)
+            else:
+                self.execute_python(nodename, God.run_delegate(i, log_lvl=DELEGATE_LOG_LVL, seneca_log_lvl=SENECA_LOG_LVL,
+                                    reset_db=True), async=True, profiling=self.PROFILE_TYPE)
 
         while True:
             user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")

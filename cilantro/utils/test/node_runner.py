@@ -49,12 +49,12 @@ def run_witness(slot_num, log_lvl=11, reset_db=False):
     NodeFactory.run_witness(ip=ip, signing_key=sk, reset_db=reset_db)
 
 
-def run_delegate(slot_num, log_lvl=11, seneca_log_lvl=11, bad_actor=False, reset_db=False):
+def run_delegate(slot_num, log_lvl=11, seneca_log_lvl=11, bad_actor=False, reset_db=False, bad_sb_set={1}, num_succ_sbs=3):
     import os
     if bad_actor:
         os.environ["BAD_ACTOR"] = '1'
-        os.environ["SB_IDX_FAIL"] = '3'
-        os.environ["NUM_SUCC_SBS"] = '3'
+        os.environ["SB_IDX_FAIL"] = ','.join((str(i) for i in bad_sb_set))
+        os.environ["NUM_SUCC_SBS"] = str(num_succ_sbs)
 
     from cilantro.logger import get_logger, overwrite_logger_level
     from seneca.libs.logger import overwrite_logger_level as sen_overwrite_log

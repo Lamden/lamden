@@ -31,7 +31,7 @@ from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.align_input_hash import AlignInputHash
 from cilantro.messages.transaction.batch import TransactionBatch
-from cilantro.messages.transaction.data import TransactionData
+from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
 
 from seneca.engine.client import NUM_CACHES
@@ -49,6 +49,7 @@ from cilantro.utils.utils import int_to_bytes, bytes_to_int
 from enum import Enum, unique
 import asyncio, zmq.asyncio, time, os
 from typing import List
+
 
 @unique
 class NextBlockState(Enum):
@@ -82,7 +83,7 @@ class SubBlockBuilder(Worker):
         # These variables are used only for testing
         self.bad_actor = bool(os.getenv('BAD_ACTOR'))
         if self.bad_actor:
-            self.log.important2("Warning!!! Bad actor mode enabled for delegate with vk {}".format(self.verifying_key))
+            self.log.critical("Warning!!! Bad actor mode enabled for delegate with vk {}".format(self.verifying_key))
             self.good_sb_count = 0
             self.fail_idxs = set([int(i) for i in os.getenv('SB_IDX_FAIL').split(',')])
             self.fail_interval = int(os.getenv('NUM_SUCC_SBS'))
@@ -306,7 +307,12 @@ class SubBlockBuilder(Worker):
 
         # Purposely produce a bad SBC if BAD_ACTOR is set, and the conditions are right
         if self.bad_actor:
-            pass # TODO implement
+            if self.good_sb_count >= self.fail_interval and cr_context.sbb_idx in self.fail_idxs:
+                self.log.critical("Creating an evil sub-block for idx {}!".format(cr_context.sbb_idx))
+                txs_data = TransactionDataBuilder.create_random_batch(len(txs_data))
+                self.good_sb_count = 0
+            else:
+                self.log.info("Not producing an evil sub-block.....for now....")
 
         txs_data_serialized = [t.serialize() for t in txs_data]
         txs = [d[0] for d in sb_data]
@@ -367,6 +373,11 @@ class SubBlockBuilder(Worker):
                 # self.pending_block_index = self.cur_block_index
 
     def _make_next_sub_block(self):
+        # The following block is test code
+        if self.bad_actor:
+            self.log.info("Incrementing good sb count!")
+            self.good_sb_count += 1
+
         self.log.info("Merge pending db to master db")
         # for i in len(self.clients):
             # self.clients[i].update_master_db()
