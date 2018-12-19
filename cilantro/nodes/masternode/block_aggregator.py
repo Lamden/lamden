@@ -97,7 +97,8 @@ class BlockAggregator(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_delegates():
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
-            self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
+            # I dont think we to connect to delegates here as delegates are already connecting in BlockManager --davis
+            # self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
 
         # Listen to masters for new block notifs and state update requests from masters/delegates
         self.sub.setsockopt(zmq.SUBSCRIBE, CATCHUP_MN_DN_FILTER.encode())
@@ -176,7 +177,8 @@ class BlockAggregator(Worker):
 
     def recv_sub_block_contender(self, sender_vk: str, sbc: SubBlockContender):
         assert not self.catchup_manager.catchup_state, "We should not be receiving SBCs when we are catching up!"
-        self.log.debugv("Received a sbc with result hash {} and input hash {}".format(sbc.result_hash, sbc.input_hash))
+        self.log.debugv("Received a sbc from sender {} with result hash {} and input hash {}"
+                        .format(sender_vk, sbc.result_hash, sbc.input_hash))
 
         added_first_sbc = self.curr_block.add_sbc(sender_vk, sbc)
         if added_first_sbc:

@@ -118,8 +118,7 @@ class SubBlockGroup:
             if tx.hash not in self.transactions:
                 self.transactions[tx.hash] = tx
 
-        self.log.info("Added SBC from sender {} with sb_index {} and result hash {}"
-                      .format(sender_vk, sbc.sb_index, sbc.result_hash))
+        self.log.info("Added SBC: {}".format(sbc))
 
     def _verify_sbc(self, sender_vk: str, sbc: SubBlockContender) -> bool:
         # Dev sanity checks
@@ -177,18 +176,20 @@ class BlockContender:
         self.log.debug("BlockContender created with curr_block_hash={}".format(self.curr_block_hash))
 
     def reset(self):
+        # Set old_input_hashes before we reset all the data
+        all_input_hashes = set()
+        for s in self._get_input_hashes():
+            all_input_hashes = all_input_hashes.union(s)
+        self.old_input_hashes = all_input_hashes
+        self.log.debugv("Old input hashes set to {}".format(self.old_input_hashes))
+
+        # Reset all the data
         self.committed = False
         self.consensus_reached = False
         self.curr_block_hash = StateDriver.get_latest_block_hash()
         self.time_created = time.time()
         self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
         self.log.info("BlockContender reset with curr_block_hash={}".format(self.curr_block_hash))
-
-        all_input_hashes = set()
-        for s in self._get_input_hashes():
-            all_input_hashes = all_input_hashes.union(s)
-        self.old_input_hashes = all_input_hashes
-        self.log.debugv("Old input hashes set to {}".format(self.old_input_hashes))
 
     def is_consensus_reached(self) -> bool:
         assert len(self.sb_groups) <= NUM_SB_PER_BLOCK, "Got more sub block indices than SB_PER_BLOCK!"
