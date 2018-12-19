@@ -73,18 +73,22 @@ class MDB:
         else:
             cls.init_idx_db = cls.create_genesis_blk()
 
+        assert cls.init_idx_db is True, "failed to init index table"
+
     @classmethod
     def setup_db(cls):
         database = cls.cfg.get('MN_DB', 'mn_blk_database')
         store_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
-        cls.log.info("uri {}".format(store_uri))
+        cls.log.debugv("store uri {}".format(store_uri))
         cls.mn_client = MongoClient(store_uri)
         cls.mn_db = cls.mn_client.get_database()
         cls.mn_collection = cls.mn_db['blocks']
 
+        database = cls.cfg.get('MN_DB', 'mn_index_database')
         index_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+        cls.log.debugv("index uri {}".format(index_uri))
         cls.mn_client_idx = MongoClient(index_uri)
-        cls.mn_db_idx = MongoClient(index_uri).get_database()
+        cls.mn_db_idx = cls.mn_client_idx.get_database()
         cls.mn_coll_idx = cls.mn_db_idx['index']
 
     @classmethod
