@@ -8,7 +8,7 @@ from cilantro.messages.transaction.data import TransactionData
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.block_data.sub_block import SubBlock
 from cilantro.messages.block_data.block_data import BlockData
-# from cilantro.messages.block_data.state_update import FailedBlockNotification
+from cilantro.messages.block_data.state_update import FailedBlockNotification
 
 from collections import defaultdict
 from typing import List
@@ -240,9 +240,9 @@ class BlockContender:
 
         return sb_data
 
-    # def get_failed_block_notif(self) -> FailedBlockNotification:
-    #     input_hashes = self._get_input_hashes()
-    #     return FailedBlockNotification.create(prev_block_hash=self.curr_block_hash, input_hashes=input_hashes)
+    def get_failed_block_notif(self) -> FailedBlockNotification:
+        input_hashes = self._get_input_hashes()
+        return FailedBlockNotification.create(prev_block_hash=self.curr_block_hash, input_hashes=input_hashes)
 
     def add_sbc(self, sender_vk: str, sbc: SubBlockContender) -> bool:
         """

@@ -113,12 +113,12 @@ async def get_latest_block(request):
 async def get_block(request):
     if 'number' in request.json:
         num = request.json['number']
-        block = StorageDriver.get_block_by_num(num)
+        block = StorageDriver.get_nth_full_block(given_bnum = num)
         if block is None:
             return json({'error': 'Block at number {} does not exist.'.format(num)})
     else:
         _hash = request.json['hash']
-        block = StorageDriver.get_block_by_hash(_hash)
+        block = StorageDriver.get_nth_full_block(given_hash = hash)
         if block is None:
             return json({'error': 'Block with hash {} does not exist.'.format(_hash)})
 

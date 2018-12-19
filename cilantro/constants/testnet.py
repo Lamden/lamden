@@ -4,6 +4,7 @@ from cilantro.utils.test.testnet_config import get_testnet_json_path
 
 TESTNET_JSON_PATH = get_testnet_json_path()
 
+
 # DEBUG -- TODO DELETE
 # print("\n\n\n\n\n TESTNET JSON PATH: {} \n\n\n\n\n".format(TESTNET_JSON_PATH))
 # END DEBUG

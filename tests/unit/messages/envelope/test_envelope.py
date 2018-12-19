@@ -1,3 +1,6 @@
+from cilantro.utils.test.testnet_config import set_testnet_config
+set_testnet_config('2-2-2.json')
+
 from unittest import TestCase
 from unittest.mock import MagicMock
 
