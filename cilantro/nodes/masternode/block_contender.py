@@ -8,6 +8,7 @@ from cilantro.messages.transaction.data import TransactionData
 from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.block_data.sub_block import SubBlock
 from cilantro.messages.block_data.block_data import BlockData
+from cilantro.messages.block_data.state_update import FailedBlockNotification
 
 from collections import defaultdict
 from typing import List
@@ -73,6 +74,12 @@ class SubBlockGroup:
 
         return cons_reached
 
+    def get_input_hashes(self) -> set:
+        s = set()
+        for sbc in self.sender_to_sbc.values():
+            s.add(sbc.input_hash)
+        return s
+
     def is_empty(self):
         return len(self._get_merkle_leaves()) == 0
 
@@ -94,9 +101,9 @@ class SubBlockGroup:
 
         if sender_vk in self.sender_to_sbc:
             self.log.debug("Sender {} has already submitted a contender for sb idx {} with prev hash {}! Removing his "
-                          "old contender before adding a new one".format(sender_vk, self.sb_idx, self.curr_block_hash))
+                           "old contender before adding a new one".format(sender_vk, self.sb_idx, self.curr_block_hash))
             existing_sbc = self.sender_to_sbc[sender_vk]
-            self.rh[existing_sbc.result_hash].pop(existing_sbc)
+            self.rh[existing_sbc.result_hash].remove(existing_sbc)
 
         self.sender_to_sbc[sender_vk] = sbc
         self.rh[sbc.result_hash].add(sbc)
@@ -104,9 +111,9 @@ class SubBlockGroup:
             self.best_rh = sbc.result_hash
 
         # Just a warning to help debugging
-        if len(self.rh) > NUM_SB_PER_BLOCK:
-            self.log.warning("More than {} unique result hashes for prev block hash {}!!! Result hashes: {}"
-                             .format(NUM_SB_PER_BLOCK, self.curr_block_hash, list(self.rh.keys())))
+        # if len(self.rh) > 1:
+        #     self.log.warning("More than {} unique result hashes for prev block hash {}!!! Result hashes: {}"
+        #                      .format(1, self.curr_block_hash, list(self.rh.keys())))
 
         for tx in sbc.transactions:
             if tx.hash not in self.transactions:
@@ -219,8 +226,16 @@ class BlockContender:
 
         return sb_data
 
-    def get_num_contenders(self):
-        pass
+    def get_failed_block_notif(self) -> FailedBlockNotification:
+        input_hashes = []
+        for i in range(NUM_SUB_BLOCKS):
+            if i not in self.sb_groups:
+                input_hashes.append(set())
+            else:
+                input_hashes.append(self.sb_groups[i].get_input_hashes())
+
+        return FailedBlockNotification.create(prev_block_hash=self.curr_block_hash, input_hashes=input_hashes)
+
 
     def add_sbc(self, sender_vk: str, sbc: SubBlockContender) -> bool:
         """
