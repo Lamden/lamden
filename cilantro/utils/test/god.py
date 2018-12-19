@@ -58,7 +58,7 @@ class God:
     @staticmethod
     def pump_it(*args, return_fn=True, **kwargs):
         if return_fn:
-            return wrap_func(dump_it, *args, **kwargs)
+            return wrap_func(pump_it, *args, **kwargs)
         else:
             pump_it(*args, **kwargs)
 

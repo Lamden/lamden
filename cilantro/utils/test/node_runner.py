@@ -34,7 +34,7 @@ def run_mn(slot_num, log_lvl=11, reset_db=False, nonce_enabled=True):
     NodeFactory.run_masternode(ip=ip, signing_key=sk, reset_db=reset_db)
 
 
-def run_witness(slot_num, log_lvl=11, reset_db=False, return_fn=True):
+def run_witness(slot_num, log_lvl=11, reset_db=False):
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_WITNESSES
@@ -49,13 +49,18 @@ def run_witness(slot_num, log_lvl=11, reset_db=False, return_fn=True):
     NodeFactory.run_witness(ip=ip, signing_key=sk, reset_db=reset_db)
 
 
-def run_delegate(slot_num, log_lvl=11, seneca_log_lvl=11, reset_db=False, return_fn=True):
+def run_delegate(slot_num, log_lvl=11, seneca_log_lvl=11, bad_actor=False, reset_db=False):
+    import os
+    if bad_actor:
+        os.environ["BAD_ACTOR"] = '1'
+        os.environ["SB_IDX_FAIL"] = '3'
+        os.environ["NUM_SUCC_SBS"] = '3'
+
     from cilantro.logger import get_logger, overwrite_logger_level
     from seneca.libs.logger import overwrite_logger_level as sen_overwrite_log
     from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_DELEGATES
     from cilantro.utils.test.node_runner import log_create
-    import os
 
     overwrite_logger_level(log_lvl)
     sen_overwrite_log(seneca_log_lvl)

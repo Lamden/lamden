@@ -16,16 +16,13 @@
 
 
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
-import asyncio
-import zmq.asyncio
-import time
-from typing import List
 
 from cilantro.logger import get_logger
 from cilantro.storage.vkbook import VKBook
 from cilantro.storage.state import StateDriver
 from cilantro.constants.ports import SBB_PORT_START
 from cilantro.constants.zmq_filters import *
+from cilantro.constants.system_config import *
 
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
@@ -49,8 +46,9 @@ from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
 from cilantro.utils.hasher import Hasher
 from cilantro.utils.utils import int_to_bytes, bytes_to_int
 
-from cilantro.constants.system_config import *
 from enum import Enum, unique
+import asyncio, zmq.asyncio, time, os
+from typing import List
 
 @unique
 class NextBlockState(Enum):
@@ -80,6 +78,14 @@ class SubBlockBuilder(Worker):
         super().__init__(signing_key=signing_key, name="SubBlockBuilder_{}".format(sbb_index))
 
         self.tasks = []
+
+        # These variables are used only for testing
+        self.bad_actor = bool(os.getenv('BAD_ACTOR'))
+        if self.bad_actor:
+            self.log.important2("Warning!!! Bad actor mode enabled for delegate with vk {}".format(self.verifying_key))
+            self.good_sb_count = 0
+            self.fail_idxs = set([int(i) for i in os.getenv('SB_IDX_FAIL').split(',')])
+            self.fail_interval = int(os.getenv('NUM_SUCC_SBS'))
 
         self.ip = ip
         self.sbb_index = sbb_index
@@ -194,7 +200,6 @@ class SubBlockBuilder(Worker):
             self.sb_managers[0].pending_txs.insert_front(ih, txs_bag)
         self.client.flush_all()
         self._make_next_sb()
-        
 
     def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
@@ -292,37 +297,35 @@ class SubBlockBuilder(Worker):
         """
         Creates a Sub Block Contender from a TransactionBatch
         """
-        import traceback
         self.log.info("Building sub block contender for input hash {}".format(cr_context.input_hash))
 
-        try:
-            sb_data = cr_context.get_subblock_rep()
-            # self.log.important3("GOT SB DATA: {}".format(sb_data))
+        sb_data = cr_context.get_subblock_rep()
+        # self.log.important3("GOT SB DATA: {}".format(sb_data))
 
-            txs_data = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[2]) for d in sb_data]
-            txs_data_serialized = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[2]).serialize() for d in sb_data]
-            txs = [d[0] for d in sb_data]
+        txs_data = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[2]) for d in sb_data]
 
-            # build sbc
-            merkle = MerkleTree.from_raw_transactions(txs_data_serialized)
-            signature = wallet.sign(self.signing_key, merkle.root)
-            merkle_sig = MerkleSignature.create(sig_hex=signature,
-                                                timestamp=str(time.time()),
-                                                sender=self.verifying_key)
-            sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=cr_context.input_hash,
-                                           merkle_leaves=merkle.leaves, sub_block_index=cr_context.sbb_idx,
-                                           signature=merkle_sig, transactions=txs_data,
-                                           prev_block_hash=StateDriver.get_latest_block_hash())
+        # Purposely produce a bad SBC if BAD_ACTOR is set, and the conditions are right
+        if self.bad_actor:
+            pass # TODO implement
 
-            # Send sbc to block manager
-            self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
-                                .format(len(txs), cr_context.input_hash))
-            self._send_msg_over_ipc(sbc)
-        except Exception as e:
-            exp = traceback.format_exc()
-            self.log.fatal("GOT EXP BUILDING SB: {}".format(e))
-            self.log.error("GOT EXP BUILDING SB: {}".format(exp))
-            raise e
+        txs_data_serialized = [t.serialize() for t in txs_data]
+        txs = [d[0] for d in sb_data]
+
+        # build sbc
+        merkle = MerkleTree.from_raw_transactions(txs_data_serialized)
+        signature = wallet.sign(self.signing_key, merkle.root)
+        merkle_sig = MerkleSignature.create(sig_hex=signature,
+                                            timestamp=str(time.time()),
+                                            sender=self.verifying_key)
+        sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=cr_context.input_hash,
+                                       merkle_leaves=merkle.leaves, sub_block_index=cr_context.sbb_idx,
+                                       signature=merkle_sig, transactions=txs_data,
+                                       prev_block_hash=StateDriver.get_latest_block_hash())
+
+        # Send sbc to block manager
+        self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
+                            .format(len(txs), cr_context.input_hash))
+        self._send_msg_over_ipc(sbc)
 
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
     def _execute_next_sb(self, input_hash: str, tx_batch: TransactionBatch, sbb_idx: int):
