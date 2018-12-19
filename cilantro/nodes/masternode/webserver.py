@@ -107,6 +107,14 @@ async def get_contract_meta(request, contract):
     return json({'resources': r})
 
 
+@app.route("/contracts/<contract>/methods", methods=["GET", ])
+async def get_contract_meta(request, contract):
+    contract_name = validate_contract_name(contract)
+    meta = interface.get_contract_meta(contract_name.encode())
+    meta.update(parse_code_str(meta['code_str']))
+    return json({'methods': meta['exports']})
+
+
 @app.route("/contracts/<contract>/<resource>", methods=["GET", ])
 async def get_contract_resource_keys(request, contract, resource):
     pattern = '{}:{}:*'.format(contract, resource)
