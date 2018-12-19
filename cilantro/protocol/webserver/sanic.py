@@ -5,6 +5,7 @@ from seneca.engine.interface import SenecaInterface
 class SanicSingleton(object):
 
     app = Sanic(__name__)
+
     interface = SenecaInterface(concurrent_mode=False)
 
     def __enter__(self):

@@ -22,10 +22,16 @@ def wrap_func(fn, *args, **kwargs):
 
 
 def start_mn(verifing_key):
+    from cilantro.utils.sketch import sketch
+    sketch()
+
     import os, zmq, time
-    from cilantro.logger.base import get_logger
+    from cilantro.logger.base import get_logger, overwrite_logger_level
     from cilantro.nodes.masternode.master_store import MasterOps
     from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
+    from cilantro.storage.state import StateDriver
+
+    overwrite_logger_level(12)
 
     MN_SK = TESTNET_MASTERNODES[0]['sk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
     log = get_logger(os.getenv('MN'))
@@ -48,7 +54,7 @@ def start_mn(verifing_key):
     log.info('Test 2 : writing 5 blocks')
 
     blk_id = 1
-    while blk_id <= 5:
+    while blk_id <= 2:
         log.debug("waiting for msg...")
         msg = socket.recv_pyobj()
         log.info("got msg {}".format(msg))
@@ -59,9 +65,16 @@ def start_mn(verifing_key):
         print(StorageDriver.get_latest_block_hash())
         print("**********************")
 
+
+        bhash, bnum = StateDriver.get_latest_block_info()
+        log.debugv("DAVIS STATE DRIVER - {} hash - {}".format(bnum, bhash))
+
         sub_blocks = [SubBlockBuilder.create(idx=i) for i in range(2)]
-        success = StorageDriver.store_block(sub_blocks)
-        log.info("wr status {}".format(success))
+        block = StorageDriver.store_block(sub_blocks)
+        StateDriver.update_with_block(block = block)
+
+        bhash, bnum = StateDriver.get_latest_block_info()
+        log.debugv("state binfo num - {} hash - {}".format(bnum, bhash))
         time.sleep(1)
         blk_id += 1
     log.info('end! writes')
@@ -109,7 +122,7 @@ def start_mgmt():
     socket.send_pyobj("hello for the first time")
 
     blk_num = 1
-    while blk_num <= 5:
+    while blk_num <= 2:
         msg = blk_num
         log.debug("sending msg {}".format(msg))
         socket.send_pyobj(msg)

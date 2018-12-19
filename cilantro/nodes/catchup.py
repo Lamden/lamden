@@ -290,15 +290,14 @@ class CatchupManager:
 
     def update_received_block(self, block = None):
 
-        block_dict = MDB.get_dict(block)
         if self.store_full_blocks is True:
-            update_blk_result = bool(MasterOps.evaluate_wr(entry = block_dict))
+            update_blk_result = bool(MasterOps.evaluate_wr(entry = block._data.to_dict()))
             StateDriver.update_with_block(block = block)
             assert update_blk_result is True, "failed to update block"
         else:
             StateDriver.update_with_block(block = block)
 
-        self._update_catchup_state(block_num = block_dict.get('blockNum'))
+        self._update_catchup_state(block_num = block.block_num)
 
     def _check_idx_reply_quorum(self):
         # We have enough BlockIndexReplies if 2/3 of Masternodes replied

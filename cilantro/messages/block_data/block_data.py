@@ -1,6 +1,6 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro.utils import lazy_property, Hasher
+from cilantro.utils import lazy_property, Hasher, lazy_func
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
 from cilantro.messages.block_data.sub_block import SubBlock
@@ -94,6 +94,13 @@ class BlockData(MessageBase):
         return {
             tx.hash: tx.serialize() for tx in self.transactions
         }
+
+    @lazy_func
+    def get_tx_hash_to_merkle_leaf(self) -> dict:
+        hash_to_leaf = {}
+        for tx_data in self.transactions:
+            hash_to_leaf[Hasher.hash(tx_data.transaction)] = Hasher.hash(tx_data)
+        return hash_to_leaf
 
     @lazy_property
     def block_owners(self) -> List[str]:
