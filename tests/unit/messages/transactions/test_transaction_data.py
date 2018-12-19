@@ -16,7 +16,7 @@ class TestTransactionData(TestCase):
 
         tx_data = TransactionData.create(contract_tx=tx, status=status, state=state)
 
-        self.assertEqual(tx_data.contract_tx, tx)
+        self.assertEqual(tx_data.transaction, tx)
         self.assertEqual(tx_data.status, status)
         self.assertEqual(tx_data.state, state)
 
@@ -36,7 +36,7 @@ class TestTransactionData(TestCase):
                 sender_sk=TEST_SK, receiver_vk='A' * 64, amount=10),
             status='SUCCESS', state='SET x 1')
 
-        self.assertTrue(isinstance(td.contract_tx, ContractTransaction))
+        self.assertTrue(isinstance(td.transaction, ContractTransaction))
 
     def test_serialize_deserialize2(self):
         td = TransactionData.create(
