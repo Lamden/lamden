@@ -20,7 +20,7 @@ from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.block_data.sub_block import SubBlock
 from cilantro.messages.block_data.state_update import *
-from cilantro.messages.block_data.block_metadata import NewBlockNotification
+from cilantro.messages.block_data.block_metadata import NewBlockNotification, SkipBlockNotification
 from cilantro.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
 from cilantro.messages.transaction.data import TransactionData
 
@@ -205,13 +205,13 @@ class BlockAggregator(Worker):
             self.log.debugv("Consensus not reached yet.")
 
     def store_full_block(self):
+        sb_data = self.curr_block.get_sb_data()
         if self.curr_block.is_empty():
             self.log.debug("Got consensus on empty block with prev hash {}! Sending skip block notification".format(self.curr_block_hash))
-            self.send_skip_block_notif()
+            self.send_skip_block_notif(sb_data)
 
         else:
             # TODO wrap storage in try/catch. Add logic for storage failure
-            sb_data = self.curr_block.get_sb_data()
             block_data = StorageDriver.store_block(sb_data)
 
             assert block_data.prev_block_hash == self.curr_block_hash, \
@@ -233,10 +233,10 @@ class BlockAggregator(Worker):
         self.log.info('Published new block notif with hash "{}" and prev hash {}'
                       .format(block_data.block_hash, block_data.prev_block_hash))
 
-    def send_skip_block_notif(self):
+    def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
         message = EmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
-        skip_notif = SkipBlockNotification.create(prev_block_hash=self.curr_block_hash)
+        skip_notif = SkipBlockNotification.create_from_sub_blocks(prev_block_hash=self.curr_block_hash, sub_blocks=sub_blocks)
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
@@ -250,11 +250,11 @@ class BlockAggregator(Worker):
         # TODO implement
 
     def recv_skip_block_notif(self, sender_vk: str, notif: SkipBlockNotification):
-        self.log.debugv("MN got new block notification: {}".format(notif))
+        self.log.debugv("MN got skip block notification: {}".format(notif))
         # TODO implement
 
     def recv_fail_block_notif(self, sender_vk: str, notif: FailedBlockNotification):
-        self.log.debugv("MN got new block notification: {}".format(notif))
+        self.log.debugv("MN got fail block notification: {}".format(notif))
         # TODO implement
 
     async def schedule_block_timeout(self):

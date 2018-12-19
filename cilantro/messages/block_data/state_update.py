@@ -78,7 +78,7 @@ class BlockDataReply(BlockData):
     pass
 
 
-class SkipBlockNotification(MessageBaseJson):
+class SkipBlockNotification2(MessageBaseJson):
     PREV_B_HASH = 'prev_b_hash'
 
     def validate(self):
