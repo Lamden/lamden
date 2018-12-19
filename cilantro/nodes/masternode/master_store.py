@@ -171,7 +171,7 @@ class MasterOps:
     def update_idx(cls, inserted_blk=None, node_list=None):
 
         entry = {'blockNum': inserted_blk.get('blockNum'), 'blockHash': inserted_blk.get('blockHash'),
-                 'mn_blk_owner': node_list}
+                 'blockOwners': node_list}
         MDB.insert_idx_record(entry)
         return True
 
@@ -217,7 +217,7 @@ class MasterOps:
             return None
 
         outcome = MDB.query_db(type='idx', query = my_query)
-        owners = outcome.get('mn_blk_owner')
+        owners = outcome.get('blockOwners')
         cls.log.debug("print owners {}".format(outcome))
         return owners
 

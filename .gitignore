@@ -38,7 +38,9 @@ vmnet_configs/constitutions/private
 
 # Config files
 db_conf.ini
-cilantro/vmnet_configs/constitutions/test/testnet.ini
+cilantro/testnet_configs/testnet.ini
+#cilantro/vmnet_configs/constitutions/test/testnet.ini
+tests/cloud/Dockerfile
 
 # Docker
 docker-compose.yml

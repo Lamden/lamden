@@ -96,10 +96,12 @@ class MDB:
         cls.init_mdb = cls.insert_record(block_dict=cls.genesis_blk)
         assert cls.init_mdb is True, "failed to create genesis block"
 
+        cls.log.debugv('start_db init set {}'.format(cls.init_mdb))
+
         # update index record
         if cls.init_mdb:
             idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash'),
-                   'mn_blk_owner': cls.verify_key}
+                   'blockOwners': cls.verify_key}
             cls.log.debugv('start_db init index {}'.format(idx))
             return cls.insert_idx_record(my_dict = idx)
 

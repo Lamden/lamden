@@ -69,7 +69,7 @@ class DBState:
         self.input_hash_map = {}
 
     def reset(self):
-        # reset all the state info 
+        # reset all the state info
         self.sub_block_hash_map.clear()
         self.next_block.clear()
         self.my_new_block_hash = None
@@ -122,9 +122,8 @@ class BlockManager(Worker):
             socket_type=zmq.ROUTER,
             name="BM-Router-{}".format(self.verifying_key[-4:]),
             secure=True,
-            # domain="sb-contender"
         )
-        self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
+        # self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
@@ -142,7 +141,6 @@ class BlockManager(Worker):
             socket_type=zmq.PUB,
             name="BM-Pub-{}".format(self.verifying_key[-4:]),
             secure=True,
-            # domain="sb-contender"
         )
         self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
 
@@ -155,7 +153,6 @@ class BlockManager(Worker):
             socket_type=zmq.SUB,
             name="BM-Sub-{}".format(self.verifying_key[-4:]),
             secure=True,
-            # domain="sb-contender"
         )
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
@@ -172,18 +169,16 @@ class BlockManager(Worker):
         # only when one can connect to quorum masters and get db update, move to next step
         # at the end, it has updated its db state to consensus latest
 
-        await asyncio.sleep(8)             # so pub/sub connections can complete
-        # while not self.db_state.catchup_mgr:
-            # await asyncio.sleep(5)
-
+        await asyncio.sleep(8)  # so pub/sub connections can complete
         self.log.info("Catching up...")
-        # self.db_state.catchup_mgr.run_catchup()
+        self.db_state.catchup_mgr.run_catchup()
+        while not self.db_state.catchup_mgr:
+            await asyncio.sleep(2)
 
         # TODO needs to be deleted after catchup is working. for now, assume that it is caught up
         self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
         await asyncio.sleep(5)
         self.send_updated_db_msg()
-
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):
@@ -324,7 +319,6 @@ class BlockManager(Worker):
             message = AlignInputHash.create(input_hash)
             self._send_msg_over_ipc(sb_index=sbb_idx, message=message)
 
-
     def update_db(self):
         block = self.db_state.next_block[self.db_state.new_block_hash][0]
         if self.db_state.my_new_block_hash != self.db_state.new_block_hash:    # holy cow - mismatch
@@ -379,12 +373,14 @@ class BlockManager(Worker):
             return
 
         if (block_data.prev_block_hash != self.db_state.cur_block_hash):
+            self.log.warning("New Block Notif prev hash {} does not match current hash {}!"
+                             .format(block_data.prev_block_hash, self.db_state.cur_block_hash))
+            # TODO should we enter catchup here?
             self.db_state.cur_block_hash = None
             self.recv_block_data_reply(block_data)
             return
 
-        count = self.db_state.next_block.get(new_block_hash)[1] + 1 \
-                 if new_block_hash in self.db_state.next_block else 1
+        count = self.db_state.next_block.get(new_block_hash)[1] + 1 if new_block_hash in self.db_state.next_block else 1
         self.db_state.next_block[new_block_hash] = (block_data, count)
         if count >= MIN_NEW_BLOCK_MN_QOURUM:
             self.log.info("New block quorum met!")
@@ -446,7 +442,7 @@ class BlockManager(Worker):
             # add a log that it is not ready yet
             self.log.important("Don't have quorum yet to handle fail block {}".format(prev_block_hash))
             return
-        # reset all the state info 
+        # reset all the state info
         self.db_state.sub_block_hash_map.clear()
         self.db_state.next_block.clear()
         self.db_state.my_new_block_hash = None
@@ -458,7 +454,6 @@ class BlockManager(Worker):
 
         for idx in range(NUM_SB_BUILDERS):
             self._send_msg_over_ipc(sb_index=idx, message=block_data)
-
 
     def send_updated_db_msg(self):
         self.log.info("Sending MakeNextBlock message to SBBs")

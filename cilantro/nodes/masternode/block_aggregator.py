@@ -51,9 +51,9 @@ class BlockAggregator(Worker):
         self.timeout_fut = None
 
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
-        assert StateDriver.get_latest_block_hash() == StorageDriver.get_latest_block_hash(), \
-            "StateDriver latest block hash {} does not match StorageDriver latest hash {}" \
-            .format(StateDriver.get_latest_block_hash(), StorageDriver.get_latest_block_hash())
+        assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+            "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
+            .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
 
         self.run()
 
@@ -81,7 +81,7 @@ class BlockAggregator(Worker):
             name="BA-Router",
             secure=True,
         )
-        self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
+        # self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.bind(ip=self.ip, port=MASTER_ROUTER_PORT)
 
@@ -97,7 +97,8 @@ class BlockAggregator(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_delegates():
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
-            self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
+            # I dont think we to connect to delegates here as delegates are already connecting in BlockManager --davis
+            # self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
 
         # Listen to masters for new block notifs and state update requests from masters/delegates
         self.sub.setsockopt(zmq.SUBSCRIBE, CATCHUP_MN_DN_FILTER.encode())
@@ -114,7 +115,7 @@ class BlockAggregator(Worker):
         self.log.debugv("Sleeping before triggering catchup...")
         await asyncio.sleep(4)
         self.log.info("Triggering catchup")
-        # self.catchup_manager.send_block_idx_req()
+        self.catchup_manager.run_catchup()
 
     def _send_msg_over_ipc(self, message: MessageBase):
         """
@@ -134,17 +135,13 @@ class BlockAggregator(Worker):
         self.log.spam("Got SUB msg from sender {}\nMessage: {}".format(sender, msg))
 
         if isinstance(msg, SubBlockContender):
-            # TODO put this back in
-            # if self.catchup_manager.catchup_state:
-            if False:
+            if self.catchup_manager.catchup_state:
                 self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
             else:
                 self.recv_sub_block_contender(sender, msg)
 
         elif isinstance(msg, NewBlockNotification):
-            # TODO put this back in
-            # if self.catchup_manager.catchup_state:
-            if False:
+            if self.catchup_manager.catchup_state:
                 self.catchup_manager.recv_new_blk_notif(msg)
             else:
                 self.recv_new_block_notif(sender, msg)
@@ -182,9 +179,9 @@ class BlockAggregator(Worker):
                             .format(type(msg)))
 
     def recv_sub_block_contender(self, sender_vk: str, sbc: SubBlockContender):
-        # TODO put this back in
-        # assert not self.catchup_manager.catchup_state, "We should not be receiving SBCs when we are catching up!"
-        self.log.debugv("Received a sbc with result hash {} and input hash {}".format(sbc.result_hash, sbc.input_hash))
+        assert not self.catchup_manager.catchup_state, "We should not be receiving SBCs when we are catching up!"
+        self.log.debugv("Received a sbc from sender {} with result hash {} and input hash {}"
+                        .format(sender_vk, sbc.result_hash, sbc.input_hash))
 
         added_first_sbc = self.curr_block.add_sbc(sender_vk, sbc)
         if added_first_sbc:
@@ -192,7 +189,8 @@ class BlockAggregator(Worker):
             self.timeout_fut = asyncio.ensure_future(self.schedule_block_timeout())
 
         if self.curr_block.is_consensus_reached():
-            self.log.info("Consensus reached for prev hash {}!".format(self.curr_block_hash))
+            self.log.success("Consensus reached for prev hash {} (is_empty={})"
+                             .format(self.curr_block_hash, self.curr_block.is_empty()))
             self.store_full_block()
             return
 
@@ -200,7 +198,6 @@ class BlockAggregator(Worker):
             self.log.critical("Consensus not possible for prev block hash {}! Sending failed block notif".format(self.curr_block_hash))
             self.send_fail_block_notif()
             self._reset_curr_block()
-            # TODO -- how do we filter out new 'late' SBCs that reference this abandoned block?
         else:
             self.log.debugv("Consensus not reached yet.")
 
@@ -268,13 +265,14 @@ class BlockAggregator(Worker):
             self.log.critical("Block timeout of {}s reached for block hash {}! Resetting sub block contenders and sending "
                               "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
             self.send_fail_block_notif()
-            self.curr_block = BlockContender()
+            self.curr_block.reset()
         except asyncio.CancelledError:
             pass
 
     def _reset_curr_block(self):
-        self.curr_block = BlockContender()
+        self.curr_block.reset()
         self.log.debugv("Canceling block timeout")
         if self.timeout_fut and not self.timeout_fut.done():
             self.timeout_fut.cancel()
+
 
