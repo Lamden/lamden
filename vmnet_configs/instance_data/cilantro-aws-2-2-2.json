@@ -1,27 +1,27 @@
 [
     {
         "AmiLaunchIndex": 0,
-        "PublicIpAddress": "52.15.111.222",
+        "PublicIpAddress": "18.219.184.121",
         "Tags": [
             {
                 "Key": "Name",
-                "Value": "cilantro:dev-fix:witness-run"
+                "Value": "cilantro:dev-fix:delegate-run"
             }
         ]
     },
     {
         "AmiLaunchIndex": 1,
-        "PublicIpAddress": "18.224.240.176",
+        "PublicIpAddress": "52.15.203.8",
         "Tags": [
             {
                 "Key": "Name",
-                "Value": "cilantro:dev-fix:witness-run"
+                "Value": "cilantro:dev-fix:delegate-run"
             }
         ]
     },
     {
         "AmiLaunchIndex": 0,
-        "PublicIpAddress": "18.217.190.40",
+        "PublicIpAddress": "3.17.100.24",
         "Tags": [
             {
                 "Key": "Name",
@@ -30,28 +30,28 @@
         ]
     },
     {
-        "AmiLaunchIndex": 1,
-        "PublicIpAddress": "18.220.146.129",
-        "Tags": [
-            {
-                "Key": "Name",
-                "Value": "cilantro:dev-fix:delegate-run"
-            }
-        ]
-    },
-    {
         "AmiLaunchIndex": 0,
-        "PublicIpAddress": "13.59.172.23",
+        "PublicIpAddress": "18.224.84.239",
         "Tags": [
             {
                 "Key": "Name",
-                "Value": "cilantro:dev-fix:delegate-run"
+                "Value": "cilantro:dev-fix:witness-run"
             }
         ]
     },
     {
         "AmiLaunchIndex": 1,
-        "PublicIpAddress": "18.216.59.125",
+        "PublicIpAddress": "13.59.57.160",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:dev-fix:witness-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "52.15.220.21",
         "Tags": [
             {
                 "Key": "Name",
@@ -61,7 +61,7 @@
     },
     {
         "AmiLaunchIndex": 0,
-        "PublicIpAddress": "52.14.0.168",
+        "PublicIpAddress": "18.223.138.69",
         "Tags": [
             {
                 "Key": "Name",

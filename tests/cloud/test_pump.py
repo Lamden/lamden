@@ -99,12 +99,12 @@ class TestPump(AWSTestCase):
     keep_up = True
     logging = True
 
-    # Avg number of transactions per second we will dump. Set to dump 1 block per BATCH_SLEEP_INTERVAL
+    # Avg number of transactions per second we will pump. Set to pump 1 block per BATCH_SLEEP_INTERVAL
     PUMP_RATE = (TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK) // BATCH_SLEEP_INTERVAL
     MODEL_AS_POISSON = True
     PUMP_WAIT = 120  # how long to sleep before we start the pump
 
-    def test_dump(self):
+    def test_pump(self):
         log = get_logger("Pumpatron")
 
         # Bootstrap master

@@ -2,11 +2,12 @@ import os, shutil
 from os import getenv as env
 from create_user import create_user
 
+
 def start_mongo():
     if env('VMNET_CLOUD'):
         host_name = ''
         if env('ANNIHILATE'):
-            shutil.rmtree('./data')
+            shutil.rmtree('./data', ignore_errors=True)
     else:
         host_name = env('HOST_NAME', '')
 
@@ -25,6 +26,7 @@ def start_mongo():
     ))
 
     create_user()
+
 
 if __name__ == '__main__':
     os.system("find . -name '*-ipc-sock*' -delete")
