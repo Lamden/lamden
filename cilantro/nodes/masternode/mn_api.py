@@ -53,9 +53,8 @@ class StorageDriver:
         block_data = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, block_owners=[],
                                       block_num=blk_num, sub_blocks=sub_blocks)
 
-        block_dict = MDB.get_dict(block_data)
-        assert (bool(MasterOps.evaluate_wr(entry=block_dict))) is True, "wr to master store failed, dump blk {}"\
-            .format(block_dict)
+        assert (bool(MasterOps.evaluate_wr(entry=block_data._data.to_dict()))) is True, \
+            "wr to master store failed, dump blk {}".format(block_data)
 
         # Attach the block owners data to the BlockData instance  TODO -- find better solution
         block_data._data.blockOwners = MasterOps.get_blk_owners(block_hash)
@@ -71,7 +70,7 @@ class StorageDriver:
         api returns full block if stored locally else would return list of Master nodes responsible for it
     '''
     @classmethod
-    def get_nth_full_block(cls, give_blk=None, mn_vk=None):
+    def get_nth_full_block(cls, given_bnum=None, given_hash=None):
         """
         API gets request for block num, this api assumes requested block is stored locally
         else asserts
@@ -81,20 +80,21 @@ class StorageDriver:
         :return:         None for incorrect, only full blk if block found else assert
         """
 
-        valid_mn_id = VKBook.get_masternodes().index(mn_vk)
-        if valid_mn_id is None:
-            return None
+        if given_bnum is not None:
+            full_block = MasterOps.get_full_blk(blk_num=given_bnum)
+            if full_block is not None:
+                return full_block
+            else:
+                blk_owners = MasterOps.get_blk_owners()
+                return blk_owners
 
-        # check my index if my vk is listed in idx
-        idx_entry = MasterOps.get_blk_idx(n_blks=give_blk)
-
-        for key in idx_entry.get('mn_blk_owners'):
-            if key == mn_vk:
-                blk_entry = MasterOps.get_full_blk(blk_num = idx_entry.get('blockNum'))
-                return blk_entry
-
-        # assert isinstance(blk_entry), "fn get_nth_full_block failed to return blk {} for index".format(blk_entry,
-        #                                                                                                idx_entry)
+        if given_hash is not None:
+            full_block = MasterOps.get_full_blk(blk_hash=given_hash)
+            if full_block is not None:
+                return full_block
+            else:
+                blk_owners = MasterOps.get_blk_owners()
+                return blk_owners
 
     @classmethod
     def get_latest_block_hash(cls):

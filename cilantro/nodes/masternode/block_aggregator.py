@@ -20,7 +20,7 @@ from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.block_data.sub_block import SubBlock
 from cilantro.messages.block_data.state_update import *
-from cilantro.messages.block_data.block_metadata import NewBlockNotification
+from cilantro.messages.block_data.block_metadata import NewBlockNotification, SkipBlockNotification
 from cilantro.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
 from cilantro.messages.transaction.data import TransactionData
 
@@ -51,9 +51,9 @@ class BlockAggregator(Worker):
         self.timeout_fut = None
 
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
-        assert StateDriver.get_latest_block_hash() == StorageDriver.get_latest_block_hash(), \
-            "StateDriver latest block hash {} does not match StorageDriver latest hash {}" \
-            .format(StateDriver.get_latest_block_hash(), StorageDriver.get_latest_block_hash())
+        assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+            "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
+            .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
 
         self.run()
 
@@ -81,7 +81,7 @@ class BlockAggregator(Worker):
             name="BA-Router",
             secure=True,
         )
-        self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
+        # self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.bind(ip=self.ip, port=MASTER_ROUTER_PORT)
 
@@ -97,7 +97,8 @@ class BlockAggregator(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_delegates():
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
-            self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
+            # I dont think we to connect to delegates here as delegates are already connecting in BlockManager --davis
+            # self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
 
         # Listen to masters for new block notifs and state update requests from masters/delegates
         self.sub.setsockopt(zmq.SUBSCRIBE, CATCHUP_MN_DN_FILTER.encode())
@@ -114,15 +115,14 @@ class BlockAggregator(Worker):
         self.log.debugv("Sleeping before triggering catchup...")
         await asyncio.sleep(4)
         self.log.info("Triggering catchup")
-        # self.catchup_manager.send_block_idx_req()
-
+        self.catchup_manager.run_catchup()
 
     def _send_msg_over_ipc(self, message: MessageBase):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
         frame to identify the type of message
         """
-        self.log.spam("Sending msg to batcher")
+        self.log.spam("Sending msg to batcher: {}".format(message))
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
         id_frame = str(0).encode()
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
@@ -135,23 +135,22 @@ class BlockAggregator(Worker):
         self.log.spam("Got SUB msg from sender {}\nMessage: {}".format(sender, msg))
 
         if isinstance(msg, SubBlockContender):
-            # TODO put this back in
-            # if self.catchup_manager.catchup_state:
-            if False:
+            if self.catchup_manager.catchup_state:
                 self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
             else:
                 self.recv_sub_block_contender(sender, msg)
 
         elif isinstance(msg, NewBlockNotification):
-            # TODO put this back in
-            # if self.catchup_manager.catchup_state:
-            if False:
+            if self.catchup_manager.catchup_state:
                 self.catchup_manager.recv_new_blk_notif(msg)
             else:
                 self.recv_new_block_notif(sender, msg)
 
         elif isinstance(msg, SkipBlockNotification):
             self.recv_skip_block_notif(sender, msg)
+
+        elif isinstance(msg, FailedBlockNotification):
+            self.recv_fail_block_notif(sender, msg)
 
         elif isinstance(msg, BlockIndexRequest):
             self.catchup_manager.recv_block_idx_req(sender, msg)
@@ -180,9 +179,9 @@ class BlockAggregator(Worker):
                             .format(type(msg)))
 
     def recv_sub_block_contender(self, sender_vk: str, sbc: SubBlockContender):
-        # TODO put this back in
-        # assert not self.catchup_manager.catchup_state, "We should not be receiving SBCs when we are catching up!"
-        self.log.debugv("Received a sbc with result hash {} and input hash {}".format(sbc.result_hash, sbc.input_hash))
+        assert not self.catchup_manager.catchup_state, "We should not be receiving SBCs when we are catching up!"
+        self.log.debugv("Received a sbc from sender {} with result hash {} and input hash {}"
+                        .format(sender_vk, sbc.result_hash, sbc.input_hash))
 
         added_first_sbc = self.curr_block.add_sbc(sender_vk, sbc)
         if added_first_sbc:
@@ -190,27 +189,26 @@ class BlockAggregator(Worker):
             self.timeout_fut = asyncio.ensure_future(self.schedule_block_timeout())
 
         if self.curr_block.is_consensus_reached():
-            self.log.info("Consensus reached for prev hash {}!".format(self.curr_block_hash))
+            self.log.success("Consensus reached for prev hash {} (is_empty={})"
+                             .format(self.curr_block_hash, self.curr_block.is_empty()))
             self.store_full_block()
             return
 
         if not self.curr_block.is_consensus_possible():
-            self.log.critical("Consensus not possible for prev block hash {}! Sending skip block notif".format(self.curr_block_hash))
-            self.send_skip_block_notif()
+            self.log.critical("Consensus not possible for prev block hash {}! Sending failed block notif".format(self.curr_block_hash))
+            self.send_fail_block_notif()
+            self._reset_curr_block()
         else:
             self.log.debugv("Consensus not reached yet.")
 
     def store_full_block(self):
-        self.log.debugv("Canceling block timeout")
-        self.timeout_fut.cancel()
-
+        sb_data = self.curr_block.get_sb_data()
         if self.curr_block.is_empty():
             self.log.debug("Got consensus on empty block with prev hash {}! Sending skip block notification".format(self.curr_block_hash))
-            self.send_skip_block_notif()
+            self.send_skip_block_notif(sb_data)
 
         else:
             # TODO wrap storage in try/catch. Add logic for storage failure
-            sb_data = self.curr_block.get_sb_data()
             block_data = StorageDriver.store_block(sb_data)
 
             assert block_data.prev_block_hash == self.curr_block_hash, \
@@ -222,8 +220,7 @@ class BlockAggregator(Worker):
             self.log.success2("STORED BLOCK WITH HASH {}".format(block_data.block_hash))
             self.send_new_block_notif(block_data)
 
-        self.curr_block = BlockContender()  # Reset BlockContender (will this leak memory???)
-
+        self._reset_curr_block()
 
     def send_new_block_notif(self, block_data: BlockData):
         message = NonEmptyBlockMade.create()
@@ -233,29 +230,49 @@ class BlockAggregator(Worker):
         self.log.info('Published new block notif with hash "{}" and prev hash {}'
                       .format(block_data.block_hash, block_data.prev_block_hash))
 
-    def send_skip_block_notif(self):
+    def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
         message = EmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
-        skip_notif = SkipBlockNotification.create(prev_block_hash=self.curr_block_hash)
+        skip_notif = SkipBlockNotification.create_from_sub_blocks(prev_block_hash=self.curr_block_hash, sub_blocks=sub_blocks)
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
+
+    def send_fail_block_notif(self):
+        msg = self.curr_block.get_failed_block_notif()
+        self.pub.send_msg(msg=msg, header=DEFAULT_FILTER.encode())
+        self.log.debug("Uh oh! Sending failed block notif {}".format(msg))
 
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
         self.log.debugv("MN got new block notification: {}".format(notif))
         # TODO implement
 
     def recv_skip_block_notif(self, sender_vk: str, notif: SkipBlockNotification):
-        self.log.debugv("MN got new block notification: {}".format(notif))
+        self.log.debugv("MN got skip block notification: {}".format(notif))
+        # TODO implement
+
+    def recv_fail_block_notif(self, sender_vk: str, notif: FailedBlockNotification):
+        self.log.debugv("MN got fail block notification: {}".format(notif))
         # TODO implement
 
     async def schedule_block_timeout(self):
-        elapsed = 0
+        try:
+            elapsed = 0
 
-        while elapsed < BLOCK_PRODUCTION_TIMEOUT:
-            await asyncio.sleep(BLOCK_TIMEOUT_POLL)
-            elapsed += BLOCK_TIMEOUT_POLL
+            while elapsed < BLOCK_PRODUCTION_TIMEOUT:
+                await asyncio.sleep(BLOCK_TIMEOUT_POLL)
+                elapsed += BLOCK_TIMEOUT_POLL
 
-        self.log.critical("Block timeout of {}s reached for block hash {}! Resetting sub block contenders and sending "
-                          "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
-        self.send_skip_block_notif()
-        self.curr_block = BlockContender()
+            self.log.critical("Block timeout of {}s reached for block hash {}! Resetting sub block contenders and sending "
+                              "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
+            self.send_fail_block_notif()
+            self.curr_block.reset()
+        except asyncio.CancelledError:
+            pass
+
+    def _reset_curr_block(self):
+        self.curr_block.reset()
+        self.log.debugv("Canceling block timeout")
+        if self.timeout_fut and not self.timeout_fut.done():
+            self.timeout_fut.cancel()
+
+

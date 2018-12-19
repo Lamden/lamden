@@ -1,5 +1,5 @@
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-2.json')
+set_testnet_config('4-4-4.json')
 
 from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random, vmnet, cilantro, os
@@ -50,7 +50,7 @@ def run_mn(slot_num):
     # NOTE setting the log level below 11 does not work for some reason --davis
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
-    # overwrite_logger_level(11)
+    overwrite_logger_level(11)
 
     ip = os.getenv('HOST_IP')
     sk = TESTNET_MASTERNODES[slot_num]['sk']
@@ -84,7 +84,7 @@ def run_delegate(slot_num):
 
     # overwrite_logger_level(logging.WARNING)
     overwrite_logger_level(11)
-    sen_overwrite_log(4)  # disable spam only (lvl 5 is debugv)
+    sen_overwrite_log(11)  # disable spam only (lvl 5 is debugv)
 
     d_info = TESTNET_DELEGATES[slot_num]
     d_info['ip'] = os.getenv('HOST_IP')
@@ -105,7 +105,7 @@ class TestManualDump(BaseNetworkTestCase):
 
     NUM_BLOCKS = 2
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-2-bootstrap.json')
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-4-4-4-bootstrap.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)

@@ -83,22 +83,59 @@ async def request_nonce(request):
     return json({'success': True, 'nonce': nonce})
 
 
-@app.route("/state", methods=["GET",])
-async def get_contract_state(request):
-    contract_name = validate_contract_name(request.json['contract_name'])
-    meta = interface.get_contract_meta(contract_name)
-    meta.update(parse_code_str(meta['code_str']))
-    datatype = meta['datatypes'].get(request.json['datatype'])
-    if not datatype:
-        raise ServerError('Datatype "{}" not found'.format(datatype), status_code=500)
-    key = validate_key_name(request.json['key'])
-    return text(datatype.get(key))
+@app.route("/contracts", methods=["GET", ])
+async def get_contracts(request):
+    r = interface.r.hkeys('contracts')
+    result = {}
+    r_str = [_r.decode() for _r in r]
+    result['contracts'] = r_str
+    return json(result)
 
 
-@app.route("/contract-meta", methods=["GET",])
-async def get_contract_meta(request):
-    contract_name = validate_contract_name(request.json['contract_name'])
+@app.route("/contracts/<contract>", methods=["GET", ])
+async def get_contract_meta(request, contract):
+    contract_name = validate_contract_name(contract)
     return json(interface.get_contract_meta(contract_name))
+
+
+@app.route("/contracts/<contract>/resources", methods=["GET", ])
+async def get_contract_meta(request, contract):
+    contract_name = validate_contract_name(contract)
+    meta = interface.get_contract_meta(contract_name.encode())
+    meta.update(parse_code_str(meta['code_str']))
+    r = list(meta['datatypes'].keys())
+    return json({'resources': r})
+
+
+@app.route("/contracts/<contract>/methods", methods=["GET", ])
+async def get_contract_meta(request, contract):
+    contract_name = validate_contract_name(contract)
+    meta = interface.get_contract_meta(contract_name.encode())
+    meta.update(parse_code_str(meta['code_str']))
+    return json({'methods': meta['exports']})
+
+
+@app.route("/contracts/<contract>/<resource>", methods=["GET", ])
+async def get_contract_resource_keys(request, contract, resource):
+    pattern = '{}:{}:*'.format(contract, resource)
+    keys = interface.r.scan(0, pattern)
+    keys = keys[1]
+
+    formatted_keys = [k.decode()[len(pattern)-1:] for k in keys]
+
+    return json({'keys': formatted_keys})
+
+
+@app.route("/contracts/<contract>/<resource>/<key>", methods=["GET",])
+async def get_state(request, contract, resource, key):
+    contract_name = validate_contract_name(contract)
+    meta = interface.get_contract_meta(contract_name.encode())
+    meta.update(parse_code_str(meta['code_str']))
+    r = meta['datatypes'].get(resource)
+    if not r:
+        raise ServerError('Datatype "{}" not found'.format(r), status_code=500)
+    k = validate_key_name(key)
+    return text(r.get(k))
 
 
 @app.route("/latest_block", methods=["GET",])
@@ -113,12 +150,12 @@ async def get_latest_block(request):
 async def get_block(request):
     if 'number' in request.json:
         num = request.json['number']
-        block = StorageDriver.get_block_by_num(num)
+        block = StorageDriver.get_nth_full_block(given_bnum = num)
         if block is None:
             return json({'error': 'Block at number {} does not exist.'.format(num)})
     else:
         _hash = request.json['hash']
-        block = StorageDriver.get_block_by_hash(_hash)
+        block = StorageDriver.get_nth_full_block(given_hash = hash)
         if block is None:
             return json({'error': 'Block with hash {} does not exist.'.format(_hash)})
 

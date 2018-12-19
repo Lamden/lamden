@@ -9,7 +9,6 @@ from cilantro.messages.block_data.block_data import GenesisBlockData, BlockData,
 from cilantro.protocol import wallet
 
 
-
 class MDB:
     # Config
     log = get_logger("mdb_log")
@@ -40,16 +39,16 @@ class MDB:
     mn_coll_idx = None
     init_idx_db = False
 
-    def __init__(self, s_key, reset=False):
+    def __init__(self, s_key):
         if self.init_mdb is False:
             MDB.sign_key = s_key
             MDB.verify_key = wallet.get_vk(s_key)
             self.start_db()
             return
 
-        if reset is True and self.init_mdb is True:
-            self.reset_db(db='all')
-            return
+        # if prior_state_found is True and self.init_mdb is True:
+        #     self.reset_db(db='all')
+        #     return
 
     '''
         data base mgmt functionality
@@ -65,40 +64,49 @@ class MDB:
             if os.getenv('HOST_IP'):
                 time.sleep(5)
 
-            uri = cls.setup_db(db_type = 'MDB')
-            cls.mn_client = MongoClient(uri)
-            cls.mn_db = cls.mn_client.get_database()
-            block = GenesisBlockData.create(sk=cls.sign_key, vk=cls.verify_key)
-            #print("just created block {}".format(block))
-            cls.genesis_blk = cls.get_dict(capnp_struct = block)
-            #cls.log.spam("storing genesis block... {}".format(cls.genesis_blk))
-            cls.mn_collection = cls.mn_db['blocks']
-            cls.init_mdb = cls.insert_record(block_dict=cls.genesis_blk)
+        cls.setup_db()
 
-            cls.log.debug('start_db init set {}'.format(cls.init_mdb))
+        prev_idx = cls.query_index(n_blks = 1)
+        cls.log.important('prev idx {}'.format(prev_idx))
+        if len(prev_idx) == 0:
+            cls.init_idx_db = cls.create_genesis_blk()
+        else:
+            cls.init_mdb = True
+            cls.init_idx_db = True
 
-            if cls.init_mdb is True:
-                uri = cls.setup_db(db_type='index')
-                cls.mn_client_idx = MongoClient(uri)
-                cls.mn_db_idx = MongoClient(uri).get_database()
-                cls.mn_coll_idx = cls.mn_db_idx['index']
-                idx = {'blockNum': cls.genesis_blk.get('blockNum'), 'blockHash': cls.genesis_blk.get('blockHash'),
-                       'mn_blk_owner': cls.verify_key}
-                cls.log.debug('start_db init index {}'.format(idx))
-                cls.init_idx_db = cls.insert_idx_record(my_dict=idx)
+        assert cls.init_idx_db is True, "failed to init index table"
 
     @classmethod
-    def setup_db(cls, db_type=None):
-        if db_type == 'MDB':    # fresh setup
-            database = cls.cfg.get('MN_DB', 'mn_blk_database')
-            uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
-            cls.log.debug("uri {}".format(uri))
-            return uri
+    def setup_db(cls):
+        database = cls.cfg.get('MN_DB', 'mn_blk_database')
+        store_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+        cls.log.debugv("store uri {}".format(store_uri))
+        cls.mn_client = MongoClient(store_uri)
+        cls.mn_db = cls.mn_client.get_database()
+        cls.mn_collection = cls.mn_db['blocks']
 
-        if db_type == 'index':
-            database = cls.cfg.get('MN_DB', 'mn_index_database')
-            uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
-            return uri
+        database = cls.cfg.get('MN_DB', 'mn_index_database')
+        index_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+        cls.log.debugv("index uri {}".format(index_uri))
+        cls.mn_client_idx = MongoClient(index_uri)
+        cls.mn_db_idx = cls.mn_client_idx.get_database()
+        cls.mn_coll_idx = cls.mn_db_idx['index']
+
+    @classmethod
+    def create_genesis_blk(cls):
+
+        # create insert genesis blk
+        block = GenesisBlockData.create(sk = cls.sign_key, vk = cls.verify_key)
+        cls.init_mdb = cls.insert_record(block_dict=block._data.to_dict())
+        assert cls.init_mdb is True, "failed to create genesis block"
+
+        cls.log.debugv('start_db init set {}'.format(cls.init_mdb))
+
+        # update index record
+        if cls.init_mdb is True:
+            idx = {'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': cls.verify_key}
+            cls.log.debugv('start_db init index {}'.format(idx))
+            return cls.insert_idx_record(my_dict = idx)
 
     @classmethod
     def reset_db(cls, db='all'):
@@ -134,17 +142,6 @@ class MDB:
         cls.log.info("insert_idx_record -> {}".format(idx_entry))
         return True
 
-    # move this to util
-    @classmethod
-    def get_dict(cls, capnp_struct):
-        obj = capnp_struct._data.to_dict()
-
-        bk_hsh = capnp_struct._data.blockHash
-        cls.log.debug("Fn : Get Dict  blk_hash {}".format(bk_hsh))
-        if isinstance(capnp_struct, BlockData):
-            obj['transactions'] = capnp_struct.indexed_transactions
-        return obj
-
     '''
         reading from index or store
     '''
@@ -154,10 +151,10 @@ class MDB:
 
         blk_delta = cls.mn_coll_idx.find().limit(n_blks).sort("blockNum", -1)
         for blk in blk_delta:
-            cls.log.debug('query_index block delta {}'.format(blk))
+            cls.log.spam('query_index block delta {}'.format(blk))
             blk_list.append(blk)
 
-        cls.log.debug("query_index returning dict {}".format(blk_list))
+        cls.log.spam("query_index returning dict {}".format(blk_list))
         return blk_list
 
     @classmethod
@@ -168,13 +165,13 @@ class MDB:
                 block_list = cls.mn_collection.find({})
                 for x in block_list:
                     result.update(x)
-                    cls.log.debug("from mdb {}".format(x))
+                    cls.log.spam("from mdb {}".format(x))
 
             if type is None or type is "idx":
                 index_list = cls.mn_coll_idx.find({})
                 for y in index_list:
                     result.update(y)
-                    cls.log.debug("from idx {}".format(y))
+                    cls.log.spam("from idx {}".format(y))
         else:
             if type is 'idx':
                 dump = cls.mn_coll_idx.find(query)
@@ -189,13 +186,13 @@ class MDB:
                 result = cls.mn_collection.find(query)
                 for x in result:
                     result.update(x)
-                    cls.log.debug("result {}".format(x))
+                    cls.log.spam("result {}".format(x))
 
         if len(result) > 0:
-            cls.log.debug("result => {}".format(result))
+            cls.log.spam("result => {}".format(result))
             return result
         else:
-            cls.log.debug("result => {}".format(result))
+            cls.log.spam("result => {}".format(result))
             return None
 
     @classmethod

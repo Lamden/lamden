@@ -4,6 +4,7 @@ from configparser import SafeConfigParser
 from cilantro.storage.vkbook import VKBook
 from cilantro.logger.base import get_logger
 from cilantro.storage.mongo import MDB
+from cilantro.storage.state import StateDriver
 
 
 class MasterOps:
@@ -36,6 +37,9 @@ class MasterOps:
             if mn_id == -1:
                 cls.log.info("failed to get id")
 
+            valid_state = bool(StateDriver.get_latest_block_num())
+            cls.log.debugv("state found - {}".format(valid_state))
+
             # start/setup mongodb
             # MDB.start_db(s_key = key)
             host = bool(MDB(s_key = key))
@@ -64,7 +68,7 @@ class MasterOps:
     def set_mn_id(cls, vk):
         if cls.test_hook is True:
             return cls.mn_id
-
+        # TODO note active masters need to evaluated in future VK book != active masters
         masternode_vks = VKBook.get_masternodes()
         for i in range(cls.active_masters):
             if masternode_vks[i] == vk:
@@ -169,7 +173,7 @@ class MasterOps:
     def update_idx(cls, inserted_blk=None, node_list=None):
 
         entry = {'blockNum': inserted_blk.get('blockNum'), 'blockHash': inserted_blk.get('blockHash'),
-                 'mn_blk_owner': node_list}
+                 'blockOwners': node_list}
         MDB.insert_idx_record(entry)
         return True
 
@@ -206,10 +210,16 @@ class MasterOps:
         return blk_num
 
     @classmethod
-    def get_blk_owners(cls, blk_hash=None):
-        my_query = {'blockHash': blk_hash}
+    def get_blk_owners(cls, blk_hash=None, blk_num = None):
+        if blk_hash is not None:
+            my_query = {'blockHash': blk_hash}
+        elif blk_num is not None:
+            my_query = {'blockNum': blk_num}
+        else:
+            return None
+
         outcome = MDB.query_db(type='idx', query = my_query)
-        owners = outcome.get('mn_blk_owner')
+        owners = outcome.get('blockOwners')
         cls.log.debug("print owners {}".format(outcome))
         return owners
 
