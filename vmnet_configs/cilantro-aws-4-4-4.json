@@ -1,5 +1,7 @@
 {
-    "environment": {"CONSTITUTION_FILE": "4-4-4.json"},
+    "environment": {
+        "CONSTITUTION_FILE": "4-4-4.json"
+    },
     "aws": {
         "logging": {
             "interval": 1800
@@ -64,7 +66,10 @@
                 "build_ami": "ami-0f65671a86f061fcd",
                 "instance_type": "t2.medium",
                 "build_instance_type": "t2.large",
-                "run_ami": "ami-08a38dd68d54c7ea9"
+                "run_ami": "ami-0222655b32f6d9d08",
+                "update_commands": [
+                    "pip3 install vmnet --upgrade --no-cache-dir"
+                ]
             },
             "cilantro_mn": {
                 "name": "cilantro_mn",
@@ -73,10 +78,13 @@
                 "branch": "aws-fix",
                 "username": "ubuntu",
                 "security_group": "simple_https",
-                "build_ami": "ami-08a38dd68d54c7ea9",
+                "build_ami": "ami-0222655b32f6d9d08",
                 "instance_type": "t2.medium",
                 "build_instance_type": "t2.large",
-                "run_ami": "ami-0475e8f109e6a0bb4"
+                "run_ami": "ami-09cddca33b912825e",
+                "update_commands": [
+                    "pip3 install vmnet --upgrade --no-cache-dir"
+                ]
             }
         }
     },
