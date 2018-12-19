@@ -9,6 +9,7 @@ This file defines signals used inside Masternode for inter-process (IPC) communi
 class EmptyBlockMade(SignalBase):
     pass
 
+
 class NonEmptyBlockMade(SignalBase):
     pass
 

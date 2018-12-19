@@ -342,7 +342,8 @@ class TestBlockAggregator(TestCase):
 
         for i in range(DELEGATE_MAJORITY + 5):
             vk = TESTNET_DELEGATES[i%len(TESTNET_DELEGATES)]['vk']
-            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i%DELEGATE_MAJORITY]['sk'], vk=vk)
+            sk = TESTNET_DELEGATES[i%len(TESTNET_DELEGATES)]['sk']
+            signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=sk, vk=vk)
             sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0, GENESIS_BLOCK_HASH)
             ba.recv_sub_block_contender(vk, sbc)
 
