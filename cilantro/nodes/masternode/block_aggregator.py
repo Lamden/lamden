@@ -81,7 +81,7 @@ class BlockAggregator(Worker):
             name="BA-Router",
             secure=True,
         )
-        self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
+        # self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.bind(ip=self.ip, port=MASTER_ROUTER_PORT)
 

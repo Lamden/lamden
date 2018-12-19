@@ -122,9 +122,8 @@ class BlockManager(Worker):
             socket_type=zmq.ROUTER,
             name="BM-Router-{}".format(self.verifying_key[-4:]),
             secure=True,
-            # domain="sb-contender"
         )
-        self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
+        # self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
@@ -142,7 +141,6 @@ class BlockManager(Worker):
             socket_type=zmq.PUB,
             name="BM-Pub-{}".format(self.verifying_key[-4:]),
             secure=True,
-            # domain="sb-contender"
         )
         self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
 
@@ -155,7 +153,6 @@ class BlockManager(Worker):
             socket_type=zmq.SUB,
             name="BM-Sub-{}".format(self.verifying_key[-4:]),
             secure=True,
-            # domain="sb-contender"
         )
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
@@ -172,10 +169,9 @@ class BlockManager(Worker):
         # only when one can connect to quorum masters and get db update, move to next step
         # at the end, it has updated its db state to consensus latest
 
-        await asyncio.sleep(8)
+        await asyncio.sleep(8)  # so pub/sub connections can complete
         self.log.info("Catching up...")
         self.db_state.catchup_mgr.run_catchup()
-        # so pub/sub connections can complete
         while not self.db_state.catchup_mgr:
             await asyncio.sleep(2)
 

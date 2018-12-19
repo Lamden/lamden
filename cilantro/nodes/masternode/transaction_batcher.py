@@ -76,8 +76,11 @@ class TransactionBatcher(Worker):
                             .format(type(msg)))
 
     async def compose_transactions(self):
-        # time.sleep(2)
-        await asyncio.sleep(10)
+
+        # We take a long slep so that Nodes can prepare their sockets and run catchup before TX's go through the system
+        self.log.notice("Taking a nap before starting TransactionBatcher...")
+        await asyncio.sleep(30)
+
         self.log.important("Starting TransactionBatcher")
         self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
         total_sleep = 0
