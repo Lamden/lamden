@@ -55,7 +55,7 @@ def parse_code_str(code_str):
     with SenecaInterface(False) as interface:
         Seneca.exports = {}
         Seneca.imports = {}
-        interface.execute_code_str(code_str)
+        interface.compile_code(code_str)
         datatypes = {}
         exports = []
         for k, v in Seneca.loaded['__main__'].items():
