@@ -17,6 +17,7 @@ from cilantro.logger.base import get_logger
 from cilantro.nodes.catchup import CatchupManager
 from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder
 
+from cilantro.storage.redis import SafeRedis
 from cilantro.storage.vkbook import VKBook
 from cilantro.storage.state import StateDriver
 from cilantro.protocol.multiprocessing.worker import Worker
@@ -297,7 +298,7 @@ class BlockManager(Worker):
             # compute my new block hash
             self.db_state.my_new_block_hash = self._compute_new_block_hash()
             self.update_db_if_ready()
-     
+
     def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
@@ -332,7 +333,7 @@ class BlockManager(Worker):
             else:
                 self.send_updated_db_msg()
             return
-           
+
         assert self.db_state.new_block_hash == self.db_state.my_new_block_hash, \
             "update_db called but my new block hash {} does not match the new block notification's hash " \
             "hash {}".format(self.db_state.my_new_block_hash, self.db_state.new_block_hash)
@@ -354,7 +355,7 @@ class BlockManager(Worker):
         # self.db_state.my_new_block_hash == self.db_state.new_block_hash at this point
         self.update_db()
 
-        # reset all the state info 
+        # reset all the state info
         self.db_state.sub_block_hash_map.clear()
         self.db_state.next_block.clear()
         self.db_state.my_new_block_hash = None
@@ -388,11 +389,15 @@ class BlockManager(Worker):
             self.db_state.is_new_block = is_new_block
             self.update_db_if_ready()
 
+        if block_data.block_num % DUMP_TO_CACHE_EVERY_N_BLOCKS == 0:
+            try: SafeRedis.bgsave()
+            except: pass
+
     def skip_block(self):
         if (self.db_state.num_skip_block < MIN_NEW_BLOCK_MN_QOURUM) or (self.db_state.num_empty_sbc != NUM_SB_PER_BLOCK):
             return
-        
-        # reset all the state info 
+
+        # reset all the state info
         self.db_state.sub_block_hash_map.clear()
         self.db_state.next_block.clear()
         self.db_state.my_new_block_hash = None

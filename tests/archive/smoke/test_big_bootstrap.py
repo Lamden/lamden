@@ -68,7 +68,7 @@ def dump_it(volume, delay=0):
     import logging
 
     overwrite_logger_level(logging.WARNING)
-    God.dump_it(volume=volume, delay=delay)
+    God._dump_it(volume=volume, delay=delay)
 
 
 class TestBigDump(BaseNetworkTestCase):

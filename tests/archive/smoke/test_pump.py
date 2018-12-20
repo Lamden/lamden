@@ -67,7 +67,7 @@ def pump_it(lamd, use_poisson):
     log = get_logger("Mr. Pump")
     log.important("Starting the pump")
 
-    God.pump_it(rate=lamd, use_poisson=use_poisson)
+    God._pump_it(rate=lamd, use_poisson=use_poisson)
 
 
 class TestPump(BaseNetworkTestCase):
