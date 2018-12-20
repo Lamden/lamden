@@ -14,6 +14,7 @@ then
     exit 0
 fi
 
+
 # cd into directory of script to be run-location agnostic
 cd "$(dirname "$0")"
 
@@ -100,7 +101,7 @@ fi
 echo "DNS found with correct IP!"
 
 # Concatenate into FQDN
-FQDN="$NODETYPE$NODEINDEX.$DNS_NAME"
+FQDN="$PREFIX$NODETYPE$NODEINDEX.$DNS_NAME"
 
 # Generate the certificate
 ~/.acme.sh/acme.sh --issue --standalone -d $FQDN
