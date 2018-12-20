@@ -1,4 +1,5 @@
 {
+    "deployment_mode": "testing",
     "environment": {
         "CONSTITUTION_FILE": "4-4-4.json"
     },
