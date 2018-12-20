@@ -6,7 +6,7 @@ DELEGATE_LOG_LVL = 11
 SENECA_LOG_LVL = 11
 
 # Set ENABLE_BAD_ACTORS to TRUE to enable periodic consensus failures
-ENABLE_BAD_ACTORS = True
+ENABLE_BAD_ACTORS = False
 BAD_ACTOR_SET = {1}  # The indices of delegates who shall misbehave and periodically send bad SubBlockContender
 BAD_SB_SET = {1}  # The indices of the sub-blocks to send bad SubBlockContenders for
 
