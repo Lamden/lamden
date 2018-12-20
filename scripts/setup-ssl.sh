@@ -43,7 +43,6 @@ then
     exit 1
 fi
 
-
 # Resolve FQDN
 # Cut off first bit before _ to get the type
 NODETYPE=$(echo $HOST_NAME | cut -d'_' -f 1)
