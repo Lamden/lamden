@@ -46,7 +46,6 @@ class MDB:
     mn_coll_tx = None
     init_tx_db = False
 
-
     def __init__(self, s_key):
         if self.init_mdb is False:
             MDB.sign_key = s_key
@@ -205,6 +204,12 @@ class MDB:
 
             if type is 'MDB':
                 result = cls.mn_collection.find(query)
+                for x in result:
+                    result.update(x)
+                    cls.log.spam("result {}".format(x))
+
+            if type is 'tx':
+                result = cls.mn_coll_tx.find(query)
                 for x in result:
                     result.update(x)
                     cls.log.spam("result {}".format(x))

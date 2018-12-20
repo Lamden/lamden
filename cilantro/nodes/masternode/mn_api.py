@@ -62,9 +62,8 @@ class StorageDriver:
         return block_data
 
     @classmethod
-    def get_transactions(cls, raw_tx_hash=None):
-        # TODO verify
-        pass
+    def get_transactions(cls, raw_tx_hash):
+        result = MasterOps.get_usr_tx_result(usr_tx_hash = raw_tx_hash)
 
     '''
         api returns full block if stored locally else would return list of Master nodes responsible for it

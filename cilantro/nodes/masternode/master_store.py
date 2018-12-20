@@ -232,3 +232,10 @@ class MasterOps:
             entry['block'] = blk_id
             cls.log.important2("Entry - {}".format(entry))
             MDB.insert_tx_map(txmap = entry)
+
+    @classmethod
+    def get_usr_tx_result(cls, usr_tx_hash):
+        my_query = {'tx_hash': usr_tx_hash}
+        outcome = MDB.query_db(type='tx', query = my_query)
+        cls.log.debugv("print outcome {}".format(outcome))
+        return outcome
