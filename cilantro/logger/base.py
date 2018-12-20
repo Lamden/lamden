@@ -152,8 +152,8 @@ def get_logger(name=''):
         ColoredStreamHandler()
     ]
 
-    # if os.getenv('VMNET_CLOUD'):
-    #     filehandlers.append(S3Handler())
+    if os.getenv('VMNET_CLOUD'):
+        filehandlers.append(S3Handler())
 
     logging.basicConfig(
         format=format,
