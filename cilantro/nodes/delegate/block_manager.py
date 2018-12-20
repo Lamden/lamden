@@ -253,12 +253,9 @@ class BlockManager(Worker):
             self.send_updated_db_msg()
 
     def handle_router_msg(self, frames):
-        # self.log.important("Got msg over tcp ROUTER socket with frames: {}".format(frames))
-        # TODO implement
-        # TODO verify that the first frame (identity frame) matches the verifying key on the Envelope's seal
-
         envelope = Envelope.from_bytes(frames[-1])
         sender = envelope.sender
+        assert sender.encode() == frames[0], "Sender vk {} does not match id frame {}".format(sender.encode(), frames[0])
         msg = envelope.message
         msg_hash = envelope.message_hash
 
