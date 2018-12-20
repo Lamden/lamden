@@ -154,11 +154,7 @@ def get_logger(name=''):
     if os.getenv('VMNET_CLOUD'):
         if not os.getenv('LOGGER_ENABLED'):
             os.environ['LOGGER_ENABLED'] = 'True'
-            filehandlers.append(
-                AWSCloudWatchHandler(
-                    os.getenv('TEST_NAME'),
-                    os.getenv('HOST_NAME', name)
-                ))
+            filehandlers.append(AWSCloudWatchHandler())
 
     logging.basicConfig(
         format=format,
