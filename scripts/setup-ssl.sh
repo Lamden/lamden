@@ -8,7 +8,7 @@ then
     exit 0
 fi
 
-if ! $SSL_ENABLED
+if [ "$SSL_ENABLED" != "True" ]
 then
     echo "SSL not enabled, not generating cert"
     exit 0
