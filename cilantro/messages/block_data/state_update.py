@@ -55,6 +55,10 @@ class BlockIndexRequest(MessageBaseJson):
         """
         return self._data.get(self.B_HASH)
 
+    def __eq__(self, other):
+        assert type(other) is type(self), "Cannot compare {} with type {}".format(type(self), type(other))
+        return self.block_num == other.block_num or self.block_hash == other.block_hash
+
 
 class BlockIndexReply(MessageBaseJson):
     def validate(self):

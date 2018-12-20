@@ -84,6 +84,9 @@ class TestBlockData(TestCase):
             tx_hash = Hasher.hash(tx.transaction)
             self.assertTrue(tx_hash in tx_hash_to_leaves)
 
+    def test_block_data_builder(self):
+        data =
+
 
 if __name__ == '__main__':
     unittest.main()

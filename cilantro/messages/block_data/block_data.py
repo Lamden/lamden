@@ -134,6 +134,29 @@ class GenesisBlockData(BlockData):
         return cls.from_data(struct)
 
 
+class BlockDataBuilder:
+    MN_SK = TESTNET_MASTERNODES[0]['sk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
+    MN_VK = TESTNET_MASTERNODES[0]['vk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
+
+    @classmethod
+    def create_random_block(cls, prev_hash: str, num: int) -> BlockData:
+        from cilantro.messages.block_data.sub_block import SubBlockBuilder
+
+        input_hash1 = 'A'*64
+        input_hash2 = 'B'*64
+        sb1 = SubBlockBuilder.create(input_hash=input_hash1, idx=0)
+        sb2 = SubBlockBuilder.create(input_hash=input_hash2, idx=1)
+        sbs = [sb1, sb2]
+
+        block_hash = BlockData.compute_block_hash([sb1.merkle_root, sb2.merkle_root], prev_hash)
+        block_num = 1
+        block_owners = [cls.MN_VK]
+
+        block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_hash, block_num=block_num,
+                                 sub_blocks=sbs, block_owners=block_owners)
+
+        return block
+
 # class BlockDataBuilder:
 #     MN_SK = TESTNET_MASTERNODES[0]['sk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
 #     MN_VK = TESTNET_MASTERNODES[0]['vk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
