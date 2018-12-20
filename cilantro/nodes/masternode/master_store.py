@@ -184,12 +184,12 @@ class MasterOps:
         outcome = None
         if blk_hash:
             my_query = {'blockHash': blk_hash}
-            outcome = MDB.query_db(query = my_query)
+            outcome = MDB.query_db(type = 'MDB', query = my_query)
             return outcome
 
         if blk_num:
             my_query = {'blockNum': blk_num}
-            outcome = MDB.query_db(query = my_query)
+            outcome = MDB.query_db(type = 'MDB', query = my_query)
             return outcome
 
         assert outcome is not None, "failed to get full block {}".format(outcome)

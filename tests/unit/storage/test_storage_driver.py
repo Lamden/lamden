@@ -34,10 +34,12 @@ class TestStorageDriver(TestCase):
         last_stored_hash = self.driver.get_latest_block_hash()
 
         tx = sub_blocks[0].transactions[0].transaction
-        tx_hash = Hasher.hash(tx)
+        usr_tx_hash = Hasher.hash(tx)
+        result = self.driver.get_transactions(raw_tx_hash = usr_tx_hash)
 
         self.assertEqual(block.block_num, 1)
         self.assertEqual(block.block_hash, last_stored_hash)
+        self.assertTrue(result)
 
     # @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
     # def test_get_latest_blocks(self):

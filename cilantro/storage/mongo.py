@@ -203,19 +203,20 @@ class MDB:
                 cls.log.debug("result {}".format(result))
 
             if type is 'MDB':
-                result = cls.mn_collection.find(query)
-                for x in result:
+                outcome = cls.mn_collection.find(query)
+                for x in outcome:
                     result.update(x)
                     cls.log.spam("result {}".format(x))
 
             if type is 'tx':
-                result = cls.mn_coll_tx.find(query)
-                for x in result:
+                outcome = cls.mn_coll_tx.find(query)
+                assert result != 1, "we have duplicate transactions dumping result {}".format(result)
+                for x in outcome:
+                    cls.log.important2("RESULT X {} count {}".format(x, MongoTools.get_count(result)))
                     result.update(x)
-                    cls.log.spam("result {}".format(x))
 
         if len(result) > 0:
-            cls.log.spam("result => {}".format(result))
+            cls.log.important("result => {}".format(result))
             return result
         else:
             cls.log.spam("result => {}".format(result))

@@ -16,6 +16,8 @@ from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.data import TransactionData
 from cilantro.messages.block_data.sub_block import SubBlock
+from cilantro.constants.system_config import NUM_SB_PER_BLOCK
+
 
 import time
 
@@ -63,7 +65,26 @@ class StorageDriver:
 
     @classmethod
     def get_transactions(cls, raw_tx_hash):
-        result = MasterOps.get_usr_tx_result(usr_tx_hash = raw_tx_hash)
+        
+        map = MasterOps.get_usr_tx_result(usr_tx_hash = raw_tx_hash)
+
+        # identify Leaf and block num from given hash in map
+        blk_num = map.get('block')
+        leaf = map.get('tx_leaf')
+
+        # get relevant block
+        block = cls.get_nth_full_block(given_bnum = blk_num)
+        sub_blk = block.get('subBlocks')
+
+        # find leaf from sub block
+        for i in range(0, NUM_SB_PER_BLOCK-1):
+            leaves = sub_blk[i].get('merkleLeaves')
+            tx_idx = leaves.index(leaf)
+            tx_dump = sub_blk[i].get('transactions')
+            cls.log.spam("index {} leaves {} tx {}".format(tx_idx, leaves, tx_dump[tx_idx]))
+            return tx_dump[tx_idx]
+
+        return
 
     '''
         api returns full block if stored locally else would return list of Master nodes responsible for it
@@ -78,12 +99,14 @@ class StorageDriver:
         :param mn_vk:    requester's vk
         :return:         None for incorrect, only full blk if block found else assert
         """
-
+        full_block = dict()
         if given_bnum is not None:
             full_block = MasterOps.get_full_blk(blk_num=given_bnum)
             if full_block is not None:
+                del full_block['_id']
                 return full_block
             else:
+                # TODO anarchy net this wont be used
                 blk_owners = MasterOps.get_blk_owners()
                 return blk_owners
 
@@ -92,6 +115,7 @@ class StorageDriver:
             if full_block is not None:
                 return full_block
             else:
+                # TODO anarchy net this wont be used
                 blk_owners = MasterOps.get_blk_owners()
                 return blk_owners
 
