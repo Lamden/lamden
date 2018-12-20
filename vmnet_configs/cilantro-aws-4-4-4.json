@@ -8,7 +8,7 @@
         "logging": {
             "interval": 1800,
             "arn_name": "ec2-s3-log",
-            "arn_id": "arn:aws:iam::929772747755:instance-profile/ec2-s3-log"
+            "arn_id": "arn:aws:iam::622633509017:instance-profile/ec2-s3-log"
         },
         "use_elastic_ips": true,
         "security_groups": {
