@@ -58,6 +58,8 @@ class TestManualDump(BaseNetworkTestCase):
         cmd = 'docker container stop $(docker container ls -a -q -f name=delegate_8)'
         cmd1 = 'docker kill $(docker container ls -a -q -f name=delegate_8)'
 
+        log.important("PORTS: {}".format(self.ports))
+
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
             self.execute_python(nodename, God.run_mn(i, log_lvl=MN_LOG_LVL, nonce_enabled=False, reset_db=True),
