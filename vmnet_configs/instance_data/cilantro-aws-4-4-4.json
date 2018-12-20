@@ -1,0 +1,132 @@
+[
+    {
+        "AmiLaunchIndex": 3,
+        "PublicIpAddress": "18.191.205.1",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "52.15.186.101",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 2,
+        "PublicIpAddress": "3.16.50.197",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "18.191.223.33",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 2,
+        "PublicIpAddress": "18.219.255.59",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:witness-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 3,
+        "PublicIpAddress": "52.15.40.164",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:witness-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "18.222.163.255",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:witness-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "18.191.21.65",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:witness-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "18.191.236.49",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:mgmt-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "18.222.88.229",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:masternode-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 3,
+        "PublicIpAddress": "3.16.218.92",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:masternode-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "13.58.6.184",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:masternode-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 2,
+        "PublicIpAddress": "18.219.44.79",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:aws-fix:masternode-run"
+            }
+        ]
+    }
+]

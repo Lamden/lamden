@@ -1,9 +1,15 @@
 {
+    "deployment_mode": "testing",
     "environment": {
         "CONSTITUTION_FILE": "4-4-4.json",
         "ANNIHILATE": true
     },
     "aws": {
+        "logging": {
+            "interval": 1800,
+            "arn_name": "ec2-s3-log",
+            "arn_id": "arn:aws:iam::929772747755:instance-profile/ec2-s3-log"
+        },
         "use_elastic_ips": true,
         "security_groups": {
             "simple_https": {
