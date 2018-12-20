@@ -3,6 +3,7 @@ from cilantro.protocol import wallet
 from cilantro.storage.vkbook import VKBook
 from cilantro.nodes.masternode.master_store import MasterOps
 # from cilantro.nodes.catchup import CatchupManager
+from cilantro.storage.redis import SafeRedis
 from cilantro.storage.state import StateDriver
 from cilantro.logger.base import get_logger
 from cilantro.messages.block_data.block_data import BlockData
@@ -16,6 +17,7 @@ from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.data import TransactionData
 from cilantro.messages.block_data.sub_block import SubBlock
+from cilantro.constants.system_config import *
 
 import time
 
