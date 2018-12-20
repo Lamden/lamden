@@ -48,7 +48,6 @@ class CatchupManager:
         self.block_delta_list = []       # list of mn_index dict to process
         self.target_blk_num = self.curr_num
 
-
         # received full block could be out of order
         self.rcv_block_dict = {}                 # DS stores any Out of order received blocks
         self.awaited_blknum = self.curr_num      # catch up waiting on this blk num

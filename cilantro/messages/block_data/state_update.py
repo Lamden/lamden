@@ -25,18 +25,18 @@ class BlockIndexRequest(MessageBaseJson):
     B_HASH = 'block_hash'
 
     def validate(self):
-        if self.block_hash:
+        if self.block_hash is not None:
             assert is_valid_hex(self.block_hash), "Not valid hash: {}".format(self.block_hash)
-        assert self.block_hash or self.block_num, "must provide block hash or num"
+        assert self.block_hash is not None or self.block_num is not None, "must provide block hash or num"
 
     @classmethod
     def create(cls, block_num=None, block_hash=None):
-        assert block_hash or block_num, "BlockIndexRequest must be created with a block hash or block number"
+        assert block_hash or block_num is not None, "BlockIndexRequest must be created with a block hash or block number"
 
         data = {}
-        if block_num:
+        if block_num is not None:
             data[cls.B_NUM] = block_num
-        if block_hash:
+        if block_hash is not None:
             data[cls.B_HASH] = block_hash
 
         return cls.from_data(data)
@@ -54,6 +54,10 @@ class BlockIndexRequest(MessageBaseJson):
         The block hash to request data for
         """
         return self._data.get(self.B_HASH)
+
+    def __eq__(self, other):
+        assert type(other) is type(self), "Cannot compare {} with type {}".format(type(self), type(other))
+        return self.block_num == other.block_num or self.block_hash == other.block_hash
 
 
 class BlockIndexReply(MessageBaseJson):
@@ -75,7 +79,10 @@ class BlockDataRequest(BlockIndexRequest):
 
 
 class BlockDataReply(BlockData):
-    pass
+
+    @classmethod
+    def create_from_block(cls, block: BlockData):
+        return cls.from_data(block._data)
 
 
 class SkipBlockNotification2(MessageBaseJson):

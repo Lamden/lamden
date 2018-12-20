@@ -1,2 +1,2 @@
 rm -rf ./data/*
-rm -rf */dump.rdb
+rm -rf redis-store
