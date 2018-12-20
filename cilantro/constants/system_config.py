@@ -29,7 +29,7 @@ MASTERNODE_MAJORITY = math.ceil(NUM_MASTERS * 2 / 3)
 _MAX_SUB_BLOCK_BUILDERS = 4
 _MAX_BLOCKS = 1  # 2
 
-TRANSACTIONS_PER_SUB_BLOCK = 100
+TRANSACTIONS_PER_SUB_BLOCK = 5
 NUM_SUB_BLOCKS = NUM_MASTERS  # same as num masternodes for now
 NUM_BLOCKS = min(_MAX_BLOCKS, NUM_SUB_BLOCKS)
 DUMP_TO_CACHE_EVERY_N_BLOCKS = 5
@@ -51,7 +51,7 @@ assert NUM_SB_PER_BLOCK_PER_BUILDER >= 1, "num_sub_blocks_per_block_per_builder 
 # Transaction Batcher
 # ///////////////////////////////////////////////
 NO_ACTIVITY_SLEEP = 32         # every 32 secs, we will send out empty bags if needed to indicate heart beat
-BATCH_SLEEP_INTERVAL = 1
+BATCH_SLEEP_INTERVAL = 8
 
 
 # ///////////////////////////////////////////////
@@ -71,5 +71,5 @@ DECIMAL_PRECISION = 18
 # ///////////////////////////////////////////////
 SHOULD_MINT_WALLET = True
 # NUM_WALLETS_TO_MINT = 50
-NUM_WALLETS_TO_MINT = 100000
+NUM_WALLETS_TO_MINT = 100
 MINT_AMOUNT = 10 ** 10
