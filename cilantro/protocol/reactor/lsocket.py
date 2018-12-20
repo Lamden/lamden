@@ -80,7 +80,7 @@ class LSocket:
 
         elif event['event'] == 'not_found':
             self.log.warning("Socket got not_found event for vk {}. Adding it to failed lookups.".format(event['vk']))
-            self.manager.failed_lookups[event['vk']].append((self, cmd_name, args, kwargs))
+            self.manager.vk_lookups[event['vk']].append((self, cmd_name, args, kwargs))
             self.manager.set_new_node_tracking()
             self._check_if_rdy()
 
@@ -245,7 +245,7 @@ class LSocket:
             cmd_name, args, kwargs = tup
             assert 'vk' in kwargs, "Cmd tuple {} does not have 'vk' in kwargs".format(tup)
             self.manager.pending_lookups.pop(cmd_id, None)
-            self.manager.failed_lookups[kwargs['vk']].append((self, cmd_name, args, kwargs))
+            self.manager.vk_lookups[kwargs['vk']].append((self, cmd_name, args, kwargs))
 
         self.pending_lookups.clear()
         self.ready = True

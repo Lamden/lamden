@@ -32,9 +32,9 @@ class SocketManager:
         # instances who started them. This information helps us route overlay events to the appropriate sockets
         self.pending_lookups = {}
 
-        # failed_lookups is a dict of 'vk' to list of tuples of form (lsocket, func_name, args, kwargs)
+        # vk_lookups is a dict of 'vk' to list of tuples of form (lsocket, func_name, args, kwargs)
         # We this to reconnect sockets once nodes have come back online
-        self.failed_lookups = defaultdict(list)
+        self.vk_lookups = defaultdict(list)
 
         # overlay_callbacks tracks LSockets who have subscribed to certain overlay events with custom handlers
         self.overlay_callbacks = defaultdict(set)
@@ -69,11 +69,11 @@ class SocketManager:
             sock.handle_overlay_event(e)
 
         # Retry any failed lookups registered by sockets when a node comes online
-        elif e['event'] == 'node_online' and e['vk'] in self.failed_lookups:
+        elif e['event'] == 'node_online' and e['vk'] in self.vk_lookups:
             # TODO change log lvl here
             self.log.debugv("sock manager got node_online event for vk {}! Triggering retry for failed lookups {}"
-                            .format(e['vk'], self.failed_lookups[e['vk']]))
-            for cmd_tuple in self.failed_lookups.pop(e['vk']):
+                            .format(e['vk'], self.vk_lookups[e['vk']]))
+            for cmd_tuple in self.vk_lookups.pop(e['vk']):
                 sock, cmd_name, args, kwargs = cmd_tuple
                 kwargs['ip'] = e['ip']
                 getattr(sock, cmd_name)(*args, **kwargs)
