@@ -152,15 +152,14 @@ def get_logger(name=''):
         ColoredStreamHandler()
     ]
 
+    if os.getenv('VMNET_CLOUD'):
+        filehandlers.append(S3Handler())
+
     logging.basicConfig(
         format=format,
         handlers=filehandlers,
         level=logging.DEBUG
     )
-
-    if os.getenv('VMNET_CLOUD'):
-        with open(filename, 'a+'): pass
-        filehandlers.append(S3Handler(filename))
 
     log = logging.getLogger(name)
     log.setLevel(_LOG_LVL)
