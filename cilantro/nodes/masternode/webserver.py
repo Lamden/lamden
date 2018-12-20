@@ -102,8 +102,7 @@ async def get_contract_meta(request, contract):
 async def get_contract_meta(request, contract):
     contract_name = validate_contract_name(contract)
     meta = interface.get_contract_meta(contract_name.encode())
-    meta.update(parse_code_str(meta['code_str']))
-    r = list(meta['datatypes'].keys())
+    r = list(meta['resources'].keys())
     return json({'resources': r})
 
 
@@ -111,31 +110,41 @@ async def get_contract_meta(request, contract):
 async def get_contract_meta(request, contract):
     contract_name = validate_contract_name(contract)
     meta = interface.get_contract_meta(contract_name.encode())
-    meta.update(parse_code_str(meta['code_str']))
-    return json({'methods': meta['exports']})
+    return json({'methods': meta['methods']})
 
 
-@app.route("/contracts/<contract>/<resource>", methods=["GET", ])
-async def get_contract_resource_keys(request, contract, resource):
+def get_keys(contract, resource, cursor=0):
     pattern = '{}:{}:*'.format(contract, resource)
-    keys = interface.r.scan(0, pattern)
-    keys = keys[1]
+    keys = interface.r.scan(cursor, pattern, 100)
+    _keys = keys[1]
 
-    formatted_keys = [k.decode()[len(pattern)-1:] for k in keys]
+    formatted_keys = [k.decode()[len(pattern) - 1:] for k in _keys]
 
-    return json({'keys': formatted_keys})
+    return {'cursor': keys[0], 'keys': formatted_keys}
+
+
+@app.route("/contracts/<contract>/<resource>/", methods=["GET", ])
+async def get_contract_resource_keys(request, contract, resource):
+    r = get_keys(contract, resource)
+    return json(r)
+
+
+@app.route("/contracts/<contract>/<resource>/cursor/<cursor>", methods=["GET", ])
+async def get_contract_resource_keys(request, contract, resource, cursor):
+    r = get_keys(contract, resource, cursor)
+    return json(r)
 
 
 @app.route("/contracts/<contract>/<resource>/<key>", methods=["GET",])
 async def get_state(request, contract, resource, key):
-    contract_name = validate_contract_name(contract)
-    meta = interface.get_contract_meta(contract_name.encode())
-    meta.update(parse_code_str(meta['code_str']))
-    r = meta['datatypes'].get(resource)
-    if not r:
-        raise ServerError('Datatype "{}" not found'.format(r), status_code=500)
-    k = validate_key_name(key)
-    return text(r.get(k))
+    value = interface.r.get('{}:{}:{}'.format(contract, resource, key))
+    r = {}
+    if value is None:
+        r['value'] = 'null'
+    else:
+        r['value'] = value
+
+    return json(r)
 
 
 @app.route("/latest_block", methods=["GET",])
