@@ -100,7 +100,7 @@ fi
 echo "DNS found with correct IP!"
 
 # Concatenate into FQDN
-FQDN="$NODETYPE$NODEINDEX.anarchynet.io"
+FQDN="$NODETYPE$NODEINDEX.$DNS_NAME"
 
 # Generate the certificate
 ~/.acme.sh/acme.sh --issue --standalone -d $FQDN
