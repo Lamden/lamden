@@ -25,8 +25,6 @@ req_log = logging.getLogger('urllib3')
 req_log.setLevel(logging.WARNING)
 req_log.propagate = True
 
-if os.getenv('VMNET_CLOUD'):
-    S3Handler()
 
 def get_main_log_path():
     import cilantro
@@ -154,8 +152,8 @@ def get_logger(name=''):
         ColoredStreamHandler()
     ]
 
-    # if os.getenv('VMNET_CLOUD'):
-    #     filehandlers.append(S3Handler())
+    if os.getenv('VMNET_CLOUD'):
+        filehandlers.append(S3Handler())
 
     logging.basicConfig(
         format=format,
