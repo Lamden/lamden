@@ -14,6 +14,7 @@ then
     exit 0
 fi
 
+
 # cd into directory of script to be run-location agnostic
 cd "$(dirname "$0")"
 
@@ -49,9 +50,15 @@ fi
 NODETYPE=$(echo $HOST_NAME | cut -d'_' -f 1)
 # Cut off the last bit after the last underscore for the index (calling rev twice solves this in bash)
 NODEINDEX=$(echo $HOST_NAME | rev | cut -d'_' -f 1 | rev)
+# Check if a prefix is set, grab it if so, otherwise set to empty string
+PREFIX=
+if [ ! -z "$SUBNET_PREFIX" ]
+then
+    PREFIX="${SUBNET_PREFIX}-"
+fi
 
 # Concatenate into FQDN
-FQDN="$NODETYPE$NODEINDEX.$DNS_NAME"
+FQDN="$PREFIX$NODETYPE$NODEINDEX.$DNS_NAME"
 
 # Generate the certificate
 ~/.acme.sh/acme.sh --issue --standalone -d $FQDN
