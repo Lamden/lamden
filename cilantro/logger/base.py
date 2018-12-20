@@ -7,7 +7,7 @@ import os, sys
 from os.path import dirname
 from logging.handlers import TimedRotatingFileHandler
 import cilantro
-from vmnet.cloud.aws import S3Handler
+from vmnet.cloud.aws import AWSCloudWatchHandler
 
 logging.getLogger("paramiko").setLevel(logging.WARNING)
 logging.getLogger('boto3').setLevel(logging.WARNING)
@@ -155,7 +155,7 @@ def get_logger(name=''):
         if not os.getenv('LOGGER_ENABLED'):
             os.environ['LOGGER_ENABLED'] = 'True'
             filehandlers.append(
-                S3Handler(
+                AWSCloudWatchHandler(
                     os.getenv('TEST_NAME'),
                     os.getenv('HOST_NAME', name)
                 ))
