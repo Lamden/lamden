@@ -152,7 +152,7 @@ def get_logger(name=''):
     ]
 
     if os.getenv('VMNET_CLOUD'):
-        filehandlers.append(S3Handler())
+        filehandlers += S3Handlers()
 
     logging.basicConfig(
         format=format,
