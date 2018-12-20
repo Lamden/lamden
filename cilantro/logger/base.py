@@ -153,7 +153,8 @@ def get_logger(name=''):
 
     if os.getenv('VMNET_CLOUD'):
         s3h = S3Handlers()
-        filehandlers += [s3h.out_logger, s3h.err_logger]
+        if hasattr(s3h, 'aws'):
+            filehandlers += [s3h.out_logger, s3h.err_logger]
 
     logging.basicConfig(
         format=format,
