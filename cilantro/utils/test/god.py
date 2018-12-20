@@ -1,100 +1,73 @@
 from cilantro.messages.transaction.container import TransactionContainer
 from cilantro.messages.transaction.contract import *
 from cilantro.messages.signals.kill_signal import KillSignal
-from cilantro.constants.system_config import *
-from unittest.mock import MagicMock
+
 from cilantro.logger import get_logger
-from cilantro.utils.test.mp_test_case import MPTestCase
+from cilantro.utils.test.utils import *
+from cilantro.utils.test.wallets import ALL_WALLETS
+from cilantro.utils.test.node_runner import *
 import os, requests, time, random, asyncio
 
-
-if os.getenv('HOST_IP'):
-    ips = os.getenv('MASTERNODE', '0.0.0.0')
-    # Set _MN_URL to be a list of IPs if we are in multimaster setting
-    if ',' in ips:
-        ips = ips.split(',')
-    else:
-        ips = [ips]
-
-    urls = ["http://{}:8080".format(ip) for ip in ips]
-    _MN_URLs = urls
-
-# If this is not getting run on a container, set MN URL to 0.0.0.0
-else:
-    _MN_URLs = ["http://0.0.0.0:8080"]
-
-STU = ('db929395f15937f023b4682995634b9dc19b1a2b32799f1f67d6f080b742cdb1',
- '324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502')
-DAVIS = ('21fee38471799f8c2989dd81c6d46f6c2e2db6caf63efa98a093fcba064a4b62',
- 'a103715914a7aae8dd8fddba945ab63a169dfe6e37f79b4a58bcf85bfd681694')
-DENTON = ('9decc7f7f0b5a4fc87ab5ce700e2d6c5d51b7565923d50ea13cbf78031bb3acf',
- '20da05fdba92449732b3871cc542a058075446fedb41430ee882e99f9091cc4d')
-FALCON = ('bac886e7c6e4a9fae572e170adb333b27b590157409e62d88cc0c7bc9a7b3631',
- 'ed19061921c593a9d16875ca660b57aa5e45c811c8cf7af0cfcbd23faa52cbcd')
-CARL = ('cf67a180f9578afa5fd704cea39b450c1542755d73614f6a4f41b627190b83bb',
- 'cb9bfd4b57b243248796e9eb90bc4f0053d78f06ce68573e0fdca422f54bb0d2')
-RAGHU = ('b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668',
- 'c1f845ad8967b93092d59e4ef56aef3eba49c33079119b9c856a5354e9ccdf84')
-
-ALL_WALLETS = [STU, DAVIS, DENTON, FALCON, CARL, RAGHU]
-
-
-def int_to_padded_bytes(i: int) -> bytes:
-    SIZE = 32
-    s = str(i)
-    assert len(s) <= SIZE, "int {} is too long!".format(s)
-
-    padding = SIZE - len(s)
-    s = '0'*padding + s
-    b = s.encode()
-
-    assert len(b) == SIZE, "{} is not size {}".format(b, SIZE)
-
-    return s.encode()
-
-
-if SHOULD_MINT_WALLET:
-    for i in range(NUM_WALLETS_TO_MINT):
-        sk, vk = wallet.new(int_to_padded_bytes(i))
-        ALL_WALLETS.append((sk, vk))
-
-def countdown(duration: int, msg: str, log=None, status_update_freq=5):
-    _l = log or get_logger("Countdown")
-    if duration > status_update_freq:
-        num_sleeps = duration // status_update_freq
-
-        for _ in range(num_sleeps):
-            time.sleep(status_update_freq)
-            duration -= status_update_freq
-            _l.important3(msg.format(duration))
-
-    if duration > 0:
-        time.sleep(duration)
+from unittest.mock import MagicMock
+from cilantro.protocol import wallet
+from cilantro.constants.system_config import *
 
 
 class God:
-
-    _DEFAULT_SK = '6b73b06b9faee35527f034fb1809e4fc94915a29568a708fd972fcfba20d8555'
-    _DEFAULT_VK = '8ae53bad73b46a746384918dd41a9bed1410eda6d1a5fb57ec9e1b92748c6511'
-
-    # For MP tests
+    # For MP tests  TODO i dont think we need this  --davis
     node_map = None
     testers = []
 
     log = get_logger("GOD")
 
-    mn_urls = _MN_URLs
+    mn_urls = get_mn_urls()
     multi_master = type(mn_urls) is list  # If True, outgoing transactions will be round-robined to all masternodes
     _current_mn_idx = 0
 
-    def __init__(self, loop=None):
-        raise NotImplementedError("use class methods. __init__ does not work rn")
+    def __init__(self):
+        raise NotImplementedError("Use only class method on God")
+
+    @staticmethod
+    def run_mn(*args, return_fn=True, **kwargs):
+        if return_fn:
+            return wrap_func(run_mn, *args, **kwargs)
+        else:
+            run_mn(*args, **kwargs)
+
+    @staticmethod
+    def run_witness(*args, return_fn=True, **kwargs):
+        if return_fn:
+            return wrap_func(run_witness, *args, **kwargs)
+        else:
+            run_witness(*args, **kwargs)
+
+    @staticmethod
+    def run_delegate(*args, return_fn=True, **kwargs):
+        if return_fn:
+            return wrap_func(run_delegate, *args, **kwargs)
+        else:
+            run_delegate(*args, **kwargs)
+
+    @staticmethod
+    def dump_it(*args, return_fn=True, **kwargs):
+        if return_fn:
+            return wrap_func(dump_it, *args, **kwargs)
+        else:
+            dump_it(*args, **kwargs)
+
+    @staticmethod
+    def pump_it(*args, return_fn=True, **kwargs):
+        if return_fn:
+            return wrap_func(pump_it, *args, **kwargs)
+        else:
+            pump_it(*args, **kwargs)
 
     @classmethod
     def teardown_all(cls, masternode_url):
-        masternode_url += '/teardown-network'
-        cls.log.important("Sending teardown notification to Masternode at url {}".format(masternode_url))
-        r = requests.post(masternode_url, data=KillSignal.create().serialize())
+        raise NotImplementedError("This is not implemented!")
+        # masternode_url += '/teardown-network'
+        # cls.log.important("Sending teardown notification to Masternode at url {}".format(masternode_url))
+        # r = requests.post(masternode_url, data=KillSignal.create().serialize())
 
     @classmethod
     def _default_gen_func(cls):
@@ -128,7 +101,8 @@ class God:
             return None
 
     @classmethod
-    def pump_it(cls, rate: int, gen_func=None, use_poisson=True, report_interval=12):
+    def _pump_it(cls, rate: int, gen_func=None, use_poisson=True, sleep_sometimes=False, active_bounds=(120, 240),
+                 sleep_bounds=(20, 60)):
         """
         Pump random transactions from random users to Masternode's REST endpoint at an average rate of 'rate'
         transactions per second. This func blocks.
@@ -144,26 +118,36 @@ class God:
 
         assert callable(gen_func), "Expected a callable for 'gen_func' but got {}".format(gen_func)
 
-        cls.log.important("Starting to pump transactions at an average of {} transactions per second".format(rate))
-        cls.log.info("Using generator func {}, with use_possion={}".format(gen_func, use_poisson))
+        cls.log.important3("Starting to pump transactions at an average of {} transactions per second".format(rate))
+        cls.log.test("Using generator func {}, use_possion={}, sleep_sometimes={}, active_bounds={}, sleep_bounds={}"
+                     .format(gen_func, use_poisson, sleep_sometimes, active_bounds, sleep_bounds))
 
-        count = 0
+        time_since_last_sleep = 0
+        next_sleep = random.randint(active_bounds[0], active_bounds[1])
+        if sleep_sometimes:
+            cls.log.important3("Next sleep will be in {}s".format(next_sleep))
+
         while True:
             wait = rvs_func()
-
             # cls.log.spam("Sending next transaction in {} seconds".format(wait))
             time.sleep(wait)
+            time_since_last_sleep += wait
 
             tx = gen_func()
-
             # cls.log.spam("sending transaction {}".format(tx))
             cls.send_tx(tx)
-            count += 1
-            if count % (rate * report_interval) == 0:
-                cls.log.success("Pumped {} transactions so far".format(count))
+
+            if sleep_sometimes and time_since_last_sleep >= next_sleep:
+                sleep_time = random.randint(sleep_bounds[0], sleep_bounds[1])
+                cls.log.important3("Sleeping for {}s before pumping more...")
+                time.sleep(sleep_time)
+
+                time_since_last_sleep = 0
+                next_sleep = random.randint(active_bounds[0], active_bounds[1])
+                cls.log.important3("Done sleeping. Continuing the pump, and triggering next sleep in {}s".format(next_sleep))
 
     @classmethod
-    def dump_it(cls, volume: int, delay: int=0, gen_func=None):
+    def _dump_it(cls, volume: int, delay: int=0, gen_func=None):
         """ Dump it fast. """
         assert volume > 0, "You must dump at least 1 transaction silly"
 
@@ -212,3 +196,4 @@ class God:
         else:
             mn_url = cls.mn_urls[0]
         return mn_url
+
