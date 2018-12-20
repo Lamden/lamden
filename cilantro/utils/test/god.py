@@ -118,11 +118,14 @@ class God:
 
         assert callable(gen_func), "Expected a callable for 'gen_func' but got {}".format(gen_func)
 
-        cls.log.important("Starting to pump transactions at an average of {} transactions per second".format(rate))
-        cls.log.info("Using generator func {}, with use_possion={}".format(gen_func, use_poisson))
+        cls.log.important3("Starting to pump transactions at an average of {} transactions per second".format(rate))
+        cls.log.test("Using generator func {}, use_possion={}, sleep_sometimes={}, active_bounds={}, sleep_bounds={}"
+                     .format(gen_func, use_poisson, sleep_sometimes, active_bounds, sleep_bounds))
 
         time_since_last_sleep = 0
         next_sleep = random.randint(active_bounds[0], active_bounds[1])
+        if sleep_sometimes:
+            cls.log.important3("Next sleep will be in {}s".format(next_sleep))
 
         while True:
             wait = rvs_func()
@@ -136,12 +139,12 @@ class God:
 
             if sleep_sometimes and time_since_last_sleep >= next_sleep:
                 sleep_time = random.randint(sleep_bounds[0], sleep_bounds[1])
-                cls.log.test("Sleeping for {}s before pumping more...")
+                cls.log.important3("Sleeping for {}s before pumping more...")
                 time.sleep(sleep_time)
 
                 time_since_last_sleep = 0
                 next_sleep = random.randint(active_bounds[0], active_bounds[1])
-                cls.log.test("Done sleeping. Continuing the pump, and triggering next sleep in {}s".format(next_sleep))
+                cls.log.important3("Done sleeping. Continuing the pump, and triggering next sleep in {}s".format(next_sleep))
 
     @classmethod
     def _dump_it(cls, volume: int, delay: int=0, gen_func=None):
