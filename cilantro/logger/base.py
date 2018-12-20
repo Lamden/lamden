@@ -7,7 +7,7 @@ import os, sys
 from os.path import dirname
 from logging.handlers import TimedRotatingFileHandler
 import cilantro
-from vmnet.cloud.aws import S3Handlers
+from vmnet.cloud.aws import S3Handler
 
 logging.getLogger("paramiko").setLevel(logging.WARNING)
 logging.getLogger('boto3').setLevel(logging.WARNING)
@@ -152,9 +152,8 @@ def get_logger(name=''):
     ]
 
     if os.getenv('VMNET_CLOUD'):
-        s3h = S3Handlers()
-        if hasattr(s3h, 'aws'):
-            filehandlers += [s3h.out_logger, s3h.err_logger]
+        if not os.getenv('LOGGER_ENABLED'):
+            filehandlers.append(S3Handler())
 
     logging.basicConfig(
         format=format,
