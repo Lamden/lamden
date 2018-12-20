@@ -51,7 +51,6 @@ class CatchupManager:
         # process send
         self.blk_req_ptr = {}           # current ptr track send blk req
 
-
         # received full block could be out of order
         self.rcv_block_dict = {}                 # DS stores any Out of order received blocks
         self.awaited_blknum = self.curr_num      # catch up waiting on this blk num

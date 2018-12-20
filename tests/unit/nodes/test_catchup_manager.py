@@ -6,42 +6,49 @@ from unittest.mock import MagicMock, patch
 
 from cilantro.nodes.catchup import CatchupManager
 from cilantro.storage.state import StateDriver
+from cilantro.storage.redis import SafeRedis
+from cilantro.nodes.masternode.mn_api import StorageDriver
+from cilantro.nodes.masternode.master_store import MasterOps
 
 from cilantro.messages.block_data.block_data import *
 from cilantro.messages.block_data.state_update import *
 
 import asyncio, time
-from cilantro.storage.redis import SafeRedis
+from cilantro.protocol import wallet
 
+SK = 'A' * 64
+VK = wallet.get_vk(SK)
 
 class TestCatchupManager(TestCase):
 
     def setUp(self):
-        SafeRedis.flushall()
+        StateDriver.set_latest_block_info(block_hash=GENESIS_BLOCK_HASH, block_num=0)
+        # TODO how to rest Mongo between runs?
         self.manager = None
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        MasterOps.init_master(key=SK)
 
     def tearDown(self):
         if self.manager.timeout_fut and not self.manager.timeout_fut.done():
             self.manager.timeout_fut.cancel()
         asyncio.get_event_loop().close()
 
-    def _build_manager(self, vk='A'*64, store_blocks=True) -> CatchupManager:
+    def _build_manager(self, vk=VK, store_blocks=True) -> CatchupManager:
         pub, router = MagicMock(), MagicMock()
         m = CatchupManager(verifying_key=vk, pub_socket=pub, router_socket=router, store_full_blocks=store_blocks)
         self.manager = m
         return m
 
-    def _assert_router_called_with_msg(self, cm: CatchupManager, msg: MessageBase, header):
-        assert type(header) in (tuple, bytes), "Header must be a tuple of bytes, or a byte obj"
+    def _assert_router_called_with_msg(self, cm: CatchupManager, msg: MessageBase, possible_headers):
+        assert type(possible_headers) in (tuple, bytes), "Header must be a tuple of bytes, or a byte obj"
         for call_arg in cm.router.send_msg.call_args_list:
             args, kwargs = call_arg
             self.assertEqual(args[0], msg)
-            if type(header) is tuple:
-                self.assertTrue(kwargs['header'] in header)
+            if type(possible_headers) is tuple:
+                self.assertTrue(kwargs['header'] in possible_headers)
             else:
-                self.assertEqual(kwargs['header'], header)
+                self.assertEqual(kwargs['header'], possible_headers)
 
     def test_init(self):
         m = self._build_manager()
@@ -49,7 +56,6 @@ class TestCatchupManager(TestCase):
         self.assertEqual(m.curr_hash, StateDriver.get_latest_block_hash())
         self.assertEqual(m.curr_num, StateDriver.get_latest_block_num())
 
-    # NOTE TO RAGHU -- read comments at end of this test
     def test_catchup_with_no_new_blocks(self):
         vk1 = VKBook.get_masternodes()[0]
         vk2 = VKBook.get_masternodes()[1]
@@ -64,17 +70,15 @@ class TestCatchupManager(TestCase):
 
         cm.recv_block_idx_reply(vk1, index_reply)
         self.assertTrue(vk1 in cm.node_idx_reply_set)
-        self.assertTrue(cm.catchup_state)  # catchup_state should be True, as we've only recv 1/2 required responses
+        self.assertTrue(cm.catchup_state)  # catchup_state should be True, as we've only recv 1/4 required responses
 
         cm.recv_block_idx_reply(vk2, index_reply)
         # time.sleep(20)
 
-        # @raghu, shouldn't this assert below be false? We should be done with catching up at this point,
-        # ergo catchup_state should be false. If we are switching to the interpretation of 'catchup_state' to answer
-        # the question 'am I done catching up?' then the above asserts should be assertFalse, right? (because
-        # in the asserts above you are not done catching up) My point being this assert below should be the opposite
-        # of the asserts above
-        self.assertTrue(cm.catchup_state)  # Now that we have 2/2 replies, we should be out of Catchup
+        self.assertTrue(cm.catchup_state)  # Now that we have 2/4 replies, we should be out of Catchup
+        #          ^^^^
+        # @raghu, shouldn't this assert below be false? If we are switching interpretations of 'catchup_state' thats
+        # fine, but if this is assertTrue, shouldnt all the asserts above be the opposite, ie assertFalse?
 
     def test_catchup_with_new_blocks_requests_proper_data(self):
         cm = self._build_manager()
@@ -100,34 +104,81 @@ class TestCatchupManager(TestCase):
         expected_req_1 = BlockDataRequest.create(block_num=1)
         expected_req_2 = BlockDataRequest.create(block_num=2)
 
-        self._assert_router_called_with_msg(cm, msg=expected_req_1, header=(vk1.encode(), vk2.encode()))
-        self._assert_router_called_with_msg(cm, msg=expected_req_2, header=(vk1.encode(), vk2.encode()))
+        self._assert_router_called_with_msg(cm, msg=expected_req_1, possible_headers=(vk1.encode(), vk2.encode()))
+        self._assert_router_called_with_msg(cm, msg=expected_req_2, possible_headers=(vk1.encode(), vk2.encode()))
 
-        print("here")
-        # self.assertTrue(cm.catchup_state)
-        # self.assertEqual(cm.curr_hash, b2)
-        # self.assertEqual(cm.curr_num, 2)
-
-    def test_catchup_with_new_blocks_and_block_data_replies(self):
+    def test_recv_block_idx_req_sends_correct_idx_replies_from_block_num(self):
         cm = self._build_manager()
         cm.run_catchup()
-        self.assertTrue(cm.catchup_state)
 
-        b1 = 'A' * 64
-        b2 = 'B' * 64
         vk1 = VKBook.get_masternodes()[0]
         vk2 = VKBook.get_masternodes()[1]
         vk3 = VKBook.get_masternodes()[2]
 
-        reply_data1 = [{'blockNum': 1, 'blockHash': b1, 'blockOwners': [vk1, vk2]}]
-        reply_data2 = [{'blockNum': 1, 'blockHash': b1, 'blockOwners': [vk1, vk2]},
-                       {'blockNum': 2, 'blockHash': b2, 'blockOwners': [vk1, vk2]}]
+        # Store 5 blocks
+        blocks = BlockDataBuilder.create_conseq_blocks(5)
+        for block in blocks:
+            StorageDriver.store_block(block.sub_blocks)
 
+        # Send a fake index request from vk1
+        req = BlockIndexRequest.create(block_num=0)
+        cm.recv_block_idx_req(vk1, BlockIndexRequest.create(block_num=0))
+
+        # Assert we sent out the expected reply over Router
+        all_idx_replies = []
+        for block in blocks:
+            all_idx_replies.append({'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': [vk1, vk2]})
+        expected_reply = BlockDataReply.create(all_idx_replies)
+
+        self._assert_router_called_with_msg(cm, msg=expected_reply, possible_headers=(vk1,))
+
+    def test_catchup_with_new_blocks_and_replies(self):
+        cm = self._build_manager()
+        cm.run_catchup()
+        self.assertTrue(cm.catchup_state)
+
+        blocks = BlockDataBuilder.create_conseq_blocks(5)
+
+        vk1 = VKBook.get_masternodes()[0]
+        vk2 = VKBook.get_masternodes()[1]
+        vk3 = VKBook.get_masternodes()[2]
+
+        all_idx_replies = []
+        reply_datas = []
+        for block in blocks:
+            all_idx_replies.append({'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': [vk1, vk2]})
+            reply_datas.append(BlockDataReply.create_from_block(block))
+
+        # Send the BlockIndexReplies (1 extra)
+        reply_data1 = all_idx_replies[:2]  # this incomplete reply only includes the first 2 blocks
+        reply_data2 = all_idx_replies
+        reply_data3 = all_idx_replies[:4]
         index_reply1 = BlockIndexReply.create(reply_data1)
         index_reply2 = BlockIndexReply.create(reply_data2)
-
+        index_reply3 = BlockIndexReply.create(reply_data3)
         cm.recv_block_idx_reply(vk1, index_reply1)
         cm.recv_block_idx_reply(vk2, index_reply2)
+        cm.recv_block_idx_reply(vk3, index_reply3)
+
+        # Send the BlockDataReplies
+        for bd_reply in reply_datas:
+            cm.recv_block_data_reply(bd_reply)
+
+        # Assert we are out of catchup state (@raghu or False by your convention?)
+        self.assertFalse(cm.catchup_state)
+
+        # Assert we set curr_hash and curr_num to the last added block
+        self.assertEqual(cm.curr_hash, blocks[-1].block_hash)
+        self.assertEqual(cm.curr_num, blocks[-1].block_num)
+
+        # Assert Redis has been updated
+        self.assertEqual(StateDriver.get_latest_block_num(), blocks[-1].block_hash)
+        self.assertEqual(StateDriver.get_latest_block_hash(), blocks[-1].block_num)
+
+        # Assert Mongo has been updated
+        self.assertEqual(StorageDriver.get_latest_block_hash(), blocks[-1].block_hash)
+        self.assertEqual(StorageDriver.get_latest_block_hash(), blocks[-1].block_num)
+
 
 if __name__ == "__main__":
     import unittest

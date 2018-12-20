@@ -12,6 +12,7 @@ from cilantro.constants.overlay_network import HOST_IP
 def _build_block_schema(should_reset):
     MDB.setup_db()
 
+
 class NodeFactory:
     @staticmethod
     def _reset_db():
@@ -24,14 +25,7 @@ class NodeFactory:
         VKBook.setup()
         if reset_db:
             NodeFactory._reset_db()
-            # MDB.drop_db()
-        # _build_block_schema(reset_db)
-
-        # MasterOps.init_master(key=signing_key)
-        # MDB.drop_db()
         MasterOps.init_master(key=signing_key)
-
-
         mn = Masternode(ip=ip, name=name, signing_key=signing_key)
 
     @staticmethod
