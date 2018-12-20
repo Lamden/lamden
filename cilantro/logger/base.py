@@ -153,7 +153,7 @@ def get_logger(name=''):
 
     if os.getenv('VMNET_CLOUD'):
         if not os.getenv('LOGGER_ENABLED'):
-            os.environ['LOGGER_ENABLED'] = True
+            os.environ['LOGGER_ENABLED'] = 'True'
             filehandlers.append(
                 S3Handler(
                     os.getenv('TEST_NAME'),
