@@ -16,7 +16,11 @@ if os.getenv('HOST_IP'):
     else:
         ips = [ips]
 
-    urls = ["http://{}:8080".format(ip) for ip in ips]
+    ssl = os.getenv('SSL_ENABLED', 'False')
+    if ssl == 'False':
+        urls = ["http://{}:8080".format(ip) for ip in ips]
+    else:
+        urls = ["https://{}".format(ip) for ip in ips]
     _MN_URLs = urls
 
 # If this is not getting run on a container, set MN URL to 0.0.0.0
