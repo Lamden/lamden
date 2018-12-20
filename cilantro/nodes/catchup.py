@@ -13,7 +13,7 @@ from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest
 
 
-IDX_REPLY_TIMEOUT = 20
+IDX_REPLY_TIMEOUT = 10
 TIMEOUT_CHECK_INTERVAL = 1
 
 # start the catch manager when boot is done
@@ -39,17 +39,14 @@ class CatchupManager:
 
         # catchup state
         self.catchup_state = False
-        self.timeout_catchup = 0       # 10 sec time we will wait for 2/3rd MN to respond
+        self.timeout_catchup = 0         # 10 sec time we will wait for 2/3rd MN to respond
         self.node_idx_reply_set = set()  # num of master responded to catch up req
 
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
         # main list to process
-        self.block_delta_list = []      # list of mn_index dict to process
+        self.block_delta_list = []       # list of mn_index dict to process
         self.target_blk_num = self.curr_num
-
-        # process send
-        self.blk_req_ptr = {}           # current ptr track send blk req
 
 
         # received full block could be out of order
@@ -72,7 +69,7 @@ class CatchupManager:
 
         self._reset_timeout_fut()
         # first time wait longer than usual
-        # time.sleep(3 * TIMEOUT_CHECK_INTERVAL)
+        time.sleep(3 * TIMEOUT_CHECK_INTERVAL)
         self.timeout_fut = asyncio.ensure_future(self._check_timeout())
         self.log.important2("run catchup")
         self.dump_debug_info()
@@ -131,6 +128,9 @@ class CatchupManager:
         """
         # self.log.important("Got blk index reply from sender {}\nreply: {}".format(sender_vk, reply))
 
+        if sender_vk in self.node_idx_reply_set:
+            return      # already processed
+
         self.node_idx_reply_set.add(sender_vk)
 
         if not reply.indices:
@@ -151,10 +151,9 @@ class CatchupManager:
             self.log.important("update list {}".format(update_list))
             self.block_delta_list.extend(update_list)
             # self.dump_debug_info()
-
-        if not self.awaited_blknum:
-            self.awaited_blknum = self.curr_num
-            self.process_recv_idx()
+            if not self.awaited_blknum:
+                self.awaited_blknum = self.curr_num
+                self.process_recv_idx()
         
         # self.log.important2("RCV BIRp")
         self.dump_debug_info()
@@ -177,13 +176,16 @@ class CatchupManager:
 
         rcv_blk_num = reply.block_num
         if rcv_blk_num <= self.curr_num:
-            self.log.debug("dropping giving blk reply blk-{}:hash-{} ".format(reply.block_num, reply.block_hash))
+            self.log.debug("dropping already processed blk reply blk-{}:hash-{} ".format(reply.block_num, reply.block_hash))
             return
 
+        self.rcv_block_dict[rcv_blk_num] = reply
         if rcv_blk_num > self.awaited_blknum:
-            self.rcv_block_dict[rcv_blk_num] = reply
+            self.log.debug("This should not happen right now!")
+            return
 
-        if (rcv_blk_num == self.awaited_blknum) and (self.awaited_blknum > self.curr_num):
+        # if (rcv_blk_num == self.awaited_blknum) and (self.awaited_blknum > self.curr_num):
+        if (rcv_blk_num == self.awaited_blknum):
             self.curr_num = self.awaited_blknum
             self.process_recv_idx()
             self.update_received_block(block = reply)
@@ -231,7 +233,7 @@ class CatchupManager:
             return
         if nw_blk_num > (self.target_blk_num + 1):
             self.catchup_state = False
-            # todo reset needed ?
+            # todo reset needed ? rpc need to reset index reply set
             self.run_catchup(ignore=True)
         else: 
             self.target_blk_num = nw_blk_num
@@ -248,6 +250,8 @@ class CatchupManager:
                 elem["blockOwners"] = update.block_owners
     
 
+    # raghu todo check if indices are sent including the requested or not?
+    # todo handle mismatch between redis and monodb
     # MASTER ONLY CALL
     def _send_block_idx_reply(self, reply_to_vk = None, catchup_list=None):
         # this func doesnt care abt catchup_state we respond irrespective
@@ -276,7 +280,9 @@ class CatchupManager:
         assert valid_node is True, "invalid vk given key is not of master or delegate dumping vk {}".format(vk)
         pass
 
-    # this can flood if far behind, can we control rate of requests?
+    # removed flooding, but it could be too sequential?
+    # use futures to control rate of requests?
+    # add 
     def process_recv_idx(self):
         if (self.awaited_blknum == self.curr_num) and (self.awaited_blknum < self.target_blk_num):
             self.awaited_blknum = self.awaited_blknum + 1
@@ -284,24 +290,31 @@ class CatchupManager:
             while self.awaited_blknum in self.rcv_block_dict:
                 self.awaited_blknum = self.awaited_blknum + 1
             blknum = 0
+            blk_ptr = None
             while (blknum < self.awaited_blknum) and len(self.block_delta_list):
-                self.blk_req_ptr = self.block_delta_list.pop(0)
-                self.log.important("{}".format(self.blk_req_ptr))
-                blknum = self.blk_req_ptr.get('blockNum')
-            assert blknum == self.awaited_blknum, "can't find the index infor for the block num {}".format(self.awaited_blknum)
-            mn_list = self.blk_req_ptr.get('blockOwners')
+                blk_ptr = self.block_delta_list.pop(0)
+                self.log.important("{}".format(blk_ptr))
+                blknum = blk_ptr.get('blockNum')
+            assert blk_ptr and (blknum == self.awaited_blknum), "can't find the index infor for the block num {}".format(self.awaited_blknum)
+            mn_list = blk_ptr.get('blockOwners')
             for vk in mn_list:
                 self._send_block_data_req(mn_vk = vk, req_blk_num = self.awaited_blknum)
 
 
     def update_received_block(self, block = None):
+        assert self.curr_num in self.rcv_block_dict, "not found the received block!"
+        cur_num = self.curr_num
+        while cur_num in self.rcv_block_dict:
+            block = self.rcv_block_dict[cur_num]
+            if self.store_full_blocks is True:
+                update_blk_result = bool(MasterOps.evaluate_wr(entry = block._data.to_dict()))
+                assert update_blk_result is True, "failed to update block"
 
-        if self.store_full_blocks is True:
-            update_blk_result = bool(MasterOps.evaluate_wr(entry = block._data.to_dict()))
-            assert update_blk_result is True, "failed to update block"
+            StateDriver.update_with_block(block = block)
+            self.curr_num = cur_num
+            cur_num = cur_num + 1
 
-        StateDriver.update_with_block(block = block)
-
+    # raghu todo do we reset when resend requests?
     def _check_idx_reply_quorum(self):
         # We have enough BlockIndexReplies if 2/3 of Masternodes replied
         min_quorum = math.ceil(len(VKBook.get_masternodes()) * 2/3) - 1   # -1 so we dont include ourselves
@@ -325,10 +338,9 @@ class CatchupManager:
                             "----Current----"
                             "elf.curr_hash - {}, curr_num-{}"
                             "----send req----"
-                            "blk_req_ptr - {}"
                             "----rcv req-----"
                             "rcv_block_dict - {}"
                             "awaited_blknum - {}"
                             .format(self.catchup_state, self.block_delta_list, self.target_blk_num,
-                                    self.curr_hash, self.curr_num, self.blk_req_ptr, 
+                                    self.curr_hash, self.curr_num, 
                                     self.rcv_block_dict, self.awaited_blknum))
