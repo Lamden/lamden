@@ -8,7 +8,7 @@
         "logging": {
             "interval": 1800,
             "arn_name": "ec2-s3-log",
-            "arn_id": "arn:aws:iam::622633509017:instance-profile/ec2-s3-log"
+            "arn_id": "arn:aws:iam::929772747755:instance-profile/ec2-s3-log"
         },
         "use_elastic_ips": true,
         "security_groups": {
@@ -72,8 +72,8 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0222655b32f6d9d08",
                 "update_commands": [
-                    "pip3 install vmnet",
-                    "pip3 install seneca"
+                    "pip3 install vmnet --upgrade --no-cache-dir",
+                    "pip3 install seneca --upgrade --no-cache-dir"
                 ]
             },
             "cilantro_mn": {
@@ -88,8 +88,8 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-09cddca33b912825e",
                 "update_commands": [
-                    "pip3 install vmnet",
-                    "pip3 install seneca"
+                    "pip3 install vmnet --upgrade --no-cache-dir",
+                    "pip3 install seneca --upgrade --no-cache-dir"
                 ]
             }
         }
