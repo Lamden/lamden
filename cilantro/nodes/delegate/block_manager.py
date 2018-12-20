@@ -345,7 +345,6 @@ class BlockManager(Worker):
 
         self.send_updated_db_msg()
 
-
     def update_db_if_ready(self):
         if not self.db_state.my_new_block_hash or not self.db_state.new_block_hash:
             return          # both are not ready
