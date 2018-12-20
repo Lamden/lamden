@@ -153,7 +153,10 @@ def get_logger(name=''):
 
     if os.getenv('VMNET_CLOUD'):
         if not os.getenv('LOGGER_ENABLED'):
-            filehandlers.append(S3Handler())
+            s3handler = S3Handler()
+            sys.stdout = s3handler
+            sys.stderr = s3handler
+            # filehandlers.append(S3Handler())
 
     logging.basicConfig(
         format=format,
@@ -164,7 +167,7 @@ def get_logger(name=''):
     log = logging.getLogger(name)
     log.setLevel(_LOG_LVL)
 
-    if os.getenv('VMNET_DOCKER') or os.getenv('VMNET_CLOUD'):
+    if os.getenv('VMNET_DOCKER'):# or os.getenv('VMNET_CLOUD'):
         sys.stdout = LoggerWriter(log.debug)
         sys.stderr = LoggerWriter(log.error)
 
