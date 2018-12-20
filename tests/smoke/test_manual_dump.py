@@ -5,10 +5,10 @@ WITNESS_LOG_LVL = 30
 DELEGATE_LOG_LVL = 11
 SENECA_LOG_LVL = 11
 
-# A set of delegate indices who shall behave as bad actors.
+# Set ENABLE_BAD_ACTORS to TRUE to enable periodic consensus failures
 ENABLE_BAD_ACTORS = True
-BAD_ACTOR_SET = {1}
-BAD_SB_SET = {1}
+BAD_ACTOR_SET = {1}  # The indices of delegates who shall misbehave and periodically send bad SubBlockContender
+BAD_SB_SET = {1}  # The indices of the sub-blocks to send bad SubBlockContenders for
 
 
 from cilantro.utils.test.testnet_config import set_testnet_config
