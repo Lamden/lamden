@@ -32,7 +32,7 @@ def trigger_mn_wr(blocks):
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.utils.test import God
     overwrite_logger_level(15)
-    God.dump_it(volume=volume, delay=delay)
+    God._dump_it(volume=volume, delay=delay)
 
 
 class MasterStore(BaseNetworkTestCase):

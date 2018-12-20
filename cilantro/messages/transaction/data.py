@@ -2,9 +2,9 @@ from cilantro.messages.base.base import MessageBase
 from cilantro.messages.transaction.contract import ContractTransaction, TransactionBase, ContractTransactionBuilder
 from cilantro.utils.lazy_property import lazy_property, set_lazy_property
 from cilantro.utils.hasher import Hasher
-import uuid
+import uuid, capnp, random
+from typing import List
 from enum import Enum, auto
-import capnp
 import transaction_capnp
 
 
@@ -72,7 +72,16 @@ class TransactionData(MessageBase):
 
 class TransactionDataBuilder:
     @classmethod
-    def create_random_tx(cls, status='SUCCESS', state='SET x 1'):
+    def create_random_tx(cls, status='SUCCESS', state='SET x 1') -> TransactionData:
         return TransactionData.create(
             contract_tx=ContractTransactionBuilder.random_currency_tx(), status=status, state=state
         )
+
+    @classmethod
+    def create_random_batch(cls, num=10) -> List[TransactionData]:
+        batch = []
+        for _ in range(num):
+            rand_status = 'RANDOM STATUS {}'.format(random.randint(0, 2**32))
+            random_state = 'RANDOM STATE {}'.format(random.randint(0, 2**32))
+            batch.append(cls.create_random_tx(status=rand_status, state=random_state))
+        return batch

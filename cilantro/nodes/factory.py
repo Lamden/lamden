@@ -12,6 +12,34 @@ from cilantro.constants.overlay_network import HOST_IP
 def _build_block_schema(should_reset):
     MDB.setup_db()
 
+
+def _wait_for_redis():
+    import redis, time
+    r = redis.StrictRedis()
+    redis_ready = False
+    mongo_ready = False
+    while True:
+        try:
+            r = redis.StrictRedis()
+            r.client_list()
+            break
+        except:
+            print("Waiting for Redis to be ready...")
+        time.sleep(1)
+
+
+def _wait_for_mongo():
+    import redis, time
+    from pymongo import MongoClient
+    while True:
+        try:
+            MongoClient()
+            break
+        except:
+            print("Waiting for Mongo to be ready...")
+        time.sleep(1)
+
+
 class NodeFactory:
     @staticmethod
     def _reset_db():
@@ -21,27 +49,21 @@ class NodeFactory:
 
     @staticmethod
     def run_masternode(signing_key, ip, name='Masternode', reset_db=False):
-        VKBook.setup()
+        _wait_for_redis()
+        _wait_for_mongo()
         if reset_db:
             NodeFactory._reset_db()
-            # MDB.drop_db()
-        # _build_block_schema(reset_db)
-
-        # MasterOps.init_master(key=signing_key)
-        # MDB.drop_db()
         MasterOps.init_master(key=signing_key)
-
-
         mn = Masternode(ip=ip, name=name, signing_key=signing_key)
 
     @staticmethod
     def run_witness(signing_key, ip, name='Witness', reset_db=False):
-        VKBook.setup()
+        _wait_for_redis()
         if reset_db: NodeFactory._reset_db()
         w = Witness(ip=ip, name=name, signing_key=signing_key)
 
     @staticmethod
     def run_delegate(signing_key, ip, name='Delegate', reset_db=False):
-        VKBook.setup()
+        _wait_for_redis()
         if reset_db: NodeFactory._reset_db()
         d = Delegate(ip=ip, name=name, signing_key=signing_key)

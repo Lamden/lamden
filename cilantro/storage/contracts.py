@@ -3,7 +3,7 @@ from cilantro.utils import Hasher
 from seneca.engine.interface import SenecaInterface
 from seneca.engine.interpreter import SenecaInterpreter
 from cilantro.constants.system_config import *
-import datetime
+import datetime, time
 import os
 from cilantro.utils.test.god import ALL_WALLETS
 
@@ -39,12 +39,14 @@ def seed_contracts():
         log.debug("Done seeding contracts.")
 
         if SHOULD_MINT_WALLET:
+            start = time.time()
             log.info("Minting {} wallets with amount {}".format(NUM_WALLETS_TO_MINT, MINT_AMOUNT))
             for keypair in ALL_WALLETS:
                 sk, vk = keypair
                 interface.execute_function(module_path='seneca.contracts.currency.mint', sender=GENESIS_AUTHOR,
                                            stamps=None, to=vk, amount=MINT_AMOUNT)
-            log.info("Done minting {} wallets.".format(NUM_WALLETS_TO_MINT))
+            log.info("Done minting {} wallets ({} seconds elapsed)"
+                     .format(NUM_WALLETS_TO_MINT, round(time.time()-start, 2)))
 
 
 def _read_contract_files() -> list:

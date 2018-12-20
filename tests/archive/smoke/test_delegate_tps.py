@@ -69,7 +69,7 @@ def dump_it(volume):
     import logging
 
     overwrite_logger_level(logging.WARNING)
-    God.dump_it(volume=volume)
+    God._dump_it(volume=volume)
 
 
 class TestPump(BaseNetworkTestCase):
