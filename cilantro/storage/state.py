@@ -5,6 +5,7 @@ from cilantro.messages.transaction.publish import PublishTransaction
 from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
 from cilantro.utils.utils import is_valid_hex
 from cilantro.storage.redis import SafeRedis
+from cilantro.constants.system_config import *
 from typing import List
 
 
@@ -36,6 +37,10 @@ class StateDriver:
 
         # Update our block hash and block num
         cls.set_latest_block_info(block.block_hash, block.block_num)
+
+        if block.block_num % DUMP_TO_CACHE_EVERY_N_BLOCKS == 0:
+            try: SafeRedis.bgsave()
+            except: pass
 
     @classmethod
     def _process_publish_txs(cls, txs: List[PublishTransaction]):
@@ -76,5 +81,3 @@ class StateDriver:
         """ Sets the latest block num on the Redis database"""
         assert block_num >= 0, "block num must be GTE 0"
         SafeRedis.set(cls.BLOCK_NUM_KEY, block_num)
-
-
