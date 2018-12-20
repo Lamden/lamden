@@ -13,7 +13,7 @@ from cilantro.messages.transaction.ordering import OrderingContainer
 from multiprocessing import Queue
 
 from cilantro.nodes.masternode.nonce import NonceManager
-from cilantro.constants.ports import WEB_SERVER_PORT
+from cilantro.constants.ports import WEB_SERVER_PORT, SSL_WEB_SERVER_PORT
 from cilantro.constants.masternode import NUM_WORKERS
 from cilantro.utils.hasher import Hasher
 
