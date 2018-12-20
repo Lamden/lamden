@@ -199,7 +199,7 @@ def start_webserver(q):
     app.queue = q
     log.info("Creating REST server on port {}".format(WEB_SERVER_PORT))
     if ssl:
-        app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False, ssl=ssl)
+        app.run(host='0.0.0.0', port=SSL_WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False, ssl=ssl)
     else:
         app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False)
 

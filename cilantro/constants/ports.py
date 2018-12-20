@@ -1,5 +1,6 @@
 # Webservers
 WEB_SERVER_PORT = 8080
+SSL_WEB_SERVER_PORT = 443
 
 # 'Default' Ports  # TODO deprecate these? --davis
 ROUTER_PORT = 10001
