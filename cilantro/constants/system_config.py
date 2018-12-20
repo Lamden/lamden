@@ -29,9 +29,10 @@ MASTERNODE_MAJORITY = math.ceil(NUM_MASTERS * 2 / 3)
 _MAX_SUB_BLOCK_BUILDERS = 4
 _MAX_BLOCKS = 1  # 2
 
-TRANSACTIONS_PER_SUB_BLOCK = 4 #100
+TRANSACTIONS_PER_SUB_BLOCK = 100
 NUM_SUB_BLOCKS = NUM_MASTERS  # same as num masternodes for now
 NUM_BLOCKS = min(_MAX_BLOCKS, NUM_SUB_BLOCKS)
+DUMP_TO_CACHE_EVERY_N_BLOCKS = 5
 
 # A Masternode expects to produce a block or empty block every BLOCK_TIMEOUT seconds or he will send a SkipBlockNotif
 BLOCK_PRODUCTION_TIMEOUT = 60
@@ -69,5 +70,6 @@ DECIMAL_PRECISION = 18
 # Test Flags
 # ///////////////////////////////////////////////
 SHOULD_MINT_WALLET = True
-NUM_WALLETS_TO_MINT = 5000
+# NUM_WALLETS_TO_MINT = 50
+NUM_WALLETS_TO_MINT = 100000
 MINT_AMOUNT = 10 ** 10

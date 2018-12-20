@@ -16,8 +16,7 @@ from cilantro.messages.consensus.merkle_signature import MerkleSignature
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.data import TransactionData
 from cilantro.messages.block_data.sub_block import SubBlock
-from cilantro.constants.system_config import NUM_SB_PER_BLOCK
-
+from cilantro.constants.system_config import *
 
 import time
 
@@ -49,7 +48,7 @@ class StorageDriver:
         block_hash = BlockData.compute_block_hash(sbc_roots=roots, prev_block_hash=prev_block_hash)
 
         cls.log.debugv("Attempting to store block number {} with hash {} and previous hash {}"
-                          .format(blk_num, block_hash, prev_block_hash))
+                       .format(blk_num, block_hash, prev_block_hash))
 
         # TODO get actual block owners...
         block_data = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, block_owners=[],
@@ -65,7 +64,7 @@ class StorageDriver:
 
     @classmethod
     def get_transactions(cls, raw_tx_hash):
-        
+
         map = MasterOps.get_usr_tx_result(usr_tx_hash = raw_tx_hash)
 
         # identify Leaf and block num from given hash in map

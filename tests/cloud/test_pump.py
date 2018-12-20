@@ -1,5 +1,12 @@
+NETWORK_SIZE = '4-4-4'
+
+MN_LOG_LVL = 11
+WITNESS_LOG_LVL = 30
+DELEGATE_LOG_LVL = 11
+SENECA_LOG_LVL = 11
+
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('4-4-4.json')
+set_testnet_config('{}.json'.format(NETWORK_SIZE))
 
 from cilantro.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
@@ -14,115 +21,49 @@ import logging, os, shutil, time
 from cilantro.constants.system_config import *
 
 
-def wrap_func(fn, *args, **kwargs):
-    def wrapper():
-        return fn(*args, **kwargs)
-    return wrapper
-
-
-def run_mn(slot_num):
-    # We must set this env var before we import anything from cilantro
-    import os
-    os.environ["NONCE_DISABLED"] = "1"
-
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes.factory import NodeFactory
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
-
-    # NOTE setting the log level below 11 does not work for some reason --davis
-    # overwrite_logger_level(logging.WARNING)
-    # overwrite_logger_level(21)
-    overwrite_logger_level(11)
-
-    ip = os.getenv('HOST_IP')
-    sk = TESTNET_MASTERNODES[slot_num]['sk']
-    NodeFactory.run_masternode(ip=ip, signing_key=sk, reset_db=True)
-
-
-def run_witness(slot_num):
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes.factory import NodeFactory
-    from cilantro.constants.testnet import TESTNET_WITNESSES
-    import os
-    import logging
-
-    # overwrite_logger_level(logging.WARNING)
-    # overwrite_logger_level(21)
-    overwrite_logger_level(11)
-
-    w_info = TESTNET_WITNESSES[slot_num]
-    w_info['ip'] = os.getenv('HOST_IP')
-
-    NodeFactory.run_witness(ip=w_info['ip'], signing_key=w_info['sk'], reset_db=True)
-
-
-def run_delegate(slot_num):
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from seneca.libs.logger import overwrite_logger_level as sen_overwrite_log
-    from cilantro.nodes.factory import NodeFactory
-    from cilantro.constants.testnet import TESTNET_DELEGATES
-    import os
-    import logging
-
-    # overwrite_logger_level(logging.WARNING)
-    overwrite_logger_level(11)
-    # sen_overwrite_log(4)  # disable spam only (lvl 5 is debugv)
-    sen_overwrite_log(11)  # disable spam only (lvl 5 is debugv)
-
-    d_info = TESTNET_DELEGATES[slot_num]
-    d_info['ip'] = os.getenv('HOST_IP')
-
-    NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'], reset_db=True)
-
-
-def pump_it(lamd, use_poisson, pump_wait):
-    from cilantro.utils.test.god import God
-    from cilantro.logger import get_logger, overwrite_logger_level
-    import logging, time
-
-    overwrite_logger_level(logging.WARNING)
-
-    log = get_logger("Pumper")
-
-    log.important("Pumper sleeping {} seconds before starting...".format(pump_wait))
-    time.sleep(pump_wait)
-
-    log.important("Starting the pump..")
-    God.pump_it(rate=lamd, use_poisson=use_poisson)
-
-
 class TestPump(AWSTestCase):
 
     NUM_BLOCKS = 2
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dum
-    config_file = get_config_file('cilantro-aws-4-4-4.json')
+    config_file = get_config_file('cilantro-aws-{}.json'.format(NETWORK_SIZE))
     keep_up = True
     logging = True
 
     # Avg number of transactions per second we will pump. Set to pump 1 block per BATCH_SLEEP_INTERVAL
     PUMP_RATE = (TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK) // BATCH_SLEEP_INTERVAL
     MODEL_AS_POISSON = True
-    PUMP_WAIT = 120  # how long to sleep before we start the pump
+    PUMP_WAIT = 180  # how long to sleep before we start the pump
 
     def test_pump(self):
         log = get_logger("Pumpatron")
 
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
-            self.execute_python(nodename, wrap_func(run_mn, i))
+            self.execute_python(nodename, God.run_mn(i, log_lvl=MN_LOG_LVL, nonce_enabled=False, reset_db=True))
 
         # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):
-            self.execute_python(nodename, wrap_func(run_witness, i))
+            self.execute_python(nodename, God.run_witness(i, log_lvl=WITNESS_LOG_LVL, reset_db=True))
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
-            self.execute_python(nodename, wrap_func(run_delegate, i))
+            self.execute_python(nodename, God.run_delegate(i, log_lvl=DELEGATE_LOG_LVL, seneca_log_lvl=SENECA_LOG_LVL,
+                                                           reset_db=True))
 
         # Bootstrap pump
-        self.execute_python('mgmt', wrap_func(pump_it, self.PUMP_RATE, self.MODEL_AS_POISSON, self.PUMP_WAIT))
+        self.execute_python('mgmt', God.pump_it(rate=self.PUMP_RATE, use_poisson=self.MODEL_AS_POISSON, pump_wait=self.PUMP_WAIT,
+                                                sleep_sometimes=True, active_bounds=(30, 120), sleep_bounds=(20, 30)))
 
-        # TODO also allow user to dump also??
+        while True:
+            user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
+
+            if user_input.lower() == 'x':
+                log.important("Termination input detected. Breaking")
+                break
+
+            vol = int(user_input) if user_input.isdigit() else self.VOLUME
+            log.important3("Dumpatron dumping {} transactions!".format(vol))
+            self.execute_python('mgmt', God.dump_it(volume=vol))
 
 
 if __name__ == '__main__':
