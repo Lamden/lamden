@@ -2,6 +2,18 @@
 
 set -x
 
+if [ -z "$SSL_ENABLED" ]
+then
+    echo "SSL not enabled, not generating cert"
+    exit 0
+fi
+
+if ! $SSL_ENABLED
+then
+    echo "SSL not enabled, not generating cert"
+    exit 0
+fi
+
 # cd into directory of script to be run-location agnostic
 cd "$(dirname "$0")"
 
@@ -25,6 +37,13 @@ then
 	exit 1
 fi
 
+if [ -z "$DNS_NAME" ]
+then
+	echo "ERROR: environment variable DNS_NAME not set, cannot generate FQDN for cert, aborting"
+    exit 1
+fi
+
+
 # Resolve FQDN
 # Cut off first bit before _ to get the type
 NODETYPE=$(echo $HOST_NAME | cut -d'_' -f 1)
@@ -32,7 +51,7 @@ NODETYPE=$(echo $HOST_NAME | cut -d'_' -f 1)
 NODEINDEX=$(echo $HOST_NAME | rev | cut -d'_' -f 1 | rev)
 
 # Concatenate into FQDN
-FQDN="$NODETYPE$NODEINDEX.anarchynet.io"
+FQDN="$NODETYPE$NODEINDEX.$DNS_NAME"
 
 # Generate the certificate
 ~/.acme.sh/acme.sh --issue --standalone -d $FQDN
@@ -41,3 +60,5 @@ FQDN="$NODETYPE$NODEINDEX.anarchynet.io"
 cp ~/.acme.sh/$FQDN/ca.cer /usr/share/ca-certificates/ca.crt
 grep -q -F 'ca.crt' /etc/ca-certificates.conf || echo 'ca.crt' >> /etc/ca-certificates.conf
 update-ca-certificates
+
+echo "{ \"cert\": \"/home/${USER}/.acme.sh/$FQDN/$FQDN.cer\", \"key\": \"/home/$USER/.acme.sh/$FQDN/$FQDN.key\" }" > ~/.sslconf
