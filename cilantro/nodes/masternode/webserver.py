@@ -24,6 +24,9 @@ from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.protocol.webserver.validation import *
 from cilantro.tools import parse_code_str
 
+import json as _json
+
+ssl = None
 app = SanicSingleton.app
 interface = SanicSingleton.interface
 log = get_logger("MN-WebServer")
@@ -34,6 +37,11 @@ if os.getenv('NONCE_DISABLED'):
 else:
     log.info("Nonces enabled.")
     limiter = Limiter(app, global_limits=['60/minute'], key_func=get_remote_address)
+
+if os.getenv('SSL_ENABLED'):
+    log.info("SSL enabled")
+    with open(os.path.expanduser("~/.sslconf"), "r") as df:
+        ssl = _json.load(df)
 
 
 @app.route("/", methods=["POST",])
@@ -190,7 +198,10 @@ async def teardown_network(request):
 def start_webserver(q):
     app.queue = q
     log.info("Creating REST server on port {}".format(WEB_SERVER_PORT))
-    app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False)
+    if ssl:
+        app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False, ssl=ssl)
+    else:
+        app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False)
 
 
 if __name__ == '__main__':
