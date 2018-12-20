@@ -13,7 +13,7 @@ from cilantro.messages.block_data.block_metadata import NewBlockNotification
 from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest
 
 
-IDX_REPLY_TIMEOUT = 10
+IDX_REPLY_TIMEOUT = 20
 TIMEOUT_CHECK_INTERVAL = 1
 
 # start the catch manager when boot is done
@@ -42,21 +42,19 @@ class CatchupManager:
         self.timeout_catchup = 0       # 10 sec time we will wait for 2/3rd MN to respond
         self.node_idx_reply_set = set()  # num of master responded to catch up req
 
+        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
+
         # main list to process
         self.block_delta_list = []      # list of mn_index dict to process
-        self.target_blk = {}            # last block in list
-        self.target_blk_num = None
+        self.target_blk_num = self.curr_num
 
         # process send
         self.blk_req_ptr = {}           # current ptr track send blk req
-        self.blk_req_ptr_idx = None     # idx to track ptr in block_delta_list
-        self.bnum_to_req = None
 
-        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
         # received full block could be out of order
-        self.rcv_block_dict = {}        # DS stores any Out of order received blocks
-        self.awaited_blknum = None      # catch up waiting on this blk num
+        self.rcv_block_dict = {}                 # DS stores any Out of order received blocks
+        self.awaited_blknum = self.curr_num      # catch up waiting on this blk num
 
         # loop to schedule timeouts
         self.timeout_fut = None
@@ -73,6 +71,8 @@ class CatchupManager:
         self.catchup_state = self.send_block_idx_req()
 
         self._reset_timeout_fut()
+        # first time wait longer than usual
+        # time.sleep(3 * TIMEOUT_CHECK_INTERVAL)
         self.timeout_fut = asyncio.ensure_future(self._check_timeout())
         self.log.important2("run catchup")
         self.dump_debug_info()
@@ -99,7 +99,7 @@ class CatchupManager:
             # If we have not returned from the loop and the this task has not been canceled, initiate a retry
             self.log.warning("Timeout of {} reached waiting for block idx replies! Resending BlockIndexRequest".format(IDX_REPLY_TIMEOUT))
             self.timeout_fut = None
-            self.run_catchup(ignore=True)   # should be addressed repeat requests only to targeted nodes - raghu todo
+            self.run_catchup(ignore=True)
 
         try:
             await _timeout()
@@ -121,7 +121,7 @@ class CatchupManager:
         self.dump_debug_info()
         return True
 
-    # raghu todo - recv functions can return the status of catchup
+    # raghu todo - recv functions can return the status of catchup - should be ignored by delegates
     def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
         """
         We expect to receive this message from all mn/dn
@@ -133,49 +133,29 @@ class CatchupManager:
 
         self.node_idx_reply_set.add(sender_vk)
 
-        # if self._check_retry_needed() is True:
-        #     self.run_catchup(ignore = True)
-
         if not reply.indices:
             self.log.important("Received BlockIndexReply with no index info from masternode {}".format(sender_vk))
             # self.log.important("responded mn - {}".format(self.node_idx_reply_set))
-            self.catchup_state = not self.check_catchup_done()
+            # self.catchup_state = not self.check_catchup_done()
+            self.check_catchup_done()
             self.dump_debug_info()
             return
 
-        # for boot phase
-        if not self.block_delta_list:
-            self.block_delta_list = reply.indices
-            # self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
-            self.target_blk = self.block_delta_list[-1]
-            self.target_blk_num = self.target_blk.get('blockNum')
-            self.blk_req_ptr_idx = 0
-            self.blk_req_ptr = self.block_delta_list[self.blk_req_ptr_idx]           # 1st blk req to send
-            self.bnum_to_req = self.blk_req_ptr.get('blockNum')
-            self.dump_debug_info()
-        else:                                              # for new request
-            tmp_list = reply.indices
-            # new_target_blk = tmp_list[len(tmp_list)-1]
-            new_target_blk = tmp_list[-1]
-            new_blks = new_target_blk.get('blockNum') - self.target_blk.get('blockNum')
-            if new_blks > 0:
-                # find range to be split from new list
-                upper_idx = len(tmp_list) - 1
-                lower_idx = upper_idx - new_blks
-                verify_blk = tmp_list[lower_idx]
-                assert verify_blk.get('blockNum') == new_target_blk.get('blockNum'), "something is wrong split is not" \
-                                                                                     " getting us to current blk"
-                # slicing new list and appending list
-                # raghu - is this slicing correct?
-                # update_list = tmp_list[lower_idx:len(tmp_list)]
-                update_list = tmp_list[lower_idx+1:upper_idx]
-                self.block_delta_list.append(update_list)
-                # self.target_blk = self.block_delta_list[len(self.block_delta_list) - 1]
-                self.target_blk = self.block_delta_list[-1]
-                self.target_blk_num = self.target_blk.get('blockNum')
-                self.dump_debug_info()
+        tmp_list = reply.indices
+        self.new_target_blk_num = tmp_list[-1].get('blockNum')
+        new_blks = self.new_target_blk_num - self.target_blk_num
+        self.log.important("raghu nt {} tb {} tlist {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
+        if new_blks > 0:
+            self.target_blk_num = self.new_target_blk_num
+            update_list = tmp_list[-new_blks:]
+            self.log.important("update list {}".format(update_list))
+            self.block_delta_list.extend(update_list)
+            # self.dump_debug_info()
 
-        self.process_recv_idx()
+        if not self.awaited_blknum:
+            self.awaited_blknum = self.curr_num
+            self.process_recv_idx()
+        
         # self.log.important2("RCV BIRp")
         self.dump_debug_info()
 
@@ -184,8 +164,8 @@ class CatchupManager:
                       .format(req_blk_num, mn_vk))
         req = BlockDataRequest.create(block_num = req_blk_num)
         self.router.send_msg(req, header=mn_vk.encode())
-        if self.awaited_blknum is None:
-            self.awaited_blknum = req_blk_num
+        # if self.awaited_blknum is None:
+            # self.awaited_blknum = req_blk_num
         # self.log.important2("SEND BDRq")
         self.dump_debug_info()
 
@@ -195,9 +175,7 @@ class CatchupManager:
         # if given block needs to be stored update state/storage delete frm expected DT
         self.log.debugv("Got BlockData reply for block hash {}".format(reply.block_hash))
 
-        self.awaited_blknum = self.block_delta_list[0].get('blockNum')
         rcv_blk_num = reply.block_num
-
         if rcv_blk_num <= self.curr_num:
             self.log.debug("dropping giving blk reply blk-{}:hash-{} ".format(reply.block_num, reply.block_hash))
             return
@@ -205,10 +183,11 @@ class CatchupManager:
         if rcv_blk_num > self.awaited_blknum:
             self.rcv_block_dict[rcv_blk_num] = reply
 
-        if rcv_blk_num == self.awaited_blknum:
+        if (rcv_blk_num == self.awaited_blknum) and (self.awaited_blknum > self.curr_num):
+            self.curr_num = self.awaited_blknum
+            self.process_recv_idx()
             self.update_received_block(block = reply)
 
-        self._update_catchup_state(block_num = rcv_blk_num)
         # self.log.important2("RCV BDRp")
         self.dump_debug_info()
 
@@ -228,6 +207,7 @@ class CatchupManager:
             self.log.debugv("received request from myself dropping the req")
             return
 
+        # need to reupdate self.curr_num if out of catch up mode  raghu todo
         delta_idx = self.get_idx_list(vk = requester_vk, latest_blk_num = self.curr_num,
                                       sender_bhash = request.block_hash)
         self.log.debugv("Delta list {}".format(delta_idx))
@@ -243,9 +223,30 @@ class CatchupManager:
             # return
 
         nw_blk_num = update.block_num
-        nw_blk_owners = update.block_owners
-        for vk in nw_blk_owners:
-            self._send_block_data_req(mn_vk = vk, req_blk_num = nw_blk_num)
+        if self.catchup_state:
+            self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
+            self.target_blk_num = self.curr_num
+            self.awaited_blknum = self.curr_num
+        if (nw_blk_num <= self.curr_num) or (nw_blk_num <= self.target_blk_num):
+            return
+        if nw_blk_num > (self.target_blk_num + 1):
+            self.catchup_state = False
+            # todo reset needed ?
+            self.run_catchup(ignore=True)
+        else: 
+            self.target_blk_num = nw_blk_num
+            if nw_blk_num > (self.curr_num + 1):
+                self.awaited_blknum = nw_blk_num
+                nw_blk_owners = update.block_owners
+                for vk in nw_blk_owners:
+                    self._send_block_data_req(mn_vk = vk, req_blk_num = nw_blk_num)
+            else:
+                # add it to the list 
+                elem = {}
+                elem["blockNum"] = nw_blk_num
+                elem["blockHash"] = update.block_hash
+                elem["blockOwners"] = update.block_owners
+    
 
     # MASTER ONLY CALL
     def _send_block_idx_reply(self, reply_to_vk = None, catchup_list=None):
@@ -277,102 +278,42 @@ class CatchupManager:
 
     # this can flood if far behind, can we control rate of requests?
     def process_recv_idx(self):
-        assert self.bnum_to_req <= self.target_blk_num, "our last request should never overshoot target blk"
-        while self.bnum_to_req <= self.target_blk_num:
+        if (self.awaited_blknum == self.curr_num) and (self.awaited_blknum < self.target_blk_num):
+            self.awaited_blknum = self.awaited_blknum + 1
+            # don't request if it is in stashed list. move to next one
+            while self.awaited_blknum in self.rcv_block_dict:
+                self.awaited_blknum = self.awaited_blknum + 1
+            blknum = 0
+            while (blknum < self.awaited_blknum) and len(self.block_delta_list):
+                self.blk_req_ptr = self.block_delta_list.pop(0)
+                self.log.important("{}".format(self.blk_req_ptr))
+                blknum = self.blk_req_ptr.get('blockNum')
+            assert blknum == self.awaited_blknum, "can't find the index infor for the block num {}".format(self.awaited_blknum)
             mn_list = self.blk_req_ptr.get('blockOwners')
             for vk in mn_list:
-                self._send_block_data_req(mn_vk = vk, req_blk_num = self.bnum_to_req)
+                self._send_block_data_req(mn_vk = vk, req_blk_num = self.awaited_blknum)
 
-            if self.bnum_to_req < self.target_blk_num:
-                self.blk_req_ptr_idx = self.blk_req_ptr_idx + 1
-                self.blk_req_ptr = self.block_delta_list[self.blk_req_ptr_idx]
-                self.bnum_to_req = self.bnum_to_req + 1
 
     def update_received_block(self, block = None):
 
         if self.store_full_blocks is True:
             update_blk_result = bool(MasterOps.evaluate_wr(entry = block._data.to_dict()))
-            StateDriver.update_with_block(block = block)
             assert update_blk_result is True, "failed to update block"
-        else:
-            StateDriver.update_with_block(block = block)
 
-        self._update_catchup_state(block_num = block.block_num)
+        StateDriver.update_with_block(block = block)
 
     def _check_idx_reply_quorum(self):
         # We have enough BlockIndexReplies if 2/3 of Masternodes replied
         min_quorum = math.ceil(len(VKBook.get_masternodes()) * 2/3) - 1   # -1 so we dont include ourselves
         return len(self.node_idx_reply_set) >= min_quorum
 
-    def _update_catchup_state(self, block_num=None):
-        """
-        Recursive Called when we successfully update state and storage
-
-        - cleans up stale states
-        - updates expected/awaited block requirements
-        - resets state if you are at end of catchup
-        :param block_num:
-        :return:
-        """
-        # given block_num was stored removing it pending list
-        # DEBUG -- TODO DELETE
-        self.log.notice("START update_catchup_state with block num {}\nrecv_block_dict: {}\nblock_delta_list: {}"
-                            .format(block_num, self.rcv_block_dict, self.block_delta_list))
-        # END DEBUG
-
-        if block_num in self.rcv_block_dict.keys():
-            self.log.debug("removing store block frm pending {}".format(block_num))
-            self.rcv_block_dict.pop(block_num)
-            self.block_delta_list.pop(0)
-            if self.blk_req_ptr_idx:
-                self.blk_req_ptr_idx = self.blk_req_ptr_idx - 1
-            self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
-
-        # if there is any already received out of order block data with us
-        if len(self.rcv_block_dict) > 0:
-            self.log.debug("Processing out of order received blocks")
-            self.awaited_blknum = self.awaited_blknum + 1
-            block = self.rcv_block_dict.get(self.awaited_blknum)
-            # make recursive call to address 1st condition
-            if block:
-                self.update_received_block(block = block)
-
-        # pending list is empty check if you can exit catch up
-        if len(self.block_delta_list) == 0:
-            assert self.curr_num == self.target_blk_num, "Err target blk and curr block are not same"
-            assert self.curr_hash == self.target_blk.get('blockHash'), "Err target blk and curr block are not same"
-
-            self.log.success("Finished Catchup state, with latest block hash {}!".format(self.curr_hash))
-
-            # reset everything
-            self.catchup_state = self.check_catchup_done()
-            self._reset_timeout_fut()
-
-            # DEBUG -- TODO DELETE
-            self.log.info("END update_catchup_state with block num {}\nrecv_block_dict: {}\nblock_delta_list: {}"
-                          .format(block_num, self.rcv_block_dict, self.block_delta_list))
-            # END DEBUG
-
     def check_catchup_done(self):
-        if self._check_idx_reply_quorum():
-            self._reset_timeout_fut()
-
-            # main list to process
-            self.block_delta_list = []              # list of mn_index dict to process
-            self.target_blk = {}                    # last block in list
-            self.target_blk_num = None
-
-            # process send
-            self.blk_req_ptr = {}                   # current ptr track send blk req
-            self.blk_req_ptr_idx = None             # idx to track ptr in block_delta_list
-            self.bnum_to_req = None
-
-            # received full block could be out of order
-            self.rcv_block_dict = {}
-            self.awaited_blknum = None
+        if self.catchup_state:
             return True
-        else:
-            return False
+        # raghu reset stuff here?  todo
+        self.catchup_state = self._check_idx_reply_quorum() and \
+                             not self.block_delta_list
+        return self.catchup_state
 
     def dump_debug_info(self):
         # TODO change this log to important for debugging
@@ -380,17 +321,14 @@ class CatchupManager:
                             "---- data structures state----"
                             "Pending blk list -> {} "
                             "----Target-----"
-                            "Target block -> {}"
                             "target_blk_num -> {}"
                             "----Current----"
                             "elf.curr_hash - {}, curr_num-{}"
                             "----send req----"
                             "blk_req_ptr - {}"
-                            "blk_req_ptr_idx - {}"
-                            "last_req_blk_num -{}"
                             "----rcv req-----"
                             "rcv_block_dict - {}"
                             "awaited_blknum - {}"
-                            .format(self.catchup_state, self.block_delta_list, self.target_blk, self.target_blk_num,
-                                    self.curr_hash, self.curr_num, self.blk_req_ptr, self.blk_req_ptr_idx,
-                                    self.bnum_to_req, self.rcv_block_dict, self.awaited_blknum))
+                            .format(self.catchup_state, self.block_delta_list, self.target_blk_num,
+                                    self.curr_hash, self.curr_num, self.blk_req_ptr, 
+                                    self.rcv_block_dict, self.awaited_blknum))

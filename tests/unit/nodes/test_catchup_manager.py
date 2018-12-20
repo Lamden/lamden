@@ -10,7 +10,7 @@ from cilantro.storage.state import StateDriver
 from cilantro.messages.block_data.block_data import *
 from cilantro.messages.block_data.state_update import *
 
-import asyncio
+import asyncio, time
 from cilantro.storage.redis import SafeRedis
 
 
@@ -19,6 +19,8 @@ class TestCatchupManager(TestCase):
     def setUp(self):
         SafeRedis.flushall()
         self.manager = None
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
     def tearDown(self):
         if self.manager.timeout_fut and not self.manager.timeout_fut.done():
@@ -54,7 +56,8 @@ class TestCatchupManager(TestCase):
         self.assertTrue(cm.catchup_state)  # catchup_state should be True, as we've only recv 1/2 required responses
 
         cm.recv_block_idx_reply(vk2, index_reply)
-        self.assertFalse(cm.catchup_state)  # Now that we have 2/2 replies, we should be out of Catchup
+        # time.sleep(20)
+        self.assertTrue(cm.catchup_state)  # Now that we have 2/2 replies, we should be out of Catchup
 
     def test_catchup_with_new_blocks(self):
         cm = self._build_manager()
@@ -84,6 +87,10 @@ class TestCatchupManager(TestCase):
         self.assertTrue(cm.catchup_state)
         self.assertEqual(cm.curr_hash, b2)
         self.assertEqual(cm.curr_num, 2)
+
+if __name__ == "__main__":
+    import unittest
+    unittest.main()
 
 """
   9 block index request:

@@ -43,17 +43,17 @@ class BlockAggregator(Worker):
 
         self.tasks = []
 
-        self.curr_block_hash = StateDriver.get_latest_block_hash()
         self.curr_block = BlockContender()
 
         self.pub, self.sub, self.router, self.ipc_router = None, None, None, None  # Set in build_task_list
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
 
+        self.curr_block_hash = StateDriver.get_latest_block_hash()
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
-        assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
-            "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-            .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
+        # assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+            # "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
+            # .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
 
         self.run()
 
