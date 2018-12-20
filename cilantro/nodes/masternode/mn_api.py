@@ -46,7 +46,7 @@ class StorageDriver:
         roots = [sb.merkle_root for sb in sub_blocks]
         block_hash = BlockData.compute_block_hash(sbc_roots=roots, prev_block_hash=prev_block_hash)
 
-        cls.log.important("Attempting to store block number {} with hash {} and previous hash {}"
+        cls.log.debugv("Attempting to store block number {} with hash {} and previous hash {}"
                           .format(blk_num, block_hash, prev_block_hash))
 
         # TODO get actual block owners...
@@ -58,11 +58,11 @@ class StorageDriver:
 
         # Attach the block owners data to the BlockData instance  TODO -- find better solution
         block_data._data.blockOwners = MasterOps.get_blk_owners(block_hash)
-
+        MasterOps.update_tx_map(block_data)
         return block_data
 
     @classmethod
-    def get_transactions(cls, block_hash=None, raw_tx_hash=None, status=None):
+    def get_transactions(cls, raw_tx_hash=None):
         # TODO verify
         pass
 

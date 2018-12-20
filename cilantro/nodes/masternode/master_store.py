@@ -4,6 +4,8 @@ from configparser import SafeConfigParser
 from cilantro.storage.vkbook import VKBook
 from cilantro.logger.base import get_logger
 from cilantro.storage.mongo import MDB
+from cilantro.messages.block_data.block_data import BlockData
+from cilantro.messages.block_data.sub_block import SubBlock
 from cilantro.storage.state import StateDriver
 
 
@@ -91,7 +93,7 @@ class MasterOps:
 
     @classmethod
     def rep_pool_sz(cls):
-        if cls.active_masters < cls.rep_factor:
+        if cls.active_masters < cls. rep_factor:
             cls.log.error("quorum requirement not met")
             return -1
 
@@ -139,7 +141,7 @@ class MasterOps:
 
         if cls.active_masters < cls.quorum_needed:
             cls.log.debug("quorum req not met evaluate_wr blk entry {}".format(entry))
-            MDB.insert_record(entry)
+            MDB.insert_block(entry)
             mn_list = cls.build_wr_list(curr_node_idx = cls.mn_id, jump_idx = 0)
             return cls.update_idx(inserted_blk = entry, node_list = mn_list)
 
@@ -157,7 +159,7 @@ class MasterOps:
 
         if mn_idx == writers:
             cls.log.debug("evaluate_wr blk entry {}".format(entry))
-            MDB.insert_record(entry)
+            MDB.insert_block(entry)
 
         # build list of mn_sign of master nodes updating index db
         mn_list = cls.build_wr_list(curr_node_idx = writers, jump_idx = pool_sz)
@@ -220,3 +222,13 @@ class MasterOps:
         cls.log.debug("print owners {}".format(outcome))
         return owners
 
+    @classmethod
+    def update_tx_map(cls, block: BlockData):
+        map = block.get_tx_hash_to_merkle_leaf()
+        blk_id = block.block_num
+
+        cls.log.important2("Tx map - {}".format(len(map)))
+        for entry in map:
+            entry['block'] = blk_id
+            cls.log.important2("Entry - {}".format(entry))
+            MDB.insert_tx_map(txmap = entry)
