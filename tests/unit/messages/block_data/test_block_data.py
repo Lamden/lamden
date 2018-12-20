@@ -121,6 +121,5 @@ class TestBlockData(TestCase):
         self.assertEqual(clone_from_dict, clone_from_bytes_to_dict)
 
 
-
 if __name__ == '__main__':
     unittest.main()
