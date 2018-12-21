@@ -248,8 +248,8 @@ class BlockManager(Worker):
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
             # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
             # self.state = DBState.CURRENT
-            if not self.is_catchup_done:
-                self.is_catchup_done = True
+            if not self.db_state.is_catchup_done:
+                self.db_state.is_catchup_done = True
                 self.send_updated_db_msg()
 
     def recv_block_idx_reply(self, sender, reply):
@@ -259,8 +259,8 @@ class BlockManager(Worker):
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
             # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
             # self.state = DBState.CURRENT
-            if not self.is_catchup_done:
-                self.is_catchup_done = True
+            if not self.db_state.is_catchup_done:
+                self.db_state.is_catchup_done = True
                 self.send_updated_db_msg()
 
     def handle_router_msg(self, frames):
