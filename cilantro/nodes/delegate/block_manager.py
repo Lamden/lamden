@@ -168,7 +168,7 @@ class BlockManager(Worker):
 
     async def catchup_db_state(self):
         # do catch up logic here
-        await asyncio.sleep(2)  # so pub/sub connections can complete
+        await asyncio.sleep(6)  # so pub/sub connections can complete
         assert self.db_state.catchup_mgr, "Expected catchup_mgr initialized at this point"
         self.log.info("Catching up...")
 
