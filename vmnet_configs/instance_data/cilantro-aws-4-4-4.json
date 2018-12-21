@@ -1,131 +1,131 @@
 [
     {
-        "AmiLaunchIndex": 3,
-        "PublicIpAddress": "18.191.205.1",
-        "Tags": [
-            {
-                "Key": "Name",
-                "Value": "cilantro:aws-fix:delegate-run"
-            }
-        ]
-    },
-    {
         "AmiLaunchIndex": 1,
-        "PublicIpAddress": "52.15.186.101",
+        "PublicIpAddress": "18.188.195.245",
         "Tags": [
             {
                 "Key": "Name",
-                "Value": "cilantro:aws-fix:delegate-run"
-            }
-        ]
-    },
-    {
-        "AmiLaunchIndex": 2,
-        "PublicIpAddress": "3.16.50.197",
-        "Tags": [
-            {
-                "Key": "Name",
-                "Value": "cilantro:aws-fix:delegate-run"
+                "Value": "cilantro:test-fail-case:witness-run"
             }
         ]
     },
     {
         "AmiLaunchIndex": 0,
-        "PublicIpAddress": "18.191.223.33",
+        "PublicIpAddress": "3.17.52.93",
         "Tags": [
             {
                 "Key": "Name",
-                "Value": "cilantro:aws-fix:delegate-run"
-            }
-        ]
-    },
-    {
-        "AmiLaunchIndex": 2,
-        "PublicIpAddress": "18.219.255.59",
-        "Tags": [
-            {
-                "Key": "Name",
-                "Value": "cilantro:aws-fix:witness-run"
+                "Value": "cilantro:test-fail-case:witness-run"
             }
         ]
     },
     {
         "AmiLaunchIndex": 3,
-        "PublicIpAddress": "52.15.40.164",
+        "PublicIpAddress": "18.224.219.159",
         "Tags": [
             {
                 "Key": "Name",
-                "Value": "cilantro:aws-fix:witness-run"
-            }
-        ]
-    },
-    {
-        "AmiLaunchIndex": 0,
-        "PublicIpAddress": "18.222.163.255",
-        "Tags": [
-            {
-                "Key": "Name",
-                "Value": "cilantro:aws-fix:witness-run"
-            }
-        ]
-    },
-    {
-        "AmiLaunchIndex": 1,
-        "PublicIpAddress": "18.191.21.65",
-        "Tags": [
-            {
-                "Key": "Name",
-                "Value": "cilantro:aws-fix:witness-run"
-            }
-        ]
-    },
-    {
-        "AmiLaunchIndex": 0,
-        "PublicIpAddress": "18.191.236.49",
-        "Tags": [
-            {
-                "Key": "Name",
-                "Value": "cilantro:aws-fix:mgmt-run"
-            }
-        ]
-    },
-    {
-        "AmiLaunchIndex": 0,
-        "PublicIpAddress": "18.222.88.229",
-        "Tags": [
-            {
-                "Key": "Name",
-                "Value": "cilantro:aws-fix:masternode-run"
-            }
-        ]
-    },
-    {
-        "AmiLaunchIndex": 3,
-        "PublicIpAddress": "3.16.218.92",
-        "Tags": [
-            {
-                "Key": "Name",
-                "Value": "cilantro:aws-fix:masternode-run"
-            }
-        ]
-    },
-    {
-        "AmiLaunchIndex": 1,
-        "PublicIpAddress": "13.58.6.184",
-        "Tags": [
-            {
-                "Key": "Name",
-                "Value": "cilantro:aws-fix:masternode-run"
+                "Value": "cilantro:test-fail-case:witness-run"
             }
         ]
     },
     {
         "AmiLaunchIndex": 2,
-        "PublicIpAddress": "18.219.44.79",
+        "PublicIpAddress": "18.220.220.120",
         "Tags": [
             {
                 "Key": "Name",
-                "Value": "cilantro:aws-fix:masternode-run"
+                "Value": "cilantro:test-fail-case:witness-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 3,
+        "PublicIpAddress": "3.16.202.50",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-fail-case:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "18.191.2.190",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-fail-case:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 2,
+        "PublicIpAddress": "18.216.146.44",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-fail-case:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "13.58.142.36",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-fail-case:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "18.220.55.187",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-fail-case:mgmt-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "18.223.207.197",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-fail-case:masternode-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "3.17.115.168",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-fail-case:masternode-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 3,
+        "PublicIpAddress": "52.15.67.235",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-fail-case:masternode-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 2,
+        "PublicIpAddress": "3.16.104.23",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:test-fail-case:masternode-run"
             }
         ]
     }

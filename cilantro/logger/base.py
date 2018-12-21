@@ -7,7 +7,6 @@ import os, sys
 from os.path import dirname
 from logging.handlers import TimedRotatingFileHandler
 import cilantro
-from vmnet.cloud.aws import S3Handler
 
 logging.getLogger("paramiko").setLevel(logging.WARNING)
 logging.getLogger('boto3').setLevel(logging.WARNING)

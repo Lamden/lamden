@@ -56,7 +56,7 @@ class DBState:
     """ convenience struct to maintain db snapshot state data in one place """
     def __init__(self):
         self.cur_block_hash = StateDriver.get_latest_block_hash()
-        # self.cur_block_num = 0
+        self.cur_block_num = StateDriver.get_latest_block_num()
         self.my_new_block_hash = None
         self.new_block_hash = None
         self.catchup_mgr = None
@@ -170,14 +170,16 @@ class BlockManager(Worker):
         # only when one can connect to quorum masters and get db update, move to next step
         # at the end, it has updated its db state to consensus latest
 
-        await asyncio.sleep(8)  # so pub/sub connections can complete
+        await asyncio.sleep(2)  # so pub/sub connections can complete
+        assert self.db_state.catchup_mgr, "Expected catchup_mgr initialized at this point"
         self.log.info("Catching up...")
+
         self.db_state.catchup_mgr.run_catchup()
-        while not self.db_state.catchup_mgr:
-            await asyncio.sleep(2)
 
         # TODO needs to be deleted after catchup is working. for now, assume that it is caught up
         self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
+        self.db_state.cur_block_num = StateDriver.get_latest_block_num()
+
         await asyncio.sleep(5)
         self.send_updated_db_msg()
 
@@ -231,13 +233,13 @@ class BlockManager(Worker):
         msg_hash = envelope.message_hash
 
         if isinstance(msg, NewBlockNotification):
-            self.log.important3("BM got NewBlockNotification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
+            self.log.info("BM got NewBlockNotification {} from sender {}".format(msg, envelope.sender))
             self.handle_block_notification(msg, True)
         elif isinstance(msg, SkipBlockNotification):
-            self.log.important3("BM got SkipBlockNotification from sender {} with hash {}".format(envelope.sender, msg.prev_block_hash))
+            self.log.info("BM got SkipBlockNotification {} from sender {}".format(msg, envelope.sender))
             self.handle_block_notification(msg, False)
         elif isinstance(msg, FailedBlockNotification):
-            self.log.important3("BM got FailedBlockNotification from sender {} with hash {}".format(envelope.sender, msg.prev_block_hash))
+            self.log.important3("BM got FailedBlockNotification {} from sender {}".format(msg, envelope.sender))
             self.handle_fail_block(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
@@ -254,12 +256,9 @@ class BlockManager(Worker):
             self.send_updated_db_msg()
 
     def handle_router_msg(self, frames):
-        # self.log.important("Got msg over tcp ROUTER socket with frames: {}".format(frames))
-        # TODO implement
-        # TODO verify that the first frame (identity frame) matches the verifying key on the Envelope's seal
-
         envelope = Envelope.from_bytes(frames[-1])
         sender = envelope.sender
+        assert sender.encode() == frames[0], "Sender vk {} does not match id frame {}".format(sender.encode(), frames[0])
         msg = envelope.message
         msg_hash = envelope.message_hash
 
@@ -325,6 +324,7 @@ class BlockManager(Worker):
         if self.db_state.my_new_block_hash != self.db_state.new_block_hash:    # holy cow - mismatch
             self.log.important("Out-of-Consensus - BlockNotification doesn't match my block!")
             self.db_state.cur_block_hash = None
+            self.db_state.cur_block_num = None
             # check input hashes and send align / skip messages using input-hash  - don't start next block
             self.send_input_align_msg(block)
             if self.db_state.is_new_block:
@@ -342,12 +342,12 @@ class BlockManager(Worker):
 
         if self.db_state.is_new_block:
             self.db_state.cur_block_hash = self.db_state.new_block_hash
+            self.db_state.cur_block_num = block.block_num
             self.log.notice("Setting latest block number to {} and block hash to {}"
-                                .format(block.block_num, self.db_state.cur_block_hash))
+                            .format(block.block_num, self.db_state.cur_block_hash))
             StateDriver.set_latest_block_info(self.db_state.cur_block_hash, block.block_num)
 
         self.send_updated_db_msg()
-
 
     def update_db_if_ready(self):
         if not self.db_state.my_new_block_hash or not self.db_state.new_block_hash:
@@ -364,13 +364,19 @@ class BlockManager(Worker):
     # update current db state to the new block
     def handle_block_notification(self, block_data: BlockMetaData, is_new_block: bool):
         new_block_hash = block_data.block_hash
-        self.log.info("Got {} block notification with block hash {}".format("new" if is_new_block else "empty", new_block_hash))
+        self.log.notice("Got {} block notification {}".format("new" if is_new_block else "empty", block_data))
 
         if not self.db_state.cur_block_hash:
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
+            self.db_state.cur_block_num = StateDriver.get_latest_block_num()
 
         if new_block_hash == self.db_state.cur_block_hash:
             self.log.info("New block notification is same as current state. Ignoring.")
+            return
+
+        if block_data.block_num < self.db_state.cur_block_num:
+            self.log.info("New block notification references block num {} that is less than our curr block num {}. "
+                          "Ignoring.".format(block_data.block_num, self.db_state.cur_block_num))
             return
 
         if (block_data.prev_block_hash != self.db_state.cur_block_hash):
@@ -389,6 +395,7 @@ class BlockManager(Worker):
             self.db_state.is_new_block = is_new_block
             self.update_db_if_ready()
 
+        # TODO why is this wrapped up in a try/catch with no failure handling? looks kinda sketchy --davis
         if block_data.block_num % DUMP_TO_CACHE_EVERY_N_BLOCKS == 0:
             try: SafeRedis.bgsave()
             except: pass

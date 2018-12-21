@@ -10,7 +10,10 @@ def start_sub(url):
     sock.setsockopt(zmq.SUBSCRIBE, b'')
 
     log.important('conn')
-    sock.connect(url)
+    sock.bind(url)
+    sock.bind(url)
+    sock.bind(url)
+    sock.bind(url)
 
     log.important('slep')
     time.sleep(1)
@@ -27,7 +30,9 @@ def start_pub(url):
     sock = ctx.socket(zmq.PUB)
 
     log.important2('bind')
-    sock.bind(url)
+    sock.connect(url)
+    sock.connect(url)
+    sock.connect(url)
 
     count = 0
     while True:

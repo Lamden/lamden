@@ -43,17 +43,17 @@ class BlockAggregator(Worker):
 
         self.tasks = []
 
-        self.curr_block_hash = StateDriver.get_latest_block_hash()
         self.curr_block = BlockContender()
 
         self.pub, self.sub, self.router, self.ipc_router = None, None, None, None  # Set in build_task_list
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
 
+        self.curr_block_hash = StateDriver.get_latest_block_hash()
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
-        assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
-            "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-            .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
+        # assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+            # "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
+            # .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
 
         self.run()
 
@@ -163,6 +163,8 @@ class BlockAggregator(Worker):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         sender = envelope.sender
+
+        assert sender.encode() == frames[0], "Sender vk {} does not match id frame {}".format(sender.encode(), frames[0])
         self.log.spam("Got ROUTER msg from sender {} with id frame {}\nMessage: {}".format(sender, frames[0], msg))
 
         if isinstance(msg, BlockDataRequest):
