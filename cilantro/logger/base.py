@@ -7,6 +7,7 @@ import os, sys
 from os.path import dirname
 from logging.handlers import TimedRotatingFileHandler
 import cilantro
+# from vmnet.cloud.aws import S3Handler
 
 logging.getLogger("paramiko").setLevel(logging.WARNING)
 logging.getLogger('boto3').setLevel(logging.WARNING)
@@ -136,6 +137,7 @@ class MockLogger:
     def __getattr__(self, item):
         return _ignore
 
+
 def get_logger(name=''):
     if _LOG_LVL == 0:
         return MockLogger()
@@ -150,9 +152,9 @@ def get_logger(name=''):
         ColoredFileHandler('{}_color'.format(filename), delay=True, when="m", interval=30, backupCount=5),
         ColoredStreamHandler()
     ]
-
-    if os.getenv('VMNET_CLOUD'):
-        filehandlers.append(S3Handler())
+    #
+    # if os.getenv('VMNET_CLOUD'):
+    #     filehandlers.append(S3Handler())
 
     logging.basicConfig(
         format=format,

@@ -39,6 +39,13 @@ class MDB:
     mn_coll_idx = None
     init_idx_db = False
 
+    # local tx db
+
+    mn_client_tx = None
+    mn_db_tx = None
+    mn_coll_tx = None
+    init_tx_db = False
+
     def __init__(self, s_key):
         if self.init_mdb is False:
             MDB.sign_key = s_key
@@ -73,6 +80,7 @@ class MDB:
         else:
             cls.init_mdb = True
             cls.init_idx_db = True
+            cls.init_tx_db = True
 
         assert cls.init_idx_db is True, "failed to init index table"
 
@@ -92,12 +100,19 @@ class MDB:
         cls.mn_db_idx = cls.mn_client_idx.get_database()
         cls.mn_coll_idx = cls.mn_db_idx['index']
 
+        database = cls.cfg.get('MN_DB', 'mn_tx_database')
+        tx_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+        cls.log.debugv("index uri {}".format(tx_uri))
+        cls.mn_client_tx = MongoClient(tx_uri)
+        cls.mn_db_tx = cls.mn_client_tx.get_database()
+        cls.mn_coll_tx = cls.mn_db_tx['tx']
+
     @classmethod
     def create_genesis_blk(cls):
 
         # create insert genesis blk
         block = GenesisBlockData.create(sk = cls.sign_key, vk = cls.verify_key)
-        cls.init_mdb = cls.insert_record(block_dict=block._data.to_dict())
+        cls.init_mdb = cls.insert_block(block_dict=block._data.to_dict())
         assert cls.init_mdb is True, "failed to create genesis block"
 
         cls.log.debugv('start_db init set {}'.format(cls.init_mdb))
@@ -124,7 +139,7 @@ class MDB:
         Wr to store or index
     '''
     @classmethod
-    def insert_record(cls, block_dict=None):
+    def insert_block(cls, block_dict=None):
         if block_dict is None:
             return False
 
@@ -139,8 +154,13 @@ class MDB:
         if dict is None:
             return None
         idx_entry = cls.mn_coll_idx.insert(my_dict)
-        cls.log.info("insert_idx_record -> {}".format(idx_entry))
+        cls.log.spam("insert_idx_record -> {}".format(idx_entry))
         return True
+
+    @classmethod
+    def insert_tx_map(cls, txmap):
+        obj = cls.mn_coll_tx.insert(txmap)
+        cls.log.debugv("insert_idx_record -> {}".format(obj))
 
     '''
         reading from index or store
@@ -183,13 +203,20 @@ class MDB:
                 cls.log.debug("result {}".format(result))
 
             if type is 'MDB':
-                result = cls.mn_collection.find(query)
-                for x in result:
+                outcome = cls.mn_collection.find(query)
+                for x in outcome:
                     result.update(x)
                     cls.log.spam("result {}".format(x))
 
+            if type is 'tx':
+                outcome = cls.mn_coll_tx.find(query)
+                assert result != 1, "we have duplicate transactions dumping result {}".format(result)
+                for x in outcome:
+                    cls.log.important2("RESULT X {} count {}".format(x, MongoTools.get_count(result)))
+                    result.update(x)
+
         if len(result) > 0:
-            cls.log.spam("result => {}".format(result))
+            cls.log.important("result => {}".format(result))
             return result
         else:
             cls.log.spam("result => {}".format(result))
