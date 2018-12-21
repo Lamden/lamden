@@ -64,6 +64,7 @@ class DBState:
         self.num_skip_block = 0
         self.num_fail_block = 0
         self.is_new_block = False
+        self.is_catchup_done = False
         # self.state = DBState.CATCHUP
         self.next_block = {}
         self.sub_block_hash_map = {}
@@ -247,7 +248,9 @@ class BlockManager(Worker):
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
             # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
             # self.state = DBState.CURRENT
-            self.send_updated_db_msg()
+            if not self.is_catchup_done:
+                self.is_catchup_done = True
+                self.send_updated_db_msg()
 
     def recv_block_idx_reply(self, sender, reply):
         # will it block? otherwise, it may not work
@@ -256,7 +259,9 @@ class BlockManager(Worker):
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
             # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
             # self.state = DBState.CURRENT
-            self.send_updated_db_msg()
+            if not self.is_catchup_done:
+                self.is_catchup_done = True
+                self.send_updated_db_msg()
 
     def handle_router_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
