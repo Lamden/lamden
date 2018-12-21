@@ -59,7 +59,7 @@ fi
 
 # Concatenate into FQDN
 NFQDN="$PREFIX$NODETYPE$NODEINDEX.$DNS_NAME"
-FQDN=${FQDN,,}
+FQDN=${NFQDN,,}
 
 # Loop for a while to check and see if upstream DNS is queryable and responding with the correct IP
 # this is a fix due to race conditions on launch with DNS being misconfigured or not updated in time
