@@ -57,6 +57,12 @@ then
     PREFIX="${SUBNET_PREFIX}-"
 fi
 
+if [[ ! "$NODETYPE" =~ $TYPEREGEX ]]
+then
+    echo "Node type $NODETYPE SSL is turned off, not generating cert"
+    exit 0
+fi
+
 # Concatenate into FQDN
 NFQDN="$PREFIX$NODETYPE$NODEINDEX.$DNS_NAME"
 FQDN=${NFQDN,,}
