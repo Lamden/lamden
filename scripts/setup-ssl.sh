@@ -115,7 +115,7 @@ do
     if nslookup $FQDN
     then
         ipaddr=$(dig +short $FQDN @resolver1.opendns.com)
-        myip=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
+        myip=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
         if [ "$ipaddr" == "$myip" ]
         then
             found=true
