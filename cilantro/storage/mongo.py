@@ -74,7 +74,7 @@ class MDB:
         cls.setup_db()
 
         prev_idx = cls.query_index(n_blks = 1)
-        cls.log.important('prev idx {}'.format(prev_idx))
+        # cls.log.important('prev idx {}'.format(prev_idx))
         if len(prev_idx) == 0:
             cls.init_idx_db = cls.create_genesis_blk()
         else:
@@ -212,11 +212,11 @@ class MDB:
                 outcome = cls.mn_coll_tx.find(query)
                 assert result != 1, "we have duplicate transactions dumping result {}".format(result)
                 for x in outcome:
-                    cls.log.important2("RESULT X {} count {}".format(x, MongoTools.get_count(result)))
+                    # cls.log.important2("RESULT X {} count {}".format(x, MongoTools.get_count(result)))
                     result.update(x)
 
         if len(result) > 0:
-            cls.log.important("result => {}".format(result))
+            # cls.log.important("result => {}".format(result))
             return result
         else:
             cls.log.spam("result => {}".format(result))

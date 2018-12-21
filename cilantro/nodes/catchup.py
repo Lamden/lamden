@@ -9,7 +9,7 @@ from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.storage.mongo import MDB
 from cilantro.nodes.masternode.master_store import MasterOps
 from cilantro.messages.block_data.block_data import BlockData
-from cilantro.messages.block_data.block_metadata import NewBlockNotification
+from cilantro.messages.block_data.block_metadata import BlockMetaData
 from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest
 
 
@@ -136,7 +136,7 @@ class CatchupManager:
         tmp_list = reply.indices
         self.new_target_blk_num = tmp_list[-1].get('blockNum')
         new_blks = self.new_target_blk_num - self.target_blk_num
-        self.log.important("raghu nt {} tb {} tlist {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
+        # self.log.important("nt {} tb {} tlist {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
         if new_blks > 0:
             self.target_blk_num = self.new_target_blk_num
             update_list = tmp_list[-new_blks:]
@@ -181,8 +181,8 @@ class CatchupManager:
 
         if (rcv_blk_num == self.awaited_blknum):
             self.curr_num = self.awaited_blknum
-            self.process_recv_idx()
             self.update_received_block(block = reply)
+            self.process_recv_idx()
 
 
     def recv_block_data_reply(self, reply: BlockData):
@@ -219,12 +219,8 @@ class CatchupManager:
         self.dump_debug_info()
         self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
 
-    def recv_new_blk_notif(self, update: NewBlockNotification):
+    def _recv_blk_notif(self, update: BlockMetaData):
         # can get any time - hopefully one incremental request, how do you handle it in all cases?
-        # if self.catchup_state is False:
-            # self.log.error("Err we shouldn't be getting new with catchup False")
-            # return
-
         nw_blk_num = update.block_num
         if self.is_caught_up:
             self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
@@ -232,24 +228,24 @@ class CatchupManager:
             self.awaited_blknum = self.curr_num
         if (nw_blk_num <= self.curr_num) or (nw_blk_num <= self.target_blk_num):
             return
+        self.is_caught_up = False
+        self.node_idx_reply_set.clear()
         if nw_blk_num > (self.target_blk_num + 1):
-            self.is_caught_up = False
-            # todo reset needed ? rpc need to reset index reply set
             self.run_catchup(ignore=True)
         else: 
+            # actually you can request block data directly
+            # elem = {}
+            # elem["blockNum"] = nw_blk_num
+            # elem["blockHash"] = update.block_hash
+            # elem["blockOwners"] = update.block_owners
+            # self.block_delta_list.append(elem)
             self.target_blk_num = nw_blk_num
-            if nw_blk_num > (self.curr_num + 1):
-                self.awaited_blknum = nw_blk_num
-                nw_blk_owners = update.block_owners
-                for vk in nw_blk_owners:
-                    self._send_block_data_req(mn_vk = vk, req_blk_num = nw_blk_num)
-            else:
-                # add it to the list 
-                elem = {}
-                elem["blockNum"] = nw_blk_num
-                elem["blockHash"] = update.block_hash
-                elem["blockOwners"] = update.block_owners
+            for vk in update.block_owners:
+                self._send_block_data_req(mn_vk = vk, req_blk_num = nw_blk_num)
     
+    def recv_new_blk_notif(self, update: BlockMetaData):
+        self._recv_blk_notif(update)
+        return self.is_catchup_done()
 
     # todo handle mismatch between redis and monodb
     # MASTER ONLY CALL
@@ -283,8 +279,8 @@ class CatchupManager:
     # removed flooding, but it could be too sequential?
     # use futures to control rate of requests?
     def process_recv_idx(self):
-        if (self.awaited_blknum == self.curr_num) and (self.awaited_blknum < self.target_blk_num):
-            self.awaited_blknum = self.awaited_blknum + 1
+        if (self.awaited_blknum <= self.curr_num) and (self.awaited_blknum < self.target_blk_num):
+            self.awaited_blknum = self.curr_num + 1
             # don't request if it is in stashed list. move to next one
             while self.awaited_blknum in self.rcv_block_dict:
                 self.awaited_blknum = self.awaited_blknum + 1

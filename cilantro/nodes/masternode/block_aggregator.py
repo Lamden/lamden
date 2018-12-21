@@ -140,14 +140,8 @@ class BlockAggregator(Worker):
             else:
                 self.recv_sub_block_contender(sender, msg)
 
-        elif isinstance(msg, NewBlockNotification):
-            if not self.catchup_manager.is_catchup_done():
-                self.catchup_manager.recv_new_blk_notif(msg)
-            else:
-                self.recv_new_block_notif(sender, msg)
-
-        elif isinstance(msg, SkipBlockNotification):
-            self.recv_skip_block_notif(sender, msg)
+        elif isinstance(msg, NewBlockNotification) or isinstance(msg, SkipBlockNotification):
+            self.recv_new_block_notif(sender, msg)
 
         elif isinstance(msg, FailedBlockNotification):
             self.recv_fail_block_notif(sender, msg)
@@ -234,7 +228,7 @@ class BlockAggregator(Worker):
     def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
         message = EmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
-        skip_notif = SkipBlockNotification.create_from_sub_blocks(prev_block_hash=self.curr_block_hash, sub_blocks=sub_blocks)
+        skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, StateDriver.get_latest_block_num()+1, sub_blocks)
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
@@ -245,11 +239,12 @@ class BlockAggregator(Worker):
 
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
         self.log.debugv("MN got new block notification: {}".format(notif))
-        # TODO implement
 
-    def recv_skip_block_notif(self, sender_vk: str, notif: SkipBlockNotification):
-        self.log.debugv("MN got skip block notification: {}".format(notif))
-        # TODO implement
+        if notif.block_num > StateDriver.get_latest_block_num():
+            self.log.info("Block num {} on NBC does not match our block num! Triggering catchup")
+            self.catchup_manager.recv_new_blk_notif(notif)
+        else:
+            self.log.debugv("Block num on NBC is LTE that ours. Ignoring")
 
     def recv_fail_block_notif(self, sender_vk: str, notif: FailedBlockNotification):
         self.log.debugv("MN got fail block notification: {}".format(notif))

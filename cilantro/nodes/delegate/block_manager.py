@@ -72,13 +72,14 @@ class DBState:
 
     def reset(self):
         # reset all the state info
-        self.sub_block_hash_map.clear()
-        self.next_block.clear()
         self.my_new_block_hash = None
         self.new_block_hash = None
         self.num_empty_sbc = 0
         self.num_skip_block = 0
-        self.num_fail_block = 0     # subtract by num_of_masters here     raghu todo
+        self.num_fail_block = 0
+        self.is_new_block = False
+        self.next_block.clear()
+        self.sub_block_hash_map.clear()
         self.input_hash_map.clear()
 
 
@@ -241,27 +242,27 @@ class BlockManager(Worker):
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
 
+    def set_catchup_done(self):
+        self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
+        if not self.db_state.is_catchup_done:
+            self.db_state.is_catchup_done = True
+            self.send_updated_db_msg()
+
     def recv_block_data_reply(self, reply):
         # will it block? otherwise, it may not work
         if self.db_state.catchup_mgr.recv_block_data_reply(reply):
-            # TODO update latest block hash (& next one if needed) locally
-            self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
-            # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
-            # self.state = DBState.CURRENT
-            if not self.db_state.is_catchup_done:
-                self.db_state.is_catchup_done = True
-                self.send_updated_db_msg()
+            self.set_catchup_done()
 
     def recv_block_idx_reply(self, sender, reply):
         # will it block? otherwise, it may not work
         if self.db_state.catchup_mgr.recv_block_idx_reply(sender, reply):
-            # TODO update latest block hash (& next one if needed) locally
-            self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
-            # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
-            # self.state = DBState.CURRENT
-            if not self.db_state.is_catchup_done:
-                self.db_state.is_catchup_done = True
-                self.send_updated_db_msg()
+            self.set_catchup_done()
+
+    def recv_block_notif(self, block: BlockMetaData):
+        self.db_state.is_catchup_done = False
+        if self.db_state.catchup_mgr.recv_new_blk_notif(block):
+            self.set_catchup_done()
+   
 
     def handle_router_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -331,13 +332,11 @@ class BlockManager(Worker):
         block = self.db_state.next_block[self.db_state.new_block_hash][0]
         if self.db_state.my_new_block_hash != self.db_state.new_block_hash:    # holy cow - mismatch
             self.log.important("Out-of-Consensus - BlockNotification doesn't match my block!")
-            self.db_state.cur_block_hash = None
-            self.db_state.cur_block_num = None
             # check input hashes and send align / skip messages using input-hash  - don't start next block
             self.send_input_align_msg(block)
             if self.db_state.is_new_block:
                 # need to send block-data to catchup to update
-                self.recv_block_data_reply(block)     # raghu todo check what is this function doing? now block could be either new or empty
+                self.recv_block_notif(block)
             else:
                 self.send_updated_db_msg()
             return
@@ -364,10 +363,7 @@ class BlockManager(Worker):
         self.update_db()
 
         # reset all the state info
-        self.db_state.sub_block_hash_map.clear()
-        self.db_state.next_block.clear()
-        self.db_state.my_new_block_hash = None
-        self.db_state.new_block_hash = None
+        self.db_state.reset()
 
     # update current db state to the new block
     def handle_block_notification(self, block_data: BlockMetaData, is_new_block: bool):
@@ -387,12 +383,11 @@ class BlockManager(Worker):
                           "Ignoring.".format(block_data.block_num, self.db_state.cur_block_num))
             return
 
-        if (block_data.prev_block_hash != self.db_state.cur_block_hash):
-            self.log.warning("New Block Notif prev hash {} does not match current hash {}!"
+        new_blk_num = self.db_state.cur_block_num + 1
+        if (new_blk_num < block_data.block_num):
+            self.log.warning("Block Notif prev hash {} does not match current hash {}!"
                              .format(block_data.prev_block_hash, self.db_state.cur_block_hash))
-            # TODO should we enter catchup here?
-            self.db_state.cur_block_hash = None
-            self.recv_block_data_reply(block_data)
+            self.recv_block_notif(block_data)
             return
 
         count = self.db_state.next_block.get(new_block_hash)[1] + 1 if new_block_hash in self.db_state.next_block else 1
@@ -413,12 +408,7 @@ class BlockManager(Worker):
             return
 
         # reset all the state info
-        self.db_state.sub_block_hash_map.clear()
-        self.db_state.next_block.clear()
-        self.db_state.my_new_block_hash = None
-        self.db_state.new_block_hash = None
-        self.db_state.num_empty_sbc = 0
-        self.db_state.num_skip_block = 0
+        self.db_state.reset()
 
         self.send_updated_db_msg()
 
@@ -429,6 +419,7 @@ class BlockManager(Worker):
 
         if not self.db_state.cur_block_hash:
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
+            self.db_state.cur_block_num = StateDriver.get_latest_block_num()
 
         if skip_block.prev_block_hash != self.db_state.cur_block_hash:
             self.log.warning("Got SkipBlockNotif with prev hash {} that does not match our current hash {}!!!"
@@ -462,15 +453,9 @@ class BlockManager(Worker):
             # add a log that it is not ready yet
             self.log.important("Don't have quorum yet to handle fail block {}".format(prev_block_hash))
             return
+
         # reset all the state info
-        self.db_state.sub_block_hash_map.clear()
-        self.db_state.next_block.clear()
-        self.db_state.my_new_block_hash = None
-        self.db_state.new_block_hash = None
-        self.db_state.num_empty_sbc = 0
-        self.db_state.num_skip_block = 0
-        self.db_state.num_fail_block = 0     # subtract by num_of_masters here     raghu todo
-        self.db_state.input_hash_map.clear()
+        self.db_state.reset()
 
         for idx in range(NUM_SB_BUILDERS):
             self._send_msg_over_ipc(sb_index=idx, message=block_data)

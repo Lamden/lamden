@@ -5,13 +5,21 @@
         "ANNIHILATE": true
     },
     "aws": {
+        "use_dns": true,
+        "use_elastic_ips": false,
+        "dns_configuration": {
+            "TTL": 20,
+            "service": "route53",
+            "domain_name": "anarchynet.io",
+            "record_type": "A",
+            "subnet_prefix": "davisnet"
+        },
         "logging": {
             "enabled": true,
             "interval": 60,
             "arn_name": "ec2-cloud-watch",
-            "arn_id": "arn:aws:iam::929772747755:instance-profile/ec2-cloud-watch"
+            "arn_id": "arn:aws:iam::622633509017:instance-profile/ec2-cloud-watch"
         },
-        "use_elastic_ips": true,
         "security_groups": {
             "simple_https": {
                 "name": "simple_https",
@@ -65,7 +73,7 @@
                 "name": "cilantro_base",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "wednesday-night-pump",
+                "branch": "thurs-night-pump",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0f65671a86f061fcd",
@@ -81,7 +89,7 @@
                 "name": "cilantro_mn",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "wednesday-night-pump",
+                "branch": "thurs-night-pump",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0222655b32f6d9d08",

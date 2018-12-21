@@ -227,10 +227,10 @@ class MasterOps:
         map = block.get_tx_hash_to_merkle_leaf()
         blk_id = block.block_num
 
-        cls.log.important2("Tx map - {}".format(len(map)))
+        # cls.log.important2("Tx map - {}".format(len(map)))
         for entry in map:
             entry['block'] = blk_id
-            cls.log.important2("Entry - {}".format(entry))
+            # cls.log.important2("Entry - {}".format(entry))
             MDB.insert_tx_map(txmap = entry)
 
     @classmethod
