@@ -102,11 +102,15 @@ class God:
 
     @classmethod
     def _pump_it(cls, rate: int, gen_func=None, use_poisson=True, sleep_sometimes=False, active_bounds=(120, 240),
-                 sleep_bounds=(20, 60)):
+                 sleep_bounds=(20, 60), pump_wait=0):
         """
         Pump random transactions from random users to Masternode's REST endpoint at an average rate of 'rate'
         transactions per second. This func blocks.
         """
+        if pump_wait > 0:
+            cls.log.important("Pumper sleeping {} seconds before starting...".format(pump_wait))
+            time.sleep(pump_wait)
+
         if not gen_func:
             gen_func = cls._default_gen_func()
 
