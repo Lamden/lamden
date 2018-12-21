@@ -152,8 +152,8 @@ def get_logger(name=''):
         ColoredStreamHandler()
     ]
 
-    if os.getenv('VMNET_CLOUD'):
-        filehandlers.append(AWSCloudWatchHandler())
+    # if os.getenv('VMNET_CLOUD'):
+    #     filehandlers.append(AWSCloudWatchHandler())
 
     logging.basicConfig(
         format=format,

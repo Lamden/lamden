@@ -5,13 +5,13 @@
         "ANNIHILATE": true
     },
     "aws": {
+        "profile_name": "production",
         "logging": {
             "enabled": true,
             "interval": 60,
             "arn_name": "ec2-cloud-watch",
             "arn_id": "arn:aws:iam::622633509017:instance-profile/ec2-cloud-watch"
         },
-        "use_elastic_ips": true,
         "security_groups": {
             "simple_https": {
                 "name": "simple_https",
@@ -73,7 +73,7 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0222655b32f6d9d08",
                 "update_commands": [
-                    "pip3 install vmnet==0.5.65",
+                    "pip3 install vmnet --upgrade --no-cache-dir",
                     "pip3 install seneca --upgrade --no-cache-dir"
                 ]
             },
@@ -89,7 +89,7 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-09cddca33b912825e",
                 "update_commands": [
-                    "pip3 install vmnet==0.5.65",
+                    "pip3 install vmnet --upgrade --no-cache-dir",
                     "pip3 install seneca --upgrade --no-cache-dir"
                 ]
             }
