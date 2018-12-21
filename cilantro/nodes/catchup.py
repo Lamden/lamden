@@ -233,8 +233,9 @@ class CatchupManager:
         if (nw_blk_num <= self.curr_num) or (nw_blk_num <= self.target_blk_num):
             return
         if nw_blk_num > (self.target_blk_num + 1):
+            self.log.info("recv_new_blk_notif is triggering catchup!")
             self.is_caught_up = False
-            # todo reset needed ? rpc need to reset index reply set
+            self.node_idx_reply_set.clear()
             self.run_catchup(ignore=True)
         else: 
             self.target_blk_num = nw_blk_num

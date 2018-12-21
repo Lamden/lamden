@@ -1,5 +1,5 @@
 {
-    "deployment_mode": "testing",
+    "deployment_mode": "production",
     "environment": {
         "CONSTITUTION_FILE": "4-4-4.json",
         "ANNIHILATE": true
@@ -11,7 +11,7 @@
             "arn_name": "ec2-cloud-watch",
             "arn_id": "arn:aws:iam::622633509017:instance-profile/ec2-cloud-watch"
         },
-        "use_elastic_ips": true,
+        "use_elastic_ips": false,
         "security_groups": {
             "simple_https": {
                 "name": "simple_https",
