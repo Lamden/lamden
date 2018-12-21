@@ -57,7 +57,41 @@ then
 fi
 
 # Concatenate into FQDN
-FQDN="$PREFIX$NODETYPE$NODEINDEX.$DNS_NAME"
+NFQDN="$PREFIX$NODETYPE$NODEINDEX.$DNS_NAME"
+FQDN=${FQDN,,}
+
+# Loop for a while to check and see if upstream DNS is queryable and responding with the correct IP
+# this is a fix due to race conditions on launch with DNS being misconfigured or not updated in time
+# for this script to run
+end=$((SECONDS+120))
+found=false
+
+while [ $SECONDS -lt $end ] 
+do
+    if nslookup $FQDN
+    then
+        ipaddr=$(dig +short $FQDN @resolver1.opendns.com)
+        myip=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
+        if [ "$ipaddr" == "$myip" ]
+        then
+            found=true
+            break
+        else
+            echo "Upstream DNS returned IP $ipaddr which does not match myip $myip, waiting 5 seconds and retrying"
+        fi
+    else
+        echo "Upstream DNS not yet found, waiting 5 seconds and retrying"
+    fi
+    sleep 5
+done
+  
+if ! $found
+then
+    echo "DNS not found after $end seconds"
+    exit 1
+fi
+
+echo "DNS found with correct IP!"
 
 # Generate the certificate
 ~/.acme.sh/acme.sh --issue --standalone -d $FQDN
