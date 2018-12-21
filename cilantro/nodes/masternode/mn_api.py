@@ -76,12 +76,17 @@ class StorageDriver:
         sub_blk = block.get('subBlocks')
 
         # find leaf from sub block
-        for i in range(0, NUM_SB_PER_BLOCK-1):
+        for i in range(0, NUM_SB_PER_BLOCK):
             leaves = sub_blk[i].get('merkleLeaves')
-            tx_idx = leaves.index(leaf)
-            tx_dump = sub_blk[i].get('transactions')
-            cls.log.spam("index {} leaves {} tx {}".format(tx_idx, leaves, tx_dump[tx_idx]))
-            return tx_dump[tx_idx]
+            try:
+                tx_idx = leaves.index(leaf)
+            except ValueError:
+                tx_idx = -1
+
+            if tx_idx >= 0:
+                tx_dump = sub_blk[i].get('transactions')
+                cls.log.spam("index {} leaves {} tx {}".format(tx_idx, leaves, tx_dump[tx_idx]))
+                return tx_dump[tx_idx]
 
         return
 

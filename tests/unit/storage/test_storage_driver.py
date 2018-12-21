@@ -33,7 +33,7 @@ class TestStorageDriver(TestCase):
         block = self.driver.store_block(sub_blocks)
         last_stored_hash = self.driver.get_latest_block_hash()
 
-        tx = sub_blocks[0].transactions[0].transaction
+        tx = sub_blocks[1].transactions[0].transaction
         usr_tx_hash = Hasher.hash(tx)
         result = self.driver.get_transactions(raw_tx_hash = usr_tx_hash)
 

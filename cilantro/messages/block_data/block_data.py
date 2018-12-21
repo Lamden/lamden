@@ -96,7 +96,7 @@ class BlockData(MessageBase):
         }
 
     @lazy_func
-    def get_tx_hash_to_merkle_leaf(self) -> dict:
+    def get_tx_hash_to_merkle_leaf(self) -> list:
         hash_to_leaf = []
         for tx_data in self.transactions:
             tx_hash = Hasher.hash(tx_data.transaction)
