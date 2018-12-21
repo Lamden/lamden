@@ -115,7 +115,7 @@ class TestBlockAggregator(TestCase):
         mock_sub.add_handler = MagicMock(return_value=mock_sub_handler_task)
 
         ba.build_task_list()
-        ba.is_catching_up = False
+        ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         self.assertEqual(ba.sub, mock_sub)
         self.assertEqual(ba.pub, mock_pub)
@@ -136,7 +136,7 @@ class TestBlockAggregator(TestCase):
     #     ba.manager = MagicMock()
     #     ba.send_new_block_notif = MagicMock()
     #     ba.build_task_list()
-    #     ba.is_catching_up = False
+    #     ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
     #
     #     sk1, vk1 = wallet.new()
     #     sk2, vk2 = wallet.new()
@@ -191,7 +191,7 @@ class TestBlockAggregator(TestCase):
         ba.manager = MagicMock()
         ba.recv_sub_block_contender = MagicMock()
         ba.build_task_list()
-        ba.is_catching_up = False
+        ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         mock_env = MagicMock()
         mock_env.message = MagicMock(spec=SubBlockContender)
@@ -208,7 +208,8 @@ class TestBlockAggregator(TestCase):
         ba.manager = MagicMock()
         ba.recv_new_block_notif = MagicMock()
         ba.build_task_list()
-        ba.is_catching_up = False
+    
+        ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         mock_env = MagicMock()
         mock_env.message = MagicMock(spec=NewBlockNotification)
@@ -224,7 +225,7 @@ class TestBlockAggregator(TestCase):
 
         ba.manager = MagicMock()
         ba.build_task_list()
-        ba.is_catching_up = False
+        ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
         sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0, GENESIS_BLOCK_HASH)
@@ -239,7 +240,7 @@ class TestBlockAggregator(TestCase):
 
         ba.manager = MagicMock()
         ba.build_task_list()
-        ba.is_catching_up = False
+        ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         signature = build_test_merkle_sig(msg=bytes.fromhex(INPUT_HASH1), sk=DEL_SK, vk=DEL_VK)
         sbc = SubBlockContender.create_empty_sublock(INPUT_HASH1, sub_block_index=0, signature=signature,
@@ -251,14 +252,13 @@ class TestBlockAggregator(TestCase):
     @mock.patch("cilantro.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 1)
     def test_combine_result_hash_with_one_sb(self, *args):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
-        ba.is_catching_up = False
 
         ba.manager = MagicMock()
         ba.send_new_block_notif = MagicMock()
         ba.build_task_list()
-        ba.is_catching_up = False
         ba.pub = MagicMock()
         old_b_hash = ba.curr_block_hash
+        ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
@@ -274,11 +274,9 @@ class TestBlockAggregator(TestCase):
     @BlockAggTester.test
     def test_combine_result_hash_with_multiple_sb(self, *args):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
-        ba.is_catching_up = False
 
         ba.manager = MagicMock()
         ba.build_task_list()
-        ba.is_catching_up = False
         ba.send_new_block_notif = MagicMock()
         old_b_hash = ba.curr_block_hash
 
@@ -302,14 +300,13 @@ class TestBlockAggregator(TestCase):
     @BlockAggTester.test
     def test_combine_result_hash_with_multiple_sb_with_extras(self, *args):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
-        ba.is_catching_up = False
 
         ba.manager = MagicMock()
         ba.send_new_block_notif = MagicMock()
         ba.build_task_list()
-        ba.is_catching_up = False
         ba.pub = MagicMock()
         old_b_hash = ba.curr_block_hash
+        ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         # Sub block 0
         for i in range(NUM_DELEGATES):
@@ -337,7 +334,7 @@ class TestBlockAggregator(TestCase):
         ba.manager = MagicMock()
         ba.build_task_list()
         ba.send_new_block_notif = MagicMock()
-        ba.is_catching_up = False
+        ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
         old_b_hash = ba.curr_block_hash
 
         for i in range(DELEGATE_MAJORITY + 5):
@@ -402,7 +399,7 @@ class TestBlockAggregator(TestCase):
         ba.manager = MagicMock()
         ba.build_task_list()
         ba.send_new_block_notif = MagicMock()
-        ba.is_catching_up = False
+        ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         for i in range(DELEGATE_MAJORITY):
             signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])

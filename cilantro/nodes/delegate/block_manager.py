@@ -64,6 +64,7 @@ class DBState:
         self.num_skip_block = 0
         self.num_fail_block = 0
         self.is_new_block = False
+        self.is_catchup_done = False
         # self.state = DBState.CATCHUP
         self.next_block = {}
         self.sub_block_hash_map = {}
@@ -167,21 +168,16 @@ class BlockManager(Worker):
 
     async def catchup_db_state(self):
         # do catch up logic here
-        # only when one can connect to quorum masters and get db update, move to next step
-        # at the end, it has updated its db state to consensus latest
-
-        await asyncio.sleep(2)  # so pub/sub connections can complete
+        await asyncio.sleep(6)  # so pub/sub connections can complete
         assert self.db_state.catchup_mgr, "Expected catchup_mgr initialized at this point"
         self.log.info("Catching up...")
 
         self.db_state.catchup_mgr.run_catchup()
 
         # TODO needs to be deleted after catchup is working. for now, assume that it is caught up
-        self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
-        self.db_state.cur_block_num = StateDriver.get_latest_block_num()
-
-        await asyncio.sleep(5)
-        self.send_updated_db_msg()
+        # self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
+        # await asyncio.sleep(5)
+        # self.send_updated_db_msg()
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):
@@ -233,27 +229,39 @@ class BlockManager(Worker):
         msg_hash = envelope.message_hash
 
         if isinstance(msg, NewBlockNotification):
-            self.log.info("BM got NewBlockNotification {} from sender {}".format(msg, envelope.sender))
+            self.log.important3("BM got NewBlockNotification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
             self.handle_block_notification(msg, True)
         elif isinstance(msg, SkipBlockNotification):
-            self.log.info("BM got SkipBlockNotification {} from sender {}".format(msg, envelope.sender))
+            self.log.important3("BM got SkipBlockNotification from sender {} with hash {}".format(envelope.sender, msg.prev_block_hash))
             self.handle_block_notification(msg, False)
         elif isinstance(msg, FailedBlockNotification):
-            self.log.important3("BM got FailedBlockNotification {} from sender {}".format(msg, envelope.sender))
+            self.log.important3("BM got FailedBlockNotification from sender {} with hash {}".format(envelope.sender, msg.prev_block_hash))
             self.handle_fail_block(msg)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
 
     def recv_block_data_reply(self, reply):
-        self.db_state.catchup_mgr.recv_block_data_reply(reply)
         # will it block? otherwise, it may not work
-        if self.db_state.catchup_mgr.is_db_updated():
+        if self.db_state.catchup_mgr.recv_block_data_reply(reply):
             # TODO update latest block hash (& next one if needed) locally
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
             # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
             # self.state = DBState.CURRENT
-            self.send_updated_db_msg()
+            if not self.db_state.is_catchup_done:
+                self.db_state.is_catchup_done = True
+                self.send_updated_db_msg()
+
+    def recv_block_idx_reply(self, sender, reply):
+        # will it block? otherwise, it may not work
+        if self.db_state.catchup_mgr.recv_block_idx_reply(sender, reply):
+            # TODO update latest block hash (& next one if needed) locally
+            self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
+            # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
+            # self.state = DBState.CURRENT
+            if not self.db_state.is_catchup_done:
+                self.db_state.is_catchup_done = True
+                self.send_updated_db_msg()
 
     def handle_router_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -263,7 +271,7 @@ class BlockManager(Worker):
         msg_hash = envelope.message_hash
 
         if isinstance(msg, BlockIndexReply):
-            self.db_state.catchup_mgr.recv_block_idx_reply(sender, msg)
+            self.recv_block_idx_reply(sender, msg)
         elif isinstance(msg, BlockDataReply):
             self.recv_block_data_reply(msg)
         else:
