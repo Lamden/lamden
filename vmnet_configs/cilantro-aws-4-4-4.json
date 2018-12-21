@@ -6,9 +6,10 @@
     },
     "aws": {
         "logging": {
-            "interval": 1800,
-            "arn_name": "ec2-s3-log",
-            "arn_id": "arn:aws:iam::929772747755:instance-profile/ec2-s3-log"
+            "enabled": true,
+            "interval": 60,
+            "arn_name": "ec2-cloud-watch",
+            "arn_id": "arn:aws:iam::929772747755:instance-profile/ec2-cloud-watch"
         },
         "use_elastic_ips": true,
         "security_groups": {
@@ -64,7 +65,7 @@
                 "name": "cilantro_base",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "test-fail-case",
+                "branch": "wednesday-night-pump",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0f65671a86f061fcd",
@@ -72,14 +73,15 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0222655b32f6d9d08",
                 "update_commands": [
-                    "make install"
+                    "pip3 install vmnet --upgrade --no-cache-dir",
+                    "pip3 install seneca --upgrade --no-cache-dir"
                 ]
             },
             "cilantro_mn": {
                 "name": "cilantro_mn",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "test-fail-case",
+                "branch": "wednesday-night-pump",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0222655b32f6d9d08",
@@ -87,7 +89,8 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-09cddca33b912825e",
                 "update_commands": [
-                    "make install"
+                    "pip3 install vmnet --upgrade --no-cache-dir",
+                    "pip3 install seneca --upgrade --no-cache-dir"
                 ]
             }
         }

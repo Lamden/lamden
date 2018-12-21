@@ -1,4 +1,4 @@
-# New req=v.2
+# New req=v.3
 Cython==0.29
 pycapnp==0.6.3
 PyNaCl==1.2.1

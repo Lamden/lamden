@@ -76,15 +76,6 @@ class TestBlockData(TestCase):
         # Make sure lengths match up
         self.assertEqual(len(block.merkle_leaves), len(tx_hash_to_leaves))
 
-        # Make sure all the leaves are there
-        for leaf in block.merkle_leaves:
-            self.assertTrue(leaf in tx_hash_to_leaves.values())
-
-        # Make sure all the transaction hashes are there
-        for tx in block.transactions:
-            tx_hash = Hasher.hash(tx.transaction)
-            self.assertTrue(tx_hash in tx_hash_to_leaves)
-
     def test_block_data_builder(self):
         data = BlockDataBuilder.create_random_block(prev_hash=GENESIS_BLOCK_HASH, num=1)
         self.assertEqual(data.prev_block_hash, GENESIS_BLOCK_HASH)

@@ -101,10 +101,14 @@ class BlockData(MessageBase):
         }
 
     @lazy_func
-    def get_tx_hash_to_merkle_leaf(self) -> dict:
-        hash_to_leaf = {}
+    def get_tx_hash_to_merkle_leaf(self) -> list:
+        hash_to_leaf = []
         for tx_data in self.transactions:
-            hash_to_leaf[Hasher.hash(tx_data.transaction)] = Hasher.hash(tx_data)
+            tx_hash = Hasher.hash(tx_data.transaction)
+            tx_leaf = Hasher.hash(tx_data)
+            map = {'tx_hash': tx_hash, 'tx_leaf': tx_leaf}
+            hash_to_leaf.append(map)
+            # hash_to_leaf[Hasher.hash(tx_data.transaction)] = Hasher.hash(tx_data)
         return hash_to_leaf
 
     @lazy_property
