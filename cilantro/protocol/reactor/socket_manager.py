@@ -70,13 +70,21 @@ class SocketManager:
 
         # Retry any failed lookups registered by sockets when a node comes online
         elif e['event'] == 'node_online' and e['vk'] in self.vk_lookups:
-            # TODO change log lvl here
             self.log.debugv("sock manager got node_online event for vk {}! Triggering reconnect with info {}"
                             .format(e['vk'], self.vk_lookups[e['vk']]))
-            for cmd_tuple in self.vk_lookups.pop(e['vk']):
+
+            idx_to_rm = []
+            for i, cmd_tuple in enumerate(self.vk_lookups[e['vk']]):
                 sock, cmd_name, args, kwargs = cmd_tuple
                 kwargs['ip'] = e['ip']
+                # Only remove bind commands (we will do another connect call everytime a Node comes online)
+                if cmd_name == 'bind':
+                    idx_to_rm.append(i)
+
                 getattr(sock, cmd_name)(*args, **kwargs)
+
+            for i in reversed(idx_to_rm):
+                self.vk_lookups[e['vk']].pop(i)
 
         elif e['event'] == 'unauthorized_ip':
             # TODO proper error handling / 'bad actor' logic here

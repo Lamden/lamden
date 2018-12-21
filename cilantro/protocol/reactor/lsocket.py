@@ -31,6 +31,10 @@ def vk_lookup(func):
             self._start_wait_rdy()
             self.manager.pending_lookups[cmd_id] = self
 
+            if func.__name__ == 'connect':
+                self.log.debugv("Adding func 'connect' to SocketManager's vk_lookups with vk {}".format(kwargs['vk']))
+                self.manager.vk_lookups[kwargs['vk']].append((self, func.__name__, args, kwargs))
+
         # If the 'ip' key is already set in kwargs, no need to do a lookup
         else:
             func(self, *args, **kwargs)
@@ -79,14 +83,16 @@ class LSocket:
             getattr(self, cmd_name)(*args, **kwargs)
 
         elif event['event'] == 'not_found':
-            self.log.warning("Socket got not_found event for vk {}. Adding it to failed lookups.".format(event['vk']))
-            self.manager.vk_lookups[event['vk']].append((self, cmd_name, args, kwargs))
-            self.manager.set_new_node_tracking()
+            self.log.warning("Socket got not_found event for vk {}".format(event['vk']))
+            # We only add 'bind' commands to vk_lookups if they fail. 'connect' calls are always added
+            if cmd_name == 'bind':
+                self.manager.vk_lookups[event['vk']].append((self, cmd_name, args, kwargs))
             self._check_if_rdy()
 
     def add_handler(self, handler_func, handler_key=None, start_listening=False) -> Union[asyncio.Future, asyncio.coroutine]:
         async def _listen(socket, func, key):
             self.log.debug("Starting listener handler key {}".format(key))
+            self.manager.set_new_node_tracking()
 
             while True:
                 try:
