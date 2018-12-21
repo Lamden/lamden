@@ -82,9 +82,12 @@ class StorageDriver:
         :return:         None for incorrect, only full blk if block found else assert
         """
 
+        full_block = dict()
         if given_bnum is not None:
             full_block = MasterOps.get_full_blk(blk_num=given_bnum)
             if full_block is not None:
+                del full_block['_id']
+                cls.log.important("raghu {}".format(full_block))
                 return full_block
             else:
                 blk_owners = MasterOps.get_blk_owners()
@@ -93,6 +96,8 @@ class StorageDriver:
         if given_hash is not None:
             full_block = MasterOps.get_full_blk(blk_hash=given_hash)
             if full_block is not None:
+                del full_block['_id']
+                cls.log.important("raghu {}".format(full_block))
                 return full_block
             else:
                 blk_owners = MasterOps.get_blk_owners()
@@ -110,6 +115,19 @@ class StorageDriver:
         blk_hash = idx_entry.get('blockHash')
         cls.log.debug("get_latest_block_hash blk_hash ->{}".format(blk_hash))
         return blk_hash
+
+    @classmethod
+    def get_latest_block_num(cls):
+        """
+        looks up mn_index returns latest num
+
+        :return: block num of last block on block chain
+        """
+        idx_entry = MasterOps.get_blk_idx(n_blks=1)[0]
+        cls.log.debug("get_latest_block_num idx_entry -> {}".format(idx_entry))
+        blk_num = idx_entry.get('blockNum')
+        cls.log.debug("get_latest_block_num blk_num ->{}".format(blk_num))
+        return blk_num
 
     @classmethod
     def check_block_exists(cls, block_hash: str) -> bool:

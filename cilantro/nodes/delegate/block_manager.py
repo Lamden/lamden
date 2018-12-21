@@ -167,9 +167,6 @@ class BlockManager(Worker):
 
     async def catchup_db_state(self):
         # do catch up logic here
-        # only when one can connect to quorum masters and get db update, move to next step
-        # at the end, it has updated its db state to consensus latest
-
         await asyncio.sleep(2)  # so pub/sub connections can complete
         assert self.db_state.catchup_mgr, "Expected catchup_mgr initialized at this point"
         self.log.info("Catching up...")
@@ -177,9 +174,9 @@ class BlockManager(Worker):
         self.db_state.catchup_mgr.run_catchup()
 
         # TODO needs to be deleted after catchup is working. for now, assume that it is caught up
-        self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
-        await asyncio.sleep(5)
-        self.send_updated_db_msg()
+        # self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
+        # await asyncio.sleep(5)
+        # self.send_updated_db_msg()
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):

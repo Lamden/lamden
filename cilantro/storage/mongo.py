@@ -149,7 +149,7 @@ class MDB:
     def query_index(cls, n_blks=None):
         blk_list = []
 
-        blk_delta = cls.mn_coll_idx.find().limit(n_blks).sort("blockNum", -1)
+        blk_delta = cls.mn_coll_idx.find({}, {'_id': False}).limit(n_blks).sort("blockNum", -1)
         for blk in blk_delta:
             cls.log.spam('query_index block delta {}'.format(blk))
             blk_list.append(blk)
