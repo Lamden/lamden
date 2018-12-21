@@ -64,7 +64,7 @@ FQDN=${NFQDN,,}
 # Loop for a while to check and see if upstream DNS is queryable and responding with the correct IP
 # this is a fix due to race conditions on launch with DNS being misconfigured or not updated in time
 # for this script to run
-end=$((SECONDS+120))
+end=$((SECONDS+600))
 found=false
 
 while [ $SECONDS -lt $end ] 
@@ -81,7 +81,7 @@ do
             echo "Upstream DNS returned IP $ipaddr which does not match myip $myip, waiting 5 seconds and retrying"
         fi
     else
-        echo "Upstream DNS not yet found, waiting 5 seconds and retrying"
+        echo "Upstream DNS not yet found, waiting 5 seconds and retrying ($SECONDS seconds elapsed)"
     fi
     sleep 5
 done
