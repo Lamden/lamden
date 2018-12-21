@@ -22,7 +22,7 @@ NUM_DELEGATES = 4
 log = get_logger("TestnetNodeBuilder")
 os.environ['__INHERIT_CONSTITUTION__'] = 'True'
 
-DEFAULT_TESTNET_FILE_NAME = '2-2-2.json'
+DEFAULT_TESTNET_FILE_NAME = '4-4-4.json'
 TESTNET_JSON_DIR = test_dir
 
 TESTNET_KEY = 'testnet'
