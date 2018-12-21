@@ -96,10 +96,14 @@ class BlockData(MessageBase):
         }
 
     @lazy_func
-    def get_tx_hash_to_merkle_leaf(self) -> dict:
-        hash_to_leaf = {}
+    def get_tx_hash_to_merkle_leaf(self) -> list:
+        hash_to_leaf = []
         for tx_data in self.transactions:
-            hash_to_leaf[Hasher.hash(tx_data.transaction)] = Hasher.hash(tx_data)
+            tx_hash = Hasher.hash(tx_data.transaction)
+            tx_leaf = Hasher.hash(tx_data)
+            map = {'tx_hash': tx_hash, 'tx_leaf': tx_leaf}
+            hash_to_leaf.append(map)
+            # hash_to_leaf[Hasher.hash(tx_data.transaction)] = Hasher.hash(tx_data)
         return hash_to_leaf
 
     @lazy_property
@@ -116,7 +120,8 @@ class BlockData(MessageBase):
         return [sb.input_hash for sb in self.sub_blocks]
 
     def __repr__(self):
-        return "{}<block_hash={}, block_num={}, prev_b_hash={}, result_hashes={}, num_leaves={}"
+        return "<{} (block_hash={}, block_num={}, prev_b_hash={}, result_hashes={}, num_leaves={})>"\
+            .format(type(self), self.block_hash, self.block_num, self.prev_block_hash, self.merkle_roots, len(self.transactions))
 
 
 class GenesisBlockData(BlockData):
@@ -133,6 +138,40 @@ class GenesisBlockData(BlockData):
 
         return cls.from_data(struct)
 
+
+class BlockDataBuilder:
+    MN_SK = TESTNET_MASTERNODES[0]['sk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
+    MN_VK = TESTNET_MASTERNODES[0]['vk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64
+
+    @classmethod
+    def create_random_block(cls, prev_hash: str=GENESIS_BLOCK_HASH, num: int=1) -> BlockData:
+        from cilantro.messages.block_data.sub_block import SubBlockBuilder
+
+        input_hash1 = 'A'*64
+        input_hash2 = 'B'*64
+        sb1 = SubBlockBuilder.create(input_hash=input_hash1, idx=0)
+        sb2 = SubBlockBuilder.create(input_hash=input_hash2, idx=1)
+        sbs = [sb1, sb2]
+
+        block_hash = BlockData.compute_block_hash([sb1.merkle_root, sb2.merkle_root], prev_hash)
+        block_num = num
+        block_owners = [cls.MN_VK]
+
+        block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_hash, block_num=block_num,
+                                 sub_blocks=sbs, block_owners=block_owners)
+
+        return block
+
+    @classmethod
+    def create_conseq_blocks(cls, num_blocks: int, first_hash=GENESIS_BLOCK_HASH, first_num=1):
+        curr_num, curr_hash = first_num, first_hash
+        blocks = []
+        for _ in range(num_blocks):
+            block = cls.create_random_block(curr_hash, curr_num)
+            curr_num += 1
+            curr_hash = block.block_hash
+            blocks.append(block)
+        return blocks
 
 # class BlockDataBuilder:
 #     MN_SK = TESTNET_MASTERNODES[0]['sk'] if len(TESTNET_MASTERNODES) > 0 else 'A' * 64

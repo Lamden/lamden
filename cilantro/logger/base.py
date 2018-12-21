@@ -136,6 +136,7 @@ class MockLogger:
     def __getattr__(self, item):
         return _ignore
 
+
 def get_logger(name=''):
     if _LOG_LVL == 0:
         return MockLogger()

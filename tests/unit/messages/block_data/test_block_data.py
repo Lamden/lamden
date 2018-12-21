@@ -1,7 +1,8 @@
 from cilantro.messages.transaction.data import TransactionData
 from cilantro.utils import Hasher
 from cilantro.messages.transaction.contract import ContractTransactionBuilder, ContractTransaction
-from cilantro.messages.block_data.block_data import BlockData, GENESIS_BLOCK_HASH
+from cilantro.messages.block_data.block_data import BlockData, GENESIS_BLOCK_HASH, BlockDataBuilder
+from cilantro.messages.block_data.state_update import BlockDataReply
 from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from unittest import TestCase
@@ -75,14 +76,30 @@ class TestBlockData(TestCase):
         # Make sure lengths match up
         self.assertEqual(len(block.merkle_leaves), len(tx_hash_to_leaves))
 
-        # Make sure all the leaves are there
-        for leaf in block.merkle_leaves:
-            self.assertTrue(leaf in tx_hash_to_leaves.values())
+    def test_block_data_builder(self):
+        data = BlockDataBuilder.create_random_block(prev_hash=GENESIS_BLOCK_HASH, num=1)
+        self.assertEqual(data.prev_block_hash, GENESIS_BLOCK_HASH)
+        self.assertEqual(data.block_num, 1)
 
-        # Make sure all the transaction hashes are there
-        for tx in block.transactions:
-            tx_hash = Hasher.hash(tx.transaction)
-            self.assertTrue(tx_hash in tx_hash_to_leaves)
+    def test_block_data_builder_conseq_blocks(self):
+        num = 5
+        blocks = BlockDataBuilder.create_conseq_blocks(num)
+        curr_hash, curr_num = GENESIS_BLOCK_HASH, 0
+        for block in blocks:
+            self.assertEqual(block.prev_block_hash, curr_hash)
+            self.assertEqual(block.block_num, curr_num+1)
+            curr_hash = block.block_hash
+            curr_num += 1
+
+    def test_block_data_reply_create_from_block(self):
+        block = BlockDataBuilder.create_random_block()
+        bd_reply = BlockDataReply.create_from_block(block)
+
+        self.assertEqual(block.block_hash, bd_reply.block_hash)
+        self.assertEqual(block.block_num, bd_reply.block_num)
+        self.assertEqual(block.block_owners, bd_reply.block_owners)
+        self.assertEqual(block.prev_block_hash, bd_reply.prev_block_hash)
+        self.assertEqual(block.transactions, bd_reply.transactions)
 
 
 if __name__ == '__main__':
