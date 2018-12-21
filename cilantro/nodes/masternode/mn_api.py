@@ -82,11 +82,9 @@ class StorageDriver:
         :return:         None for incorrect, only full blk if block found else assert
         """
 
-        full_block = dict()
         if given_bnum is not None:
             full_block = MasterOps.get_full_blk(blk_num=given_bnum)
             if full_block is not None:
-                del full_block['_id']
                 cls.log.important("raghu {}".format(full_block))
                 return full_block
             else:
@@ -96,7 +94,6 @@ class StorageDriver:
         if given_hash is not None:
             full_block = MasterOps.get_full_blk(blk_hash=given_hash)
             if full_block is not None:
-                del full_block['_id']
                 cls.log.important("raghu {}".format(full_block))
                 return full_block
             else:
