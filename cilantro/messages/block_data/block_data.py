@@ -41,6 +41,11 @@ class BlockData(MessageBase):
         return blockdata_capnp.BlockData.from_bytes_packed(data)
 
     @classmethod
+    def from_dict(cls, data: dict):
+        struct = blockdata_capnp.BlockData.new_message(**data)
+        return cls.from_data(struct)
+
+    @classmethod
     def create(cls, block_hash: str, prev_block_hash: str, block_owners: List[str], block_num: int,
                sub_blocks: List[SubBlock]):
 

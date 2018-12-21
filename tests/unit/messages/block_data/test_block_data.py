@@ -110,6 +110,16 @@ class TestBlockData(TestCase):
         self.assertEqual(block.prev_block_hash, bd_reply.prev_block_hash)
         self.assertEqual(block.transactions, bd_reply.transactions)
 
+    def test_from_dict(self):
+        block = BlockDataBuilder.create_random_block()
+        clone_from_bytes = BlockData.from_bytes(block.serialize())
+        clone_from_dict = BlockData.from_dict(block.to_dict())
+        clone_from_bytes_to_dict = BlockData.from_dict(clone_from_bytes.to_dict())
+
+        self.assertEqual(block, clone_from_bytes)
+        self.assertEqual(clone_from_bytes, clone_from_dict)
+        self.assertEqual(clone_from_dict, clone_from_bytes_to_dict)
+
 
 if __name__ == '__main__':
     unittest.main()
