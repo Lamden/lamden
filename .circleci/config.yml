@@ -92,6 +92,7 @@ jobs:
           name: Run Tests
           command: |
             redis-server &
+            sudo mkdir -p /data/db
             mongod &
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
