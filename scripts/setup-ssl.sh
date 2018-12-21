@@ -44,7 +44,6 @@ then
     exit 1
 fi
 
-
 # Resolve FQDN
 # Cut off first bit before _ to get the type
 NODETYPE=$(echo $HOST_NAME | cut -d'_' -f 1)
@@ -62,6 +61,10 @@ then
     echo "Node type $NODETYPE SSL is turned off, not generating cert"
     exit 0
 fi
+
+# Concatenate into FQDN
+NFQDN="$PREFIX$NODETYPE$NODEINDEX.$DNS_NAME"
+FQDN=${NFQDN,,}
 
 # Loop for a while to check and see if upstream DNS is queryable and responding with the correct IP
 # this is a fix due to race conditions on launch with DNS being misconfigured or not updated in time
