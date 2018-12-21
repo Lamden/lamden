@@ -1,18 +1,25 @@
 {
-    "deployment_mode": "production",
+    "deployment_mode": "testing",
     "environment": {
         "CONSTITUTION_FILE": "4-4-4.json",
         "ANNIHILATE": true
     },
     "aws": {
-        "profile_name": "production",
+        "use_dns": true,
+        "use_elastic_ips": false,
+        "dns_configuration": {
+            "TTL": 20,
+            "service": "route53",
+            "domain_name": "anarchynet.io",
+            "record_type": "A",
+            "subnet_prefix": "davisnet"
+        },
         "logging": {
             "enabled": true,
             "interval": 60,
             "arn_name": "ec2-cloud-watch",
             "arn_id": "arn:aws:iam::622633509017:instance-profile/ec2-cloud-watch"
         },
-        "use_elastic_ips": false,
         "security_groups": {
             "simple_https": {
                 "name": "simple_https",
