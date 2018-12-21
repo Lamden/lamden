@@ -31,3 +31,7 @@ class TestBlockIndexRequest(TestCase):
 
         self.assertEqual(sr, sr_clone)
         self.assertTrue(sr_clone.block_hash is None)
+
+    def test_create_0_block(self):
+        br = BlockIndexRequest.create(block_num=0)
+        self.assertEqual(br.block_num, 0)
