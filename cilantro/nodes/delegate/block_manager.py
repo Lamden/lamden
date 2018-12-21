@@ -241,9 +241,17 @@ class BlockManager(Worker):
                             .format(type(msg)))
 
     def recv_block_data_reply(self, reply):
-        self.db_state.catchup_mgr.recv_block_data_reply(reply)
         # will it block? otherwise, it may not work
-        if self.db_state.catchup_mgr.is_db_updated():
+        if self.db_state.catchup_mgr.recv_block_data_reply(reply):
+            # TODO update latest block hash (& next one if needed) locally
+            self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
+            # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
+            # self.state = DBState.CURRENT
+            self.send_updated_db_msg()
+
+    def recv_block_idx_reply(self, sender, reply):
+        # will it block? otherwise, it may not work
+        if self.db_state.catchup_mgr.recv_block_idx_reply(sender, reply):
             # TODO update latest block hash (& next one if needed) locally
             self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
             # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
@@ -258,7 +266,7 @@ class BlockManager(Worker):
         msg_hash = envelope.message_hash
 
         if isinstance(msg, BlockIndexReply):
-            self.db_state.catchup_mgr.recv_block_idx_reply(sender, msg)
+            self.recv_block_idx_reply(sender, msg)
         elif isinstance(msg, BlockDataReply):
             self.recv_block_data_reply(msg)
         else:

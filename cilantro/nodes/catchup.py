@@ -111,8 +111,7 @@ class CatchupManager:
         # self.log.important2("SEND BIR")
         self.dump_debug_info()
 
-    # raghu todo - recv functions can return the status of catchup - should be ignored by delegates
-    def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
+    def _recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
         """
         We expect to receive this message from all mn/dn
         :param sender_vk:
@@ -148,8 +147,13 @@ class CatchupManager:
                 self.awaited_blknum = self.curr_num
                 self.process_recv_idx()
         
+
+    def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
+        self._recv_block_idx_reply(sender_vk, reply)
         # self.log.important2("RCV BIRp")
-        self.dump_debug_info()
+        # self.dump_debug_info()
+        return self.is_catchup_done()
+  
 
     def _send_block_data_req(self, mn_vk, req_blk_num):
         self.log.info("Unicast BlockDateRequests to masternode owner with current block num {} key {}"
@@ -159,7 +163,7 @@ class CatchupManager:
         # self.log.important2("SEND BDRq")
         self.dump_debug_info()
 
-    def recv_block_data_reply(self, reply: BlockData):
+    def _recv_block_data_reply(self, reply: BlockData):
         # check if given block is older thn expected drop this reply
         # check if given blocknum grter thn current expected blk -> store temp
         # if given block needs to be stored update state/storage delete frm expected DT
@@ -180,8 +184,12 @@ class CatchupManager:
             self.process_recv_idx()
             self.update_received_block(block = reply)
 
+
+    def recv_block_data_reply(self, reply: BlockData):
+
+        self._recv_block_data_reply(reply)
         # self.log.important2("RCV BDRp")
-        self.dump_debug_info()
+        # self.dump_debug_info()
         return self.is_catchup_done()
 
     # MASTER ONLY CALL
