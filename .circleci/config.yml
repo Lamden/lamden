@@ -77,6 +77,11 @@ jobs:
           command: |
              sudo apt-get install redis-server
 
+      - run:
+          name: Install Mongo
+          command: |
+             sudo apt-get install mongodb
+
       - save_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
           paths:
@@ -87,6 +92,7 @@ jobs:
           name: Run Tests
           command: |
             redis-server &
+            mongod &
             export PYTHONPATH=$PYTHONPATH:~/cilantro
             export LOCAL_PATH=~
             python3.6 ~/cilantro/tests/run_tests.py --integration 0 --unit 1 --skip_modules tests.unit.nodes.masternode tests.unit.nodes.delegate
