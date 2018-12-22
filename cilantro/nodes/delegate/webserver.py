@@ -3,12 +3,18 @@ from sanic.response import json, text
 from seneca.engine.interpreter import SenecaInterpreter
 from multiprocessing import Queue
 from cilantro.protocol.webserver.validation import *
-from cilantro.constants.ports import WEB_SERVER_PORT
+from cilantro.constants.ports import WEB_SERVER_PORT, SSL_WEB_SERVER_PORT
 from cilantro.constants.delegate import NUM_WORKERS
 
+ssl = None
 app = SanicSingleton.app
 interface = SanicSingleton.interface
 log = get_logger(__name__)
+
+if os.getenv('SSL_ENABLED'):
+    log.info("SSL enabled")
+    with open(os.path.expanduser("~/.sslconf"), "r") as df:
+        ssl = _json.load(df)
 
 @app.route("/", methods=["GET"])
 async def ping(request):
@@ -41,7 +47,10 @@ async def get_contract(request):
 
 def start_webserver(q):
     app.queue = q
-    app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False)
+    if ssl:
+        app.run(host='0.0.0.0', port=SSL_WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False, ssl=ssl)
+    else:
+        app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False)
 
 if __name__ == '__main__':
     start_webserver(Queue())
