@@ -10,7 +10,6 @@ market = hmap('market', str, int)
 @seed
 def deposit_to_all_wallets():
     market['stamps_to_tau'] = 1
-    assert market['stamps_to_tau'] == 1, 'whaaaaaathjgklg'
     balances['black_hole'] = 0
 
     STU = ('db929395f15937f023b4682995634b9dc19b1a2b32799f1f67d6f080b742cdb1',
@@ -42,6 +41,7 @@ def deposit_to_all_wallets():
 
 @export
 def submit_stamps(stamps):
+    balances = hmap('balances', str, int)
     amount = stamps / market['stamps_to_tau']
     transfer('black_hole', int(amount))
 
@@ -52,12 +52,14 @@ def balance_of(wallet_id):
 
 @export
 def transfer(to, amount):
+    balances = hmap('balances', str, int)
     # print("transfering from {} to {} with amount {}".format(rt['sender'], to, amount))
     balances[rt['sender']] -= amount
     balances[to] += amount
     sender_balance = balances[rt['sender']]
 
-    assert sender_balance >= 0, "Sender balance must be non-negative!!!"
+    assert sender_balance >= 0, "Sender balance must be non-negative!!! {}, {}, {}, {}, {}"\
+        .format(rt['sender'], sender_balance, to, amount, balances.rep_str)
 
 @export
 def approve(spender, amount):
