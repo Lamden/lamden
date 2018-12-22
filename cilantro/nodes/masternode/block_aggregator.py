@@ -240,8 +240,8 @@ class BlockAggregator(Worker):
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
         self.log.debugv("MN got new block notification: {}".format(notif))
 
-        if notif.block_num > StateDriver.get_latest_block_num():
-            self.log.info("Block num {} on NBC does not match our block num! Triggering catchup")
+        if notif.block_num > StateDriver.get_latest_block_num() + 1:
+            self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, StateDriver.get_latest_block_num()))
             self.catchup_manager.recv_new_blk_notif(notif)
         else:
             self.log.debugv("Block num on NBC is LTE that ours. Ignoring")
