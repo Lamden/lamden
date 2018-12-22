@@ -81,7 +81,7 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0222655b32f6d9d08",
                 "update_commands": [
-                    "pip3 install vmnet --upgrade --no-cache-dir",
+                    "pip3 install vmnet==0.6.3",
                     "pip3 install seneca --upgrade --no-cache-dir"
                 ]
             },
@@ -97,7 +97,7 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-09cddca33b912825e",
                 "update_commands": [
-                    "pip3 install vmnet --upgrade --no-cache-dir",
+                    "pip3 install vmnet==0.6.3",
                     "pip3 install seneca --upgrade --no-cache-dir"
                 ]
             }
