@@ -85,8 +85,10 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0222655b32f6d9d08",
                 "update_commands": [
-                    "pip3 install vmnet",
-                    "pip3 install seneca --upgrade --no-cache-dir"
+                    "pip3 install vmnet --upgrade --no-cache-dir",
+                    "pip3 install seneca --upgrade --no-cache-dir",
+                    "sudo apt-get install socat",
+                    "sudo TYPEREGEX=${TYPEREGEX} USER=${USER} DNS_NAME=${DNS_NAME} SSL_ENABLED=${SSL_ENABLED} HOST_NAME=${HOST_NAME} SUBNET_PREFIX=${SUBNET_PREFIX} bash scripts/setup-ssl.sh"
                 ]
             },
             "cilantro_mn": {
@@ -101,8 +103,10 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-09cddca33b912825e",
                 "update_commands": [
-                    "pip3 install vmnet",
-                    "pip3 install seneca --upgrade --no-cache-dir"
+                    "pip3 install vmnet --upgrade --no-cache-dir",
+                    "pip3 install seneca --upgrade --no-cache-dir",
+                    "sudo apt-get install socat",
+                    "sudo TYPEREGEX=${TYPEREGEX} USER=${USER} DNS_NAME=${DNS_NAME} SSL_ENABLED=${SSL_ENABLED} HOST_NAME=${HOST_NAME} SUBNET_PREFIX=${SUBNET_PREFIX} bash scripts/setup-ssl.sh"
                 ]
             }
         }

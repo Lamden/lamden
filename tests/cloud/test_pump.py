@@ -1,4 +1,4 @@
-NETWORK_SIZE = '4-4-4'
+NETWORK_SIZE = '2-2-2'
 
 MN_LOG_LVL = 11
 WITNESS_LOG_LVL = 30
@@ -51,8 +51,8 @@ class TestPump(AWSTestCase):
                                                            reset_db=True))
 
         # Bootstrap pump
-        self.execute_python('mgmt', God.pump_it(rate=self.PUMP_RATE, use_poisson=self.MODEL_AS_POISSON, pump_wait=self.PUMP_WAIT,
-                                                sleep_sometimes=True, active_bounds=(30, 120), sleep_bounds=(20, 30)))
+        #self.execute_python('mgmt', God.pump_it(rate=self.PUMP_RATE, use_poisson=self.MODEL_AS_POISSON, pump_wait=self.PUMP_WAIT,
+        #                                        sleep_sometimes=True, active_bounds=(30, 120), sleep_bounds=(20, 30)))
 
         # while True:
         #     user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
