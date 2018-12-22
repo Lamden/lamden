@@ -7,6 +7,8 @@ import os, sys
 from os.path import dirname
 from logging.handlers import TimedRotatingFileHandler
 import cilantro
+
+#from vmnet.cloud.aws import S3Handler
 from vmnet.cloud.aws import AWSCloudWatchHandler
 import multiprocessing
 
@@ -155,8 +157,8 @@ def get_logger(name=''):
         ColoredStreamHandler()
     ]
 
-    if os.getenv('VMNET_CLOUD'):
-        filehandlers.append(AWSCloudWatchHandler(pname))
+#    if os.getenv('VMNET_CLOUD'):
+#        filehandlers.append(S3Handler())
 
     logging.basicConfig(
         format=format,

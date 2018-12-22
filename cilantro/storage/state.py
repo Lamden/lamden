@@ -26,7 +26,7 @@ class StateDriver:
                 for cmd in cmds:
                     if cmd: pipe.execute_command(cmd)
             elif tx.contract_type is PublishTransaction:
-                publish_txs.append(tx)
+                publish_txs.append(tx.transaction)
             else:
                 raise Exception('A transaction must be ContractTransaction or PublishTransaction not {}'
                                 .format(tx.contract_type))
@@ -46,7 +46,7 @@ class StateDriver:
     def _process_publish_txs(cls, txs: List[PublishTransaction]):
         with SenecaInterface(False) as interface:
             for tx in txs:
-                cls.log.debug("Storing contract named '{}' from sender '{}'".format(tx.contract_name, tx.sender))
+                cls.log.debug("Storing contract named from sender '{}'".format(tx.contract_name, tx.sender))
                 interface.publish_code_str(fullname=tx.contract_name, author=tx.sender, code_str=tx.contract_code)
 
     @classmethod
