@@ -11,10 +11,18 @@ app = SanicSingleton.app
 interface = SanicSingleton.interface
 log = get_logger(__name__)
 
+# Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
+static_headers = {
+    'Access-Control-Allow-Origin': '*'
+}
+
 if os.getenv('SSL_ENABLED'):
     log.info("SSL enabled")
     with open(os.path.expanduser("~/.sslconf"), "r") as df:
         ssl = _json.load(df)
+
+def _respond_to_request(payload, headers={}, status=200):
+    return json(payload, headers=dict(headers, **static_headers), status=status)
 
 @app.route("/", methods=["GET"])
 async def ping(request):
@@ -28,12 +36,12 @@ async def balance(request):
 @app.route("/contract-data", methods=["GET",])
 async def get_contract(request):
     contract_name = validate_contract_name(request.json['contract_name'])
-    return json(interface.get_contract_meta(contract_name))
+    return _respond_to_request(interface.get_contract_meta(contract_name))
 
 @app.route("/contract-meta", methods=["GET",])
 async def get_contract_meta(request):
     contract_name = validate_contract_name(request.json['contract_name'])
-    return json(interface.get_contract_meta(contract_name))
+    return _respond_to_request(interface.get_contract_meta(contract_name))
 
 @app.route("/state", methods=["GET",])
 async def get_contract(request):

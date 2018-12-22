@@ -31,6 +31,11 @@ app = SanicSingleton.app
 interface = SanicSingleton.interface
 log = get_logger("MN-WebServer")
 
+# Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
+static_headers = {
+    'Access-Control-Allow-Origin': '*'
+}
+
 if os.getenv('NONCE_DISABLED'):
     log.warning("NONCE_DISABLED env var set! Nonce checking as well as rate limiting will be disabled!")
     limiter = Limiter(app, key_func=get_remote_address)
@@ -43,40 +48,43 @@ if os.getenv('SSL_ENABLED'):
     with open(os.path.expanduser("~/.sslconf"), "r") as df:
         ssl = _json.load(df)
 
+def _respond_to_request(payload, headers={}, status=200):
+    return json(payload, headers=dict(headers, **static_headers), status=status)
+
 
 @app.route("/", methods=["POST",])
 async def submit_transaction(request):
     if app.queue.full():
-        return json({'error': "Queue full! Cannot process any more requests"})
+        return _respond_to_request({'error': "Queue full! Cannot process any more requests"})
 
     try:
         tx_bytes = request.body
         container = TransactionContainer.from_bytes(tx_bytes)
         tx = container.open()  # Deserializing the tx automatically validates the signature and POW
     except Exception as e:
-        return json({'error': 'Error opening transaction: {}'.format(e)})
+        return _respond_to_request({'error': 'Error opening transaction: {}'.format(e)})
 
     # TODO do we need to do any other validation? tx size? check sufficient stamps?
 
     # Check the transaction type and make sure we can handle it
     if type(tx) not in (ContractTransaction, PublishTransaction):
-        return json({'error': 'Cannot process transaction of type {}'.format(type(tx))})
+        return _respond_to_request({'error': 'Cannot process transaction of type {}'.format(type(tx))})
 
     if not os.getenv('NONCE_DISABLED'):
         # Verify the nonce, and remove it from db if its valid so it cannot be used again
         # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
         if not NonceManager.check_if_exists(tx.nonce):
-            return json({'error': 'Nonce {} has expired or was never created'.format(tx.nonce)})
+            return _respond_to_request({'error': 'Nonce {} has expired or was never created'.format(tx.nonce)})
         log.spam("Removing nonce {}".format(tx.nonce))
         NonceManager.delete_nonce(tx.nonce)
 
     # TODO @faclon why do we need this if we check the queue at the start of this func? --davis
     ord_container = OrderingContainer.create(tx)
     try: app.queue.put_nowait(ord_container.serialize())
-    except: return json({'error': "Queue full! Cannot process any more requests"})
+    except: return _respond_to_request({'error': "Queue full! Cannot process any more requests"})
 
     # Return transaction hash and nonce to users (not sure which they will need) --davis
-    return json({'success': 'Transaction successfully submitted to the network.',
+    return _respond_to_request({'success': 'Transaction successfully submitted to the network.',
                  'nonce': tx.nonce, 'hash': Hasher.hash(tx)})
 
 
@@ -84,11 +92,11 @@ async def submit_transaction(request):
 async def request_nonce(request):
     user_vk = request.json.get('verifyingKey')
     if not user_vk:
-        return json({'error': "you must supply the key 'verifyingKey' in the json payload"})
+        return _respond_to_request({'error': "you must supply the key 'verifyingKey' in the json payload"})
 
     nonce = NonceManager.create_nonce(user_vk)
     log.spam("Creating nonce {}".format(nonce))
-    return json({'success': True, 'nonce': nonce})
+    return _respond_to_request({'success': True, 'nonce': nonce})
 
 
 @app.route("/contracts", methods=["GET", ])
@@ -97,13 +105,13 @@ async def get_contracts(request):
     result = {}
     r_str = [_r.decode() for _r in r]
     result['contracts'] = r_str
-    return json(result)
+    return _respond_to_request(result)
 
 
 @app.route("/contracts/<contract>", methods=["GET", ])
 async def get_contract_meta(request, contract):
     contract_name = validate_contract_name(contract)
-    return json(interface.get_contract_meta(contract_name))
+    return _respond_to_request(interface.get_contract_meta(contract_name))
 
 
 @app.route("/contracts/<contract>/resources", methods=["GET", ])
@@ -111,14 +119,14 @@ async def get_contract_meta(request, contract):
     contract_name = validate_contract_name(contract)
     meta = interface.get_contract_meta(contract_name.encode())
     r = list(meta['resources'].keys())
-    return json({'resources': r})
+    return _respond_to_request({'resources': r})
 
 
 @app.route("/contracts/<contract>/methods", methods=["GET", ])
 async def get_contract_meta(request, contract):
     contract_name = validate_contract_name(contract)
     meta = interface.get_contract_meta(contract_name.encode())
-    return json({'methods': meta['methods']})
+    return _respond_to_request({'methods': meta['methods']})
 
 
 def get_keys(contract, resource, cursor=0):
@@ -134,13 +142,13 @@ def get_keys(contract, resource, cursor=0):
 @app.route("/contracts/<contract>/<resource>/", methods=["GET", ])
 async def get_contract_resource_keys(request, contract, resource):
     r = get_keys(contract, resource)
-    return json(r)
+    return _respond_to_request(r)
 
 
 @app.route("/contracts/<contract>/<resource>/cursor/<cursor>", methods=["GET", ])
 async def get_contract_resource_keys(request, contract, resource, cursor):
     r = get_keys(contract, resource, cursor)
-    return json(r)
+    return _respond_to_request(r)
 
 
 @app.route("/contracts/<contract>/<resource>/<key>", methods=["GET",])
@@ -152,7 +160,7 @@ async def get_state(request, contract, resource, key):
     else:
         r['value'] = value
 
-    return json(r)
+    return _respond_to_request(r)
 
 
 @app.route("/latest_block", methods=["GET",])
@@ -169,12 +177,12 @@ async def get_block(request):
         num = request.json['number']
         block = StorageDriver.get_nth_full_block(given_bnum = num)
         if block is None:
-            return json({'error': 'Block at number {} does not exist.'.format(num)})
+            return _respond_to_request({'error': 'Block at number {} does not exist.'.format(num)})
     else:
         _hash = request.json['hash']
         block = StorageDriver.get_nth_full_block(given_hash = hash)
         if block is None:
-            return json({'error': 'Block with hash {} does not exist.'.format(_hash)})
+            return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)})
 
     return text('{}'.format(block))
 
