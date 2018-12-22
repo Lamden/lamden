@@ -2,7 +2,7 @@ from cilantro.logger.base import get_logger
 
 from sanic import Sanic
 from cilantro.protocol.webserver.sanic import SanicSingleton
-from sanic.response import json, text
+from sanic.response import json
 from sanic.exceptions import ServerError
 from sanic_limiter import Limiter, get_remote_address
 
@@ -55,33 +55,33 @@ def _respond_to_request(payload, headers={}, status=200):
 @app.route("/", methods=["POST",])
 async def submit_transaction(request):
     if app.queue.full():
-        return _respond_to_request({'error': "Queue full! Cannot process any more requests"})
+        return _respond_to_request({'error': "Queue full! Cannot process any more requests"}, status=503)
 
     try:
         tx_bytes = request.body
         container = TransactionContainer.from_bytes(tx_bytes)
         tx = container.open()  # Deserializing the tx automatically validates the signature and POW
     except Exception as e:
-        return _respond_to_request({'error': 'Error opening transaction: {}'.format(e)})
+        return _respond_to_request({'error': 'Error opening transaction: {}'.format(e)}, status=400)
 
     # TODO do we need to do any other validation? tx size? check sufficient stamps?
 
     # Check the transaction type and make sure we can handle it
     if type(tx) not in (ContractTransaction, PublishTransaction):
-        return _respond_to_request({'error': 'Cannot process transaction of type {}'.format(type(tx))})
+        return _respond_to_request({'error': 'Cannot process transaction of type {}'.format(type(tx))}, status=400)
 
     if not os.getenv('NONCE_DISABLED'):
         # Verify the nonce, and remove it from db if its valid so it cannot be used again
         # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
         if not NonceManager.check_if_exists(tx.nonce):
-            return _respond_to_request({'error': 'Nonce {} has expired or was never created'.format(tx.nonce)})
+            return _respond_to_request({'error': 'Nonce {} has expired or was never created'.format(tx.nonce)}, status=400)
         log.spam("Removing nonce {}".format(tx.nonce))
         NonceManager.delete_nonce(tx.nonce)
 
     # TODO @faclon why do we need this if we check the queue at the start of this func? --davis
     ord_container = OrderingContainer.create(tx)
     try: app.queue.put_nowait(ord_container.serialize())
-    except: return _respond_to_request({'error': "Queue full! Cannot process any more requests"})
+    except: return _respond_to_request({'error': "Queue full! Cannot process any more requests"}, status=503)
 
     # Return transaction hash and nonce to users (not sure which they will need) --davis
     return _respond_to_request({'success': 'Transaction successfully submitted to the network.',
@@ -92,7 +92,7 @@ async def submit_transaction(request):
 async def request_nonce(request):
     user_vk = request.json.get('verifyingKey')
     if not user_vk:
-        return _respond_to_request({'error': "you must supply the key 'verifyingKey' in the json payload"})
+        return _respond_to_request({'error': "you must supply the key 'verifyingKey' in the json payload"}, status=400)
 
     nonce = NonceManager.create_nonce(user_vk)
     log.spam("Creating nonce {}".format(nonce))
@@ -167,7 +167,7 @@ async def get_state(request, contract, resource, key):
 @limiter.limit("10/minute")
 async def get_latest_block(request):
     latest_block_hash = StorageDriver.get_latest_block_hash()
-    return text('{}'.format(latest_block_hash))
+    return _respond_to_request({ 'hash': '{}'.format(latest_block_hash) })
 
 
 @app.route('/blocks', methods=["GET", ])
@@ -177,14 +177,14 @@ async def get_block(request):
         num = request.json['number']
         block = StorageDriver.get_nth_full_block(given_bnum = num)
         if block is None:
-            return _respond_to_request({'error': 'Block at number {} does not exist.'.format(num)})
+            return _respond_to_request({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
     else:
         _hash = request.json['hash']
         block = StorageDriver.get_nth_full_block(given_hash = hash)
         if block is None:
-            return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)})
+            return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
 
-    return text('{}'.format(block))
+    return _respond_to_request(block)
 
 
 @app.route('/transaction', methods=['GET', ])
@@ -192,8 +192,8 @@ async def get_transaction(request):
     _hash = request.json['hash']
     tx = StorageDriver.get_transactions(raw_tx_hash=_hash)
     if tx is None:
-        return text({'error': 'Transaction with hash {} does not exist.'.format(_hash)})
-    return text('{}'.format(tx))
+        return _respond_to_request({'error': 'Transaction with hash {} does not exist.'.format(_hash)}, status=400)
+    return _respond_to_request(tx)
 
 
 @app.route('/transactions', methods=['GET', ])
@@ -201,15 +201,15 @@ async def get_transactions(request):
     _hash = request.json['hash']
     txs = StorageDriver.get_transactions(block_hash=_hash)
     if txs is None:
-        return text({'error': 'Block with hash {} does not exist.'.format(_hash)})
-    return text('{}'.format(txs))
+        return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, status=400)
+    return _respond_to_request(txs)
 
 
 @app.route("/teardown-network", methods=["POST",])
 async def teardown_network(request):
     # raise NotImplementedError()
     # tx = KillSignal.create()
-    return text('tearing down network')
+    return _respond_to_request({ 'message': 'tearing down network' })
 
 
 def start_webserver(q):

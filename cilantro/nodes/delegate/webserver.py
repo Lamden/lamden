@@ -1,5 +1,5 @@
 from cilantro.protocol.webserver.sanic import SanicSingleton
-from sanic.response import json, text
+from sanic.response import json
 from seneca.engine.interpreter import SenecaInterpreter
 from multiprocessing import Queue
 from cilantro.protocol.webserver.validation import *
@@ -26,12 +26,12 @@ def _respond_to_request(payload, headers={}, status=200):
 
 @app.route("/", methods=["GET"])
 async def ping(request):
-    return text('pong')
+    return _respond_to_request({ 'message': 'pong' })
 
 
 @app.route('/balance', methods=['GET'])
 async def balance(request):
-    return text('pong')
+    return _respond_to_request({ 'message': 'pong' })
 
 @app.route("/contract-data", methods=["GET",])
 async def get_contract(request):
@@ -50,8 +50,8 @@ async def get_contract(request):
     key = validate_key_name(request.json['key'])
     meta = interface.get_contract_meta(contract_name)
     if not meta['datatypes'].get(datatype):
-        raise ServerError('"{}" is not a valid datatype'.format(datatype), status_code=500)
-    return text(meta['datatypes'][datatype].get(key))
+        _respond_to_request({ "error": '"{}" is not a valid datatype'.format(datatype), status=400)
+    return _respond_to_request({ 'contract': meta['datatypes'][datatype].get(key) })
 
 def start_webserver(q):
     app.queue = q
