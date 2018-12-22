@@ -21,6 +21,8 @@ def run_mn(slot_num, log_lvl=11, reset_db=False, nonce_enabled=True):
         # We must set this env var before we import anything from cilantro
         os.environ["NONCE_DISABLED"] = "1"
 
+    os.environ['SSL_ENABLED'] = "True"
+
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.nodes.factory import NodeFactory
     from cilantro.constants.testnet import TESTNET_MASTERNODES
@@ -80,7 +82,7 @@ def dump_it(volume, delay=0):
     God._dump_it(volume=volume, delay=delay)
 
 
-def pump_it(*args, pump_wait=0, **kwargs):
+def pump_it(*args, **kwargs):
     from cilantro.utils.test.god import God
     from cilantro.logger import get_logger, overwrite_logger_level
     import logging, time
@@ -88,10 +90,5 @@ def pump_it(*args, pump_wait=0, **kwargs):
     overwrite_logger_level(logging.WARNING)
 
     log = get_logger("Pumper")
-
-    if pump_wait > 0:
-        log.important("Pumper sleeping {} seconds before starting...".format(pump_wait))
-        time.sleep(pump_wait)
-
     log.important("Starting the pump..")
     God._pump_it(*args, **kwargs)

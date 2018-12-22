@@ -110,6 +110,11 @@ class MessageBase(metaclass=MessageBaseMeta):
 
         return model
 
+    def to_dict(self) -> dict:
+        assert type(self._data) in (capnp.lib.capnp._DynamicStructBuilder, capnp.lib.capnp._DynamicStructReader), \
+            "to_dict() method is only implemented for messages that use capnp"
+        return self._data.to_dict()
+
     def __eq__(self, other):
         assert type(self) is type(other), "Cannot compare messages of seperate classes {} and {}. " \
                                           "Override __eq__ to support this behavior".format(type(self), type(other))

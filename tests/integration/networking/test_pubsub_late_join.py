@@ -26,7 +26,7 @@ class TestLateJoining(MPTestCase):
         for vk in sub_list:
             node.connect_sub(vk=vk)
 
-    @vmnet_test(run_webui=False)  # TODO turn of web UI
+    @vmnet_test(run_webui=True)  # TODO turn of web UI
     def test_2_2_2(self):
         """
         Tests creating a network with 2 Masternodes, 2 Witnesses, and 4 Delegates. Ensures everyone can connect to
@@ -39,33 +39,33 @@ class TestLateJoining(MPTestCase):
         BLOCK = False
 
         self.log.test("Spinning up first 3 nodes")
-        node1 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='[node_1]MN_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        node2 = MPPubSubAuth(sk=TESTNET_MASTERNODES[1]['sk'], name='[node_2]MN_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        node3 = MPPubSubAuth(sk=TESTNET_WITNESSES[0]['sk'], name='[node_3]WITNESS_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+        node1 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='node_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+        node2 = MPPubSubAuth(sk=TESTNET_MASTERNODES[1]['sk'], name='node_2', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+        node3 = MPPubSubAuth(sk=TESTNET_WITNESSES[0]['sk'], name='node_3', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
 
-        time.sleep(12*CI_FACTOR)  # Nap while nodes hookup
+        time.sleep(8*CI_FACTOR)  # Nap while nodes hookup
 
         all_vks = [TESTNET_MASTERNODES[0]['vk'], TESTNET_MASTERNODES[1]['vk'], TESTNET_WITNESSES[0]['vk'],
-                   TESTNET_WITNESSES[1]['vk'], TESTNET_DELEGATES[0]['vk'], TESTNET_DELEGATES[1]['vk']]
+                   TESTNET_WITNESSES[1]['vk'], TESTNET_DELEGATES[0]['vk']]
 
         self.log.test("Configuring nodes 1, 2, and 3")
         for n in (node1, node2, node3):
             self.config_node(n, all_vks)
 
-        time.sleep(10*CI_FACTOR)  # Nap while nodes try to add sockets
+        time.sleep(12*CI_FACTOR)  # Nap while nodes try to add sockets
 
         # Spin up last 2 nodes
         self.log.test("Spinning up remaining 2 nodes")
-        node4 = MPPubSubAuth(sk=TESTNET_WITNESSES[1]['sk'], name='[node_4]WITNESS_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
-        node5 = MPPubSubAuth(sk=TESTNET_DELEGATES[0]['sk'], name='[node_5]DELEGATE_0', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+        node4 = MPPubSubAuth(sk=TESTNET_WITNESSES[1]['sk'], name='node_4', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
+        node5 = MPPubSubAuth(sk=TESTNET_DELEGATES[0]['sk'], name='node_5', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
 
-        time.sleep(12*CI_FACTOR)  # Nap while nodes hookup
+        time.sleep(16*CI_FACTOR)  # Nap while nodes hookup
 
         self.log.test("Configuring nodes 4 and 5")
         for n in (node4, node5):
             self.config_node(n, all_vks)
 
-        time.sleep(20*CI_FACTOR)  # Nap while the remaining nodes connect
+        time.sleep(15*CI_FACTOR)  # Nap while the remaining nodes connect
 
         # Everyone pubs
         self.log.test("Sending PUB messages from all nodes")

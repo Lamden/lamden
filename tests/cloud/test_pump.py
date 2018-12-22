@@ -1,4 +1,4 @@
-NETWORK_SIZE = '4-4-4'
+NETWORK_SIZE = '2-2-2'
 
 MN_LOG_LVL = 11
 WITNESS_LOG_LVL = 30
@@ -32,7 +32,7 @@ class TestPump(AWSTestCase):
     # Avg number of transactions per second we will pump. Set to pump 1 block per BATCH_SLEEP_INTERVAL
     PUMP_RATE = (TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK) // BATCH_SLEEP_INTERVAL
     MODEL_AS_POISSON = True
-    PUMP_WAIT = 180  # how long to sleep before we start the pump
+    PUMP_WAIT = 300  # how long to sleep before we start the pump
 
     def test_pump(self):
         log = get_logger("Pumpatron")
@@ -51,19 +51,19 @@ class TestPump(AWSTestCase):
                                                            reset_db=True))
 
         # Bootstrap pump
-        self.execute_python('mgmt', God.pump_it(rate=self.PUMP_RATE, use_poisson=self.MODEL_AS_POISSON, pump_wait=self.PUMP_WAIT,
-                                                sleep_sometimes=True, active_bounds=(30, 120), sleep_bounds=(20, 30)))
+        #self.execute_python('mgmt', God.pump_it(rate=self.PUMP_RATE, use_poisson=self.MODEL_AS_POISSON, pump_wait=self.PUMP_WAIT,
+        #                                        sleep_sometimes=True, active_bounds=(30, 120), sleep_bounds=(20, 30)))
 
-        while True:
-            user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
-
-            if user_input.lower() == 'x':
-                log.important("Termination input detected. Breaking")
-                break
-
-            vol = int(user_input) if user_input.isdigit() else self.VOLUME
-            log.important3("Dumpatron dumping {} transactions!".format(vol))
-            self.execute_python('mgmt', God.dump_it(volume=vol))
+        # while True:
+        #     user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")
+        #
+        #     if user_input.lower() == 'x':
+        #         log.important("Termination input detected. Breaking")
+        #         break
+        #
+        #     vol = int(user_input) if user_input.isdigit() else self.VOLUME
+        #     log.important3("Dumpatron dumping {} transactions!".format(vol))
+        #     self.execute_python('mgmt', God.dump_it(volume=vol), no_kill=True)
 
 
 if __name__ == '__main__':

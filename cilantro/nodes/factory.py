@@ -9,15 +9,10 @@ from cilantro.storage.vkbook import VKBook
 
 from cilantro.constants.overlay_network import HOST_IP
 
-def _build_block_schema(should_reset):
-    MDB.setup_db()
-
 
 def _wait_for_redis():
     import redis, time
     r = redis.StrictRedis()
-    redis_ready = False
-    mongo_ready = False
     while True:
         try:
             r = redis.StrictRedis()
@@ -38,7 +33,6 @@ def _wait_for_mongo():
         except:
             print("Waiting for Mongo to be ready...")
         time.sleep(1)
-
 
 class NodeFactory:
     @staticmethod

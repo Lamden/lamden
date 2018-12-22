@@ -43,17 +43,17 @@ class BlockAggregator(Worker):
 
         self.tasks = []
 
-        self.curr_block_hash = StateDriver.get_latest_block_hash()
         self.curr_block = BlockContender()
 
         self.pub, self.sub, self.router, self.ipc_router = None, None, None, None  # Set in build_task_list
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
 
+        self.curr_block_hash = StateDriver.get_latest_block_hash()
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
-        assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
-            "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-            .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
+        # assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+            # "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
+            # .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
 
         self.run()
 
@@ -135,19 +135,13 @@ class BlockAggregator(Worker):
         self.log.spam("Got SUB msg from sender {}\nMessage: {}".format(sender, msg))
 
         if isinstance(msg, SubBlockContender):
-            if self.catchup_manager.catchup_state:
+            if not self.catchup_manager.is_catchup_done():
                 self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
             else:
                 self.recv_sub_block_contender(sender, msg)
 
-        elif isinstance(msg, NewBlockNotification):
-            if self.catchup_manager.catchup_state:
-                self.catchup_manager.recv_new_blk_notif(msg)
-            else:
-                self.recv_new_block_notif(sender, msg)
-
-        elif isinstance(msg, SkipBlockNotification):
-            self.recv_skip_block_notif(sender, msg)
+        elif isinstance(msg, NewBlockNotification) or isinstance(msg, SkipBlockNotification):
+            self.recv_new_block_notif(sender, msg)
 
         elif isinstance(msg, FailedBlockNotification):
             self.recv_fail_block_notif(sender, msg)
@@ -163,6 +157,8 @@ class BlockAggregator(Worker):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         sender = envelope.sender
+
+        assert sender.encode() == frames[0], "Sender vk {} does not match id frame {}".format(sender.encode(), frames[0])
         self.log.spam("Got ROUTER msg from sender {} with id frame {}\nMessage: {}".format(sender, frames[0], msg))
 
         if isinstance(msg, BlockDataRequest):
@@ -179,7 +175,6 @@ class BlockAggregator(Worker):
                             .format(type(msg)))
 
     def recv_sub_block_contender(self, sender_vk: str, sbc: SubBlockContender):
-        assert not self.catchup_manager.catchup_state, "We should not be receiving SBCs when we are catching up!"
         self.log.debugv("Received a sbc from sender {} with result hash {} and input hash {}"
                         .format(sender_vk, sbc.result_hash, sbc.input_hash))
 
@@ -233,7 +228,7 @@ class BlockAggregator(Worker):
     def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
         message = EmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
-        skip_notif = SkipBlockNotification.create_from_sub_blocks(prev_block_hash=self.curr_block_hash, sub_blocks=sub_blocks)
+        skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, StateDriver.get_latest_block_num()+1, sub_blocks)
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
@@ -244,11 +239,12 @@ class BlockAggregator(Worker):
 
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
         self.log.debugv("MN got new block notification: {}".format(notif))
-        # TODO implement
 
-    def recv_skip_block_notif(self, sender_vk: str, notif: SkipBlockNotification):
-        self.log.debugv("MN got skip block notification: {}".format(notif))
-        # TODO implement
+        if notif.block_num > StateDriver.get_latest_block_num() + 1:
+            self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, StateDriver.get_latest_block_num()))
+            self.catchup_manager.recv_new_blk_notif(notif)
+        else:
+            self.log.debugv("Block num on NBC is LTE that ours. Ignoring")
 
     def recv_fail_block_notif(self, sender_vk: str, notif: FailedBlockNotification):
         self.log.debugv("MN got fail block notification: {}".format(notif))

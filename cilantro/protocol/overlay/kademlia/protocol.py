@@ -8,8 +8,9 @@ from cilantro.protocol.overlay.kademlia.node import Node
 from cilantro.protocol.overlay.kademlia.routing import RoutingTable
 from cilantro.protocol.overlay.kademlia.utils import digest
 from cilantro.protocol.overlay.event import Event
+from cilantro.logger.base import get_logger
 
-log = logging.getLogger(__name__)
+log = get_logger("KademliaProtocol")
 
 
 class KademliaProtocol(RPCProtocol):
@@ -41,7 +42,7 @@ class KademliaProtocol(RPCProtocol):
         return self.sourceNode.id
 
     def rpc_find_node(self, sender, nodeid, key):
-        log.info("finding neighbors of {} in local table for {}".format(key, sender))
+        log.debug("finding neighbors of {} in local table for {}".format(key, sender))
         source = Node(nodeid, sender[0], sender[1], sender[2])
         emit_to_client = self.track_on and self.router.isNewNode(source)
         self.welcomeIfNewNode(source)
@@ -80,7 +81,7 @@ class KademliaProtocol(RPCProtocol):
         if not self.router.isNewNode(node):
             return
 
-        log.info("never seen %s before, adding to router", node)
+        log.debugv("never seen %s before, adding to router", node)
         self.router.addContact(node)
 
     def handleCallResponse(self, result, node, updateRoutingTable):
@@ -94,7 +95,7 @@ class KademliaProtocol(RPCProtocol):
             self.router.removeContact(node)
             return nodes
 
-        log.info("got successful response from {} and response {}".format(node, result))
+        log.spam("got successful response from {} and response {}".format(node, result))
         self.welcomeIfNewNode(node)
         for t in result[1]:
             n = Node(digest(t[3]), ip=t[1], port=t[2], vk=t[3])

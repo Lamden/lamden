@@ -7,7 +7,10 @@ import os, sys
 from os.path import dirname
 from logging.handlers import TimedRotatingFileHandler
 import cilantro
+
 #from vmnet.cloud.aws import S3Handler
+from vmnet.cloud.aws import AWSCloudWatchHandler
+import multiprocessing
 
 logging.getLogger("paramiko").setLevel(logging.WARNING)
 logging.getLogger('boto3').setLevel(logging.WARNING)
@@ -128,7 +131,6 @@ class ColoredStreamHandler(logging.StreamHandler):
             coloredlogs.ColoredFormatter(format)
         )
 
-
 def _ignore(*args, **kwargs):
     return
 
@@ -136,6 +138,7 @@ def _ignore(*args, **kwargs):
 class MockLogger:
     def __getattr__(self, item):
         return _ignore
+
 
 def get_logger(name=''):
     if _LOG_LVL == 0:
@@ -146,6 +149,8 @@ def get_logger(name=''):
 
     if not os.path.exists(filedir):
         os.makedirs(filedir, exist_ok=True)
+
+    pname = multiprocessing.current_process().name
 
     filehandlers = [
         ColoredFileHandler('{}_color'.format(filename), delay=True, when="m", interval=30, backupCount=5),
@@ -164,7 +169,7 @@ def get_logger(name=''):
     log = logging.getLogger(name)
     log.setLevel(_LOG_LVL)
 
-    if os.getenv('HOST_IP') or os.getenv('VMNET_CLOUD'):
+    if os.getenv('VMNET_DOCKER') or os.getenv('VMNET_CLOUD'):
         sys.stdout = LoggerWriter(log.debug)
         sys.stderr = LoggerWriter(log.error)
 

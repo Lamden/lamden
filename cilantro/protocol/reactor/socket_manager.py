@@ -32,9 +32,9 @@ class SocketManager:
         # instances who started them. This information helps us route overlay events to the appropriate sockets
         self.pending_lookups = {}
 
-        # failed_lookups is a dict of 'vk' to list of tuples of form (lsocket, func_name, args, kwargs)
+        # vk_lookups is a dict of 'vk' to list of tuples of form (lsocket, func_name, args, kwargs)
         # We this to reconnect sockets once nodes have come back online
-        self.failed_lookups = defaultdict(list)
+        self.vk_lookups = defaultdict(list)
 
         # overlay_callbacks tracks LSockets who have subscribed to certain overlay events with custom handlers
         self.overlay_callbacks = defaultdict(set)
@@ -69,14 +69,22 @@ class SocketManager:
             sock.handle_overlay_event(e)
 
         # Retry any failed lookups registered by sockets when a node comes online
-        elif e['event'] == 'node_online' and e['vk'] in self.failed_lookups:
-            # TODO change log lvl here
-            self.log.debugv("sock manager got node_online event for vk {}! Triggering retry for failed lookups {}"
-                            .format(e['vk'], self.failed_lookups[e['vk']]))
-            for cmd_tuple in self.failed_lookups.pop(e['vk']):
+        elif e['event'] == 'node_online' and e['vk'] in self.vk_lookups:
+            self.log.debugv("sock manager got node_online event for vk {}! Triggering reconnect with info {}"
+                            .format(e['vk'], self.vk_lookups[e['vk']]))
+
+            idx_to_rm = []
+            for i, cmd_tuple in enumerate(self.vk_lookups[e['vk']]):
                 sock, cmd_name, args, kwargs = cmd_tuple
                 kwargs['ip'] = e['ip']
+                # Only remove bind commands (we will do another connect call everytime a Node comes online)
+                if cmd_name == 'bind':
+                    idx_to_rm.append(i)
+
                 getattr(sock, cmd_name)(*args, **kwargs)
+
+            for i in reversed(idx_to_rm):
+                self.vk_lookups[e['vk']].pop(i)
 
         elif e['event'] == 'unauthorized_ip':
             # TODO proper error handling / 'bad actor' logic here
