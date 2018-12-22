@@ -12,7 +12,8 @@
             "use_ssl": true,
             "ssl_nodes": [
                 "masternode",
-                "delegate"
+                "delegate",
+                "witness"
               ],
             "TTL": 20,
             "service": "route53",
@@ -89,7 +90,7 @@
                     "pip3 install vmnet --upgrade --no-cache-dir",
                     "pip3 install seneca --upgrade --no-cache-dir",
                     "sudo apt-get install socat",
-                    "sudo TYPEREGEX=${TYPEREGEX} USER=${USER} DNS_NAME=${DNS_NAME} SSL_ENABLED=${SSL_ENABLED} HOST_NAME=${HOST_NAME} SUBNET_PREFIX=${SUBNET_PREFIX} bash scripts/setup-ssl.sh"
+                    "sudo USER=${USER} bash scripts/setup-ssl.sh"
                 ]
             },
             "cilantro_mn": {
@@ -107,7 +108,7 @@
                     "pip3 install vmnet --upgrade --no-cache-dir",
                     "pip3 install seneca --upgrade --no-cache-dir",
                     "sudo apt-get install socat",
-                    "sudo TYPEREGEX=${TYPEREGEX} USER=${USER} DNS_NAME=${DNS_NAME} SSL_ENABLED=${SSL_ENABLED} HOST_NAME=${HOST_NAME} SUBNET_PREFIX=${SUBNET_PREFIX} bash scripts/setup-ssl.sh"
+                    "sudo USER=${USER} bash scripts/setup-ssl.sh"
                 ]
             }
         }
