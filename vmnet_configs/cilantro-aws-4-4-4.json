@@ -8,6 +8,11 @@
         "use_dns": true,
         "use_elastic_ips": false,
         "dns_configuration": {
+            "use_ssl": true,
+	    "ssl_nodes": [
+	        "masternode",
+		    "delegate"
+	    ],
             "TTL": 20,
             "service": "route53",
             "domain_name": "anarchynet.io",
