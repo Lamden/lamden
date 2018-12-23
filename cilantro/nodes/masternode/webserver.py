@@ -202,14 +202,23 @@ JSON serializable (needs to be returned as bytes)
 """
 @app.route('/transaction/payload', methods=['GET',])
 async def get_transaction_payload(request):
-    tx = get_tx(request.json.get('hash'))
+    _hash = request.json.get('hash', None)
+    if not _hash:
+        return _respond_to_request({'error': 'Required argument "hash" not provided'}, status=400)
+        
+    tx = get_tx(_hash)
     if tx is None:
         return _respond_to_request({'error': 'Transaction with hash {} does not exist.'.format(_hash)}, status=400)
+
     return _respond_to_request(tx['transaction'], resptype='text')
 
 @app.route('/transaction', methods=['GET', ])
 async def get_transaction(request):
-    tx = get_tx(request.json.get('hash'))
+    _hash = request.json.get('hash', None)
+    if not _hash:
+        return _respond_to_request({'error': 'Required argument "hash" not provided'}, status=400)
+        
+    tx = get_tx(_hash)
     if tx is None:
         return _respond_to_request({'error': 'Transaction with hash {} does not exist.'.format(_hash)}, status=400)
 
