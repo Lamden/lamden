@@ -78,7 +78,7 @@ class TransactionBatcher(Worker):
     async def compose_transactions(self):
 
         # We take a long slep so that Nodes can prepare their sockets and run catchup before TX's go through the system
-        nap = 90 if os.getenv("VMNET_CLOUD") else 24
+        nap = 120 if os.getenv("VMNET_CLOUD") else 60
         self.log.important("Taking a nap of {}s before starting TransactionBatcher...".format(nap))
         await asyncio.sleep(nap)
         self.log.important("Starting TransactionBatcher")

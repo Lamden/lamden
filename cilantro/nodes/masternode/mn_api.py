@@ -67,6 +67,9 @@ class StorageDriver:
 
         map = MasterOps.get_usr_tx_result(usr_tx_hash = raw_tx_hash)
 
+        if not map:
+            return
+
         # identify Leaf and block num from given hash in map
         blk_num = map.get('block')
         leaf = map.get('tx_leaf')
