@@ -2,7 +2,7 @@ from cilantro.logger.base import get_logger
 
 from sanic import Sanic
 from cilantro.protocol.webserver.sanic import SanicSingleton
-from sanic.response import json
+from sanic.response import json, text
 from sanic.exceptions import ServerError
 from sanic_limiter import Limiter, get_remote_address
 
