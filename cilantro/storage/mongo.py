@@ -210,10 +210,12 @@ class MDB:
 
             if type is 'tx':
                 outcome = cls.mn_coll_tx.find(query)
-                assert result != 1, "we have duplicate transactions dumping result {}".format(result)
                 for x in outcome:
                     # cls.log.important2("RESULT X {} count {}".format(x, MongoTools.get_count(result)))
                     result.update(x)
+                # assert result != 1, "we have duplicate transactions dumping result {}".format(result)
+                if len(result) > 1:
+                    cls.log.error("we have duplicate transaction results {}".format(result))
 
         if len(result) > 0:
             # cls.log.important("result => {}".format(result))
