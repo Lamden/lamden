@@ -48,8 +48,11 @@ if os.getenv('SSL_ENABLED'):
     with open(os.path.expanduser("~/.sslconf"), "r") as df:
         ssl = _json.load(df)
 
-def _respond_to_request(payload, headers={}, status=200):
-    return json(payload, headers=dict(headers, **static_headers), status=status)
+def _respond_to_request(payload, headers={}, status=200, resptype='json'):
+    if resptype == 'json':
+        return json(payload, headers=dict(headers, **static_headers), status=status)
+    elif resptype == 'text':
+        return text(payload, headers=dict(headers, **static_headers), status=status)
 
 
 @app.route("/", methods=["POST",])
@@ -180,21 +183,39 @@ async def get_block(request):
             return _respond_to_request({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
     else:
         _hash = request.json['hash']
-        block = StorageDriver.get_nth_full_block(given_hash = hash)
+        block = StorageDriver.get_nth_full_block(given_hash = _hash)
         if block is None:
             return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
 
     return _respond_to_request(block)
 
+def get_tx(_hash):
+    if not _hash:
+        return None
+    return StorageDriver.get_transactions(raw_tx_hash=_hash)
+
+"""
+Colin McGrath
+
+Needed to separate out the return of the transaction payload and transaction metadata due to the payload not being
+JSON serializable (needs to be returned as bytes)
+"""
+@app.route('/transaction/payload', methods=['GET',])
+async def get_transaction_payload(request):
+    tx = get_tx(request.json.get('hash'))
+    if tx is None:
+        return _respond_to_request({'error': 'Transaction with hash {} does not exist.'.format(_hash)}, status=400)
+    return _respond_to_request(tx['transaction'], resptype='text')
 
 @app.route('/transaction', methods=['GET', ])
 async def get_transaction(request):
-    _hash = request.json['hash']
-    tx = StorageDriver.get_transactions(raw_tx_hash=_hash)
+    tx = get_tx(request.json.get('hash'))
     if tx is None:
         return _respond_to_request({'error': 'Transaction with hash {} does not exist.'.format(_hash)}, status=400)
-    return _respond_to_request(tx)
 
+    # Remove transaction payload from response to make it json serializable
+    tx.pop('transaction', None)
+    return _respond_to_request(tx)
 
 @app.route('/transactions', methods=['GET', ])
 async def get_transactions(request):
@@ -204,13 +225,11 @@ async def get_transactions(request):
         return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, status=400)
     return _respond_to_request(txs)
 
-
 @app.route("/teardown-network", methods=["POST",])
 async def teardown_network(request):
     # raise NotImplementedError()
     # tx = KillSignal.create()
     return _respond_to_request({ 'message': 'tearing down network' })
-
 
 def start_webserver(q):
     app.queue = q
