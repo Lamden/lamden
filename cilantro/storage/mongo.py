@@ -87,21 +87,21 @@ class MDB:
     @classmethod
     def setup_db(cls):
         database = cls.cfg.get('MN_DB', 'mn_blk_database')
-        store_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+        store_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin&maxPoolSize=1"
         cls.log.debugv("store uri {}".format(store_uri))
         cls.mn_client = MongoClient(store_uri)
         cls.mn_db = cls.mn_client.get_database()
         cls.mn_collection = cls.mn_db['blocks']
 
         database = cls.cfg.get('MN_DB', 'mn_index_database')
-        index_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+        index_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin&maxPoolSize=1"
         cls.log.debugv("index uri {}".format(index_uri))
         cls.mn_client_idx = MongoClient(index_uri)
         cls.mn_db_idx = cls.mn_client_idx.get_database()
         cls.mn_coll_idx = cls.mn_db_idx['index']
 
         database = cls.cfg.get('MN_DB', 'mn_tx_database')
-        tx_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin"
+        tx_uri = "mongodb://"+cls.user+":"+cls.pwd+"@localhost:"+cls.port+'/'+database+"?authSource=admin&maxPoolSize=1"
         cls.log.debugv("index uri {}".format(tx_uri))
         cls.mn_client_tx = MongoClient(tx_uri)
         cls.mn_db_tx = cls.mn_client_tx.get_database()
