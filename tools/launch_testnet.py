@@ -1,4 +1,4 @@
-NETWORK_SIZE = '2-2-2'
+NETWORK_SIZE = '4-4-4'
 
 MN_LOG_LVL = 11
 WITNESS_LOG_LVL = 30
@@ -6,7 +6,7 @@ DELEGATE_LOG_LVL = 11
 SENECA_LOG_LVL = 11
 
 from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config('{}.json'.format(NETWORK_SIZE))
+set_testnet_config('4-4-4.json')
 
 from cilantro.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
@@ -27,7 +27,7 @@ class TestPump(AWSTestCase):
 
     NUM_BLOCKS = 2
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dum
-    config_file = get_config_file('cilantro-aws-{}.json'.format(NETWORK_SIZE))
+    config_file = get_config_file('cilantro-aws-4-4-4.json')
     keep_up = True
     logging = True
 
