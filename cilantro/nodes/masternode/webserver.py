@@ -216,7 +216,7 @@ async def get_transaction_payload(request):
 async def get_transaction(request):
     if not request.json:
         log.info("Received body on /transaction {}".format(request.body))
-        return
+        return text("wtf")
     _hash = request.json.get('hash', None)
     if not _hash:
         return _respond_to_request({'error': 'Required argument "hash" not provided'}, status=400)
