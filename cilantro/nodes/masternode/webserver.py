@@ -5,6 +5,7 @@ from cilantro.protocol.webserver.sanic import SanicSingleton
 from sanic.response import json, text
 from sanic.exceptions import ServerError
 from sanic_limiter import Limiter, get_remote_address
+from sanic_cors import CORS, cross_origin
 
 from cilantro.messages.transaction.contract import ContractTransaction
 from cilantro.messages.transaction.publish import PublishTransaction
@@ -28,6 +29,7 @@ import json as _json
 
 ssl = None
 app = SanicSingleton.app
+CORS(app)1
 interface = SanicSingleton.interface
 log = get_logger("MN-WebServer")
 
@@ -55,7 +57,7 @@ def _respond_to_request(payload, headers={}, status=200, resptype='json'):
         return text(payload, headers=dict(headers, **static_headers), status=status)
 
 
-@app.route("/", methods=["POST",])
+@app.route("/", methods=["POST","OPTIONS",])
 async def submit_transaction(request):
     if app.queue.full():
         return _respond_to_request({'error': "Queue full! Cannot process any more requests"}, status=503)
@@ -91,7 +93,7 @@ async def submit_transaction(request):
                  'nonce': tx.nonce, 'hash': Hasher.hash(tx)})
 
 
-@app.route("/nonce", methods=['GET',])
+@app.route("/nonce", methods=['GET',"OPTIONS",])
 async def request_nonce(request):
     user_vk = request.json.get('verifyingKey')
     if not user_vk:
@@ -102,7 +104,7 @@ async def request_nonce(request):
     return _respond_to_request({'success': True, 'nonce': nonce})
 
 
-@app.route("/contracts", methods=["GET", ])
+@app.route("/contracts", methods=["GET","OPTIONS",])
 async def get_contracts(request):
     r = interface.r.hkeys('contracts')
     result = {}
@@ -111,13 +113,13 @@ async def get_contracts(request):
     return _respond_to_request(result)
 
 
-@app.route("/contracts/<contract>", methods=["GET", ])
+@app.route("/contracts/<contract>", methods=["GET","OPTIONS",])
 async def get_contract_meta(request, contract):
     contract_name = validate_contract_name(contract)
     return _respond_to_request(interface.get_contract_meta(contract_name))
 
 
-@app.route("/contracts/<contract>/resources", methods=["GET", ])
+@app.route("/contracts/<contract>/resources", methods=["GET","OPTIONS",])
 async def get_contract_meta(request, contract):
     contract_name = validate_contract_name(contract)
     meta = interface.get_contract_meta(contract_name.encode())
@@ -125,7 +127,7 @@ async def get_contract_meta(request, contract):
     return _respond_to_request({'resources': r})
 
 
-@app.route("/contracts/<contract>/methods", methods=["GET", ])
+@app.route("/contracts/<contract>/methods", methods=["GET","OPTIONS",])
 async def get_contract_meta(request, contract):
     contract_name = validate_contract_name(contract)
     meta = interface.get_contract_meta(contract_name.encode())
@@ -142,19 +144,19 @@ def get_keys(contract, resource, cursor=0):
     return {'cursor': keys[0], 'keys': formatted_keys}
 
 
-@app.route("/contracts/<contract>/<resource>/", methods=["GET", ])
+@app.route("/contracts/<contract>/<resource>/", methods=["GET","OPTIONS",])
 async def get_contract_resource_keys(request, contract, resource):
     r = get_keys(contract, resource)
     return _respond_to_request(r)
 
 
-@app.route("/contracts/<contract>/<resource>/cursor/<cursor>", methods=["GET", ])
+@app.route("/contracts/<contract>/<resource>/cursor/<cursor>", methods=["GET","OPTIONS",])
 async def get_contract_resource_keys(request, contract, resource, cursor):
     r = get_keys(contract, resource, cursor)
     return _respond_to_request(r)
 
 
-@app.route("/contracts/<contract>/<resource>/<key>", methods=["GET",])
+@app.route("/contracts/<contract>/<resource>/<key>", methods=["GET","OPTIONS",])
 async def get_state(request, contract, resource, key):
     value = interface.r.get('{}:{}:{}'.format(contract, resource, key))
     r = {}
@@ -166,14 +168,14 @@ async def get_state(request, contract, resource, key):
     return _respond_to_request(r)
 
 
-@app.route("/latest_block", methods=["GET",])
+@app.route("/latest_block", methods=["GET","OPTIONS",])
 @limiter.limit("10/minute")
 async def get_latest_block(request):
     latest_block_hash = StorageDriver.get_latest_block_hash()
     return _respond_to_request({ 'hash': '{}'.format(latest_block_hash) })
 
 
-@app.route('/blocks', methods=["GET", ])
+@app.route('/blocks', methods=["GET","OPTIONS",])
 @limiter.limit("10/minute")
 async def get_block(request):
     if 'number' in request.json:
@@ -200,7 +202,7 @@ Colin McGrath
 Needed to separate out the return of the transaction payload and transaction metadata due to the payload not being
 JSON serializable (needs to be returned as bytes)
 """
-@app.route('/transaction/payload', methods=['GET',])
+@app.route('/transaction/payload', methods=['GET',"OPTIONS",])
 async def get_transaction_payload(request):
     _hash = request.json.get('hash', None)
     if not _hash:
@@ -212,7 +214,7 @@ async def get_transaction_payload(request):
 
     return _respond_to_request(tx['transaction'], resptype='text')
 
-@app.route('/transaction', methods=['GET',"OPTIONS"])
+@app.route('/transaction', methods=['GET',"OPTIONS",])
 async def get_transaction(request):
     if request.method == "OPTIONS":
         return _respond_to_request({}, headers={'Access-Control-Allow-Methods': 'GET', "Access-Control-Allow-Headers": "accept, content-type" })
@@ -228,7 +230,7 @@ async def get_transaction(request):
     tx.pop('transaction', None)
     return _respond_to_request(tx)
 
-@app.route('/transactions', methods=['GET', ])
+@app.route('/transactions', methods=['GET',"OPTIONS",])
 async def get_transactions(request):
     _hash = request.json['hash']
     txs = StorageDriver.get_transactions(block_hash=_hash)
@@ -236,7 +238,7 @@ async def get_transactions(request):
         return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, status=400)
     return _respond_to_request(txs)
 
-@app.route("/teardown-network", methods=["POST",])
+@app.route("/teardown-network", methods=["POST","OPTIONS",])
 async def teardown_network(request):
     # raise NotImplementedError()
     # tx = KillSignal.create()
