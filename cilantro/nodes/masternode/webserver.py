@@ -212,8 +212,10 @@ async def get_transaction_payload(request):
 
     return _respond_to_request(tx['transaction'], resptype='text')
 
-@app.route('/transaction', methods=['GET', ])
+@app.route('/transaction', methods=['GET',"OPTIONS"])
 async def get_transaction(request):
+    if request.method == "OPTIONS":
+        return _respond_to_request({}, headers={'Access-Control-Allow-Methods': 'GET', "Access-Control-Allow-Headers": "accept, content-type" })
     _hash = request.json.get('hash', None)
     if not _hash:
         return _respond_to_request({'error': 'Required argument "hash" not provided'}, status=400)
