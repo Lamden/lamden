@@ -34,9 +34,7 @@ interface = SanicSingleton.interface
 log = get_logger("MN-WebServer")
 
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
-static_headers = {
-    'Access-Control-Allow-Origin': '*'
-}
+static_headers = {}
 
 if os.getenv('NONCE_DISABLED'):
     log.warning("NONCE_DISABLED env var set! Nonce checking as well as rate limiting will be disabled!")
