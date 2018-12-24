@@ -214,6 +214,7 @@ async def get_transaction_payload(request):
 
 @app.route('/transaction', methods=['GET',"OPTIONS",])
 async def get_transaction(request):
+    print(request.body)
     _hash = request.json.get('hash', None)
     if not _hash:
         return _respond_to_request({'error': 'Required argument "hash" not provided'}, status=400)
