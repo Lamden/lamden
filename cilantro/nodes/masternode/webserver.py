@@ -29,7 +29,7 @@ import json as _json
 
 ssl = None
 app = SanicSingleton.app
-CORS(app)1
+CORS(app)
 interface = SanicSingleton.interface
 log = get_logger("MN-WebServer")
 
