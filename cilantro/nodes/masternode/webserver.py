@@ -200,7 +200,7 @@ Colin McGrath
 Needed to separate out the return of the transaction payload and transaction metadata due to the payload not being
 JSON serializable (needs to be returned as bytes)
 """
-@app.route('/transaction/payload', methods=['GET',"OPTIONS",])
+@app.route('/transaction/payload', methods=['POST',"OPTIONS",])
 async def get_transaction_payload(request):
     _hash = request.json.get('hash', None)
     if not _hash:
@@ -212,11 +212,11 @@ async def get_transaction_payload(request):
 
     return _respond_to_request(tx['transaction'], resptype='text')
 
-@app.route('/transaction', methods=['GET',"OPTIONS",])
+@app.route('/transaction', methods=['POST',"OPTIONS",])
 async def get_transaction(request):
     if not request.json:
         log.info("Received body on /transaction {}".format(request.body))
-        return text("wtf")
+        return _respond_to_request({ 'wtf': 'm8' })
     _hash = request.json.get('hash', None)
     if not _hash:
         return _respond_to_request({'error': 'Required argument "hash" not provided'}, status=400)
@@ -229,7 +229,7 @@ async def get_transaction(request):
     tx.pop('transaction', None)
     return _respond_to_request(tx)
 
-@app.route('/transactions', methods=['GET',"OPTIONS",])
+@app.route('/transactions', methods=['POST',"OPTIONS",])
 async def get_transactions(request):
     _hash = request.json['hash']
     txs = StorageDriver.get_transactions(block_hash=_hash)
