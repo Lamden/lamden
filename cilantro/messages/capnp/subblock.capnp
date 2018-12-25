@@ -25,3 +25,6 @@ struct SubBlockContender {
 }
 
 
+struct AlignInputHash {
+    inputHash @0 :Data;
+}

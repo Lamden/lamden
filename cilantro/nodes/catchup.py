@@ -10,10 +10,10 @@ from cilantro.storage.mongo import MDB
 from cilantro.nodes.masternode.master_store import MasterOps
 from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.block_data.block_metadata import BlockMetaData
-from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest
+from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest, BlockDataReply
 
 
-IDX_REPLY_TIMEOUT = 10
+IDX_REPLY_TIMEOUT = 20
 TIMEOUT_CHECK_INTERVAL = 1
 
 class CatchupManager:
@@ -41,7 +41,8 @@ class CatchupManager:
 
         # main list to process
         self.block_delta_list = []       # list of mn_index dict to process
-        self.target_blk_num = -1
+        # self.target_blk_num = -1
+        self.target_blk_num = self.curr_num
 
         # received full block could be out of order
         self.rcv_block_dict = {}                 # DS stores any Out of order received blocks
@@ -49,6 +50,30 @@ class CatchupManager:
 
         # loop to schedule timeouts
         self.timeout_fut = None
+
+        # masternode should make sure redis and mongo are in sync
+        if store_full_blocks:
+            self.update_redis_state()
+
+    def update_redis_state(self):
+        db_latest_blk_hash = StorageDriver.get_latest_block_hash()
+        db_latest_blk_num = StorageDriver.get_latest_block_num()
+        if db_latest_blk_num < self.curr_num:
+            self.log.fatal("Block DB is behind StateDriver. Cannot handle")
+        if db_latest_blk_num > self.curr_num:
+            self.log.info("StateDriver block num {} is behind DB block num {}".format(self.curr_num, db_latest_blk_num))
+            while self.curr_num < db_latest_blk_num:
+                self.curr_num = self.curr_num + 1
+                blk_dict = StorageDriver.get_nth_full_block(given_bnum=self.curr_num)
+                if '_id' in blk_dict:
+                    del blk_dict['_id']
+                block = BlockData.from_dict(blk_dict)
+                # self.log.critical("raghu {}".format(block))
+                StateDriver.update_with_block(block = block)
+        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
+        self.target_blk_num = self.curr_num
+        self.log.important("StateDriver hash {} num {} StorageDriver hash {} num {}".format(self.curr_hash, self.curr_num, db_latest_blk_hash, db_latest_blk_num))
+
 
     # should be called only once per node after bootup is done
     def run_catchup(self, ignore=False):
@@ -128,15 +153,16 @@ class CatchupManager:
         if not reply.indices:
             self.log.important("Received BlockIndexReply with no index info from masternode {}".format(sender_vk))
             # self.log.important("responded mn - {}".format(self.node_idx_reply_set))
-            self.target_blk_num = self.curr_num
-            self.is_catchup_done()
-            self.dump_debug_info()
+            # self.target_blk_num = self.curr_num
+            # self.is_catchup_done()
+            # self.dump_debug_info()
             return
 
         tmp_list = reply.indices
+        tmp_list.reverse()
         self.new_target_blk_num = tmp_list[-1].get('blockNum')
         new_blks = self.new_target_blk_num - self.target_blk_num
-        # self.log.important("nt {} tb {} tlist {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
+        self.log.important("nt {} tb {} tlist {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
         if new_blks > 0:
             self.target_blk_num = self.new_target_blk_num
             update_list = tmp_list[-new_blks:]
@@ -257,6 +283,16 @@ class CatchupManager:
         # self.log.important2("SEND BIRp")
         self.dump_debug_info()
 
+    # MASTER ONLY CALL
+    def recv_block_data_req(self, sender_vk: str, req: BlockDataRequest):
+        blk_dict = StorageDriver.get_nth_full_block(given_bnum=req.block_num)
+        if '_id' in blk_dict:
+            del blk_dict['_id']
+        block = BlockData.from_dict(blk_dict)
+        reply = BlockDataReply.create_from_block(block)
+        self.router.send_msg(reply, header=sender_vk.encode())
+
+
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
         valid_node = VKBook.is_node_type('masternode', vk) or VKBook.is_node_type('delegate', vk)
@@ -308,10 +344,12 @@ class CatchupManager:
             StateDriver.update_with_block(block = block)
             self.curr_num = cur_num
             cur_num = cur_num + 1
+        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
     def _check_idx_reply_quorum(self):
         # We have enough BlockIndexReplies if 2/3 of Masternodes replied
         min_quorum = math.ceil(len(VKBook.get_masternodes()) * 2/3) - 1   # -1 so we dont include ourselves
+        # self.log.important("raghu reply set {} min quorum {}".format(len(self.node_idx_reply_set), min_quorum))
         return len(self.node_idx_reply_set) >= min_quorum
 
     def is_catchup_done(self):
