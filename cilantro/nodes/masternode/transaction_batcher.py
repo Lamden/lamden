@@ -111,5 +111,5 @@ class TransactionBatcher(Worker):
             if len(tx_list):
                 self.log.info("Sending {} transactions in batch".format(len(tx_list)))
             else:
-                self.log.info("Sending an empty transaction batch")
+                self.log.spam("Sending an empty transaction batch")
 
