@@ -21,7 +21,7 @@ def run_mn(slot_num, log_lvl=11, reset_db=False, nonce_enabled=True):
         # We must set this env var before we import anything from cilantro
         os.environ["NONCE_DISABLED"] = "1"
 
-    os.environ['SSL_ENABLED'] = "True"
+    # os.environ['SSL_ENABLED'] = "True"
 
     from cilantro.logger import get_logger, overwrite_logger_level
     from cilantro.nodes.factory import NodeFactory

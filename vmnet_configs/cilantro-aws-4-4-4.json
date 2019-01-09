@@ -24,7 +24,7 @@
             "enabled": true,
             "interval": 60,
             "arn_name": "ec2-cloud-watch",
-            "arn_id": "arn:aws:iam::622633509017:instance-profile/ec2-cloud-watch"
+            "arn_id": "arn:aws:iam::929772747755:instance-profile/ec2-cloud-watch"
         },
         "security_groups": {
             "simple_https": {
@@ -89,11 +89,11 @@
                 "name": "cilantro_base",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "friday-pump",
+                "branch": "test-logging",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0f65671a86f061fcd",
-                "instance_type": "t2.large",
+                "instance_type": "t2.medium",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0222655b32f6d9d08",
                 "update_commands": [
@@ -105,11 +105,11 @@
                 "name": "cilantro_mn",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "friday-pump",
+                "branch": "test-logging",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0222655b32f6d9d08",
-                "instance_type": "t2.large",
+                "instance_type": "t2.medium",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-09cddca33b912825e",
                 "update_commands": [
