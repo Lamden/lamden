@@ -3,13 +3,13 @@
     "environment": {
         "CONSTITUTION_FILE": "4-4-4.json",
         "ANNIHILATE": true,
-        "SSL_ENABLED": "True"
+        "SSL_ENABLED": false
     },
     "aws": {
-        "use_dns": true,
-        "use_elastic_ips": true,
+        "use_dns": false,
+        "use_elastic_ips": false,
         "dns_configuration": {
-            "use_ssl": true,
+            "use_ssl": false,
             "ssl_nodes": [
                 "masternode",
                 "delegate",
@@ -98,9 +98,7 @@
                 "run_ami": "ami-0222655b32f6d9d08",
                 "update_commands": [
                     "pip3 install vmnet --upgrade --no-cache-dir",
-                    "pip3 install seneca --upgrade --no-cache-dir",
-                    "sudo apt-get install socat",
-                    "sudo USER=${USER} bash scripts/setup-ssl.sh"
+                    "pip3 install seneca --upgrade --no-cache-dir"
                 ]
             },
             "cilantro_mn": {
@@ -116,9 +114,7 @@
                 "run_ami": "ami-09cddca33b912825e",
                 "update_commands": [
                     "pip3 install vmnet --upgrade --no-cache-dir",
-                    "pip3 install seneca --upgrade --no-cache-dir",
-                    "sudo apt-get install socat",
-                    "sudo USER=${USER} bash scripts/setup-ssl.sh"
+                    "pip3 install seneca --upgrade --no-cache-dir"
                 ]
             }
         }
