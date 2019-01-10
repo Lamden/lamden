@@ -16,7 +16,7 @@ static_headers = {
     'Access-Control-Allow-Origin': '*'
 }
 
-if os.getenv('SSL_ENABLED'):
+if os.getenv('SSL_ENABLED') == 'True':
     log.info("SSL enabled")
     with open(os.path.expanduser("~/.sslconf"), "r") as df:
         ssl = _json.load(df)
