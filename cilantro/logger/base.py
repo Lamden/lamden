@@ -5,7 +5,7 @@ Functions:
 import logging, coloredlogs
 import os, sys
 from os.path import dirname
-from logging.handlers import TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
 import cilantro
 
 #from vmnet.cloud.aws import S3Handler
@@ -116,7 +116,7 @@ class LoggerWriter:
         return
 
 
-class ColoredFileHandler(TimedRotatingFileHandler):
+class ColoredFileHandler(RotatingFileHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setFormatter(
