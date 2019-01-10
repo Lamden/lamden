@@ -153,12 +153,9 @@ def get_logger(name=''):
     pname = multiprocessing.current_process().name
 
     filehandlers = [
-        ColoredFileHandler('{}_color'.format(filename), delay=True, when="m", interval=30, backupCount=5),
+        ColoredFileHandler('{}_color'.format(filename), delay=True, mode='a', maxBytes=5*1024*1024, backupCount=5),
         ColoredStreamHandler()
     ]
-
-#    if os.getenv('VMNET_CLOUD'):
-#        filehandlers.append(S3Handler())
 
     logging.basicConfig(
         format=format,
