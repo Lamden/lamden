@@ -150,12 +150,13 @@ def get_logger(name=''):
     if not os.path.exists(filedir):
         os.makedirs(filedir, exist_ok=True)
 
-    pname = multiprocessing.current_process().name
-
     filehandlers = [
         ColoredFileHandler('{}_color'.format(filename), delay=True, mode='a', maxBytes=5*1024*1024, backupCount=5),
         ColoredStreamHandler()
     ]
+
+    if os.getenv('VMNET_CLOUD'):
+        filehandlers.append(AWSCloudWatchHandler(name))
 
     logging.basicConfig(
         format=format,
