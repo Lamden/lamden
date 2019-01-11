@@ -167,7 +167,7 @@ def get_logger(name=''):
     log = logging.getLogger(name)
     log.setLevel(_LOG_LVL)
 
-    if os.getenv('VMNET_DOCKER') or os.getenv('VMNET_CLOUD'):
+    if os.getenv('VMNET_DOCKER'):
         sys.stdout = LoggerWriter(log.debug)
         sys.stderr = LoggerWriter(log.error)
 
