@@ -152,7 +152,7 @@ def get_logger(name=''):
 
     filehandlers = [
         ColoredFileHandler('{}_color'.format(filename), delay=True, mode='a', maxBytes=5*1024*1024, backupCount=5),
-        # ColoredStreamHandler()
+        ColoredStreamHandler()
     ]
 
     if os.getenv('VMNET_CLOUD'):
