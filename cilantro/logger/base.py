@@ -152,7 +152,7 @@ def get_logger(name=''):
 
     filehandlers = [
         ColoredFileHandler('{}_color'.format(filename), delay=True, mode='a', maxBytes=5*1024*1024, backupCount=5),
-        ColoredStreamHandler()
+        # ColoredStreamHandler()
     ]
 
     if os.getenv('VMNET_CLOUD'):
@@ -167,7 +167,7 @@ def get_logger(name=''):
     log = logging.getLogger(name)
     log.setLevel(_LOG_LVL)
 
-    if os.getenv('VMNET_DOCKER'):
+    if os.getenv('VMNET_DOCKER') or os.getenv('VMNET_CLOUD'):
         sys.stdout = LoggerWriter(log.debug)
         sys.stderr = LoggerWriter(log.error)
 
