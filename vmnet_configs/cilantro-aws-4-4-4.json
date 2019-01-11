@@ -2,17 +2,23 @@
     "deployment_mode": "testing",
     "environment": {
         "CONSTITUTION_FILE": "4-4-4.json",
-        "ANNIHILATE": true
+        "ANNIHILATE": true,
+        "SSL_ENABLED": "True"
     },
     "aws": {
         "use_dns": true,
-        "use_elastic_ips": false,
+        "use_elastic_ips": true,
         "dns_configuration": {
+            "use_ssl": true,
+            "ssl_nodes": [
+                "masternode",
+                "delegate",
+                "witness"
+              ],
             "TTL": 20,
             "service": "route53",
-            "domain_name": "anarchynet.io",
-            "record_type": "A",
-            "subnet_prefix": "davisnet"
+            "domain_name": "theanarchy.net",
+            "record_type": "A"
         },
         "logging": {
             "enabled": true,
@@ -29,6 +35,16 @@
                         "IpProtocol": "tcp",
                         "FromPort": 443,
                         "ToPort": 443,
+                        "IpRanges": [
+                            {
+                                "CidrIp": "0.0.0.0/0"
+                            }
+                        ]
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 80,
+                        "ToPort": 80,
                         "IpRanges": [
                             {
                                 "CidrIp": "0.0.0.0/0"
@@ -73,7 +89,7 @@
                 "name": "cilantro_base",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "dev",
+                "branch": "friday-pump",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0f65671a86f061fcd",
@@ -81,15 +97,18 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0222655b32f6d9d08",
                 "update_commands": [
-                    "pip3 install vmnet==0.6.3",
-                    "pip3 install seneca --upgrade --no-cache-dir"
+                    "pip3 install vmnet --upgrade --no-cache-dir",
+                    "pip3 install seneca --upgrade --no-cache-dir",
+                    "pip3 install sanic-cors --upgrade --no-cache-dir",
+                    "sudo apt-get install socat",
+                    "sudo USER=${USER} bash scripts/setup-ssl.sh"
                 ]
             },
             "cilantro_mn": {
                 "name": "cilantro_mn",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "dev",
+                "branch": "friday-pump",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0222655b32f6d9d08",
@@ -97,8 +116,11 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-09cddca33b912825e",
                 "update_commands": [
-                    "pip3 install vmnet==0.6.3",
-                    "pip3 install seneca --upgrade --no-cache-dir"
+                    "pip3 install vmnet --upgrade --no-cache-dir",
+                    "pip3 install seneca --upgrade --no-cache-dir",
+                    "pip3 install sanic-cors --upgrade --no-cache-dir",
+                    "sudo apt-get install socat",
+                    "sudo USER=${USER} bash scripts/setup-ssl.sh"
                 ]
             }
         }

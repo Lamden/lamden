@@ -36,8 +36,8 @@ class Discovery:
     async def listen(cls):
         cls.sock.bind(cls.url)
         cls.log.info('Listening to other nodes on {}'.format(cls.url))
-        if cls.is_listen_ready:
-            await asyncio.sleep(3)
+        # if cls.is_listen_ready:
+            # await asyncio.sleep(3)
         while True:
             try:
                 msg = await cls.sock.recv_multipart()
@@ -65,6 +65,7 @@ class Discovery:
 
         cls.log.spam('We have the following bootnodes: {}'.format(VKBook.bootnodes))
 
+        await asyncio.sleep(1)
         while True:
             if len(VKBook.bootnodes) > 0: # TODO refine logic post-anarchy-net
                 cls.log.info('Connecting to boot nodes: {}'.format(VKBook.bootnodes))
@@ -141,11 +142,11 @@ class Discovery:
 
     @classmethod
     def connect(cls, ips):
+        cls.log.spam("Attempting to connect to IP range {}".format(ips[0]))
         for ip in ips:
             if ip == cls.host_ip:
                 continue
             url = 'tcp://{}:{}'.format(ip, cls.port)
-            #  cls.log.spam("Attempting to connect to IP {}".format(url))
             cls.sock.connect(url)
             cls.connections[ip] = url
             cls.request(ip.encode())

@@ -30,7 +30,7 @@ TESTNET_JSON_KEY = 'testnet_json_file_name'
 CONFIG_FILE_NAME = 'testnet.ini'
 CONFIG_FILE_PATH = join(TESTNET_JSON_DIR, CONFIG_FILE_NAME)
 
-def set_testnet_config(testnet_json_file='2-2-2.json'):
+def set_testnet_config(testnet_json_file='4-4-4.json'):
     config = configparser.ConfigParser()
     config[TESTNET_KEY] = {TESTNET_JSON_KEY: testnet_json_file}
 

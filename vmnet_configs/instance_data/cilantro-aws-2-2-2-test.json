@@ -1,0 +1,72 @@
+[
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "18.223.108.184",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:mnssl:mgmt-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "18.217.69.183",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:mnssl:witness-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "18.216.198.171",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:mnssl:witness-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "3.16.139.74",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:mnssl:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "18.218.186.11",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:mnssl:delegate-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 0,
+        "PublicIpAddress": "18.219.121.253",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:mnssl:masternode-run"
+            }
+        ]
+    },
+    {
+        "AmiLaunchIndex": 1,
+        "PublicIpAddress": "3.17.156.217",
+        "Tags": [
+            {
+                "Key": "Name",
+                "Value": "cilantro:mnssl:masternode-run"
+            }
+        ]
+    }
+]

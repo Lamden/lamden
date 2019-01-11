@@ -1,10 +1,31 @@
 {
+    "deployment_mode": "testing",
     "environment": {
-        "CONSTITUTION_FILE": "2-2-2.json",
-        "ANNIHILATE": true
+        "CONSTITUTION_FILE": "4-4-4.json",
+        "ANNIHILATE": true,
+        "SSL_ENABLED": "True"
     },
     "aws": {
+        "use_dns": true,
         "use_elastic_ips": true,
+        "dns_configuration": {
+            "use_ssl": true,
+            "ssl_nodes": [
+                "masternode",
+                "delegate",
+                "witness"
+              ],
+            "TTL": 20,
+            "service": "route53",
+            "domain_name": "theanarchy.net",
+            "record_type": "A"
+        },
+        "logging": {
+            "enabled": true,
+            "interval": 60,
+            "arn_name": "ec2-cloud-watch",
+            "arn_id": "arn:aws:iam::622633509017:instance-profile/ec2-cloud-watch"
+        },
         "security_groups": {
             "simple_https": {
                 "name": "simple_https",
@@ -58,30 +79,36 @@
                 "name": "cilantro_base",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "test-fail-case",
+                "branch": "friday-pump",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0f65671a86f061fcd",
-                "instance_type": "t2.medium",
+                "instance_type": "t2.large",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0222655b32f6d9d08",
                 "update_commands": [
-                    "make install"
+                    "pip3 install vmnet --upgrade --no-cache-dir",
+                    "pip3 install seneca --upgrade --no-cache-dir",
+                    "sudo apt-get install socat",
+                    "sudo USER=${USER} bash scripts/setup-ssl.sh"
                 ]
             },
             "cilantro_mn": {
                 "name": "cilantro_mn",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "test-fail-case",
+                "branch": "friday-pump",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0222655b32f6d9d08",
-                "instance_type": "t2.medium",
+                "instance_type": "t2.large",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-09cddca33b912825e",
                 "update_commands": [
-                    "make install"
+                    "pip3 install vmnet --upgrade --no-cache-dir",
+                    "pip3 install seneca --upgrade --no-cache-dir",
+                    "sudo apt-get install socat",
+                    "sudo USER=${USER} bash scripts/setup-ssl.sh"
                 ]
             }
         }
@@ -90,7 +117,7 @@
         {
             "name": "delegate",
             "image": "cilantro_base",
-            "count": 2,
+            "count": 4,
             "ports": [
                 443
             ]
@@ -98,7 +125,7 @@
         {
             "name": "witness",
             "image": "cilantro_base",
-            "count": 2,
+            "count": 4,
             "ports": [
                 443
             ]
@@ -106,7 +133,7 @@
         {
             "name": "masternode",
             "image": "cilantro_mn",
-            "count": 2,
+            "count": 4,
             "ports": [
                 443
             ]

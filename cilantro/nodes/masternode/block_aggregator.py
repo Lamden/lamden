@@ -165,10 +165,14 @@ class BlockAggregator(Worker):
             self.catchup_manager.recv_block_data_req(sender, msg)
 
         elif isinstance(msg, BlockDataReply):
-            self.catchup_manager.recv_block_data_reply(msg)
+            if self.catchup_manager.recv_block_data_reply(msg):
+                self.curr_block_hash = StateDriver.get_latest_block_hash()
+                self.curr_block.reset()
 
         elif isinstance(msg, BlockIndexReply):
-            self.catchup_manager.recv_block_idx_reply(sender, msg)
+            if self.catchup_manager.recv_block_idx_reply(sender, msg):
+                self.curr_block_hash = StateDriver.get_latest_block_hash()
+                self.curr_block.reset()
 
         else:
             raise Exception("BlockAggregator got message type {} from ROUTER socket that it does not know how to handle"
@@ -221,6 +225,8 @@ class BlockAggregator(Worker):
         message = NonEmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
         new_block_notif = NewBlockNotification.create_from_block_data(block_data)
+        # sleep a bit so slower nodes don't have to constantly use catchup mgr 
+        time.sleep(0.1)
         self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
         self.log.info('Published new block notif with hash "{}" and prev hash {}'
                       .format(block_data.block_hash, block_data.prev_block_hash))
@@ -240,8 +246,8 @@ class BlockAggregator(Worker):
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
         self.log.debugv("MN got new block notification: {}".format(notif))
 
-        if notif.block_num > StateDriver.get_latest_block_num():
-            self.log.info("Block num {} on NBC does not match our block num! Triggering catchup")
+        if notif.block_num > StateDriver.get_latest_block_num() + 1:
+            self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, StateDriver.get_latest_block_num()))
             self.catchup_manager.recv_new_blk_notif(notif)
         else:
             self.log.debugv("Block num on NBC is LTE that ours. Ignoring")
