@@ -20,6 +20,7 @@ from cilantro.logger import get_logger, overwrite_logger_level
 import logging, os, shutil, time
 from cilantro.constants.system_config import *
 
+detached = True
 
 class TestPump(AWSTestCase):
 

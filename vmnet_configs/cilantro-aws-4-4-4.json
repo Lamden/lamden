@@ -1,5 +1,5 @@
 {
-    "deployment_mode": "testing",
+    "deployment_mode": "production",
     "environment": {
         "CONSTITUTION_FILE": "4-4-4.json",
         "ANNIHILATE": true,
@@ -97,6 +97,7 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0222655b32f6d9d08",
                 "update_commands": [
+                    "pip3 install vmnet seneca --upgrade --no-cache-dir"
                 ]
             },
             "cilantro_mn": {
@@ -111,6 +112,7 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-09cddca33b912825e",
                 "update_commands": [
+                    "pip3 install vmnet seneca --upgrade --no-cache-dir"
                 ]
             }
         }
