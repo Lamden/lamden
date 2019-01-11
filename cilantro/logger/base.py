@@ -26,7 +26,7 @@ else:
 
 req_log = logging.getLogger('urllib3')
 req_log.setLevel(logging.WARNING)
-req_log.propagate = True
+# req_log.propagate = True
 
 
 def get_main_log_path():

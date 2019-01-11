@@ -97,10 +97,6 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0222655b32f6d9d08",
                 "update_commands": [
-                    "pip3 install vmnet --upgrade --no-cache-dir",
-                    "pip3 install seneca --upgrade --no-cache-dir",
-                    "pip3 install -r dev-requirements.txt",
-                    "pip3 install -r requirements.txt"
                 ]
             },
             "cilantro_mn": {
@@ -115,10 +111,6 @@
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-09cddca33b912825e",
                 "update_commands": [
-                    "pip3 install vmnet --upgrade --no-cache-dir",
-                    "pip3 install seneca --upgrade --no-cache-dir",
-                    "pip3 install -r dev-requirements.txt",
-                    "pip3 install -r requirements.txt"
                 ]
             }
         }
