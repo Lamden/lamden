@@ -24,7 +24,7 @@ if _LOG_LVL:
 else:
     _LOG_LVL = 1
 
-logging.raiseExceptions = False
+# logging.raiseExceptions = False
 req_log = logging.getLogger('urllib3')
 req_log.setLevel(logging.WARNING)
 req_log.propagate = True
