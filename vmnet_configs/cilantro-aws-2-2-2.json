@@ -1,7 +1,7 @@
 {
     "deployment_mode": "testing",
     "environment": {
-        "CONSTITUTION_FILE": "2-2-2.json",
+        "CONSTITUTION_FILE": "4-4-4.json",
         "ANNIHILATE": true,
         "SSL_ENABLED": "True"
     },
@@ -117,7 +117,7 @@
         {
             "name": "delegate",
             "image": "cilantro_base",
-            "count": 2,
+            "count": 4,
             "ports": [
                 443
             ]
@@ -125,7 +125,7 @@
         {
             "name": "witness",
             "image": "cilantro_base",
-            "count": 2,
+            "count": 4,
             "ports": [
                 443
             ]
@@ -133,7 +133,7 @@
         {
             "name": "masternode",
             "image": "cilantro_mn",
-            "count": 2,
+            "count": 4,
             "ports": [
                 443
             ]

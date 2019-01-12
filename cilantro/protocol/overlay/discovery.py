@@ -142,11 +142,11 @@ class Discovery:
 
     @classmethod
     def connect(cls, ips):
+        cls.log.spam("Attempting to connect to IP range {}".format(ips[0]))
         for ip in ips:
             if ip == cls.host_ip:
                 continue
             url = 'tcp://{}:{}'.format(ip, cls.port)
-            cls.log.info("Attempting to connect to IP {}".format(url))
             cls.sock.connect(url)
             cls.connections[ip] = url
             cls.request(ip.encode())
