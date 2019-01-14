@@ -85,8 +85,9 @@ class LSocket:
         elif event['event'] == 'not_found':
             self.log.warning("Socket got not_found event for vk {}".format(event['vk']))
             # We only add 'bind' commands to vk_lookups if they fail. 'connect' calls are always added
-            if cmd_name == 'bind':
-                self.manager.vk_lookups[event['vk']].append((self, cmd_name, args, kwargs))
+            # raghu - I don't see any bind requiring vk lookup
+            # if cmd_name == 'bind':
+                # self.manager.vk_lookups[event['vk']].append((self, cmd_name, args, kwargs))
             self._check_if_rdy()
 
     def add_handler(self, handler_func, handler_key=None, start_listening=False) -> Union[asyncio.Future, asyncio.coroutine]:
@@ -251,7 +252,7 @@ class LSocket:
             cmd_name, args, kwargs = tup
             assert 'vk' in kwargs, "Cmd tuple {} does not have 'vk' in kwargs".format(tup)
             self.manager.pending_lookups.pop(cmd_id, None)
-            self.manager.vk_lookups[kwargs['vk']].append((self, cmd_name, args, kwargs))
+            # self.manager.vk_lookups[kwargs['vk']].append((self, cmd_name, args, kwargs))
 
         self.pending_lookups.clear()
         self.ready = True
