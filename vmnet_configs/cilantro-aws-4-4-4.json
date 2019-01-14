@@ -1,5 +1,5 @@
 {
-    "deployment_mode": "testing",
+    "deployment_mode": "production",
     "environment": {
         "CONSTITUTION_FILE": "4-4-4.json",
         "ANNIHILATE": true,
