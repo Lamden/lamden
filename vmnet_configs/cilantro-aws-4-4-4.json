@@ -1,15 +1,15 @@
 {
-    "deployment_mode": "testing",
+    "deployment_mode": "production",
     "environment": {
         "CONSTITUTION_FILE": "4-4-4.json",
         "ANNIHILATE": true,
-        "SSL_ENABLED": "True"
+        "SSL_ENABLED": false
     },
     "aws": {
-        "use_dns": true,
-        "use_elastic_ips": true,
+        "use_dns": false,
+        "use_elastic_ips": false,
         "dns_configuration": {
-            "use_ssl": true,
+            "use_ssl": false,
             "ssl_nodes": [
                 "masternode",
                 "delegate",
@@ -24,7 +24,7 @@
             "enabled": true,
             "interval": 60,
             "arn_name": "ec2-cloud-watch",
-            "arn_id": "arn:aws:iam::622633509017:instance-profile/ec2-cloud-watch"
+            "arn_id": "arn:aws:iam::929772747755:instance-profile/ec2-cloud-watch"
         },
         "security_groups": {
             "simple_https": {
@@ -89,17 +89,15 @@
                 "name": "cilantro_base",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "friday-pump",
+                "branch": "test-logging",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0f65671a86f061fcd",
-                "instance_type": "t2.large",
+                "instance_type": "t2.medium",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-0222655b32f6d9d08",
                 "update_commands": [
-                    "pip3 install vmnet --upgrade --no-cache-dir",
-                    "pip3 install seneca --upgrade --no-cache-dir",
-                    "pip3 install sanic-cors --upgrade --no-cache-dir",
+                    "pip3 install vmnet seneca sanic-cors --upgrade --no-cache-dir",
                     "sudo apt-get install socat",
                     "sudo USER=${USER} bash scripts/setup-ssl.sh"
                 ]
@@ -108,17 +106,15 @@
                 "name": "cilantro_mn",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "friday-pump",
+                "branch": "test-logging",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0222655b32f6d9d08",
-                "instance_type": "t2.large",
+                "instance_type": "t2.medium",
                 "build_instance_type": "t2.large",
                 "run_ami": "ami-09cddca33b912825e",
                 "update_commands": [
-                    "pip3 install vmnet --upgrade --no-cache-dir",
-                    "pip3 install seneca --upgrade --no-cache-dir",
-                    "pip3 install sanic-cors --upgrade --no-cache-dir",
+                    "pip3 install vmnet seneca sanic-cors --upgrade --no-cache-dir",
                     "sudo apt-get install socat",
                     "sudo USER=${USER} bash scripts/setup-ssl.sh"
                 ]

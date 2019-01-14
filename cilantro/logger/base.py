@@ -5,7 +5,7 @@ Functions:
 import logging, coloredlogs
 import os, sys
 from os.path import dirname
-from logging.handlers import TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
 import cilantro
 
 #from vmnet.cloud.aws import S3Handler
@@ -24,6 +24,7 @@ if _LOG_LVL:
 else:
     _LOG_LVL = 1
 
+logging.raiseExceptions = False
 req_log = logging.getLogger('urllib3')
 req_log.setLevel(logging.WARNING)
 req_log.propagate = True
@@ -116,7 +117,7 @@ class LoggerWriter:
         return
 
 
-class ColoredFileHandler(TimedRotatingFileHandler):
+class ColoredFileHandler(RotatingFileHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setFormatter(
@@ -150,15 +151,13 @@ def get_logger(name=''):
     if not os.path.exists(filedir):
         os.makedirs(filedir, exist_ok=True)
 
-    pname = multiprocessing.current_process().name
-
     filehandlers = [
-        ColoredFileHandler('{}_color'.format(filename), delay=True, when="m", interval=30, backupCount=5),
+        ColoredFileHandler('{}_color'.format(filename), delay=True, mode='a', maxBytes=5*1024*1024, backupCount=5),
         ColoredStreamHandler()
     ]
 
-#    if os.getenv('VMNET_CLOUD'):
-#        filehandlers.append(S3Handler())
+    if os.getenv('VMNET_CLOUD'):
+        filehandlers.append(AWSCloudWatchHandler(name))
 
     logging.basicConfig(
         format=format,
