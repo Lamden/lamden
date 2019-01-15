@@ -44,7 +44,7 @@ def vk_lookup(func):
 
 class LSocket:
 
-    DEFERED_FUNCS = ('send_multipart', 'send')
+    DEFERRED_FUNCS = ('send_multipart', 'send')
 
     def __init__(self, socket: zmq.asyncio.Socket, manager, name='LSocket', secure=False, domain='*'):
         self.log = get_logger(name)
@@ -67,7 +67,7 @@ class LSocket:
         self.pending_lookups = {}  # A dict of event_id to tuple, where the tuple again represents a command execution
         self.ready = False  # Gets set to True when all pending_lookups have been resolved, and we BIND/CONNECT
 
-        self.handler_added = False
+        self.handler_added = False  # We use this just for dev sanity checks, to ensure only one handler is added
         self.check_rdy_fut = None
 
     def handle_overlay_event(self, event: dict):
@@ -86,6 +86,7 @@ class LSocket:
             self.log.warning("Socket got not_found event for vk {}".format(event['vk']))
             # We only add 'bind' commands to vk_lookups if they fail. 'connect' calls are always added
             # raghu - I don't see any bind requiring vk lookup
+            # @raghu because the delegate-witness pattern involves delegates BINDING their sub sockets to witness pubs
             # if cmd_name == 'bind':
                 # self.manager.vk_lookups[event['vk']].append((self, cmd_name, args, kwargs))
             self._check_if_rdy()
@@ -198,7 +199,6 @@ class LSocket:
             self.log.spam("Not flushing commands yet, pending lookups not empty: {}".format(self.pending_lookups))
             return False
 
-    # TODO move this to its own module? Kind of annoying to have to pass in signing_key and verifying_key tho....
     def _package_msg(self, msg: MessageBase) -> Envelope:
         """
         Convenience method to package a message into an envelope
@@ -211,7 +211,6 @@ class LSocket:
         return Envelope.create_from_message(message=msg, signing_key=self.manager.signing_key,
                                             verifying_key=self.manager.verifying_key)
 
-    # TODO move this to its own module? Kind of annoying to have to pass in signing_key and verifying_key tho....
     def _package_reply(self, reply: MessageBase, req_env: Envelope) -> Envelope:
         """
         Convenience method to create a reply envelope. The difference between this func and _package_msg, is that
@@ -270,7 +269,7 @@ class LSocket:
         # Otherwise, we assume its a method on self.socket
 
         # If this socket is not ready (ie it has not bound/connected yet), defer execution of this method
-        if not self.ready and item in self.DEFERED_FUNCS:
+        if not self.ready and item in self.DEFERRED_FUNCS:
             self.log.debugv("Socket is not ready yet. Deferring method named {}".format(item))
             self._start_wait_rdy()
             return self._defer_func(item)
