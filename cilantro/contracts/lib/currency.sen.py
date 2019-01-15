@@ -52,7 +52,8 @@ def balance_of(wallet_id):
 
 @export
 def transfer(to, amount):
-    balances = hmap('balances', str, int)
+    balances = hmap('balances', str, int)  # TODO remove once we fix the 'RObject not reset' issue
+    assert amount > 0, "Amount must be greater than 0"
     # print("transfering from {} to {} with amount {}".format(rt['sender'], to, amount))
     balances[rt['sender']] -= amount
     balances[to] += amount
@@ -63,11 +64,13 @@ def transfer(to, amount):
 
 @export
 def approve(spender, amount):
+    assert amount > 0, "Amount must be greater than 0"
     allowed[rt['sender']][spender] = amount
 
 
 @export
 def transfer_from(_from, to, amount):
+    assert amount > 0, "Amount must be greater than 0"
     assert allowed[_from][rt['sender']] >= amount
     assert balances[_from] >= amount
 
@@ -83,6 +86,7 @@ def allowance(approver, spender):
 
 @export
 def mint(to, amount):
+    assert amount > 0, "Amount must be greater than 0"
     # print("minting {} to wallet {}".format(amount, to))
     assert rt['sender'] == rt['author'], 'Only the original contract author can mint!'
 
