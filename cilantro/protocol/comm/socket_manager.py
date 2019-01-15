@@ -1,6 +1,6 @@
 from cilantro.logger import get_logger
 from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
-from cilantro.protocol.reactor.lsocket import LSocket
+from cilantro.protocol.comm.lsocket import LSocket
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.utils.utils import is_valid_hex
 

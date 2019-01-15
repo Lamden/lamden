@@ -2,7 +2,7 @@ import time, asyncio, math
 from collections import defaultdict
 from cilantro.logger import get_logger
 from cilantro.constants.zmq_filters import *
-from cilantro.protocol.reactor.lsocket import LSocket
+from cilantro.protocol.comm.lsocket import LSocket
 from cilantro.storage.vkbook import VKBook
 from cilantro.storage.state import StateDriver
 from cilantro.nodes.masternode.mn_api import StorageDriver

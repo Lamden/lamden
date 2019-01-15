@@ -3,7 +3,7 @@ from cilantro.constants.zmq_filters import *
 from cilantro.constants.ports import MN_TX_PUB_PORT, SBB_PORT_START
 from cilantro.constants.testnet import *
 
-from cilantro.protocol.reactor.socket_manager import SocketManager
+from cilantro.protocol.comm.socket_manager import SocketManager
 
 from cilantro.messages.transaction.base import TransactionBase
 from cilantro.messages.envelope.envelope import Envelope
