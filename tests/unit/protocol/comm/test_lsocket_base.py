@@ -6,10 +6,13 @@ import zmq, zmq.asyncio, asyncio
 from cilantro.protocol.comm.lsocket_new import *
 from cilantro.protocol.comm.lsocket_pub import *
 from cilantro.protocol.comm.socket_manager import *
+from cilantro.protocol import wallet
+from cilantro.messages.base.base_signal import SignalBase
 
 
 def _build_mock_manager():
     manager = MagicMock(spec=SocketManager)
+    manager.signing_key, manager.verifying_key = wallet.new()
     manager.overlay_client = MagicMock()
     manager.overlay_client.get_node_from_vk = MagicMock(side_effect=list(range(100)))
     manager.pending_lookups = {}
@@ -24,6 +27,9 @@ def _build_lsocket(socket_type=None, secure=False, domain='*'):
     elif socket_type is zmq.ROUTER:
         # TODO implement
         pass
+
+
+class SignalTestMessage(SignalBase): pass  # Just a message type used for testing in these tests
 
 
 class TestLSocketBase(TestCase):
@@ -116,4 +122,19 @@ class TestLSocketBase(TestCase):
 
 
 class TestLSocketPub(TestCase):
-    pass
+
+    def test_connect_and_then_send_before_vk_lookup_finished(self):
+        vk, ip = 'A' * 64, '135.215.96.143'
+        got_ip = {'event_id': 0, 'event': 'got_ip', 'vk': vk, 'ip': ip}
+        node_online = {'event_id': 1, 'event': 'node_online', 'vk': vk, 'ip': ip}
+        msg = SignalTestMessage.create()
+        sock = _build_lsocket(socket_type=zmq.PUB)
+        env = sock._package_msg(msg)
+
+        self.assertFalse(sock.ready)
+        self.assertEqual(len(sock.pending_commands), 0)
+
+        sock.send_msg(msg, header=b'')
+
+        self.assertEqual(len(sock.pending_commands), 1)
+

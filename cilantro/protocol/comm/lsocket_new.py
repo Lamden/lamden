@@ -85,7 +85,7 @@ class LSocketBase:
         """ Same as send_msg, but for an Envelope instance. See documentation for send_msg. """
         data = env.serialize()
 
-        if header:
+        if header is not None:
             assert type(header) is bytes, "Header arg must be bytes, not {}".format(type(header))
             self.send_multipart([header, data])
         else:
@@ -192,9 +192,6 @@ class LSocketBase:
                 self.socket.curve_server = True
                 Auth.configure_auth(self.manager.auth, self.domain)
             self.socket.bind(url)
-
-        # self._check_if_rdy()
-        # TODO what about ready behavior? Leave this to subclasses?
 
     def __getattr__(self, item):
         assert hasattr(self.socket, item), "Underlying socket object {} has no attribute named {}".format(self.socket, item)
