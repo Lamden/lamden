@@ -4,24 +4,33 @@ from unittest.mock import MagicMock
 
 import zmq, zmq.asyncio, asyncio
 from cilantro.protocol.comm.lsocket_new import *
+from cilantro.protocol.comm.lsocket_pub import *
 from cilantro.protocol.comm.socket_manager import *
+
+
+def _build_mock_manager():
+    manager = MagicMock(spec=SocketManager)
+    manager.overlay_client = MagicMock()
+    manager.overlay_client.get_node_from_vk = MagicMock(side_effect=list(range(100)))
+    manager.pending_lookups = {}
+    return manager
+
+
+def _build_lsocket(socket_type=None, secure=False, domain='*'):
+    if socket_type is None:
+        return LSocketBase(socket=MagicMock(), manager=_build_mock_manager(), secure=secure, domain=domain)
+    elif socket_type is zmq.PUB:
+        return LSocketPub(socket=MagicMock(), manager=_build_mock_manager(), secure=secure, domain=domain)
+    elif socket_type is zmq.ROUTER:
+        # TODO implement
+        pass
 
 
 class TestLSocketBase(TestCase):
 
-    def _build_mock_manager(self):
-        manager = MagicMock(spec=SocketManager)
-        manager.overlay_client = MagicMock()
-        manager.overlay_client.get_node_from_vk = MagicMock(side_effect=list(range(100)))
-        manager.pending_lookups = {}
-        return manager
-
-    def _build_lsocket(self, secure=False, domain='*'):
-        return LSocketBase(socket=MagicMock(), manager=self._build_mock_manager(), secure=secure, domain=domain)
-
     def test_connect_with_vk_lookup(self):
         vk = 'A' * 64
-        sock = self._build_lsocket()
+        sock = _build_lsocket()
 
         sock.connect(port=9999, vk=vk)
 
@@ -34,7 +43,7 @@ class TestLSocketBase(TestCase):
     def test_connect_with_vk_lookup_then_got_ip(self):
         vk, ip = 'A' * 64, '135.215.96.143'
         event = {'event_id': 0, 'event': 'got_ip', 'vk': vk, 'ip': ip}
-        sock = self._build_lsocket()
+        sock = _build_lsocket()
         sock.connect(port=9999, vk=vk)
 
         sock.handle_overlay_event(event)
@@ -46,7 +55,7 @@ class TestLSocketBase(TestCase):
     def test_bind_with_vk_lookup_then_got_ip(self):
         vk, ip = 'A' * 64, '135.215.96.143'
         event = {'event_id': 0, 'event': 'got_ip', 'vk': vk, 'ip': ip}
-        sock = self._build_lsocket()
+        sock = _build_lsocket()
         sock.bind(port=9999, vk=vk)
 
         sock.handle_overlay_event(event)
@@ -57,7 +66,7 @@ class TestLSocketBase(TestCase):
 
     def test_bind_with_vk_lookup(self):
         vk = 'A' * 64
-        sock = self._build_lsocket()
+        sock = _build_lsocket()
 
         sock.bind(port=9999, vk=vk)
 
@@ -68,13 +77,13 @@ class TestLSocketBase(TestCase):
         self.assertEqual(sock.manager.pending_lookups[0], sock)
 
     def test_getattr_with_lsocket_attr(self):
-        sock = self._build_lsocket()
+        sock = _build_lsocket()
 
         attr = sock.pending_lookups
         self.assertEqual(attr, sock.pending_lookups)
 
     def test_getattr_with_sock_attr(self):
-        sock = self._build_lsocket()
+        sock = _build_lsocket()
 
         attr = sock.routing_id
         self.assertEqual(attr, sock.socket.routing_id)
@@ -83,7 +92,7 @@ class TestLSocketBase(TestCase):
         vk, ip = 'A' * 64, '135.215.96.143'
         got_ip = {'event_id': 0, 'event': 'got_ip', 'vk': vk, 'ip': ip}
         node_online = {'event_id': 1, 'event': 'node_online', 'vk': vk, 'ip': ip}
-        sock = self._build_lsocket()
+        sock = _build_lsocket()
 
         sock.connect(port=9999, vk=vk)
         sock.handle_overlay_event(got_ip)
@@ -96,7 +105,7 @@ class TestLSocketBase(TestCase):
         vk, ip = 'A' * 64, '135.215.96.143'
         got_ip = {'event_id': 0, 'event': 'got_ip', 'vk': vk, 'ip': ip}
         node_online = {'event_id': 1, 'event': 'node_online', 'vk': vk, 'ip': ip}
-        sock = self._build_lsocket()
+        sock = _build_lsocket()
 
         sock.bind(port=9999, vk=vk)
         sock.handle_overlay_event(got_ip)
@@ -106,4 +115,5 @@ class TestLSocketBase(TestCase):
         self.assertEqual(sock.socket.bind.call_args_list[0], sock.socket.bind.call_args_list[1])
 
 
-
+class TestLSocketPub(TestCase):
+    pass
