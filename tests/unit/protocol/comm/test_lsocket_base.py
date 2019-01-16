@@ -138,3 +138,11 @@ class TestLSocketPub(TestCase):
 
         self.assertEqual(len(sock.pending_commands), 1)
 
+    def test_connect_then_send_before_ready_then_ready_should_flush(self):
+        vk, ip = 'A' * 64, '135.215.96.143'
+        got_ip = {'event_id': 0, 'event': 'got_ip', 'vk': vk, 'ip': ip}
+        node_online = {'event_id': 1, 'event': 'node_online', 'vk': vk, 'ip': ip}
+        msg = SignalTestMessage.create()
+        sock = _build_lsocket(socket_type=zmq.PUB)
+        env = sock._package_msg(msg)
+
