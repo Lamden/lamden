@@ -63,8 +63,13 @@ def pub(ip_to_bind):
                 log.important3("bout 2 do a rebind for no reason")
                 try:
                     pub.bind(ip_to_bind)
-                except Exception as e:
-                    log.notice("oh crap got error {}".format(e))
+                except zmq.error.ZMQError as e:
+                    # log.notice("oh crap got error {}".format(str(e)))
+                    # log.notice("oh crap got error of type {}".format(type(e)))
+                    if str(e) != 'Address already in use':
+                        log.critical("ohhhh fukk e is {}".format(e))
+                    else:
+                        log.notice("we chillin")
 
     loop.run_until_complete(start_send())
 

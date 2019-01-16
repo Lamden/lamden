@@ -46,7 +46,7 @@ class LSocketBase:
     def __init__(self, socket: zmq.asyncio.Socket, manager, name='', secure=False, domain='*'):
         name = name or type(self).__name__
         self.log, self.name = get_logger(name), name
-        self.secure, self.socket, self.domain, self.manager = secure, socket, domain, self.manager
+        self.secure, self.socket, self.domain, self.manager = secure, socket, domain, manager
 
         if secure:
             self.socket = Auth.secure_socket(
@@ -63,6 +63,7 @@ class LSocketBase:
 
         self.ready = True  # Gets set to True when all pending_lookups have been resolved, and we BIND/CONNECT
         self.handler_added = False  # We use this just for dev sanity checks, to ensure only one handler is added
+        self.timeout_fut = None
 
     @vk_lookup
     def connect(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
@@ -145,13 +146,32 @@ class LSocketBase:
     def _handle_got_ip(self, event: dict):
         assert event['event_id'] in self.pending_lookups, "LSocket got 'got_ip' event that is not in pending lookups"
 
+        cmd_name, args, kwargs = self.pending_lookups.pop(event['event_id'])
+        kwargs['ip'] = event['ip']
+        getattr(self, cmd_name)(*args, **kwargs)
+
     def _handle_not_found(self, event: dict):
         # TODO implement
         pass
 
     def _handle_node_online(self, event: dict):
-        # TODO reconnect
-        pass
+        if event['vk'] not in self.conn_tracker:
+            self.log.debugv("Socket never connected to node with vk {}. Ignoring node_online event.".format(event['vk']))
+            return
+
+        self.log.info("Node with vk {} and ip {} has come back online. Re-establishing connection"
+                      .format(event['vk'], event['ip']))
+
+        # We wrap the reconnect in the try/except to ignore 'address already in use' errors from attempting to bind
+        # to an address that we already bound to. I know this is mad hacky but its 'works' until we come up
+        # with something more clever --davis
+        try:
+            cmd_name, args, kwargs = self.conn_tracker[event['vk']]
+            kwargs['ip'] = event['ip']
+            getattr(self, cmd_name)(*args, **kwargs)
+        except zmq.error.ZMQError as e:
+            if str(e) != 'Address already in use':
+                self.log.warning("Got error trying to reconnect that is not 'Address in use'!!! Error: {}".format(e))
 
     def _connect_or_bind(self, should_connect: bool, port: int, protocol: str='tcp', ip: str='', vk: str=''):
         assert ip, "Expected ip arg to be present!"
