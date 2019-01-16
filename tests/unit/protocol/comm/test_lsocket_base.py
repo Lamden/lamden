@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 
 import zmq, zmq.asyncio, asyncio
 from cilantro.protocol.comm.lsocket_new import *
-from cilantro.protocol.comm.lsocket_pub import *
 from cilantro.protocol.comm.socket_manager import *
 from cilantro.protocol import wallet
 from cilantro.messages.base.base_signal import SignalBase
@@ -22,8 +21,6 @@ def _build_mock_manager():
 def _build_lsocket(socket_type=None, secure=False, domain='*'):
     if socket_type is None:
         return LSocketBase(socket=MagicMock(), manager=_build_mock_manager(), secure=secure, domain=domain)
-    elif socket_type is zmq.PUB:
-        return LSocketPub(socket=MagicMock(), manager=_build_mock_manager(), secure=secure, domain=domain)
     elif socket_type is zmq.ROUTER:
         # TODO implement
         pass
@@ -119,30 +116,4 @@ class TestLSocketBase(TestCase):
 
         self.assertEqual(len(sock.socket.bind.call_args_list), 2)
         self.assertEqual(sock.socket.bind.call_args_list[0], sock.socket.bind.call_args_list[1])
-
-
-class TestLSocketPub(TestCase):
-
-    def test_connect_and_then_send_before_vk_lookup_finished(self):
-        vk, ip = 'A' * 64, '135.215.96.143'
-        got_ip = {'event_id': 0, 'event': 'got_ip', 'vk': vk, 'ip': ip}
-        node_online = {'event_id': 1, 'event': 'node_online', 'vk': vk, 'ip': ip}
-        msg = SignalTestMessage.create()
-        sock = _build_lsocket(socket_type=zmq.PUB)
-        env = sock._package_msg(msg)
-
-        self.assertFalse(sock.ready)
-        self.assertEqual(len(sock.pending_commands), 0)
-
-        sock.send_msg(msg, header=b'')
-
-        self.assertEqual(len(sock.pending_commands), 1)
-
-    def test_connect_then_send_before_ready_then_ready_should_flush(self):
-        vk, ip = 'A' * 64, '135.215.96.143'
-        got_ip = {'event_id': 0, 'event': 'got_ip', 'vk': vk, 'ip': ip}
-        node_online = {'event_id': 1, 'event': 'node_online', 'vk': vk, 'ip': ip}
-        msg = SignalTestMessage.create()
-        sock = _build_lsocket(socket_type=zmq.PUB)
-        env = sock._package_msg(msg)
 
