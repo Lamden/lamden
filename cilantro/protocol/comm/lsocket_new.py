@@ -240,3 +240,10 @@ class LSocketBase:
 
         return Envelope.create_from_message(message=reply, signing_key=self.manager.signing_key,
                                             verifying_key=self.manager.verifying_key, uuid=reply_uuid)
+
+    def _flush_pending_commands(self):
+        self.log.debug("Flushing {} pending commands from queue".format(len(self.pending_commands)))
+        for cmd_name, args, kwargs in self.pending_commands:
+            self.log.spam("Executing pending command named '{}' with args {} and kwargs {}".format(cmd_name, args, kwargs))
+            getattr(self, cmd_name)(*args, **kwargs)
+        self.pending_commands.clear()
