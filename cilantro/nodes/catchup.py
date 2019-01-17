@@ -2,7 +2,7 @@ import time, asyncio, math
 from collections import defaultdict
 from cilantro.logger import get_logger
 from cilantro.constants.zmq_filters import *
-from cilantro.protocol.comm.lsocket import LSocket
+from cilantro.protocol.comm.lsocket import LSocketBase
 from cilantro.storage.vkbook import VKBook
 from cilantro.storage.state import StateDriver
 from cilantro.nodes.masternode.mn_api import StorageDriver
@@ -17,7 +17,7 @@ IDX_REPLY_TIMEOUT = 20
 TIMEOUT_CHECK_INTERVAL = 1
 
 class CatchupManager:
-    def __init__(self, verifying_key: str, pub_socket: LSocket, router_socket: LSocket, store_full_blocks=True):
+    def __init__(self, verifying_key: str, pub_socket: LSocketBase, router_socket: LSocketBase, store_full_blocks=True):
         """
 
         :param verifying_key: host vk
