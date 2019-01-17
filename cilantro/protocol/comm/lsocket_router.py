@@ -43,18 +43,18 @@ class LSocketRouter(LSocketBase):
             # Cancel the timeout future if there is one already, and start a new one
             if header in self.timeout_futs:
                 self.timeout_futs[header].cancel()
-            self.timeout_futs[header] = asyncio.ensure_future(self._start_pong_timer(header))
+            self.timeout_futs[header] = asyncio.ensure_future(self._start_ping_timer(header))
 
             self.socket.send_multipart([header, PING])
             self.deferred_msgs[header].append(env.serialize())
 
-    async def _start_pong_timer(self, header):
+    async def _start_ping_timer(self, header):
         try:
-            self.__start_pong_timer(header)
+            self.__start_ping_timer(header)
         except asyncio.CancelledError:
             pass
 
-    async def __start_pong_timer(self, header):
+    async def __start_ping_timer(self, header):
         wait_time = 1
         while wait_time < PING_TIMEOUT:
             self.log.spam("Waiting {} seconds before retrying PING for ID {}".format(wait_time, header))
