@@ -63,6 +63,12 @@ class LSocketRouter(LSocketBase):
             self.socket.send_multipart([header, PING])
             wait_time *= 2
 
+        # TODO do we have to make sure its not canceled? Can i gaurentee this code wont run if .cancel() is called
+        # on this future??
+
+        self.log.warning("Ping timed out for Router socket to node with id {}".format(id))
+        # TODO -- close connection corresponding to this id if we opened it to clean up and prevent leaks
+
     def _process_msg(self, msg: List[bytes]):
         assert len(msg) == 2, "Expected a msg of length 2, but got {}".format(msg)
 
