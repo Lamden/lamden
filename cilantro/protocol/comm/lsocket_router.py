@@ -4,8 +4,9 @@ import time, asyncio
 from collections import defaultdict, deque
 from typing import List
 
-# How long a Router socket will wait for a PONG after sending a PING
-PONG_TIMEOUT = 20
+# How long a Router socket will wait for a PONG after sending a PING. Should be a n^2 - 1 b/c of exponential delays
+# between retries (i.e. we retry in 1, then 2, then 4, then 8 seconds and so on)
+PING_TIMEOUT = 127
 
 # How long before a 'session' with another Router client expires. After the session expires, a new PING/PONG exchange
 # must occur before any messages can be sent to that client
@@ -24,26 +25,43 @@ class LSocketRouter(LSocketBase):
         self.deferred_msgs = defaultdict(deque)  # Messages that are awaiting a PONG before sent
         self.timeout_futs = {}  # Tracks timeouts for PONG response. Val is asyncio.Future
 
+        # TODO what happens tho if you try and send a msg before you have connected to the Router??? Like VK lookup
+        # is still in process???
+        # 1) we could rely on retries of PING
+        # 2) (more complex) we could wait until the VK lookup goes thru before
+        # lets go with option 1
+
     def send_envelope(self, env: Envelope, header: bytes=None):
         assert header is not None, "Header must be identity frame when using send on Router sockets. Cannot be None."
 
         # If we received a recent PONG, go ahead and send the message immediately
         if header in self.recent_pongs and time.time() - self.recent_pongs[header] < SESSION_TIMEOUT:
-            super().send_envelope(env, header)
+            self.socket.send_multipart([header, env.serialize()])
 
-        # Otherwise, we need to send a PING and wait for a PONG before sending
+        # Otherwise, we need to send a PING and wait for a PONG before sending the envelope
         else:
             # Cancel the timeout future if there is one already, and start a new one
             if header in self.timeout_futs:
                 self.timeout_futs[header].cancel()
-            self.timeout_futs[header] = asyncio.ensure_future(self.start_pong_timer(header))
+            self.timeout_futs[header] = asyncio.ensure_future(self._start_pong_timer(header))
 
             self.socket.send_multipart([header, PING])
             self.deferred_msgs[header].append(env.serialize())
 
-    async def start_pong_timer(self, header):
-        # TODO implement
-        pass
+    async def _start_pong_timer(self, header):
+        try:
+            self.__start_pong_timer(header)
+        except asyncio.CancelledError:
+            pass
+
+    async def __start_pong_timer(self, header):
+        wait_time = 1
+        while wait_time < PING_TIMEOUT:
+            self.log.spam("Waiting {} seconds before retrying PING for ID {}".format(wait_time, header))
+            await asyncio.sleep(wait_time)
+            self.log.debugv("Sending PING retry to ID {}".format(header))
+            self.socket.send_multipart([header, PING])
+            wait_time *= 2
 
     def _process_msg(self, msg: List[bytes]):
         assert len(msg) == 2, "Expected a msg of length 2, but got {}".format(msg)
