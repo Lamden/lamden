@@ -2,6 +2,7 @@ from cilantro.protocol.comm.lsocket_new import LSocketBase
 from cilantro.messages.envelope.envelope import Envelope
 import time, asyncio
 from collections import defaultdict, deque
+from typing import List
 
 # How long a Router socket will wait for a PONG after sending a PING
 PONG_TIMEOUT = 20
@@ -30,16 +31,48 @@ class LSocketRouter(LSocketBase):
         if header in self.recent_pongs and time.time() - self.recent_pongs[header] < SESSION_TIMEOUT:
             super().send_envelope(env, header)
 
-        # Otherwise, we need to PING and wait for a PONG before sending
+        # Otherwise, we need to send a PING and wait for a PONG before sending
         else:
-            # Cancel the timeout future if there is one already
+            # Cancel the timeout future if there is one already, and start a new one
             if header in self.timeout_futs:
                 self.timeout_futs[header].cancel()
             self.timeout_futs[header] = asyncio.ensure_future(self.start_pong_timer(header))
 
-            self.socket.send_multipart([header, PONG])
+            self.socket.send_multipart([header, PING])
+            self.deferred_msgs[header].append(env.serialize())
 
     async def start_pong_timer(self, header):
+        # TODO implement
         pass
 
-    # TODO overwrite the listener func
+    def _process_msg(self, msg: List[bytes]):
+        assert len(msg) == 2, "Expected a msg of length 2, but got {}".format(msg)
+
+        # If the msg is a PING or PONG, mark the client as online
+        if msg[1] == PING or msg[1] == PONG:
+            if msg[1] == PING:
+                self.socket.send_multipart([msg[0], PONG])
+            self._mark_client_as_online(msg[0])
+            return False
+        else:
+            return True
+
+    def _mark_client_as_online(self, client_id: bytes):
+        # Remove the timeout future
+        if client_id in self.timeout_futs:
+            self.timeout_futs[client_id].cancel()
+            del self.timeout_futs[client_id]
+
+        # Mark the time this client was seen as available
+        self.recent_pongs[client_id] = time.time()
+
+        # Send out any queued msgs
+        if client_id in self.deferred_msgs:
+            for _ in range(len(self.deferred_msgs[client_id])):
+                env_binary = self.deferred_msgs[client_id].popleft()
+                assert type(env_binary) is bytes, "Expected deferred_msgs deque to be bytes, not {}".format(env_binary)
+                self.socket.send_multipart([client_id, env_binary])
+            del self.deferred_msgs[client_id]
+
+
+

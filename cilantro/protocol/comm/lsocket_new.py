@@ -32,15 +32,15 @@ def vk_lookup(func):
 
         # If the 'ip' key is already set in kwargs, no need to do a lookup
         else:
-            # TODO do we need to add these to conn_tracker also? Otherwise we will only do reconnects for addresses
-            # that we do VK lookups on, but this might be ok --davis
             func(self, *args, **kwargs)
 
     return _func
 
 
 class LSocketBase:
-
+    # TODO
+    # do we even need the defer mechanism? Currently, no other sockets use this besides Router, which implements
+    # is specially. I guess it could be useful for DEALER or PUSH/PULL sockets (if we ever use them)? --davis
     DEFERRED_FUNCS = ('send_multipart', 'send')
 
     def __init__(self, socket: zmq.asyncio.Socket, manager, name='', secure=False, domain='*'):
