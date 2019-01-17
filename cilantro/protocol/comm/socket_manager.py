@@ -1,6 +1,8 @@
 from cilantro.logger import get_logger
 from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
-from cilantro.protocol.comm.lsocket import LSocket
+# from cilantro.protocol.comm.lsocket import LSocket
+from cilantro.protocol.comm.lsocket_new import LSocketBase
+from cilantro.protocol.comm.lsocket_router import LSocketRouter
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.utils.utils import is_valid_hex
 
@@ -45,15 +47,18 @@ class SocketManager:
     def set_new_node_tracking(self):
         self.overlay_client.set_new_node_tracking()
 
-    def create_socket(self, socket_type, secure=False, domain='*', *args, name='LSocket', **kwargs) -> LSocket:
+    def create_socket(self, socket_type, secure=False, domain='*', *args, name='LSocket', **kwargs) -> LSocketBase:
         assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)
 
         ctx = self.secure_context if secure else self.context
         zmq_socket = ctx.socket(socket_type, *args, **kwargs)
 
-        socket = LSocket(zmq_socket, manager=self, secure=secure, domain=domain, name=name)
-        self.sockets.append(socket)
+        if socket_type == zmq.ROUTER:
+            socket = LSocketRouter(zmq_socket, manager=self, secure=secure, domain=domain, name=name)
+        else:
+            socket = LSocketBase(zmq_socket, manager=self, secure=secure, domain=domain, name=name)
 
+        self.sockets.append(socket)
         return socket
 
     def _handle_overlay_event(self, e):
