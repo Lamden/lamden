@@ -40,12 +40,10 @@ class LSocketRouter(LSocketBase):
 
         # Otherwise, we need to send a PING and wait for a PONG before sending the envelope
         else:
-            # Cancel the timeout future if there is one already, and start a new one
-            if header in self.timeout_futs:
-                self.timeout_futs[header].cancel()
-            self.timeout_futs[header] = asyncio.ensure_future(self._start_ping_timer(header))
+            if header not in self.timeout_futs:
+                self.timeout_futs[header] = asyncio.ensure_future(self._start_ping_timer(header))
+                self.socket.send_multipart([header, PING])
 
-            self.socket.send_multipart([header, PING])
             self.deferred_msgs[header].append(env.serialize())
 
     async def _start_ping_timer(self, header):
