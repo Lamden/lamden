@@ -119,16 +119,24 @@ class LSocketBase:
             try:
                 self.log.spam("Socket waiting for multipart msg...")
                 msg = await self.socket.recv_multipart()
+                self.log.spam("Socket received multipart msg: {}".format(msg))
+                should_forward = self._process_msg(msg)
             except asyncio.CancelledError:
                 self.log.warning("Socket got asyncio.CancelledError. Breaking from lister loop.")
                 return
 
-            self.log.spam("Socket received multipart msg: {}".format(msg))
+            if not should_forward:
+                continue
 
             if key is not None:
                 func(msg, key)
             else:
                 func(msg)
+
+    def _process_msg(self, msg: List[bytes]) -> bool:
+        """ Custom messages processing to be implemented by subclasses. This method should return True if the
+        msg should be forwarded to the user handlers, and False otherwise. See LSocketRouter for example."""
+        return True
 
     def handle_overlay_event(self, event: dict):
         self.log.spam("Socket handling overlay event {}".format(event))
