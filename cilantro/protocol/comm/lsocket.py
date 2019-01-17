@@ -61,9 +61,8 @@ class LSocketBase:
         self.pending_lookups = {}  # A dict of event_id to tuple, where the tuple again represents a command execution
         self.conn_tracker = {}  # A dict of vk (as str) to bind/conn command executions. Used for auto reconnects
 
-        self.ready = True  # Gets set to True when all pending_lookups have been resolved, and we BIND/CONNECT
+        self.ready = True  # If False, all DEFERRED_FUNCS will be suspended until ready. Used by subclasses
         self.handler_added = False  # We use this just for dev sanity checks, to ensure only one handler is added
-        self.timeout_fut = None
 
     @vk_lookup
     def connect(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
@@ -159,8 +158,9 @@ class LSocketBase:
         getattr(self, cmd_name)(*args, **kwargs)
 
     def _handle_not_found(self, event: dict):
-        # TODO implement
-        pass
+        assert event['event_id'] in self.pending_lookups, "LSocket got 'not_found' event that is not in pending lookups"
+        self.log.socket("Could not resolve IP for VK {}".format(event['vk']))
+        del self.pending_lookups[event['event_id']]
 
     def _handle_node_online(self, event: dict):
         if event['vk'] not in self.conn_tracker:

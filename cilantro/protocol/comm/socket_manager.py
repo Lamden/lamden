@@ -73,26 +73,13 @@ class SocketManager:
             sock = self.pending_lookups.pop(e['event_id'])
             sock.handle_overlay_event(e)
 
-        # Retry any failed lookups registered by sockets when a node comes online
-        elif e['event'] == 'node_online' and e['vk'] in self.vk_lookups:
-            self.log.debugv("sock manager got node_online event for vk {}! Triggering reconnect with info {}"
-                            .format(e['vk'], self.vk_lookups[e['vk']]))
+        # Forward 'node_online' events to all sockets to that they can reconnect if necessary
+        elif e['event'] == 'node_online':
+            for sock in self.sockets:
+                sock.handle_overlay_event(e)
 
-            idx_to_rm = []
-            for i, cmd_tuple in enumerate(self.vk_lookups[e['vk']]):
-                sock, cmd_name, args, kwargs = cmd_tuple
-                kwargs['ip'] = e['ip']
-                # Only remove bind commands (we will do another connect call everytime a Node comes online)
-                if cmd_name == 'bind':
-                    idx_to_rm.append(i)
-
-                getattr(sock, cmd_name)(*args, **kwargs)
-
-            for i in reversed(idx_to_rm):
-                self.vk_lookups[e['vk']].pop(i)
-
+        # TODO proper error handling / 'bad actor' logic here
         elif e['event'] == 'unauthorized_ip':
-            # TODO proper error handling / 'bad actor' logic here
             self.log.error("SocketManager got unauthorized_ip event {}".format(e))
 
         else:
