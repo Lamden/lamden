@@ -61,6 +61,8 @@ class LSocketRouter(LSocketBase):
             self.socket.send_multipart([header, PING])
             wait_time *= 2
 
+        assert header in self.timeout_futs, "PING_TIMEOUT reached but header {} was delete from timeout_futs {}. so " \
+                                            "(it should have been cancelled)".format(header, self.timeout_futs)
         # TODO do we have to make sure its not canceled? Can i gaurentee this code wont run if .cancel() is called
         # on this future??
 
@@ -95,6 +97,3 @@ class LSocketRouter(LSocketBase):
                 assert type(env_binary) is bytes, "Expected deferred_msgs deque to be bytes, not {}".format(env_binary)
                 self.socket.send_multipart([client_id, env_binary])
             del self.deferred_msgs[client_id]
-
-
-
