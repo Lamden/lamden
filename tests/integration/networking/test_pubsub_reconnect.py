@@ -70,13 +70,14 @@ class TestPubSubReconnect(MPTestCase):
 
         self.start(timeout=30)
 
-    @vmnet_test(run_webui=False)  # TODO turn of web UI
+    @vmnet_test(run_webui=True)  # TODO turn of web UI
     def test_join_then_drop_then_reconnect(self):
         def assert_sub(test_obj):
             c_args = test_obj.handle_sub.call_args_list
             assert len(c_args) == 5, "Expected 5 messages (one from each node). Instead, got:\n{}".format(c_args)
 
         BLOCK = False
+        DOWN_TIME = 30
 
         self.log.test("Spinning up all 5 nodes...")
         node1 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='node_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
@@ -95,9 +96,20 @@ class TestPubSubReconnect(MPTestCase):
         for n in all_nodes:
             self.config_node(n, all_vks)
 
-        # TODO disconnect nodes 4, 5
+        for n in all_nodes[-2:]:
+            self.log.test("Killing node named {}".format(n.name))
+            self.kill_node(n.name)
 
-        # TODO bring nodes 4, 5 back up
+        self.log.test("Waiting {} seconds before bringing nodes back up".format(DOWN_TIME))
+        time.sleep(DOWN_TIME)
+
+        for n in all_nodes[-2:]:
+            self.log.test("Reviving node named {}".format(n.name))
+            self.start_node(n.name)
+            self.rerun_node_script(n.name)
+
+        # Allow time for bootstraps reconnects
+        time.sleep(16*CI_FACTOR)
 
         # Everyone pubs
         self.log.test("Sending PUB messages from all nodes")
