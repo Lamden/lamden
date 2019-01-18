@@ -27,8 +27,6 @@ class TestRouterSecure(MPTestCase):
         def assert_router(test_obj):
             test_obj.handle_router_msg.assert_called_once()
 
-        msg = b'*falcon noise*'
-
         BLOCK = False
         time.sleep(1*CI_FACTOR)
 
@@ -54,8 +52,6 @@ class TestRouterSecure(MPTestCase):
     def test_both_bind(self):
         def assert_router(test_obj):
             test_obj.handle_router_msg.assert_called_once()
-
-        msg = b'*falcon noise*'
 
         BLOCK = False
         time.sleep(1*CI_FACTOR)
@@ -84,10 +80,6 @@ class TestRouterSecure(MPTestCase):
     def test_both_bind_no_wait_after_vk_lookup(self):
         def assert_router(test_obj):
             test_obj.handle_router_msg.assert_called_once()
-
-        msg = b'*falcon noise*'
-
-        # THIS TEST IS PASSING, BUT SHOULD IT BE? LOOKS LIKE ONLY ONE GET IS GETTING THE MSG
 
         BLOCK = False
         time.sleep(1*CI_FACTOR)
