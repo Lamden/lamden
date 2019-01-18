@@ -49,7 +49,7 @@ class TestCatchupManager(TestCase):
 
     def _assert_router_called_with_msg(self, cm: CatchupManager, msg: MessageBase, possible_headers):
         assert type(possible_headers) in (tuple, bytes), "Header must be a tuple of bytes, or a byte obj"
-        for call_arg in cm.router.send_msg.call_args_list:
+        for call_arg in cm.router.send_raw_msg.call_args_list:
             args, kwargs = call_arg
             self.assertEqual(args[0], msg)
             if type(possible_headers) is tuple:
@@ -141,7 +141,7 @@ class TestCatchupManager(TestCase):
         expected_reply = BlockIndexReply.create(all_idx_replies)
 
         print(expected_reply)
-        print(cm.router.send_msg.call_args)
+        print(cm.router.send_raw_msg.call_args)
         self._assert_router_called_with_msg(cm, msg=expected_reply, possible_headers=(vk1.encode(),))
         cm.is_caught_up = False 
     

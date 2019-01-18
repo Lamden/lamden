@@ -5,6 +5,7 @@ from cilantro.constants.test_suites import CI_FACTOR
 
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPRouterAuth
+from cilantro.messages.signals.poke import Poke
 import unittest, time
 
 
@@ -45,11 +46,11 @@ class TestRouterSecure(MPTestCase):
         # Give time for VK lookup
         time.sleep(8*CI_FACTOR)
 
-        router2.send_msg(id_frame=router1.ip.encode(), msg=b'hi from router 2!')
+        router2.send_msg(Poke.create(), router1.ip.encode())
 
         self.start(timeout=10*CI_FACTOR)
 
-    @vmnet_test
+    @vmnet_test(run_webui=True)  # TODO turn of web UI
     def test_both_bind(self):
         def assert_router(test_obj):
             test_obj.handle_router_msg.assert_called_once()
@@ -76,10 +77,11 @@ class TestRouterSecure(MPTestCase):
         # Give time for VK lookup
         time.sleep(8*CI_FACTOR)
 
-        router2.send_msg(id_frame=router1.ip.encode(), msg=b'hi from router 2!')
-        router1.send_msg(id_frame=router2.ip.encode(), msg=b'hi from router 1!')
+        router2.send_msg(Poke.create(), router1.ip.encode())
+        router1.send_msg(Poke.create(), router2.ip.encode())
 
         self.start(timeout=10*CI_FACTOR)
+
 
 if __name__ == '__main__':
     unittest.main()

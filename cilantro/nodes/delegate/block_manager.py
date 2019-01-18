@@ -293,7 +293,7 @@ class BlockManager(Worker):
 
     def _handle_sbc(self, sbc: SubBlockContender):
         self.log.important("Got SBC with sb-index {}. Sending to Masternodes.".format(sbc.sb_index))
-        self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
+        self.pub.send_raw_msg(sbc, header=DEFAULT_FILTER.encode())
         self.db_state.input_hash_map[sbc.sb_index] = sbc.input_hash
         self.db_state.sub_block_hash_map[sbc.result_hash] = sbc.sb_index
         # if sbc.is_empty:

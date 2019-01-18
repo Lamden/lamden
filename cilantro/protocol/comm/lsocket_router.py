@@ -41,14 +41,16 @@ class LSocketRouter(LSocketBase):
         # Otherwise, we need to send a PING and wait for a PONG before sending the envelope
         else:
             if header not in self.timeout_futs:
+                self.log.debug("No recent contract from client with ID {}. Sending a PING.".format(header))
                 self.timeout_futs[header] = asyncio.ensure_future(self._start_ping_timer(header))
                 self.socket.send_multipart([header, PING])
 
+            self.log.debugv("Deferring msg to client with ID {} since we have not had recent contract".format(header))
             self.deferred_msgs[header].append(env.serialize())
 
     async def _start_ping_timer(self, header):
         try:
-            self.__start_ping_timer(header)
+            await self.__start_ping_timer(header)
         except asyncio.CancelledError:
             pass
 
@@ -69,19 +71,22 @@ class LSocketRouter(LSocketBase):
         self.log.warning("Ping timed out for Router socket to node with id {}".format(id))
         # TODO -- close connection corresponding to this id if we opened it to clean up and prevent leaks
 
-    def _process_msg(self, msg: List[bytes]):
+    def _process_msg(self, msg: List[bytes]) -> bool:
         assert len(msg) == 2, "Expected a msg of length 2, but got {}".format(msg)
 
-        # If the msg is a PING or PONG, mark the client as online
+        self._mark_client_as_online(msg[0])  # Mark the client as online, regardless of what message they sent
+
         if msg[1] == PING or msg[1] == PONG:
             if msg[1] == PING:
+                self.log.spam("Replying to PING from client with ID {}".format(msg[0]))
                 self.socket.send_multipart([msg[0], PONG])
-            self._mark_client_as_online(msg[0])
             return False
         else:
             return True
 
     def _mark_client_as_online(self, client_id: bytes):
+        self.log.spam("Marking client with ID {} as online".format(client_id))
+
         # Remove the timeout future
         if client_id in self.timeout_futs:
             self.timeout_futs[client_id].cancel()
@@ -92,6 +97,8 @@ class LSocketRouter(LSocketBase):
 
         # Send out any queued msgs
         if client_id in self.deferred_msgs:
+            self.log.debugv("Flushing {} deferred messages from client with ID {}"
+                            .format(len(self.deferred_msgs[client_id]), client_id))
             for _ in range(len(self.deferred_msgs[client_id])):
                 env_binary = self.deferred_msgs[client_id].popleft()
                 assert type(env_binary) is bytes, "Expected deferred_msgs deque to be bytes, not {}".format(env_binary)
