@@ -116,12 +116,11 @@ class TestPubSubReconnect(MPTestCase):
 
         # Reconnect the 2 revived nodes
         self.log.test("Reconnecting last 2 nodes to all others")
-        # TODO these commands are not going thru. something is fukt with the spin up
         for n in all_nodes[-2:]:
             self.config_node(n, all_vks)
 
         # Allow time for revived nodes to finish lookups
-        time.sleep(16*CI_FACTOR)
+        time.sleep(16*CI_FACTOR)  # damn why does this take so long :( ... 10 will not work
 
         # Everyone pubs
         self.log.test("Sending PUB messages from all nodes")
