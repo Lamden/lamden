@@ -358,6 +358,15 @@ class MPTesterBase:
             self.test_proc.start()
 
     def reconnect(self):
+        from .mp_test_case import MPTestCase
+        old_url = self.url
+
+        url = MPTestCase.ports[self.container_name][MPTEST_PORT]  # URL the orchestration node should connect to
+        url = url.replace('localhost', '127.0.0.1')  # Adjust localhost to 127.0.0.1
+        url = "tcp://{}".format(url)
+        self.log.debug("Host machine changing old URL {} to new URL {} for container {}".format(old_url, url, self.container_name))
+        self.url = url
+
         self.log.notice("Host machine reconnecting to URL {}".format(self.url))
         self.socket.connect(self.url)
 
