@@ -10,6 +10,7 @@ import time
 import os
 from cilantro.utils.lprocess import LProcess
 from cilantro.logger import get_logger, overwrite_logger_level
+from vmnet.testcase import BaseNetworkTestCase
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -358,10 +359,11 @@ class MPTesterBase:
             self.test_proc.start()
 
     def reconnect(self):
-        from .mp_test_case import MPTestCase
         old_url = self.url
+        self.log.notice("Host machine disconnecting to old URL {}".format(old_url))
+        self.socket.disconnect(old_url)
 
-        url = MPTestCase.ports[self.container_name][MPTEST_PORT]  # URL the orchestration node should connect to
+        url = BaseNetworkTestCase.ports[self.container_name][MPTEST_PORT]  # URL the orchestration node should connect to
         url = url.replace('localhost', '127.0.0.1')  # Adjust localhost to 127.0.0.1
         url = "tcp://{}".format(url)
         self.log.debug("Host machine changing old URL {} to new URL {} for container {}".format(old_url, url, self.container_name))
