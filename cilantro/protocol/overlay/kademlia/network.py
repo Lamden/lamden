@@ -107,8 +107,7 @@ class Network(object):
             addrs: A `list` of (ip, port) `tuple` pairs.  Note that only IP
                    addresses are acceptable - hostnames will cause an error.
         """
-        log.debug("Attempting to bootstrap node with {} initial contacts: {}".format(
-                  len(addrs), addrs))
+        log.debug("Attempting to bootstrap node with {} initial contacts: {}".format(len(addrs), addrs))
         processed = set()
         processed.add(self.node.vk)
         nearest = []

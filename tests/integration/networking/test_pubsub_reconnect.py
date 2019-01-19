@@ -48,7 +48,7 @@ class TestPubSubReconnect(MPTestCase):
         for n in (node1, node2, node3):
             self.config_node(n, all_vks)
 
-        time.sleep(12*CI_FACTOR)  # Nap while nodes try to add sockets
+        time.sleep(16*CI_FACTOR)  # Nap while nodes try to add sockets
 
         # Spin up last 2 nodes
         self.log.test("Spinning up remaining 2 nodes")
@@ -96,19 +96,31 @@ class TestPubSubReconnect(MPTestCase):
         for n in all_nodes:
             self.config_node(n, all_vks)
 
+        time.sleep(8*CI_FACTOR)  # Allow time for nodes to finish lookups
+
         for n in all_nodes[-2:]:
-            self.log.test("Killing node named {}".format(n.name))
-            self.kill_node(n.name)
+            self.log.test("Killing node named {}".format(n.container_name))
+            self.kill_node(n.container_name)
 
         self.log.test("Waiting {} seconds before bringing nodes back up".format(DOWN_TIME))
         time.sleep(DOWN_TIME)
 
         for n in all_nodes[-2:]:
-            self.log.test("Reviving node named {}".format(n.name))
-            self.start_node(n.name)
-            self.rerun_node_script(n.name)
+            self.log.test("Reviving node named {}".format(n.container_name))
+            self.start_node(n.container_name)
+            self.rerun_node_script(n.container_name)
+            n.reconnect()  # Reconnects the host machine's socket to the remote container
 
-        # Allow time for bootstraps reconnects
+        # Allow time for revived nodes to bootstrap
+        time.sleep(10*CI_FACTOR)
+
+        # Reconnect the 2 revived nodes
+        self.log.test("Reconnecting last 2 nodes to all others")
+        # TODO these commands are not going thru. something is fukt with the spin up
+        for n in all_nodes[-2:]:
+            self.config_node(n, all_vks)
+
+        # Allow time for revived nodes to finish lookups
         time.sleep(16*CI_FACTOR)
 
         # Everyone pubs
@@ -116,7 +128,7 @@ class TestPubSubReconnect(MPTestCase):
         for n in all_nodes:
             n.send_pub("hi from {} with ip {}".format(n.name, n.ip).encode())
 
-        self.start(timeout=30)
+        self.start(timeout=12)
 
 
 if __name__ == '__main__':

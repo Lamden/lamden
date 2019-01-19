@@ -28,7 +28,9 @@ def vk_lookup(func):
             self.manager.pending_lookups[cmd_id] = self
             self.conn_tracker[kwargs['vk']] = cmd_tuple
 
-            # self.manager.vk_lookups[kwargs['vk']].append((self, func.__name__, args, kwargs))  TODO remove
+            # DEBUG -- TODO DELETE
+            # self.log.important3("Adding vk {} to conn tracker with cmd tuple {}".format(kwargs['vk'], cmd_tuple))
+            # END DEBUG
 
         # If the 'ip' key is already set in kwargs, no need to do a lookup
         else:

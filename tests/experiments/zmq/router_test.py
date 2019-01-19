@@ -16,6 +16,7 @@ def start_sender(url):
     while True:
         log.important2('send {}'.format(count))
         sock.send_multipart([b'recvr', "hi {}".format(count).encode()])
+        sock.send_multipart([b'i_dont_exist', "hi {}".format(count).encode()])
         count += 1
         time.sleep(0.25)
 
@@ -32,10 +33,13 @@ def start_recvr(url):
     log.important('slep')
     time.sleep(1)
 
-    while True:
+    for _ in range(10):
         log.spam('wait for msg')
         msg = sock.recv_multipart()
         log.important('got msg {}'.format(msg))
+
+    log.important3("WE OUT THIS")
+    sock.close()
 
 
 if __name__ == '__main__':
@@ -45,4 +49,9 @@ if __name__ == '__main__':
 
     p1.start()
     p2.start()
-    p1.join()
+    # p1.join()
+
+    time.sleep(10)
+    p3 = Process(target=start_recvr, args=(URL,))
+    p3.start()
+    p3.join()

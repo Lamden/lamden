@@ -357,6 +357,10 @@ class MPTesterBase:
                                                                                    ))
             self.test_proc.start()
 
+    def reconnect(self):
+        self.log.notice("Host machine reconnecting to URL {}".format(self.url))
+        self.socket.connect(self.url)
+
     def wait_for_test_object(self):
         self.log.info("Tester waiting for rdy sig from test process...")
         msg = self.socket.recv()
