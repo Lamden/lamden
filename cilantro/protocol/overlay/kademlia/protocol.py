@@ -52,7 +52,7 @@ class KademliaProtocol(RPCProtocol):
 
         # NOTE: we are always emitting node_online when we get a find_node request, because we don't know when clients
         # drop. A client could drop, but still be in our routing table because we don't heartbeat. Always sending
-        # 'node_online' might be a heavy handed solution, but under the assumtion that find_nodes (vk lookups) are
+        # 'node_online' might be a heavy handed solution, but under the assumption that find_nodes (vk lookups) are
         # a relatively infrequent operation, this should be acceptable  --davis
         emit_to_client = self.track_on  #  and self.router.isNewNode(source)
         self.welcomeIfNewNode(source)

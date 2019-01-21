@@ -33,6 +33,7 @@ class TestPubSubReconnect(MPTestCase):
             assert len(c_args) == 5, "Expected 5 messages (one from each node). Instead, got:\n{}".format(c_args)
 
         BLOCK = False
+        DOWN_TIME = 30
 
         self.log.test("Spinning up first 3 nodes")
         node1 = MPPubSubAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='node_1', config_fn=config_sub, assert_fn=assert_sub, block_until_rdy=BLOCK)
@@ -48,7 +49,7 @@ class TestPubSubReconnect(MPTestCase):
         for n in (node1, node2, node3):
             self.config_node(n, all_vks)
 
-        time.sleep(16*CI_FACTOR)  # Nap while nodes try to add sockets
+        time.sleep(DOWN_TIME*CI_FACTOR)  # Nap while nodes try to add sockets
 
         # Spin up last 2 nodes
         self.log.test("Spinning up remaining 2 nodes")
@@ -70,7 +71,7 @@ class TestPubSubReconnect(MPTestCase):
 
         self.start(timeout=30)
 
-    @vmnet_test(run_webui=True)  # TODO turn of web UI
+    @vmnet_test(run_webui=False)  # TODO turn of web UI
     def test_join_then_drop_then_reconnect(self):
         def assert_sub(test_obj):
             c_args = test_obj.handle_sub.call_args_list

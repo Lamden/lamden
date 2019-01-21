@@ -54,7 +54,6 @@ class SocketManager:
         zmq_socket = ctx.socket(socket_type, *args, **kwargs)
 
         if socket_type == zmq.ROUTER:
-            self.log.important3("CREATING A LSOCKETROUTER!!!")  # TODO remove
             socket = LSocketRouter(zmq_socket, manager=self, secure=secure, domain=domain, name=name)
         else:
             socket = LSocketBase(zmq_socket, manager=self, secure=secure, domain=domain, name=name)

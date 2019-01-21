@@ -9,6 +9,7 @@ import traceback
 import time
 import os
 from cilantro.utils.lprocess import LProcess
+from cilantro.protocol import wallet
 from cilantro.logger import get_logger, overwrite_logger_level
 from vmnet.testcase import BaseNetworkTestCase
 
@@ -294,6 +295,10 @@ class MPTesterBase:
 
         self.test_proc = None
         self.container_name = None  # Name of the docker container this object is proxying to (if run on VM)
+
+        if 'sk' in kwargs:
+            self.sk = kwargs['sk']
+            self.vk = wallet.get_vk(kwargs['sk'])
 
         # Create a wrapper around the build_obj with args and kwargs. We do this b/c this function will actually be
         # invoked in a separate process/machine, thus we need to capture the function call to serialize it and send

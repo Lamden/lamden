@@ -16,6 +16,9 @@ if env('VMNET'):
 else:
     DISCOVERY_RETRIES = 10
 
+
+RETRIES_BEFORE_SOLO_BOOT = 5  # The number of discovery retries necessary before a masternode boots alone
+
 # How long OverlayClient should wait for a rdy sig from the OverlayServer until we timeout
 CLIENT_SETUP_TIMEOUT = DISCOVERY_TIMEOUT * DISCOVERY_RETRIES
 
