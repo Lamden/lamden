@@ -62,6 +62,7 @@ class LSocketBase:
         self.pending_commands = deque()  # A list of defered commands that are flushed once this socket is ready
         self.pending_lookups = {}  # A dict of event_id to tuple, where the tuple again represents a command execution
         self.conn_tracker = {}  # A dict of vk (as str) to bind/conn command executions. Used for auto reconnects
+        self.active_conns = set()  # A set of URLs we are connected/bound to
 
         self.ready = True  # If False, all DEFERRED_FUNCS will be suspended until ready. Used by subclasses
         self.handler_added = False  # We use this just for dev sanity checks, to ensure only one handler is added
@@ -169,15 +170,26 @@ class LSocketBase:
             self.log.debugv("Socket never connected to node with vk {}. Ignoring node_online event.".format(event['vk']))
             return
 
-        self.log.info("Node with vk {} and ip {} has come back online. Re-establishing connection"
-                      .format(event['vk'], event['ip']))
+        cmd_name, args, kwargs = self.conn_tracker[event['vk']]
+        kwargs['ip'] = event['ip']
+        url = self._get_url_from_kwargs(kwargs)
+
+        self.log.info("Node with vk {} and ip {} has come back online. Re-establishing connection for URL {}"
+                      .format(event['vk'], event['ip']), url)
+
+        # First disconnect if we are already connected to this peer
+        if url in self.active_conns:
+            self.log.debugv("First disconnecting from URL {} before reconnecting".format(url))
+            self.socket.disconnect(url)
+
+        # TODO remove this else
+        else:
+            self.log.important("URL {} not in self.active_conns {}".format(url, self.active_conns))
 
         # We wrap the reconnect in the try/except to ignore 'address already in use' errors from attempting to bind
         # to an address that we already bound to. I know this is mad hacky but its 'works' until we come up
         # with something more clever --davis
         try:
-            cmd_name, args, kwargs = self.conn_tracker[event['vk']]
-            kwargs['ip'] = event['ip']
             getattr(self, cmd_name)(*args, **kwargs)
         except zmq.error.ZMQError as e:
             if str(e) != 'Address already in use':
@@ -189,7 +201,8 @@ class LSocketBase:
         # TODO validate other args (port is an int within some range, ip address is a valid, ect)
 
         if ip == os.getenv('HOST_IP'): ip = '0.0.0.0'
-        url = "{}://{}:{}".format(protocol, ip, port)
+        url = self._get_url_from_kwargs(port=port, protocol=protocol, ip=ip)
+        self.active_conns.add(url)
         self.log.socket("{} to URL {}".format('CONNECTING' if should_connect else 'BINDING', url))
 
         if should_connect:
@@ -219,6 +232,12 @@ class LSocketBase:
             return self._defer_func(item)
         else:
             return underlying
+
+    def _get_url_from_kwargs(self, port=None, protocol=None, ip=None, **kwargs):
+        assert port, "port missing"
+        assert ip, "ip missing"
+        assert protocol, "protocol missing"
+        return "{}://{}:{}".format(protocol, ip, port)
 
     def _defer_func(self, cmd_name):
         def _capture_args(*args, **kwargs):

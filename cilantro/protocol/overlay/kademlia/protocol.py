@@ -42,7 +42,7 @@ class KademliaProtocol(RPCProtocol):
         return self.sourceNode.id
 
     def rpc_find_node(self, sender, nodeid, key):
-        log.debug("finding neighbors of {} in local table for {}".format(key, sender))
+        log.debugv("finding neighbors of {} in local table for {}".format(key, sender))
         source = Node(nodeid, sender[0], sender[1], sender[2])
 
         # DEBUG -- TODO DELETE
