@@ -54,7 +54,7 @@ class TestContracts(TestCase):
             for wallet in [TEST_WALLET1, TEST_WALLET2]:
                 sk, vk = wallet
                 output = interface.execute_function('seneca.contracts.currency.balance_of', sender=GENESIS_AUTHOR,
-                                                     stamps=None, wallet_id=vk)
+                                                     stamps=1000, wallet_id=vk)
                 # print('got output {} for vk {}'.format(output, vk))
                 self.assertEqual(output['output'], 6967)
 

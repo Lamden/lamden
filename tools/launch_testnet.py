@@ -41,16 +41,16 @@ class TestPump(AWSTestCase):
 
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
-            self.execute_python(nodename, God.run_mn(i, log_lvl=MN_LOG_LVL, nonce_enabled=False, reset_db=True), detached=detached)
+            self.execute_python(nodename, God.run_mn(i, log_lvl=MN_LOG_LVL, nonce_enabled=False, reset_db=True))
 
         # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):
-            self.execute_python(nodename, God.run_witness(i, log_lvl=WITNESS_LOG_LVL, reset_db=True), detached=detached)
+            self.execute_python(nodename, God.run_witness(i, log_lvl=WITNESS_LOG_LVL, reset_db=True))
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, God.run_delegate(i, log_lvl=DELEGATE_LOG_LVL, seneca_log_lvl=SENECA_LOG_LVL,
-                                                           reset_db=True), detached=detached)
+                                                           reset_db=True))
 
         # Bootstrap pump
         #self.execute_python('mgmt', God.pump_it(rate=self.PUMP_RATE, use_poisson=self.MODEL_AS_POISSON, pump_wait=self.PUMP_WAIT,
