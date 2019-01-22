@@ -1,4 +1,4 @@
-NETWORK_SIZE = '2-2-2'
+NETWORK_SIZE = '4-4-4'
 
 MN_LOG_LVL = 11
 WITNESS_LOG_LVL = 30
@@ -20,6 +20,7 @@ from cilantro.logger import get_logger, overwrite_logger_level
 import logging, os, shutil, time
 from cilantro.constants.system_config import *
 
+detached = True
 
 class TestPump(AWSTestCase):
 
