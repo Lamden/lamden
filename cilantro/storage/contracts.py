@@ -14,7 +14,7 @@ path = os.path.abspath(__file__)
 dir_path = os.path.dirname(path)
 CONTRACTS_DIR = "{}/../contracts/lib".format(dir_path)
 
-GENESIS_AUTHOR = 'default_cilantro_contract'
+GENESIS_AUTHOR = '324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502'
 GENESIS_DATE = datetime.datetime(datetime.MINYEAR, 1, 1)
 
 
@@ -24,7 +24,8 @@ def seed_contracts():
     """
     log.debugv("Setting up SenecaInterface to publish contracts.")
 
-    with SenecaInterface(concurrent_mode=False) as interface:
+    with SenecaInterface(concurrent_mode=False, bypass_currency=True) as interface:
+
         log.debug("Inserting contract code...")
         # Insert contract code from files in file system into database table
         for contract_id, code_str in _read_contract_files():
@@ -43,6 +44,7 @@ def seed_contracts():
             log.info("Minting {} wallets with amount {}".format(NUM_WALLETS_TO_MINT, MINT_AMOUNT))
             for keypair in ALL_WALLETS:
                 sk, vk = keypair
+
                 interface.execute_function(module_path='seneca.contracts.currency.mint', sender=GENESIS_AUTHOR,
                                            stamps=None, to=vk, amount=MINT_AMOUNT)
             log.info("Done minting {} wallets ({} seconds elapsed)"
