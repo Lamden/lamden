@@ -35,10 +35,15 @@ def start_receiver(identity, homies):
         log.info("connecting to a homie at url {}".format(homie))
         sock.connect(homie)
 
-    while True:
+    # while True:
+    for i in range(20):
         log.info("Waiting for msg...")
         msg = sock.recv_multipart()
         log.notice("GOT MSG {}!".format(msg))
+
+        if i == 6:
+            log.critical("Disconnecting to first homie {}".format(homies[0]))
+            sock.disconnect(homies[0])
 
 
 if __name__ == '__main__':

@@ -63,7 +63,7 @@ class Discovery:
         is_masternode = VKBook.is_node_type('masternode', Auth.vk)
         try_count = 0
 
-        cls.log.spam('We have the following bootnodes: {}'.format(VKBook.bootnodes))
+        cls.log.info('We have the following boot nodes: {}'.format(VKBook.bootnodes))
 
         await asyncio.sleep(1)
         while True:
@@ -75,7 +75,7 @@ class Discovery:
                 cls.connect(get_ip_range(start_ip))
             try_count += 1
             if (is_masternode and len(VKBook.get_masternodes()) == 1) or \
-                    (len(cls.discovered_nodes) == 0 and is_masternode and cls.is_connected):
+                    (len(cls.discovered_nodes) == 0 and is_masternode and cls.is_connected and try_count >= RETRIES_BEFORE_SOLO_BOOT):
                 cls.log.important('Bootstrapping as the only masternode. (num_discovered={})'
                                   .format(len(cls.discovered_nodes)))
                 cls.discovered_nodes[Auth.vk] = cls.host_ip
@@ -132,7 +132,12 @@ class Discovery:
 
     @classmethod
     def request(cls, ip):
-        cls.sock.send_multipart([ip, cls.pepper])
+        # TODO this is soooo sketch wrapping this in a try/except. Why does it give a 'Could not route host' error??
+        # --davis
+        try:
+            cls.sock.send_multipart([ip, cls.pepper])
+        except Exception as e:
+            cls.log.warning("Got ZMQError sending discovery msg\n{}".format(e))
 
     @classmethod
     def reply(cls, ip):

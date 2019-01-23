@@ -9,7 +9,9 @@ import traceback
 import time
 import os
 from cilantro.utils.lprocess import LProcess
+from cilantro.protocol import wallet
 from cilantro.logger import get_logger, overwrite_logger_level
+from vmnet.testcase import BaseNetworkTestCase
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -294,6 +296,10 @@ class MPTesterBase:
         self.test_proc = None
         self.container_name = None  # Name of the docker container this object is proxying to (if run on VM)
 
+        if 'sk' in kwargs:
+            self.sk = kwargs['sk']
+            self.vk = wallet.get_vk(kwargs['sk'])
+
         # Create a wrapper around the build_obj with args and kwargs. We do this b/c this function will actually be
         # invoked in a separate process/machine, thus we need to capture the function call to serialize it and send
         # it across a socket
@@ -356,6 +362,20 @@ class MPTesterBase:
                                                                                    self.config_fn, self.assert_fn,
                                                                                    ))
             self.test_proc.start()
+
+    def reconnect(self):
+        old_url = self.url
+        self.log.notice("Host machine disconnecting to old URL {}".format(old_url))
+        self.socket.disconnect(old_url)
+
+        url = BaseNetworkTestCase.ports[self.container_name][MPTEST_PORT]  # URL the orchestration node should connect to
+        url = url.replace('localhost', '127.0.0.1')  # Adjust localhost to 127.0.0.1
+        url = "tcp://{}".format(url)
+        self.log.debug("Host machine changing old URL {} to new URL {} for container {}".format(old_url, url, self.container_name))
+        self.url = url
+
+        self.log.notice("Host machine reconnecting to URL {}".format(self.url))
+        self.socket.connect(self.url)
 
     def wait_for_test_object(self):
         self.log.info("Tester waiting for rdy sig from test process...")

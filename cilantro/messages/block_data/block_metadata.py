@@ -40,6 +40,7 @@ class BlockMetaData(BlockData):
 class NewBlockNotification(BlockMetaData):
     pass
 
+
 class SkipBlockNotification(BlockMetaData):
     pass
 

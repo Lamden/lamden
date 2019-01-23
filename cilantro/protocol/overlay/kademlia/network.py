@@ -107,8 +107,8 @@ class Network(object):
             addrs: A `list` of (ip, port) `tuple` pairs.  Note that only IP
                    addresses are acceptable - hostnames will cause an error.
         """
-        log.debug("Attempting to bootstrap node with {} initial contacts: {}".format(
-                  len(addrs), addrs))
+
+        log.debug("Attempting to bootstrap node with {} initial contacts: {}".format(len(addrs), addrs))
 
         processed = set()
         processed.add(self.node.vk)
@@ -135,6 +135,13 @@ class Network(object):
         self.protocol.set_track_on()
 
     async def lookup_ip(self, vk):
+        try:
+            return await asyncio.wait_for(self._lookup_ip(vk), FIND_NODE_TIMEOUT)
+        except asyncio.TimeoutError:
+            log.warning("Lookup IP exceeded timeout of {} for VK {}".format(FIND_NODE_TIMEOUT, vk))
+            return None
+
+    async def _lookup_ip(self, vk):
         log.spam('Attempting to look up node with vk="{}"'.format(vk))
         if Auth.vk == vk:
             self.cached_vks[vk] = self.host_ip
@@ -147,6 +154,7 @@ class Network(object):
             node_to_find = Node(digest(vk), vk=vk)
             nearest = self.protocol.router.findNode(node_to_find)
             nd = self.get_node_from_nodes_list(vk, nearest)
+            num_hops = 1
             if nd:
                 log.debug('"{}" found in routing table resolving to {}'.format(vk, nd.ip))
                 self.cached_vks[vk] = nd.ip
