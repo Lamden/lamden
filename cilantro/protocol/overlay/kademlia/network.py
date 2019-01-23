@@ -131,6 +131,13 @@ class Network(object):
         self.protocol.set_track_on()
 
     async def lookup_ip(self, vk):
+        try:
+            return await asyncio.wait_for(self._lookup_ip(vk), FIND_NODE_TIMEOUT)
+        except asyncio.TimeoutError:
+            log.warning("Lookup IP exceeded timeout of {} for VK {}".format(FIND_NODE_TIMEOUT, vk))
+            return None
+
+    async def _lookup_ip(self, vk):
         log.spam('Attempting to look up node with vk="{}"'.format(vk))
         if Auth.vk == vk:
             self.cached_vks[vk] = self.host_ip
@@ -155,17 +162,26 @@ class Network(object):
                 if node.vk in processed:
                     continue
                 processed.add(node.vk)
-                result = await self.protocol.callFindNode(node, node_to_find)
+                result = await self._find_node(node, node_to_find)
+                if result is None:
+                    return None
                 num_hops += 1
                 nd = self.get_node_from_nodes_list(vk, result)
                 if nd:
                     log.debug('"{}" found after {} hops, resolving to {}'.format(vk, num_hops, nd.ip))
                     self.cached_vks[vk] = nd.ip
                     # @raghu why do we do this below? Is it to make sure we alert nodes of our presence once we find?
-                    tmp_res = await self.protocol.callFindNode(nd, node_to_find)
+                    tmp_res = await self._find_node(nd, node_to_find)
                     return nd.ip
                 nearest.extend(result)
 
+            return None
+
+    async def _find_node(self, node, node_to_find):
+        try:
+            return await asyncio.wait_for(self.protocol.callFindNode(node, node_to_find), FIND_NODE_HOP_TIMEOUT)
+        except asyncio.TimeoutError:
+            log.warning("FindNode exceeded timeout of {} asking node {} for node {}".format(FIND_NODE_HOP_TIMEOUT, node, node_to_find))
             return None
 
     def get_node_from_nodes_list(self, vk, nodes):

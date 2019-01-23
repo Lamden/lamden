@@ -8,6 +8,8 @@ MAX_PEERS = 64
 
 AUTH_TIMEOUT = 20 * CI_FACTOR  # Times-out after retrying auth for the interval
 RPC_TIMEOUT = 10
+FIND_NODE_HOP_TIMEOUT = 10
+FIND_NODE_TIMEOUT = FIND_NODE_HOP_TIMEOUT * 4   # we should multiply by log2(network size)
 
 MIN_BOOTSTRAP_NODES = 1
 DISCOVERY_TIMEOUT = 3
