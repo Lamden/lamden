@@ -27,7 +27,7 @@ class TestRouterReconnect(MPTestCase):
             if node.vk == vk: continue
             node.connect_router_socket(vk=vk)
 
-    @vmnet_test(run_webui=True)  # TODO turn of web UI
+    @vmnet_test(run_webui=False)  # TODO turn of web UI
     def test_late_joining_router(self):
         def assert_router(test_obj):
             c_args = test_obj.handle_router_msg.call_args_list
@@ -74,7 +74,7 @@ class TestRouterReconnect(MPTestCase):
 
         self.start(timeout=20)
 
-    @vmnet_test(run_webui=True)  # TODO turn of web UI
+    @vmnet_test(run_webui=False)  # TODO turn of web UI
     def test_join_then_drop_then_reconnect(self):
         def assert_router(test_obj):
             c_args = test_obj.handle_router_msg.call_args_list
@@ -135,7 +135,7 @@ class TestRouterReconnect(MPTestCase):
 
         self.start(timeout=20)
 
-    @vmnet_test(run_webui=True)  # TODO turn of web UI
+    @vmnet_test(run_webui=False)  # TODO turn of web UI
     def test_join_then_drop_then_send_msg_before_reconnect(self):
         def assert_router(test_obj):
             c_args = test_obj.handle_router_msg.call_args_list

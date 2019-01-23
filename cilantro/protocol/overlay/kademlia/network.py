@@ -174,7 +174,10 @@ class Network(object):
                         log.debug('"{}" resolved to {}'.format(vk, nd.ip))
                         self.cached_vks[vk] = nd.ip
                         return nd.ip
-                    nearest.append(r)
+                    if type(r) == list:
+                        nearest += r
+                    else:
+                        nearest.append(r)
 
             return None
 

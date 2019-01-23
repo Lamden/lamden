@@ -48,7 +48,7 @@ class TestRouterSecure(MPTestCase):
 
         self.start(timeout=10*CI_FACTOR)
 
-    @vmnet_test(run_webui=True)  # TODO turn of web UI
+    @vmnet_test(run_webui=False)  # TODO turn of web UI
     def test_both_bind(self):
         def assert_router(test_obj):
             test_obj.handle_router_msg.assert_called_once()
@@ -76,7 +76,7 @@ class TestRouterSecure(MPTestCase):
 
         self.start(timeout=10*CI_FACTOR)
 
-    @vmnet_test(run_webui=True)  # TODO turn of web UI
+    @vmnet_test(run_webui=False)  # TODO turn of web UI
     def test_both_bind_no_wait_after_vk_lookup(self):
         def assert_router(test_obj):
             test_obj.handle_router_msg.assert_called_once()
