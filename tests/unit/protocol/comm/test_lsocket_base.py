@@ -3,7 +3,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import zmq, zmq.asyncio, asyncio
-from cilantro.protocol.comm.lsocket_new import *
+from cilantro.protocol.comm.lsocket import *
 from cilantro.protocol.comm.socket_manager import *
 from cilantro.protocol import wallet
 from cilantro.messages.base.base_signal import SignalBase

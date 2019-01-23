@@ -172,10 +172,10 @@ class LSocketBase:
 
         cmd_name, args, kwargs = self.conn_tracker[event['vk']]
         kwargs['ip'] = event['ip']
-        url = self._get_url_from_kwargs(kwargs)
+        url = self._get_url_from_kwargs(**kwargs)
 
         self.log.info("Node with vk {} and ip {} has come back online. Re-establishing connection for URL {}"
-                      .format(event['vk'], event['ip']), url)
+                      .format(event['vk'], event['ip'], url))
 
         # First disconnect if we are already connected to this peer
         if url in self.active_conns:
@@ -233,10 +233,11 @@ class LSocketBase:
         else:
             return underlying
 
-    def _get_url_from_kwargs(self, port=None, protocol=None, ip=None, **kwargs):
-        assert port, "port missing"
-        assert ip, "ip missing"
-        assert protocol, "protocol missing"
+    def _get_url_from_kwargs(self, **kwargs):
+        port, protocol, ip = kwargs.get('port'), kwargs.get('protocol', 'tcp'), kwargs.get('ip'),
+        assert port, "port missing from kwargs {}".format(kwargs)
+        assert protocol, "protocol missing from kwargs {}".format(kwargs)
+        assert ip, "ip missing from kwargs {}".format(kwargs)
         return "{}://{}:{}".format(protocol, ip, port)
 
     def _defer_func(self, cmd_name):
