@@ -12,7 +12,7 @@ from os.path import join
 
 
 RDY_WAIT_INTERVAL = 2.0  # TODO move this to constants, and explain it
-MAX_RDY_WAIT = 20.0  # TODO move this to constants, and explain it
+MAX_RDY_WAIT = 60.0  # TODO move this to constants, and explain it
 
 
 def vk_lookup(func):
@@ -23,6 +23,7 @@ def vk_lookup(func):
 
         if contains_vk and not contains_ip:
             cmd_id = self.manager.overlay_client.get_node_from_vk(kwargs['vk'], domain=self.domain, secure=self.secure)
+            self.log.important2("issueing command to lookup {} with cmd id {}".format(kwargs['vk'], cmd_id))
             assert cmd_id not in self.pending_lookups, "Collision! Uuid {} already in pending lookups {}".format(cmd_id, self.pending_lookups)
 
             self.log.socket("Looking up vk {}".format(kwargs['vk']))  # TODO remove
@@ -145,7 +146,7 @@ class LSocket:
 
     @vk_lookup
     def connect(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
-            self._connect_or_bind(should_connect=True, port=port, protocol=protocol, ip=ip, vk=vk)
+        self._connect_or_bind(should_connect=True, port=port, protocol=protocol, ip=ip, vk=vk)
 
     @vk_lookup
     def bind(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):

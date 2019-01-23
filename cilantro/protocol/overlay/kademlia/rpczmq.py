@@ -145,7 +145,10 @@ class RPCProtocol:
                       name, address, b64encode(msgID))
 
             try:
+                log.critical(">>>>>>>>>>START FUNC >>>>>>>>>>>")
+                await asyncio.sleep(1)
                 result = await self.send_msg(address, msgID, txdata)
+                log.critical("<<<<<<<<<<<END FUNC <<<<<<<<<<<<<")
                 return (True, result)
             except asyncio.TimeoutError:
                 self._timeout(msgID)
