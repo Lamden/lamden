@@ -41,6 +41,8 @@ class TestPump(AWSTestCase):
     def test_pump(self):
         log = get_logger("Pumpatron")
 
+        log.important3("Masternode Groups: {}".format(self.groups['masternode']))
+
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
             self.execute_python(nodename, God.run_mn(i, log_lvl=MN_LOG_LVL, nonce_enabled=False, reset_db=RESET_DB))

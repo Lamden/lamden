@@ -130,7 +130,7 @@
         {
             "name": "delegate",
             "image": "cilantro_base",
-            "count": 4,
+            "count": 2,
             "ports": [
                 443
             ]
@@ -138,7 +138,7 @@
         {
             "name": "witness",
             "image": "cilantro_base",
-            "count": 4,
+            "count": 2,
             "ports": [
                 443
             ]
@@ -146,7 +146,7 @@
         {
             "name": "masternode",
             "image": "cilantro_mn",
-            "count": 4,
+            "count": 2,
             "ports": [
                 443
             ]

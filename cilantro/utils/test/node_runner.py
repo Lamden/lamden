@@ -30,6 +30,8 @@ def run_mn(slot_num, log_lvl=11, reset_db=False, nonce_enabled=True):
 
     overwrite_logger_level(log_lvl)
 
+    if slot_num >= len(TESTNET_MASTERNODES):
+        raise Exception("Slot num {} out of bounds for TESTNET_MASTERNODES {}".format(slot_num, TESTNET_MASTERNODES))
     ip = os.getenv('HOST_IP')
     vk, sk = TESTNET_MASTERNODES[slot_num]['vk'],  TESTNET_MASTERNODES[slot_num]['sk']
     log_create("Masternode", vk, ip)
@@ -45,6 +47,8 @@ def run_witness(slot_num, log_lvl=11, reset_db=False):
 
     overwrite_logger_level(log_lvl)
 
+    if slot_num >= len(TESTNET_WITNESSES):
+        raise Exception("Slot num {} out of bounds for TESTNET_WITNESSES {}".format(slot_num, TESTNET_WITNESSES))
     vk, sk = TESTNET_WITNESSES[slot_num]['vk'],  TESTNET_WITNESSES[slot_num]['sk']
     ip = os.getenv('HOST_IP')
     log_create("Witness", vk, ip)
@@ -67,6 +71,8 @@ def run_delegate(slot_num, log_lvl=11, seneca_log_lvl=11, bad_actor=False, reset
     overwrite_logger_level(log_lvl)
     sen_overwrite_log(seneca_log_lvl)
 
+    if slot_num >= len(TESTNET_DELEGATES):
+        raise Exception("Slot num {} out of bounds for TESTNET_DELEGATES {}".format(slot_num, TESTNET_DELEGATES))
     vk, sk = TESTNET_DELEGATES[slot_num]['vk'],  TESTNET_DELEGATES[slot_num]['sk']
     ip = os.getenv('HOST_IP')
     log_create("Delegate", vk, ip)
