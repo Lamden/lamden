@@ -72,7 +72,10 @@ class LSocketRouter(LSocketBase):
         # TODO -- close connection corresponding to this id if we opened it to clean up and prevent leaks
 
     def _process_msg(self, msg: List[bytes]) -> bool:
-        assert len(msg) == 2, "Expected a msg of length 2, but got {}".format(msg)
+        # If message length is not 2, we assume its an IPC msg, and return True.
+        # TODO -- more robust logic here. Can we maybe set a flag on the sock indicating its an IPC socket?
+        if len(msg) != 2:
+            return True
 
         self._mark_client_as_online(msg[0])  # Mark the client as online, regardless of what message they sent
 
