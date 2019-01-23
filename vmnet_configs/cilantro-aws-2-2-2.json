@@ -1,7 +1,7 @@
 {
     "deployment_mode": "testing",
     "environment": {
-        "CONSTITUTION_FILE": "4-4-4.json",
+        "CONSTITUTION_FILE": "2-2-2.json",
         "ANNIHILATE": true,
         "SSL_ENABLED": "True"
     },
@@ -79,7 +79,7 @@
                 "name": "cilantro_base",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "friday-pump",
+                "branch": "do-not-wipe",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0f65671a86f061fcd",
@@ -97,7 +97,7 @@
                 "name": "cilantro_mn",
                 "repo_name": "cilantro",
                 "repo_url": "https://github.com/Lamden/cilantro.git",
-                "branch": "friday-pump",
+                "branch": "do-not-wipe",
                 "username": "ubuntu",
                 "security_group": "simple_https",
                 "build_ami": "ami-0222655b32f6d9d08",
