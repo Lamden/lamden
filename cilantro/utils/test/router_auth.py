@@ -1,4 +1,5 @@
 from cilantro.protocol.multiprocessing.worker import Worker
+from cilantro.messages.base.base import MessageBase
 
 import os
 import asyncio
@@ -44,8 +45,11 @@ class RouterAuthTester(Worker):
         assert self.router, "create_router_socket must be called first"
         self.router.bind(ip=ip, port=port, protocol=protocol)
 
-    def send_msg(self, id_frame: bytes, msg: bytes):
+    def send_raw_msg(self, id_frame: bytes, msg: bytes):
         self.router.send_multipart([id_frame, msg])
+
+    def send_msg(self, msg: MessageBase, header: bytes):
+        self.router.send_msg(msg, header)
 
     def handle_router_msg(self, frames):
         self.log.important("Router got msg with frames {}".format(frames))

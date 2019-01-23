@@ -3,8 +3,8 @@ from cilantro.messages.envelope.envelope import Envelope
 from cilantro.messages.base.base import MessageBase
 from cilantro.protocol import wallet
 
-from cilantro.protocol.reactor.socket_manager import SocketManager
-from cilantro.protocol.reactor.lsocket import LSocket
+from cilantro.protocol.comm.socket_manager import SocketManager
+from cilantro.protocol.comm.lsocket import LSocket
 
 import asyncio
 import zmq.asyncio

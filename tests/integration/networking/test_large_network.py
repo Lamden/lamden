@@ -2,8 +2,10 @@ from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
 from cilantro.constants.testnet import *
 from cilantro.constants.test_suites import CI_FACTOR
+from cilantro.messages.signals.poke import Poke
 
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
+from cilantro.utils.test.mp_testables import MPRouterAuth
 from cilantro.utils.test.mp_testables import MPPubSubAuth
 from cilantro.storage.vkbook import VKBook
 import unittest, time
@@ -15,16 +17,26 @@ def config_sub(test_obj):
     return test_obj
 
 
+def config_node(test_obj):
+    from unittest.mock import MagicMock
+    test_obj.handle_router_msg = MagicMock()
+    return test_obj
+
+
 class TestLargeNetwork(MPTestCase):
     config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-6.json'.format(CILANTRO_PATH)
     # log_lvl = 19
 
+    def config_router(self, node: MPRouterAuth, vk_list: list):
+        self.log.test("Configuring node named {}".format(node.name))
+        node.create_router_socket(identity=node.ip.encode(), secure=False)  # TODO change this back to True
+        node.bind_router_socket(ip=node.ip)
+        for vk in vk_list:
+            if node.vk == vk: continue
+            node.connect_router_socket(vk=vk)
+
     @vmnet_test
-    def test_2_2_4(self):
-        """
-        Tests creating a network with 2 Masternodes, 2 Witnesses, and 4 Delegates. Ensures everyone can connect to
-        each other.
-        """
+    def test_pubsub(self):
         def assert_sub(test_obj):
             c_args = test_obj.handle_sub.call_args_list
             assert len(c_args) == 4, "Expected 4 messages (one from each node). Instead, got:\n{}".format(c_args)
@@ -81,6 +93,42 @@ class TestLargeNetwork(MPTestCase):
         self.start(timeout=30)
 
         time.sleep(2*CI_FACTOR)  # Allow time to shut down properly
+
+    @vmnet_test(run_webui=True)  # TODO turn of web UI
+    def test_router(self):
+        def assert_router(test_obj):
+            c_args = test_obj.handle_router_msg.call_args_list
+            assert len(c_args) == 4, "Expected 4 messages (one from each node). Instead, got:\n{}".format(c_args)
+
+        BLOCK = False
+
+        node1 = MPRouterAuth(sk=TESTNET_MASTERNODES[0]['sk'], name='node_1', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
+        node2 = MPRouterAuth(sk=TESTNET_MASTERNODES[1]['sk'], name='node_2', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
+        node3 = MPRouterAuth(sk=TESTNET_WITNESSES[0]['sk'], name='node_3', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
+        node4 = MPRouterAuth(sk=TESTNET_WITNESSES[1]['sk'], name='node_4', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
+        node5 = MPRouterAuth(sk=TESTNET_DELEGATES[0]['sk'], name='node_5', config_fn=config_node, assert_fn=assert_router, block_until_rdy=BLOCK)
+
+        time.sleep(8*CI_FACTOR)  # Nap while nodes hookup
+
+        all_vks = [TESTNET_MASTERNODES[0]['vk'], TESTNET_MASTERNODES[1]['vk'], TESTNET_WITNESSES[0]['vk'],
+                   TESTNET_WITNESSES[1]['vk'], TESTNET_DELEGATES[0]['vk']]
+        all_nodes = (node1, node2, node3, node4, node5)
+
+        self.log.test("Configuring all nodes")
+        for n in all_nodes:
+            self.config_router(n, all_vks)
+
+        # TODO try this without allowing time for VK lookups
+        time.sleep(16*CI_FACTOR)  # Allow time for VK lookups
+
+        # Everyone sends messages to everyone
+        self.log.test("Sending messages from all nodes")
+        for sender in (node1, node2, node3, node4, node5):
+            for receiver in (node1, node2, node3, node4, node5):
+                if sender == receiver: continue
+                sender.send_msg(Poke.create(), receiver.ip.encode())
+
+        self.start(timeout=20)
 
 
 if __name__ == '__main__':

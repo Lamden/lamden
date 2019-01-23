@@ -1,6 +1,8 @@
 from cilantro.logger import get_logger
 from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
-from cilantro.protocol.reactor.lsocket import LSocket
+# from cilantro.protocol.comm.lsocket import LSocket
+from cilantro.protocol.comm.lsocket import LSocketBase
+from cilantro.protocol.comm.lsocket_router import LSocketRouter
 from cilantro.protocol.overlay.auth import Auth
 from cilantro.utils.utils import is_valid_hex
 
@@ -45,15 +47,18 @@ class SocketManager:
     def set_new_node_tracking(self):
         self.overlay_client.set_new_node_tracking()
 
-    def create_socket(self, socket_type, secure=False, domain='*', *args, name='LSocket', **kwargs) -> LSocket:
+    def create_socket(self, socket_type, secure=False, domain='*', *args, name='LSocket', **kwargs) -> LSocketBase:
         assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)
 
         ctx = self.secure_context if secure else self.context
         zmq_socket = ctx.socket(socket_type, *args, **kwargs)
 
-        socket = LSocket(zmq_socket, manager=self, secure=secure, domain=domain, name=name)
-        self.sockets.append(socket)
+        if socket_type == zmq.ROUTER:
+            socket = LSocketRouter(zmq_socket, manager=self, secure=secure, domain=domain, name=name)
+        else:
+            socket = LSocketBase(zmq_socket, manager=self, secure=secure, domain=domain, name=name)
 
+        self.sockets.append(socket)
         return socket
 
     def _handle_overlay_event(self, e):
@@ -68,26 +73,13 @@ class SocketManager:
             sock = self.pending_lookups.pop(e['event_id'])
             sock.handle_overlay_event(e)
 
-        # Retry any failed lookups registered by sockets when a node comes online
-        elif e['event'] == 'node_online' and e['vk'] in self.vk_lookups:
-            self.log.debugv("sock manager got node_online event for vk {}! Triggering reconnect with info {}"
-                            .format(e['vk'], self.vk_lookups[e['vk']]))
+        # Forward 'node_online' events to all sockets to that they can reconnect if necessary
+        elif e['event'] == 'node_online':
+            for sock in self.sockets:
+                sock.handle_overlay_event(e)
 
-            idx_to_rm = []
-            for i, cmd_tuple in enumerate(self.vk_lookups[e['vk']]):
-                sock, cmd_name, args, kwargs = cmd_tuple
-                kwargs['ip'] = e['ip']
-                # Only remove bind commands (we will do another connect call everytime a Node comes online)
-                if cmd_name == 'bind':
-                    idx_to_rm.append(i)
-
-                getattr(sock, cmd_name)(*args, **kwargs)
-
-            for i in reversed(idx_to_rm):
-                self.vk_lookups[e['vk']].pop(i)
-
+        # TODO proper error handling / 'bad actor' logic here
         elif e['event'] == 'unauthorized_ip':
-            # TODO proper error handling / 'bad actor' logic here
             self.log.error("SocketManager got unauthorized_ip event {}".format(e))
 
         else:

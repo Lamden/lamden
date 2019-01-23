@@ -12,6 +12,7 @@ allowed = hmap('allowed', str, hmap(key_type=str, value_type=int))
 xrate['TAU_STP'] = 1.0
 balances['LamdenReserves'] = 0
 
+
 @seed
 def initialize_contract():
     # Deposit to all network founders
@@ -28,6 +29,7 @@ def initialize_contract():
     for w in ALL_WALLETS:
         balances[w] = SEED_AMOUNT
 
+
 @export
 def submit_stamps(stamps):
     assert stamps > 0, "Stamps supplied must be non-negative"
@@ -39,12 +41,15 @@ def submit_stamps(stamps):
     sender_balance = balances[rt['origin']]
     assert sender_balance >= 0, "Not enough funds to submit stamps"
 
+
 @export
 def balance_of(wallet_id):
     return balances[wallet_id]
 
+
 @export
 def transfer(to, amount):
+    assert amount > 0, "Amount must be greater than 0"
     # print("transfering from {} to {} with amount {}".format(rt['sender'], to, amount))
     balances[rt['sender']] -= amount
     balances[to] += amount
@@ -52,24 +57,31 @@ def transfer(to, amount):
 
     assert sender_balance >= 0, "Sender balance must be non-negative!!!"
 
+
 @export
 def approve(spender, amount):
+    assert amount > 0, "Amount must be greater than 0"
     allowed[rt['sender']][spender] = amount
+
 
 @export
 def transfer_from(_from, to, amount):
+    assert amount > 0, "Amount must be greater than 0"
     assert allowed[_from][rt['sender']] >= amount
     assert balances[_from] >= amount
     allowed[_from][rt['sender']] -= amount
     balances[_from] -= amount
     balances[to] += amount
 
+
 @export
 def allowance(approver, spender):
     return allowed[approver][spender]
 
+
 @export
 def mint(to, amount):
+    assert amount > 0, "Amount must be greater than 0"
     # print("minting {} to wallet {}".format(amount, to))
     assert rt['sender'] == rt['author'], 'Only the original contract author can mint!'
 

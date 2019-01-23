@@ -1,6 +1,6 @@
 from cilantro.logger import get_logger
 from cilantro.protocol import wallet
-from cilantro.protocol.reactor.socket_manager import SocketManager
+from cilantro.protocol.comm.socket_manager import SocketManager
 from cilantro.messages.envelope.envelope import Envelope
 
 from typing import Callable, Union
