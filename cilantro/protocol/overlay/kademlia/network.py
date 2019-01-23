@@ -146,11 +146,11 @@ class Network(object):
         else:
             node_to_find = Node(digest(vk), vk=vk)
             nearest = self.protocol.router.findNode(node_to_find)
-            # nd = self.get_node_from_nodes_list(vk, nearest)
-            # if nd:
-            #     log.debug('"{}" found in routing table resolving to {}'.format(vk, nd.ip))
-            #     self.cached_vks[vk] = nd.ip
-            #     return nd.ip
+            nd = self.get_node_from_nodes_list(vk, nearest)
+            if nd:
+                log.debug('"{}" found in routing table resolving to {}'.format(vk, nd.ip))
+                self.cached_vks[vk] = nd.ip
+                return nd.ip
             processed = set()
             while len(nearest) > 0:
                 futures = []
