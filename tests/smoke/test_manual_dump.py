@@ -10,6 +10,8 @@ ENABLE_BAD_ACTORS = False
 BAD_ACTOR_SET = {1}  # The indices of delegates who shall misbehave and periodically send bad SubBlockContender
 BAD_SB_SET = {1}  # The indices of the sub-blocks to send bad SubBlockContenders for
 
+RESET_DB = False
+
 
 from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('{}.json'.format(NETWORK_SIZE))
@@ -62,23 +64,23 @@ class TestManualDump(BaseNetworkTestCase):
 
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
-            self.execute_python(nodename, God.run_mn(i, log_lvl=MN_LOG_LVL, nonce_enabled=False, reset_db=True),
+            self.execute_python(nodename, God.run_mn(i, log_lvl=MN_LOG_LVL, nonce_enabled=False, reset_db=RESET_DB),
                                 async=True, profiling=self.PROFILE_TYPE)
 
         # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):
-            self.execute_python(nodename, God.run_witness(i, log_lvl=WITNESS_LOG_LVL, reset_db=True), async=True,
+            self.execute_python(nodename, God.run_witness(i, log_lvl=WITNESS_LOG_LVL, reset_db=RESET_DB), async=True,
                                 profiling=self.PROFILE_TYPE)
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
             if ENABLE_BAD_ACTORS and i in BAD_ACTOR_SET:
                 self.execute_python(nodename, God.run_delegate(i, log_lvl=DELEGATE_LOG_LVL, seneca_log_lvl=SENECA_LOG_LVL,
-                                    reset_db=True, bad_actor=True, bad_sb_set=BAD_SB_SET), async=True,
+                                    reset_db=RESET_DB, bad_actor=True, bad_sb_set=BAD_SB_SET), async=True,
                                     profiling=self.PROFILE_TYPE)
             else:
                 self.execute_python(nodename, God.run_delegate(i, log_lvl=DELEGATE_LOG_LVL, seneca_log_lvl=SENECA_LOG_LVL,
-                                    reset_db=True), async=True, profiling=self.PROFILE_TYPE)
+                                    reset_db=RESET_DB), async=True, profiling=self.PROFILE_TYPE)
 
         while True:
             user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit.")

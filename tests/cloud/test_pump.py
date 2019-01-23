@@ -5,6 +5,8 @@ WITNESS_LOG_LVL = 30
 DELEGATE_LOG_LVL = 11
 SENECA_LOG_LVL = 11
 
+RESET_DB = False
+
 from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('{}.json'.format(NETWORK_SIZE))
 
@@ -21,6 +23,7 @@ import logging, os, shutil, time
 from cilantro.constants.system_config import *
 
 detached = True
+
 
 class TestPump(AWSTestCase):
 
@@ -40,16 +43,16 @@ class TestPump(AWSTestCase):
 
         # Bootstrap master
         for i, nodename in enumerate(self.groups['masternode']):
-            self.execute_python(nodename, God.run_mn(i, log_lvl=MN_LOG_LVL, nonce_enabled=False, reset_db=True))
+            self.execute_python(nodename, God.run_mn(i, log_lvl=MN_LOG_LVL, nonce_enabled=False, reset_db=RESET_DB))
 
         # Bootstrap witnesses
         for i, nodename in enumerate(self.groups['witness']):
-            self.execute_python(nodename, God.run_witness(i, log_lvl=WITNESS_LOG_LVL, reset_db=True))
+            self.execute_python(nodename, God.run_witness(i, log_lvl=WITNESS_LOG_LVL, reset_db=RESET_DB))
 
         # Bootstrap delegates
         for i, nodename in enumerate(self.groups['delegate']):
             self.execute_python(nodename, God.run_delegate(i, log_lvl=DELEGATE_LOG_LVL, seneca_log_lvl=SENECA_LOG_LVL,
-                                                           reset_db=True))
+                                                           reset_db=RESET_DB))
 
         # Bootstrap pump
         #self.execute_python('mgmt', God.pump_it(rate=self.PUMP_RATE, use_poisson=self.MODEL_AS_POISSON, pump_wait=self.PUMP_WAIT,

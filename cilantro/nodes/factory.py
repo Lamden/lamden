@@ -16,6 +16,7 @@ def _wait_for_redis():
     while True:
         try:
             r = redis.StrictRedis()
+            print("Redis ready!")
             r.client_list()
             break
         except:
@@ -31,8 +32,10 @@ def _wait_for_mongo():
             MongoClient()
             break
         except:
+            print("Mongo ready!")
             print("Waiting for Mongo to be ready...")
         time.sleep(1)
+
 
 class NodeFactory:
     @staticmethod
