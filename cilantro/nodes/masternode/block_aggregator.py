@@ -227,7 +227,7 @@ class BlockAggregator(Worker):
         new_block_notif = NewBlockNotification.create_from_block_data(block_data)
         # sleep a bit so slower nodes don't have to constantly use catchup mgr 
         time.sleep(0.1)
-        self.pub.send_raw_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
+        self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
         self.log.info('Published new block notif with hash "{}" and prev hash {}'
                       .format(block_data.block_hash, block_data.prev_block_hash))
 
@@ -235,12 +235,12 @@ class BlockAggregator(Worker):
         message = EmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
         skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, StateDriver.get_latest_block_num()+1, sub_blocks)
-        self.pub.send_raw_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
+        self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
     def send_fail_block_notif(self):
         msg = self.curr_block.get_failed_block_notif()
-        self.pub.send_raw_msg(msg=msg, header=DEFAULT_FILTER.encode())
+        self.pub.send_msg(msg=msg, header=DEFAULT_FILTER.encode())
         self.log.debug("Uh oh! Sending failed block notif {}".format(msg))
 
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
