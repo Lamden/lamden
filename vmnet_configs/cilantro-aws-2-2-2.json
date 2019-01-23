@@ -89,6 +89,7 @@
                 "update_commands": [
                     "pip3 install vmnet --upgrade --no-cache-dir",
                     "pip3 install seneca --upgrade --no-cache-dir",
+                    "pip3 install sanic-cors --upgrade --no-cache-dir",
                     "sudo apt-get install socat",
                     "sudo USER=${USER} bash scripts/setup-ssl.sh"
                 ]
@@ -107,6 +108,7 @@
                 "update_commands": [
                     "pip3 install vmnet --upgrade --no-cache-dir",
                     "pip3 install seneca --upgrade --no-cache-dir",
+                    "pip3 install sanic-cors --upgrade --no-cache-dir",
                     "sudo apt-get install socat",
                     "sudo USER=${USER} bash scripts/setup-ssl.sh"
                 ]
