@@ -2,6 +2,8 @@ from cilantro.logger import get_logger
 import time, os
 
 
+log = get_logger("MN_URL_GETTER")
+
 def get_mn_urls():
     if os.getenv('HOST_IP'):
         ips = os.getenv('MASTERNODE', '0.0.0.0')
@@ -12,9 +14,11 @@ def get_mn_urls():
             ips = [ips]
 
         if os.getenv("SSL_ENABLED", None) is not None:
+            log.important("\n\n\nSSL ENABLED. USING HTTPS\n\n\n")
             urls = ["https://{}".format(ip) for ip in ips]
         else:
             urls = ["http://{}:8080".format(ip) for ip in ips]
+            log.important("\n\n\nSSL NOT ENABLED. USING HTTP\n\n\n")
         return urls
 
     # If this is not getting run on a container, set MN URL to 0.0.0.0

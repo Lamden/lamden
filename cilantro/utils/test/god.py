@@ -50,6 +50,7 @@ class God:
 
     @staticmethod
     def dump_it(*args, return_fn=True, **kwargs):
+        God.mn_urls = get_mn_urls()  # Reset MN URLS
         if return_fn:
             return wrap_func(dump_it, *args, **kwargs)
         else:
@@ -57,6 +58,7 @@ class God:
 
     @staticmethod
     def pump_it(*args, return_fn=True, **kwargs):
+        God.mn_urls = get_mn_urls()  # Reset MN URLS
         if return_fn:
             return wrap_func(pump_it, *args, **kwargs)
         else:
