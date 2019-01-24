@@ -14,11 +14,16 @@ def get_mn_urls():
             ips = [ips]
 
         if os.getenv("SSL_ENABLED", None) is not None:
-            log.important("\n\n\nSSL ENABLED. USING HTTPS\n\n\n")
+            log.important("SSL ENABLED. USING HTTPS")
             urls = ["https://{}".format(ip) for ip in ips]
+
+            # DEBUG -- TODO DELETE
+            urls = ["https://{}".format(url) for url in ('davisnet-masternode0.theanarchy.net', 'davisnet-masternode1.theanarchy.net')]
+            # END DEBUG
+
         else:
             urls = ["http://{}:8080".format(ip) for ip in ips]
-            log.important("\n\n\nSSL NOT ENABLED. USING HTTP\n\n\n")
+            log.important("SSL NOT ENABLED. USING HTTP")
         return urls
 
     # If this is not getting run on a container, set MN URL to 0.0.0.0

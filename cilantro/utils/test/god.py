@@ -50,7 +50,6 @@ class God:
 
     @staticmethod
     def dump_it(*args, return_fn=True, **kwargs):
-        God.mn_urls = get_mn_urls()  # Reset MN URLS
         if return_fn:
             return wrap_func(dump_it, *args, **kwargs)
         else:
@@ -58,7 +57,6 @@ class God:
 
     @staticmethod
     def pump_it(*args, return_fn=True, **kwargs):
-        God.mn_urls = get_mn_urls()  # Reset MN URLS
         if return_fn:
             return wrap_func(pump_it, *args, **kwargs)
         else:
@@ -109,6 +107,7 @@ class God:
         Pump random transactions from random users to Masternode's REST endpoint at an average rate of 'rate'
         transactions per second. This func blocks.
         """
+        God.mn_urls = get_mn_urls()  # Reset MN URLS
         if pump_wait > 0:
             cls.log.important("Pumper sleeping {} seconds before starting...".format(pump_wait))
             time.sleep(pump_wait)
@@ -155,6 +154,7 @@ class God:
     @classmethod
     def _dump_it(cls, volume: int, delay: int=0, gen_func=None):
         """ Dump it fast. """
+        God.mn_urls = get_mn_urls()  # Reset MN URLS
         assert volume > 0, "You must dump at least 1 transaction silly"
 
         if not gen_func:
