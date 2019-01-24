@@ -56,9 +56,11 @@ class PubSubAuthTester(Worker):
     def connect_sub(self, socket_key=SUB_SOCK_KEY, vk='', ip='', port=PORT, protocol=PROTOCOL):
         assert socket_key in self.sub_sockets, "Key {} not found in sub sockets {}".format(socket_key, self.sub_sockets)
 
+        self.log.important("connecting to vk {}".format(vk))
+
         sock = self.sub_sockets[socket_key]
         sock.connect(port=port, protocol=protocol, vk=vk, ip=ip)
-        time.sleep(2)
+        time.sleep(2) # TODO for davis
 
     def start_publishing(self, num_msgs=50, interval=1, filter=b''):
         assert len(self.pub_sockets) > 0, "Must add at least 1 pub socket to start publishing"

@@ -94,7 +94,7 @@ class TestLargeNetwork(MPTestCase):
 
         time.sleep(2*CI_FACTOR)  # Allow time to shut down properly
 
-    @vmnet_test(run_webui=True)  # TODO turn of web UI
+    @vmnet_test(run_webui=False)  # TODO turn of web UI
     def test_router(self):
         def assert_router(test_obj):
             c_args = test_obj.handle_router_msg.call_args_list
