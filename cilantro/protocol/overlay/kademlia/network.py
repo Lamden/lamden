@@ -107,25 +107,29 @@ class Network(object):
             addrs: A `list` of (ip, port) `tuple` pairs.  Note that only IP
                    addresses are acceptable - hostnames will cause an error.
         """
+
         log.debug("Attempting to bootstrap node with {} initial contacts: {}".format(len(addrs), addrs))
+
         processed = set()
         processed.add(self.node.vk)
         nearest = []
+        futures = []
         for addr in addrs:
             if addr.vk in processed:
                 continue
             processed.add(addr.vk)
-            result = await self.protocol.callFindNode(addr, self.node)
-            nearest.extend(result)
+            futures.append(self.protocol.callFindNode(addr, self.node))
+        results = await asyncio.gather(*futures)
+        for r in results:
+            if r != None:
+                nearest.extend(r)
+        futures = []
         for addr in nearest:
             if addr.vk in processed:
                 continue
             processed.add(addr.vk)
-            await self.protocol.callFindNode(addr, self.node, False)
-        
-    async def bootstrap_node(self, addr):
-        result = await self.protocol.ping(addr, self.node.id)
-        return Node(result[1], addr[0], addr[1]) if result[0] else None
+            futures.append(self.protocol.callFindNode(addr, self.node, False))
+        results = await asyncio.gather(*futures)
 
     def track_and_inform(self):
         self.protocol.set_track_on()
@@ -156,33 +160,34 @@ class Network(object):
                 self.cached_vks[vk] = nd.ip
                 return nd.ip
             processed = set()
-            processed.add(self.node.vk)
             while len(nearest) > 0:
-                node = nearest.pop()
-                if node.vk in processed:
-                    continue
-                processed.add(node.vk)
-                result = await self._find_node(node, node_to_find)
-                if result is None:
-                    return None
-                num_hops += 1
-                nd = self.get_node_from_nodes_list(vk, result)
-                if nd:
-                    log.debug('"{}" found after {} hops, resolving to {}'.format(vk, num_hops, nd.ip))
-                    self.cached_vks[vk] = nd.ip
-                    # @raghu why do we do this below? Is it to make sure we alert nodes of our presence once we find?
-                    tmp_res = await self._find_node(nd, node_to_find)
-                    return nd.ip
-                nearest.extend(result)
+                futures = []
+                for node in nearest:
+                    if node.vk not in processed:
+                        futures.append(self._find_node(node, node_to_find))
+                        processed.add(node.vk)
+                results = await asyncio.gather(*futures)
+                for r in results:
+                    if r == None: continue
+                    nd = self.get_node_from_nodes_list(vk, r)
+                    if nd:
+                        log.debug('"{}" resolved to {}'.format(vk, nd.ip))
+                        self.cached_vks[vk] = nd.ip
+                        return nd.ip
+                    if type(r) == list:
+                        nearest += r
+                    else:
+                        nearest.append(r)
 
             return None
 
     async def _find_node(self, node, node_to_find):
         try:
-            return await asyncio.wait_for(self.protocol.callFindNode(node, node_to_find), FIND_NODE_HOP_TIMEOUT)
+            fut = asyncio.ensure_future(self.protocol.callFindNode(node, node_to_find))
+            await asyncio.wait_for(fut, 12)
+            return fut.result()
         except asyncio.TimeoutError:
-            log.warning("FindNode exceeded timeout of {} asking node {} for node {}".format(FIND_NODE_HOP_TIMEOUT, node, node_to_find))
-            return None
+            log.warning("find_node timed out asking node {} for node_to_find {}".format(node, node_to_find))
 
     def get_node_from_nodes_list(self, vk, nodes):
         for node in nodes:

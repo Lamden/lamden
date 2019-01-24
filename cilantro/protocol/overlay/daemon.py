@@ -27,7 +27,6 @@ def reply(fn):
             id_frame,
             json.dumps(res).encode()
         ])
-
     return _reply
 
 
@@ -38,7 +37,6 @@ def async_reply(fn):
                 id_frame,
                 json.dumps(fut.result()).encode()
             ])
-
         id_frame = args[0]
         fut = asyncio.ensure_future(fn(self, *args[1:], **kwargs))
         fut.add_done_callback(_done)
@@ -76,13 +74,13 @@ class OverlayServer(object):
             msg = await self.cmd_sock.recv_multipart()
             self.log.debug('[Overlay] Received cmd (Proc={}): {}'.format(msg[0], msg[1:]))
             data = [b.decode() for b in msg[2:]]
+
             getattr(self, msg[1].decode())(msg[0], *data)
 
     @async_reply
     async def get_node_from_vk(self, event_id, vk, domain='*', secure='False'):
         # TODO perhaps return an event instead of throwing an error in production
         assert vk in VKBook.get_all(), "Attempted to look up VK {} that is not in VKBook {}".format(vk, VKBook.get_all())
-
         ip = await self.interface.lookup_ip(vk)
         if not ip:
             return {
@@ -104,7 +102,6 @@ class OverlayServer(object):
     async def check_node_status(self, event_id, vk):
         # TODO perhaps return an event instead of throwing an error in production
         assert vk in VKBook.get_all(), "Attempted to look up VK {} that is not in VKBook {}".format(vk, VKBook.get_all())
-
         ip = await self.interface.lookup_ip(vk)
         if not ip:
             return {
