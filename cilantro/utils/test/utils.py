@@ -18,7 +18,7 @@ def get_mn_urls():
             urls = ["https://{}".format(ip) for ip in ips]
 
             # DEBUG -- TODO DELETE
-            urls = ["https://{}".format(url) for url in ('davisnet-masternode0.theanarchy.net', 'davisnet-masternode1.theanarchy.net')]
+            urls = ["https://{}".format(url) for url in ('davisnet-masternode0.anarchynet.io', 'davisnet-masternode1.anarchynet.io')]
             # END DEBUG
 
         else:

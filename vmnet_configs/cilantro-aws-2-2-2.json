@@ -17,7 +17,7 @@
               ],
             "TTL": 20,
             "service": "route53",
-            "domain_name": "theanarchy.net",
+            "domain_name": "anarchynet.io",
             "subnet_prefix": "davisnet",
             "record_type": "A"
         },
