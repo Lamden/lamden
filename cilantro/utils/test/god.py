@@ -93,7 +93,7 @@ class God:
     def send_tx(cls, tx: TransactionBase):
         mn_url = cls._get_mn_url()
         try:
-            r = requests.post(mn_url, data=TransactionContainer.create(tx).serialize())
+            r = requests.post(mn_url, data=TransactionContainer.create(tx).serialize(), verify=False)
             cls.log.spam("POST request to MN at URL {} has status code: {}".format(mn_url, r.status_code))
             return r
         except Exception as e:
