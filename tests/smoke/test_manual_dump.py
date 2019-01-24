@@ -2,7 +2,7 @@ NETWORK_SIZE = '2-2-2'
 
 MN_LOG_LVL = 11
 WITNESS_LOG_LVL = 30
-DELEGATE_LOG_LVL = 11
+DELEGATE_LOG_LVL = 1# 11
 SENECA_LOG_LVL = 11
 
 # Set ENABLE_BAD_ACTORS to TRUE to enable periodic consensus failures
