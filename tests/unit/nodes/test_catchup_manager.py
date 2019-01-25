@@ -116,8 +116,8 @@ class TestCatchupManager(TestCase):
 
     def test_recv_block_idx_req_sends_correct_idx_replies_from_block_num(self):
         cm = self._build_manager()
-        # cm.run_catchup()   
-        cm.is_caught_up = True 
+        # cm.run_catchup()
+        cm.is_caught_up = True
 
         vk1 = VKBook.get_masternodes()[0]
         vk2 = VKBook.get_masternodes()[1]
@@ -143,8 +143,8 @@ class TestCatchupManager(TestCase):
         print(expected_reply)
         print(cm.router.send_msg.call_args)
         self._assert_router_called_with_msg(cm, msg=expected_reply, possible_headers=(vk1.encode(),))
-        cm.is_caught_up = False 
-    
+        cm.is_caught_up = False
+
     def test_catchup_with_new_blocks_and_replies(self):
         cm = self._build_manager()
         cm.run_catchup()
@@ -170,10 +170,12 @@ class TestCatchupManager(TestCase):
         index_reply1 = BlockIndexReply.create(reply_data1)
         index_reply2 = BlockIndexReply.create(reply_data2)
         index_reply3 = BlockIndexReply.create(reply_data3)
-        cm.recv_block_idx_reply(vk1, index_reply1)
-        cm.recv_block_idx_reply(vk2, index_reply2)
-        cm.recv_block_idx_reply(vk3, index_reply3)
-        cm.recv_block_idx_reply(vk4, index_reply3)
+        cm.recv_block_idx_reply(vk1, index_reply1)  # only first 2/5
+        cm.recv_block_idx_reply(vk4, index_reply3)  # first 4/5
+        cm.recv_block_idx_reply(vk3, index_reply2)  # 5/5
+        cm.recv_block_idx_reply(vk2, index_reply2)  # 5/5
+
+        self.assertFalse(cm.is_catchup_done())
 
         # Send the BlockDataReplies
         for bd_reply in reply_datas:

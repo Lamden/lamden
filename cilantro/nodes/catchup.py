@@ -166,7 +166,8 @@ class CatchupManager:
         tmp_list.reverse()
         self.new_target_blk_num = tmp_list[-1].get('blockNum')
         new_blks = self.new_target_blk_num - self.target_blk_num
-        self.log.important("nt {} tb {} tlist {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
+        self.log.debugv("new target block num {}\ntarget block num {}\ntemp list {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
+        self.log.important("new target block num {}\ntarget block num {}\ntemp list {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
         if new_blks > 0:
             self.target_blk_num = self.new_target_blk_num
             update_list = tmp_list[-new_blks:]
@@ -176,14 +177,12 @@ class CatchupManager:
             if not self.awaited_blknum:
                 self.awaited_blknum = self.curr_num
                 self.process_recv_idx()
-        
 
     def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
         self._recv_block_idx_reply(sender_vk, reply)
         # self.log.important2("RCV BIRp")
         # self.dump_debug_info()
         return self.is_catchup_done()
-  
 
     def _send_block_data_req(self, mn_vk, req_blk_num):
         self.log.info("Unicast BlockDateRequests to masternode owner with current block num {} key {}"
@@ -206,7 +205,8 @@ class CatchupManager:
 
         self.rcv_block_dict[rcv_blk_num] = reply
         if rcv_blk_num > self.awaited_blknum:
-            self.log.debug("This should not happen right now!")
+            self.log.debug("Got block num {}, still awaiting block num {}".format(rcv_blk_num, self.awaited_blknum))
+            # self.log.fatal("This should not happen right now! rcv_blk_num={} ... self.awaited_blknum={}".format(rcv_blk_num, self.awaited_blknum))
             return
 
         if (rcv_blk_num == self.awaited_blknum):
@@ -260,7 +260,7 @@ class CatchupManager:
             return
         if nw_blk_num > (self.target_blk_num + 1):
             self.run_catchup()
-        else: 
+        else:
             # actually you can request block data directly
             # elem = {}
             # elem["blockNum"] = nw_blk_num
@@ -271,7 +271,7 @@ class CatchupManager:
             self.target_blk_num = nw_blk_num
             for vk in update.block_owners:
                 self._send_block_data_req(mn_vk = vk, req_blk_num = nw_blk_num)
-    
+
     def recv_new_blk_notif(self, update: BlockMetaData):
         self._recv_blk_notif(update)
         return self.is_catchup_done()
@@ -357,7 +357,7 @@ class CatchupManager:
     def is_catchup_done(self):
         if self.is_caught_up:
             return True
-        self.is_caught_up = (self.target_blk_num >= self.curr_num) and \
+        self.is_caught_up = (self.target_blk_num == self.curr_num) and \
                             self._check_idx_reply_quorum()
         # if self.is_caught_up:       # reset here
             # self.node_idx_reply_set.clear()
@@ -377,5 +377,5 @@ class CatchupManager:
                             "rcv_block_dict - {}"
                             "awaited_blknum - {}"
                             .format(self.is_caught_up, self.block_delta_list, self.target_blk_num,
-                                    self.curr_hash, self.curr_num, 
+                                    self.curr_hash, self.curr_num,
                                     self.rcv_block_dict, self.awaited_blknum))
