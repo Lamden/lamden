@@ -52,7 +52,7 @@ class CatchupManager:
 
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
         self.target_blk_num = self.curr_num
-        self.awaited_blknum = self.curr_num      # catch up waiting on this blk num
+        self.awaited_blknum = None
 
     def update_redis_state(self):
         db_latest_blk_num = StorageDriver.get_latest_block_num()
@@ -84,7 +84,7 @@ class CatchupManager:
         self.is_caught_up = False
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
         self.target_blk_num = self.curr_num
-        self.awaited_blknum = self.curr_num
+        self.awaited_blknum = None
 
         # starting phase I
         self.timeout_catchup = time.time()
@@ -152,9 +152,8 @@ class CatchupManager:
         if sender_vk in self.node_idx_reply_set:
             return      # already processed
 
-        self.node_idx_reply_set.add(sender_vk)
-
         if not reply.indices:
+            self.node_idx_reply_set.add(sender_vk)
             self.log.important("Received BlockIndexReply with no index info from masternode {}".format(sender_vk))
             # self.log.important("responded mn - {}".format(self.node_idx_reply_set))
             # self.target_blk_num = self.curr_num
@@ -163,11 +162,10 @@ class CatchupManager:
             return
 
         tmp_list = reply.indices
-        tmp_list.reverse()
+        # tmp_list.reverse()  TODO why did we do this???
         self.new_target_blk_num = tmp_list[-1].get('blockNum')
         new_blks = self.new_target_blk_num - self.target_blk_num
-        self.log.debugv("new target block num {}\ntarget block num {}\ntemp list {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
-        self.log.important("new target block num {}\ntarget block num {}\ntemp list {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
+
         if new_blks > 0:
             self.target_blk_num = self.new_target_blk_num
             update_list = tmp_list[-new_blks:]
@@ -177,6 +175,10 @@ class CatchupManager:
             if not self.awaited_blknum:
                 self.awaited_blknum = self.curr_num
                 self.process_recv_idx()
+
+        self.node_idx_reply_set.add(sender_vk)
+        # self.log.debugv("new target block num {}\ntarget block num {}\ntemp list {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
+        self.log.important("new target block num {}\ntarget block num {}\ntemp list {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
 
     def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
         self._recv_block_idx_reply(sender_vk, reply)
@@ -214,9 +216,8 @@ class CatchupManager:
             self.update_received_block(block = reply)
             self.process_recv_idx()
 
-
     def recv_block_data_reply(self, reply: BlockData):
-
+        self.log.important("recv block data reply {}".format(reply))   # TODO remove
         self._recv_block_data_reply(reply)
         # self.log.important2("RCV BDRp")
         # self.dump_debug_info()
@@ -325,9 +326,10 @@ class CatchupManager:
                 self.awaited_blknum = self.awaited_blknum + 1
             blknum = 0
             blk_ptr = None
+            self.log.important2("block delata list {}".format(self.block_delta_list))
             while (blknum < self.awaited_blknum) and len(self.block_delta_list):
                 blk_ptr = self.block_delta_list.pop(0)
-                self.log.important("{}".format(blk_ptr))
+                self.log.important("blk_ptr: {}".format(blk_ptr))  # TODO change log lvl
                 blknum = blk_ptr.get('blockNum')
             assert blk_ptr and (blknum == self.awaited_blknum), "can't find the index infor for the block num {}".format(self.awaited_blknum)
             mn_list = blk_ptr.get('blockOwners')
@@ -351,7 +353,9 @@ class CatchupManager:
 
     def _check_idx_reply_quorum(self):
         # We have enough BlockIndexReplies if 2/3 of Masternodes replied
-        min_quorum = math.ceil(len(VKBook.get_masternodes()) * 2/3) - 1   # -1 so we dont include ourselves
+        min_quorum = math.ceil(len(VKBook.get_masternodes()) * 2/3)
+        if self.store_full_blocks:
+            min_quorum -= 1   # -1 so we dont include ourselves if we are a MN
         return len(self.node_idx_reply_set) >= min_quorum
 
     def is_catchup_done(self):
@@ -359,6 +363,13 @@ class CatchupManager:
             return True
         self.is_caught_up = (self.target_blk_num == self.curr_num) and \
                             self._check_idx_reply_quorum()
+
+        # DEBUG
+        self.log.critical("target blk num {}".format(self.target_blk_num))
+        self.log.critical("curr_num {}".format(self.curr_num))
+        self.log.critical("self._check_idx_reply_quorum() {}".format(self._check_idx_reply_quorum()))
+        self.log.critical("self.is_caught_up {}".format(self.is_caught_up))
+        # END DEBUG
         # if self.is_caught_up:       # reset here
             # self.node_idx_reply_set.clear()
         return self.is_caught_up
