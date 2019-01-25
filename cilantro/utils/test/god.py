@@ -93,7 +93,7 @@ class God:
     def send_tx(cls, tx: TransactionBase):
         mn_url = cls._get_mn_url()
         try:
-            r = requests.post(mn_url, data=TransactionContainer.create(tx).serialize())
+            r = requests.post(mn_url, data=TransactionContainer.create(tx).serialize(), verify=False)
             cls.log.spam("POST request to MN at URL {} has status code: {}".format(mn_url, r.status_code))
             return r
         except Exception as e:
@@ -107,6 +107,7 @@ class God:
         Pump random transactions from random users to Masternode's REST endpoint at an average rate of 'rate'
         transactions per second. This func blocks.
         """
+        God.mn_urls = get_mn_urls()  # Reset MN URLS
         if pump_wait > 0:
             cls.log.important("Pumper sleeping {} seconds before starting...".format(pump_wait))
             time.sleep(pump_wait)
@@ -153,6 +154,7 @@ class God:
     @classmethod
     def _dump_it(cls, volume: int, delay: int=0, gen_func=None):
         """ Dump it fast. """
+        God.mn_urls = get_mn_urls()  # Reset MN URLS
         assert volume > 0, "You must dump at least 1 transaction silly"
 
         if not gen_func:

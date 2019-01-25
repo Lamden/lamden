@@ -2,6 +2,8 @@ from cilantro.logger import get_logger
 import time, os
 
 
+log = get_logger("MN_URL_GETTER")
+
 def get_mn_urls():
     if os.getenv('HOST_IP'):
         ips = os.getenv('MASTERNODE', '0.0.0.0')
@@ -11,7 +13,17 @@ def get_mn_urls():
         else:
             ips = [ips]
 
-        urls = ["http://{}:8080".format(ip) for ip in ips]
+        if os.getenv("SSL_ENABLED", None) is not None:
+            log.important("SSL ENABLED. USING HTTPS")
+            urls = ["https://{}".format(ip) for ip in ips]
+
+            # DEBUG -- TODO DELETE
+            urls = ["https://{}".format(url) for url in ('davisnet-masternode0.anarchynet.io', 'davisnet-masternode1.anarchynet.io')]
+            # END DEBUG
+
+        else:
+            urls = ["http://{}:8080".format(ip) for ip in ips]
+            log.important("SSL NOT ENABLED. USING HTTP")
         return urls
 
     # If this is not getting run on a container, set MN URL to 0.0.0.0

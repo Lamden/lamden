@@ -15,3 +15,6 @@ Sanic-Cors==0.9.7
 pymongo==3.7.2
 vmnet
 seneca
+
+botocore
+boto3
