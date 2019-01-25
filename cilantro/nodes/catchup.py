@@ -361,6 +361,7 @@ class CatchupManager:
                             self._check_idx_reply_quorum()
         # if self.is_caught_up:       # reset here
             # self.node_idx_reply_set.clear()
+        self.dump_debug_info()
         return self.is_caught_up
 
     def dump_debug_info(self):
