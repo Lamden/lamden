@@ -69,14 +69,13 @@ class CatchupManager:
                     del blk_dict['_id']
                 block = BlockData.from_dict(blk_dict)
                 StateDriver.update_with_block(block = block)
-        self.log.important("Final StateDriver num {} StorageDriver num {}".format(latest_state_num, db_latest_blk_num))
-
+        self.log.info("Final StateDriver num {} StorageDriver num {}".format(latest_state_num, db_latest_blk_num))
 
     # should be called only once per node after bootup is done
     def run_catchup(self, ignore=False):
         # check if catch up is already running
         if ignore and self.is_catchup_done():
-            self.log.critical("Already caught up. Ignoring to run it again.")
+            self.log.warning("Already caught up. Ignoring to run it again.")
             return
 
         # first reset state variables
@@ -94,7 +93,7 @@ class CatchupManager:
         # first time wait longer than usual
         time.sleep(3 * TIMEOUT_CHECK_INTERVAL)
         self.timeout_fut = asyncio.ensure_future(self._check_timeout())
-        self.log.important2("run catchup")
+        self.log.important2("Running catchup!")
         self.dump_debug_info()
 
     def _reset_timeout_fut(self):
@@ -155,21 +154,16 @@ class CatchupManager:
         if not reply.indices:
             self.node_idx_reply_set.add(sender_vk)
             self.log.important("Received BlockIndexReply with no index info from masternode {}".format(sender_vk))
-            # self.log.important("responded mn - {}".format(self.node_idx_reply_set))
-            # self.target_blk_num = self.curr_num
-            # self.is_catchup_done()
-            # self.dump_debug_info()
             return
 
         tmp_list = reply.indices
-        # tmp_list.reverse()  TODO why did we do this???
         self.new_target_blk_num = tmp_list[-1].get('blockNum')
         new_blks = self.new_target_blk_num - self.target_blk_num
 
         if new_blks > 0:
             self.target_blk_num = self.new_target_blk_num
             update_list = tmp_list[-new_blks:]
-            self.log.important("update list {}".format(update_list))
+            # self.log.important("update list {}".format(update_list))
             self.block_delta_list.extend(update_list)
             # self.dump_debug_info()
             if not self.awaited_blknum:
@@ -177,8 +171,8 @@ class CatchupManager:
                 self.process_recv_idx()
 
         self.node_idx_reply_set.add(sender_vk)
-        # self.log.debugv("new target block num {}\ntarget block num {}\ntemp list {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
-        self.log.important("new target block num {}\ntarget block num {}\ntemp list {}".format(self.new_target_blk_num, self.target_blk_num, tmp_list))
+        self.log.debugv("new target block num {}\ntarget block num {}\ntemp list {}"
+                        .format(self.new_target_blk_num, self.target_blk_num, tmp_list))
 
     def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
         self._recv_block_idx_reply(sender_vk, reply)
@@ -208,7 +202,6 @@ class CatchupManager:
         self.rcv_block_dict[rcv_blk_num] = reply
         if rcv_blk_num > self.awaited_blknum:
             self.log.debug("Got block num {}, still awaiting block num {}".format(rcv_blk_num, self.awaited_blknum))
-            # self.log.fatal("This should not happen right now! rcv_blk_num={} ... self.awaited_blknum={}".format(rcv_blk_num, self.awaited_blknum))
             return
 
         if (rcv_blk_num == self.awaited_blknum):
@@ -217,7 +210,7 @@ class CatchupManager:
             self.process_recv_idx()
 
     def recv_block_data_reply(self, reply: BlockData):
-        self.log.important("recv block data reply {}".format(reply))   # TODO remove
+        # self.log.important("recv block data reply {}".format(reply))   # TODO remove
         self._recv_block_data_reply(reply)
         # self.log.important2("RCV BDRp")
         # self.dump_debug_info()
@@ -326,16 +319,13 @@ class CatchupManager:
                 self.awaited_blknum = self.awaited_blknum + 1
             blknum = 0
             blk_ptr = None
-            self.log.important2("block delata list {}".format(self.block_delta_list))
             while (blknum < self.awaited_blknum) and len(self.block_delta_list):
                 blk_ptr = self.block_delta_list.pop(0)
-                self.log.important("blk_ptr: {}".format(blk_ptr))  # TODO change log lvl
                 blknum = blk_ptr.get('blockNum')
             assert blk_ptr and (blknum == self.awaited_blknum), "can't find the index infor for the block num {}".format(self.awaited_blknum)
             mn_list = blk_ptr.get('blockOwners')
             for vk in mn_list:
                 self._send_block_data_req(mn_vk = vk, req_blk_num = self.awaited_blknum)
-
 
     def update_received_block(self, block = None):
         assert self.curr_num in self.rcv_block_dict, "not found the received block!"
@@ -373,6 +363,7 @@ class CatchupManager:
         # if self.is_caught_up:       # reset here
             # self.node_idx_reply_set.clear()
         self.dump_debug_info()
+
         return self.is_caught_up
 
     def dump_debug_info(self):
