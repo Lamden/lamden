@@ -163,7 +163,7 @@ class CatchupManager:
         if new_blks > 0:
             self.target_blk_num = self.new_target_blk_num
             update_list = tmp_list[-new_blks:]
-            self.log.important("update list {}".format(update_list))
+            # self.log.important("update list {}".format(update_list))
             self.block_delta_list.extend(update_list)
             # self.dump_debug_info()
             if not self.awaited_blknum:
@@ -326,7 +326,6 @@ class CatchupManager:
             mn_list = blk_ptr.get('blockOwners')
             for vk in mn_list:
                 self._send_block_data_req(mn_vk = vk, req_blk_num = self.awaited_blknum)
-
 
     def update_received_block(self, block = None):
         assert self.curr_num in self.rcv_block_dict, "not found the received block!"
