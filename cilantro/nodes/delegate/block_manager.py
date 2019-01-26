@@ -38,6 +38,7 @@ from cilantro.messages.block_data.block_metadata import NewBlockNotification, Sk
 from cilantro.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro.messages.consensus.align_input_hash import AlignInputHash
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
+from cilantro.messages.signals.node import Ready
 from cilantro.messages.block_data.state_update import *
 
 import asyncio, zmq, os, time, random
@@ -93,6 +94,7 @@ class BlockManager(Worker):
         self.ip = ip
         self.sb_builders = {}  # index -> process
         self.sb_index = self._get_my_index() % NUM_SB_BUILDERS
+        self.sbb_not_ready_count = NUM_SB_BUILDERS
 
         self.db_state = DBState()
 
@@ -215,6 +217,8 @@ class BlockManager(Worker):
 
         if isinstance(msg, SubBlockContender):
             self._handle_sbc(msg)
+        elif isinstance(msg, Ready):
+            self.set_sbb_ready()
         # elif isinstance(msg, SomeOtherType):
         #     self._handle_some_other_type_of_msg(msg)
         else:
@@ -246,7 +250,19 @@ class BlockManager(Worker):
         self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
         if not self.db_state.is_catchup_done:
             self.db_state.is_catchup_done = True
+            # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
+            if self.is_sbb_ready():
+                self.send_updated_db_msg()
+
+    def set_sbb_ready(self):
+        self.sbb_not_ready_count = self.sbb_not_ready_count - 1
+        if self.is_sbb_ready() and self.db_state.is_catchup_done:
             self.send_updated_db_msg()
+        # log error if count is below 0
+
+    def is_sbb_ready(self):
+        return self.sbb_not_ready_count == 0
+
 
     def recv_block_data_reply(self, reply):
         # will it block? otherwise, it may not work
