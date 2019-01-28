@@ -277,7 +277,7 @@ class TestCatchupManager(TestCase):
 
         # Send the BlockIndexReplies (1 extra)
         reply_data1 = all_idx_replies[:2]  # this incomplete reply only includes the first 2 blocks
-        reply_data2 = all_idx_replies
+        reply_data2 = all_idx_replies[:-1]
         reply_data3 = all_idx_replies[:4]
         index_reply1 = BlockIndexReply.create(reply_data1)
         index_reply2 = BlockIndexReply.create(reply_data2)
@@ -287,19 +287,19 @@ class TestCatchupManager(TestCase):
         cm.recv_block_idx_reply(vk3, index_reply3)
         cm.recv_block_idx_reply(vk4, index_reply3)
 
+        # Now, send a NewBlockNotification from a new hash/num, and make sure things worked propperly
+        new_block_notif = NewBlockNotification.create_from_block_data(blocks[-1])
+        cm.recv_new_blk_notif(new_block_notif)
+
         # Send the BlockDataReplies
         for bd_reply in reply_datas:
             cm.recv_block_data_reply(bd_reply)
 
         self.assertTrue(cm.is_catchup_done())
 
-        # Now, send a NewBlockNotification from a new hash/num, and make sure things worked propperly
-        new_blocks = blocks[5:]
-        new_block_notif = NewBlockNotification.create_from_block_data(new_blocks[-1])
-
-        cm.recv_new_blk_notif(new_block_notif)
-        self.assertFalse(cm.is_catchup_done())
-
+        # Assert Redis has been updated
+        self.assertEqual(StateDriver.get_latest_block_num(), blocks[-1].block_num)
+        self.assertEqual(StateDriver.get_latest_block_hash(), blocks[-1].block_hash)
     def test_get_new_block_notif_one_behind_after_caught_up(self):
         cm = self._build_manager()
         cm.run_catchup()
@@ -379,7 +379,7 @@ class TestCatchupManager(TestCase):
 
     # TODO @raghu, i think this test needs to be fixed
     def test_catchup_qourum_reached_for_delegate(self):
-        cm = self._build_manager()
+        cm = self._build_manager(store_blocks=False)
         cm.run_catchup()
         self.assertFalse(cm.is_catchup_done())
 
@@ -392,7 +392,7 @@ class TestCatchupManager(TestCase):
 
         all_idx_replies = []
         reply_datas = []
-        for block in blocks[:5]:
+        for block in blocks:
             all_idx_replies.append({'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': [vk1, vk2]})
             reply_datas.append(BlockDataReply.create_from_block(block))
 
@@ -400,7 +400,7 @@ class TestCatchupManager(TestCase):
         index_reply2 = BlockIndexReply.create(all_idx_replies)
         index_reply3 = BlockIndexReply.create(all_idx_replies[:4])
 
-        # As a Delegate (store_full_blocks=False), he should require 3/4 other idx replies
+        # As a Delegate (store_full_blocks=False), he should require 2/3 other idx replies
         cm.recv_block_idx_reply(vk1, index_reply1)
         self.assertFalse(cm._check_idx_reply_quorum())
 
@@ -410,14 +410,11 @@ class TestCatchupManager(TestCase):
         cm.recv_block_idx_reply(vk3, index_reply3)
         self.assertTrue(cm._check_idx_reply_quorum())
 
-        cm.recv_block_idx_reply(vk4, index_reply3)
+        cm.recv_block_idx_reply(vk4, index_reply2)
         self.assertTrue(cm._check_idx_reply_quorum())
 
     def test_catchup_with_new_blocks_and_replies_when_we_start_with_some_blocks_already_and_then_we_catchup_again(self):
-        """ In this test, there are 8 blocks
-        - we start CM at block 2
-        - catchup him up to block 5
-        - then, catch him up to block 9 """
+
         blocks = BlockDataBuilder.create_conseq_blocks(8)
 
         # Store the first 2 blocks
@@ -504,8 +501,6 @@ class TestCatchupManager(TestCase):
         # Assert Redis has been updated
         self.assertEqual(StateDriver.get_latest_block_num(), second_round_blocks[-1].block_num)
         self.assertEqual(StateDriver.get_latest_block_hash(), second_round_blocks[-1].block_hash)
-
-
 
 
 if __name__ == "__main__":
