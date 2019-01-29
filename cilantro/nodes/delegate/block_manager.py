@@ -262,7 +262,6 @@ class BlockManager(Worker):
         self.db_state.is_catchup_done = False
         if self.db_state.catchup_mgr.recv_new_blk_notif(block):
             self.set_catchup_done()
-   
 
     def handle_router_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])

@@ -81,9 +81,9 @@ class CatchupManager:
         # first reset state variables
         self.node_idx_reply_set.clear()
         self.is_caught_up = False
-        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
-        self.target_blk_num = self.curr_num
-        self.awaited_blknum = None
+        # self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
+        # self.target_blk_num = self.curr_num
+        # self.awaited_blknum = None
 
         # starting phase I
         self.timeout_catchup = time.time()
@@ -249,7 +249,7 @@ class CatchupManager:
         if self.is_caught_up:
             self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
             self.target_blk_num = self.curr_num
-            self.awaited_blknum = self.curr_num
+            self.awaited_blknum = None
         if (nw_blk_num <= self.curr_num) or (nw_blk_num <= self.target_blk_num):
             return
         if nw_blk_num > (self.target_blk_num + 1):
@@ -355,10 +355,10 @@ class CatchupManager:
                             self._check_idx_reply_quorum()
 
         # DEBUG
-        self.log.critical("target blk num {}".format(self.target_blk_num))
-        self.log.critical("curr_num {}".format(self.curr_num))
-        self.log.critical("self._check_idx_reply_quorum() {}".format(self._check_idx_reply_quorum()))
-        self.log.critical("self.is_caught_up {}".format(self.is_caught_up))
+        self.log.debugv("target blk num {}".format(self.target_blk_num))
+        self.log.debugv("curr_num {}".format(self.curr_num))
+        self.log.debugv("self._check_idx_reply_quorum() {}".format(self._check_idx_reply_quorum()))
+        self.log.debugv("self.is_caught_up {}".format(self.is_caught_up))
         # END DEBUG
         # if self.is_caught_up:       # reset here
             # self.node_idx_reply_set.clear()
