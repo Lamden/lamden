@@ -6,6 +6,7 @@ from cilantro.protocol.comm.lsocket import LSocketBase
 from cilantro.storage.vkbook import VKBook
 from cilantro.storage.state import StateDriver
 from cilantro.nodes.masternode.mn_api import StorageDriver
+from cilantro.storage.redis import SafeRedisMeta
 from cilantro.storage.mongo import MDB
 from cilantro.nodes.masternode.master_store import MasterOps
 from cilantro.messages.block_data.block_data import BlockData
@@ -55,11 +56,20 @@ class CatchupManager:
         self.awaited_blknum = None
 
     def update_redis_state(self):
+        """
+        catch up state from block store if redis is behind
+        :return:
+        """
         db_latest_blk_num = StorageDriver.get_latest_block_num()
         latest_state_num = StateDriver.get_latest_block_num()
         if db_latest_blk_num < latest_state_num:
             # TODO - assert and quit
-            self.log.fatal("Block DB is behind StateDriver. Cannot handle")
+            self.log.fatal("Block DB block - {} is behind StateDriver block - {}. Cannot handle"
+                           .format(db_latest_blk_num, latest_state_num))
+            # we need to rebuild state from scratch
+            latest_state_num = 0
+            SafeRedisMeta.flushdb()
+
         if db_latest_blk_num > latest_state_num:
             self.log.info("StateDriver block num {} is behind DB block num {}".format(latest_state_num, db_latest_blk_num))
             while latest_state_num < db_latest_blk_num:
