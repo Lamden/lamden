@@ -1,7 +1,6 @@
 # Python builtin imports
 import os
 import sys
-import json
 import pathspec
 import hashlib
 
