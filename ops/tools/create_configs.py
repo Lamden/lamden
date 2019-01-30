@@ -151,6 +151,5 @@ def main():
     print("\nDone generating configs for environment named {} at path {}".format(config_name, config_dir_path))
 
 
-
 if __name__ == '__main__':
     main()
