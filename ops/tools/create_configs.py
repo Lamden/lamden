@@ -63,7 +63,7 @@ def _get_node_name(node_type: str, node_idx: int):
 
 def main():
     config_name = _get_input("Enter the name of this configuration (ex cloud-2-2-2)")
-    config_dir_path = OPS_DIR_PATH + '/environments/' + config_name
+    config_dir_path = OPS_DIR_PATH + '/environments/' + config_name + '/conf'
     const_file = config_name + '.json'
 
     if os.path.exists(config_dir_path):
@@ -108,7 +108,7 @@ def main():
     assert sen_log_lvl >= 0, 'log lvl must be greater than 0'
 
     # Now, to actually build the configs...
-    os.mkdir(config_dir_path)
+    os.makedirs(config_dir_path)
     for node_group in const_dict:
         for i, node_info in enumerate(const_dict[node_group]):
             node_name = _get_node_name(node_group, i)
