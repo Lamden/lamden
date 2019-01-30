@@ -1,11 +1,13 @@
 import cilantro
 from cilantro.protocol import wallet
 import json, os, configparser
+import shutil
 from copy import deepcopy
-
 
 OPS_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/ops'
 CONST_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/constitutions/public'
+
+NAME_MAP = {'masternodes': 'masternode', 'witnesses': 'witness', 'delegates': 'delegate'}
 
 
 def _generate_constitution(file_name, num_masters, num_witnesses, num_delegates) -> dict:
@@ -37,23 +39,46 @@ def _check_constitution_exists(file_name) -> bool:
 
 
 def _get_input(prompt, skip=False):
-    if skip: return 0
-    else: return input(prompt)
+    if skip:return 0
+    else:return input(prompt + '\n')
+
+
+def _input_to_bool(str_in: str, default=False) -> bool:
+    assert str_in.lower() in ('y', 'n'), "invalid bool input. Must be 'y' or 'n', not {}".format(str_in)
+    return True if str_in.lower() == 'y' else False
+
+
+def _get_bool_input(prompt, skip=False, default=False) -> bool:
+    str_in = _get_input(prompt, skip=skip)
+    if not str_in:
+        return default
+    else:
+        return _input_to_bool(str_in)
+
+
+def _get_node_name(node_type: str, node_idx: int):
+    assert node_type in NAME_MAP, "unrecognized node type {}".format(node_type)
+    return "{}{}".format(NAME_MAP[node_type], node_idx)
 
 
 def main():
-    config_name = input("Enter the name of this configuration (ex cloud-2-2-2)")
+    config_name = _get_input("Enter the name of this configuration (ex cloud-2-2-2)")
+    config_dir_path = OPS_DIR_PATH + '/environments/' + config_name
     const_file = config_name + '.json'
 
-    # TODO check if config with this name exists, and ask if we should replace existing
+    if os.path.exists(config_dir_path):
+        if _get_bool_input("WARNING: Environment named {} already exists. Replace with new one? (y/n)".format(config_name)):
+            shutil.rmtree(config_dir_path)
+        else:
+            return
 
-    num_mn = int(input("Enter number of Masternodes"))
+    num_mn = int(_get_input("Enter number of Masternodes"))
     assert num_mn > 0, "num_mn must be greater than 0"
 
-    num_dels = int(input("Enter number of Delegates"))
+    num_dels = int(_get_input("Enter number of Delegates"))
     assert num_dels > 0, "num_dels must be greater than 0"
 
-    num_wits = int(input("Enter number of Witnesses"))
+    num_wits = int(_get_input("Enter number of Witnesses"))
     assert num_wits > 0, "num_wits must be greater than 0"
 
     # Build new constitution file
@@ -61,43 +86,71 @@ def main():
         print("WARNING: Constitution file {} already exists. Replacing with new one.".format(const_file))
     const_dict = _generate_constitution(const_file, num_mn, num_wits, num_dels)
 
-    skip = input("Use default values for rest of config? (y/n)") or 'n'
-    if skip.lower() == 'y':
-        skip = True
+    skip = _get_bool_input("Use default values for rest of config? (y/n)")
+    if skip:
         print("Using default values for remaining inputs")
-    else:
-        skip = False
 
-    reset_db = _get_input("Reset DB on all nodes upon boot? (y/n), default='y'", skip=skip) or 'y'
-    assert reset_db.lower() in ('y', 'n'), "invalid reset_db val. Must be 'y' or 'n'"
-    reset_db = True if reset_db.lower() == 'y' else False
+    reset_db = _get_bool_input("Reset DB on all nodes upon boot? (y/n), default='y'", default=True, skip=skip)
+    ssl_enabled = _get_bool_input("Enable SSL on Webservers? (y/n), default='y'", skip=skip, default=True)
+    nonce_enabled = _get_bool_input("Require nonces for user transactions? (y/n), default='n'", skip=skip)
 
-    ssl_enabled = _get_input("Enable SSL on Webservers? (y/n), default='y'", skip=skip) or 'y'
-    assert ssl_enabled.lower() in ('y', 'n'), "invalid ssl_enabled val. Must be 'y' or 'n'"
-    ssl_enabled = True if ssl_enabled.lower() == 'y' else False
-
-    nonce_enabled = _get_input("Require nonces for user transactions? (y/n), default='n'", skip=skip) or 'n'
-    assert nonce_enabled.lower() in ('y', 'n'), "invalid nonce_enabled val. Must be 'y' or 'n'"
-    nonce_enabled = True if nonce_enabled.lower() == 'y' else False
-
-    mn_log_lvl = _get_input("Enter Masternode log lvl. Must be 0 or in [11, 100]. (default=11)", skip=skip) or 11
+    mn_log_lvl = int(_get_input("Enter Masternode log lvl. Must be 0 or in [11, 100]. (default=11)", skip=skip)) or 11
     assert mn_log_lvl >= 0, 'log lvl must be greater than 0'
     assert mn_log_lvl not in range(1, 11), "Masternode log cannot be in range [1, 10]"
 
-    wit_log_lvl = int(_get_input("Enter Witness log lvl.) (default=11)", skip=skip)) or 11
+    wit_log_lvl = int(_get_input("Enter Witness log lvl. (default=11)", skip=skip)) or 11
     assert wit_log_lvl >= 0, 'log lvl must be greater than 0'
 
-    del_log_lvl = int(_get_input("Enter Delegate log lvl). (default=11)", skip=skip)) or 11
+    del_log_lvl = int(_get_input("Enter Delegate log lvl. (default=11)", skip=skip)) or 11
     assert del_log_lvl >= 0, 'log lvl must be greater than 0'
 
-    sen_log_lvl = int(_get_input("Enter Seneca log lvl. )(default=11)", skip=skip)) or 11
+    sen_log_lvl = int(_get_input("Enter Seneca log lvl. (default=11)", skip=skip)) or 11
     assert sen_log_lvl >= 0, 'log lvl must be greater than 0'
 
-
     # Now, to actually build the configs...
+    os.mkdir(config_dir_path)
+    for node_group in const_dict:
+        for i, node_info in enumerate(const_dict[node_group]):
+            node_name = _get_node_name(node_group, i)
+            node_type = NAME_MAP[node_group]
+
+            node_dir = config_dir_path + '/' + node_name
+            cilantro_conf_path = node_dir + '/' + 'cilantro.conf'
+            superd_conf_path = node_dir + '/' + 'superd.conf'
+            os.mkdir(node_dir)
+
+            # Get the general info
+            config_info = {'ip': 'TBD',                 # TODO should we just remove this and put it in later?
+                           'boot_ips': 'TBD',           # TODO should we just remove this and put it in later?
+                           'node_type': node_type,
+                           'sk': node_info['sk'],
+                           'vk': node_info['vk'],
+                           'reset_db': reset_db,
+                           'constitution_file': const_file,
+                           'ssl_enabled': ssl_enabled,
+                           }
+
+            # Set node specific info
+            if node_type == 'masternode':
+                config_info['nonce_enabled'] = nonce_enabled
+                config_info['log_lvl'] = mn_log_lvl
+            elif node_type == 'witness':
+                config_info['log_lvl'] = wit_log_lvl
+            elif node_type == 'delegate':
+                config_info['log_lvl'] = del_log_lvl
+                config_info['seneca_log_lvl'] = sen_log_lvl
+
+            # Write the cnofig file
+            config = configparser.ConfigParser()
+            config['DEFAULT'] = config_info
+            with open(cilantro_conf_path, 'w') as f:
+                config.write(f)
+
+            # TODO write the superd file
+
+    print("\nDone generating configs for environment named {} at path {}".format(config_name, config_dir_path))
 
 
 
 if __name__ == '__main__':
-    pass
-    # main()
+    main()
