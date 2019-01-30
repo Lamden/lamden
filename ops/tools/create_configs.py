@@ -8,36 +8,23 @@ OPS_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/ops'
 CONST_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/constitutions/public'
 
 
-def generate_testnet_json(file_path, num_masters, num_witnesses, num_delegates) -> dict:
-    def _build_nodes(num_nodes=64, prefix='node') -> list:
+def _generate_constitution(file_name, num_masters, num_witnesses, num_delegates) -> dict:
+    def _build_nodes(num_nodes=64) -> list:
         nodes = []
-
         for i in range(num_nodes):
             sk, vk = wallet.new()
             nodes.append({'sk': sk, 'vk': vk})
-
         return nodes
 
-    def build_masternodes(num_nodes=64):
-        return _build_nodes(num_nodes=num_nodes, prefix='masternode')
-
-    def build_witnesses(num_nodes=256):
-        return _build_nodes(num_nodes=num_nodes, prefix='witness')
-
-    def build_delegate(num_nodes=32):
-        return _build_nodes(num_nodes=num_nodes, prefix='delegate')
-
-    testnet = {'masternodes': build_masternodes(num_masters), 'witnesses': build_witnesses(num_witnesses),
-               'delegates': build_delegate(num_delegates)}
+    file_path = CONST_DIR_PATH + '/' + file_name
+    testnet = {'masternodes': _build_nodes(num_masters), 'witnesses': _build_nodes(num_witnesses),
+               'delegates': _build_nodes(num_delegates)}
 
     # Build a version with only VK's and store this at 'file_path'
     testnet_vk_only = deepcopy(testnet)
-
     for k in testnet_vk_only:
         for row in testnet_vk_only[k]:
             del row['sk']
-
-    print("testnet with vk only:\n{}".format(testnet_vk_only))  # TODO remove
 
     with open(file_path, 'w') as fp:
         json.dump(testnet_vk_only, fp, indent=4)
@@ -45,15 +32,20 @@ def generate_testnet_json(file_path, num_masters, num_witnesses, num_delegates) 
     return testnet
 
 
+def _check_constitution_exists(file_name) -> bool:
+    return os.path.exists(CONST_DIR_PATH + '/' + file_name)
+
+
 def _get_input(prompt, skip=False):
-    if skip:
-        return 0
-    else:
-        return input(prompt)
+    if skip: return 0
+    else: return input(prompt)
 
 
 def main():
     config_name = input("Enter the name of this configuration (ex cloud-2-2-2)")
+    const_file = config_name + '.json'
+
+    # TODO check if config with this name exists, and ask if we should replace existing
 
     num_mn = int(input("Enter number of Masternodes"))
     assert num_mn > 0, "num_mn must be greater than 0"
@@ -64,8 +56,10 @@ def main():
     num_wits = int(input("Enter number of Witnesses"))
     assert num_wits > 0, "num_wits must be greater than 0"
 
-    # TODO create config files here
-    testnet_dict = generate_testnet_json()
+    # Build new constitution file
+    if _check_constitution_exists(const_file):
+        print("WARNING: Constitution file {} already exists. Replacing with new one.".format(const_file))
+    const_dict = _generate_constitution(const_file, num_mn, num_wits, num_dels)
 
     skip = input("Use default values for rest of config? (y/n)") or 'n'
     if skip.lower() == 'y':
@@ -100,5 +94,10 @@ def main():
     assert sen_log_lvl >= 0, 'log lvl must be greater than 0'
 
 
+    # Now, to actually build the configs...
+
+
+
 if __name__ == '__main__':
-    main()
+    pass
+    # main()
