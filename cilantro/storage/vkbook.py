@@ -1,10 +1,9 @@
 import os, math
 from seneca.constants.config import *
 from cilantro.logger import get_logger
-from cilantro.constants.vmnet import get_constitution
 from cilantro.utils.utils import is_valid_hex
 from collections import defaultdict
-from cilantro.utils.test.testnet_config import get_config_filename
+from cilantro.utils.test.testnet_config import get_testnet_config
 
 log = get_logger("VKBook")
 
@@ -34,8 +33,13 @@ class VKBook(metaclass=VKBookMeta):
     @classmethod
     def setup(cls):
         cls.bootnodes = []
-        constitution_file = env('CONSTITUTION_FILE', get_config_filename())
-        cls.constitution = get_constitution(constitution_file)
+
+        if os.getenv('WHAT_IS_THIS_FLAG_CALLED_LOL', None):
+            pass
+            # TODO -- check for an env var here, and if we are deploying on docker/cloud use the config file specified
+            # in this node's bootstrap config file
+        else:
+            cls.constitution = get_testnet_config()
 
         for node_type in cls.node_types_map:
             for node in cls.constitution[cls.node_types_map.get(node_type)]:

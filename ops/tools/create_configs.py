@@ -1,3 +1,50 @@
+import cilantro
+from cilantro.protocol import wallet
+import json, os, configparser
+from copy import deepcopy
+
+
+OPS_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/ops'
+CONST_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/constitutions/public'
+
+
+def generate_testnet_json(file_path, num_masters, num_witnesses, num_delegates) -> dict:
+    def _build_nodes(num_nodes=64, prefix='node') -> list:
+        nodes = []
+
+        for i in range(num_nodes):
+            sk, vk = wallet.new()
+            nodes.append({'sk': sk, 'vk': vk})
+
+        return nodes
+
+    def build_masternodes(num_nodes=64):
+        return _build_nodes(num_nodes=num_nodes, prefix='masternode')
+
+    def build_witnesses(num_nodes=256):
+        return _build_nodes(num_nodes=num_nodes, prefix='witness')
+
+    def build_delegate(num_nodes=32):
+        return _build_nodes(num_nodes=num_nodes, prefix='delegate')
+
+    testnet = {'masternodes': build_masternodes(num_masters), 'witnesses': build_witnesses(num_witnesses),
+               'delegates': build_delegate(num_delegates)}
+
+    # Build a version with only VK's and store this at 'file_path'
+    testnet_vk_only = deepcopy(testnet)
+
+    for k in testnet_vk_only:
+        for row in testnet_vk_only[k]:
+            del row['sk']
+
+    print("testnet with vk only:\n{}".format(testnet_vk_only))  # TODO remove
+
+    with open(file_path, 'w') as fp:
+        json.dump(testnet_vk_only, fp, indent=4)
+
+    return testnet
+
+
 def _get_input(prompt, skip=False):
     if skip:
         return 0
@@ -18,6 +65,7 @@ def main():
     assert num_wits > 0, "num_wits must be greater than 0"
 
     # TODO create config files here
+    testnet_dict = generate_testnet_json()
 
     skip = input("Use default values for rest of config? (y/n)") or 'n'
     if skip.lower() == 'y':
