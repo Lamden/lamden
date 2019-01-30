@@ -248,7 +248,6 @@ class BlockAggregator(Worker):
 
         if notif.block_num > StateDriver.get_latest_block_num() + 1:
             self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, StateDriver.get_latest_block_num()))
-            # Need to call run_catchup() here???
             self.catchup_manager.recv_new_blk_notif(notif)
         else:
             self.log.debugv("Block num on NBC is LTE that ours. Ignoring")
