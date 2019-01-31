@@ -63,12 +63,14 @@ def _get_node_name(node_type: str, node_idx: int):
 
 def main():
     config_name = _get_input("Enter the name of this configuration (ex cloud-2-2-2)")
-    config_dir_path = OPS_DIR_PATH + '/environments/' + config_name + '/conf'
+    base_config_dir_path = OPS_DIR_PATH + '/environments/' + config_name
+    config_dir_path = base_config_dir_path + '/conf'
     const_file = config_name + '.json'
 
-    if os.path.exists(config_dir_path):
-        if _get_bool_input("WARNING: Environment named {} already exists. Replace with new one? (y/n)".format(config_name)):
-            shutil.rmtree(config_dir_path)
+    if os.path.exists(base_config_dir_path):
+        if _get_bool_input("WARNING: Environment named {} already exists at path {}. Replace with new one? (y/n)"
+                           .format(config_name, base_config_dir_path)):
+            shutil.rmtree(base_config_dir_path)
         else:
             return
 
