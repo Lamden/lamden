@@ -1,4 +1,4 @@
-from seneca.constants.config import *
+from cilantro.constants.db_config import *
 import os, threading
 import redis
 from multiprocessing import Lock
