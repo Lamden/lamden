@@ -1,8 +1,8 @@
 import os, shutil
 from os import getenv as env
-from create_user import create_user
 
 
+# TODO make this less jank
 def start_mongo():
     if env('VMNET_CLOUD'):
         host_name = ''
@@ -21,14 +21,12 @@ def start_mongo():
 
     print('Starting mongo server...')
     os.system('sudo pkill -9 mongod')
-    os.system('mongod --dbpath ./data/{} --logpath ./data/{}/logs/mongo.log {} &'.format(
+    os.system('mongod --dbpath ./data/{} --logpath ./data/{}/logs/mongo.log {}'.format(
         host_name, host_name, '' if env('CIRCLECI') == 'true' else '--bind_ip_all'
     ))
 
-    create_user()
+    # create_user()
 
 
 if __name__ == '__main__':
-    from dotenv import load_dotenv
-    load_dotenv()
     start_mongo()

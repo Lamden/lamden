@@ -14,7 +14,7 @@ class SafeRedisMeta(type):
     # _lock = Lock()
 
     def _get_key(cls) -> str:
-        # uncomment below for thread locking
+        # uncomment below for thread level locking
         # key = "{}:{}".format(os.getpid(), threading.get_ident())
 
         key = str(os.getpid())

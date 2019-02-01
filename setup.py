@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-__version__ = '0.0.1-dev'
+__version__ = '0.0.1dev'
 
 setup(
     name='cilantro',
@@ -36,7 +36,7 @@ setup(
         '': [],
         'cilantro': ['cilantro.conf'],
     },
-    long_description=open('README.md').read(),
+    long_description="this is a fast blockchain",
     url='https://github.com/Lamden/cilantro',
     author='Lamden',
     author_email='team@lamden.io',

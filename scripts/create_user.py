@@ -3,6 +3,7 @@ import configparser, time
 import os
 import time
 
+
 def create_user():
     print('Creating user for Mongo...')
     settings = configparser.ConfigParser()

@@ -26,7 +26,7 @@ install:
 	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir
 
 build-base: clean
-	docker build -t cilantro_base -f vmnet_configs/images/cilantro_base.dev .
+	docker build -t cilantro_base -f vmnet_configs/images/cilantro_base .
 
 build-mn: clean
 	docker build -t cilantro_mn -f vmnet_configs/images/cilantro_mn .
@@ -38,6 +38,12 @@ upload-base:
 upload-mn:
 	docker tag cilantro_mn lamden/cilantro-mn:latest
 	docker push lamden/cilantro-mn:latest
+
+
+build-test:
+	docker build -t lamden/cilantro_base:latest -f vmnet_configs/images/cilantro_base .
+	docker build -t lamden/cilantro_light:test -f vmnet_configs/images/cilantro_light .
+	docker build -t lamden/cilantro_full:test -f vmnet_configs/images/cilantro_full .
 
 clean-logs:
 	bash ./scripts/clean-logs.sh
