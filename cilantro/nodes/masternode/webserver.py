@@ -68,6 +68,7 @@ async def submit_transaction(request):
         return _respond_to_request({'error': 'Error opening transaction: {}'.format(e)}, status=400)
 
     # TODO do we need to do any other validation? tx size? check sufficient stamps?
+    # TODO -- check that timestamp on tx meta is within reasonable bound
 
     # Check the transaction type and make sure we can handle it
     if type(tx) not in (ContractTransaction, PublishTransaction):
