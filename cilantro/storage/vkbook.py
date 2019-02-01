@@ -1,5 +1,5 @@
 import os, math
-from seneca.constants.config import *
+from cilantro.constants.db_config import *
 from cilantro.logger import get_logger
 from cilantro.utils.utils import is_valid_hex
 from collections import defaultdict

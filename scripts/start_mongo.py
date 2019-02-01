@@ -2,7 +2,7 @@ import os, shutil
 from os import getenv as env
 
 
-# TODO make this less jank
+# TODO make this more clear
 def start_mongo():
     if env('VMNET_CLOUD'):
         host_name = ''
