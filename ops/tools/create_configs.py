@@ -39,8 +39,8 @@ def _check_constitution_exists(file_name) -> bool:
 
 
 def _get_input(prompt, skip=False):
-    if skip:return 0
-    else:return input(prompt + '\n')
+    if skip: return 0
+    else: return input(prompt + '\n')
 
 
 def _input_to_bool(str_in: str, default=False) -> bool:
