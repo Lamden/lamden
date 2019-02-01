@@ -1,0 +1,6 @@
+FROM lamden/cilantro_base:latest
+
+COPY . /app
+WORKDIR /app
+RUN python3 /app/setup.py develop
+

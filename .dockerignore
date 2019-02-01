@@ -1,0 +1,7 @@
+.git
+*.md
+*.log
+*.log_color
+venv
+redis-local
+data

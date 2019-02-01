@@ -1,5 +1,7 @@
 start-db:
-	python3 ./scripts/start_redis_mongo.py
+	python3 ./scripts/start_redis.py &
+	python3 ./scripts/start_mongo.py &
+	python3 ./scripts/create_user.py &
 
 mongo: start-db
 	mongo
@@ -25,12 +27,6 @@ test-integration: restart-db
 install:
 	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir
 
-build-base: clean
-	docker build -t cilantro_base -f vmnet_configs/images/cilantro_base .
-
-build-mn: clean
-	docker build -t cilantro_mn -f vmnet_configs/images/cilantro_mn .
-
 upload-base:
 	docker tag cilantro_base lamden/cilantro:latest
 	docker push lamden/cilantro:latest
@@ -40,10 +36,13 @@ upload-mn:
 	docker push lamden/cilantro-mn:latest
 
 
-build-test:
+build-test: clean
 	docker build -t lamden/cilantro_base:latest -f vmnet_configs/images/cilantro_base .
 	docker build -t lamden/cilantro_light:test -f vmnet_configs/images/cilantro_light .
 	docker build -t lamden/cilantro_full:test -f vmnet_configs/images/cilantro_full .
+
+run-test:
+	docker run -it -v /Users/davishaba/Developer/cilantro/good_d.conf:/etc/circus.conf -p 443:443 -p 80:80 -p 10000-10100:10000-10100 lamden/cilantro_full:test
 
 clean-logs:
 	bash ./scripts/clean-logs.sh
