@@ -19,5 +19,8 @@ def create_user():
         roles=[{'role': 'userAdminAnyDatabase', 'db': 'admin'}]
     )
 
+    print("Done creating Mongo user")
+
+
 if __name__ == '__main__':
     create_user()
