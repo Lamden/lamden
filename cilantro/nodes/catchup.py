@@ -57,7 +57,7 @@ class CatchupManager:
 
     def update_redis_state(self):
         """
-        catch up state from block store if redis is behind
+        Sync block and state DB if either is out of sync.
         :return:
         """
         db_latest_blk_num = StorageDriver.get_latest_block_num()
@@ -74,15 +74,17 @@ class CatchupManager:
             self.log.info("StateDriver block num {} is behind DB block num {}".format(latest_state_num, db_latest_blk_num))
             while latest_state_num < db_latest_blk_num:
                 latest_state_num = latest_state_num + 1
+                # TODO get nth full block wont work for now in distributed storage
                 blk_dict = StorageDriver.get_nth_full_block(given_bnum=latest_state_num)
                 if '_id' in blk_dict:
                     del blk_dict['_id']
                 block = BlockData.from_dict(blk_dict)
                 StateDriver.update_with_block(block = block)
-        self.log.info("Final StateDriver num {} StorageDriver num {}".format(latest_state_num, db_latest_blk_num))
+        self.log.info("Verify StateDriver num {} StorageDriver num {}".format(latest_state_num, db_latest_blk_num))
 
     # should be called only once per node after bootup is done
     def run_catchup(self, ignore=False):
+        self.log.important3("-----RUN-----")
         # check if catch up is already running
         if ignore and self.is_catchup_done():
             self.log.warning("Already caught up. Ignoring to run it again.")
@@ -117,6 +119,7 @@ class CatchupManager:
     async def _check_timeout(self):
         async def _timeout():
             elapsed = 0
+            self.log.important3("-----CHK-----")
             while elapsed < IDX_REPLY_TIMEOUT:
                 elapsed += TIMEOUT_CHECK_INTERVAL
                 await asyncio.sleep(TIMEOUT_CHECK_INTERVAL)
@@ -299,7 +302,6 @@ class CatchupManager:
         reply = BlockDataReply.create_from_block(block)
         self.router.send_msg(reply, header=sender_vk.encode())
 
-
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
         valid_node = VKBook.is_node_type('masternode', vk) or VKBook.is_node_type('delegate', vk)
@@ -366,6 +368,7 @@ class CatchupManager:
 
         # DEBUG
         self.log.debugv("target blk num {}".format(self.target_blk_num))
+        self.log.debugv("awaited blk num {}".format(self.awaited_blknum))
         self.log.debugv("curr_num {}".format(self.curr_num))
         self.log.debugv("self._check_idx_reply_quorum() {}".format(self._check_idx_reply_quorum()))
         self.log.debugv("self.is_caught_up {}".format(self.is_caught_up))
