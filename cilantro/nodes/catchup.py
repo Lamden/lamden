@@ -367,11 +367,11 @@ class CatchupManager:
                             self._check_idx_reply_quorum()
 
         # DEBUG
-        self.log.debugv("target blk num {}".format(self.target_blk_num))
-        self.log.debugv("awaited blk num {}".format(self.awaited_blknum))
-        self.log.debugv("curr_num {}".format(self.curr_num))
-        self.log.debugv("self._check_idx_reply_quorum() {}".format(self._check_idx_reply_quorum()))
-        self.log.debugv("self.is_caught_up {}".format(self.is_caught_up))
+        # self.log.debugv("target blk num {}".format(self.target_blk_num))
+        # self.log.debugv("awaited blk num {}".format(self.awaited_blknum))
+        # self.log.debugv("curr_num {}".format(self.curr_num))
+        # self.log.debugv("self._check_idx_reply_quorum() {}".format(self._check_idx_reply_quorum()))
+        # self.log.debugv("self.is_caught_up {}".format(self.is_caught_up))
         # END DEBUG
         # if self.is_caught_up:       # reset here
             # self.node_idx_reply_set.clear()
@@ -381,17 +381,17 @@ class CatchupManager:
 
     def dump_debug_info(self):
         # TODO change this log to important for debugging
-        self.log.spam("catchup Done => {}"
-                            "---- data structures state----"
-                            "Pending blk list -> {} "
-                            "----Target-----"
-                            "target_blk_num -> {}"
-                            "----Current----"
-                            "elf.curr_hash - {}, curr_num-{}"
-                            "----send req----"
-                            "----rcv req-----"
-                            "rcv_block_dict - {}"
-                            "awaited_blknum - {}"
-                            .format(self.is_caught_up, self.block_delta_list, self.target_blk_num,
-                                    self.curr_hash, self.curr_num,
-                                    self.rcv_block_dict, self.awaited_blknum))
+
+        self.log.debugv("Time -> {}".format(self.timeout_catchup))
+        self.log.debugv("is_caught_up -> {}".format(self.is_caught_up))
+        self.log.debugv("target blk num -> {}".format(self.target_blk_num))
+        self.log.debugv("awaited blk num -> {}".format(self.awaited_blknum))
+        self.log.debugv("curr_num -> {}".format(self.curr_num))
+        self.log.debugv("curr_hash -> {}".format(self.curr_hash))
+
+        self.log.debugv("Pending blk list -> {}".format(self.block_delta_list))
+        self.log.debugv("Received blk dict -> {}".format(self.rcv_block_dict))
+
+        self.log.debugv("quorum nodes -> {}".format(self.node_idx_reply_set))
+        self.log.debugv("self._check_idx_reply_quorum() -> {}".format(self._check_idx_reply_quorum()))
+
