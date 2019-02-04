@@ -12,4 +12,5 @@ RUN apt-get update \
 
 COPY . /app
 WORKDIR /app
-RUN python3 /app/setup.py develop
+RUN source /app/venv/bin/activate; \
+    python3 /app/setup.py develop

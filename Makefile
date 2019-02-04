@@ -37,9 +37,9 @@ upload-mn:
 
 
 build-test: clean
-	docker build -t lamden/cilantro_base:latest -f vmnet_configs/images/cilantro_base .
-	docker build -t lamden/cilantro_light:test -f vmnet_configs/images/cilantro_light .
-	docker build -t lamden/cilantro_full:test -f vmnet_configs/images/cilantro_full .
+	docker build -t lamden/cilantro_base:latest -f docker/cilantro_base .
+	docker build -t lamden/cilantro_light:test -f docker/cilantro_light .
+	docker build -t lamden/cilantro_full:test -f docker/cilantro_full .
 
 run-test:
 	docker run -it -v /Users/davishaba/Developer/cilantro/good_d.conf:/etc/circus.conf -p 443:443 -p 80:80 -p 10000-10100:10000-10100 lamden/cilantro_full:test
