@@ -13,8 +13,10 @@ RUN apt-get update \
         libffi-dev libtool dpkg \
         gsl-bin zlib1g-dev libboost-all-dev \
         nano vim
-RUN pip3 install --upgrade setuptools wheel
 RUN apt install -y redis-server
+RUN pip3 install --upgrade setuptools wheel
+RUN pip3 install virtualenv
+RUN pip3 install circus
 
 # @falcon y tho
 # RUN rm -rf pynacl capnproto 2>/dev/null
@@ -29,7 +31,11 @@ RUN apt install -y redis-server
 
 COPY requirements.txt /app/requirements.txt
 COPY dev-requirements.txt /app/dev-requirements.txt
-RUN pip3 install -r /app/requirements.txt
-RUN pip3 install -r /app/dev-requirements.txt
+
+RUN cd /app; \
+    virtualenv -p python3 venv; \
+    source venv/bin/activate; \
+    pip3 install -r /app/requirements.txt; \
+    pip3 install -r /app/dev-requirements.txt;
 
 ENTRYPOINT ["circusd", "/etc/circus.conf"]
