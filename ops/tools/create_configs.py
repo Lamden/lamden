@@ -7,6 +7,10 @@ from copy import deepcopy
 OPS_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/ops'
 CONST_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/constitutions/public'
 
+SCRIPTS_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/scripts'
+LIGHT_CONF_PATH = SCRIPTS_DIR_PATH + '/light.conf'
+FULL_CONF_PATH = SCRIPTS_DIR_PATH + '/full.conf'
+
 NAME_MAP = {'masternodes': 'masternode', 'witnesses': 'witness', 'delegates': 'delegate'}
 
 
@@ -118,7 +122,7 @@ def main():
 
             node_dir = config_dir_path + '/' + node_name
             cilantro_conf_path = node_dir + '/' + 'cilantro.conf'
-            superd_conf_path = node_dir + '/' + 'superd.conf'
+            circus_conf_path = node_dir + '/' + 'circus.conf'
             os.mkdir(node_dir)
 
             # Get the general info
@@ -136,11 +140,14 @@ def main():
             if node_type == 'masternode':
                 config_info['nonce_enabled'] = nonce_enabled
                 config_info['log_lvl'] = mn_log_lvl
+                shutil.copyfile(FULL_CONF_PATH, circus_conf_path)
             elif node_type == 'witness':
                 config_info['log_lvl'] = wit_log_lvl
+                shutil.copyfile(LIGHT_CONF_PATH, circus_conf_path)
             elif node_type == 'delegate':
                 config_info['log_lvl'] = del_log_lvl
                 config_info['seneca_log_lvl'] = sen_log_lvl
+                shutil.copyfile(LIGHT_CONF_PATH, circus_conf_path)
 
             # Write the cnofig file
             config = configparser.ConfigParser()
@@ -148,9 +155,8 @@ def main():
             with open(cilantro_conf_path, 'w') as f:
                 config.write(f)
 
-            # TODO write the superd file
 
-    print("\nDone generating configs for environment named {} at path {}".format(config_name, config_dir_path))
+    print("-"*64 + "\nDone generating configs for environment named {} at path {}".format(config_name, config_dir_path))
 
 
 if __name__ == '__main__':
