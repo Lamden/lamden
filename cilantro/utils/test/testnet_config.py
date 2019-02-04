@@ -8,11 +8,6 @@ from cilantro.logger.base import get_logger
 import json, os
 from os.path import join
 
-# TODO delete these?
-# NUM_MASTERS = 4
-# NUM_WITNESSES = 4
-# NUM_DELEGATES = 4
-
 log = get_logger("TestnetNodeBuilder")
 
 DEFAULT_TESTNET_FILE_NAME = '4-4-4.json'

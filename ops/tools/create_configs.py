@@ -7,9 +7,9 @@ from copy import deepcopy
 OPS_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/ops'
 CONST_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/constitutions/public'
 
-SCRIPTS_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/scripts'
-LIGHT_CONF_PATH = SCRIPTS_DIR_PATH + '/light.conf'
-FULL_CONF_PATH = SCRIPTS_DIR_PATH + '/full.conf'
+BASE_CONFIG_DIR_PATH = OPS_DIR_PATH + '/base'
+LIGHT_CONF_PATH = BASE_CONFIG_DIR_PATH + '/circus_light.conf'
+FULL_CONF_PATH = BASE_CONFIG_DIR_PATH + '/circus_full.conf'
 
 NAME_MAP = {'masternodes': 'masternode', 'witnesses': 'witness', 'delegates': 'delegate'}
 
@@ -149,7 +149,7 @@ def main():
                 config_info['seneca_log_lvl'] = sen_log_lvl
                 shutil.copyfile(LIGHT_CONF_PATH, circus_conf_path)
 
-            # Write the cnofig file
+            # Write the cilantro config file
             config = configparser.ConfigParser()
             config['DEFAULT'] = config_info
             with open(cilantro_conf_path, 'w') as f:

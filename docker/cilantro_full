@@ -1,4 +1,4 @@
-FROM lamden/cilantro_base:latest
+FROM lamden/cilantro_base
 
 # Install Mongo
 RUN apt-get update \
@@ -12,5 +12,3 @@ RUN apt-get update \
 
 COPY . /app
 WORKDIR /app
-RUN . /app/venv/bin/activate; \
-    python3 /app/setup.py develop

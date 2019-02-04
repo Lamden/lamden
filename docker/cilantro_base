@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-MAINTAINER Falcon Wong version: 0.1
+MAINTAINER Lamden.io version: 0.1
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -33,9 +33,10 @@ COPY requirements.txt /app/requirements.txt
 COPY dev-requirements.txt /app/dev-requirements.txt
 
 RUN cd /app; \
-    virtualenv -p python3 venv; \
-    . venv/bin/activate; \
-    pip3 install -r /app/requirements.txt; \
-    pip3 install -r /app/dev-requirements.txt;
+    virtualenv -p python3 venv;
+RUN . /app/venv/bin/activate;
+RUN pip3 install -r /app/requirements.txt; \
+    pip3 install -r /app/dev-requirements.txt; \
+    export PYTHONPATH=$PYTHONPATH:/app/cilantro
 
 ENTRYPOINT ["circusd", "/etc/circus.conf"]

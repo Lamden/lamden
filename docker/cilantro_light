@@ -1,7 +1,5 @@
-FROM lamden/cilantro_base:latest
+FROM lamden/cilantro_base
 
 COPY . /app
 WORKDIR /app
-RUN . /app/venv/bin/activate; \
-    python3 /app/setup.py develop
 
