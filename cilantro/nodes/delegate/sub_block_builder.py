@@ -33,6 +33,7 @@ from cilantro.messages.consensus.align_input_hash import AlignInputHash
 from cilantro.messages.transaction.batch import TransactionBatch
 from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
 from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
+from cilantro.messages.signals.node import Ready
 
 from seneca.engine.client import NUM_CACHES
 from seneca.engine.client import SenecaClient
@@ -109,6 +110,7 @@ class SubBlockBuilder(Worker):
         self._create_sub_sockets()
         # need to tie with catchup state to initialize to real next_block_to_make
         self._next_block_to_make = NextBlockToMake()
+        self.tasks.append(self.send_ready_to_bm())
 
         self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_blders {} num_sb_per_block {} num_sb_per_builder {} sbs_per_blk_per_blder {}"
                         .format(sbb_index, NUM_SUB_BLOCKS, NUM_BLOCKS, NUM_SB_BUILDERS, NUM_SB_PER_BLOCK, NUM_SB_PER_BUILDER, NUM_SB_PER_BLOCK_PER_BUILDER))
@@ -118,6 +120,11 @@ class SubBlockBuilder(Worker):
     def run(self):
         self.log.notice("SBB {} starting...".format(self.sbb_index))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
+
+    async def send_ready_to_bm(self):
+        await asyncio.sleep(1)
+        message = Ready.create()
+        self._send_msg_over_ipc(message)
 
     # raghu todo - call this right after catch up phase, need to figure out the right input hashes though for next block
     def initialize_next_block_to_make(self, next_block_index: int):
