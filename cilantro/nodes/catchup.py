@@ -1,4 +1,6 @@
-import time, asyncio, math
+import time
+import asyncio
+import math
 from collections import defaultdict
 from cilantro.logger import get_logger
 from cilantro.constants.zmq_filters import *
@@ -35,7 +37,7 @@ class CatchupManager:
 
         # catchup state
         self.is_caught_up = False
-        self.timeout_catchup = 0         # 10 sec time we will wait for 2/3rd MN to respond
+        self.timeout_catchup = time.time()      # 10 sec time we will wait for 2/3rd MN to respond
         self.node_idx_reply_set = set()  # num of master responded to catch up req
 
         # main list to process
@@ -106,7 +108,7 @@ class CatchupManager:
         time.sleep(3 * TIMEOUT_CHECK_INTERVAL)
         self.timeout_fut = asyncio.ensure_future(self._check_timeout())
         self.log.important2("Running catchup!")
-        self.dump_debug_info()
+        self.dump_debug_info(lnum = 111)
 
     def _reset_timeout_fut(self):
         if self.timeout_fut:
@@ -150,7 +152,7 @@ class CatchupManager:
         self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
 
         # self.log.important2("SEND BIR")
-        self.dump_debug_info()
+        self.dump_debug_info(lnum = 155)
 
     def _recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
         """
@@ -179,6 +181,10 @@ class CatchupManager:
             # self.log.important("update list {}".format(update_list))
             self.block_delta_list.extend(update_list)
             # self.dump_debug_info()
+            if self.awaited_blknum == self.curr_num:
+                self.awaited_blknum += 1
+                self.process_recv_idx()
+
             if not self.awaited_blknum:
                 self.awaited_blknum = self.curr_num
                 self.process_recv_idx()
@@ -190,7 +196,7 @@ class CatchupManager:
     def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
         self._recv_block_idx_reply(sender_vk, reply)
         # self.log.important2("RCV BIRp")
-        # self.dump_debug_info()
+        self.dump_debug_info(lnum = 195)
         return self.is_catchup_done()
 
     def _send_block_data_req(self, mn_vk, req_blk_num):
@@ -199,7 +205,7 @@ class CatchupManager:
         req = BlockDataRequest.create(block_num = req_blk_num)
         self.router.send_msg(req, header=mn_vk.encode())
         # self.log.important2("SEND BDRq")
-        self.dump_debug_info()
+        self.dump_debug_info(lnum = 204)
 
     def _recv_block_data_reply(self, reply: BlockData):
         # check if given block is older thn expected drop this reply
@@ -226,7 +232,7 @@ class CatchupManager:
         # self.log.important("recv block data reply {}".format(reply))   # TODO remove
         self._recv_block_data_reply(reply)
         # self.log.important2("RCV BDRp")
-        # self.dump_debug_info()
+        self.dump_debug_info(lnum = 231)
         return self.is_catchup_done()
 
     # MASTER ONLY CALL
@@ -253,7 +259,7 @@ class CatchupManager:
         self.log.debugv("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num, request.block_hash))
 
         # self.log.important2("RCV BIR")
-        self.dump_debug_info()
+        self.dump_debug_info(lnum = 258)
         self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
 
     def _recv_blk_notif(self, update: BlockMetaData):
@@ -291,7 +297,7 @@ class CatchupManager:
         self.log.debugv("Sending block index reply to vk {}, catchup {}".format(reply_to_vk, catchup_list))
         self.router.send_msg(reply, header=reply_to_vk.encode())
         # self.log.important2("SEND BIRp")
-        self.dump_debug_info()
+        self.dump_debug_info(lnum = 296)
 
     # MASTER ONLY CALL
     def recv_block_data_req(self, sender_vk: str, req: BlockDataRequest):
@@ -375,13 +381,14 @@ class CatchupManager:
         # END DEBUG
         # if self.is_caught_up:       # reset here
             # self.node_idx_reply_set.clear()
-        self.dump_debug_info()
+        self.dump_debug_info(lnum = 380)
 
         return self.is_caught_up
 
-    def dump_debug_info(self):
+    def dump_debug_info(self, lnum = None):
         # TODO change this log to important for debugging
 
+        self.log.debugv("lnum -> {}".format(lnum))
         self.log.debugv("Time -> {}".format(self.timeout_catchup))
         self.log.debugv("is_caught_up -> {}".format(self.is_caught_up))
         self.log.debugv("target blk num -> {}".format(self.target_blk_num))

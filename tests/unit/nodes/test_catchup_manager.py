@@ -521,6 +521,7 @@ class TestCatchupManager(TestCase):
         # StateDriver.set_latest_block_info(block_hash=curr_blk.block_hash, block_num=curr_blk.block_num)
 
         cm = self._build_manager()
+        cm.run_catchup()
 
         vk1 = VKBook.get_masternodes()[0]
         vk2 = VKBook.get_masternodes()[1]
