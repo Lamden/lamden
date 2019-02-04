@@ -1,3 +1,5 @@
+#!/bin/bash
+
 branch=$(git branch | grep \* | cut -d ' ' -f2)
 
 commitHash=$(git rev-parse HEAD)
