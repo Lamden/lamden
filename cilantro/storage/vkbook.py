@@ -1,9 +1,7 @@
 import os, math
-from cilantro.constants.db_config import *
 from cilantro.logger import get_logger
 from cilantro.utils.utils import is_valid_hex
 from collections import defaultdict
-from cilantro.utils.test.testnet_config import get_testnet_config
 
 log = get_logger("VKBook")
 
@@ -26,29 +24,26 @@ class VKBook(metaclass=VKBookMeta):
         'witness': 'witnesses',
         'delegate': 'delegates'
     }
-    bootnodes = []
-    constitution = defaultdict(list)
-    book = defaultdict(dict)
+    book = defaultdict(list)
 
     @classmethod
     def setup(cls):
-        cls.bootnodes = []
+        # TODO untangle this mess --davis
+        from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES, TESTNET_WITNESSES
+        from cilantro.utils.test.testnet_config import read_public_constitution
 
-        if os.getenv('WHAT_IS_THIS_FLAG_CALLED_LOL', None):
-            pass
-            # TODO -- check for an env var here, and if we are deploying on docker/cloud use the config file specified
-            # in this node's bootstrap config file
+        const_file = os.getenv('CONSTITUTION_FILE', None)
+        if const_file:
+            log.info("VKBook using constitution file {}".format(const_file))
+            cls.book = read_public_constitution(const_file)
         else:
-            cls.constitution = get_testnet_config()
-
-        for node_type in cls.node_types_map:
-            for node in cls.constitution[cls.node_types_map.get(node_type)]:
-                cls.book[node_type][node['vk']] = node.get('ip', True)
-
-        for node_type in cls.node_types:
-            node_list = env(node_type.upper())
-            if node_list:
-                cls.bootnodes += node_list.split(',')
+            log.info("No constitution file detected. Using TESTNET VKs")
+            for node in TESTNET_MASTERNODES:
+                cls.book['masternodes'].append(node['vk'])
+            for node in TESTNET_WITNESSES:
+                cls.book['witnesses'].append(node['vk'])
+            for node in TESTNET_DELEGATES:
+                cls.book['delegates'].append(node['vk'])
 
     @classmethod
     def add_node(cls, vk, node_type, ip=None):
@@ -64,31 +59,28 @@ class VKBook(metaclass=VKBookMeta):
 
     @classmethod
     def get_all(cls):
-        nodes = {}
-        for node_type in VKBook.node_types:
-            nodes.update(cls.book[node_type])
-        return list(nodes.keys())
+        return cls.get_masternodes() + cls.get_delegates() + cls.get_witnesses()
 
     @classmethod
     def get_masternodes(cls):
-        return list(cls.book['masternode'].keys())
+        return cls.book['masternodes']
 
     @classmethod
     def get_witnesses(cls):
-        return list(cls.book['witness'].keys())
+        return cls.book['witnesses']
 
     @classmethod
     def get_delegates(cls):
-        return list(cls.book['delegate'].keys())
+        return cls.book['delegates']
 
     @classmethod
     def is_node_type(cls, node_type, vk):
         assert node_type in cls.node_types, 'Invalid node type!'
-        return cls.book[node_type].get(vk) is not None
+        return vk in cls.book[cls.node_types_map[node_type]]
 
     @classmethod
     def get_delegate_majority(cls):
-        return math.ceil(len(cls.book['delegate']) * 2/3)
+        return math.ceil(len(cls.get_delegates()) * 2/3)
 
     @staticmethod
     def test_print_nodes():
