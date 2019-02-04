@@ -14,7 +14,7 @@ from cilantro.utils.test.node_runner import *
 
 
 def main():
-    print("BoOoOoOoOoOTSSSSSSRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPPPP")
+    print("BoOoOoOoOoOTSSSSSSRAaaAAAaaaaaaaaaaAAAAAAaaaaaaaaaAAAAAAAAAAaaaaaaaAAAAAaaaaaaaaAAAAAAAAPPpppPP")
 
     # Some configs are specified as env vars so they can be accessible across multiple files
     if config['ssl_enabled']:
