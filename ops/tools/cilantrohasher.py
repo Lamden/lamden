@@ -35,7 +35,8 @@ class CilantroHasher(object):
 
     @classmethod
     def generate(cls):
-        # Find cilantro directory
+        # Find cilantro directory, be sure to initiate filepath construction from the metadata of this file so we can call
+        # this from anywhere
         cilantrodir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../..'))
         spec = cls._generate_gitignore_spec(os.path.join(cilantrodir, '.gitignore'))
         files = cls._filter_cilantro_files(cilantrodir, spec)
