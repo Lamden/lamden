@@ -5,11 +5,16 @@ from cilantro.logger import get_logger, overwrite_logger_level
 from cilantro.nodes.factory import NodeFactory
 from cilantro.constants.testnet import TESTNET_MASTERNODES
 from cilantro.storage.vkbook import VKBook
-import os
+import os, configparser
+
+
+CONFIG_PATH = '/etc/cilantro.conf'
 
 
 def main():
     print("BoOoOoOoOoOTSSSSSSRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPPPP")
+
+    assert os.path.exists(CONFIG_PATH), "No config file found at path {}".format(CONFIG_PATH)
 
 
     # overwrite_logger_level(logging.WARNING)
