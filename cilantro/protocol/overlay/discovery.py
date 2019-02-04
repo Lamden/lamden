@@ -18,6 +18,7 @@ class Discovery:
     connections = {}
     is_setup = False
     is_listen_ready = False
+    bootnodes = []
 
     @classmethod
     def setup(cls, ctx=None):
@@ -27,6 +28,10 @@ class Discovery:
             cls.sock = cls.ctx.socket(zmq.ROUTER)
             cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             cls.is_connected = False
+
+            if os.environ['BOOT_IPS']:
+                cls.bootnodes = os.environ['BOOT_IPS'].split(',')
+
             if VKBook.is_node_type('masternode', Auth.vk):
                 # cls.discovered_nodes[Auth.vk] = cls.host_ip
                 cls.is_master_node = True
@@ -63,13 +68,13 @@ class Discovery:
         is_masternode = VKBook.is_node_type('masternode', Auth.vk)
         try_count = 0
 
-        cls.log.info('We have the following boot nodes: {}'.format(VKBook.bootnodes))
+        cls.log.info('We have the following boot nodes: {}'.format(cls.bootnodes))
 
         await asyncio.sleep(1)
         while True:
-            if len(VKBook.bootnodes) > 0: # TODO refine logic post-anarchy-net
-                cls.log.info('Connecting to boot nodes: {}'.format(VKBook.bootnodes))
-                cls.connect(VKBook.bootnodes)
+            if len(cls.bootnodes) > 0: # TODO refine logic post-anarchy-net
+                cls.log.info('Connecting to boot nodes: {}'.format(cls.bootnodes))
+                cls.connect(cls.bootnodes)
             else:
                 cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
                 cls.connect(get_ip_range(start_ip))
