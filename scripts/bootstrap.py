@@ -7,8 +7,8 @@ config = configparser.ConfigParser()
 config.read(CONFIG_PATH)
 config = config['DEFAULT']
 
-from cilantro.utils.test.testnet_config import set_testnet_config
-set_testnet_config(config['constitution_file'])
+# from cilantro.utils.test.testnet_config import set_testnet_config
+# set_testnet_config(config['constitution_file'])
 
 from cilantro.utils.test.node_runner import *
 
