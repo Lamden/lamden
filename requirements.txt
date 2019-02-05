@@ -10,3 +10,4 @@ Sanic-Cors==0.9.7
 vmnet
 seneca
 pathspec
+umsgpack

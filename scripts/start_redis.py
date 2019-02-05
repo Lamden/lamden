@@ -2,7 +2,7 @@ import os
 
 
 def start_redis():
-    redis_dir = '/data/db/cilantro'
+    redis_dir = '/var/db/cilantro'
     print("Starting Redis server...")
 
     if not os.path.exists(redis_dir):
