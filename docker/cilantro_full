@@ -1,4 +1,4 @@
-ARG BASE=
+ARG BASE=lamden/cilantro_base
 FROM $BASE
 
 # Install Mongo
