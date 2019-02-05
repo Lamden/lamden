@@ -35,10 +35,16 @@ COPY protocol-requirements.txt /app/protocol-requirements.txt
 
 RUN cd /app; \
     virtualenv -p python3 venv;
-RUN . /app/venv/bin/activate;
-RUN pip3 install -r /app/protocol-requirements.txt;
-RUN pip3 install -r /app/dev-requirements.txt;
-RUN pip3 install -r /app/requirements.txt;
-RUN export PYTHONPATH=$PYTHONPATH:/app/cilantro
+
+RUN . /app/venv/bin/activate; \
+    pip3 install -r /app/protocol-requirements.txt;
+
+RUN . /app/venv/bin/activate; \
+    pip3 install -r /app/dev-requirements.txt;
+
+RUN . /app/venv/bin/activate; \
+    pip3 install -r /app/requirements.txt;
+
+ENV PYTHONPATH "${PYTHONPATH}:/app/cilantro"
 
 ENTRYPOINT ["circusd", "/etc/circus.conf"]
