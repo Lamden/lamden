@@ -11,33 +11,32 @@ dirHash=${dirHash:0:8}
 remoteTag="$branch-$commitHash"
 localTag="$branch-$commitHash-$dirHash"
 
-echo "--------------------------------------------"
-echo "Building docker images with..."
-echo "branch $branch"
-echo "commitHash $commitHash"
-echo "dirHash $dirHash"
-echo "localTag $localTag"
-echo "remoteTag $remoteTag"
-echo "--------------------------------------------"
+echo -e "--------------------------------------------"
+echo -e "Building docker images with..."
+echo -e "branch $branch"
+echo -e "commitHash $commitHash"
+echo -e "dirHash $dirHash"
+echo -e "localTag $localTag"
+echo -e "remoteTag $remoteTag"
 
-echo "--------------------------------------------"
-echo "Building base image..."
+echo -e "\n--------------------------------------------"
+echo -e "Building base image...\n"
 docker build -t lamden/cilantro_base:$localTag -f docker/cilantro_base .
 
-echo "--------------------------------------------"
-echo "Building light image..."
-docker build  --cache-from lamden/cilantro_base:$localTag -t lamden/cilantro_light:$localTag -f docker/cilantro_light .
+echo -e "\n--------------------------------------------"
+echo -e "Building light image...\n"
+#docker build  --build-arg BASE=lamden/cilantro_base:$localTag -t lamden/cilantro_light:$localTag -f docker/cilantro_light .
 
-echo "--------------------------------------------"
-echo "Building full image..."
-docker build  --cache-from lamden/cilantro_base:$localTag -t lamden/cilantro_full:$localTag -f docker/cilantro_full .
+echo -e "\n--------------------------------------------"
+echo -e "Building full image...\n"
+docker build  --build-arg BASE=lamden/cilantro_base:$localTag -t lamden/cilantro_full:$localTag -f docker/cilantro_full .
 
 docker tag lamden/cilantro_light:$localTag lamden/cilantro_light:$remoteTag
 docker tag lamden/cilantro_full:$localTag lamden/cilantro_full:$remoteTag
 
 if [ "$1" = "--push" ]
 then
-    echo "Pushing docker images..."
+    echo -e "\nPushing docker images..."
     docker push lamden/cilantro_light:$localTag
     docker push lamden/cilantro_full:$localTag
 fi
