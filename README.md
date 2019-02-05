@@ -4,7 +4,7 @@
 [![GitHub last commit](https://img.shields.io/github/last-commit/Lamden/cilantro.svg)](https://github.com/Lamden/cilantro/commits/master) 
 [![GitHub contributors](https://img.shields.io/github/contributors/Lamden/cilantro.svg)](https://github.com/Lamden/cilantro/graphs/contributors) 
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
-[![GitHub license](https://img.shields.io/github/license/Lamden/cilantro.svg)](https://github.com/Lamden/cilantro/blob/master/LICENSE)
+[![GitHub license](https://img.shields.io/badge/License-CC%20BY--NP%204.0-blue.svg)](http://creativecommons.org/licenses/by-nc/4.0/)
 
 <img src="https://github.com/Lamden/cilantro/raw/master/cilantro.jpeg" align="right"
      title="Cilantro" width="300" height="450">
