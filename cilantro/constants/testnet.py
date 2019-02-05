@@ -1,4 +1,4 @@
-import json, math
+import json, math, os
 from cilantro.utils.test.testnet_config import get_testnet_json_path
 
 
@@ -55,4 +55,5 @@ def set_testnet_nodes():
             WITNESS_MN_MAP[w] = mn_vk
 
 
-set_testnet_nodes()
+if os.getenv('CONSTITUTION_FILE', None) is not None:
+    set_testnet_nodes()
