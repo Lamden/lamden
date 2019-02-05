@@ -1,4 +1,5 @@
-FROM lamden/cilantro_base
+ARG BASE=
+FROM $BASE
 
 # Install Mongo
 RUN apt-get update \
@@ -8,7 +9,6 @@ RUN apt-get update \
     && apt-get remove -y software-properties-common \
     && apt-get update \
     && apt-get install -y mongodb
-
 
 COPY . /app
 WORKDIR /app

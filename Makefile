@@ -25,7 +25,7 @@ test-integration: restart-db
 	python3 ./tests/run_tests.py -v --integration 1 --unit 0
 
 install:
-	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir
+	pip3 install -r requirements.txt --upgrade --no-cache-dir && pip3 install -r dev-requirements.txt --upgrade --no-cache-dir && pip3 install -r protocol-requirements.txt --upgrade --no-cache-dir
 
 upload-base:
 	docker tag cilantro_base lamden/cilantro:latest
