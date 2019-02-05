@@ -56,7 +56,7 @@ class Handshake:
             cls.log.info('Sending handshake request from {} to {} (vk={})'.format(cls.host_ip, ip, vk))
 
             client_sock = cls.ctx.socket(zmq.DEALER)
-            client_sock.setsockopt(zmq.IDENTITY, cls.identity)
+            # client_sock.setsockopt(zmq.IDENTITY, cls.identity)
             client_sock.curve_secretkey = Auth.private_key
             client_sock.curve_publickey = Auth.public_key
             client_sock.curve_serverkey = Auth.vk2pk(vk)

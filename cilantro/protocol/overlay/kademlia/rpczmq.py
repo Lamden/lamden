@@ -46,7 +46,7 @@ class RPCProtocol:
 
     async def send_msg(self, addr, msgID, msg):
         sock = self.ctx.socket(zmq.DEALER)
-        sock.setsockopt(zmq.IDENTITY, self.identity)
+        # sock.setsockopt(zmq.IDENTITY, self.identity)
         sock.connect('tcp://{}:{}'.format(addr[0], addr[1]))
         log.spam("sending request %s for msg id %s to %s",
                   msg, msgID, addr)
