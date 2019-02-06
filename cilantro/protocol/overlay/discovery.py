@@ -36,6 +36,8 @@ class Discovery:
                 # cls.discovered_nodes[Auth.vk] = cls.host_ip
                 cls.is_master_node = True
                 cls.is_listen_ready = True
+            else:
+                cls.log.info("This node is not a masternode")
 
     @classmethod
     async def listen(cls):
@@ -47,6 +49,7 @@ class Discovery:
             try:
                 msg = await cls.sock.recv_multipart()
                 cls.log.spam("Got msg over discovery socket: {}".format(msg))
+                cls.log.info("Got msg over discovery socket: {}".format(msg))  # TODO remove
                 ip, pepper = msg[:2]
 
                 if pepper != cls.pepper:
@@ -146,16 +149,22 @@ class Discovery:
 
     @classmethod
     def reply(cls, ip):
+        cls.log.important2("discovered nodes so far: {}".format(cls.discovered_nodes))  # TODO remove
+        cls.log.important("Attempting to replying to IP {} ... is_listen_ready={}".format(ip, cls.is_listen_ready))
         if cls.is_listen_ready and ip != cls.host_ip:
+            cls.log.important("sending reply to ip {}".format(ip))
             cls.sock.send_multipart([ip, cls.pepper, Auth.vk.encode()])
             cls.is_connected = True
 
     @classmethod
     def connect(cls, ips):
+        cls.log.important2("discovered nodes so far: {}".format(cls.discovered_nodes))  # TODO remove
+        cls.log.important("Attempting to connect to IP range {}".format(ips))  # TODO remove
         cls.log.spam("Attempting to connect to IP range {}".format(ips[0]))
         for ip in ips:
             if ip == cls.host_ip:
                 continue
+            cls.log.important("Attempting to discover IP {}".format(ip))  # TODO remove
             url = 'tcp://{}:{}'.format(ip, cls.port)
             cls.sock.connect(url)
             cls.connections[ip] = url
