@@ -1,8 +1,10 @@
+from cilantro.logger import get_logger
 import json, math, os
 from cilantro.utils.test.testnet_config import get_testnet_json_path
 
 
 TESTNET_JSON_PATH = get_testnet_json_path()
+log = get_logger("TestnetBuilder")
 
 
 # DEBUG -- TODO DELETE
@@ -14,13 +16,14 @@ _MASTERNODES = None
 _WITNESSES = None
 _DELEGATES = None
 
-TESTNET_MASTERNODES = None
-TESTNET_WITNESSES = None
-TESTNET_DELEGATES = None
+TESTNET_MASTERNODES = []
+TESTNET_WITNESSES = []
+TESTNET_DELEGATES = []
 
 r = None  # Replication Factor
 MN_WITNESS_MAP = {}  # Map of masternodes --> responsible witness set
-WITNESS_MN_MAP = {}  # inverse of map above
+WITNESS_MN_MAP = {}
+
 
 
 def set_testnet_nodes():
@@ -55,5 +58,22 @@ def set_testnet_nodes():
             WITNESS_MN_MAP[w] = mn_vk
 
 
-if os.getenv('CONSTITUTION_FILE', None) is not None:
+if os.getenv('CONSTITUTION_FILE', None) is None:
+    log.notice("Constitution file not set, using default")
     set_testnet_nodes()
+else:
+    # UNHACK ALL THIS
+    # global MN_WITNESS_MAP, WITNESS_MN_MAP
+    from cilantro.storage.vkbook import VKBook
+    print("Building WITNESS_MN_MAP manually")
+    r = 1
+    # Build MN_WITNESS_MAP/WITNESS_MN_MAP
+    for i, mn_vk in enumerate(VKBook.get_masternodes()):
+        witnesses = VKBook.get_witnesses()[i * r:i * r + r]
+
+        MN_WITNESS_MAP[mn_vk] = witnesses
+        for w in witnesses:
+            WITNESS_MN_MAP[w] = mn_vk
+
+    log.notice("MN_WITNESS_MAP: {}".format(MN_WITNESS_MAP))
+    log.notice("WITNESS_MN_MAP: {}".format(WITNESS_MN_MAP))

@@ -36,7 +36,7 @@ log = get_logger("MN-WebServer")
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
 static_headers = {}
 
-if os.getenv('NONCE_ENABLED'):
+if os.getenv('NONCE_ENABLED', False):
     log.info("Nonces enabled.")
     limiter = Limiter(app, global_limits=['60/minute'], key_func=get_remote_address)
 else:

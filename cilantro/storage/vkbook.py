@@ -29,7 +29,6 @@ class VKBook(metaclass=VKBookMeta):
     @classmethod
     def setup(cls):
         # TODO untangle this mess --davis
-        from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES, TESTNET_WITNESSES
         from cilantro.utils.test.testnet_config import read_public_constitution
 
         const_file = os.getenv('CONSTITUTION_FILE', None)
@@ -41,15 +40,16 @@ class VKBook(metaclass=VKBookMeta):
             wits = book['witnesses']
         else:
             log.info("No constitution file detected. Using TESTNET VKs")
+            from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES, TESTNET_WITNESSES
             mns = TESTNET_MASTERNODES
             dels = TESTNET_DELEGATES
             wits = TESTNET_WITNESSES
 
         for node in mns:
             cls.book['masternodes'].append(node['vk'])
-        for node in dels:
-            cls.book['witnesses'].append(node['vk'])
         for node in wits:
+            cls.book['witnesses'].append(node['vk'])
+        for node in dels:
             cls.book['delegates'].append(node['vk'])
 
     @classmethod

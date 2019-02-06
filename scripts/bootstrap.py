@@ -22,13 +22,13 @@ def main():
     # print("VKBook mns {}".format(VKBook.get_masternodes()))
 
     if config['node_type'] == 'witness':
-        run_witness(sk=config['sk'], log_lvl=int(config['log_lvl']), reset_db=config['reset_db'])
+        run_witness(sk=config['sk'], log_lvl=int(config['log_lvl']), reset_db=config.getboolean('reset_db'))
     elif config['node_type'] == 'delegate':
         run_delegate(sk=config['sk'], log_lvl=int(config['log_lvl']), seneca_log_lvl=int(config['seneca_log_lvl']),
-                     reset_db=config['reset_db'])
+                     reset_db=config.getboolean('reset_db'))
     elif config['node_type'] == 'masternode':
-        run_mn(sk=config['sk'], log_lvl=int(config['log_lvl']), nonce_enabled=config['nonce_enabled'],
-               reset_db=config['reset_db'])
+        run_mn(sk=config['sk'], log_lvl=int(config['log_lvl']), nonce_enabled=config.getboolean('nonce_enabled'),
+               reset_db=config.getboolean('reset_db'))
     else:
         raise Exception("Unrecognized node type {}".format(config['node_type']))
 
