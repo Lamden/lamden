@@ -30,7 +30,12 @@ class Auth:
             cls.add_public_key(public_key=cls.public_key)
             cls.is_setup = True
 
-    @classmethod
+# base.py
+# socket_manager.py
+# interface.py
+# network.py
+
+    # not used anywhere  - raghu
     def get_keys(cls, sk_hex):
         sk = SigningKey(seed=bytes.fromhex(sk_hex))
         vk = sk.verify_key.encode().hex()
@@ -38,23 +43,34 @@ class Auth:
         private_key = crypto_sign_ed25519_sk_to_curve25519(sk._signing_key)
         return sk, vk, public_key, private_key
 
+    # only used locally - raghu
     @classmethod
     def reset_folder(cls):
         if exists(cls.base_dir):
             shutil.rmtree(cls.base_dir, ignore_errors=True)
 
+    # not used anywhere  - raghu
     @classmethod
     def sign(cls, msg):
         return cls._sk.sign(msg)
 
+    # not used anywhere  - raghu
     @classmethod
     def verify(cls, vk, msg, sig):
         return VerifyKey(vk, encoder=HexEncoder).verify(msg, sig)
 
+# test_auth.py
+# test_auth_router.py
+# lsocket.py
+# handshake.py
+    # can be part of a separate utils outside overlay?  - raghu
     @classmethod
     def vk2pk(cls, vk):
         return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
 
+    # can these be merged with handshake functionality
+# handshake.py
+# auth.py
     @classmethod
     def add_public_key(cls, public_key=None, vk=None, domain='*'):
         assert public_key or vk, 'No public key or vk provided'
@@ -68,6 +84,9 @@ class Auth:
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)
 
+    # can these be merged with handshake functionality
+# handshake.py
+# auth.py
     @classmethod
     def remove_public_key(cls, public_key=None, vk=None, domain='*'):
         assert public_key or vk, 'No public key or vk provided'
@@ -78,11 +97,16 @@ class Auth:
         if exists(public_key_file):
             os.remove(public_key_file)
 
+# /Users/lamden/lamden/cilantro/cilantro/protocol/comm/lsocket.py
+# /Users/lamden/lamden/cilantro/cilantro/protocol/comm/socket_manager.py
     @classmethod
     def configure_auth(cls, auth, domain='*'):
         location = cls.authorized_keys_dir if domain == '*' else join(cls.base_dir, domain)
         auth.configure_curve(domain=domain, location=location)
 
+# /Users/lamden/lamden/cilantro/cilantro/protocol/comm/socket_manager.py
+# this should not be creating context again - raghu
+# should be part of zmq/socket utils - raghu ?
     @classmethod
     def secure_context(cls, context=None, async=False):
         if async:
@@ -94,6 +118,12 @@ class Auth:
             auth = ThreadAuthenticator(ctx, log=log)
         auth.start()
         return ctx, auth
+
+# /Users/lamden/lamden/cilantro/cilantro/protocol/comm/lsocket.py
+# /Users/lamden/lamden/cilantro/cilantro/protocol/executors/dealer_router.py
+# /Users/lamden/lamden/cilantro/cilantro/protocol/executors/sub_pub.py
+# this should not be creating context again - raghu
+# should be part of zmq/socket utils - raghu ?
 
     @classmethod
     def secure_socket(cls, sock, secret, public_key, domain='*'):
