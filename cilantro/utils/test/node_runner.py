@@ -19,9 +19,9 @@ def run_mn(slot_num=None, sk=None, log_lvl=11, reset_db=False, nonce_enabled=Tru
     assert log_lvl not in range(1, 10), "Due to a Sanic logging bug, Masternode cant set log lvl in the range [1,10]"
 
     import os
-    if not nonce_enabled:
+    if nonce_enabled:
         # We must set this env var before we import anything from cilantro
-        os.environ["NONCE_DISABLED"] = "1"
+        os.environ["NONCE_ENABLED"] = "1"
 
     # os.environ['SSL_ENABLED'] = "True"
 
