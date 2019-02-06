@@ -36,12 +36,12 @@ log = get_logger("MN-WebServer")
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
 static_headers = {}
 
-if os.getenv('NONCE_DISABLED'):
-    log.warning("NONCE_DISABLED env var set! Nonce checking as well as rate limiting will be disabled!")
-    limiter = Limiter(app, key_func=get_remote_address)
-else:
+if os.getenv('NONCE_ENABLED'):
     log.info("Nonces enabled.")
     limiter = Limiter(app, global_limits=['60/minute'], key_func=get_remote_address)
+else:
+    log.warning("Nonces are disabled! Nonce checking as well as rate limiting will be disabled!")
+    limiter = Limiter(app, key_func=get_remote_address)
 
 if os.getenv('SSL_ENABLED') == '1':
     log.info("SSL enabled")
@@ -77,7 +77,7 @@ async def submit_transaction(request):
     if type(tx) not in (ContractTransaction, PublishTransaction):
         return _respond_to_request({'error': 'Cannot process transaction of type {}'.format(type(tx))}, status=400)
 
-    if not os.getenv('NONCE_DISABLED'):
+    if os.getenv('NONCE_ENABLED'):
         # Verify the nonce, and remove it from db if its valid so it cannot be used again
         # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
         if not NonceManager.check_if_exists(tx.nonce):
@@ -251,8 +251,10 @@ def start_webserver(q):
     app.queue = q
     log.info("Creating REST server on port {}".format(WEB_SERVER_PORT))
     if ssl:
+        log.notice("Starting web server with SSL")
         app.run(host='0.0.0.0', port=SSL_WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False, ssl=ssl)
     else:
+        log.notice("Starting web server without SSL")
         app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False)
 
 
