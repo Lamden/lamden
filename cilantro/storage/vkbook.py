@@ -35,15 +35,22 @@ class VKBook(metaclass=VKBookMeta):
         const_file = os.getenv('CONSTITUTION_FILE', None)
         if const_file:
             log.info("VKBook using constitution file {}".format(const_file))
-            cls.book = read_public_constitution(const_file)
+            book = read_public_constitution(const_file)
+            mns = book['masternodes']
+            dels = book['delegates']
+            wits = book['witnesses']
         else:
             log.info("No constitution file detected. Using TESTNET VKs")
-            for node in TESTNET_MASTERNODES:
-                cls.book['masternodes'].append(node['vk'])
-            for node in TESTNET_WITNESSES:
-                cls.book['witnesses'].append(node['vk'])
-            for node in TESTNET_DELEGATES:
-                cls.book['delegates'].append(node['vk'])
+            mns = TESTNET_MASTERNODES
+            dels = TESTNET_DELEGATES
+            wits = TESTNET_WITNESSES
+
+        for node in mns:
+            cls.book['masternodes'].append(node['vk'])
+        for node in dels:
+            cls.book['witnesses'].append(node['vk'])
+        for node in wits:
+            cls.book['delegates'].append(node['vk'])
 
     @classmethod
     def add_node(cls, vk, node_type, ip=None):
@@ -76,6 +83,9 @@ class VKBook(metaclass=VKBookMeta):
     @classmethod
     def is_node_type(cls, node_type, vk):
         assert node_type in cls.node_types, 'Invalid node type!'
+        if node_type == 'masternode':
+            log.important("vk {} checking if masternode in book {}".format(vk, cls.book))
+            log.important("correspoinding nodes for type: {}".format(cls.book[cls.node_types_map[node_type]]))
         return vk in cls.book[cls.node_types_map[node_type]]
 
     @classmethod
