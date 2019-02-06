@@ -43,10 +43,13 @@ else:
     log.info("Nonces enabled.")
     limiter = Limiter(app, global_limits=['60/minute'], key_func=get_remote_address)
 
-if os.getenv('SSL_ENABLED') == 'True':
+if os.getenv('SSL_ENABLED') == '1':
     log.info("SSL enabled")
     with open(os.path.expanduser("~/.sslconf"), "r") as df:
         ssl = _json.load(df)
+else:
+    log.info("SSL NOT enabled")
+
 
 def _respond_to_request(payload, headers={}, status=200, resptype='json'):
     if resptype == 'json':
