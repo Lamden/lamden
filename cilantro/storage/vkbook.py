@@ -83,9 +83,9 @@ class VKBook(metaclass=VKBookMeta):
     @classmethod
     def is_node_type(cls, node_type, vk):
         assert node_type in cls.node_types, 'Invalid node type!'
-        if node_type == 'masternode':
-            log.important("vk {} checking if masternode in book {}".format(vk, cls.book))
-            log.important("correspoinding nodes for type: {}".format(cls.book[cls.node_types_map[node_type]]))
+        # if node_type == 'masternode':
+        #     log.important("vk {} checking if masternode in book {}".format(vk, cls.book))
+        #     log.important("correspoinding nodes for type: {}".format(cls.book[cls.node_types_map[node_type]]))
         return vk in cls.book[cls.node_types_map[node_type]]
 
     @classmethod
