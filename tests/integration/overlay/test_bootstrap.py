@@ -35,7 +35,7 @@ def run_node(node_type, idx, addr_idxs):
     async def check_nodes():
         while True:
             await asyncio.sleep(1)
-            if len(n.bootstrappableNeighbors()) >= MIN_BOOTSTRAP_NODES:
+            if len(n.bootstrappableNeighbors()) > MIN_BOOTSTRAP_NODES:
                 send_to_file(env('HOST_NAME'))
 
     from cilantro.logger import get_logger
@@ -134,6 +134,12 @@ class TestBootstrap(BaseTestCase):
         self.log.test('Waiting 10 seconds before spinning up master node')
         time.sleep(10)
         self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0, [0,2,3]))
+
+    def test_race_conditions(self):
+        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0, [0]))
+        self.execute_python('node_2', wrap_func(run_node, 'masternodes', 1, [1]))
+        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0, [0,2]))
+        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1, [1,3]))
 
 if __name__ == '__main__':
     unittest.main()
