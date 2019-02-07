@@ -162,7 +162,6 @@ class CatchupManager:
         :return:
         """
         # self.log.important("Got blk index reply from sender {}\nreply: {}".format(sender_vk, reply))
-
         if sender_vk in self.node_idx_reply_set:
             return      # already processed
 
@@ -172,6 +171,9 @@ class CatchupManager:
             return
 
         tmp_list = reply.indices
+        # Todo @tejas we need to think if we need reverse sort here
+        #tmp_list.reverse()
+        self.log.important2("tmp list -> {}".format(tmp_list))
         self.new_target_blk_num = tmp_list[-1].get('blockNum')
         new_blks = self.new_target_blk_num - self.target_blk_num
 
@@ -192,11 +194,12 @@ class CatchupManager:
         self.node_idx_reply_set.add(sender_vk)
         self.log.debugv("new target block num {}\ntarget block num {}\ntemp list {}"
                         .format(self.new_target_blk_num, self.target_blk_num, tmp_list))
+        self.dump_debug_info(lnum = 195)
 
     def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
         self._recv_block_idx_reply(sender_vk, reply)
         # self.log.important2("RCV BIRp")
-        self.dump_debug_info(lnum = 195)
+        self.dump_debug_info(lnum = 200)
         return self.is_catchup_done()
 
     def _send_block_data_req(self, mn_vk, req_blk_num):
@@ -205,13 +208,14 @@ class CatchupManager:
         req = BlockDataRequest.create(block_num = req_blk_num)
         self.router.send_msg(req, header=mn_vk.encode())
         # self.log.important2("SEND BDRq")
-        self.dump_debug_info(lnum = 204)
+        self.dump_debug_info(lnum = 209)
 
     def _recv_block_data_reply(self, reply: BlockData):
         # check if given block is older thn expected drop this reply
         # check if given blocknum grter thn current expected blk -> store temp
         # if given block needs to be stored update state/storage delete frm expected DT
         self.log.debugv("Got BlockData reply for block hash {}".format(reply.block_hash))
+        self.dump_debug_info(lnum = 216)
 
         rcv_blk_num = reply.block_num
         if rcv_blk_num <= self.curr_num:
@@ -293,6 +297,7 @@ class CatchupManager:
     # MASTER ONLY CALL
     def _send_block_idx_reply(self, reply_to_vk = None, catchup_list=None):
         # this func doesnt care abt catchup_state we respond irrespective
+        self.log.important2("catchup list -> {}".format(catchup_list))
         reply = BlockIndexReply.create(block_info = catchup_list)
         self.log.debugv("Sending block index reply to vk {}, catchup {}".format(reply_to_vk, catchup_list))
         self.router.send_msg(reply, header=reply_to_vk.encode())
@@ -332,6 +337,7 @@ class CatchupManager:
     def process_recv_idx(self):
         if (self.awaited_blknum <= self.curr_num) and (self.awaited_blknum < self.target_blk_num):
             self.awaited_blknum = self.curr_num + 1
+            self.dump_debug_info(lnum = 337)
             # don't request if it is in stashed list. move to next one
             while self.awaited_blknum in self.rcv_block_dict:
                 self.awaited_blknum = self.awaited_blknum + 1

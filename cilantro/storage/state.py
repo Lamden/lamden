@@ -42,6 +42,9 @@ class StateDriver:
             try: SafeRedis.bgsave()
             except: pass
 
+        assert cls.get_latest_block_hash() == block.block_hash, "StateUpdate failed! Latest block hash {} does not " \
+                                                                "match block data {}".format(cls.get_latest_block_hash(), block)
+
     @classmethod
     def _process_publish_txs(cls, txs: List[PublishTransaction]):
         with SenecaInterface(False) as interface:

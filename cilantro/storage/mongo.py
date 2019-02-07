@@ -167,6 +167,11 @@ class MDB:
     '''
     @classmethod
     def query_index(cls, n_blks=None):
+        """
+        Queries index table for last n blocks, builds list of dict in ascending order for response
+        :param n_blks:
+        :return: list of dict in ascending order
+        """
         blk_list = []
 
         blk_delta = cls.mn_coll_idx.find({}, {'_id': False}).limit(n_blks).sort("blockNum", -1)
@@ -174,7 +179,7 @@ class MDB:
             cls.log.spam('query_index block delta {}'.format(blk))
             blk_list.append(blk)
 
-        cls.log.spam("query_index returning dict {}".format(blk_list))
+        cls.log.debugv("query_index returning dict {}".format(blk_list))
         return blk_list
 
     @classmethod
