@@ -85,13 +85,13 @@ class Discovery:
                     len(cls.discovered_nodes), cls.discovered_nodes
                 ))
                 return True
-            elif try_count >= DISCOVERY_RETRIES:
-                cls.log.info('Did not find enough nodes after {} tries ({}/{}).'.format(
-                    try_count,
-                    len(cls.discovered_nodes),
-                    MIN_BOOTSTRAP_NODES
-                ))
-                return False
+            # elif try_count >= DISCOVERY_RETRIES:
+            #     cls.log.info('Did not find enough nodes after {} tries ({}/{}).'.format(
+            #         try_count,
+            #         len(cls.discovered_nodes),
+            #         MIN_BOOTSTRAP_NODES
+            #     ))
+            #     return False
 
             await asyncio.sleep(DISCOVERY_TIMEOUT)
 
