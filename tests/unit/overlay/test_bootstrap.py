@@ -125,7 +125,7 @@ class TestBootstrap(BaseTestCase):
         self.log.test('Waiting 10 seconds before spinning up master node again')
         time.sleep(10)
         self.start_node('node_1')
-        self.rerun_node_script('node_1')
+        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0, [0,1,2,3]))
 
     def test_one_late_masternode(self):
         self.all_nodes.remove('node_2')
