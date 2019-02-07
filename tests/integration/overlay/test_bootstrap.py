@@ -5,35 +5,52 @@ from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
 from cilantro.logger.base import get_logger
 
-def run_node(node_type, idx):
+def run_node(node_type, idx, addr_idxs):
+    # NOTE: addr_idxs represents what each node has already discovered
     from vmnet.comm import send_to_file
-    from cilantro.protocol.overlay.discovery import Discovery
-    from cilantro.constants.overlay_network import MIN_DISCOVERY_NODES
+    from cilantro.protocol.overlay.kademlia.network import Network
+    from cilantro.protocol.overlay.kademlia.utils import digest
+    from cilantro.protocol.overlay.kademlia.node import Node
+    from cilantro.constants.ports import DHT_PORT
+    from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from cilantro.protocol.overlay.auth import Auth # TODO: replace with utils
     import asyncio, os, ujson as json
     from os import getenv as env
     from cilantro.storage.vkbook import VKBook
     VKBook.setup()
+
+    # NOTE: This logic should be improved. There are no utilities for this right now
+    all_ips = env('NODE').split(',')
+    node_objs = []
+    for nt in VKBook.constitution:
+        if nt in ('masternodes', 'delegates'):
+            for creds in VKBook.constitution[nt]:
+                vk = creds['vk']
+                node_id = digest(vk)
+                ip = all_ips[len(node_objs)]
+                node_objs.append(Node(node_id=node_id, vk=vk, ip=ip, port=DHT_PORT))
+
+    addrs = [node_objs[i] for i in addr_idxs]
+
     async def check_nodes():
         while True:
             await asyncio.sleep(1)
-            if len(Discovery.discovered_nodes) >= MIN_DISCOVERY_NODES:
+            if len(n.bootstrappableNeighbors()) >= MIN_BOOTSTRAP_NODES:
                 send_to_file(env('HOST_NAME'))
 
     from cilantro.logger import get_logger
     log = get_logger('{}_{}'.format(node_type, idx))
     loop = asyncio.get_event_loop()
     Auth.setup(VKBook.constitution[node_type][idx]['sk'])
-    Discovery.setup() # TODO: remove when re-architected
     log.test('Starting {}_{}'.format(node_type, idx))
-    tasks = asyncio.ensure_future(asyncio.gather(
-        Discovery.listen(),
-        Discovery.discover_nodes(env('HOST_IP')),
+    n = Network(node_id=digest(Auth.vk))
+    n.tasks += [
+        n.bootstrap(addrs),
         check_nodes()
-    ))
-    loop.run_until_complete(tasks)
+    ]
+    n.start()
 
-class TestDiscovery(BaseTestCase):
+class TestBootstrap(BaseTestCase):
     log = get_logger(__name__)
     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-4.json')
     environment = {'CONSTITUTION_FILE': '2-2-2.json'}
@@ -72,39 +89,39 @@ class TestDiscovery(BaseTestCase):
 ################################################################################
 
     def test_regular_all_masters(self):
-        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
-        self.execute_python('node_2', wrap_func(run_node, 'masternodes', 1))
-        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
-        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
+        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0, [0]))
+        self.execute_python('node_2', wrap_func(run_node, 'masternodes', 1, [0,1]))
+        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0, [0,1,2]))
+        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1, [0,1,2,3]))
 
     def test_regular_one_master(self):
         self.all_nodes.remove('node_2')
-        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
-        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
-        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
+        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0, [0]))
+        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0, [0,2]))
+        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1, [0,2,3]))
 
     def test_late_delegate(self):
-        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
-        self.execute_python('node_2', wrap_func(run_node, 'masternodes', 1))
-        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
+        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0, [0]))
+        self.execute_python('node_2', wrap_func(run_node, 'masternodes', 1, [0,1]))
+        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0, [0,1,2]))
         self.log.test('Waiting 10 seconds before spinning up last node')
         time.sleep(10)
-        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
+        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1, [0,1,2,3]))
 
     def test_one_master_late_delegate(self):
         self.all_nodes.remove('node_2')
-        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
-        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
+        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0, [0]))
+        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0, [0,2]))
         self.log.test('Waiting 10 seconds before spinning up last node')
         time.sleep(10)
-        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
+        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1, [0,2,3]))
 
     def test_one_master_down_up(self):
         self.all_nodes.remove('node_2')
-        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
-        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
+        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0, [0]))
+        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0, [0,2]))
         self.kill_node('node_1')
-        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
+        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1, [2,3]))
         self.log.test('Waiting 10 seconds before spinning up master node again')
         time.sleep(10)
         self.start_node('node_1')
@@ -112,11 +129,11 @@ class TestDiscovery(BaseTestCase):
 
     def test_one_late_masternode(self):
         self.all_nodes.remove('node_2')
-        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
-        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
+        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0, [2]))
+        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1, [2,3]))
         self.log.test('Waiting 10 seconds before spinning up master node')
         time.sleep(10)
-        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
+        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0, [0,2,3]))
 
 if __name__ == '__main__':
     unittest.main()
