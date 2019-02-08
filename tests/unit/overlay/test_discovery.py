@@ -8,6 +8,7 @@ from cilantro.logger.base import get_logger
 def run_node(node_type, idx):
     from vmnet.comm import send_to_file
     from cilantro.protocol.overlay.discovery import Discovery
+    from cilantro.constants.overlay_network import MIN_DISCOVERY_NODES
     from cilantro.protocol.overlay.auth import Auth # TODO: replace with utils
     import asyncio, os, ujson as json
     from os import getenv as env
@@ -16,7 +17,7 @@ def run_node(node_type, idx):
     async def check_nodes():
         while True:
             await asyncio.sleep(1)
-            if len(Discovery.discovered_nodes) >= 1:
+            if len(Discovery.discovered_nodes) >= MIN_DISCOVERY_NODES:
                 send_to_file(env('HOST_NAME'))
 
     from cilantro.logger import get_logger
@@ -38,23 +39,29 @@ class TestDiscovery(BaseTestCase):
     environment = {'CONSTITUTION_FILE': '2-2-2.json'}
     enable_ui = False
 
-################################################################################
-#   Test Setup
-################################################################################
-
     def setUp(self):
         super().setUp()
         self.all_nodes = set(self.groups['node'])
         self.nodes_complete = set()
 
-    def tearDown(self):
-        file_listener(self, self.callback, self.timeout, 60)
-        super().tearDown()
-
     def success(self):
         self.log.success('=' * 128)
         self.log.success('\t{} SUCCEEDED\t\t'.format(self.id()))
         self.log.success('=' * 128)
+
+class TestDiscoverySuccess(TestDiscovery):
+    log = get_logger(__name__)
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-4.json')
+    environment = {'CONSTITUTION_FILE': '2-2-2.json'}
+    enable_ui = False
+
+################################################################################
+#   Test Setup
+################################################################################
+
+    def tearDown(self):
+        file_listener(self, self.callback, self.timeout, 60)
+        super().tearDown()
 
     def callback(self, data):
         for node in data:
@@ -69,7 +76,6 @@ class TestDiscovery(BaseTestCase):
 ################################################################################
 #   Tests
 ################################################################################
-
     def test_regular_all_masters(self):
         self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
         self.execute_python('node_2', wrap_func(run_node, 'masternodes', 1))
@@ -116,6 +122,38 @@ class TestDiscovery(BaseTestCase):
         self.log.test('Waiting 10 seconds before spinning up master node')
         time.sleep(10)
         self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
+
+
+class TestDiscoveryFail(TestDiscovery):
+    log = get_logger(__name__)
+    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-4.json')
+    environment = {'CONSTITUTION_FILE': '2-2-2.json'}
+    enable_ui = False
+
+################################################################################
+#   Test Setup
+################################################################################
+
+    def tearDown(self):
+        file_listener(self, self.callback, self.timeout, 15)
+        super().tearDown()
+
+    def callback(self, data):
+        for node in data:
+            self.nodes_complete.add(node)
+
+################################################################################
+#   Tests
+################################################################################
+
+    def test_no_masternodes(self):
+        def _timeout():
+            self.assertEqual(len(self.nodes_complete), 0)
+            self.success()
+            self.end_test()
+        self.timeout = _timeout
+        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
+        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
 
 if __name__ == '__main__':
     unittest.main()
