@@ -171,6 +171,7 @@ class CatchupManager:
             return
 
         tmp_list = reply.indices
+        assert tmp_list[0].get('blockNum') <= tmp_list[-1].get('blockNum'), "ensure reply are in ascending order"
         # Todo @tejas we need to think if we need reverse sort here
         #tmp_list.reverse()
         self.log.important2("tmp list -> {}".format(tmp_list))
@@ -260,7 +261,11 @@ class CatchupManager:
 
         delta_idx = self.get_idx_list(vk = requester_vk, latest_blk_num = self.curr_num,
                                       sender_bhash = request.block_hash)
-        self.log.debugv("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num, request.block_hash))
+        self.log.important2("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num,
+                                                                              request.block_hash))
+
+        assert delta_idx[0].get('blockNum') <= delta_idx[-1].get('blockNum'), "ensure reply are in ascending order {}"\
+            .format(delta_idx)
 
         # self.log.important2("RCV BIR")
         self.dump_debug_info(lnum = 258)
