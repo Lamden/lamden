@@ -13,7 +13,34 @@ from cilantro.protocol.overlay.kademlia.node import Node
 
 import asyncio, os, zmq.asyncio, zmq
 from os import getenv as env
+import abc
 from enum import Enum, auto
+
+class OverlayInterface2(abc.ABC):
+    def __init__(self):
+        pass
+        # interface dictionary
+
+    @abc.abstractmethod
+    def lookup_ip(self, vk):
+        pass
+
+    @abc.abstractmethod
+    def lookup_and_handshake(self, vk):
+        pass
+
+    @abc.abstractmethod
+    def handshake_ip(self, ip):
+        pass
+
+    @abc.abstractmethod
+    def ping_node(self, ip):
+        pass
+
+    @abc.abstractmethod
+    def track_new_nodes(self):
+        pass
+
 
 class OverlayInterface:
     started = False
@@ -52,7 +79,7 @@ class OverlayInterface:
         return Handshake.authorized_nodes
 
     async def bootup(self):
-        addrs = await self.discovery.discover_and_connect()
+        addrs = await self.discovery.discover_nodes()
         if addrs:
             await self.network.bootstrap(addrs)
         self.log.success('''

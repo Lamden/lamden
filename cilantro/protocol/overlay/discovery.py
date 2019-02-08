@@ -55,7 +55,6 @@ class Discovery:
                 elif len(msg) == 3:
                     vk = msg[-1]
                     self.discovered_nodes[vk.decode()] = ip.decode()
-                    self.is_listen_ready = True
 
             except Exception as e:
                 self.log.error(traceback.format_exc())
@@ -67,6 +66,8 @@ class Discovery:
         self.sock.send_multipart([ip, self.pepper])
 
     def reply(self, ip):
+        if self.is_listen_ready:
+            self.log.info("{} Replying to {}".format(self.host_ip, ip))
         if self.is_listen_ready and ip != self.host_ip:
             self.sock.send_multipart([ip, self.pepper, self.vk.encode()])
             self.is_connected = True
@@ -80,25 +81,29 @@ class Discovery:
             if not self.connections.get(ip):
                 self.sock.connect(url)
                 self.connections[ip] = url
+            # if self.is_masternode:
+                # self.log.info("{} Sending request to {}".format(self.host_ip, ip))
             self.request(ip.encode())
 
     # need to test if this creates additional issues of listening after we disconect
     def disconnect(self):
         self.log.spam("Attempting to disconnect discovery connections")
-        for url in self.connections.itervalues():
+        for url in self.connections.values():
             self.sock.disconnect(url)
+        self.connections.clear()
 
 
-    async def discover_nodes(self, start_ip):
+    async def try_discover_nodes(self, start_ip):
         self.log.info('We have the following boot nodes: {}'.format(VKBook.bootnodes))
 
+        self.discovered_nodes.clear()
         # no need to discover anyone if it is the solo masternode in the network
         if (self.is_masternode and len(VKBook.get_masternodes()) == 1):
             self.log.important('Bootstrapping as the only masternode.')
             return True
 
         try_count = 0
-        while True:
+        while try_count < DISCOVERY_RETRIES:
             if len(VKBook.bootnodes) > 0: # TODO refine logic post-anarchy-net
                 self.log.info('Connecting to boot nodes: {}'.format(VKBook.bootnodes))
                 self.connect(VKBook.bootnodes)
@@ -106,27 +111,36 @@ class Discovery:
                 ip_range = start_ip if type(start_ip) == list else get_ip_range(start_ip)
                 self.log.info('Connecting to this ip-range: {} to {}'.format(ip_range[0], ip_range[-1]))
                 self.connect(ip_range)
+            await asyncio.sleep(DISCOVERY_WAIT)
             try_count += 1
-            if (self.is_masternode and len(self.discovered_nodes) == 0 and try_count >= RETRIES_BEFORE_SOLO_BOOT):
+            if (self.is_masternode and len(self.discovered_nodes) == 0 and \
+                          try_count >= DISCOVERY_RETRIES_BEFORE_SOLO_BOOT):
                 self.log.important('Bootstrapping as the only masternode so far.')
                 return True
-            elif len(self.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
+            elif len(self.discovered_nodes) >= MIN_DISCOVERY_NODES:
                 self.log.info('Found {} nodes to bootstrap: {}'.format(
                     len(self.discovered_nodes), self.discovered_nodes
                 ))
                 return True
-            elif try_count >= DISCOVERY_RETRIES:
-                self.log.info('Did not find enough nodes after {} tries ({}/{}).'.format(
-                    try_count,
-                    len(self.discovered_nodes),
-                    MIN_BOOTSTRAP_NODES
-                ))
-                return False
 
-            await asyncio.sleep(DISCOVERY_TIMEOUT)
 
-    async def discover_and_connect(self):
-        if not await self.discover_nodes(self.host_ip):
+        self.log.info('Did not find enough nodes after {} tries ({}/{}).'.format(
+            try_count,
+            len(self.discovered_nodes),
+            MIN_BOOTSTRAP_NODES
+        ))
+        return False
+
+    async def discover_nodes(self):
+        is_success = await self.try_discover_nodes(self.host_ip)
+        if not is_success:
+            iter = 1
+            while not is_success and (iter < DISCOVERY_ITER):
+                # self.disconnect()
+                asyncio.sleep(DISCOVERY_LONG_WAIT)
+                is_success = await self.try_discover_nodes(self.host_ip)
+        # self.disconnect()
+        if not is_success:
             self.log.critical('''
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 x   DISCOVERY FAILED: Cannot find enough nodes ({}/{}) and not a masternode
@@ -134,17 +148,12 @@ x       Retrying...
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
             '''.format(len(self.discovered_nodes), MIN_BOOTSTRAP_NODES))
             raise Exception('Failed to discover any nodes. Killing myself with shame!')
-        self.log.success('''
-###########################################################################
-#   DISCOVERY COMPLETE
-###########################################################################\
-        ''')
+        self.log.success("DISCOVERY COMPLETE")
         self.is_listen_ready = True
         # raghu - todo - change interface of nodes. No need to create node list and import DHT_PORT etc here
         if len(self.discovered_nodes) > 0:
             addrs = [Node(digest(vk), ip=self.discovered_nodes[vk], port=DHT_PORT, vk=vk) \
                 for vk in self.discovered_nodes if vk is not self.vk]
             return addrs
-            await self.network.bootstrap(addrs)
         return []
 
