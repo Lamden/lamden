@@ -63,11 +63,14 @@ class Discovery:
         self.log.fatal('Discovery DIED')
 
     def request(self, ip):
-        self.sock.send_multipart([ip, self.pepper])
+        # TODO this is soooo sketch wrapping this in a try/except. Why does it give a 'Could not route host' error??
+        # --davis
+        try:
+            cls.sock.send_multipart([ip, cls.pepper])
+        except Exception as e:
+            cls.log.warning("Got ZMQError sending discovery msg\n{}".format(e))
 
     def reply(self, ip):
-        if self.is_listen_ready:
-            self.log.info("{} Replying to {}".format(self.host_ip, ip))
         if self.is_listen_ready and ip != self.host_ip:
             self.sock.send_multipart([ip, self.pepper, self.vk.encode()])
             self.is_connected = True
@@ -123,7 +126,6 @@ class Discovery:
                 ))
                 return True
 
-
         self.log.info('Did not find enough nodes after {} tries ({}/{}).'.format(
             try_count,
             len(self.discovered_nodes),
@@ -157,3 +159,37 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
             return addrs
         return []
 
+    # raghu these class methods are not thread-safe. Not sure why we want them to be class methods rather than instance methods
+#    @classmethod
+#    async def discover_nodes(cls, start_ip):
+#        try_count = 0
+#        cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
+#        ips = get_ip_range(start_ip)
+#        while try_count < DISCOVERY_RETRIES:
+#            try_count += 1
+#            for ip in ips:
+#                if ip in cls.connections:
+#                    continue
+#                url = 'tcp://{}:{}'.format(ip, cls.port)
+#                cls.sock.connect(url)
+#                cls.connections[ip] = url
+#                cls.request(ip.encode())
+#                if (len(cls.discovered_nodes) == 1 and Auth.vk in VKBook.get_masternodes()) \
+#                    and try_count >= 2:
+#                    cls.log.important('Bootstrapping as the only masternode.'.format(
+#                        len(cls.discovered_nodes)
+#                    ))
+#                    return True
+#                elif len(cls.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
+#                    cls.log.info('Found {} nodes to bootstrap.'.format(
+#                        len(cls.discovered_nodes)
+#                    ))
+#                    return True
+#            await asyncio.sleep(DISCOVERY_TIMEOUT)
+#        assert try_count >= DISCOVERY_RETRIES:
+#        cls.log.info('Did not find enough nodes after {} tries ({}/{}).'.format(
+#            try_count,
+#            len(cls.discovered_nodes),
+#            MIN_BOOTSTRAP_NODES
+#        ))
+#        return False
