@@ -3,7 +3,7 @@ from os import getenv as env
 from cilantro.constants.overlay_network import *
 from cilantro.constants.ports import DISCOVERY_PORT
 from cilantro.protocol.overlay.ip import *
-from cilantro.protocol.overlay.auth import Auth
+from cilantro.utils.keys import Keys
 from cilantro.logger import get_logger
 from cilantro.storage.vkbook import VKBook
 
@@ -27,8 +27,8 @@ class Discovery:
             cls.sock = cls.ctx.socket(zmq.ROUTER)
             cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             cls.is_connected = False
-            if VKBook.is_node_type('masternode', Auth.vk):
-                # cls.discovered_nodes[Auth.vk] = cls.host_ip
+            if VKBook.is_node_type('masternode', Keys.vk):
+                # cls.discovered_nodes[Keys.vk] = cls.host_ip
                 cls.is_master_node = True
                 cls.is_listen_ready = True
 
@@ -60,7 +60,7 @@ class Discovery:
 
     @classmethod
     async def discover_nodes(cls, start_ip):
-        is_masternode = VKBook.is_node_type('masternode', Auth.vk)
+        is_masternode = VKBook.is_node_type('masternode', Keys.vk)
         try_count = 0
 
         cls.log.info('We have the following boot nodes: {}'.format(VKBook.bootnodes))
@@ -78,7 +78,7 @@ class Discovery:
                     (len(cls.discovered_nodes) == 0 and is_masternode and cls.is_connected and try_count >= RETRIES_BEFORE_SOLO_BOOT):
                 cls.log.important('Bootstrapping as the only masternode. (num_discovered={})'
                                   .format(len(cls.discovered_nodes)))
-                cls.discovered_nodes[Auth.vk] = cls.host_ip
+                cls.discovered_nodes[Keys.vk] = cls.host_ip
                 return True
             elif len(cls.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
                 cls.log.info('Found {} nodes to bootstrap: {}'.format(
@@ -110,7 +110,7 @@ class Discovery:
 #                cls.sock.connect(url)
 #                cls.connections[ip] = url
 #                cls.request(ip.encode())
-#                if (len(cls.discovered_nodes) == 1 and Auth.vk in VKBook.get_masternodes()) \
+#                if (len(cls.discovered_nodes) == 1 and Keys.vk in VKBook.get_masternodes()) \
 #                    and try_count >= 2:
 #                    cls.log.important('Bootstrapping as the only masternode.'.format(
 #                        len(cls.discovered_nodes)
@@ -142,7 +142,7 @@ class Discovery:
     @classmethod
     def reply(cls, ip):
         if cls.is_listen_ready and ip != cls.host_ip:
-            cls.sock.send_multipart([ip, cls.pepper, Auth.vk.encode()])
+            cls.sock.send_multipart([ip, cls.pepper, Keys.vk.encode()])
             cls.is_connected = True
 
     @classmethod

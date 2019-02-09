@@ -12,7 +12,7 @@ def masternode(idx, node_count, all_vks):
     from vmnet.comm import send_to_file
     from cilantro.constants.testnet import TESTNET_MASTERNODES
     from cilantro.protocol.overlay.handshake import Handshake
-    from cilantro.protocol.overlay.auth import Auth
+    from cilantro.protocol.comm.socket_auth import SocketAuth
     import asyncio, os, time
 
     async def check_nodes():
@@ -46,7 +46,7 @@ def delegates(idx, node_count, all_vks):
     from vmnet.comm import send_to_file
     from cilantro.constants.testnet import TESTNET_DELEGATES
     from cilantro.protocol.overlay.handshake import Handshake
-    from cilantro.protocol.overlay.auth import Auth
+    from cilantro.protocol.comm.socket_auth import SocketAuth
     import asyncio, os, time
 
     async def check_nodes():

@@ -19,7 +19,7 @@
 #     from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
 #     from cilantro.protocol.overlay.handshake import Handshake
 #     from cilantro.protocol.executors.manager import ExecutorManager
-#     from cilantro.protocol.overlay.auth import Auth
+#     from cilantro.protocol.comm.socket_auth import SocketAuth
 #     import asyncio, os, ujson as json, zmq.asyncio, zmq, time
 #     from cilantro.storage.vkbook import VKBook
 #     from cilantro.protocol.comm.socket_manager import SocketManager

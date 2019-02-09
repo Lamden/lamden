@@ -10,7 +10,7 @@ def masternode(idx):
     log = get_logger('MasterNode_{}'.format(idx))
 
     from cilantro.protocol.overlay.discovery import Discovery
-    from cilantro.protocol.overlay.auth import Auth
+    from cilantro.protocol.comm.socket_auth import SocketAuth
     import asyncio, os, ujson as json, sys
     from cilantro.storage.vkbook import VKBook
     VKBook.setup()
@@ -37,7 +37,7 @@ def delegates(idx):
     log = get_logger('DelegateNode_{}'.format(idx))
     from vmnet.cloud.comm import signal_success
     from cilantro.protocol.overlay.discovery import Discovery
-    from cilantro.protocol.overlay.auth import Auth
+    from cilantro.protocol.comm.socket_auth import SocketAuth
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     import asyncio, os, ujson as json, sys
     from cilantro.storage.vkbook import VKBook

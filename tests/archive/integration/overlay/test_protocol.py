@@ -15,7 +15,7 @@ def nodefn(idx):
     from cilantro.constants.ports import DHT_PORT
     from cilantro.protocol.overlay.kademlia.node import Node
     from cilantro.protocol.overlay.kademlia.utils import digest
-    from cilantro.protocol.overlay.auth import Auth
+    from cilantro.protocol.comm.socket_auth import SocketAuth
     from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
     from cilantro.logger.base import get_logger
     from vmnet.comm import send_to_file

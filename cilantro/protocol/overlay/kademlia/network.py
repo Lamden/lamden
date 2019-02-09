@@ -14,8 +14,9 @@ from cilantro.protocol.overlay.kademlia.node import Node
 from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
 from cilantro.constants.ports import DHT_PORT
 from cilantro.constants.overlay_network import *
-from cilantro.protocol.overlay.auth import Auth
+from cilantro.protocol.comm.socket_auth import SocketAuth
 from cilantro.logger.base import get_logger
+from cilantro.utils.keys import Keys
 
 log = get_logger(__name__)
 
@@ -41,14 +42,14 @@ class Network(object):
         self.cached_vks = {}
         self.host_ip = HOST_IP
 
-        assert Auth.is_setup, 'Auth.setup() has not been called. Please do this in the OverlayInterface.'
+        assert Keys.is_setup, 'Keys.setup() has not been called. Please do this in the OverlayInterface.'
         assert node_id, 'Node ID must be set!'
 
         self.node = Node(
             node_id,
             ip=HOST_IP,
             port=self.port,
-            vk=Auth.vk
+            vk=Keys.vk
         )
         self.state_fname = '{}-network-state.dat'.format(os.getenv('HOST_NAME', 'node'))
 
@@ -143,7 +144,7 @@ class Network(object):
 
     async def _lookup_ip(self, vk):
         log.spam('Attempting to look up node with vk="{}"'.format(vk))
-        if Auth.vk == vk:
+        if Keys.vk == vk:
             self.cached_vks[vk] = self.host_ip
             return self.host_ip
         elif vk in self.cached_vks:

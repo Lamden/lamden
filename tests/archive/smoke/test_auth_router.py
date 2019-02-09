@@ -9,7 +9,7 @@ from cilantro.constants.testnet import *
 
 def nodefn(sk, ip_vk_dict, expected_ip, use_auth):
     from zmq.auth.asyncio import AsyncioAuthenticator
-    from cilantro.protocol.overlay.auth import Auth
+    from cilantro.protocol.comm.socket_auth import SocketAuth
     from cilantro.logger.base import get_logger
     from vmnet.comm import send_to_file
     import asyncio, json, os, zmq.asyncio, zmq, traceback, time

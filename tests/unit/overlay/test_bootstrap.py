@@ -13,7 +13,7 @@ def run_node(node_type, idx, addr_idxs):
     from cilantro.protocol.overlay.kademlia.node import Node
     from cilantro.constants.ports import DHT_PORT
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
-    from cilantro.protocol.overlay.auth import Auth # TODO: replace with utils
+    from cilantro.utils.keys import Keys
     import asyncio, os, ujson as json
     from os import getenv as env
     from cilantro.storage.vkbook import VKBook
@@ -41,7 +41,7 @@ def run_node(node_type, idx, addr_idxs):
     from cilantro.logger import get_logger
     log = get_logger('{}_{}'.format(node_type, idx))
     loop = asyncio.get_event_loop()
-    Auth.setup(VKBook.constitution[node_type][idx]['sk'])
+    Keys.setup(VKBook.constitution[node_type][idx]['sk'])
     log.test('Starting {}_{}'.format(node_type, idx))
     n = Network(node_id=digest(Auth.vk))
     n.tasks += [

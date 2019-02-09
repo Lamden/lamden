@@ -20,7 +20,7 @@ def run_node(node_type, idx, use_ips=None):
     from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from cilantro.protocol.overlay.kademlia.utils import digest
     from cilantro.constants.ports import DHT_PORT
-    from cilantro.protocol.overlay.auth import Auth
+    from cilantro.protocol.comm.socket_auth import SocketAuth
     import asyncio, os, ujson as json, zmq.asyncio
     from cilantro.storage.vkbook import VKBook
     VKBook.setup()
