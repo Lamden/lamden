@@ -66,9 +66,9 @@ class Discovery:
         # TODO this is soooo sketch wrapping this in a try/except. Why does it give a 'Could not route host' error??
         # --davis
         try:
-            cls.sock.send_multipart([ip, cls.pepper])
+            self.sock.send_multipart([ip, self.pepper])
         except Exception as e:
-            cls.log.warning("Got ZMQError sending discovery msg\n{}".format(e))
+            self.log.warning("Got ZMQError sending discovery msg\n{}".format(e))
 
     def reply(self, ip):
         if self.is_listen_ready and ip != self.host_ip:
@@ -129,7 +129,7 @@ class Discovery:
         self.log.info('Did not find enough nodes after {} tries ({}/{}).'.format(
             try_count,
             len(self.discovered_nodes),
-            MIN_BOOTSTRAP_NODES
+            MIN_DISCOVERY_NODES
         ))
         return False
 
@@ -141,16 +141,20 @@ class Discovery:
                 # self.disconnect()
                 asyncio.sleep(DISCOVERY_LONG_WAIT)
                 is_success = await self.try_discover_nodes(self.host_ip)
+                iter += 1
         # self.disconnect()
         if not is_success:
-            self.log.critical('''
+            self.log.fatal('''
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 x   DISCOVERY FAILED: Cannot find enough nodes ({}/{}) and not a masternode
 x       Retrying...
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-            '''.format(len(self.discovered_nodes), MIN_BOOTSTRAP_NODES))
+            '''.format(len(self.discovered_nodes), MIN_DISCOVERY_NODES))
             raise Exception('Failed to discover any nodes. Killing myself with shame!')
-        self.log.success("DISCOVERY COMPLETE")
+        self.log.success("""
+ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+o   DISCOVERY COMPLETE
+ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo""")
         self.is_listen_ready = True
         # raghu - todo - change interface of nodes. No need to create node list and import DHT_PORT etc here
         if len(self.discovered_nodes) > 0:

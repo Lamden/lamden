@@ -5,33 +5,49 @@ from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
 from cilantro.logger.base import get_logger
 
-def run_node(node_type, idx):
+
+def run_node(node_type, idx, change_constants=False, fail=False):
+    if change_constants:
+        from unittest.mock import MagicMock, patch
+        patch("cilantro.protocol.overlay.discovery.DISCOVERY_RETRIES_BEFORE_SOLO_BOOT", 2).start()
+        patch("cilantro.protocol.overlay.discovery.DISCOVERY_WAIT", 2).start()
+        patch("cilantro.protocol.overlay.discovery.DISCOVERY_RETRIES", 1).start()
+        patch("cilantro.protocol.overlay.discovery.DISCOVERY_LONG_WAIT", 4).start()
+        patch("cilantro.protocol.overlay.discovery.DISCOVERY_ITER", 3).start()
+
     from vmnet.comm import send_to_file
     from cilantro.protocol.overlay.discovery import Discovery
-    from cilantro.constants.overlay_network import MIN_DISCOVERY_NODES
     from cilantro.utils.keys import Keys
-    import asyncio, os, ujson as json
+    import asyncio, os, ujson as json, zmq.asyncio
     from os import getenv as env
     from cilantro.storage.vkbook import VKBook
     VKBook.setup()
     async def check_nodes():
         while True:
             await asyncio.sleep(1)
-            if len(Discovery.discovered_nodes) >= MIN_DISCOVERY_NODES:
+            if discover_fut.done():
                 send_to_file(env('HOST_NAME'))
-
     from cilantro.logger import get_logger
     log = get_logger('{}_{}'.format(node_type, idx))
     loop = asyncio.get_event_loop()
-    Keys.setup(VKBook.constitution[node_type][idx]['sk'])
-    Discovery.setup() # TODO: remove when re-architected
+    ctx = zmq.asyncio.Context()
+    creds = VKBook.constitution[node_type][idx]
+    Keys.setup(creds['sk'])
+    discovery = Discovery(Keys.vk, ctx) # TODO: remove when re-architected
+    discover_fut = asyncio.ensure_future(discovery.discover_nodes())
     log.test('Starting {}_{}'.format(node_type, idx))
     tasks = asyncio.ensure_future(asyncio.gather(
-        Discovery.listen(),
-        Discovery.discover_nodes(env('HOST_IP')),
+        discovery.listen(),
+        discover_fut,
         check_nodes()
     ))
-    loop.run_until_complete(tasks)
+    if fail:
+        try:
+            loop.run_until_complete(tasks)
+        except:
+            send_to_file(env('HOST_NAME'))
+    else:
+        loop.run_until_complete(tasks)
 
 class TestDiscovery(BaseTestCase):
     log = get_logger(__name__)
@@ -64,6 +80,7 @@ class TestDiscoverySuccess(TestDiscovery):
         super().tearDown()
 
     def callback(self, data):
+        fut.result() # Makes sure no exception had been raised
         for node in data:
             self.nodes_complete.add(node)
         if self.nodes_complete == self.all_nodes:
@@ -134,26 +151,33 @@ class TestDiscoveryFail(TestDiscovery):
 #   Test Setup
 ################################################################################
 
-    def tearDown(self):
-        file_listener(self, self.callback, self.timeout, 15)
-        super().tearDown()
-
     def callback(self, data):
         for node in data:
             self.nodes_complete.add(node)
+
+    def timeout(self):
+        self.assertEqual(len(self.nodes_complete), 0)
+        self.success()
+        self.end_test()
 
 ################################################################################
 #   Tests
 ################################################################################
 
     def test_no_masternodes(self):
+        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
+        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
+        file_listener(self, self.callback, self.timeout, 15)
+
+    def test_failed_discovery(self):
         def _timeout():
-            self.assertEqual(len(self.nodes_complete), 0)
+            self.assertEqual(set(self.nodes_complete), set(['node_3', 'node_4']))
             self.success()
             self.end_test()
         self.timeout = _timeout
-        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
-        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
+        self.execute_python('node_3', wrap_func(run_node, 'delegates', 0, change_constants=True, fail=True))
+        self.execute_python('node_4', wrap_func(run_node, 'delegates', 1, change_constants=True, fail=True))
+        file_listener(self, self.callback, self.timeout, 15)
 
 if __name__ == '__main__':
     unittest.main()
