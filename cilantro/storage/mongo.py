@@ -146,7 +146,7 @@ class MDB:
             return False
 
         # insert passed dict block to db
-        blk_id = cls.mn_collection.insert(block_dict)
+        blk_id = cls.mn_collection.insert_one(block_dict)
         cls.log.spam("block {}".format(block_dict))
         if blk_id:
             return True
@@ -155,13 +155,13 @@ class MDB:
     def insert_idx_record(cls, my_dict=None):
         if dict is None:
             return None
-        idx_entry = cls.mn_coll_idx.insert(my_dict)
+        idx_entry = cls.mn_coll_idx.insert_one(my_dict)
         cls.log.spam("insert_idx_record -> {}".format(idx_entry))
         return True
 
     @classmethod
     def insert_tx_map(cls, txmap):
-        obj = cls.mn_coll_tx.insert(txmap)
+        obj = cls.mn_coll_tx.insert_one(txmap)
         cls.log.debugv("insert_idx_record -> {}".format(obj))
 
     '''
