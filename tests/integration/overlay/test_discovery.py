@@ -80,7 +80,6 @@ class TestDiscoverySuccess(TestDiscovery):
         super().tearDown()
 
     def callback(self, data):
-        fut.result() # Makes sure no exception had been raised
         for node in data:
             self.nodes_complete.add(node)
         if self.nodes_complete == self.all_nodes:
