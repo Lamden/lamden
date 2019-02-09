@@ -3,7 +3,8 @@ from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
 # from cilantro.protocol.comm.lsocket import LSocket
 from cilantro.protocol.comm.lsocket import LSocketBase
 from cilantro.protocol.comm.lsocket_router import LSocketRouter
-from cilantro.protocol.overlay.auth import Auth
+from cilantro.protocol.comm.socket_auth import SocketAuth
+from cilantro.utils.keys import Keys
 from cilantro.utils.utils import is_valid_hex
 
 from collections import defaultdict
@@ -17,16 +18,16 @@ class SocketManager:
 
         self.log = get_logger(type(self).__name__)
 
-        Auth.setup(signing_key, reset_auth_folder=False)
+        Keys.setup(signing_key, reset_auth_folder=False)
 
-        self.signing_key = Auth.sk
-        self.verifying_key = Auth.vk
-        self.public_key = Auth.public_key
-        self.secret = Auth.private_key
+        self.signing_key = Keys.sk
+        self.verifying_key = Keys.vk
+        self.public_key = Keys.public_key
+        self.secret = Keys.private_key
 
         self.loop = loop or asyncio.get_event_loop()
         self.context = context or zmq.asyncio.Context()
-        self.secure_context, self.auth = Auth.secure_context(async=True)
+        self.secure_context, self.auth = SocketAuth.secure_context(async=True)
 
         self.sockets = []
 
@@ -66,7 +67,7 @@ class SocketManager:
 
         # Execute socket manager specific functionality
         if e['event'] == 'authorized':
-            Auth.configure_auth(self.auth, e['domain'])
+            SocketAuth.configure_auth(self.auth, e['domain'])
 
         # Forward 'got_ip' and 'not_found' events to the LSockets who initiated them
         elif e['event'] in ('got_ip', 'not_found'):

@@ -1,5 +1,5 @@
 from cilantro.protocol.overlay.kademlia.network import Network
-from cilantro.protocol.overlay.auth import Auth
+from cilantro.protocol.comm.socket_auth import SocketAuth
 from cilantro.protocol.overlay.discovery import Discovery
 from cilantro.protocol.overlay.handshake import Handshake
 from cilantro.protocol.overlay.event import Event
@@ -10,6 +10,7 @@ from cilantro.constants.overlay_network import *
 from cilantro.logger.base import get_logger
 from cilantro.storage.vkbook import VKBook
 from cilantro.protocol.overlay.kademlia.node import Node
+from cilantro.utils.keys import Keys
 
 import asyncio, os, zmq.asyncio, zmq
 from os import getenv as env
@@ -25,9 +26,9 @@ class OverlayInterface:
         # asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
         # reset_auth_folder should always be False and True has to be at highest level without any processes
-        Auth.setup(sk_hex=sk_hex, reset_auth_folder=False)
+        Keys.setup(sk_hex=sk_hex, reset_auth_folder=False)
 
-        self.network = Network(loop=self.loop, node_id=digest(Auth.vk))
+        self.network = Network(loop=self.loop, node_id=digest(Keys.vk))
         Discovery.setup(ctx=self.ctx)
         Handshake.setup(loop=self.loop, ctx=self.ctx)
         self.tasks = [
@@ -83,7 +84,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         if len(Discovery.discovered_nodes) == 0:
             raise Exception("Don't know how I ended up here. Can't bootstrap with no nodes discovered! Killing myself with shame!")
         addrs = [Node(digest(vk), ip=Discovery.discovered_nodes[vk], port=self.network.port, vk=vk) \
-            for vk in Discovery.discovered_nodes if vk is not Auth.vk]
+            for vk in Discovery.discovered_nodes if vk is not Keys.vk]
         await self.network.bootstrap(addrs)
         # await asyncio.sleep(1)
         # self.network.cached_vks.update(self.neighbors)

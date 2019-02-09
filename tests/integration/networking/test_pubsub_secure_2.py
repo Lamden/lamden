@@ -2,7 +2,7 @@ from cilantro.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
 from cilantro.constants.testnet import *
 from cilantro.constants.test_suites import CI_FACTOR
-from cilantro.protocol.overlay.auth import Auth
+from cilantro.protocol.comm.socket_auth import SocketAuth
 from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
 from cilantro.utils.test.mp_testables import MPPubSubAuth
 from cilantro.storage.vkbook import VKBook

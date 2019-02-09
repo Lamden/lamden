@@ -1,10 +1,11 @@
 from cilantro.logger import get_logger
-from cilantro.protocol.overlay.auth import Auth
+from cilantro.protocol.comm.socket_auth import SocketAuth
 from cilantro.constants.system_config import MAX_BOOT_WAIT
 from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.protocol.overlay.daemon import OverlayServer
 from cilantro.utils.lprocess import LProcess
 from cilantro.storage.vkbook import VKBook
+from cilantro.utils.keys import Keys
 
 import asyncio
 import os
@@ -50,7 +51,7 @@ class NodeBase(Worker):
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-        Auth.setup(sk_hex=signing_key, reset_auth_folder=True)
+        Keys.setup(sk_hex=signing_key, reset_auth_folder=True)
 
         # Variables to track connected nodes when booting
         self.online_mns, self.online_dels, self.online_wits = set(), set(), set()

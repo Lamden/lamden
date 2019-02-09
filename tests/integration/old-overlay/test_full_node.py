@@ -22,7 +22,7 @@
 #     from cilantro.protocol.overlay.daemon import OverlayClient
 #     from cilantro.protocol.overlay.kademlia.utils import digest
 #     from cilantro.constants.ports import DHT_PORT
-#     from cilantro.protocol.overlay.auth import Auth
+#     from cilantro.protocol.comm.socket_auth import SocketAuth
 #     import asyncio, os, ujson as json, zmq.asyncio, zmq
 #     from cilantro.storage.vkbook import VKBook
 #     from threading import Thread
