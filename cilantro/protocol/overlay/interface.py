@@ -14,7 +14,34 @@ from cilantro.utils.keys import Keys
 
 import asyncio, os, zmq.asyncio, zmq
 from os import getenv as env
+import abc
 from enum import Enum, auto
+
+class OverlayInterface2(abc.ABC):
+    def __init__(self):
+        pass
+        # interface dictionary
+
+    @abc.abstractmethod
+    def lookup_ip(self, vk):
+        pass
+
+    @abc.abstractmethod
+    def lookup_and_handshake(self, vk):
+        pass
+
+    @abc.abstractmethod
+    def handshake_ip(self, ip):
+        pass
+
+    @abc.abstractmethod
+    def ping_node(self, ip):
+        pass
+
+    @abc.abstractmethod
+    def track_new_nodes(self):
+        pass
+
 
 class OverlayInterface:
     started = False
@@ -28,11 +55,12 @@ class OverlayInterface:
         # reset_auth_folder should always be False and True has to be at highest level without any processes
         Keys.setup(sk_hex=sk_hex, reset_auth_folder=False)
 
+
         self.network = Network(loop=self.loop, node_id=digest(Keys.vk))
-        Discovery.setup(ctx=self.ctx)
+        self.discovery = Discovery(Keys.vk, self.ctx)
         Handshake.setup(loop=self.loop, ctx=self.ctx)
         self.tasks = [
-            Discovery.listen(),
+            self.discovery.listen(),
             Handshake.listen(),
             self.network.protocol.listen(),
             self.bootup()
@@ -53,15 +81,9 @@ class OverlayInterface:
         return Handshake.authorized_nodes
 
     async def bootup(self):
-        await self.discover()
-        Discovery.is_listen_ready = True
-        self.log.success('''
-###########################################################################
-#   DISCOVERY COMPLETE
-###########################################################################\
-        ''')
-        # Event.emit({ 'event': 'discovery', 'status': 'complete' })
-        await self.bootstrap()
+        addrs = await self.discovery.discover_nodes()
+        if addrs:
+            await self.network.bootstrap(addrs)
         self.log.success('''
 ###########################################################################
 #   BOOTSTRAP COMPLETE
@@ -69,25 +91,6 @@ class OverlayInterface:
         ''')
         self.started = True
         Event.emit({ 'event': 'service_status', 'status': 'ready' })
-
-    async def discover(self):
-        if not await Discovery.discover_nodes(Discovery.host_ip):
-            self.log.critical('''
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-x   DISCOVERY FAILED: Cannot find enough nodes ({}/{}) and not a masternode
-x       Retrying...
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-            '''.format(len(Discovery.discovered_nodes), MIN_BOOTSTRAP_NODES))
-            raise Exception('Failed to discover any nodes. Killing myself with shame!')
-
-    async def bootstrap(self):
-        if len(Discovery.discovered_nodes) == 0:
-            raise Exception("Don't know how I ended up here. Can't bootstrap with no nodes discovered! Killing myself with shame!")
-        addrs = [Node(digest(vk), ip=Discovery.discovered_nodes[vk], port=self.network.port, vk=vk) \
-            for vk in Discovery.discovered_nodes if vk is not Keys.vk]
-        await self.network.bootstrap(addrs)
-        # await asyncio.sleep(1)
-        # self.network.cached_vks.update(self.neighbors)
 
     async def authenticate(self, ip, vk, domain='*'):
         return await Handshake.initiate_handshake(ip, vk, domain)

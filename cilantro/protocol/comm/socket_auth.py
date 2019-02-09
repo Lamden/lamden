@@ -17,11 +17,16 @@ class SocketAuth:
             cls.reset_folder()
         cls.add_public_key(public_key=cls.public_key)
 
+    # only used locally - raghu
     @classmethod
     def reset_folder(cls):
         if exists(cls.base_dir):
             shutil.rmtree(cls.base_dir, ignore_errors=True)
 
+
+    # can these be merged with handshake functionality
+# handshake.py
+# auth.py
     @classmethod
     def add_public_key(cls, public_key=None, vk=None, domain='*'):
         assert public_key or vk, 'No public key or vk provided'
@@ -35,6 +40,9 @@ class SocketAuth:
                         zmq.auth.certs._cert_public_banner.format(now),
                         public_key)
 
+    # can these be merged with handshake functionality
+# handshake.py
+# auth.py
     @classmethod
     def remove_public_key(cls, public_key=None, vk=None, domain='*'):
         assert public_key or vk, 'No public key or vk provided'
@@ -45,11 +53,16 @@ class SocketAuth:
         if exists(public_key_file):
             os.remove(public_key_file)
 
+# /Users/lamden/lamden/cilantro/cilantro/protocol/comm/lsocket.py
+# /Users/lamden/lamden/cilantro/cilantro/protocol/comm/socket_manager.py
     @classmethod
     def configure_auth(cls, auth, domain='*'):
         location = cls.authorized_keys_dir if domain == '*' else join(cls.base_dir, domain)
         auth.configure_curve(domain=domain, location=location)
 
+# /Users/lamden/lamden/cilantro/cilantro/protocol/comm/socket_manager.py
+# this should not be creating context again - raghu
+# should be part of zmq/socket utils - raghu ?
     @classmethod
     def secure_context(cls, context=None, async=False):
         if async:
@@ -61,6 +74,12 @@ class SocketAuth:
             auth = ThreadAuthenticator(ctx, log=log)
         auth.start()
         return ctx, auth
+
+# /Users/lamden/lamden/cilantro/cilantro/protocol/comm/lsocket.py
+# /Users/lamden/lamden/cilantro/cilantro/protocol/executors/dealer_router.py
+# /Users/lamden/lamden/cilantro/cilantro/protocol/executors/sub_pub.py
+# this should not be creating context again - raghu
+# should be part of zmq/socket utils - raghu ?
 
     @classmethod
     def secure_socket(cls, sock, secret, public_key, domain='*'):

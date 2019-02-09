@@ -29,22 +29,25 @@ class Handshake:
             cls.loop = loop or asyncio.get_event_loop()
             # asyncio.set_event_loop(cls.loop)
             cls.ctx = ctx or zmq.asyncio.Context()
-            cls.identity = '{};{}'.format(cls.host_ip, Keys.vk).encode()
+            cls.identity = '{}:{}'.format(cls.host_ip, Keys.vk)
             cls.auth = AsyncioAuthenticator(context=cls.ctx, loop=cls.loop)
             cls.auth.configure_curve(domain="*", location=zmq.auth.CURVE_ALLOW_ANY)
             cls.auth.start()
 
             cls.server_sock = cls.ctx.socket(zmq.ROUTER)
             cls.server_sock.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
+            cls.server_sock.setsockopt(zmq.ROUTER_HANDOVER, 1)
             cls.server_sock.curve_secretkey = Keys.private_key
             cls.server_sock.curve_publickey = Keys.public_key
             cls.server_sock.curve_server = True
             cls.server_sock.bind(cls.url)
             cls.is_setup = True
+            cls.count = 0
 
     @classmethod
     async def initiate_handshake(cls, ip, vk, domain='*'):
         if ip == cls.host_ip and vk == Keys.vk:
+        # raghu - why do we need this self authorization?
             cls.authorized_nodes[domain][vk] = ip
             SocketAuth.add_public_key(vk=vk, domain=domain)
             return True
@@ -55,7 +58,6 @@ class Handshake:
             authorized = False
             url = 'tcp://{}:{}'.format(ip, cls.port)
             cls.log.info('Sending handshake request from {} to {} (vk={})'.format(cls.host_ip, ip, vk))
-
             client_sock = cls.ctx.socket(zmq.DEALER)
             client_sock.setsockopt(zmq.IDENTITY, cls.identity)
             client_sock.curve_secretkey = Keys.private_key
@@ -63,6 +65,7 @@ class Handshake:
             client_sock.curve_serverkey = Keys.vk2pk(vk)
             client_sock.connect(url)
             client_sock.send_multipart([domain.encode()])
+            cls.count += 1
 
             try:
                 domain = [chunk.decode() for chunk in await asyncio.wait_for(client_sock.recv_multipart(), AUTH_TIMEOUT)][0]
@@ -89,13 +92,15 @@ class Handshake:
         while True:
             try:
                 ip_vk, domain = [chunk.decode() for chunk in await cls.server_sock.recv_multipart()]
-                ip, vk = ip_vk.split(';')
+                ip, vk, ct = ip_vk.split(':')
                 cls.log.info('Received a handshake request from {} to {} (vk={})'.format(ip, cls.host_ip, vk))
                 authorized = cls.process_handshake(ip, vk, domain)
                 if authorized:
                     cls.server_sock.send_multipart([ip_vk.encode(), domain.encode()])
             except Exception as e:
                 cls.log.error(traceback.format_exc())
+
+        cls.log.fatal('Handshake DIED')
 
     @classmethod
     def process_handshake(cls, ip, vk, domain):
