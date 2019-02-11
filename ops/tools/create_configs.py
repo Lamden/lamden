@@ -97,7 +97,7 @@ def main():
         print("Using default values for remaining inputs")
 
     reset_db = _get_bool_input("Reset DB on all nodes upon boot? (y/n), default='y'", default=True, skip=skip)
-    ssl_enabled = _get_bool_input("Enable SSL on Webservers? (y/n), default='y'", skip=skip, default=True)
+    ssl_enabled = _get_bool_input("Enable SSL on Webservers? (y/n), default='y'", skip=skip, default=False)
     nonce_enabled = _get_bool_input("Require nonces for user transactions? (y/n), default='n'", default=False, skip=skip)
 
     mn_log_lvl = int(_get_input("Enter Masternode log lvl. Must be 0 or in [11, 100]. (default=11)", skip=skip)) or 11
