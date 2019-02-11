@@ -34,8 +34,11 @@ seneca
 *.dat
 **/profiles/**
 **/tmp_exec_code*.py
+**/.terraform/**
 data
 vmnet_configs/constitutions/private
+*.tfstate
+*.tfstate.backup
 
 # Config files
 db_conf.ini
