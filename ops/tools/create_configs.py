@@ -3,6 +3,7 @@ from cilantro.protocol import wallet
 import json, os, configparser
 import shutil
 from copy import deepcopy
+import subprocess
 
 OPS_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/ops'
 CONST_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/constitutions/public'
@@ -70,6 +71,7 @@ def main():
     base_config_dir_path = OPS_DIR_PATH + '/environments/' + config_name
     config_dir_path = base_config_dir_path + '/conf'
     const_file = config_name + '.json'
+    nodes_file = base_config_dir_path + "/nodes.tf"
 
     if os.path.exists(base_config_dir_path):
         if _get_bool_input("WARNING: Environment named {} already exists at path {}. Replace with new one? (y/n)"
@@ -87,6 +89,10 @@ def main():
     num_wits = int(_get_input("Enter number of Witnesses"))
     assert num_wits > 0, "num_wits must be greater than 0"
 
+    valid_regions = [ 'us-east-2', 'us-east-1', 'us-west-1', 'us-west-2', 'ap-south-1', 'ap-northeast-2', 'ap-northeast-1', 'ap-southeast-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-west-1', 'eu-west-2', 'eu-west-3', 'sa-east-1' ]
+    launch_region = _get_input("Enter region to launch into (default='us-west-1')") or 'us-west-1'
+    assert launch_region in valid_regions, "Region provided invalid, please select among {}".format(valid_regions)
+
     # Build new constitution file
     if _check_constitution_exists(const_file):
         print("WARNING: Constitution file {} already exists. Replacing with new one.".format(const_file))
@@ -97,8 +103,9 @@ def main():
         print("Using default values for remaining inputs")
 
     reset_db = _get_bool_input("Reset DB on all nodes upon boot? (y/n), default='y'", default=True, skip=skip)
-    ssl_enabled = _get_bool_input("Enable SSL on Webservers? (y/n), default='y'", skip=skip, default=False)
     nonce_enabled = _get_bool_input("Require nonces for user transactions? (y/n), default='n'", default=False, skip=skip)
+    ssl_enabled = _get_bool_input("Enable SSL on Webservers? (y/n), default='n'", skip=skip, default=False)
+    
 
     mn_log_lvl = int(_get_input("Enter Masternode log lvl. Must be 0 or in [11, 100]. (default=11)", skip=skip)) or 11
     assert mn_log_lvl >= 0, 'log lvl must be greater than 0'
@@ -114,6 +121,7 @@ def main():
     assert sen_log_lvl >= 0, 'log lvl must be greater than 0'
 
     # Now, to actually build the configs...
+    shutil.copytree("{}/base/environment/".format(OPS_DIR_PATH), base_config_dir_path)
     os.makedirs(config_dir_path)
     for node_group in const_dict:
         for i, node_info in enumerate(const_dict[node_group]):
@@ -154,6 +162,24 @@ def main():
             config['DEFAULT'] = config_info
             with open(cilantro_conf_path, 'w') as f:
                 config.write(f)
+
+            with open(nodes_file, "a") as nf:
+                node_definition = [
+                    'module "{}" {{\n'.format(node_name),
+                    '  source = "./modules/cilantro_node"\n',
+                    '  providers = {\n',
+                    '    aws = "aws.{}"\n'.format(launch_region),
+                    '  }\n',
+                    '  type = "{}"\n'.format(node_type),
+                    '  index = {}\n'.format(i),
+                    '  keyname = "${local.keyname}"\n',
+                    '  private_key = "${module.key.private_key}"\n',
+                    '  docker_tag  = "${var.docker_tag}"\n'
+                    '}\n\n'
+                ]
+                nf.writelines(node_definition)
+
+    subprocess.call('cd {} && terraform init {}'.format(base_config_dir_path, base_config_dir_path), shell=True)
 
 
     print("-"*64 + "\nDone generating configs for environment named {} at path {}".format(config_name, config_dir_path))
