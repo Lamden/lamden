@@ -7,10 +7,9 @@ def start_mongo():
     host_name = env('HOST_NAME', '')
 
     mongo_dir = DATA_DIR + '/mongo'
-    mongo_log_path = mongo_dir + 'logs/mongo.log'
-    # Why is below necessary?
+    mongo_log_path = mongo_dir + '/logs/mongo.log'
     try:
-        os.makedirs(mongo_log_path, exist_ok=True)
+        os.makedirs(os.path.dirname(mongo_log_path), exist_ok=True)
         with open(mongo_log_path, 'w+') as f:
             print('Mongo log file created at path {}'.format(mongo_log_path))
     except Exception as e:
