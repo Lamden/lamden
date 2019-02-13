@@ -231,9 +231,11 @@ resource "null_resource" "aggregate-ips" {
 }
 
 # Copy over cilantro config only if it has changed locally
+# Always run this endpoint to enforce that changes to the cilantro config should be done locally then pushed
+# up using the devops stack. Also prevents race conditions/errors with re-aggregating IPs
 resource "null_resource" "cilantro-conf" {
   triggers {
-    conf = "${file("./conf/${var.type}${var.index}/cilantro.conf")}"
+    always_run = "${uuid()}"
   }
 
   connection {
