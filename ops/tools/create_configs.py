@@ -107,17 +107,17 @@ def main():
     ssl_enabled = _get_bool_input("Enable SSL on Webservers? (y/n), default='n'", skip=skip, default=False)
     
 
-    mn_log_lvl = int(_get_input("Enter Masternode log lvl. Must be 0 or in [11, 100]. (default=11)", skip=skip)) or 11
+    mn_log_lvl = int(_get_input("Enter Masternode log lvl. Must be 0 or in [11, 100]. (default=11)", skip=skip) or 11)
     assert mn_log_lvl >= 0, 'log lvl must be greater than 0'
     assert mn_log_lvl not in range(1, 11), "Masternode log cannot be in range [1, 10]"
 
-    wit_log_lvl = int(_get_input("Enter Witness log lvl. (default=11)", skip=skip)) or 11
+    wit_log_lvl = int(_get_input("Enter Witness log lvl. (default=11)", skip=skip) or 11)
     assert wit_log_lvl >= 0, 'log lvl must be greater than 0'
 
-    del_log_lvl = int(_get_input("Enter Delegate log lvl. (default=11)", skip=skip)) or 11
+    del_log_lvl = int(_get_input("Enter Delegate log lvl. (default=11)", skip=skip) or 11)
     assert del_log_lvl >= 0, 'log lvl must be greater than 0'
 
-    sen_log_lvl = int(_get_input("Enter Seneca log lvl. (default=11)", skip=skip)) or 11
+    sen_log_lvl = int(_get_input("Enter Seneca log lvl. (default=11)", skip=skip) or 11)
     assert sen_log_lvl >= 0, 'log lvl must be greater than 0'
 
     # Now, to actually build the configs...
@@ -174,7 +174,10 @@ def main():
                     '  index = {}\n'.format(i),
                     '  keyname = "${local.keyname}"\n',
                     '  private_key = "${module.key.private_key}"\n',
-                    '  docker_tag  = "${var.docker_tag}"\n'
+                    '  docker_tag  = "${var.docker_tag}"\n',
+                    '}\n\n',
+                    'output "{}-ssh" {{\n'.format(node_name),
+                    '  value = "ssh ubuntu@${{module.{}.public_ip}}"\n'.format(node_name),
                     '}\n\n'
                 ]
                 nf.writelines(node_definition)
