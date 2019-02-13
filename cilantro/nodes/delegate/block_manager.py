@@ -347,6 +347,9 @@ class BlockManager(Worker):
         block = self.db_state.next_block[self.db_state.new_block_hash][0]
         if self.db_state.my_new_block_hash != self.db_state.new_block_hash:    # holy cow - mismatch
             self.log.important("Out-of-Consensus - BlockNotification doesn't match my block!")
+            if (self.db_state.num_fail_block >= MIN_NEW_BLOCK_MN_QOURUM):
+                self.fail_block_action(block)
+                return
             # check input hashes and send align / skip messages using input-hash  - don't start next block
             self.send_input_align_msg(block)
             if self.db_state.is_new_block:
@@ -446,6 +449,13 @@ class BlockManager(Worker):
         self.db_state.num_skip_block = self.db_state.num_skip_block + 1
         self.skip_block()
 
+    def fail_block_action(self, block_data: FailedBlockNotification):
+        # reset all the state info
+        self.db_state.reset()
+
+        for idx in range(NUM_SB_BUILDERS):
+            self._send_msg_over_ipc(sb_index=idx, message=block_data)
+
     # out of consensus at master - make sure input hashes are up to date
     def handle_fail_block(self, block_data: FailedBlockNotification):
         prev_block_hash = block_data.prev_block_hash
@@ -464,16 +474,21 @@ class BlockManager(Worker):
 
         self.db_state.num_fail_block = self.db_state.num_fail_block + 1
 
-        if (self.db_state.num_fail_block < MIN_NEW_BLOCK_MN_QOURUM) or (len(self.db_state.input_hash_map) < NUM_SB_PER_BLOCK):
-            # add a log that it is not ready yet
+        if (self.db_state.num_fail_block < MIN_NEW_BLOCK_MN_QOURUM):
             self.log.important("Don't have quorum yet to handle fail block {}".format(prev_block_hash))
             return
 
-        # reset all the state info
-        self.db_state.reset()
+        new_block_hash = -1
+        self.db_state.next_block[new_block_hash] = (block_data, 1)
+        self.db_state.new_block_hash = new_block_hash
 
-        for idx in range(NUM_SB_BUILDERS):
-            self._send_msg_over_ipc(sb_index=idx, message=block_data)
+        if (len(self.db_state.input_hash_map) < NUM_SB_PER_BLOCK):
+            # add a log that it is not ready yet
+            self.log.important("Not ready yet to handle fail block {}".format(prev_block_hash))
+            return
+
+        self.fail_block_action(block_data)
+
 
     def send_updated_db_msg(self):
         self.log.info("Sending MakeNextBlock message to SBBs")
