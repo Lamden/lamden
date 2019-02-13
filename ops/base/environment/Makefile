@@ -22,6 +22,8 @@ help:
 	@echo "     Restart with last docker tag that completed the apply stage"
 	@echo " -- DOCKER_TAG=<tag> make apply"
 	@echo "     Run with a specifically provided tag (NOTE: if you are running this command with the same tag as the last run, it will not restart docker)"
+	@echo " -- make show"
+	@echo "     Show the outputs from the provisioning step. Including SSH commands"
 	@echo ""
 	@echo "Available Targets:"
 	@echo "=================="
@@ -33,6 +35,7 @@ help:
 	@echo " -- make taintdocker     Taint all the docker containers so they are rebooted on the next run of 'make apply'"
 	@echo " -- make clean           Clean out the cache files, destroy the provisioned terraform resources"
 	@echo " -- make destroy         Destroy the provisioned terraform resources"
+	@echo " -- make show            Show the outputs from the provisioning"
 	@echo ""
 
 
@@ -50,9 +53,9 @@ buildpush:
 
 # Run the necessary terraform application process
 apply:
+	@rm $(MY_PATH).cache/ip_* || true
 	@echo "Applying with tag=$(DOCKER_TAG) user=$(USER) environment_name=$(ENVIRONMENT_NAME)"
 	@terraform apply -var 'docker_tag=$(DOCKER_TAG)' -var 'user=$(USER)' -var 'environment_name=$(shell basename $(MY_PATH))'
-	@rm $(MY_PATH).cache/*_ip
 	@echo "$(DOCKER_TAG)" > $(MY_PATH).cache/docker_tag
 
 # Get the docker_tag of the last successful run from the .cache. Error out if not able to find
@@ -70,3 +73,12 @@ clean: destroy
 # Destroy all the terraform resources
 destroy:
 	@terraform destroy -var 'docker_tag=$(DOCKER_TAG)' -var 'user=$(USER)' -var 'environment_name=$(shell basename $(MY_PATH))'
+
+# Show all the outputs from the run
+show:
+	@echo ""
+	@echo "============="
+	@echo "|| OUTPUTS ||"
+	@echo "============="
+	@terraform output
+	@echo ""
