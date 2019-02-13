@@ -13,7 +13,7 @@ def main():
     config = config['DEFAULT']
 
     # Some configs are specified as env vars so they can be accessible across multiple files
-    if config['ssl_enabled']:
+    if config.getboolean('ssl_enabled'):
         os.environ['SSL_ENABLED'] = "1"
     os.environ['HOST_IP'] = config['ip']
     os.environ['BOOT_IPS'] = config['boot_ips']

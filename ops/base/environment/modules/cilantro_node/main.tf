@@ -253,6 +253,8 @@ resource "null_resource" "cilantro-conf" {
       "sudo mv /home/ubuntu/cilantro.conf /etc/cilantro.conf",
     ]
   }
+
+  depends_on = ["null_resource.aggregate-ips"]
 }
 
 # Copy over circus config only if it has changed locally
@@ -334,7 +336,7 @@ resource "null_resource" "docker" {
     ]
   }
 
-  depends_on = ["null_resource.cilantro-conf", "null_resource.circus-conf"]
+  depends_on = ["null_resource.cilantro-conf", "null_resource.circus-conf", "null_resource.aggregate-ips"]
 }
 
 output "ssh" {
