@@ -19,6 +19,7 @@ from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIn
 IDX_REPLY_TIMEOUT = 20
 TIMEOUT_CHECK_INTERVAL = 1
 
+
 class CatchupManager:
     def __init__(self, verifying_key: str, pub_socket: LSocketBase, router_socket: LSocketBase, store_full_blocks=True):
         """
