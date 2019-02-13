@@ -121,8 +121,14 @@ def main():
     assert sen_log_lvl >= 0, 'log lvl must be greater than 0'
 
     # Now, to actually build the configs...
-    shutil.copytree("{}/base/environment/".format(OPS_DIR_PATH), base_config_dir_path)
     os.makedirs(config_dir_path)
+    os.makedirs("{}/.cache".format(base_config_dir_path))
+    os.symlink("{}/base/environment/aggregate_ips.py".format(OPS_DIR_PATH), "{}/aggregate_ips.py".format(base_config_dir_path))
+    os.symlink("{}/base/environment/Makefile".format(OPS_DIR_PATH), "{}/Makefile".format(base_config_dir_path))
+    os.symlink("{}/base/environment/providers.tf".format(OPS_DIR_PATH), "{}/providers.tf".format(base_config_dir_path))
+    os.symlink("{}/base/environment/shared.tf".format(OPS_DIR_PATH), "{}/shared.tf".format(base_config_dir_path))
+    os.symlink("{}/base/environment/variables.tf".format(OPS_DIR_PATH), "{}/variables.tf".format(base_config_dir_path))
+    os.symlink("{}/base/environment/modules".format(OPS_DIR_PATH), "{}/modules".format(base_config_dir_path))
     for node_group in const_dict:
         for i, node_info in enumerate(const_dict[node_group]):
             node_name = _get_node_name(node_group, i)

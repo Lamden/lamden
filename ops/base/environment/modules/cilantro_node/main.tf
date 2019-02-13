@@ -332,7 +332,7 @@ resource "null_resource" "docker" {
   provisioner "remote-exec" {
     inline = [
       "sudo docker rm -f cil",
-      "sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v /etc/cilantro.conf:/etc/cilantro.conf -v /etc/circus.conf:/etc/circus.conf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh -v /home/ubuntu/.sslconf:/root/.sslconf -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
+      "sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v /etc/cilantro.conf:/etc/cilantro.conf -v /etc/circus.conf:/etc/circus.conf -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
     ]
   }
 
