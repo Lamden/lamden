@@ -43,9 +43,7 @@ if __name__ == "__main__":
     # Write my config
     config = configparser.ConfigParser()
     config.read(cilantro_config)
-    instanceip = config.get('DEFAULT', 'ip')
-    instanceip = args.ip
-    bootips = config.get('DEFAULT', 'boot_ips')
-    bootips = ",".join(sorted(all_ips))
+    instanceip = config.set('DEFAULT', 'ip', args.ip)
+    bootips = config.set('DEFAULT', 'boot_ips', ",".join(sorted(all_ips)))
     with open(cilantro_config, "w") as cf:
         config.write(cf)
