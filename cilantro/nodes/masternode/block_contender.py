@@ -35,7 +35,10 @@ class SubBlockGroup:
                 return True
             num_votes += votes_for_rh
 
-        if num_votes >= DELEGATE_MAJORITY:
+        remaining_votes = NUM_DELEGATES - num_votes
+        leading_rh = len(self.rh[self.best_rh])
+
+        if leading_rh + remaining_votes < DELEGATE_MAJORITY:
             self.log.fatal("Consensus impossible for SB index {}!\nresult hashes: {}".format(self.sb_idx, self.rh))
             return False
 
@@ -206,9 +209,8 @@ class BlockContender:
 
     def is_consensus_possible(self) -> bool:
         """
-        If any of the sub block indices have more than DELEGATE_MAJORITY contenders submitted, but no single result hash
-        for that sub block index has DELEGATE_MAJORITY contenders, we can deduce it is impossible to achieve consensus
-        on that sub block index (and consequently impossible to achieve consensus on the block overall)
+        Consensus is impossible if for any sub block contender the remaining votes were to go to the contender with the
+        most votes and it still did not have 2/3 votes (i.e. contender with most votes + remaining votes < 2/3 votes)
         """
         for sb_idx, sb_group in self.sb_groups.items():
             if not sb_group.is_consensus_possible():
