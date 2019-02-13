@@ -6,12 +6,7 @@ CILANTRO_BASE="$DIR/../../"
 localTag=$(bash ${DIR}/generate_tag.sh)
 
 echo -e "--------------------------------------------"
-echo -e "Building docker images with..."
-echo -e "branch $branch"
-echo -e "commitHash $commitHash"
-echo -e "dirHash $dirHash"
-echo -e "localTag $localTag"
-echo -e "remoteTag $remoteTag"
+echo -e "Building docker images with tag $localTag"
 
 echo -e "\n--------------------------------------------"
 echo -e "Building base image...\n"
