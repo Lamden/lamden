@@ -1,4 +1,4 @@
-.PHONY: new
+.PHONY: new checkdeps
 
 help:
 	@echo ""
@@ -13,7 +13,8 @@ help:
 	@echo ""
 	@echo "Available Targets:"
 	@echo "=================="
-	@echo " -- make new            	Create a new environment, interactive"
+	@echo " -- make new            	Create a new environment, interactive, runs 'checkdeps' prior"
+	@echo " -- make checkdeps		Check to see if all necessary dependencies are installed"
 	@echo ""
 	@echo "Help:"
 	@echo "====="
@@ -22,5 +23,14 @@ help:
 	@echo ""
 
 # Make a new environment interactively with create_configs script
-new:
+new: checkdeps
 	python3 ../tools/create_configs.py
+
+# Check if all necessary dependencies exist before running them
+checkdeps:
+ifeq (,$(shell which terraform))
+	$(error "No terraform in path, please install through your package manager (e.g. MacOS 'brew install terraform'")
+endif
+ifeq (,$(shell pip3 freeze | grep pathspec | cut -d'=' -f 1))
+	$(error "Package pathspec not available to python3, please install via your python package manager (e.g. 'pip3 install pathspec')")
+endif

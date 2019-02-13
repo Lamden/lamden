@@ -13,7 +13,7 @@ def start_redis():
         print("Creating Redis directory at {}".format(REDIS_DIR))
         os.makedirs(REDIS_DIR, exist_ok=True)
 
-    assert os.path.exists(REDIS_CONF_PATH), "No redis config file found at path {}".format(REDIS_CONF_PATH)
+    assert os.path.exists(REDIS_CONF_PATH), "No redis.conf file found at path {}".format(REDIS_CONF_PATH)
 
     print("Redis using data directory: {}".format(REDIS_DIR))
     os.system('redis-server {}'.format(REDIS_CONF_PATH))
