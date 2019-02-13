@@ -55,7 +55,7 @@ buildpush:
 apply:
 	@rm $(MY_PATH).cache/ip_* || true
 	@echo "Applying with tag=$(DOCKER_TAG) user=$(USER) environment_name=$(ENVIRONMENT_NAME)"
-	@terraform apply -var 'docker_tag=$(DOCKER_TAG)' -var 'user=$(USER)' -var 'environment_name=$(shell basename $(MY_PATH))'
+	@terraform apply -var 'docker_tag=$(DOCKER_TAG)' -var 'user=$(USER)' -var 'environment_name=$(shell basename $(MY_PATH))' -parallelism=50
 	@echo "$(DOCKER_TAG)" > $(MY_PATH).cache/docker_tag
 
 # Get the docker_tag of the last successful run from the .cache. Error out if not able to find
