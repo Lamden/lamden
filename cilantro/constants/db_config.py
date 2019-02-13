@@ -2,6 +2,7 @@ from os import getenv as env
 
 
 MASTER_DB = 0
+DATA_DIR = '/var/db/cilantro'
 
 
 def get_redis_port(port=None):

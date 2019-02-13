@@ -175,6 +175,10 @@ class MDB:
             blk_list.append(blk)
 
         cls.log.spam("query_index returning dict {}".format(blk_list))
+
+        if len(blk_list) > 1:
+            assert blk_list[0]['blockNum'] < blk_list[-1]['blockNum'], "Blk list in bad order {}".format(blk_list)
+
         return blk_list
 
     @classmethod

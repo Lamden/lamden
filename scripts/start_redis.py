@@ -1,9 +1,11 @@
 import os
+from cilantro.constants.db_config import DATA_DIR
 
 
 def start_redis():
-    redis_dir = '/var/db/cilantro'
     print("Starting Redis server...")
+
+    redis_dir = DATA_DIR + '/redis'
 
     if not os.path.exists(redis_dir):
         print("Creating Redis directory at {}".format(redis_dir))
