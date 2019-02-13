@@ -2,19 +2,21 @@ import os
 from cilantro.constants.db_config import DATA_DIR
 
 
+REDIS_CONF = '/etc/redis.conf'
+REDIS_DIR = DATA_DIR + '/redis'
+
+
 def start_redis():
     print("Starting Redis server...")
 
-    redis_dir = DATA_DIR + '/redis'
+    if not os.path.exists(REDIS_DIR):
+        print("Creating Redis directory at {}".format(REDIS_DIR))
+        os.makedirs(REDIS_DIR, exist_ok=True)
 
-    if not os.path.exists(redis_dir):
-        print("Creating Redis directory at {}".format(redis_dir))
-        os.makedirs(redis_dir, exist_ok=True)
+    assert os.path.exists(REDIS_CONF), "No redis config file found at path {}".format(REDIS_CONF)
 
-    redis_file = 'dump.rdb'
-
-    print("Redis using data directory: {}\nAnd db file name: {}".format(redis_dir, redis_file))
-    os.system('redis-server --dir {} --dbfilename {}'.format(redis_dir, redis_file))
+    print("Redis using data directory: {}".format(REDIS_DIR))
+    os.system('redis-server /etc/redis.conf')
 
 
 if __name__ == '__main__':
