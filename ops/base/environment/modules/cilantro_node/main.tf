@@ -157,7 +157,7 @@ resource "aws_security_group" "cilantro_firewall" {
 }
 
 # Configure a cilantro node
-resource "aws_instance" "cilantro_node" {
+resource "aws_instance" "cilantro-node" {
   key_name        = "${var.keyname}"
   ami             = "${local.amis["${data.aws_region.current.name}"]}"
   instance_type   = "${var.size}"
@@ -210,7 +210,24 @@ resource "aws_route53_record" "fqdn" {
   name    = "${var.subdomain_prefix == true ? "${local.prefix}" : ""}${local.nodename}"
   type    = "A"
   ttl     = "60"
-  records = ["${aws_instance.cilantro_node.public_ip}"]
+  records = ["${aws_instance.cilantro-node.public_ip}"]
+}
+
+# Run the script to aggregate the ips
+# This needs to always be run because since we are a module we have no knowledge of the rest of the network.
+# The only way we can be sure that we correctly re-aggregate the IPs in the case of a subset of IPs being
+# changed is to run it every time. The way that the validation works is checking the conf/ folder for who
+# should exist in the network by their configuration files, then waiting on the files .cache/<type><index>_ip
+# to contain all the IPs necessary. These files are cleared at the end of a successful apply to ensure we
+# will not get any half-states on the rerun
+resource "null_resource" "aggregate-ips" {
+  triggers {
+    always_run = "${uuid()}"
+  }
+
+  provisioner "local-exec" {
+    command = "python3 aggregate_ips.py --ip ${aws_instance.cilantro-node.public_ip} --type ${var.type} --index ${var.index}"
+  }
 }
 
 # Copy over cilantro config only if it has changed locally
@@ -223,7 +240,7 @@ resource "null_resource" "cilantro-conf" {
     type        = "ssh"
     user        = "ubuntu"
     private_key = "${var.private_key}"
-    host        = "${aws_instance.cilantro_node.public_ip}"
+    host        = "${aws_instance.cilantro-node.public_ip}"
   }
 
   provisioner "file" {
@@ -248,7 +265,7 @@ resource "null_resource" "circus-conf" {
     type        = "ssh"
     user        = "ubuntu"
     private_key = "${var.private_key}"
-    host        = "${aws_instance.cilantro_node.public_ip}"
+    host        = "${aws_instance.cilantro-node.public_ip}"
   }
 
   provisioner "file" {
@@ -273,7 +290,7 @@ resource "null_resource" "ssh-keys" {
     type        = "ssh"
     user        = "ubuntu"
     private_key = "${var.private_key}"
-    host        = "${aws_instance.cilantro_node.public_ip}"
+    host        = "${aws_instance.cilantro-node.public_ip}"
   }
 
   # Copy up our public keys to the nodes, leave existing file to keep existing keys
@@ -305,7 +322,7 @@ resource "null_resource" "docker" {
     type        = "ssh"
     user        = "ubuntu"
     private_key = "${var.private_key}"
-    host        = "${aws_instance.cilantro_node.public_ip}"
+    host        = "${aws_instance.cilantro-node.public_ip}"
   }
 
   # 1) Kill the 'cil' container
@@ -316,12 +333,14 @@ resource "null_resource" "docker" {
       "sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v /etc/cilantro.conf:/etc/cilantro.conf -v /etc/circus.conf:/etc/circus.conf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh -v /home/ubuntu/.sslconf:/root/.sslconf -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
     ]
   }
+
+  depends_on = ["null_resource.cilantro-conf", "null_resource.circus-conf"]
 }
 
 output "ssh" {
-  value = "ssh ubuntu@${aws_instance.cilantro_node.public_ip}"
+  value = "ssh ubuntu@${aws_instance.cilantro-node.public_ip}"
 }
 
 output "public_ip" {
-  value = "${aws_instance.cilantro_node.public_ip}"
+  value = "${aws_instance.cilantro-node.public_ip}"
 }
