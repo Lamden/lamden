@@ -297,6 +297,31 @@ resource "null_resource" "circus-conf" {
   depends_on = ["aws_eip.static-ip"]
 }
 
+# Copy over redis.conf file
+resource "null_resource" "redis-conf" {
+  triggers {
+    conf = "${file("./conf/${var.type}${var.index}/redis.conf")}"
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = "${var.private_key}"
+    host        = "${aws_instance.cilantro-node.public_ip}"
+  }
+
+  provisioner "file" {
+    source      = "./conf/${var.type}${var.index}/redis.conf"
+    destination = "/home/ubuntu/redis.conf"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo mv /home/ubuntu/redis.conf /etc/redis.conf",
+    ]
+  }
+}
+
 # Push up authorized keys to the nodes so all of Lamden's team can easily access them
 resource "null_resource" "ssh-keys" {
   triggers {
@@ -349,7 +374,7 @@ resource "null_resource" "docker" {
   provisioner "remote-exec" {
     inline = [
       "sudo docker rm -f cil",
-      "sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v /etc/cilantro.conf:/etc/cilantro.conf -v /etc/circus.conf:/etc/circus.conf -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
+      "sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v /etc/cilantro.conf:/etc/cilantro.conf -v /etc/redis.conf:/etc/redis.conf -v /etc/circus.conf:/etc/circus.conf -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
     ]
   }
 

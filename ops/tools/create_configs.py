@@ -11,6 +11,7 @@ CONST_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/constitutions/public
 BASE_CONFIG_DIR_PATH = OPS_DIR_PATH + '/base'
 LIGHT_CONF_PATH = BASE_CONFIG_DIR_PATH + '/circus_light.conf'
 FULL_CONF_PATH = BASE_CONFIG_DIR_PATH + '/circus_full.conf'
+REDIS_CONF_PATH = BASE_CONFIG_DIR_PATH + '/redis.conf'
 
 NAME_MAP = {'masternodes': 'masternode', 'witnesses': 'witness', 'delegates': 'delegate'}
 
@@ -102,10 +103,9 @@ def main():
     if skip:
         print("Using default values for remaining inputs")
 
-    reset_db = _get_bool_input("Reset DB on all nodes upon boot? (y/n), default='y'", default=True, skip=skip)
+    reset_db = _get_bool_input("Reset DB on all nodes upon boot? (y/n), default='n'", default=False, skip=skip)
     nonce_enabled = _get_bool_input("Require nonces for user transactions? (y/n), default='n'", default=False, skip=skip)
     ssl_enabled = _get_bool_input("Enable SSL on Webservers? (y/n), default='n'", skip=skip, default=False)
-    
 
     mn_log_lvl = int(_get_input("Enter Masternode log lvl. Must be 0 or in [11, 100]. (default=11)", skip=skip) or 11)
     assert mn_log_lvl >= 0, 'log lvl must be greater than 0'
@@ -129,6 +129,7 @@ def main():
     os.symlink("{}/base/environment/shared.tf".format(OPS_DIR_PATH), "{}/shared.tf".format(base_config_dir_path))
     os.symlink("{}/base/environment/variables.tf".format(OPS_DIR_PATH), "{}/variables.tf".format(base_config_dir_path))
     os.symlink("{}/base/environment/modules".format(OPS_DIR_PATH), "{}/modules".format(base_config_dir_path))
+
     for node_group in const_dict:
         for i, node_info in enumerate(const_dict[node_group]):
             node_name = _get_node_name(node_group, i)
@@ -137,6 +138,7 @@ def main():
             node_dir = config_dir_path + '/' + node_name
             cilantro_conf_path = node_dir + '/' + 'cilantro.conf'
             circus_conf_path = node_dir + '/' + 'circus.conf'
+            redis_conf_path = node_dir + '/' + 'redis.conf'
             os.mkdir(node_dir)
 
             # Get the general info
@@ -150,7 +152,10 @@ def main():
                            'ssl_enabled': ssl_enabled,
                            }
 
-            # Set node specific info
+            # Copy redis.conf
+            shutil.copyfile(REDIS_CONF_PATH, redis_conf_path)
+
+            # Set node specific info; copy appropriate circus config file
             if node_type == 'masternode':
                 config_info['nonce_enabled'] = nonce_enabled
                 config_info['log_lvl'] = mn_log_lvl

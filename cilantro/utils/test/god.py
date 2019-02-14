@@ -154,7 +154,7 @@ class God:
     @classmethod
     def _dump_it(cls, volume: int, delay: int=0, gen_func=None):
         """ Dump it fast. """
-        God.mn_urls = get_mn_urls()  # Reset MN URLS
+        # God.mn_urls = get_mn_urls()  # Reset MN URLS
         assert volume > 0, "You must dump at least 1 transaction silly"
 
         if not gen_func:
@@ -201,5 +201,9 @@ class God:
             cls.log.debug("Multi-master detected. Using Masternode at IP {}".format(mn_url))
         else:
             mn_url = cls.mn_urls[0]
+
+        cls.log.important3("got mn url {}".format(mn_url))  # TODO remove
+        cls.log.important3("mn urls {}".format(cls.mn_urls))  # TODO remove
+        cls.log.important3("mn urls {}".format(God.mn_urls))  # TODO remove
         return mn_url
 
