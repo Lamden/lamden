@@ -29,7 +29,7 @@ make install
 PyPi installation will be available at release of AnarchyNet.
 
 ### Smart Contract Example
-```
+```python
 from seneca.libs.datatypes import hmap
 
 balances = hmap('balances', str, int)
