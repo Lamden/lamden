@@ -36,6 +36,7 @@ help:
 	@echo " -- make clean           Clean out the cache files, destroy the provisioned terraform resources"
 	@echo " -- make destroy         Destroy the provisioned terraform resources"
 	@echo " -- make show            Show the outputs from the provisioning"
+	@echo " -- make testdump        Start a test script to dump transactions to the deployed environment"
 	@echo ""
 
 
@@ -82,3 +83,6 @@ show:
 	@echo "============="
 	@terraform output
 	@echo ""
+
+testdump:
+	python3 $(CILANTRO_ROOT)/ops/tools/dumpatron.py $(MY_PATH)
