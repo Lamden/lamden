@@ -6,7 +6,7 @@ import sys, os, glob
 log = get_logger('Dumpatron')
 
 
-SSL_ENABLED = False
+SSL_ENABLED = False  # TODO make this infered instead of a hard coded flag
 VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dump
 
 
