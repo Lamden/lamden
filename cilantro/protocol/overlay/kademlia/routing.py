@@ -70,6 +70,7 @@ class KBucket(object):
             return False
         return True
 
+    # raghu todo - make it simpler with a counter variable in the object and configurable parameter on how deep it can go
     def depth(self):
         vals = self.nodes.values()
         sp = sharedPrefix([bytesToBitString(n.id) for n in vals])
@@ -85,6 +86,7 @@ class KBucket(object):
         return len(self.nodes)
 
 
+# raghu todo - experiment with sending only from the bucket, if bucket is empty, then send self node only
 class TableTraverser(object):
     def __init__(self, table, startNode):
         index = table.getBucketFor(startNode)
@@ -118,17 +120,19 @@ class TableTraverser(object):
 
 
 class RoutingTable(object):
-    def __init__(self, protocol, ksize, node):
+    def __init__(self, node):
         """
         @param node: The node that represents this server.  It won't
         be added to the routing table, but will be needed later to
         determine which buckets to split or not.
         """
         self.node = node
-        self.protocol = protocol
-        self.ksize = ksize
+        self.ksize = KSIZE
+        self.alpha = ALPHA
+        # raghu todo - initial num of buckets can be equal to ln(num of nodes)?
         self.buckets = [KBucket(0, 2 ** 160, self.ksize)]
-        self.addContact(node)
+        # raghu todo - make sure the following line can be commented out
+        # self.addContact(node)
 
 
     def splitBucket(self, index):
@@ -162,6 +166,7 @@ class RoutingTable(object):
 
         # Per section 4.2 of paper, split if the bucket has the node
         # in its range or if the depth is not congruent to 0 mod 5
+        # raghu todo we need to have a reliable way of splitting as well as its control
         if bucket.hasInRange(self.node) or bucket.depth() % 5 != 0:
             self.splitBucket(index)
             self.addContact(node)
@@ -176,14 +181,13 @@ class RoutingTable(object):
             if node.long_id < bucket.range[1]:
                 return index
 
-    def findNode(self, node, k=None):
+    def findNode(self, node, k=self.ksize):
         if node.id == self.node.id:
             return [self.node]
         bucket = self.buckets[self.getBucketFor(node)]
         item = bucket.nodes.get(node.id, None)
         if item and node.id == item.id:
             return [item]
-        k = k or self.ksize
         nodes = []
         for neighbor in TableTraverser(self, node):
             nodes.append(neighbor)
@@ -191,11 +195,12 @@ class RoutingTable(object):
                 break
         return nodes
 
-    def findNeighbors(self, node, k=None, exclude=None):
-        k = k or self.ksize
+    def findNeighbors(self, node, exclude=None):
+        bucket = self.buckets[self.getBucketFor(node)]
+        k = max(len(bucket.nodes), self.alpha)
         nodes = []
         for neighbor in TableTraverser(self, node):
-            notexcluded = exclude is None or not neighbor.sameHomeAs(exclude)
+            notexcluded = exclude is None or not neighbor.equals(exclude)
             if notexcluded:
                 heapq.heappush(nodes, (node.distanceTo(neighbor), neighbor))
             if len(nodes) == k:
