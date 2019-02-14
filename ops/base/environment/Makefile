@@ -54,7 +54,7 @@ buildpush:
 # Run the necessary terraform application process
 apply:
 	@rm $(MY_PATH).cache/ip_* || true
-	@echo "Applying with tag=$(DOCKER_TAG) user=$(USER) environment_name=$(ENVIRONMENT_NAME)"
+	@echo "Applying with tag=$(DOCKER_TAG) user=$(USER) environment_name=$(shell basename $(MY_PATH))"
 	@terraform apply -var 'docker_tag=$(DOCKER_TAG)' -var 'user=$(USER)' -var 'environment_name=$(shell basename $(MY_PATH))' -parallelism=30
 	@echo "$(DOCKER_TAG)" > $(MY_PATH).cache/docker_tag
 

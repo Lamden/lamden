@@ -24,28 +24,31 @@ variable "private_key" {
   description = "The contents of the private key to use for deployment"
 }
 
+# true/false flag
 variable "create_eip" {
   type        = "string"
   description = "Boolean, whether or not to use EIPs"
   default     = false
 }
 
+# true/false flag
 variable "create_dns" {
   type        = "string"
   description = "Boolean, whether or not to create DNS records"
   default     = false
 }
 
-variable "domain" {
-  type        = "string"
-  description = "The domain name to use for creating DNS records"
-  default     = "none"
-}
-
+# true/false flag
 variable "subdomain_prefix" {
   type        = "string"
   description = "Flag to set whether or not to add a subdomain prefix"
   default     = true
+}
+
+variable "domain" {
+  type        = "string"
+  description = "The domain name to use for creating DNS records"
+  default     = "none"
 }
 
 variable "size" {
@@ -194,23 +197,29 @@ resource "aws_instance" "cilantro-node" {
   depends_on = ["aws_security_group.cilantro_firewall"]
 }
 
-# Setup FQDN/DNS if required by parameters
-resource "aws_route53_zone" "primary" {
-  # Run if statement in terraform, check if boolean provided to module is true, then set count to 1
-  count = "${var.create_dns == true ? 1 : 0}"
+# Conditionally create the elastic IP if requested by the user
+resource "aws_eip" "static-ip" {
+  count = "${var.create_eip}"
 
+  instance = "${aws_instance.cilantro-node.id}"
+}
+
+# Look up the hosted zone for use with record
+data "aws_route53_zone" "primary" {
   name = "${var.domain}"
 }
 
 resource "aws_route53_record" "fqdn" {
   # Run if statement in terraform, check if boolean provided to module is true, then set count to 1
-  count = "${var.create_dns == true ? 1 : 0}"
+  count = "${var.create_dns}"
 
-  zone_id = "${aws_route53_zone.primary.zone_id}"
-  name    = "${var.subdomain_prefix == true ? "${local.prefix}" : ""}${local.nodename}"
+  zone_id = "${data.aws_route53_zone.primary.zone_id}"
+  name    = "${var.subdomain_prefix ? "${local.prefix}" : ""}${local.nodename}"
   type    = "A"
   ttl     = "60"
   records = ["${aws_instance.cilantro-node.public_ip}"]
+
+  depends_on = ["aws_eip.static-ip"]
 }
 
 # Run the script to aggregate the ips
@@ -228,6 +237,8 @@ resource "null_resource" "aggregate-ips" {
   provisioner "local-exec" {
     command = "python3 aggregate_ips.py --ip ${aws_instance.cilantro-node.public_ip} --type ${var.type} --index ${var.index}"
   }
+
+  depends_on = ["aws_eip.static-ip"]
 }
 
 # Copy over cilantro config only if it has changed locally
@@ -256,7 +267,7 @@ resource "null_resource" "cilantro-conf" {
     ]
   }
 
-  depends_on = ["null_resource.aggregate-ips"]
+  depends_on = ["null_resource.aggregate-ips", "aws_eip.static-ip"]
 }
 
 # Copy over circus config only if it has changed locally
@@ -282,6 +293,8 @@ resource "null_resource" "circus-conf" {
       "sudo mv /home/ubuntu/circus.conf /etc/circus.conf",
     ]
   }
+
+  depends_on = ["aws_eip.static-ip"]
 }
 
 # Push up authorized keys to the nodes so all of Lamden's team can easily access them
@@ -311,6 +324,8 @@ resource "null_resource" "ssh-keys" {
       "mv /home/ubuntu/.ssh/authorized_keys.loc /home/ubuntu/.ssh/authorized_keys",
     ]
   }
+
+  depends_on = ["aws_eip.static-ip"]
 }
 
 # Swap out docker containers only if a new tag or image has been provided
@@ -338,11 +353,7 @@ resource "null_resource" "docker" {
     ]
   }
 
-  depends_on = ["null_resource.cilantro-conf", "null_resource.circus-conf", "null_resource.aggregate-ips"]
-}
-
-output "ssh" {
-  value = "ssh ubuntu@${aws_instance.cilantro-node.public_ip}"
+  depends_on = ["null_resource.cilantro-conf", "null_resource.circus-conf", "null_resource.aggregate-ips", "aws_eip.static-ip"]
 }
 
 output "public_ip" {
