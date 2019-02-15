@@ -45,6 +45,12 @@ variable "subdomain_prefix" {
   default     = true
 }
 
+variable "setup_ssl" {
+  type        = "string"
+  description = "Run the SSL setup script"
+  default     = false
+}
+
 variable "domain" {
   type        = "string"
   description = "The domain name to use for creating DNS records"
@@ -221,7 +227,34 @@ resource "aws_route53_record" "fqdn" {
   ttl     = "60"
   records = ["${aws_instance.cilantro-node.public_ip}"]
 
-  depends_on = ["aws_eip.static-ip"]
+  depends_on = ["aws_eip.static-ip", "aws_instance.cilantro-node"]
+}
+
+# Setup the SSL resource
+resource "null_resource" "setup-ssl" {
+  count = "${var.setup_ssl}"
+
+  triggers {
+    type   = "${var.type}"
+    index  = "${var.index}"
+    ip     = "${aws_instance.cilantro-node.public_ip}"
+    record = "${aws_route53_record.fqdn.fqdn}"
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = "${var.private_key}"
+    host        = "${aws_instance.cilantro-node.public_ip}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo SSL_ENABLED=True DNS_NAME=${var.domain} HOST_NAME=${var.type}_${var.index} bash /home/ubuntu/setup-ssl.sh",
+    ]
+  }
+
+  depends_on = ["aws_route53_record.fqdn"]
 }
 
 # Run the script to aggregate the ips
@@ -376,7 +409,7 @@ resource "null_resource" "docker" {
   provisioner "remote-exec" {
     inline = [
       "sudo docker rm -f cil",
-      "sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v /etc/cilantro.conf:/etc/cilantro.conf -v /etc/redis.conf:/etc/redis.conf -v /etc/circus.conf:/etc/circus.conf -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
+      "sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v /etc/cilantro.conf:/etc/cilantro.conf -v /etc/redis.conf:/etc/redis.conf -v /etc/circus.conf:/etc/circus.conf ${var.setup_ssl ? "-v /home/ubuntu/.sslconf:/root/.sslconf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh" : ""} -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
     ]
   }
 
