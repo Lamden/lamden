@@ -42,16 +42,11 @@ class OverlayServer(OverlayInterface):
         self.log = get_logger('Overlay.Server')
         self.supported_methods = [func for func in dir(OverlayInterface) if callable(getattr(OverlayInterface, func)) and not func.startswith("__")]
 
-        self.evt_sock = self.ctx.socket(zmq.PUB)
-        self.evt_sock.bind(EVENT_URL)
         self.cmd_sock = self.ctx.socket(zmq.ROUTER)
         self.cmd_sock.bind(CMD_URL)
 
         # pass both evt_sock and cmd_sock ?
         self.network = Network(vk, self.loop, self.ctx)
-
-        # do we pass event sock to network then
-        Event.set_evt_sock(self.evt_sock)
 
         self.network.tasks.append(self.command_listener())
 
@@ -74,51 +69,90 @@ class OverlayServer(OverlayInterface):
                 # getattr(self, func)(msg[0], *data)
                 self.network.func(msg[0], *data)
             else:
-                self.log.info('Listening for overlay commands over {}'.format(CMD_URL))
-                # reply back with unsupported api error
+                self.invalid_api_call(func)
            
 
+    @reply
+    def invalid_api_call(self, api_call):
+        self.log.info('Overlay server got unsupported api call {}'.format(api_call))
+        # raghu todo create std error enums to return
+        return "Unsupported API"
+
+
+    def is_valid_vk(self, vk):
+        return vk in VKBook.get_all():
+
     @async_reply
-    async def get_node_from_vk(self, event_id, vk, domain='*', secure='False'):
+    async def get_ip_from_vk(self, event_id, vk):
         # TODO perhaps return an event instead of throwing an error in production
-        if not vk in VKBook.get_all():
+        if not self.is_valid_vk(vk):
+            # raghu todo - create event enum / class that does this
             return {
-                'event': 'not_found',
+                'event': 'invalid_vk',
                 'event_id': event_id,
                 'vk': vk
             }
-        ip = await self.network.lookup_ip(vk)
+
+        ip = await self.network.find_ip(event_id, vk)
         if not ip:
             return {
                 'event': 'not_found',
                 'event_id': event_id,
                 'vk': vk
             }
-
-        authorized = await self.network.authenticate(ip, vk, domain) \
-                                      if secure == 'True' else True
         return {
-            'event': 'got_ip' if authorized else 'unauthorized_ip',
+            'event': 'got_ip',
             'event_id': event_id,
             'ip': ip,
             'vk': vk
         }
 
     @async_reply
-    async def ping_node(self, event_id, ip):
-        status = await self.network.ping_node(ip)
-        if not status:
+    async def get_ip_and_handshake(self, event_id, vk, is_first_time, domain='*'):
+
+        if not self.is_valid_vk(vk):
+            # raghu todo - create event enum / class that does this
             return {
-                'event': 'node_offline',
+                'event': 'invalid_vk',
                 'event_id': event_id,
-                'ip': ip
+                'vk': vk
             }
-        else:
-            return {
-                'event': 'node_online',
-                'event_id': event_id,
-                'ip': ip
-            }
+
+        ip = await self.network.find_ip(vk)
+
+        if ip:
+            authorized = await self.network.authenticate(event_id, ip, vk, domain) \
+                                      if ip else False
+            event = 'authorized_ip' if authorized else 'unauthorized_ip'
+       else:
+            event = 'not_found'
+
+        return {
+            'event': event,
+            'event_id': event_id,
+            'ip': ip,
+            'vk': vk
+        }
+
+    @async_reply
+    async def handshake_with_ip(self, event_id, is_first_time, ip, domain='*'):
+        authorized = await self.network.authenticate(event_id, is_first_time, ip, domain)
+        return {
+            'event': 'authorized_ip' if authorized else 'unauthorized_ip',
+            'event_id': event_id,
+            'ip': ip,
+            'vk': vk
+        }
+
+    @async_reply
+    async def ping_ip(self, event_id, ip, is_first_time):
+        status = await self.network.ping_ip(event_id, is_first_time, ip)
+        return {
+            'event': 'node_online' if status else 'node_offline',
+            'event_id': event_id,
+            'ip': ip
+        }
+
 
     @reply
     def get_service_status(self, event_id):
@@ -139,12 +173,12 @@ class OverlayServer(OverlayInterface):
     def teardown(self):
         try:
             self.evt_sock.close()
-            self.cmd_sock.close()
             try:
                 self.fut.set_result('done')
             except:
                 self.fut.cancel()
-            self.interface.teardown()
+            self.network.teardown()
+            self.cmd_sock.close()
             self.log.notice('Overlay service stopped.')
         except:
             pass
