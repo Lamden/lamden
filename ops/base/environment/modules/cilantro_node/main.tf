@@ -181,11 +181,11 @@ resource "aws_instance" "cilantro-node" {
   # with the appropriate trigger
   provisioner "remote-exec" {
     inline = [
-      "sudo apt-get update",                      # Update the package manager
-      "sudo apt-get install -y docker docker.io", # Install docker
-      "sudo apt-get install -y socat",            # Instal socat (for issuing SSL certificates
-      "sudo usermod -aG docker ubuntu",           # Add the ubuntu user to the docker group so docker can be non-sudo
-      "sudo mkdir -p /var/db/cilantro",           # Create the db directory on the host machine to mount into the container
+      "sudo apt-get update",               # Update the package manager
+      "sudo apt-get install -y docker.io", # Install docker
+      "sudo apt-get install -y socat",     # Instal socat (for issuing SSL certificates
+      "sudo usermod -aG docker ubuntu",    # Add the ubuntu user to the docker group so docker can be non-sudo
+      "sudo mkdir -p /var/db/cilantro",    # Create the db directory on the host machine to mount into the container
     ]
   }
 
