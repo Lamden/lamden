@@ -206,6 +206,8 @@ resource "aws_eip" "static-ip" {
 
 # Look up the hosted zone for use with record
 data "aws_route53_zone" "primary" {
+  count = "${var.create_dns}"
+
   name = "${var.domain}"
 }
 
