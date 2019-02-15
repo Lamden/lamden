@@ -78,11 +78,11 @@ class God:
         raise NotImplementedError("This is deprecated!!!")
 
     @classmethod
-    def create_currency_tx(cls, sender: tuple, receiver: tuple, amount: int, nonce=None):
+    def create_currency_tx(cls, sender: tuple, receiver: tuple, amount: int, stamps=100000, nonce=None):
         if type(receiver) is tuple:
             receiver = receiver[1]
 
-        return ContractTransactionBuilder.create_currency_tx(sender[0], receiver, amount, nonce=nonce)
+        return ContractTransactionBuilder.create_currency_tx(sender[0], receiver, amount, stamps=stamps, nonce=nonce)
 
     @classmethod
     def send_currency_contract(cls, sender: tuple, receiver: tuple, amount:int):
@@ -202,8 +202,5 @@ class God:
         else:
             mn_url = cls.mn_urls[0]
 
-        cls.log.important3("got mn url {}".format(mn_url))  # TODO remove
-        cls.log.important3("mn urls {}".format(cls.mn_urls))  # TODO remove
-        cls.log.important3("mn urls {}".format(God.mn_urls))  # TODO remove
         return mn_url
 
