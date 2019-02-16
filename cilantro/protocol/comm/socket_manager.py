@@ -1,5 +1,6 @@
 from cilantro.logger import get_logger
-from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
+from cilantro.protocol.overlay.server import OverlayServer
+from cilantro.protocol.overlay.client import OverlayClient
 # from cilantro.protocol.comm.lsocket import LSocket
 from cilantro.protocol.comm.lsocket import LSocketBase
 from cilantro.protocol.comm.lsocket_router import LSocketRouter

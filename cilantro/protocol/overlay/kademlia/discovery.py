@@ -2,7 +2,7 @@ import zmq, zmq.asyncio, asyncio, traceback
 from os import getenv as env
 from cilantro.constants.overlay_network import *
 from cilantro.constants.ports import DISCOVERY_PORT
-from cilantro.protocol.overlay.ip import *
+from cilantro.protocol.overlay.kademlia.ip import *
 from cilantro.logger import get_logger
 from cilantro.storage.vkbook import VKBook
 from cilantro.constants.ports import DHT_PORT
@@ -13,7 +13,7 @@ from cilantro.protocol.overlay.kademlia.node import Node
 class Discovery:
 
     def __init__(self, vk, zmq_ctx):
-        self.log = get_logger('Overlay.Server.Discovery')
+        self.log = get_logger('OS.Discovery')
         self.vk  = vk
         self.ctx = zmq_ctx
         self.host_ip = HOST_IP
@@ -73,6 +73,7 @@ class Discovery:
 
     def reply(self, ip):
         if self.is_listen_ready and ip != self.host_ip:
+            self.log.spam("Replying to {}".format(ip))
             self.sock.send_multipart([ip, self.pepper, self.vk.encode()])
             # self.is_connected = True
 

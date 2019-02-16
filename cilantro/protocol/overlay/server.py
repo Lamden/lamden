@@ -3,7 +3,7 @@ from cilantro.protocol.overlay.interface import OverlayInterface
 from cilantro.constants.overlay_network import EVENT_URL, CMD_URL, CLIENT_SETUP_TIMEOUT
 from cilantro.storage.vkbook import VKBook
 from cilantro.logger.base import get_logger
-from cilantro.protocol.overlay.event import Event
+from cilantro.protocol.overlay.kademlia.event import Event
 from collections import deque
 
 
@@ -33,8 +33,8 @@ def async_reply(fn):
 
 
 class OverlayServer(OverlayInterface):
-    def __init__(self, vk, loop=None, ctx=None, start=True):
-        self.vk = vk
+    def __init__(self, sk, loop=None, ctx=None, start=True):
+        self.sk = sk
         self.loop = loop or asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
@@ -46,7 +46,7 @@ class OverlayServer(OverlayInterface):
         self.cmd_sock.bind(CMD_URL)
 
         # pass both evt_sock and cmd_sock ?
-        self.network = Network(vk, self.loop, self.ctx)
+        self.network = Network(sk, self.loop, self.ctx)
 
         self.network.tasks.append(self.command_listener())
 
@@ -54,6 +54,8 @@ class OverlayServer(OverlayInterface):
             self.run()
 
     def run(self):
+        raghu todo - check this start 
+        Auth.setup(sk_hex=self.sk, reset_auth_folder=False)
         self.network.start()
 
     async def command_listener(self):

@@ -1,8 +1,8 @@
 from cilantro.logger import get_logger
-from cilantro.protocol.overlay.auth import Auth
 from cilantro.constants.system_config import MAX_BOOT_WAIT
 from cilantro.protocol.multiprocessing.worker import Worker
-from cilantro.protocol.overlay.daemon import OverlayServer
+from cilantro.protocol.overlay.kademlia.auth import Auth
+from cilantro.protocol.overlay.server import OverlayServer
 from cilantro.utils.lprocess import LProcess
 from cilantro.storage.vkbook import VKBook
 

@@ -5,7 +5,8 @@ from cilantro.logger import get_logger
 from cilantro.protocol.structures.envelope_auth import EnvelopeAuth
 from cilantro.protocol import wallet
 from cilantro.constants.ports import DEFAULT_PUB_PORT, ROUTER_PORT, PAIR_PORT
-from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
+from cilantro.protocol.overlay.server import OverlayServer
+from cilantro.protocol.overlay.client import OverlayClient
 import asyncio
 from collections import deque
 from functools import wraps

@@ -12,8 +12,8 @@ def run_node(node_type, idx, addr_idxs):
     from cilantro.protocol.overlay.kademlia.utils import digest
     from cilantro.protocol.overlay.kademlia.node import Node
     from cilantro.constants.ports import DHT_PORT
-    from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
-    from cilantro.protocol.overlay.auth import Auth # TODO: replace with utils
+    from cilantro.constants.overlay_network import MIN_DISCOVERY_NODES
+    from cilantro.protocol.overlay.kademlia.auth import Auth # TODO: replace with utils
     import asyncio, os, ujson as json
     from os import getenv as env
     from cilantro.storage.vkbook import VKBook
@@ -34,18 +34,22 @@ def run_node(node_type, idx, addr_idxs):
 
     async def check_nodes():
         while True:
-            await asyncio.sleep(1)
-            if len(n.bootstrappableNeighbors()) > MIN_BOOTSTRAP_NODES:
+            await asyncio.sleep(2)
+            if len(n.routing_table.getMyNeighbors()) >= MIN_DISCOVERY_NODES:
                 send_to_file(env('HOST_NAME'))
 
     from cilantro.logger import get_logger
     log = get_logger('{}_{}'.format(node_type, idx))
     loop = asyncio.get_event_loop()
+    # loop = asyncio.new_event_loop()
+    # asyncio.set_event_loop(loop)
     Auth.setup(VKBook.constitution[node_type][idx]['sk'])
     log.test('Starting {}_{}'.format(node_type, idx))
-    n = Network(node_id=digest(Auth.vk))
+    n = Network(Auth.vk)
+    n.tasks.clear()
     n.tasks += [
         n.bootstrap(addrs),
+        n.process_requests(),
         check_nodes()
     ]
     n.start()
@@ -66,7 +70,7 @@ class TestBootstrap(BaseTestCase):
         self.nodes_complete = set()
 
     def tearDown(self):
-        file_listener(self, self.callback, self.timeout, 60)
+        file_listener(self, self.callback, self.timeout, 300)
         super().tearDown()
 
     def success(self):
@@ -89,10 +93,11 @@ class TestBootstrap(BaseTestCase):
 ################################################################################
 
     def test_regular_all_masters(self):
-        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0, [0]))
+        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0, [1]))
         self.execute_python('node_2', wrap_func(run_node, 'masternodes', 1, [0,1]))
         self.execute_python('node_3', wrap_func(run_node, 'delegates', 0, [0,1,2]))
         self.execute_python('node_4', wrap_func(run_node, 'delegates', 1, [0,1,2,3]))
+        time.sleep(10)
 
     def test_regular_one_master(self):
         self.all_nodes.remove('node_2')

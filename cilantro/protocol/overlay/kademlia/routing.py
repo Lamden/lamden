@@ -5,6 +5,7 @@ import asyncio
 import logging
 
 from collections import OrderedDict
+from cilantro.constants.overlay_network import *
 from cilantro.protocol.overlay.kademlia.utils import OrderedSet, sharedPrefix, bytesToBitString
 
 log = logging.getLogger(__name__)
@@ -181,7 +182,8 @@ class RoutingTable(object):
             if node.long_id < bucket.range[1]:
                 return index
 
-    def findNode(self, node, k=self.ksize):
+    def findNode(self, node):
+        k=self.ksize
         if node.id == self.node.id:
             return [self.node]
         bucket = self.buckets[self.getBucketFor(node)]
@@ -214,6 +216,9 @@ class RoutingTable(object):
             nodes.append(neighbor)
 
         return nodes
+
+    def getMyNeighbors(self):
+        return self.getNeighbors(self.node)
 
     def getNumBuckets(self):
         return len(self.buckets)

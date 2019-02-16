@@ -3,7 +3,7 @@ from cilantro.protocol.overlay.interface import OverlayInterface
 from cilantro.constants.overlay_network import EVENT_URL, CMD_URL, CLIENT_SETUP_TIMEOUT
 from cilantro.storage.vkbook import VKBook
 from cilantro.logger.base import get_logger
-from cilantro.protocol.overlay.event import Event
+from cilantro.protocol.overlay.kademlia.event import Event
 from collections import deque
 
 
@@ -19,7 +19,7 @@ def command(fn):
     return _command
 
 
-class OverlayClient(OverlayInterface2):
+class OverlayClient(OverlayInterface):
     def __init__(self, reply_handler, event_handler, name=None, loop=None, ctx=None, start=False):
         self.name = name or str(os.getpid())
         self.log = get_logger('Overlay.Client.{}'.format(name))

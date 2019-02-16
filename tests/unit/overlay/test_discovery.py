@@ -4,31 +4,33 @@ import unittest, time, random, vmnet, cilantro, asyncio, ujson as json, os
 from os.path import join, dirname
 from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
 from cilantro.logger.base import get_logger
+import zmq, zmq.asyncio
 
 def run_node(node_type, idx):
     from vmnet.comm import send_to_file
-    from cilantro.protocol.overlay.discovery import Discovery
+    from cilantro.protocol.overlay.kademlia.discovery import Discovery
     from cilantro.constants.overlay_network import MIN_DISCOVERY_NODES
-    from cilantro.protocol.overlay.auth import Auth # TODO: replace with utils
+    from cilantro.protocol.overlay.kademlia.auth import Auth # TODO: replace with utils
     import asyncio, os, ujson as json
     from os import getenv as env
     from cilantro.storage.vkbook import VKBook
     VKBook.setup()
     async def check_nodes():
         while True:
-            await asyncio.sleep(1)
-            if len(Discovery.discovered_nodes) >= MIN_DISCOVERY_NODES:
+            await asyncio.sleep(2)
+            if len(dis.discovered_nodes) >= MIN_DISCOVERY_NODES:
                 send_to_file(env('HOST_NAME'))
 
     from cilantro.logger import get_logger
     log = get_logger('{}_{}'.format(node_type, idx))
     loop = asyncio.get_event_loop()
+    ctx = zmq.asyncio.Context()
     Auth.setup(VKBook.constitution[node_type][idx]['sk'])
-    Discovery.setup() # TODO: remove when re-architected
+    dis = Discovery(Auth.vk, ctx)
     log.test('Starting {}_{}'.format(node_type, idx))
     tasks = asyncio.ensure_future(asyncio.gather(
-        Discovery.listen(),
-        Discovery.discover_nodes(env('HOST_IP')),
+        dis.listen(),
+        dis.discover_nodes(),
         check_nodes()
     ))
     loop.run_until_complete(tasks)
@@ -79,11 +81,13 @@ class TestDiscoverySuccess(TestDiscovery):
     def test_regular_all_masters(self):
         self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
         self.execute_python('node_2', wrap_func(run_node, 'masternodes', 1))
+        time.sleep(2)
         self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
         self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
 
     def test_regular_one_master(self):
         self.all_nodes.remove('node_2')
+        self.all_nodes.remove('node_1')     # only master, self bootstrap
         self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
         self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
         self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
@@ -91,12 +95,14 @@ class TestDiscoverySuccess(TestDiscovery):
     def test_late_delegate(self):
         self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
         self.execute_python('node_2', wrap_func(run_node, 'masternodes', 1))
+        time.sleep(2)
         self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
         self.log.test('Waiting 10 seconds before spinning up last node')
         time.sleep(10)
         self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
 
     def test_one_master_late_delegate(self):
+        self.all_nodes.remove('node_1')  # single master - self bootstrap
         self.all_nodes.remove('node_2')
         self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
         self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
@@ -106,8 +112,10 @@ class TestDiscoverySuccess(TestDiscovery):
 
     def test_one_master_down_up(self):
         self.all_nodes.remove('node_2')
-        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
         self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
+        time.sleep(1)
+        self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
+        time.sleep(6)
         self.kill_node('node_1')
         self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
         self.log.test('Waiting 10 seconds before spinning up master node again')
@@ -116,6 +124,7 @@ class TestDiscoverySuccess(TestDiscovery):
         self.rerun_node_script('node_1')
 
     def test_one_late_masternode(self):
+        self.all_nodes.remove('node_1')  # single master - self bootstrap
         self.all_nodes.remove('node_2')
         self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
         self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
