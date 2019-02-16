@@ -13,9 +13,13 @@ FIND_NODE_TIMEOUT = FIND_NODE_HOP_TIMEOUT * 4   # we should multiply by log2(net
 
 # The number of discovery retries necessary before a masternode boots alone
 MIN_DISCOVERY_NODES = 1
-MIN_BOOTSTRAP_NODES = 1
-DISCOVERY_TIMEOUT = 3
-DISCOVERY_RETRIES = 100
+DISCOVERY_WAIT = 6
+DISCOVERY_RETRIES = 10
+DISCOVERY_LONG_WAIT = 120
+if env('VMNET'):
+    DISCOVERY_ITER = 100
+else:
+    DISCOVERY_ITER = 10
 
 
 

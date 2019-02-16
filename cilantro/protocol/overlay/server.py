@@ -55,6 +55,8 @@ class OverlayServer(OverlayInterface):
             self.run()
 
     def run(self):
+        raghu todo - check this start 
+        Auth.setup(sk_hex=self.sk, reset_auth_folder=False)
         self.network.start()
 
     async def command_listener(self):

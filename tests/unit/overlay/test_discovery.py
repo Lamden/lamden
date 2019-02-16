@@ -87,6 +87,7 @@ class TestDiscoverySuccess(TestDiscovery):
 
     def test_regular_one_master(self):
         self.all_nodes.remove('node_2')
+        self.all_nodes.remove('node_1')     # only master, self bootstrap
         self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
         self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
         self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
@@ -102,6 +103,7 @@ class TestDiscoverySuccess(TestDiscovery):
         time.sleep(2)
 
     def test_one_master_late_delegate(self):
+        self.all_nodes.remove('node_1')  # single master - self bootstrap
         self.all_nodes.remove('node_2')
         self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
         self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
