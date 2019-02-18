@@ -2,6 +2,9 @@ from cilantro.logger.base import get_logger
 from cilantro.utils.test.dumpatron import Dumpatron
 from cilantro.utils.test.god import God
 from cilantro.utils.test.wallets import GENERAL_WALLETS, STU
+from cilantro.messages.transaction.publish import *
+from cilantro.messages.transaction.container import TransactionContainer
+from cilantro.messages.transaction.contract import ContractTransaction
 import time, random, os
 from collections import defaultdict
 
