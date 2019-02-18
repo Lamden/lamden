@@ -1,11 +1,8 @@
 from cilantro.logger.base import get_logger
 from cilantro.utils.test.god import God
 from cilantro.constants.system_config import *
-from cilantro.utils.test.wallets import GENERAL_WALLETS
-import sys, os, glob
-from itertools import combinations
-import random, requests, time
-from collections import defaultdict
+import os, glob
+import random, requests
 
 
 SSL_ENABLED = False  # TODO make this infered instead of a hard coded flag
@@ -16,6 +13,7 @@ IP_FILE_PREFIX = 'ip_masternode'
 class Dumpatron:
 
     TX_PER_BLOCK = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS
+    STAMPS_AMOUNT = 10000
 
     def __init__(self, env_path):
         if env_path[-1] != '/':
@@ -71,117 +69,44 @@ class Dumpatron:
             self.log.important3("Dumping {} transactions!".format(vol))
             God._dump_it(volume=vol)
 
-    def _fetch_balance(self, vk, contract_name=CURRENCY_CONTRACT_NAME, mn_idx=None) -> int or None:
-        if mn_idx is None:
+    def _get_from_masternode(self, query_str: str, enforce_consistency=True, req_type='json'):
+        if not enforce_consistency:
             mn_idx = random.randint(0, len(self.mn_url_list) - 1)
-        mn_url = self.mn_url_list[mn_idx]
-        self.log.spam("Fetching balance for vk {} from mn with idx {} at url {}".format(vk, mn_idx, mn_url))
+            mn_url = self.mn_url_list[mn_idx]
+            return self._parse_reply(requests.get("{}/{}".format(mn_url, query_str)))
 
-        req_url = "{}/contracts/{}/balances/{}".format(mn_url, contract_name, vk)
-        req = requests.get(req_url)
+        replies = []
+        for mn_url in self.mn_url_list:
+            replies.append(self._parse_reply(requests.get("{}/{}".format(mn_url, query_str))))
 
-        if req.status_code == 200:
-            ret_json = req.json()
+        if all(x == replies[0] for x in replies):
+            self.log.notice("replies matchup!")
+            return replies[0]
+        else:
+            self.log.warning("Masternodes had inconsistent replies for GET request {}\nReplies: {}".format(query_str, replies))
+            return None
+
+    def _parse_reply(self, req, req_type='json'):
+        if req.status_code != 200:
+            self.log.spam("Got status code {} from request {}".format(req.status_code, req))
+            return None
+
+        if req_type == 'json':
+            return req.json()
+        else:
+            raise Exception("Unknown request type {}".format(req_type))
+
+    def _fetch_balance(self, vk, contract_name=CURRENCY_CONTRACT_NAME) -> int or None:
+        req_url = "contracts/{}/balances/{}".format(contract_name, vk)
+        ret_json = self._get_from_masternode(req_url)
+
+        if ret_json:
             assert 'value' in ret_json, "Expected key 'value' to be in reply json {}".format(ret_json)
             return int(ret_json['value'])
         else:
-            self.log.spam("Got response {} with status code {} and json {}".format(req, req.status_code, req.json()))
             return None
 
 
-class CurrencyTester(Dumpatron):
 
-    FETCH_BALANCES_TIMEOUT = 240
-    ASSERT_BALANCES_TIMEOUT = 60
-    SLEEP_BEFORE_ASSERTING = 10  # How long we should wait between sending transactions and asserting new balances
-    POLL_INTERVAL = 2
-
-    STAMPS_AMOUNT = 10000
-    MIN_AMOUNT = 1
-    MAX_AMOUNT = 1000000
-
-    def __init__(self, *args, wallets=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.log = get_logger("CurrencyTester")
-
-        # For keeping track of wallet balances and asserting the correct amnt was deducted
-        self.wallets = wallets or GENERAL_WALLETS
-        self._all_vks = set([w[1] for w in self.wallets])
-        self.deltas = defaultdict(int)
-        self.init_balances = {}
-
-    def start(self):
-        self.get_initial_balances()
-        self.send_test_currency_txs()
-        self.log.test("Sleeping for {} seconds before checking assertions...".format(self.SLEEP_BEFORE_ASSERTING))
-        time.sleep(self.SLEEP_BEFORE_ASSERTING)
-        self.assert_balances_updated()
-
-    def get_initial_balances(self):
-        # Blocks until Masternode is ready
-        self.log.test("Getting initial balances for {} wallets...".format(len(self.wallets)))
-        elapsed = 0
-        while len(self.wallets) != len(self.init_balances):
-            time.sleep(self.POLL_INTERVAL)
-            elapsed += self.POLL_INTERVAL
-            remaining_wallets = self._all_vks - set(self.init_balances.keys())
-
-            if elapsed > self.FETCH_BALANCES_TIMEOUT:
-                raise Exception("Exceeded timeout of {} trying to fetch initial wallet balances!\nWallets retreived: {}"
-                                "\nWallets remaining: {}".format(self.FETCH_BALANCES_TIMEOUT, self.init_balances, remaining_wallets))
-
-            for vk in remaining_wallets:
-                balance = self._fetch_balance(vk)
-                if balance is not None:
-                    self.init_balances[vk] = balance
-
-        self.log.test("All initial wallet balances fetched!".format(self.init_balances))
-
-    def send_test_currency_txs(self, num_blocks=8):
-        assert len(self.init_balances) == len(self.wallets), "Init balances not equal to length of wallet"
-        num = self.TX_PER_BLOCK * num_blocks
-        self.log.test("Sending {} random test transactions...".format(num))
-        for _ in range(num):
-            sender, receiver = random.sample(self.wallets, 2)
-            amount = random.randint(1, 10000)
-
-            tx = God.create_currency_tx(sender, receiver, amount, self.STAMPS_AMOUNT)
-            reply = God.send_tx(tx)
-
-            if reply is not None and reply.status_code == 200:
-                self.deltas[sender[1]] -= (amount + self.STAMPS_AMOUNT)
-                self.deltas[receiver[1]] += amount
-            else:
-                raise Exception("Got non 200 status code from sending tx to masternode")
-        self.log.test("Finish sending {} test transactions".format(num))
-
-    def assert_balances_updated(self):
-        self.log.test("Starting assertion check for {} updated balances...".format(len(self.deltas)))
-
-        elapsed = 0
-        correct_wallets = set()
-        latest_balances = {}  # Just for debugging info
-
-        while len(correct_wallets) != len(self.deltas):
-            time.sleep(self.POLL_INTERVAL)
-            elapsed += self.POLL_INTERVAL
-            remaining_vks = set(self.deltas.keys()) - correct_wallets
-
-            if elapsed > self.ASSERT_BALANCES_TIMEOUT:
-                raise Exception("Exceeded timeout of {} waiting for wallets to update!\nRemaining Wallets: {}\nLatest "
-                                "Balances: {}\nDeltas: {}".format(self.ASSERT_BALANCES_TIMEOUT, remaining_vks,
-                                                                  latest_balances, self.deltas))
-
-            for vk in remaining_vks:
-                expected_amount = max(0, self.init_balances[vk] + self.deltas[vk])
-                actual_amount = self._fetch_balance(vk)  # TODO get VKs from ALL masternodes; make sure they same
-                latest_balances[vk] = actual_amount
-                if expected_amount == actual_amount:
-                    correct_wallets.add(vk)
-                else:
-                    self.log.warning("Balance {} does not match expected balance {} for vk {}"
-                                     .format(actual_amount, expected_amount, vk))
-
-        self.log.test("Assertions for {} balance deltas passed!".format(len(self.deltas)))
 
 
