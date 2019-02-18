@@ -5,7 +5,7 @@ from cilantro.utils.test.wallets import ALL_WALLETS
 import sys, os, glob
 from itertools import combinations
 import random, requests, time
-from collections import defaultdict, Or
+from collections import defaultdict
 
 
 SSL_ENABLED = False  # TODO make this infered instead of a hard coded flag
