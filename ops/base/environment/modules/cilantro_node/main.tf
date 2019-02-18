@@ -24,15 +24,30 @@ variable "private_key" {
   description = "The contents of the private key to use for deployment"
 }
 
+# true/false flag
 variable "create_eip" {
   type        = "string"
   description = "Boolean, whether or not to use EIPs"
   default     = false
 }
 
+# true/false flag
 variable "create_dns" {
   type        = "string"
   description = "Boolean, whether or not to create DNS records"
+  default     = false
+}
+
+# true/false flag
+variable "subdomain_prefix" {
+  type        = "string"
+  description = "Flag to set whether or not to add a subdomain prefix"
+  default     = true
+}
+
+variable "setup_ssl" {
+  type        = "string"
+  description = "Run the SSL setup script"
   default     = false
 }
 
@@ -40,12 +55,6 @@ variable "domain" {
   type        = "string"
   description = "The domain name to use for creating DNS records"
   default     = "none"
-}
-
-variable "subdomain_prefix" {
-  type        = "string"
-  description = "Flag to set whether or not to add a subdomain prefix"
-  default     = true
 }
 
 variable "size" {
@@ -178,11 +187,11 @@ resource "aws_instance" "cilantro-node" {
   # with the appropriate trigger
   provisioner "remote-exec" {
     inline = [
-      "sudo apt-get update",                      # Update the package manager
-      "sudo apt-get install -y docker docker.io", # Install docker
-      "sudo apt-get install -y socat",            # Instal socat (for issuing SSL certificates
-      "sudo usermod -aG docker ubuntu",           # Add the ubuntu user to the docker group so docker can be non-sudo
-      "sudo mkdir -p /var/db/cilantro",           # Create the db directory on the host machine to mount into the container
+      "sudo apt-get update",               # Update the package manager
+      "sudo apt-get install -y docker.io", # Install docker
+      "sudo apt-get install -y socat",     # Instal socat (for issuing SSL certificates
+      "sudo usermod -aG docker ubuntu",    # Add the ubuntu user to the docker group so docker can be non-sudo
+      "sudo mkdir -p /var/db/cilantro",    # Create the db directory on the host machine to mount into the container
     ]
   }
 
@@ -194,23 +203,58 @@ resource "aws_instance" "cilantro-node" {
   depends_on = ["aws_security_group.cilantro_firewall"]
 }
 
-# Setup FQDN/DNS if required by parameters
-resource "aws_route53_zone" "primary" {
-  # Run if statement in terraform, check if boolean provided to module is true, then set count to 1
-  count = "${var.create_dns == true ? 1 : 0}"
+# Conditionally create the elastic IP if requested by the user
+resource "aws_eip" "static-ip" {
+  count = "${var.create_eip}"
+
+  instance = "${aws_instance.cilantro-node.id}"
+}
+
+# Look up the hosted zone for use with record
+data "aws_route53_zone" "primary" {
+  count = "${var.create_dns}"
 
   name = "${var.domain}"
 }
 
 resource "aws_route53_record" "fqdn" {
   # Run if statement in terraform, check if boolean provided to module is true, then set count to 1
-  count = "${var.create_dns == true ? 1 : 0}"
+  count = "${var.create_dns}"
 
-  zone_id = "${aws_route53_zone.primary.zone_id}"
-  name    = "${var.subdomain_prefix == true ? "${local.prefix}" : ""}${local.nodename}"
+  zone_id = "${data.aws_route53_zone.primary.zone_id}"
+  name    = "${var.subdomain_prefix ? "${local.prefix}" : ""}${local.nodename}"
   type    = "A"
   ttl     = "60"
   records = ["${aws_instance.cilantro-node.public_ip}"]
+
+  depends_on = ["aws_eip.static-ip", "aws_instance.cilantro-node"]
+}
+
+# Setup the SSL resource
+resource "null_resource" "setup-ssl" {
+  count = "${var.setup_ssl}"
+
+  triggers {
+    type   = "${var.type}"
+    index  = "${var.index}"
+    ip     = "${aws_instance.cilantro-node.public_ip}"
+    record = "${aws_route53_record.fqdn.fqdn}"
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = "${var.private_key}"
+    host        = "${aws_instance.cilantro-node.public_ip}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo SSL_ENABLED=True DNS_NAME=${var.domain} HOST_NAME=${var.type}_${var.index} bash /home/ubuntu/setup-ssl.sh",
+    ]
+  }
+
+  depends_on = ["aws_route53_record.fqdn"]
 }
 
 # Run the script to aggregate the ips
@@ -228,6 +272,8 @@ resource "null_resource" "aggregate-ips" {
   provisioner "local-exec" {
     command = "python3 aggregate_ips.py --ip ${aws_instance.cilantro-node.public_ip} --type ${var.type} --index ${var.index}"
   }
+
+  depends_on = ["aws_eip.static-ip"]
 }
 
 # Copy over cilantro config only if it has changed locally
@@ -256,7 +302,7 @@ resource "null_resource" "cilantro-conf" {
     ]
   }
 
-  depends_on = ["null_resource.aggregate-ips"]
+  depends_on = ["null_resource.aggregate-ips", "aws_eip.static-ip"]
 }
 
 # Copy over circus config only if it has changed locally
@@ -282,6 +328,8 @@ resource "null_resource" "circus-conf" {
       "sudo mv /home/ubuntu/circus.conf /etc/circus.conf",
     ]
   }
+
+  depends_on = ["aws_eip.static-ip"]
 }
 
 # Copy over redis.conf file
@@ -336,6 +384,8 @@ resource "null_resource" "ssh-keys" {
       "mv /home/ubuntu/.ssh/authorized_keys.loc /home/ubuntu/.ssh/authorized_keys",
     ]
   }
+
+  depends_on = ["aws_eip.static-ip"]
 }
 
 # Swap out docker containers only if a new tag or image has been provided
@@ -359,15 +409,11 @@ resource "null_resource" "docker" {
   provisioner "remote-exec" {
     inline = [
       "sudo docker rm -f cil",
-      "sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v /etc/cilantro.conf:/etc/cilantro.conf -v /etc/redis.conf:/etc/redis.conf -v /etc/circus.conf:/etc/circus.conf -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
+      "sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v /etc/cilantro.conf:/etc/cilantro.conf -v /etc/redis.conf:/etc/redis.conf -v /etc/circus.conf:/etc/circus.conf ${var.setup_ssl ? "-v /home/ubuntu/.sslconf:/root/.sslconf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh" : ""} -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
     ]
   }
 
-  depends_on = ["null_resource.cilantro-conf", "null_resource.circus-conf", "null_resource.aggregate-ips"]
-}
-
-output "ssh" {
-  value = "ssh ubuntu@${aws_instance.cilantro-node.public_ip}"
+  depends_on = ["null_resource.cilantro-conf", "null_resource.circus-conf", "null_resource.aggregate-ips", "aws_eip.static-ip"]
 }
 
 output "public_ip" {
