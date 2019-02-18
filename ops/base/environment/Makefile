@@ -88,8 +88,8 @@ show:
 	@echo ""
 
 testdump:
-	python3 $(CILANTRO_ROOT)/ops/tools/dump.py $(MY_PATH)
+	@python3 $(CILANTRO_ROOT)/ops/tools/dump.py $(MY_PATH)
 
 
 test:
-	python3 $(CILANTRO_ROOT)/ops/tools/test_end_to_end.py $(MY_PATH)
+	@python3 $(CILANTRO_ROOT)/ops/tools/test_end_to_end.py $(MY_PATH)
