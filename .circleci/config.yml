@@ -1,5 +1,33 @@
 version: 2
 jobs:
+  black_box_integration:
+    machine:
+        image: circleci/classic:201808-01
+    working_directory: ~/cilantro
+    parallelism: 1
+    steps:
+      - checkout
+      - run: sudo chown -R circleci:circleci /usr/local/bin
+      - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
+      - restore_cache:
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
+      - run: pyenv local 3.6.5
+
+      - run:
+          name: Install Cilantro Requirements
+          command: |
+             pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
+             pip install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
+        
+      - run:
+          name: Stand up terraform nodes
+          command: |
+             cd ops/environments/circleci && ADDITIONAL_FLAGS="-auto-approve" make run 
+
+      - run:
+          name: Run test
+          command: |
+              cd ops/environments/circleci && make test
   integration_tests:
     machine:
         image: circleci/classic:201808-01
