@@ -75,9 +75,13 @@ class Dumpatron:
 class DumpatronTester(Dumpatron):
 
     FETCH_BALANCES_TIMEOUT = 240
-    CHECK_BALANCES_TIMEOUT = 20
+    ASSERT_BALANCES_TIMEOUT = 60
+    SLEEP_BEFORE_ASSERTING = 12  # How long we should wait between sending transactions and asserting new balances
     POLL_INTERVAL = 2
+
     STAMPS_AMOUNT = 10000
+    MIN_AMOUNT = 1
+    MAX_AMOUNT = 1000000
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -92,12 +96,12 @@ class DumpatronTester(Dumpatron):
     def start(self):
         self.get_initial_balances()
         self.send_test_currency_txs()
+        time.sleep(self.SLEEP_BEFORE_ASSERTING)
         self.assert_balances_updated()
 
     def get_initial_balances(self):
         # Blocks until Masternode is ready
-
-        self.log.info("Getting initial wallet balances...")
+        self.log.test("Getting initial balances for {} wallets...".format(len(self.wallets)))
         elapsed = 0
         while len(self.wallets) != len(self.init_balances):
             time.sleep(self.POLL_INTERVAL)
@@ -109,11 +113,11 @@ class DumpatronTester(Dumpatron):
                                 "\nWallets remaining: {}".format(self.FETCH_BALANCES_TIMEOUT, self.init_balances, remaining_wallets))
 
             for vk in remaining_wallets:
-                balance = self._fetch_balance(self.wallets[0][1], 0)
+                balance = self._fetch_balance(vk, 0)
                 if balance is not None:
                     self.init_balances[vk] = balance
 
-        self.log.info("All initial wallet balances fetched!\nInitial balances: {}".format(self.init_balances))
+        self.log.test("All initial wallet balances fetched!".format(self.init_balances))
 
     def _fetch_balance(self, vk, mn_idx) -> int or None:
         mn_url = self.mn_url_list[mn_idx]
@@ -130,8 +134,11 @@ class DumpatronTester(Dumpatron):
             self.log.spam("Got response {} with status code {} and json {}".format(req, req.status_code, req.json()))
             return None
 
-    def send_test_currency_txs(self, num=4):
+    def send_test_currency_txs(self, num=0):
         assert len(self.init_balances) == len(self.wallets), "Init balances not equal to length of wallet"
+        if num == 0:
+            num = self.TX_PER_BLOCK * 10
+        self.log.test("Sending {} test transactions...".format(num))
         for _ in range(num):
             sender, receiver = random.sample(self.wallets, 2)
             amount = random.randint(1, 10000)
@@ -144,28 +151,27 @@ class DumpatronTester(Dumpatron):
                 self.deltas[receiver[1]] += amount
             else:
                 raise Exception("Got non 200 status code from sending tx to masternode")
+        self.log.test("Finish sending {} test transactions".format(num))
 
     def assert_balances_updated(self):
-        self.log.notice("Starting assertion check for updated balances...")
+        self.log.test("Starting assertion check for updated balances...")
 
         elapsed = 0
         correct_wallets = set()
-        latest_balances = {}  # Just for debugging
-
-        self.log.important2(self.deltas)
+        latest_balances = {}  # Just for debugging info
 
         while len(correct_wallets) != len(self.deltas):
             time.sleep(self.POLL_INTERVAL)
             elapsed += self.POLL_INTERVAL
             remaining_vks = set(self.deltas.keys()) - correct_wallets
 
-            if elapsed > self.CHECK_BALANCES_TIMEOUT:
+            if elapsed > self.ASSERT_BALANCES_TIMEOUT:
                 raise Exception("Exceeded timeout of {} waiting for wallets to update!\nRemaining Wallets: {}\nLatest "
-                                "Balances: {}\nDeltas: {}".format(self.CHECK_BALANCES_TIMEOUT, remaining_vks,
+                                "Balances: {}\nDeltas: {}".format(self.ASSERT_BALANCES_TIMEOUT, remaining_vks,
                                                                   latest_balances, self.deltas))
 
             for vk in remaining_vks:
-                expected_amount = self.init_balances[vk] + self.deltas[vk]
+                expected_amount = max(0, self.init_balances[vk] + self.deltas[vk])
                 actual_amount = self._fetch_balance(vk, 0)  # TODO get VKs from ALL masternodes; make sure they same
                 latest_balances[vk] = actual_amount
                 if expected_amount == actual_amount:
@@ -174,5 +180,6 @@ class DumpatronTester(Dumpatron):
                     self.log.warning("Balance {} does not match expected balance {} for vk {}"
                                      .format(actual_amount, expected_amount, vk))
 
+        self.log.test("Assertions for wallet balances passed!")
 
 
