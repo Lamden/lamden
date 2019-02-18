@@ -71,8 +71,25 @@ class Dumpatron:
             self.log.important3("Dumping {} transactions!".format(vol))
             God._dump_it(volume=vol)
 
+    def _fetch_balance(self, vk, contract_name=CURRENCY_CONTRACT_NAME, mn_idx=None) -> int or None:
+        if mn_idx is None:
+            mn_idx = random.randint(0, len(self.mn_url_list) - 1)
+        mn_url = self.mn_url_list[mn_idx]
+        self.log.spam("Fetching balance for vk {} from mn with idx {} at url {}".format(vk, mn_idx, mn_url))
 
-class DumpatronTester(Dumpatron):
+        req_url = "{}/contracts/{}/balances/{}".format(mn_url, contract_name, vk)
+        req = requests.get(req_url)
+
+        if req.status_code == 200:
+            ret_json = req.json()
+            assert 'value' in ret_json, "Expected key 'value' to be in reply json {}".format(ret_json)
+            return int(ret_json['value'])
+        else:
+            self.log.spam("Got response {} with status code {} and json {}".format(req, req.status_code, req.json()))
+            return None
+
+
+class CurrencyTester(Dumpatron):
 
     FETCH_BALANCES_TIMEOUT = 240
     ASSERT_BALANCES_TIMEOUT = 60
@@ -85,7 +102,7 @@ class DumpatronTester(Dumpatron):
 
     def __init__(self, *args, wallets=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.log = get_logger("DumpatronTester")
+        self.log = get_logger("CurrencyTester")
 
         # For keeping track of wallet balances and asserting the correct amnt was deducted
         self.wallets = wallets or GENERAL_WALLETS
@@ -120,24 +137,7 @@ class DumpatronTester(Dumpatron):
 
         self.log.test("All initial wallet balances fetched!".format(self.init_balances))
 
-    def _fetch_balance(self, vk, mn_idx=None) -> int or None:
-        if mn_idx is None:
-            mn_idx = random.randint(0, len(self.mn_url_list) - 1)
-        mn_url = self.mn_url_list[mn_idx]
-        self.log.spam("Fetching balance for vk {} from mn with idx {} at url {}".format(vk, mn_idx, mn_url))
-
-        req_url = "{}/contracts/{}/balances/{}".format(mn_url, CURRENCY_CONTRACT_NAME, vk)
-        req = requests.get(req_url)
-
-        if req.status_code == 200:
-            ret_json = req.json()
-            assert 'value' in ret_json, "Expected key 'value' to be in reply json {}".format(ret_json)
-            return int(ret_json['value'])
-        else:
-            self.log.spam("Got response {} with status code {} and json {}".format(req, req.status_code, req.json()))
-            return None
-
-    def send_test_currency_txs(self, num_blocks=10):
+    def send_test_currency_txs(self, num_blocks=8):
         assert len(self.init_balances) == len(self.wallets), "Init balances not equal to length of wallet"
         num = self.TX_PER_BLOCK * num_blocks
         self.log.test("Sending {} random test transactions...".format(num))
