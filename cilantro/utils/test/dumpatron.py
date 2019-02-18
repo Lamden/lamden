@@ -2,7 +2,7 @@ from cilantro.logger.base import get_logger
 from cilantro.utils.test.god import God
 from cilantro.constants.system_config import *
 import os, glob
-import random, requests
+import random
 
 
 SSL_ENABLED = False  # TODO make this infered instead of a hard coded flag
@@ -69,22 +69,22 @@ class Dumpatron:
             self.log.important3("Dumping {} transactions!".format(vol))
             God.dump_it(volume=vol)
 
-    def _get_from_masternode(self, query_str: str, enforce_consistency=True, req_type='json'):
-        if not enforce_consistency:
-            mn_idx = random.randint(0, len(self.mn_url_list) - 1)
-            mn_url = self.mn_url_list[mn_idx]
-            return self._parse_reply(requests.get("{}/{}".format(mn_url, query_str)))
-
-        replies = []
-        for mn_url in self.mn_url_list:
-            replies.append(self._parse_reply(requests.get("{}/{}".format(mn_url, query_str))))
-
-        if all(x == replies[0] for x in replies):
-            self.log.notice("replies matchup!")
-            return replies[0]
-        else:
-            self.log.warning("Masternodes had inconsistent replies for GET request {}\nReplies: {}".format(query_str, replies))
-            return None
+    # def _get_from_masternode(self, query_str: str, enforce_consistency=True, req_type='json'):
+    #     if not enforce_consistency:
+    #         mn_idx = random.randint(0, len(self.mn_url_list) - 1)
+    #         mn_url = self.mn_url_list[mn_idx]
+    #         return self._parse_reply(requests.get("{}/{}".format(mn_url, query_str)))
+    #
+    #     replies = []
+    #     for mn_url in self.mn_url_list:
+    #         replies.append(self._parse_reply(requests.get("{}/{}".format(mn_url, query_str))))
+    #
+    #     if all(x == replies[0] for x in replies):
+    #         self.log.notice("replies matchup!")
+    #         return replies[0]
+    #     else:
+    #         self.log.warning("Masternodes had inconsistent replies for GET request {}\nReplies: {}".format(query_str, replies))
+    #         return None
 
     def _parse_reply(self, req, req_type='json'):
         if req.status_code != 200:
@@ -98,7 +98,7 @@ class Dumpatron:
 
     def _fetch_balance(self, vk, contract_name=CURRENCY_CONTRACT_NAME) -> int or None:
         req_url = "contracts/{}/balances/{}".format(contract_name, vk)
-        ret_json = self._get_from_masternode(req_url)
+        ret_json = God.get_from_mn_api(req_url)
 
         if ret_json:
             assert 'value' in ret_json, "Expected key 'value' to be in reply json {}".format(ret_json)

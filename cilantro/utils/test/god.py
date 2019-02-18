@@ -1,11 +1,12 @@
 from cilantro.messages.transaction.container import TransactionContainer
+from cilantro.messages.transaction.publish import *
 from cilantro.messages.transaction.contract import *
 from cilantro.messages.signals.kill_signal import KillSignal
 
 from cilantro.logger import get_logger
 from cilantro.utils.test.utils import *
 from cilantro.utils.test.wallets import ALL_WALLETS
-import os, requests, time, random, asyncio
+import os, requests, time, random, asyncio, secrets
 
 
 class God:
@@ -149,6 +150,58 @@ class God:
     @classmethod
     def get_random_mn_url(cls):
         return random.choice(cls.mn_urls)
+
+    @classmethod
+    def get_from_mn_api(cls, query_str, enforce_consistency=True, req_type='json'):
+        def _parse_reply(req, req_type='json'):
+            if req.status_code != 200:
+                cls.log.spam("Got status code {} from request {}".format(req.status_code, req))
+                return None
+
+            if req_type == 'json':
+                return req.json()
+            else:
+                raise Exception("Unknown request type {}".format(req_type))
+
+        if not enforce_consistency:
+            return _parse_reply(requests.get("{}/{}".format(cls.get_random_mn_url(), query_str)))
+
+        replies = {}
+        for mn_url in cls.mn_urls:
+            replies[mn_url] = _parse_reply(requests.get("{}/{}".format(mn_url, query_str)))
+        reply_vals = list(replies.values())
+
+        if all(x == reply_vals[0] for x in reply_vals):
+            return reply_vals[0]
+        else:
+            cls.log.warning("Masternodes had inconsistent replies for GET request {} ... possibile state"
+                            " corruption!?\nReplies: {}".format(query_str, replies))
+            return None
+
+    @classmethod
+    def submit_contract(cls, code: str, name: str, sk: str, vk: str, stamps=10**6):
+        tx = PublishTransaction.create(contract_code=code,
+                                       contract_name=name,
+                                       sender_sk=sk,
+                                       nonce=vk + secrets.token_hex(32),
+                                       stamps_supplied=stamps)
+        return cls.send_tx(tx)
+
+    @classmethod
+    def get_contracts(cls):
+        return cls.get_from_mn_api('/contracts')
+
+    @classmethod
+    def get_contract_meta(cls, contract_name: str):
+        return cls.get_from_mn_api('/contracts/{}'.format(contract_name))
+
+    @classmethod
+    def get_contract_resources(cls, contract_name: str):
+        return cls.get_from_mn_api('/contracts/{}/resources'.format(contract_name))
+
+    @classmethod
+    def get_contract_methods(cls, contract_name: str):
+        return cls.get_from_mn_api('/contracts/{}/methods'.format(contract_name))
 
     @classmethod
     def _get_mn_url(cls):

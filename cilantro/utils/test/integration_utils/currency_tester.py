@@ -8,8 +8,8 @@ from collections import defaultdict
 
 class CurrencyTester(Dumpatron):
 
-    FETCH_BALANCES_TIMEOUT = 240
-    ASSERT_BALANCES_TIMEOUT = 60
+    FETCH_BALANCES_TIMEOUT = 60
+    ASSERT_BALANCES_TIMEOUT = 30
     SLEEP_BEFORE_ASSERTING = 10  # How long we should wait between sending transactions and asserting new balances
     POLL_INTERVAL = 2
 

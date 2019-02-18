@@ -14,10 +14,12 @@ CONTRACT_FILENAME = 'stubucks.seneca'
 
 class SmartContractTester(Dumpatron):
 
-    FETCH_BALANCES_TIMEOUT = 240
-    ASSERT_BALANCES_TIMEOUT = 60
+    ASSERT_CONTRACT_NOT_EXISTS_TIMEOUT = 60
+    ASSERT_SUBMITTED_TIMEOUT = 30
     SLEEP_BEFORE_ASSERTING = 10  # How long we should wait between sending transactions and asserting new balances
     POLL_INTERVAL = 2
+
+    CONTRACT_NAME = 'stubucks'
 
     def __init__(self, *args, wallets=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -32,12 +34,22 @@ class SmartContractTester(Dumpatron):
         self.sk, self.vk = STU
 
     def start(self):
+        self.assert_contract_does_not_exist()
         self.submit_contract()
         self.log.test("Sleeping for {} seconds before asserting contract was submitted...".format(self.SLEEP_BEFORE_ASSERTING))
         self.assert_contract_submitted()
 
+    def assert_contract_does_not_exist(self):
+        elapsed = 0
+        while self._check_contract_exists(self.CONTRACT_NAME) is not False:   # could be None so need 'is not False'
+            elapsed += self.POLL_INTERVAL
+            time.sleep(elapsed)
+            if elapsed > self.ASSERT_CONTRACT_NOT_EXISTS_TIMEOUT:
+                raise Exception("Exceeded timeout of {} asserting that contract does not exist yet".format(self.ASSERT_CONTRACT_NOT_EXISTS_TIMEOUT))
+
     def _check_contract_exists(self, contract_name) -> bool:
-        pass
+        res = God.get_contracts()
+        self.log.critical(res)
 
     def submit_contract(self):
         self.log.test("Submitting smart contract with owner vk {}".format(self.vk))
