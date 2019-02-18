@@ -15,11 +15,13 @@ TJ = ('cf67a180f9578afa5fd704cea39b450c1542755d73614f6a4f41b627190b83bb',
       'cb9bfd4b57b243248796e9eb90bc4f0053d78f06ce68573e0fdca422f54bb0d2')
 RAGHU = ('b44a8cc3dcadbdb3352ea046ec85cd0f6e8e3f584e3d6eb3bd10e142d84a9668',
          'c1f845ad8967b93092d59e4ef56aef3eba49c33079119b9c856a5354e9ccdf84')
-ALL_WALLETS = [STU, DAVIS, COLIN, FALCON, TJ, RAGHU]
 
+COOL_KIDS = [STU, DAVIS, COLIN, FALCON, TJ, RAGHU]
+GENERAL_WALLETS = []
 
 if SHOULD_MINT_WALLET:
     for i in range(NUM_WALLETS_TO_MINT):
         sk, vk = wallet.new(int_to_padded_bytes(i))
-        ALL_WALLETS.append((sk, vk))
+        GENERAL_WALLETS.append((sk, vk))
 
+ALL_WALLETS = COOL_KIDS + GENERAL_WALLETS
