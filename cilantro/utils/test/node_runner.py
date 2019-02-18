@@ -104,7 +104,7 @@ def dump_it(volume, delay=0):
     import logging
 
     overwrite_logger_level(logging.WARNING)
-    God._dump_it(volume=volume, delay=delay)
+    God.dump_it(volume=volume, delay=delay)
 
 
 def pump_it(*args, **kwargs):
@@ -116,4 +116,4 @@ def pump_it(*args, **kwargs):
 
     log = get_logger("Pumper")
     log.important("Starting the pump..")
-    God._pump_it(*args, **kwargs)
+    God.pump_it(*args, **kwargs)

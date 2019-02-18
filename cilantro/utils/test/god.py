@@ -5,12 +5,7 @@ from cilantro.messages.signals.kill_signal import KillSignal
 from cilantro.logger import get_logger
 from cilantro.utils.test.utils import *
 from cilantro.utils.test.wallets import ALL_WALLETS
-from cilantro.utils.test.node_runner import *
 import os, requests, time, random, asyncio
-
-from unittest.mock import MagicMock
-from cilantro.protocol import wallet
-from cilantro.constants.system_config import *
 
 
 class God:
@@ -26,48 +21,6 @@ class God:
 
     def __init__(self):
         raise NotImplementedError("Use only class method on God")
-
-    @staticmethod
-    def run_mn(*args, return_fn=True, **kwargs):
-        if return_fn:
-            return wrap_func(run_mn, *args, **kwargs)
-        else:
-            run_mn(*args, **kwargs)
-
-    @staticmethod
-    def run_witness(*args, return_fn=True, **kwargs):
-        if return_fn:
-            return wrap_func(run_witness, *args, **kwargs)
-        else:
-            run_witness(*args, **kwargs)
-
-    @staticmethod
-    def run_delegate(*args, return_fn=True, **kwargs):
-        if return_fn:
-            return wrap_func(run_delegate, *args, **kwargs)
-        else:
-            run_delegate(*args, **kwargs)
-
-    @staticmethod
-    def dump_it(*args, return_fn=True, **kwargs):
-        if return_fn:
-            return wrap_func(dump_it, *args, **kwargs)
-        else:
-            dump_it(*args, **kwargs)
-
-    @staticmethod
-    def pump_it(*args, return_fn=True, **kwargs):
-        if return_fn:
-            return wrap_func(pump_it, *args, **kwargs)
-        else:
-            pump_it(*args, **kwargs)
-
-    @classmethod
-    def teardown_all(cls, masternode_url):
-        raise NotImplementedError("This is not implemented!")
-        # masternode_url += '/teardown-network'
-        # cls.log.important("Sending teardown notification to Masternode at url {}".format(masternode_url))
-        # r = requests.post(masternode_url, data=KillSignal.create().serialize())
 
     @classmethod
     def _default_gen_func(cls):
@@ -101,8 +54,8 @@ class God:
             return None
 
     @classmethod
-    def _pump_it(cls, rate: int, gen_func=None, use_poisson=True, sleep_sometimes=False, active_bounds=(120, 240),
-                 sleep_bounds=(20, 60), pump_wait=0):
+    def pump_it(cls, rate: int, gen_func=None, use_poisson=True, sleep_sometimes=False, active_bounds=(120, 240),
+                sleep_bounds=(20, 60), pump_wait=0):
         """
         Pump random transactions from random users to Masternode's REST endpoint at an average rate of 'rate'
         transactions per second. This func blocks.
@@ -152,7 +105,7 @@ class God:
                 cls.log.important3("Done sleeping. Continuing the pump, and triggering next sleep in {}s".format(next_sleep))
 
     @classmethod
-    def _dump_it(cls, volume: int, delay: int=0, gen_func=None):
+    def dump_it(cls, volume: int, delay: int=0, gen_func=None):
         """ Dump it fast. """
         # God.mn_urls = get_mn_urls()  # Reset MN URLS
         assert volume > 0, "You must dump at least 1 transaction silly"
@@ -169,10 +122,10 @@ class God:
         countdown(delay, "Waiting for an additional {} seconds before dumping...", cls.log, status_update_freq=8)
 
         start = time.time()
-        cls.log.important2("Dumping {} transactions...".format(len(txs)))
+        cls.log.info("Dumping {} transactions...".format(len(txs)))
         for tx in txs:
             cls.send_tx(tx)
-        cls.log.important2("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
+        cls.log.success("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
 
     @classmethod
     def request_nonce(cls, vk):
@@ -192,6 +145,10 @@ class God:
         amount = random.randint(1, 100)
 
         return cls.create_currency_tx(sender=sender, receiver=receiver, amount=amount)
+
+    @classmethod
+    def get_random_mn_url(cls):
+        return random.choice(cls.mn_urls)
 
     @classmethod
     def _get_mn_url(cls):

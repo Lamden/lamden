@@ -53,7 +53,7 @@ class Dumpatron:
         return urls
 
     def dump(self, volume=1):
-        God._dump_it(volume=volume)
+        God.dump_it(volume=volume)
 
     def start_interactive_dump(self):
         self.log.info("Starting the dump....")
@@ -67,7 +67,7 @@ class Dumpatron:
 
             vol = int(user_input) if user_input.isdigit() else self.TX_PER_BLOCK
             self.log.important3("Dumping {} transactions!".format(vol))
-            God._dump_it(volume=vol)
+            God.dump_it(volume=vol)
 
     def _get_from_masternode(self, query_str: str, enforce_consistency=True, req_type='json'):
         if not enforce_consistency:
