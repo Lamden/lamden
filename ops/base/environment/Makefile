@@ -85,7 +85,7 @@ show:
 	@echo ""
 
 testdump:
-	python3 $(CILANTRO_ROOT)/ops/tools/dump_dat.py $(MY_PATH)
+	python3 $(CILANTRO_ROOT)/ops/tools/dump.py $(MY_PATH)
 
 
 test:

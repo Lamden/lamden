@@ -85,9 +85,9 @@ class God:
         return ContractTransactionBuilder.create_currency_tx(sender[0], receiver, amount, stamps=stamps, nonce=nonce)
 
     @classmethod
-    def send_currency_contract(cls, sender: tuple, receiver: tuple, amount:int):
+    def send_currency_contract(cls, sender: tuple, receiver: tuple, amount: int):
         tx = cls.create_currency_tx(sender, receiver, amount)
-        cls.send_tx(tx)
+        return cls.send_tx(tx)
 
     @classmethod
     def send_tx(cls, tx: TransactionBase):
