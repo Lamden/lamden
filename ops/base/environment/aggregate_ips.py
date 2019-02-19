@@ -34,6 +34,10 @@ if __name__ == "__main__":
         _, _, filenames = next(os.walk(cache_path))
         all_found = [ x for x in ip_files if x not in filenames ] == []
 
+    # Sleep for one second to prevent the files being opened before everyone has had the chance
+    # to write their IPs
+    time.sleep(1)
+
     # Get all ips
     all_ips = []
     for ipf in ip_files:
