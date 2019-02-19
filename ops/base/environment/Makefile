@@ -8,6 +8,8 @@ CILANTRO_ROOT ?= $(join $(MY_PATH), ../../../)
 NODE_COUNT ?= $(shell find $(MY_PATH)conf/* -maxdepth 0 -type d | wc -l | sed 's/^ *//;s/ *$$//')
 PARALLELISM ?= $(shell if [ "$(NODE_COUNT)" -gt "10" ]; then echo "-parallelism=$(NODE_COUNT)"; else echo ""; fi)
 
+ADDITIONAL_FLAGS ?= ""
+
 # Resolve the tag using the tag resolver script, this is the default
 DOCKER_TAG ?= $(shell bash $(CILANTRO_ROOT)/ops/tools/generate_tag.sh)
 
@@ -58,8 +60,8 @@ buildpush:
 # Run the necessary terraform application process
 apply:
 	@rm $(MY_PATH).cache/ip_* || true
-	@echo "Applying with tag=$(DOCKER_TAG) user=$(USER) environment_name=$(shell basename $(MY_PATH)) flags='$(PARALLELISM)'"
-	@terraform apply -var 'docker_tag=$(DOCKER_TAG)' -var 'user=$(USER)' -var 'environment_name=$(shell basename $(MY_PATH))' $(PARALLELISM)
+	@echo "Applying with tag=$(DOCKER_TAG) user=$(USER) environment_name=$(shell basename $(MY_PATH)) flags='$(PARALLELISM) $(ADDITIONAL_FLAGS)'"
+	@terraform apply -var 'docker_tag=$(DOCKER_TAG)' -var 'user=$(USER)' -var 'environment_name=$(shell basename $(MY_PATH))' $(PARALLELISM) $(ADDITIONAL_FLAGS)
 	@echo "$(DOCKER_TAG)" > $(MY_PATH).cache/docker_tag
 
 # Get the docker_tag of the last successful run from the .cache. Error out if not able to find
