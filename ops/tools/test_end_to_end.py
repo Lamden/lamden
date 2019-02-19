@@ -1,10 +1,10 @@
-from cilantro.utils.test.dumpatron import DumpatronTester
+from cilantro.utils.test.integration_utils.currency_tester import CurrencyTester
 from cilantro.logger.base import overwrite_logger_level
 import sys
 
 
 def test_end_to_end(env_path):
-    mr_dumpo = DumpatronTester(env_path)
+    mr_dumpo = CurrencyTester(env_path)
     mr_dumpo.start()
 
 

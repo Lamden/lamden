@@ -1,16 +1,17 @@
 from cilantro.messages.transaction.container import TransactionContainer
+from cilantro.messages.transaction.publish import *
 from cilantro.messages.transaction.contract import *
 from cilantro.messages.signals.kill_signal import KillSignal
 
 from cilantro.logger import get_logger
 from cilantro.utils.test.utils import *
 from cilantro.utils.test.wallets import ALL_WALLETS
-from cilantro.utils.test.node_runner import *
-import os, requests, time, random, asyncio
+import os, requests, time, random, asyncio, secrets, math, json
+from typing import List
 
-from unittest.mock import MagicMock
-from cilantro.protocol import wallet
-from cilantro.constants.system_config import *
+
+CURRENCY_CONTRACT_NAME = 'currency'
+
 
 
 class God:
@@ -26,48 +27,6 @@ class God:
 
     def __init__(self):
         raise NotImplementedError("Use only class method on God")
-
-    @staticmethod
-    def run_mn(*args, return_fn=True, **kwargs):
-        if return_fn:
-            return wrap_func(run_mn, *args, **kwargs)
-        else:
-            run_mn(*args, **kwargs)
-
-    @staticmethod
-    def run_witness(*args, return_fn=True, **kwargs):
-        if return_fn:
-            return wrap_func(run_witness, *args, **kwargs)
-        else:
-            run_witness(*args, **kwargs)
-
-    @staticmethod
-    def run_delegate(*args, return_fn=True, **kwargs):
-        if return_fn:
-            return wrap_func(run_delegate, *args, **kwargs)
-        else:
-            run_delegate(*args, **kwargs)
-
-    @staticmethod
-    def dump_it(*args, return_fn=True, **kwargs):
-        if return_fn:
-            return wrap_func(dump_it, *args, **kwargs)
-        else:
-            dump_it(*args, **kwargs)
-
-    @staticmethod
-    def pump_it(*args, return_fn=True, **kwargs):
-        if return_fn:
-            return wrap_func(pump_it, *args, **kwargs)
-        else:
-            pump_it(*args, **kwargs)
-
-    @classmethod
-    def teardown_all(cls, masternode_url):
-        raise NotImplementedError("This is not implemented!")
-        # masternode_url += '/teardown-network'
-        # cls.log.important("Sending teardown notification to Masternode at url {}".format(masternode_url))
-        # r = requests.post(masternode_url, data=KillSignal.create().serialize())
 
     @classmethod
     def _default_gen_func(cls):
@@ -92,8 +51,9 @@ class God:
     @classmethod
     def send_tx(cls, tx: TransactionBase):
         mn_url = cls._get_mn_url()
+        data = TransactionContainer.create(tx).serialize()
         try:
-            r = requests.post(mn_url, data=TransactionContainer.create(tx).serialize(), verify=False)
+            r = requests.post(mn_url, data=data, verify=False)
             cls.log.spam("POST request to MN at URL {} has status code: {}".format(mn_url, r.status_code))
             return r
         except Exception as e:
@@ -101,8 +61,21 @@ class God:
             return None
 
     @classmethod
-    def _pump_it(cls, rate: int, gen_func=None, use_poisson=True, sleep_sometimes=False, active_bounds=(120, 240),
-                 sleep_bounds=(20, 60), pump_wait=0):
+    async def async_send_txs(cls, txs: List[TransactionBase], session):
+        async def _send(url, data):
+            async with session.post(url, data=data) as resp:
+                return await resp.json()
+
+        tx_containers = [TransactionContainer.create(tx).serialize() for tx in txs]
+        futs = []
+        for data in tx_containers:
+            url = cls._get_mn_url()
+            futs.append(_send(url, data))
+        await asyncio.gather(*futs)
+
+    @classmethod
+    def pump_it(cls, rate: int, gen_func=None, use_poisson=True, sleep_sometimes=False, active_bounds=(120, 240),
+                sleep_bounds=(20, 60), pump_wait=0):
         """
         Pump random transactions from random users to Masternode's REST endpoint at an average rate of 'rate'
         transactions per second. This func blocks.
@@ -152,7 +125,7 @@ class God:
                 cls.log.important3("Done sleeping. Continuing the pump, and triggering next sleep in {}s".format(next_sleep))
 
     @classmethod
-    def _dump_it(cls, volume: int, delay: int=0, gen_func=None):
+    async def dump_it(cls, session, volume: int, delay: int=0, gen_func=None):
         """ Dump it fast. """
         # God.mn_urls = get_mn_urls()  # Reset MN URLS
         assert volume > 0, "You must dump at least 1 transaction silly"
@@ -169,10 +142,11 @@ class God:
         countdown(delay, "Waiting for an additional {} seconds before dumping...", cls.log, status_update_freq=8)
 
         start = time.time()
-        cls.log.important2("Dumping {} transactions...".format(len(txs)))
-        for tx in txs:
-            cls.send_tx(tx)
-        cls.log.important2("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
+        cls.log.info("Dumping {} transactions...".format(len(txs)))
+        await cls.async_send_txs(txs, session)
+        # for tx in txs:
+        #     cls.send_tx(tx)
+        cls.log.success("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
 
     @classmethod
     def request_nonce(cls, vk):
@@ -192,6 +166,146 @@ class God:
         amount = random.randint(1, 100)
 
         return cls.create_currency_tx(sender=sender, receiver=receiver, amount=amount)
+
+    @classmethod
+    def get_random_mn_url(cls):
+        return random.choice(cls.mn_urls)
+
+    @classmethod
+    def _parse_reply(cls, req, req_type='json'):
+        if req.status_code != 200:
+            cls.log.spam("Got status code {} from request {}".format(req.status_code, req))
+            return None
+
+        if req_type == 'json':
+            return req.json()
+        else:
+            raise Exception("Unknown request type {}".format(req_type))
+
+    @classmethod
+    def _check_eq_replies(cls, replies: dict):
+        vals = list(replies.values())
+        if all(x == vals[0] for x in vals):
+            return vals[0]
+        else:
+            cls.log.warning("Masternodes had inconsistent replies for GET requests ... possibile state"
+                            " corruption!?\nReplies: {}".format(replies))
+            return None
+
+    @classmethod
+    def get_from_mn_api(cls, query_str, enforce_consistency=True, req_type='json'):
+        if not enforce_consistency:
+            return cls._parse_reply(requests.get("{}/{}".format(cls.get_random_mn_url(), query_str)))
+
+        replies = {}
+        for mn_url in cls.mn_urls:
+            req_url = "{}/{}".format(mn_url, query_str)
+            replies[req_url] = cls._parse_reply(requests.get(req_url))
+        return cls._check_eq_replies(replies)
+
+    @classmethod
+    async def async_get_from_mn_api(cls, query_str, session, enforce_consistency=True, req_type='json'):
+        async def fetch_url(url):
+            async with session.get(url) as resp:
+                if req_type == 'json':
+                    return await resp.json()
+                elif req_type == 'text':
+                    return await resp.text()
+                else:
+                    raise Exception("Unknown req_type {}".format(req_type))
+
+        if not enforce_consistency:
+            return await fetch_url(query_str)
+
+        replies = {}
+        for mn_url in cls.mn_urls:
+            req_url = "{}/{}".format(mn_url, query_str)
+            replies[req_url] = fetch_url(req_url)
+
+        results = dict(zip(replies.keys(), await asyncio.gather(*list(replies.values()))))
+        return cls._check_eq_replies(results)
+
+    @classmethod
+    def submit_contract(cls, code: str, name: str, sk: str, vk: str, stamps=10**6):
+        tx = PublishTransaction.create(contract_code=code,
+                                       contract_name=name,
+                                       sender_sk=sk,
+                                       nonce=vk + secrets.token_hex(32),
+                                       stamps_supplied=stamps)
+        return cls.send_tx(tx)
+
+    @classmethod
+    def get_contract_names(cls) -> List[str]:
+        r = cls.get_from_mn_api('contracts')
+        if r is not None:
+            assert 'contracts' in r, "Expected key 'contracts' to be in dict returned by /contracts endpoint. " \
+                                     "Instead got {}".format(r)
+            return r['contracts']
+        else:
+            return None
+
+    @classmethod
+    def get_contract_meta(cls, contract_name: str):
+        return cls.get_from_mn_api('contracts/{}'.format(contract_name))
+
+    @classmethod
+    def get_contract_resources(cls, contract_name: str):
+        return cls.get_from_mn_api('contracts/{}/resources'.format(contract_name))
+
+    @classmethod
+    def get_contract_methods(cls, contract_name: str):
+        return cls.get_from_mn_api('contracts/{}/methods'.format(contract_name))
+
+    @classmethod
+    async def get_balances(cls, session, vks: list, contract_name=CURRENCY_CONTRACT_NAME) -> dict:
+        async def _get_balance(vk, contract_name):
+            req_url = "contracts/{}/balances/{}".format(contract_name, vk)
+            return cls._process_balance_json(await God.async_get_from_mn_api(req_url, session))
+
+        balances, fetched = {}, {}
+
+        for vk in vks:
+            balances[vk] = _get_balance(vk, contract_name=contract_name)
+        results = dict(zip(balances.keys(), await asyncio.gather(*list(balances.values()))))
+
+        for k in results:
+            if results[k] is not None:
+                fetched[k] = results[k]
+
+        return fetched
+
+    @classmethod
+    def wait_for_mns_online(cls, timeout=300):
+        cls.log.notice("Waiting for masternodes to come online...")
+        elapsed = 0
+        while True:
+            try:
+                cls.log.info("Checking if masternodes are online")
+                val = God.get_from_mn_api('ohai')
+                if val is not None:
+                    cls.log.notice("All masternodes online.")
+                    return
+            except Exception as e:
+                cls.log.warning("Error checking if MNs online: {}".format(e))
+
+            if elapsed > timeout:
+                raise Exception("Timeout of {} reached waiting for masternodes to be online")
+
+            elapsed += 5
+            time.sleep(5)
+
+    @classmethod
+    async def get_balance(cls, vk, contract_name=CURRENCY_CONTRACT_NAME) -> int or None:
+        req_url = "contracts/{}/balances/{}".format(contract_name, vk)
+        return cls._process_balance_json(God.get_from_mn_api(req_url))
+
+    @classmethod
+    def _process_balance_json(cls, d: dict) -> int or None:
+        if d:
+            assert 'value' in d, "Expected key 'value' to be in reply json {}".format(d)
+            return int(d['value'])
+        else:
+            return None
 
     @classmethod
     def _get_mn_url(cls):

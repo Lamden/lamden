@@ -11,3 +11,4 @@ vmnet
 seneca
 pathspec
 umsgpack
+aiohttp
