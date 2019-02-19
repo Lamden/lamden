@@ -123,13 +123,15 @@ def main():
     # Now, to actually build the configs...
     os.makedirs(config_dir_path)
     os.makedirs("{}/.cache".format(base_config_dir_path))
-    os.symlink("{}/base/environment/aggregate_ips.py".format(OPS_DIR_PATH), "{}/aggregate_ips.py".format(base_config_dir_path))
-    os.symlink("{}/base/environment/Makefile".format(OPS_DIR_PATH), "{}/Makefile".format(base_config_dir_path))
-    os.symlink("{}/base/environment/providers.tf".format(OPS_DIR_PATH), "{}/providers.tf".format(base_config_dir_path))
-    os.symlink("{}/base/environment/shared.tf".format(OPS_DIR_PATH), "{}/shared.tf".format(base_config_dir_path))
-    os.symlink("{}/base/environment/variables.tf".format(OPS_DIR_PATH), "{}/variables.tf".format(base_config_dir_path))
-    os.symlink("{}/base/environment/modules".format(OPS_DIR_PATH), "{}/modules".format(base_config_dir_path))
-
+    symlinks = [ "aggregate_ips.py", "Makefile", "providers.tf", "shared.tf", "variables.tf", "modules" ]
+    for l in symlinks:
+        os.symlink(
+            os.path.relpath(
+                "{}/base/environment/{}".format(OPS_DIR_PATH, l),
+                base_config_dir_path
+            ),
+            "{}/{}".format(base_config_dir_path, l)
+        )
     for node_group in const_dict:
         for i, node_info in enumerate(const_dict[node_group]):
             node_name = _get_node_name(node_group, i)

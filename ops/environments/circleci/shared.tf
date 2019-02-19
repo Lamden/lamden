@@ -1,1 +1,1 @@
-/Users/cmcgrath/Documents/Work/Lamden/git/cilantro/ops/base/environment/shared.tf
+../../base/environment/shared.tf
