@@ -33,6 +33,8 @@ class Dumpatron:
         asyncio.set_event_loop(self.loop)
         self.session = aiohttp.ClientSession()
 
+        God.wait_for_mns_online()
+
     async def _start(self):
         await self.start_interactive_dump()
 

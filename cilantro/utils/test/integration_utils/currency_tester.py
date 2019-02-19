@@ -50,7 +50,7 @@ class CurrencyTester(Dumpatron):
 
         self.log.test("All initial wallet balances fetched!".format(self.init_balances))
 
-    async def send_test_currency_txs(self, num_blocks=10):
+    async def send_test_currency_txs(self, num_blocks=4):
         assert len(self.init_balances) == len(self.wallets), "Init balances not equal to length of wallet"
         num = self.TX_PER_BLOCK * num_blocks
         self.log.test("Sending {} random test transactions...".format(num))

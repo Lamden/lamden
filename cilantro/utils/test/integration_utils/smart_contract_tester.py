@@ -38,39 +38,30 @@ class SmartContractTester(Dumpatron):
         self.submit_contract()
         self.log.test("Sleeping for {} seconds before asserting contract was submitted...".format(self.SLEEP_BEFORE_ASSERTING))
         self.assert_contract_submitted()
-        # await self.send_test_currency_txs()
-        # self.log.test("Sleeping for {} seconds before checking assertions...".format(self.SLEEP_BEFORE_ASSERTING))
-        # await asyncio.sleep(self.SLEEP_BEFORE_ASSERTING)
-        # await self.assert_balances_updated()
-    #
-    # def start(self):
-    #     self.assert_contract_does_not_exist()
-    #     self.submit_contract()
-    #     self.log.test("Sleeping for {} seconds before asserting contract was submitted...".format(self.SLEEP_BEFORE_ASSERTING))
-    #     self.assert_contract_submitted()
 
     def assert_contract_does_not_exist(self):
-        elapsed = 0
-        while self._check_contract_exists(self.CONTRACT_NAME) is not False:   # could be None so need 'is not False'
-            elapsed += self.POLL_INTERVAL
-            time.sleep(elapsed)
-            if elapsed > self.ASSERT_CONTRACT_NOT_EXISTS_TIMEOUT:
-                raise Exception("Exceeded timeout of {} asserting that contract does not exist yet".format(self.ASSERT_CONTRACT_NOT_EXISTS_TIMEOUT))
-
-    def _check_contract_exists(self, contract_name) -> bool:
-        res = God.get_contracts()
-        self.log.critical(res)
+        names = God.get_contract_names()
+        if self.CONTRACT_NAME in names:
+            raise Exception("Contract named '{}' already exists in Masternode's contracts {}".format(self.CONTRACT_NAME, names))
 
     def submit_contract(self):
         self.log.test("Submitting smart contract with owner vk {}".format(self.vk))
         code_file_path = os.path.dirname(__file__) + '/' + CONTRACT_FILENAME
         with open(code_file_path, 'r') as f:
             code_str = f.read()
-
-        print("submitting code str:\n{}".format(code_str))
+        God.submit_contract(code_str, self.CONTRACT_NAME, self.sk, self.vk, stamps=self.STAMPS_AMOUNT)
 
     def assert_contract_submitted(self):
-        pass
+        self.log.test("Asserting that contract has been successfully submitted...")
+        elapsed = 0
+        while self.CONTRACT_NAME not in God.get_contract_names():
+            self.log.info("Contract still not registered. Sleeping {} seconds".format(self.POLL_INTERVAL))
+            time.sleep(self.POLL_INTERVAL)
+            elapsed += self.POLL_INTERVAL
+            if elapsed > self.ASSERT_SUBMITTED_TIMEOUT:
+                raise Exception("Contract submission exceeded timeout of {}".format(self.ASSERT_SUBMITTED_TIMEOUT))
+
+        self.log.test("Contract successfully submitted.")
 
     def submit_test_transaction(self):
         pass

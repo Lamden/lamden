@@ -111,8 +111,14 @@ async def get_contracts(request):
     r = interface.r.hkeys('contracts')
     result = {}
     r_str = [_r.decode() for _r in r]
-    result['contracts'] = r_str
+    result['contracts'] = sorted(r_str)
     return _respond_to_request(result)
+
+
+# This is just a test endpoint we use to detect when a web server has come online
+@app.route("/ohai", methods=["GET","OPTIONS",])
+async def ohai(request):
+    return _respond_to_request({'status':'online'})
 
 
 @app.route("/contracts/<contract>", methods=["GET","OPTIONS",])

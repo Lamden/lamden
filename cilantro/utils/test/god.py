@@ -6,7 +6,7 @@ from cilantro.messages.signals.kill_signal import KillSignal
 from cilantro.logger import get_logger
 from cilantro.utils.test.utils import *
 from cilantro.utils.test.wallets import ALL_WALLETS
-import os, requests, time, random, asyncio, secrets, math
+import os, requests, time, random, asyncio, secrets, math, json
 from typing import List
 
 
@@ -235,20 +235,26 @@ class God:
         return cls.send_tx(tx)
 
     @classmethod
-    def get_contracts(cls):
-        return cls.get_from_mn_api('/contracts')
+    def get_contract_names(cls) -> List[str]:
+        r = cls.get_from_mn_api('contracts')
+        if r is not None:
+            assert 'contracts' in r, "Expected key 'contracts' to be in dict returned by /contracts endpoint. " \
+                                     "Instead got {}".format(r)
+            return r['contracts']
+        else:
+            return None
 
     @classmethod
     def get_contract_meta(cls, contract_name: str):
-        return cls.get_from_mn_api('/contracts/{}'.format(contract_name))
+        return cls.get_from_mn_api('contracts/{}'.format(contract_name))
 
     @classmethod
     def get_contract_resources(cls, contract_name: str):
-        return cls.get_from_mn_api('/contracts/{}/resources'.format(contract_name))
+        return cls.get_from_mn_api('contracts/{}/resources'.format(contract_name))
 
     @classmethod
     def get_contract_methods(cls, contract_name: str):
-        return cls.get_from_mn_api('/contracts/{}/methods'.format(contract_name))
+        return cls.get_from_mn_api('contracts/{}/methods'.format(contract_name))
 
     @classmethod
     async def get_balances(cls, session, vks: list, contract_name=CURRENCY_CONTRACT_NAME) -> dict:
@@ -267,6 +273,26 @@ class God:
                 fetched[k] = results[k]
 
         return fetched
+
+    @classmethod
+    def wait_for_mns_online(cls, timeout=300):
+        cls.log.notice("Waiting for masternodes to come online...")
+        elapsed = 0
+        while True:
+            try:
+                cls.log.info("Checking if masternodes are online")
+                val = God.get_from_mn_api('ohai')
+                if val is not None:
+                    cls.log.notice("All masternodes online.")
+                    return
+            except Exception as e:
+                cls.log.warning("Error checking if MNs online: {}".format(e))
+
+            if elapsed > timeout:
+                raise Exception("Timeout of {} reached waiting for masternodes to be online")
+
+            elapsed += 5
+            time.sleep(5)
 
     @classmethod
     async def get_balance(cls, vk, contract_name=CURRENCY_CONTRACT_NAME) -> int or None:
