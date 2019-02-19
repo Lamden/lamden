@@ -6,7 +6,8 @@ from cilantro.messages.signals.kill_signal import KillSignal
 from cilantro.logger import get_logger
 from cilantro.utils.test.utils import *
 from cilantro.utils.test.wallets import ALL_WALLETS
-import os, requests, time, random, asyncio, secrets
+import os, requests, time, random, asyncio, secrets, math
+from typing import List
 
 
 class God:
@@ -46,13 +47,27 @@ class God:
     @classmethod
     def send_tx(cls, tx: TransactionBase):
         mn_url = cls._get_mn_url()
+        data = TransactionContainer.create(tx).serialize()
         try:
-            r = requests.post(mn_url, data=TransactionContainer.create(tx).serialize(), verify=False)
+            r = requests.post(mn_url, data=data, verify=False)
             cls.log.spam("POST request to MN at URL {} has status code: {}".format(mn_url, r.status_code))
             return r
         except Exception as e:
             cls.log.warning("Error attempt to send transaction to Masternode at URL {}\nerror={}".format(mn_url, e))
             return None
+
+    @classmethod
+    async def async_send_txs(cls, txs: List[TransactionBase], session):
+        async def _send(url, data):
+            async with session.post(url, data=data) as resp:
+                return await resp.json()
+
+        tx_containers = [TransactionContainer.create(tx).serialize() for tx in txs]
+        futs = []
+        for data in tx_containers:
+            url = cls._get_mn_url()
+            futs.append(_send(url, data))
+        await asyncio.gather(*futs)
 
     @classmethod
     def pump_it(cls, rate: int, gen_func=None, use_poisson=True, sleep_sometimes=False, active_bounds=(120, 240),
@@ -106,7 +121,7 @@ class God:
                 cls.log.important3("Done sleeping. Continuing the pump, and triggering next sleep in {}s".format(next_sleep))
 
     @classmethod
-    def dump_it(cls, volume: int, delay: int=0, gen_func=None):
+    async def dump_it(cls, session, volume: int, delay: int=0, gen_func=None):
         """ Dump it fast. """
         # God.mn_urls = get_mn_urls()  # Reset MN URLS
         assert volume > 0, "You must dump at least 1 transaction silly"
@@ -124,8 +139,9 @@ class God:
 
         start = time.time()
         cls.log.info("Dumping {} transactions...".format(len(txs)))
-        for tx in txs:
-            cls.send_tx(tx)
+        await cls.async_send_txs(txs, session)
+        # for tx in txs:
+        #     cls.send_tx(tx)
         cls.log.success("Done dumping {} transactions in {} seconds".format(len(txs), round(time.time() - start, 3)))
 
     @classmethod
@@ -152,31 +168,59 @@ class God:
         return random.choice(cls.mn_urls)
 
     @classmethod
+    def _parse_reply(cls, req, req_type='json'):
+        if req.status_code != 200:
+            cls.log.spam("Got status code {} from request {}".format(req.status_code, req))
+            return None
+
+        if req_type == 'json':
+            return req.json()
+        else:
+            raise Exception("Unknown request type {}".format(req_type))
+
+    @classmethod
+    def _check_eq_replies(cls, replies: dict):
+        vals = list(replies.values())
+        if all(x == vals[0] for x in vals):
+            return vals[0]
+        else:
+            cls.log.warning("Masternodes had inconsistent replies for GET requests ... possibile state"
+                            " corruption!?\nReplies: {}".format(replies))
+            return None
+
+    @classmethod
     def get_from_mn_api(cls, query_str, enforce_consistency=True, req_type='json'):
-        def _parse_reply(req, req_type='json'):
-            if req.status_code != 200:
-                cls.log.spam("Got status code {} from request {}".format(req.status_code, req))
-                return None
-
-            if req_type == 'json':
-                return req.json()
-            else:
-                raise Exception("Unknown request type {}".format(req_type))
-
         if not enforce_consistency:
-            return _parse_reply(requests.get("{}/{}".format(cls.get_random_mn_url(), query_str)))
+            return cls._parse_reply(requests.get("{}/{}".format(cls.get_random_mn_url(), query_str)))
 
         replies = {}
         for mn_url in cls.mn_urls:
-            replies[mn_url] = _parse_reply(requests.get("{}/{}".format(mn_url, query_str)))
-        reply_vals = list(replies.values())
+            req_url = "{}/{}".format(mn_url, query_str)
+            replies[req_url] = cls._parse_reply(requests.get(req_url))
+        return cls._check_eq_replies(replies)
 
-        if all(x == reply_vals[0] for x in reply_vals):
-            return reply_vals[0]
-        else:
-            cls.log.warning("Masternodes had inconsistent replies for GET request {} ... possibile state"
-                            " corruption!?\nReplies: {}".format(query_str, replies))
-            return None
+    @classmethod
+    async def async_get_from_mn_api(cls, query_str, session, enforce_consistency=True, req_type='json'):
+        async def fetch_url(url):
+            async with session.get(url) as resp:
+                if req_type == 'json':
+                    return await resp.json()
+                elif req_type == 'text':
+                    return await resp.text()
+                else:
+                    raise Exception("Unknown req_type {}".format(req_type))
+
+        if not enforce_consistency:
+            # return cls._parse_reply(await session.get("{}/{}".format(cls.get_random_mn_url(), query_str)))
+            return await fetch_url(query_str)
+
+        replies = {}
+        for mn_url in cls.mn_urls:
+            req_url = "{}/{}".format(mn_url, query_str)
+            replies[req_url] = fetch_url(req_url)
+
+        results = dict(zip(replies.keys(), await asyncio.gather(*list(replies.values()))))
+        return cls._check_eq_replies(results)
 
     @classmethod
     def submit_contract(cls, code: str, name: str, sk: str, vk: str, stamps=10**6):

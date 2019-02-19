@@ -11,5 +11,6 @@ if __name__ == '__main__':
     env_path = sys.argv[1]
 
     mr_dump = Dumpatron(env_path)
-    mr_dump.start_interactive_dump()
+    mr_dump.start()
+    # mr_dump.start_interactive_dump()
 

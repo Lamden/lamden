@@ -2,7 +2,7 @@ from cilantro.logger.base import get_logger
 from cilantro.utils.test.god import God
 from cilantro.constants.system_config import *
 import os, glob
-import random
+import asyncio, aiohttp
 
 
 SSL_ENABLED = False  # TODO make this infered instead of a hard coded flag
@@ -28,6 +28,24 @@ class Dumpatron:
 
         God.mn_urls = self.mn_url_list
         God.multi_master = True
+
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.session = aiohttp.ClientSession()
+
+    async def _start(self):
+        await self.start_interactive_dump()
+
+    async def _start_loop(self):
+        try:
+            await self._start()
+        except asyncio.CancelledError:
+            self.log.warning("Loop cancelled")
+        finally:
+            await self.session.close()
+
+    def start(self):
+        self.loop.run_until_complete(self._start_loop())
 
     def _extract_mn_ips(self) -> dict:
         ips = {}
@@ -55,7 +73,7 @@ class Dumpatron:
     def dump(self, volume=1):
         God.dump_it(volume=volume)
 
-    def start_interactive_dump(self):
+    async def start_interactive_dump(self):
         self.log.info("Starting the dump....")
         while True:
             user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit. "
@@ -67,24 +85,7 @@ class Dumpatron:
 
             vol = int(user_input) if user_input.isdigit() else self.TX_PER_BLOCK
             self.log.important3("Dumping {} transactions!".format(vol))
-            God.dump_it(volume=vol)
-
-    # def _get_from_masternode(self, query_str: str, enforce_consistency=True, req_type='json'):
-    #     if not enforce_consistency:
-    #         mn_idx = random.randint(0, len(self.mn_url_list) - 1)
-    #         mn_url = self.mn_url_list[mn_idx]
-    #         return self._parse_reply(requests.get("{}/{}".format(mn_url, query_str)))
-    #
-    #     replies = []
-    #     for mn_url in self.mn_url_list:
-    #         replies.append(self._parse_reply(requests.get("{}/{}".format(mn_url, query_str))))
-    #
-    #     if all(x == replies[0] for x in replies):
-    #         self.log.notice("replies matchup!")
-    #         return replies[0]
-    #     else:
-    #         self.log.warning("Masternodes had inconsistent replies for GET request {}\nReplies: {}".format(query_str, replies))
-    #         return None
+            await God.dump_it(self.session, volume=vol)
 
     def _parse_reply(self, req, req_type='json'):
         if req.status_code != 200:
@@ -96,17 +97,28 @@ class Dumpatron:
         else:
             raise Exception("Unknown request type {}".format(req_type))
 
-    def _fetch_balance(self, vk, contract_name=CURRENCY_CONTRACT_NAME) -> int or None:
+    async def _fetch_balances(self, vks: list, contract_name=CURRENCY_CONTRACT_NAME) -> dict:
+        balances, fetched = {}, {}
+
+        for vk in vks:
+            balances[vk] = self._fetch_balance(vk, contract_name=contract_name)
+        results = dict(zip(balances.keys(), await asyncio.gather(*list(balances.values()))))
+
+        for k in results:
+            if results[k] is not None:
+                fetched[k] = results[k]
+
+        return fetched
+
+    async def _fetch_balance(self, vk, contract_name=CURRENCY_CONTRACT_NAME) -> int or None:
         req_url = "contracts/{}/balances/{}".format(contract_name, vk)
-        ret_json = God.get_from_mn_api(req_url)
+        ret_json = await God.async_get_from_mn_api(req_url, self.session)
 
         if ret_json:
             assert 'value' in ret_json, "Expected key 'value' to be in reply json {}".format(ret_json)
             return int(ret_json['value'])
         else:
             return None
-
-
 
 
 
