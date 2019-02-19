@@ -1,1 +1,1 @@
-/Users/davishaba/Developer/cilantro/ops/base/environment/providers.tf
+../../base/environment/providers.tf

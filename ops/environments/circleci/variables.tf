@@ -1,1 +1,1 @@
-/Users/davishaba/Developer/cilantro/ops/base/environment/variables.tf
+../../base/environment/variables.tf
