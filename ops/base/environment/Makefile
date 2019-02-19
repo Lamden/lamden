@@ -96,5 +96,5 @@ testdump:
 testcurr:
 	@python3 $(CILANTRO_ROOT)/ops/tools/test_end_to_end.py $(MY_PATH)
 
-test:
+testsc:
 	@python3 $(CILANTRO_ROOT)/ops/tools/test_smart_contract_submit.py $(MY_PATH)

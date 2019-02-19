@@ -22,7 +22,7 @@ class CurrencyTester(Dumpatron):
 
         # For keeping track of wallet balances and asserting the correct amnt was deducted
         self.wallets = wallets or GENERAL_WALLETS
-        self._all_vks = set([w[1] for w in self.wallets])
+        self.all_vks = set([w[1] for w in self.wallets])
         self.deltas = defaultdict(int)
         self.init_balances = {}
 
@@ -39,7 +39,7 @@ class CurrencyTester(Dumpatron):
         while len(self.wallets) != len(self.init_balances):
             await asyncio.sleep(self.POLL_INTERVAL)
             elapsed += self.POLL_INTERVAL
-            remaining_wallets = self._all_vks - set(self.init_balances.keys())
+            remaining_wallets = self.all_vks - set(self.init_balances.keys())
 
             if elapsed > self.FETCH_BALANCES_TIMEOUT:
                 raise Exception("Exceeded timeout of {} trying to fetch initial wallet balances!\nWallets retreived: {}"

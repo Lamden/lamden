@@ -10,7 +10,8 @@ def transfer(to, amount):
     balances[to] += amount
     balances[rt['sender']] -= amount
 
-    custodials = hmap('custodials', str, hmap(key_type=str, value_type=int))
+
+custodials = hmap('custodials', str, hmap(key_type=str, value_type=int))
 
 
 @export
@@ -39,4 +40,4 @@ def spend_custodial(_from, amount, to):
 
 @seed
 def seed():
-    balances['435e3264395e24eb37a0eb6c322421e701dc332db45536d25eac67924b9321aa'] = 1000000
+    balances['324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502'] = 1000000

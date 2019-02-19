@@ -37,11 +37,18 @@ class God:
         raise NotImplementedError("This is deprecated!!!")
 
     @classmethod
-    def create_currency_tx(cls, sender: tuple, receiver: tuple, amount: int, stamps=100000, nonce=None):
+    def create_currency_tx(cls, sender: tuple, receiver: tuple, amount: int, stamps=10000, nonce=None):
         if type(receiver) is tuple:
             receiver = receiver[1]
 
         return ContractTransactionBuilder.create_currency_tx(sender[0], receiver, amount, stamps=stamps, nonce=nonce)
+
+    @classmethod
+    def create_contract_tx(cls, sender_sk: str, contract_name: str, func_name: str, stamps=10000,
+                           nonce=None, **kwargs) -> ContractTransaction:
+        if nonce is None:
+            nonce = wallet.get_vk(sender_sk) + ':' + 'A'*64
+        return ContractTransaction.create(sender_sk, stamps, contract_name, func_name, nonce, **kwargs)
 
     @classmethod
     def send_currency_contract(cls, sender: tuple, receiver: tuple, amount: int):
@@ -215,7 +222,7 @@ class God:
                     raise Exception("Unknown req_type {}".format(req_type))
 
         if not enforce_consistency:
-            return await fetch_url(query_str)
+            return await fetch_url("{}/{}".format(cls.mn_urls[0], query_str))
 
         replies = {}
         for mn_url in cls.mn_urls:

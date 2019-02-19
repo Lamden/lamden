@@ -25,9 +25,14 @@ jobs:
              cd ops/environments/circleci && ADDITIONAL_FLAGS="-auto-approve" make run 
 
       - run:
-          name: Run test
+          name: Run Currency Test
           command: |
-              cd ops/environments/circleci && make test
+              cd ops/environments/circleci && make testcurr
+      - run:
+          name: Run SmartContract Test
+          command: |
+              cd ops/environments/circleci && make testsc
+
   integration_tests:
     machine:
         image: circleci/classic:201808-01
