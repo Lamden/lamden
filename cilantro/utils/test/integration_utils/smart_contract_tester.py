@@ -33,11 +33,21 @@ class SmartContractTester(Dumpatron):
 
         self.sk, self.vk = STU
 
-    def start(self):
+    async def _start(self):
         self.assert_contract_does_not_exist()
         self.submit_contract()
         self.log.test("Sleeping for {} seconds before asserting contract was submitted...".format(self.SLEEP_BEFORE_ASSERTING))
         self.assert_contract_submitted()
+        # await self.send_test_currency_txs()
+        # self.log.test("Sleeping for {} seconds before checking assertions...".format(self.SLEEP_BEFORE_ASSERTING))
+        # await asyncio.sleep(self.SLEEP_BEFORE_ASSERTING)
+        # await self.assert_balances_updated()
+    #
+    # def start(self):
+    #     self.assert_contract_does_not_exist()
+    #     self.submit_contract()
+    #     self.log.test("Sleeping for {} seconds before asserting contract was submitted...".format(self.SLEEP_BEFORE_ASSERTING))
+    #     self.assert_contract_submitted()
 
     def assert_contract_does_not_exist(self):
         elapsed = 0

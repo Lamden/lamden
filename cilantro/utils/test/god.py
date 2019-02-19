@@ -10,6 +10,10 @@ import os, requests, time, random, asyncio, secrets, math
 from typing import List
 
 
+CURRENCY_CONTRACT_NAME = 'currency'
+
+
+
 class God:
     # For MP tests  TODO i dont think we need this  --davis
     node_map = None
@@ -211,7 +215,6 @@ class God:
                     raise Exception("Unknown req_type {}".format(req_type))
 
         if not enforce_consistency:
-            # return cls._parse_reply(await session.get("{}/{}".format(cls.get_random_mn_url(), query_str)))
             return await fetch_url(query_str)
 
         replies = {}
@@ -246,6 +249,37 @@ class God:
     @classmethod
     def get_contract_methods(cls, contract_name: str):
         return cls.get_from_mn_api('/contracts/{}/methods'.format(contract_name))
+
+    @classmethod
+    async def get_balances(cls, session, vks: list, contract_name=CURRENCY_CONTRACT_NAME) -> dict:
+        async def _get_balance(vk, contract_name):
+            req_url = "contracts/{}/balances/{}".format(contract_name, vk)
+            return cls._process_balance_json(await God.async_get_from_mn_api(req_url, session))
+
+        balances, fetched = {}, {}
+
+        for vk in vks:
+            balances[vk] = _get_balance(vk, contract_name=contract_name)
+        results = dict(zip(balances.keys(), await asyncio.gather(*list(balances.values()))))
+
+        for k in results:
+            if results[k] is not None:
+                fetched[k] = results[k]
+
+        return fetched
+
+    @classmethod
+    async def get_balance(cls, vk, contract_name=CURRENCY_CONTRACT_NAME) -> int or None:
+        req_url = "contracts/{}/balances/{}".format(contract_name, vk)
+        return cls._process_balance_json(God.get_from_mn_api(req_url))
+
+    @classmethod
+    def _process_balance_json(cls, d: dict) -> int or None:
+        if d:
+            assert 'value' in d, "Expected key 'value' to be in reply json {}".format(d)
+            return int(d['value'])
+        else:
+            return None
 
     @classmethod
     def _get_mn_url(cls):

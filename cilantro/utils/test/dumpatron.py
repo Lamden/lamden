@@ -6,7 +6,7 @@ import asyncio, aiohttp
 
 
 SSL_ENABLED = False  # TODO make this infered instead of a hard coded flag
-CURRENCY_CONTRACT_NAME = 'currency'
+
 IP_FILE_PREFIX = 'ip_masternode'
 
 
@@ -96,29 +96,6 @@ class Dumpatron:
             return req.json()
         else:
             raise Exception("Unknown request type {}".format(req_type))
-
-    async def _fetch_balances(self, vks: list, contract_name=CURRENCY_CONTRACT_NAME) -> dict:
-        balances, fetched = {}, {}
-
-        for vk in vks:
-            balances[vk] = self._fetch_balance(vk, contract_name=contract_name)
-        results = dict(zip(balances.keys(), await asyncio.gather(*list(balances.values()))))
-
-        for k in results:
-            if results[k] is not None:
-                fetched[k] = results[k]
-
-        return fetched
-
-    async def _fetch_balance(self, vk, contract_name=CURRENCY_CONTRACT_NAME) -> int or None:
-        req_url = "contracts/{}/balances/{}".format(contract_name, vk)
-        ret_json = await God.async_get_from_mn_api(req_url, self.session)
-
-        if ret_json:
-            assert 'value' in ret_json, "Expected key 'value' to be in reply json {}".format(ret_json)
-            return int(ret_json['value'])
-        else:
-            return None
 
 
 

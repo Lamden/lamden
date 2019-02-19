@@ -10,7 +10,7 @@ class CurrencyTester(Dumpatron):
 
     FETCH_BALANCES_TIMEOUT = 60
     ASSERT_BALANCES_TIMEOUT = 30
-    SLEEP_BEFORE_ASSERTING = 8  # How long we should wait between sending transactions and asserting new balances
+    SLEEP_BEFORE_ASSERTING = 12  # How long we should wait between sending transactions and asserting new balances
     POLL_INTERVAL = 1
 
     MIN_AMOUNT = 1
@@ -45,7 +45,7 @@ class CurrencyTester(Dumpatron):
                 raise Exception("Exceeded timeout of {} trying to fetch initial wallet balances!\nWallets retreived: {}"
                                 "\nWallets remaining: {}".format(self.FETCH_BALANCES_TIMEOUT, self.init_balances, remaining_wallets))
 
-            balances = await self._fetch_balances(remaining_wallets)
+            balances = await God.get_balances(self.session, remaining_wallets)
             self.init_balances.update(balances)
 
         self.log.test("All initial wallet balances fetched!".format(self.init_balances))
@@ -82,7 +82,7 @@ class CurrencyTester(Dumpatron):
                                 "Balances: {}\nDeltas: {}".format(self.ASSERT_BALANCES_TIMEOUT, remaining_vks,
                                                                   latest_balances, self.deltas))
 
-            updated_balances = await self._fetch_balances(remaining_vks)
+            updated_balances = await God.get_balances(self.session, remaining_vks)
             for vk in updated_balances:
                 expected_amount = max(0, self.init_balances[vk] + self.deltas[vk])
                 actual_amount = updated_balances[vk]
