@@ -33,58 +33,30 @@ jobs:
 #          command: |
 #              cd ops/environments/circleci && make testsc
 
+version: 2
+jobs:
   unit_tests:
+    machine:
+        image: circleci/classic:201808-01
     working_directory: ~/cilantro
-    docker:
-      - image: circleci/python:3.6.5
-      - image: lamden/cilantro-mn
-        environment:
-          username: cilantro_user
-          password: buttcoins
-          database: cilantro_dev
     parallelism: 1
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
+      - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
 
       - run:
-          name: Install Cilantro Requirements
+          name: Build and Push Docker Image
           command: |
-             sudo pip3 install -r requirements.txt --upgrade --no-cache-dir --exists-action w
-             sudo pip3 install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
+             ./ops/tools/docker_build_push.sh
 
       - run:
-          name: Install Redis
+          name: Run Docker Images
           command: |
-             sudo apt-get install redis-server
+             echo "SHOULD RUN DOCKER IMAGES HEREEERRERERERER"
 
-      - run:
-          name: Install Mongo
-          command: |
-             sudo apt-get install mongodb
-             sudo mkdir -p /data/db
-
-      - save_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-{{ checksum "protocol-requirements.txt" }}-unit
-          paths:
-            - "/usr/local/bin"
-            - "/usr/local/lib/python3.6/site-packages"
-
-      - run:
-          name: Run Tests
-          command: |
-            make start-dbs
-            export PYTHONPATH=$PYTHONPATH:~/cilantro
-            python3.6 ~/cilantro/tests/run_tests.py --integration 0 --unit 1 --skip_modules tests.unit.nodes.masternode tests.unit.nodes.delegate
-
-      - run:
-          mkdir -p unit-test-results
-
-      - store_test_results:
-          path: unit-test-results
 
 workflows:
   version: 2
