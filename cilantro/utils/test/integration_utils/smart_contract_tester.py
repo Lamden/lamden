@@ -2,9 +2,6 @@ from cilantro.logger.base import get_logger
 from cilantro.utils.test.dumpatron import Dumpatron
 from cilantro.utils.test.god import God
 from cilantro.utils.test.wallets import *
-from cilantro.messages.transaction.publish import *
-from cilantro.messages.transaction.container import TransactionContainer
-from cilantro.messages.transaction.contract import ContractTransaction
 import time, random, os
 from collections import defaultdict
 
@@ -27,7 +24,7 @@ class SmartContractTester(Dumpatron):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.log = get_logger("CurrencyTester")
+        self.log = get_logger("SmartContractTester")
 
         self.sk1, self.vk1 = STU
         self.sk2, self.vk2 = DAVIS

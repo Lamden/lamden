@@ -28,59 +28,10 @@ jobs:
           name: Run Currency Test
           command: |
               cd ops/environments/circleci && make testcurr
-      - run:
-          name: Run SmartContract Test
-          command: |
-              cd ops/environments/circleci && make testsc
-
-  integration_tests:
-    machine:
-        image: circleci/classic:201808-01
-    working_directory: ~/cilantro
-    parallelism: 5
-    steps:
-      - checkout
-      - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
-      - restore_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
-      - run: pyenv local 3.6.5
-
-      - run:
-          name: Install Cilantro Requirements
-          command: |
-             pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
-             pip install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
-
-      - run:
-          name: Install Docker client
-          command: |
-            set -x
-            VER="18.03.1-ce"
-            curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
-            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
-            sudo mv /tmp/docker/* /usr/local/bin
-
-      - run:
-          name: Install Docker Compose
-          command: |
-            curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
-            chmod +x ~/docker-compose
-            sudo mv ~/docker-compose /usr/local/bin/docker-compose
-
-      - save_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
-          paths:
-            - "/usr/local/bin"
-            - "/opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages"
-
-      - run:
-          name: Run Tests
-          command: |
-            export PYTHONPATH=$PYTHONPATH:~/cilantro
-            export LOCAL_PATH=~
-            python3 ./scripts/make_test_config.py
-            python3.6 ~/cilantro/tests/run_tests.py --integration 1 --unit 0
+#      - run:
+#          name: Run SmartContract Test
+#          command: |
+#              cd ops/environments/circleci && make testsc
 
   unit_tests:
     working_directory: ~/cilantro
@@ -117,7 +68,7 @@ jobs:
              sudo mkdir -p /data/db
 
       - save_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-{{ checksum "protocol-requirements.txt" }}-unit
           paths:
             - "/usr/local/bin"
             - "/usr/local/lib/python3.6/site-packages"
@@ -125,11 +76,8 @@ jobs:
       - run:
           name: Run Tests
           command: |
-            redis-server &
-            sudo mongod &
-            python3.6 ~/cilantro/scripts/create_user.py
+            make start-dbs
             export PYTHONPATH=$PYTHONPATH:~/cilantro
-            export LOCAL_PATH=~
             python3.6 ~/cilantro/tests/run_tests.py --integration 0 --unit 1 --skip_modules tests.unit.nodes.masternode tests.unit.nodes.delegate
 
       - run:
@@ -143,4 +91,3 @@ workflows:
   build_and_test_cilantro:
     jobs:
       - unit_tests
-      - integration_tests
