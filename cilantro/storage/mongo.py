@@ -1,6 +1,6 @@
 import cilantro
 import os, time
-import capnp
+import capnp, pymongo
 from configparser import SafeConfigParser
 from pymongo import MongoClient
 from cilantro.utils.utils import MongoTools
@@ -131,6 +131,7 @@ class MDB:
     @classmethod
     def drop_db(cls, db='all'):
         if db == 'all':
+            cls.log.important("Dropping all mongo databases")
             cls.mn_client.drop_database(cls.mn_db)
             cls.mn_client_idx.drop_database(cls.mn_db_idx)
             cls.init_mdb = cls.init_idx_db = False
@@ -169,7 +170,7 @@ class MDB:
     def query_index(cls, n_blks=None):
         blk_list = []
 
-        blk_delta = cls.mn_coll_idx.find({}, {'_id': False}).limit(n_blks).sort("blockNum", -1)
+        blk_delta = cls.mn_coll_idx.find({}, {'_id': False}).limit(n_blks).sort("blockNum", pymongo.DESCENDING)
         for blk in blk_delta:
             cls.log.spam('query_index block delta {}'.format(blk))
             blk_list.append(blk)
@@ -177,7 +178,7 @@ class MDB:
         cls.log.spam("query_index returning dict {}".format(blk_list))
 
         if len(blk_list) > 1:
-            assert blk_list[0]['blockNum'] < blk_list[-1]['blockNum'], "Blk list in bad order {}".format(blk_list)
+            assert blk_list[0]['blockNum'] > blk_list[-1]['blockNum'], "Blk list not in descending order {}".format(blk_list)
 
         return blk_list
 

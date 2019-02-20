@@ -16,7 +16,7 @@ def run_mn(slot_num=None, sk=None, log_lvl=11, reset_db=False, nonce_enabled=Tru
     assert slot_num is not None or sk is not None, "SK or slot num must be provided"
 
     # Due to some Sanic BS, we cannot set the log level between [1,10]
-    assert log_lvl not in range(1, 10), "Due to a Sanic logging bug, Masternode cant set log lvl in the range [1,10]"
+    assert log_lvl not in range(2, 11), "Due to a Sanic logging bug, Masternode cant set log lvl in the range (1,10]"
 
     import os
     if nonce_enabled:

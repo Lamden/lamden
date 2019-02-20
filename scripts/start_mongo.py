@@ -1,22 +1,21 @@
-import os, shutil
+import os, shutil, time
 from os import getenv as env
-from cilantro.constants.db_config import DATA_DIR
+from cilantro.constants.db_config import MONGO_DIR, MONGO_LOG_PATH, config_mongo_dir
+from cilantro.constants.conf import CilantroConf
 
 
 def start_mongo():
-    host_name = env('HOST_NAME', '')
+    print("val of conf reset_db: {}".format(CilantroConf.RESET_DB))
+    if CilantroConf.RESET_DB:
+        rm_dir = MONGO_DIR + '/'
+        print("Removing MongoDB files at directory {}".format(rm_dir))
+        shutil.rmtree(MONGO_DIR, ignore_errors=True)
+        time.sleep(1)
+        print("MongoDB dropped.")
 
-    mongo_dir = DATA_DIR + '/mongo'
-    mongo_log_path = mongo_dir + '/logs/mongo.log'
-    try:
-        os.makedirs(os.path.dirname(mongo_log_path), exist_ok=True)
-        with open(mongo_log_path, 'w+') as f:
-            print('Mongo log file created at path {}'.format(mongo_log_path))
-    except Exception as e:
-        print("Error creating mongo log file at path {}. Error -- {}".format(mongo_log_path, e))
-
+    config_mongo_dir()
     print('Starting Mongo server...')
-    os.system('mongod --dbpath {} --logpath {} --bind_ip_all'.format(mongo_dir, mongo_log_path))
+    os.system('mongod --dbpath {} --logpath {} --bind_ip_all'.format(MONGO_DIR, MONGO_LOG_PATH))
 
 
 if __name__ == '__main__':

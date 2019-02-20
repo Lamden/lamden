@@ -8,10 +8,10 @@ from collections import defaultdict
 
 class CurrencyTester(Dumpatron):
 
-    FETCH_BALANCES_TIMEOUT = 60
-    ASSERT_BALANCES_TIMEOUT = 30
+    FETCH_BALANCES_TIMEOUT = 30
+    ASSERT_BALANCES_TIMEOUT = 90
     SLEEP_BEFORE_ASSERTING = 12  # How long we should wait between sending transactions and asserting new balances
-    POLL_INTERVAL = 1
+    POLL_INTERVAL = 2
 
     MIN_AMOUNT = 1
     MAX_AMOUNT = 1000000
@@ -90,8 +90,9 @@ class CurrencyTester(Dumpatron):
                 if expected_amount == actual_amount:
                     correct_wallets.add(vk)
                 else:
-                    self.log.warning("Balance {} does not match expected balance {} for vk {}"
-                                     .format(actual_amount, expected_amount, vk))
+                    if elapsed >= self.ASSERT_BALANCES_TIMEOUT/2:
+                        self.log.warning("Balance {} does not match expected balance {} for vk {}"
+                                         .format(actual_amount, expected_amount, vk))
 
             await asyncio.sleep(self.POLL_INTERVAL)
             elapsed += self.POLL_INTERVAL

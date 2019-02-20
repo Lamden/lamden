@@ -15,9 +15,9 @@ CONTRACT_FILENAME = 'stubucks.seneca'
 class SmartContractTester(Dumpatron):
 
     ASSERT_CONTRACT_NOT_EXISTS_TIMEOUT = 6
-    ASSERT_TX_TIMEOUT = 20
-    ASSERT_SUBMITTED_TIMEOUT = 30
-    ASSERT_SEEDED_TIMEOUT = 30
+    ASSERT_TX_TIMEOUT = 40
+    ASSERT_SUBMITTED_TIMEOUT = 40
+    ASSERT_SEEDED_TIMEOUT = 40
     SLEEP_BEFORE_ASSERTING = 10  # How long we should wait between sending transactions and asserting new balances
     POLL_INTERVAL = 2
 
@@ -25,7 +25,7 @@ class SmartContractTester(Dumpatron):
 
     CONTRACT_NAME = 'stubucks'
 
-    def __init__(self, *args, wallets=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("CurrencyTester")
 
@@ -44,6 +44,8 @@ class SmartContractTester(Dumpatron):
         self.log.test("Sleeping for {} seconds before asserting balances tx work submitted...".format(self.SLEEP_BEFORE_ASSERTING))
         time.sleep(self.SLEEP_BEFORE_ASSERTING)
         self.assert_balance_tx_worked()
+
+        # THINGS DO NOT APPEAR TO WORK BELOW THIS POINT
 
         self.submit_custodial_tx()
         self.log.test("Sleeping for {} seconds before asserting custodial tx work submitted...".format(self.SLEEP_BEFORE_ASSERTING))
@@ -98,11 +100,22 @@ class SmartContractTester(Dumpatron):
     def _get_sc_data(self, table, key):
         return God.get_from_mn_api('contracts/{}/{}/{}'.format(self.CONTRACT_NAME, table, key))
 
-    def _check_value(self, table, key, expected_value) -> bool:
+    def _check_value(self, table, key, expected_value, assume_int=True) -> bool:
+        full_key = "{}/{}/{}".format(self.CONTRACT_NAME, table, key)
         actual = self._get_sc_data(table, key)
-        if actual is None: actual = '<fetch returned None>'
+
+        if actual is None:
+            actual = '<fetch returned None>'
+        else:
+            if assume_int:
+                assert 'value' in actual, "Return JSON for key {} expected to have key 'value', but instead {}"\
+                                          .format(full_key, actual)
+                if actual['value'] == 'null':
+                    actual = '<fetch returned None>'
+                else:
+                    actual = int(actual['value'])
+
         if actual != expected_value:
-            full_key = "{}/{}/{}".format(self.CONTRACT_NAME, table, key)
             self.log.warning("Key {} expected to have value {} but actually has value {}"
                              .format(full_key, expected_value, actual))
             return False

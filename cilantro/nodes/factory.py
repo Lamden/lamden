@@ -4,10 +4,8 @@ from cilantro.nodes.witness.witness import Witness
 from cilantro.storage.contracts import seed_contracts
 from cilantro.storage.redis import SafeRedis
 from cilantro.nodes.masternode.master_store import MasterOps
-from seneca.engine.interface import SenecaInterface
-from cilantro.storage.vkbook import VKBook
-
-from cilantro.constants.overlay_network import HOST_IP
+from cilantro.constants.db_config import MONGO_DIR, config_mongo_dir
+import  shutil
 
 
 def _wait_for_redis():
@@ -25,7 +23,7 @@ def _wait_for_redis():
 
 
 def _wait_for_mongo():
-    import redis, time
+    import time
     from pymongo import MongoClient
     while True:
         try:
@@ -37,12 +35,26 @@ def _wait_for_mongo():
             time.sleep(1)
 
 
+def _drop_mongo():
+    pass
+    # print("Dropping MongoDB...")
+    # dbs = ['mn_tx', 'mn_index', 'mn_store']
+    # from pymongo import MongoClient
+    # c = MongoClient()
+    # for db in dbs:
+    #     print("Dropping mongo table '{}'".format(db))
+    #     c.drop_database(db)
+    # shutil.rmtree(MONGO_DIR)
+    # print("MongoDB dropped.")
+    # config_mongo_dir()
+
+
+
 class NodeFactory:
     @staticmethod
     def _reset_db():
-        with SenecaInterface() as interface:
-            interface.r.flushall()
-        seed_contracts()
+        print("-------\tResetting database\t-------")
+        SafeRedis.flushall()
 
     @staticmethod
     def _seed_if_necessary():
@@ -59,6 +71,7 @@ class NodeFactory:
         _wait_for_mongo()
         if reset_db:
             NodeFactory._reset_db()
+            _drop_mongo()
         NodeFactory._seed_if_necessary()
         MasterOps.init_master(key=signing_key)
         mn = Masternode(ip=ip, name=name, signing_key=signing_key)

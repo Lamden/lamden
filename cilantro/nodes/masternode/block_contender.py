@@ -1,4 +1,5 @@
 from cilantro.storage.state import StateDriver
+from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.logger.base import get_logger
 from cilantro.protocol.structures.merkle_tree import MerkleTree
 from cilantro.constants.system_config import *
