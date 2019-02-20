@@ -44,9 +44,6 @@ class SmartContractTester(Dumpatron):
         self.log.test("Sleeping for {} seconds before asserting balances tx work submitted...".format(self.SLEEP_BEFORE_ASSERTING))
         time.sleep(self.SLEEP_BEFORE_ASSERTING)
         self.assert_balance_tx_worked()
-
-        # THINGS DO NOT APPEAR TO WORK BELOW THIS POINT
-
         self.submit_custodial_tx()
         self.log.test("Sleeping for {} seconds before asserting custodial tx work submitted...".format(self.SLEEP_BEFORE_ASSERTING))
         time.sleep(self.SLEEP_BEFORE_ASSERTING)
@@ -139,7 +136,7 @@ class SmartContractTester(Dumpatron):
 
     def assert_custodial_tx_worked(self):
         def _check_sender_deducted():
-            return self._check_value('custodials', self.vk2, 1000)
+            return self._check_value('balances', self.vk2, 1337 - 337)
 
         def _check_recv_funded():
             return self._check_value('custodials', self.vk1, 337)
