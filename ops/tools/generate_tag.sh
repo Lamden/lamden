@@ -8,10 +8,13 @@ branch=$(git branch | grep \* | cut -d ' ' -f2)
 commitHash=$(git rev-parse HEAD)
 commitHash=${commitHash:0:8}
 
-dirHash=$(python3  ${CILANTRO_BASE}/ops/tools/cilantrohasher.py)
-dirHash=${dirHash:0:8}
-
-remoteTag="$branch-$commitHash"
-localTag="$branch-$commitHash-$dirHash"
-
-echo $localTag
+if [ -z "$CIRCLECI" ]
+then
+    dirHash=$(python3  ${CILANTRO_BASE}/ops/tools/cilantrohasher.py)
+    dirHash=${dirHash:0:8}
+    localTag="$branch-$commitHash-$dirHash"
+    echo $localTag
+else
+    remoteTag="$branch-$commitHash"
+    echo $remoteTag
+fi
