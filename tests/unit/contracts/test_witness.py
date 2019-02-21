@@ -71,7 +71,7 @@ class TestElection(SmartContractTestCase):
         ('b', 'witness_stake_amount'),
         ('c', 'witness_stake_amount'),
         ('DAVIS', 'witness'),
-        ('CARL', 'witness')
+        ('TJ', 'witness')
     )
     def test_is_witness(self, a,b,c, davis,carl):
         election_id = a.create_election(std.timedelta(seconds=30))
@@ -86,7 +86,7 @@ class TestElection(SmartContractTestCase):
         ('a', 'witness_stake_amount'),
         ('b', 'witness_stake_amount'),
         ('c', 'witness_stake_amount'),
-        ('CARL', 'witness')
+        ('TJ', 'witness')
     )
     def test_is_witness_fail(self, a,b,c, carl):
         election_id = a.create_election(std.timedelta(seconds=30))
@@ -101,7 +101,7 @@ class TestElection(SmartContractTestCase):
         ('b', 'witness_stake_amount'),
         ('c', 'witness_stake_amount'),
         ('DAVIS', 'witness'),
-        ('CARL', 'witness')
+        ('TJ', 'witness')
     )
     def test_get_vks(self, a,b,c, davis, carl):
         election_id = a.create_election(std.timedelta(seconds=30))
@@ -113,7 +113,7 @@ class TestElection(SmartContractTestCase):
         carl.stake()
         self.assertEqual(
             list(carl.get_vks()),
-            [{'id': 2, 'witness_id': 'CARL'}, {'id': 1, 'witness_id': 'DAVIS'}]
+            [{'id': 2, 'witness_id': 'TJ'}, {'id': 1, 'witness_id': 'DAVIS'}]
         )
 
 

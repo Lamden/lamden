@@ -1,10 +1,10 @@
 version: 2
 jobs:
-  integration_tests:
+  black_box_integration:
     machine:
         image: circleci/classic:201808-01
     working_directory: ~/cilantro
-    parallelism: 5
+    parallelism: 1
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
@@ -14,100 +14,98 @@ jobs:
       - run: pyenv local 3.6.5
 
       - run:
-          name: Install Cilantro Requirements
+          name: Login to Docker
           command: |
-             pip install -r requirements.txt --upgrade --no-cache-dir --exists-action w
-             pip install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
+            docker login -u $DOCKER_USER -p $DOCKER_PWD
 
       - run:
-          name: Install Docker client
+          name: Login to AWS
           command: |
-            set -x
-            VER="18.03.1-ce"
-            curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
-            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
-            sudo mv /tmp/docker/* /usr/local/bin
+            mkdir -p ~/.aws
+            cat << EOF > ~/.aws/credentials
+            [default]
+            aws_access_key_id = $AMZN_ACCESS_KEY
+            aws_secret_access_key = $AMZN_SECRET_KEY
+            EOF
 
       - run:
-          name: Install Docker Compose
+          name: Install Devops Requirements
           command: |
-            curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
-            chmod +x ~/docker-compose
-            sudo mv ~/docker-compose /usr/local/bin/docker-compose
+            apt-get install terraform
+            pip3 install pathspec
+
+      - run:
+          name: Stand up terraform nodes
+          command: |
+             cd ops/environments/circleci && ADDITIONAL_FLAGS="-auto-approve" make run 
+
+      - run:
+          name: Run Currency Test
+          command: |
+              cd ops/environments/circleci && make testcurr
+
+#      - run:
+#          name: Run SmartContract Test
+#          command: |
+#              cd ops/environments/circleci && make testsc
 
       - save_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
           paths:
             - "/usr/local/bin"
-            - "/opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages"
+            - "/opt/circleci/"
 
-      - run:
-          name: Run Tests
-          command: |
-            export PYTHONPATH=$PYTHONPATH:~/cilantro
-            export LOCAL_PATH=~
-            python3 ./scripts/make_test_config.py
-            python3.6 ~/cilantro/tests/run_tests.py --integration 1 --unit 0
-
+version: 2
+jobs:
   unit_tests:
+    machine:
+        image: circleci/classic:201808-01
     working_directory: ~/cilantro
-    docker:
-      - image: circleci/python:3.6.5
-      - image: lamden/cilantro-mn
-        environment:
-          username: cilantro_user
-          password: buttcoins
-          database: cilantro_dev
     parallelism: 1
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.6/site-packages
+      - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
+      - run: pyenv local 3.6.5
 
       - run:
-          name: Install Cilantro Requirements
+          name: Login to Docker
           command: |
-             sudo pip3 install -r requirements.txt --upgrade --no-cache-dir --exists-action w
-             sudo pip3 install -r dev-requirements.txt --upgrade --no-cache-dir --exists-action w
+            docker login -u $DOCKER_USER -p $DOCKER_PWD
 
       - run:
-          name: Install Redis
+          name: Download Base Images
           command: |
-             sudo apt-get install redis-server
+            docker pull lamden/cilantro_base:circleci
+            docker pull lamden/cilantro_full:circleci
+            docker pull lamden/cilantro_light:circleci
 
       - run:
-          name: Install Mongo
+          name: Build and Push Docker Image
           command: |
-             sudo apt-get install mongodb
-             sudo mkdir -p /data/db
+             ./ops/tools/docker_build_push.sh --push
+
+      - run:
+          name: Spinup Docker Image
+          command: |
+             echo "SHOULD RUN DOCKER IMAGES HEREEERRERERERERERERERE"
+             sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v ~/cilantro/ops/base/redis.conf:/etc/redis.conf -v ~/cilantro/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_full:$(bash ~/cilantro/ops/tools/generate_tag.sh)
+
+      - run:
+          name: Run Unit Tests Inside Docker Container
+          command: |
+            docker exec -it cil /app/scripts/start_unit_tests.sh
 
       - save_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-unit
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
           paths:
             - "/usr/local/bin"
-            - "/usr/local/lib/python3.6/site-packages"
-
-      - run:
-          name: Run Tests
-          command: |
-            redis-server &
-            sudo mongod &
-            python3.6 ~/cilantro/scripts/create_user.py
-            export PYTHONPATH=$PYTHONPATH:~/cilantro
-            export LOCAL_PATH=~
-            python3.6 ~/cilantro/tests/run_tests.py --integration 0 --unit 1 --skip_modules tests.unit.nodes.masternode tests.unit.nodes.delegate
-
-      - run:
-          mkdir -p unit-test-results
-
-      - store_test_results:
-          path: unit-test-results
 
 workflows:
   version: 2
   build_and_test_cilantro:
     jobs:
       - unit_tests
-      - integration_tests
+#      - black_box_integrations

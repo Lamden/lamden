@@ -1,40 +1,32 @@
-import os, time
-from os import getenv as env
-from free_port import free_port
-from random_password import random_password
+import os, sys
+from cilantro.constants.db_config import DATA_DIR
 
-def start_redis():
-    if not env('CIRCLECI') and not env('VMNET_CLOUD'):
-        for package in ['seneca', 'vmnet']:
-            os.system('cp -r ./venv/lib/python3.6/site-packages/{} /usr/local/lib/python3.6/dist-packages 2>/dev/null'.format(package))
 
+REDIS_CONF_PATH = '/etc/redis.conf'
+REDIS_DIR = DATA_DIR + '/redis'
+
+
+def start_redis(conf_path):
     print("Starting Redis server...")
-    redis_dir = 'redis-store/{}'.format(os.getenv('HOST_NAME', 'local'))
-    redis_file = 'dump.rdb'
-    os.makedirs(redis_dir, exist_ok=True)
-    os.system('sudo pkill -9 redis-server')
+    if not os.path.exists(REDIS_DIR):
+        print("Creating Redis directory at {}".format(REDIS_DIR))
+        os.makedirs(REDIS_DIR, exist_ok=True)
 
-    if env('CIRCLECI'):
-        os.system('redis-server')
-    elif not env('VMNET_CLOUD'):
-        os.system('redis-server --dir {} --dbfilename {} &'.format(redis_dir, redis_file))
+    print("Redis using data directory: {}".format(REDIS_DIR))
 
-    pw = random_password()
-    port = free_port()
-    with open('docker/redis.env', 'w+') as f:
-        f.write('''
-REDIS_PORT={}
-REDIS_PASSWORD={}
-        '''.format(port,pw))
-
-    if env('VMNET_CLOUD') or not env('VMNET_DOCKER'):
-        run_async = '&'
+    if conf_path is not None:
+        assert os.path.exists(conf_path), "No redis.conf file found at path {}".format(conf_path)
+        os.system('redis-server {}'.format(conf_path))
     else:
-        run_async = ''
-    os.system('redis-server docker/redis.conf --dir {} --dbfilename {} --port {} --requirepass {} {}'.format(redis_dir, redis_file, port, pw, run_async))
+        os.system('redis-server')
+
 
 if __name__ == '__main__':
-    # os.system("find . -name '*-ipc-sock*' -delete || true")
-    from dotenv import load_dotenv
-    load_dotenv()
-    start_redis()
+    if len(sys.argv) > 1:
+        if sys.argv[1] == '-no-conf':
+            start_redis(None)
+        else:
+            start_redis(sys.argv[1])
+    else:
+        start_redis(REDIS_CONF_PATH)
+

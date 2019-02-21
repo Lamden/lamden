@@ -1,5 +1,6 @@
 #Virtual Python Environments
 /venv
+venv
 
 #Integrated Development Environments
 /.idea
@@ -15,7 +16,6 @@ __pycache__/
 # C extensions
 *.so
 
-.cache/
 cilantro.egg-info/
 
 # FOR DEMO
@@ -33,8 +33,12 @@ seneca
 *.dat
 **/profiles/**
 **/tmp_exec_code*.py
+**/.terraform/**
 data
 vmnet_configs/constitutions/private
+*.tfstate
+*.tfstate.backup
+.cache/*
 
 # Config files
 db_conf.ini

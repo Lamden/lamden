@@ -1,10 +1,7 @@
 import os, math
-from seneca.constants.config import *
 from cilantro.logger import get_logger
-from cilantro.constants.vmnet import get_constitution
 from cilantro.utils.utils import is_valid_hex
 from collections import defaultdict
-from cilantro.utils.test.testnet_config import get_config_filename
 
 log = get_logger("VKBook")
 
@@ -27,24 +24,33 @@ class VKBook(metaclass=VKBookMeta):
         'witness': 'witnesses',
         'delegate': 'delegates'
     }
-    bootnodes = []
-    constitution = defaultdict(list)
-    book = defaultdict(dict)
+    book = defaultdict(list)
 
     @classmethod
     def setup(cls):
-        cls.bootnodes = []
-        constitution_file = env('CONSTITUTION_FILE', get_config_filename())
-        cls.constitution = get_constitution(constitution_file)
+        # TODO untangle this mess --davis
+        from cilantro.utils.test.testnet_config import read_public_constitution
 
-        for node_type in cls.node_types_map:
-            for node in cls.constitution[cls.node_types_map.get(node_type)]:
-                cls.book[node_type][node['vk']] = node.get('ip', True)
+        const_file = os.getenv('CONSTITUTION_FILE', None)
+        if const_file:
+            log.info("VKBook using constitution file {}".format(const_file))
+            book = read_public_constitution(const_file)
+            mns = book['masternodes']
+            dels = book['delegates']
+            wits = book['witnesses']
+        else:
+            log.info("No constitution file detected. Using TESTNET VKs")
+            from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES, TESTNET_WITNESSES
+            mns = TESTNET_MASTERNODES
+            dels = TESTNET_DELEGATES
+            wits = TESTNET_WITNESSES
 
-        for node_type in cls.node_types:
-            node_list = env(node_type.upper())
-            if node_list:
-                cls.bootnodes += node_list.split(',')
+        for node in mns:
+            cls.book['masternodes'].append(node['vk'])
+        for node in wits:
+            cls.book['witnesses'].append(node['vk'])
+        for node in dels:
+            cls.book['delegates'].append(node['vk'])
 
     @classmethod
     def add_node(cls, vk, node_type, ip=None):
@@ -60,31 +66,31 @@ class VKBook(metaclass=VKBookMeta):
 
     @classmethod
     def get_all(cls):
-        nodes = {}
-        for node_type in VKBook.node_types:
-            nodes.update(cls.book[node_type])
-        return list(nodes.keys())
+        return cls.get_masternodes() + cls.get_delegates() + cls.get_witnesses()
 
     @classmethod
     def get_masternodes(cls):
-        return list(cls.book['masternode'].keys())
+        return cls.book['masternodes']
 
     @classmethod
     def get_witnesses(cls):
-        return list(cls.book['witness'].keys())
+        return cls.book['witnesses']
 
     @classmethod
     def get_delegates(cls):
-        return list(cls.book['delegate'].keys())
+        return cls.book['delegates']
 
     @classmethod
     def is_node_type(cls, node_type, vk):
         assert node_type in cls.node_types, 'Invalid node type!'
-        return cls.book[node_type].get(vk) is not None
+        # if node_type == 'masternode':
+        #     log.important("vk {} checking if masternode in book {}".format(vk, cls.book))
+        #     log.important("correspoinding nodes for type: {}".format(cls.book[cls.node_types_map[node_type]]))
+        return vk in cls.book[cls.node_types_map[node_type]]
 
     @classmethod
     def get_delegate_majority(cls):
-        return math.ceil(len(cls.book['delegate']) * 2/3)
+        return math.ceil(len(cls.get_delegates()) * 2/3)
 
     @staticmethod
     def test_print_nodes():

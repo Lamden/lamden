@@ -50,10 +50,12 @@ class BlockAggregator(Worker):
         self.timeout_fut = None
 
         self.curr_block_hash = StateDriver.get_latest_block_hash()
+
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
-        # assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
-            # "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-            # .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
+        # STOP COMMENTING THIS OUT PLEASE --davis
+        assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+            "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
+            .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
 
         self.run()
 
@@ -218,6 +220,12 @@ class BlockAggregator(Worker):
             StateDriver.update_with_block(block_data)
             self.log.success2("STORED BLOCK WITH HASH {}".format(block_data.block_hash))
             self.send_new_block_notif(block_data)
+
+        # TODO
+        # @tejas yo why does this assertion not pass? The storage driver is NOT updating its block hash after storing!
+        # assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+        #     "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
+        #         .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
 
         self._reset_curr_block()
 

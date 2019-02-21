@@ -1,0 +1,6 @@
+ARG BASE=lamden/cilantro_base
+FROM $BASE
+
+COPY . /app
+WORKDIR /app
+
