@@ -43,10 +43,17 @@ jobs:
           name: Run Currency Test
           command: |
               cd ops/environments/circleci && make testcurr
+
 #      - run:
 #          name: Run SmartContract Test
 #          command: |
 #              cd ops/environments/circleci && make testsc
+
+      - save_cache:
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
+          paths:
+            - "/usr/local/bin"
+            - "/opt/circleci/"
 
 version: 2
 jobs:
@@ -83,8 +90,13 @@ jobs:
       - run:
           name: Run Docker Images
           command: |
-             echo "SHOULD RUN DOCKER IMAGES HEREEERRERERERER"
+             echo "SHOULD RUN DOCKER IMAGES HEREEERRERERERERERERERE"
+             sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v ~/cilantro/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_full:$(bash ~/cilantro/ops/tools/generate_tag.sh)
 
+      - save_cache:
+          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
+          paths:
+            - "/usr/local/bin"
 
 workflows:
   version: 2
