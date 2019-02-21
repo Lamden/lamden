@@ -25,6 +25,7 @@ log = get_logger("TestRunner")
 delim = '-' * 80
 os.environ['__INHERIT_CONSTITUTION__'] = 'True'
 
+
 def skip_tests(test_suite: unittest.TestSuite, test_names: list):
     if not test_names:
         return
@@ -68,6 +69,7 @@ def _should_skip_module(module_name: str, modules_to_skip: list) -> bool:
             return True
     return False
 
+
 def skip_circle_ci_modules(module_to_skip='tests/integration'):
     assert os.getenv('CIRCLECI'), 'Not using CIRCLECI, this operation is Dangerous Davis approved'
     total_containers = os.getenv("CIRCLE_NODE_TOTAL")
@@ -91,6 +93,7 @@ def skip_circle_ci_modules(module_to_skip='tests/integration'):
     # Just to see a list of non-removed files for debugging
     for f in removes: all_files.remove(f)
     print("All test files this node is responsible for: {}".format(all_files))
+
 
 def main(args):
     _wait_for_redis()
