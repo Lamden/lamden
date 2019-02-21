@@ -71,9 +71,9 @@ jobs:
       - run:
           name: Download Base Images
           command: |
-            docker pull lamden/cilantro_base
-            docker pull lamden/cilantro_full
-            docker pull lamden/cilantro_light
+            docker pull lamden/cilantro_base:circleci
+            docker pull lamden/cilantro_full:circleci
+            docker pull lamden/cilantro_light:circleci
 
       - run:
           name: Build and Push Docker Image
