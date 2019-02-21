@@ -94,7 +94,7 @@ jobs:
              sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v ~/cilantro/ops/base/redis.conf:/etc/redis.conf -v ~/cilantro/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_full:$(bash ~/cilantro/ops/tools/generate_tag.sh)
 
       - run:
-          name: Docker Exec and Run Test
+          name: Run Unit Tests Inside Docker Container
           command: |
             docker exec -it cil /app/scripts/start_unit_tests.sh
 
