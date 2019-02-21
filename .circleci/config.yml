@@ -88,10 +88,15 @@ jobs:
              ./ops/tools/docker_build_push.sh --push
 
       - run:
-          name: Run Docker Images
+          name: Spinup Docker Image
           command: |
              echo "SHOULD RUN DOCKER IMAGES HEREEERRERERERERERERERE"
              sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v ~/cilantro/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_full:$(bash ~/cilantro/ops/tools/generate_tag.sh)
+
+      - run:
+          name: Docker Exec and Run Test
+          command: |
+            docker exec -it cil /app/scripts/start_unit_tests.sh
 
       - save_cache:
           key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
