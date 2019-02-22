@@ -123,9 +123,12 @@ class LSocketBase:
                 msg = await self.socket.recv_multipart()
                 self.log.spam("Socket received multipart msg: {}".format(msg))
                 should_forward = self._process_msg(msg)
-            except asyncio.CancelledError:
-                self.log.warning("Socket got asyncio.CancelledError. Breaking from lister loop.")
-                return
+            except Exception as e:
+                if type(e) is asyncio.CancelledError:
+                    self.log.warning("Socket got asyncio.CancelledError. Breaking from lister loop.")
+                    return
+                else:
+                    self.log.fatal("OHhhh nooooooo we got a ZMQ exception! Error: {}".format(e))
 
             if not should_forward:
                 continue
