@@ -1,9 +1,8 @@
 import cilantro
-import pymongo
 import os, time
 import capnp
 from configparser import SafeConfigParser
-from pymongo import MongoClient
+from pymongo import MongoClient, DESCENDING
 from cilantro.utils.utils import MongoTools
 from cilantro.logger.base import get_logger
 from cilantro.messages.block_data.block_data import GenesisBlockData, BlockData, MessageBase
@@ -172,20 +171,19 @@ class MDB:
         """
         Queries index table for last n blocks, builds list of dict in ascending order for response
         :param n_blks:
-        :return: list of dict in ascending order
+        :return: list of dict in descending order
         """
         blk_list = []
 
-        blk_delta = cls.mn_coll_idx.find({}, {'_id': False}).limit(n_blks).sort("blockNum", pymongo.DESCENDING)
+        blk_delta = cls.mn_coll_idx.find({}, {'_id': False}).sort("blockNum", DESCENDING).limit(n_blks)
         for blk in blk_delta:
             cls.log.spam('query_index block delta {}'.format(blk))
             blk_list.append(blk)
 
-        cls.log.spam("query_index returning dict {}".format(blk_list))
-
+        cls.log.debugv("query_index returning dict {}".format(blk_list))
         if len(blk_list) > 1:
-            assert blk_list[0]['blockNum'] > blk_list[-1]['blockNum'], "Blk list not in descending order {}".format(blk_list)
-
+            assert blk_list[0].get('blockNum') > blk_list[-1].get('blockNum'), \
+                "we expect blk list to be in descending"
         return blk_list
 
     @classmethod

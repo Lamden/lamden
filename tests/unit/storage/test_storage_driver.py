@@ -35,6 +35,24 @@ class TestStorageDriver(TestCase):
         self.assertEqual(blk_frm_num.get("blockNum"), 0)
         self.assertEqual(blk_frm_hash.get("blockNum"), 0)
 
+    def test_store_blks(self):
+
+        blocks = BlockDataBuilder.create_conseq_blocks(5)
+        for block in blocks:
+            StorageDriver.store_block(block.sub_blocks)
+
+        blk_idx_3 = MasterOps.get_blk_idx(n_blks = 3)
+        self.assertEqual(len(blk_idx_3), 3)
+        self.assertEqual(blk_idx_3[0].get('blockNum'), 5)
+
+        last_blk_num = StorageDriver.get_latest_block_num()
+        last_blk_hash = StorageDriver.get_latest_block_hash()
+
+        fifth_block = StorageDriver.get_nth_full_block(given_bnum = 5)
+
+        self.assertEqual(last_blk_num, fifth_block.get('blockNum'))
+        self.assertEqual(last_blk_hash, fifth_block.get('blockHash'))
+
 
 
     # @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)

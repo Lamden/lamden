@@ -175,7 +175,7 @@ class CatchupManager:
         tmp_list = reply.indices
         assert tmp_list[0].get('blockNum') <= tmp_list[-1].get('blockNum'), "ensure reply are in ascending order"
         # Todo @tejas we need to think if we need reverse sort here
-        #tmp_list.reverse()
+        tmp_list.reverse()
         self.log.important2("tmp list -> {}".format(tmp_list))
         self.new_target_blk_num = tmp_list[-1].get('blockNum')
         new_blks = self.new_target_blk_num - self.target_blk_num
