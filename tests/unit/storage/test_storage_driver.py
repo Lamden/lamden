@@ -3,11 +3,13 @@ from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
 from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
-from cilantro.nodes.masternode.mn_api import StorageDriver
-from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
+#from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 from cilantro.storage.mongo import MDB
+from cilantro.nodes.masternode.mn_api import StorageDriver
 from cilantro.nodes.masternode.master_store import MasterOps
 from cilantro.utils.hasher import Hasher
+
+from cilantro.messages.block_data.block_data import *
 
 
 TEST_IP = '127.0.0.1'
@@ -22,24 +24,32 @@ class TestStorageDriver(TestCase):
     @classmethod
     def setUpClass(cls):
         MasterOps.init_master(key = MN_SK)
-        cls.driver = StorageDriver()
+        #cls.driver = StorageDriver()
 
     def setUp(self):
         MDB.reset_db()
 
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
-    def test_store_block(self):
-        sub_blocks = [SubBlockBuilder.create(idx=i) for i in range(2)]
-        block = self.driver.store_block(sub_blocks)
-        last_stored_hash = self.driver.get_latest_block_hash()
+    def test_init(self):
+        blk_frm_num = MasterOps.get_full_blk(blk_num = 0)
+        blk_frm_hash = MasterOps.get_full_blk(blk_hash = "0000000000000000000000000000000000000000000000000000000000000000")
+        self.assertEqual(blk_frm_num.get("blockNum"), 0)
+        self.assertEqual(blk_frm_hash.get("blockNum"), 0)
 
-        tx = sub_blocks[1].transactions[0].transaction
-        usr_tx_hash = Hasher.hash(tx)
-        result = self.driver.get_transactions(raw_tx_hash = usr_tx_hash)
 
-        self.assertEqual(block.block_num, 1)
-        self.assertEqual(block.block_hash, last_stored_hash)
-        self.assertTrue(result)
+
+    # @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
+    # def test_store_block(self):
+    #     sub_blocks = [SubBlockBuilder.create(idx=i) for i in range(2)]
+    #     block = self.driver.store_block(sub_blocks)
+    #     last_stored_hash = self.driver.get_latest_block_hash()
+    #
+    #     tx = sub_blocks[1].transactions[0].transaction
+    #     usr_tx_hash = Hasher.hash(tx)
+    #     result = self.driver.get_transactions(raw_tx_hash = usr_tx_hash)
+    #
+    #     self.assertEqual(block.block_num, 1)
+    #     self.assertEqual(block.block_hash, last_stored_hash)
+    #     self.assertTrue(result)
 
     # @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
     # def test_get_latest_blocks(self):

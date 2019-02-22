@@ -182,12 +182,12 @@ class MasterOps:
     @classmethod
     def get_full_blk(cls, blk_num=None, blk_hash=None):
         outcome = None
-        if blk_hash:
+        if blk_hash is not None:
             my_query = {'blockHash': blk_hash}
             outcome = MDB.query_db(type = 'MDB', query = my_query)
             return outcome
 
-        if blk_num:
+        if blk_num is not None:
             my_query = {'blockNum': blk_num}
             outcome = MDB.query_db(type = 'MDB', query = my_query)
             return outcome
