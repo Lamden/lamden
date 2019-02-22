@@ -74,6 +74,7 @@ jobs:
           name: Login to Docker
           command: |
             docker login -u $DOCKER_USER -p $DOCKER_PWD
+            sleep 1
 
       - run:
           name: Download Base Images
