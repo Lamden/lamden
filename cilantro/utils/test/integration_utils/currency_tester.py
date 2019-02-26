@@ -49,6 +49,7 @@ class CurrencyTester(Dumpatron):
             self.init_balances.update(balances)
 
         self.log.test("All initial wallet balances fetched!".format(self.init_balances))
+        self.log.test("Balances:\n{}".format(self.init_balances))
 
     async def send_test_currency_txs(self, num_blocks=4):
         assert len(self.init_balances) == len(self.wallets), "Init balances not equal to length of wallet"

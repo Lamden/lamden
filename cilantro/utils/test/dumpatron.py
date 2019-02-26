@@ -78,16 +78,27 @@ class Dumpatron:
     async def start_interactive_dump(self):
         self.log.info("Starting the dump....")
         while True:
-            user_input = input("Enter an integer representing the # of transactions to dump, or 'x' to quit. "
-                               "Press enter to dump 1 blocks\n")
+            user_input = input("Enter an integer representing the # of transactions to dump, or press enter to dump 1 "
+                               "blocks. Press 'x' to quit. Enter 'help' for more options'\n")
 
             if user_input.lower() == 'x':
                 self.log.important("Termination input detected. Breaking")
                 break
 
-            vol = int(user_input) if user_input.isdigit() else self.TX_PER_BLOCK
-            self.log.important3("Dumping {} transactions!".format(vol))
-            await God.dump_it(self.session, volume=vol)
+            elif user_input.lower() =='help':
+                self.log.info("- Enter an integer to dump transactions")
+                self.log.info("- Enter nothing to dump 1 block")
+                self.log.info("- Enter 'x' to quit")
+                self.log.info("- Enter 'get <wallet_vk>' (without carrots) to return that balance of wallet with vk wallet_vk quit")
+
+            elif user_input.isdigit() or user_input == '':
+                vol = int(user_input) if user_input.isdigit() else self.TX_PER_BLOCK
+                self.log.important3("Dumping {} transactions!".format(vol))
+                await God.dump_it(self.session, volume=vol)
+
+            elif user_input.startswith('get'):
+                vk = user_input.split(' ')[-1]
+                self.log.info("VK {} has currency balance {}".format(vk, await God.get_balance(vk)))
 
     def _parse_reply(self, req, req_type='json'):
         if req.status_code != 200:
