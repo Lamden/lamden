@@ -1,8 +1,8 @@
 import cilantro
 import os, time
-import capnp, pymongo
+import capnp
 from configparser import SafeConfigParser
-from pymongo import MongoClient
+from pymongo import MongoClient, DESCENDING
 from cilantro.utils.utils import MongoTools
 from cilantro.logger.base import get_logger
 from cilantro.messages.block_data.block_data import GenesisBlockData, BlockData, MessageBase
@@ -145,7 +145,7 @@ class MDB:
             return False
 
         # insert passed dict block to db
-        blk_id = cls.mn_collection.insert(block_dict)
+        blk_id = cls.mn_collection.insert_one(block_dict)
         cls.log.spam("block {}".format(block_dict))
         if blk_id:
             return True
@@ -154,13 +154,13 @@ class MDB:
     def insert_idx_record(cls, my_dict=None):
         if dict is None:
             return None
-        idx_entry = cls.mn_coll_idx.insert(my_dict)
+        idx_entry = cls.mn_coll_idx.insert_one(my_dict)
         cls.log.spam("insert_idx_record -> {}".format(idx_entry))
         return True
 
     @classmethod
     def insert_tx_map(cls, txmap):
-        obj = cls.mn_coll_tx.insert(txmap)
+        obj = cls.mn_coll_tx.insert_one(txmap)
         cls.log.debugv("insert_idx_record -> {}".format(obj))
 
     '''
@@ -168,18 +168,22 @@ class MDB:
     '''
     @classmethod
     def query_index(cls, n_blks=None):
+        """
+        Queries index table for last n blocks, builds list of dict in ascending order for response
+        :param n_blks:
+        :return: list of dict in descending order
+        """
         blk_list = []
 
-        blk_delta = cls.mn_coll_idx.find({}, {'_id': False}).limit(n_blks).sort("blockNum", pymongo.DESCENDING)
+        blk_delta = cls.mn_coll_idx.find({}, {'_id': False}).sort("blockNum", DESCENDING).limit(n_blks)
         for blk in blk_delta:
             cls.log.spam('query_index block delta {}'.format(blk))
             blk_list.append(blk)
 
-        cls.log.spam("query_index returning dict {}".format(blk_list))
-
+        cls.log.debugv("query_index returning dict {}".format(blk_list))
         if len(blk_list) > 1:
-            assert blk_list[0]['blockNum'] > blk_list[-1]['blockNum'], "Blk list not in descending order {}".format(blk_list)
-
+            assert blk_list[0].get('blockNum') > blk_list[-1].get('blockNum'), \
+                "we expect blk list to be in descending"
         return blk_list
 
     @classmethod

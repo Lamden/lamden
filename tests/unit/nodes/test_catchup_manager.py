@@ -217,7 +217,7 @@ class TestCatchupManager(TestCase):
         all_idx_replies = []
         reply_datas = []
         for block in blocks:
-            all_idx_replies.append({'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': [vk1, vk2]})
+            all_idx_replies.append({'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': [vk1, vk2, vk3, vk4]})
             reply_datas.append(BlockDataReply.create_from_block(block))
 
         # Send the BlockIndexReplies (1 extra)
