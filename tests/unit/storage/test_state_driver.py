@@ -7,7 +7,7 @@ from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
 
 import redis
-from seneca.constants.config import *
+from cilantro.constants.db_config import *
 
 
 class TestStateDriver(TestCase):

@@ -7,9 +7,9 @@ from cilantro.constants.zmq_filters import *
 from cilantro.protocol.comm.lsocket import LSocketBase
 from cilantro.storage.vkbook import VKBook
 from cilantro.storage.state import StateDriver
+from cilantro.storage.redis import SafeRedis
+from cilantro.storage.contracts import seed_contracts
 from cilantro.nodes.masternode.mn_api import StorageDriver
-from cilantro.storage.redis import SafeRedisMeta
-from cilantro.storage.mongo import MDB
 from cilantro.nodes.masternode.master_store import MasterOps
 from cilantro.messages.block_data.block_data import BlockData
 from cilantro.messages.block_data.block_metadata import BlockMetaData
@@ -18,6 +18,7 @@ from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIn
 
 IDX_REPLY_TIMEOUT = 20
 TIMEOUT_CHECK_INTERVAL = 1
+
 
 class CatchupManager:
     def __init__(self, verifying_key: str, pub_socket: LSocketBase, router_socket: LSocketBase, store_full_blocks=True):
@@ -70,7 +71,8 @@ class CatchupManager:
                            .format(db_latest_blk_num, latest_state_num))
             # we need to rebuild state from scratch
             latest_state_num = 0
-            SafeRedisMeta.flushdb()
+            SafeRedis.flushdb()
+            seed_contracts()
 
         if db_latest_blk_num > latest_state_num:
             self.log.info("StateDriver block num {} is behind DB block num {}".format(latest_state_num, db_latest_blk_num))

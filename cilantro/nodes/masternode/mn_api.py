@@ -132,7 +132,7 @@ class StorageDriver:
 
         :return: block hash of last block on block chain
         """
-        idx_entry = MasterOps.get_blk_idx(n_blks=1)[0]
+        idx_entry = MasterOps.get_blk_idx(n_blks=1)[-1]
         cls.log.debug("get_latest_block_hash idx_entry -> {}".format(idx_entry))
         blk_hash = idx_entry.get('blockHash')
         cls.log.debug("get_latest_block_hash blk_hash ->{}".format(blk_hash))
@@ -145,7 +145,7 @@ class StorageDriver:
 
         :return: block num of last block on block chain
         """
-        idx_entry = MasterOps.get_blk_idx(n_blks=1)[0]
+        idx_entry = MasterOps.get_blk_idx(n_blks=1)[-1]
         cls.log.debug("get_latest_block_num idx_entry -> {}".format(idx_entry))
         blk_num = idx_entry.get('blockNum')
         cls.log.debug("get_latest_block_num blk_num ->{}".format(blk_num))

@@ -10,6 +10,7 @@ from cilantro.logger import get_logger, overwrite_logger_level
 import logging
 import argparse
 import random
+from cilantro.nodes.factory import _wait_for_mongo, _wait_for_redis
 
 # Hack to import stuff from groups.py regardless of where this file is run
 try: from .groups import *
@@ -23,6 +24,7 @@ all tests are run.
 log = get_logger("TestRunner")
 delim = '-' * 80
 os.environ['__INHERIT_CONSTITUTION__'] = 'True'
+
 
 def skip_tests(test_suite: unittest.TestSuite, test_names: list):
     if not test_names:
@@ -67,6 +69,7 @@ def _should_skip_module(module_name: str, modules_to_skip: list) -> bool:
             return True
     return False
 
+
 def skip_circle_ci_modules(module_to_skip='tests/integration'):
     assert os.getenv('CIRCLECI'), 'Not using CIRCLECI, this operation is Dangerous Davis approved'
     total_containers = os.getenv("CIRCLE_NODE_TOTAL")
@@ -91,7 +94,10 @@ def skip_circle_ci_modules(module_to_skip='tests/integration'):
     for f in removes: all_files.remove(f)
     print("All test files this node is responsible for: {}".format(all_files))
 
+
 def main(args):
+    _wait_for_redis()
+    _wait_for_mongo()
     log.debug("\nRunning test suites with args\n\nrun unit tests={}\nrun integration tests={}\nverbosity={}\n"
               "skip modules={}\nskip tests={}\n[env var] CILANTRO_DEBUG={}\n[env var] CI={}\n"
               .format(args.unit, args.integration, args.verbosity, args.skip_modules, args.skip_tests,

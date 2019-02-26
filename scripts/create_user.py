@@ -3,6 +3,7 @@ import configparser, time
 import os
 import time
 
+
 def create_user():
     print('Creating user for Mongo...')
     settings = configparser.ConfigParser()
@@ -17,6 +18,9 @@ def create_user():
         settings.get('MN_DB', 'password'),
         roles=[{'role': 'userAdminAnyDatabase', 'db': 'admin'}]
     )
+
+    print("Done creating Mongo user")
+
 
 if __name__ == '__main__':
     create_user()

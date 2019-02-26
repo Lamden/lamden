@@ -1,4 +1,4 @@
-from seneca.constants.config import *
+from cilantro.constants.db_config import *
 import os, threading
 import redis
 from multiprocessing import Lock
@@ -14,7 +14,7 @@ class SafeRedisMeta(type):
     # _lock = Lock()
 
     def _get_key(cls) -> str:
-        # uncomment below for thread locking
+        # uncomment below for thread level locking
         # key = "{}:{}".format(os.getpid(), threading.get_ident())
 
         key = str(os.getpid())

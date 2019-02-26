@@ -18,6 +18,7 @@ class Discovery:
     connections = {}
     is_setup = False
     is_listen_ready = False
+    bootnodes = []
 
     @classmethod
     def setup(cls, ctx=None):
@@ -27,10 +28,16 @@ class Discovery:
             cls.sock = cls.ctx.socket(zmq.ROUTER)
             cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             cls.is_connected = False
+
+            if os.environ['BOOT_IPS']:
+                cls.bootnodes = os.environ['BOOT_IPS'].split(',')
+
             if VKBook.is_node_type('masternode', Auth.vk):
                 # cls.discovered_nodes[Auth.vk] = cls.host_ip
                 cls.is_master_node = True
                 cls.is_listen_ready = True
+            else:
+                cls.log.info("This node is not a masternode")
 
     @classmethod
     async def listen(cls):
@@ -42,6 +49,7 @@ class Discovery:
             try:
                 msg = await cls.sock.recv_multipart()
                 cls.log.spam("Got msg over discovery socket: {}".format(msg))
+                # cls.log.info("Got msg over discovery socket: {}".format(msg))  # TODO remove
                 ip, pepper = msg[:2]
 
                 if pepper != cls.pepper:
@@ -63,15 +71,13 @@ class Discovery:
         is_masternode = VKBook.is_node_type('masternode', Auth.vk)
         try_count = 0
 
-        cls.log.info('We have the following boot nodes: {}'.format(VKBook.bootnodes))
+        cls.log.info('We have the following boot nodes: {}'.format(cls.bootnodes))
 
         await asyncio.sleep(1)
         while True:
-            if len(VKBook.bootnodes) > 0: # TODO refine logic post-anarchy-net
-                cls.log.info('Connecting to boot nodes: {}'.format(VKBook.bootnodes))
-                cls.connect(VKBook.bootnodes)
+            if len(cls.bootnodes) > 0: # TODO refine logic post-anarchy-net
+                cls.connect(cls.bootnodes)
             else:
-                cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
                 cls.connect(get_ip_range(start_ip))
             try_count += 1
             if (is_masternode and len(VKBook.get_masternodes()) == 1) or \
@@ -141,16 +147,23 @@ class Discovery:
 
     @classmethod
     def reply(cls, ip):
+        # cls.log.important2("discovered nodes so far: {}".format(cls.discovered_nodes))  # TODO remove
+        # cls.log.important("Attempting to replying to IP {} ... is_listen_ready={}".format(ip, cls.is_listen_ready))
         if cls.is_listen_ready and ip != cls.host_ip:
+            cls.log.debugv("sending discovery reply to ip {}".format(ip))
             cls.sock.send_multipart([ip, cls.pepper, Auth.vk.encode()])
             cls.is_connected = True
 
     @classmethod
     def connect(cls, ips):
-        cls.log.spam("Attempting to connect to IP range {}".format(ips[0]))
+        # cls.log.important2("discovered nodes so far: {}".format(cls.discovered_nodes))  # TODO remove
+        # cls.log.important("Attempting to connect to IP range {}".format(ips))  # TODO remove
+        cls.log.debugv("Attempting to connect to IP range {}".format(ips[0]))
         for ip in ips:
+            cls.log.spam("Attempting to connect to IP {}".format(ip))
             if ip == cls.host_ip:
                 continue
+            # cls.log.important("Attempting to discover IP {}".format(ip))  # TODO remove
             url = 'tcp://{}:{}'.format(ip, cls.port)
             cls.sock.connect(url)
             cls.connections[ip] = url
