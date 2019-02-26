@@ -182,12 +182,12 @@ class MasterOps:
     @classmethod
     def get_full_blk(cls, blk_num=None, blk_hash=None):
         outcome = None
-        if blk_hash:
+        if blk_hash is not None:
             my_query = {'blockHash': blk_hash}
             outcome = MDB.query_db(type = 'MDB', query = my_query)
             return outcome
 
-        if blk_num:
+        if blk_num is not None:
             my_query = {'blockNum': blk_num}
             outcome = MDB.query_db(type = 'MDB', query = my_query)
             return outcome
@@ -196,6 +196,12 @@ class MasterOps:
 
     @classmethod
     def get_blk_idx(cls, n_blks=None):
+        """
+        This api takes argument of n blocks, it responds with last n block locally stored
+        on mongodb
+        :param n_blks:
+        :return:
+        """
         assert n_blks > 0, "invalid api call n_blk cannot be zero".format(n_blks)
         idx_entries = MDB.query_index(n_blks=n_blks)
         return idx_entries
