@@ -17,35 +17,35 @@
 
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 
-from cilantro.logger import get_logger
-from cilantro.storage.vkbook import VKBook
-from cilantro.storage.state import StateDriver
-from cilantro.constants.ports import SBB_PORT_START
-from cilantro.constants.zmq_filters import *
-from cilantro.constants.system_config import *
+from cilantro_ee.logger import get_logger
+from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.state import StateDriver
+from cilantro_ee.constants.ports import SBB_PORT_START
+from cilantro_ee.constants.zmq_filters import *
+from cilantro_ee.constants.system_config import *
 
-from cilantro.messages.base.base import MessageBase
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.block_data.state_update import *
-from cilantro.messages.consensus.merkle_signature import MerkleSignature
-from cilantro.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro.messages.consensus.align_input_hash import AlignInputHash
-from cilantro.messages.transaction.batch import TransactionBatch
-from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
-from cilantro.messages.signals.node import Ready
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.messages.envelope.envelope import Envelope
+from cilantro_ee.messages.block_data.state_update import *
+from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
+from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
+from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
+from cilantro_ee.messages.transaction.batch import TransactionBatch
+from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
+from cilantro_ee.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
+from cilantro_ee.messages.signals.node import Ready
 
 from seneca.engine.client import NUM_CACHES
 from seneca.engine.client import SenecaClient
 from seneca.engine.conflict_resolution import CRContext
-from cilantro.protocol import wallet
-from cilantro.protocol.multiprocessing.worker import Worker
+from cilantro_ee.protocol import wallet
+from cilantro_ee.protocol.multiprocessing.worker import Worker
 
-from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
+from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
 
-from cilantro.utils.hasher import Hasher
-from cilantro.utils.utils import int_to_bytes, bytes_to_int
+from cilantro_ee.utils.hasher import Hasher
+from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from enum import Enum, unique
 import asyncio, zmq.asyncio, time, os

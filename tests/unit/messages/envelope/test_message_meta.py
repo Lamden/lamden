@@ -1,7 +1,7 @@
 from unittest import TestCase
-from cilantro.messages.base.base import MessageBase
-from cilantro.messages.envelope.message_meta import MessageMeta
-from cilantro.messages.transaction.contract import ContractTransaction
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.messages.envelope.message_meta import MessageMeta
+from cilantro_ee.messages.transaction.contract import ContractTransaction
 
 class TestMessageMeta(TestCase):
 

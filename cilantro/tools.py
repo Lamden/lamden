@@ -1,6 +1,6 @@
 import requests
-from cilantro.messages.transaction.contract import ContractTransactionBuilder
-from cilantro.messages.transaction.container import TransactionContainer
+from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
+from cilantro_ee.messages.transaction.container import TransactionContainer
 from seneca.engine.interpreter import Seneca, SenecaInterpreter
 from seneca.engine.interface import SenecaInterface
 

@@ -1,18 +1,18 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
 
 from unittest import TestCase
 from unittest.mock import MagicMock
 
-from cilantro.messages.envelope.envelope import Envelope, MessageMeta, Seal
-from cilantro.messages.base.base import MessageBase
-from cilantro.messages.transaction.contract import ContractTransactionBuilder
-from cilantro.nodes.base import NodeTypes
+from cilantro_ee.messages.envelope.envelope import Envelope, MessageMeta, Seal
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
+from cilantro_ee.nodes.base import NodeTypes
 
-from cilantro.protocol.structures.envelope_auth import EnvelopeAuth
-from cilantro.protocol import wallet
+from cilantro_ee.protocol.structures.envelope_auth import EnvelopeAuth
+from cilantro_ee.protocol import wallet
 
-from cilantro.constants.testnet import *
+from cilantro_ee.constants.testnet import *
 
 class TestEnvelopefromObjects(TestCase):
     """Envelope unit tests using Envelope.create_from_objects() directly to create envelopes"""

@@ -1,13 +1,13 @@
-from cilantro.messages.transaction.data import TransactionData
-from cilantro.utils import Hasher
-from cilantro.messages.transaction.contract import ContractTransactionBuilder, ContractTransaction
-from cilantro.messages.block_data.block_data import BlockData, GENESIS_BLOCK_HASH, BlockDataBuilder
-from cilantro.messages.block_data.state_update import BlockDataReply
-from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
-from cilantro.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.messages.transaction.data import TransactionData
+from cilantro_ee.utils import Hasher
+from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder, ContractTransaction
+from cilantro_ee.messages.block_data.block_data import BlockData, GENESIS_BLOCK_HASH, BlockDataBuilder
+from cilantro_ee.messages.block_data.state_update import BlockDataReply
+from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
+from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from unittest import TestCase
 import unittest
-from cilantro.constants.testnet import TESTNET_MASTERNODES
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 TEST_SK, TEST_VK = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
 
 

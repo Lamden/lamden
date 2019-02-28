@@ -1,5 +1,5 @@
-from cilantro.protocol.multiprocessing.worker import Worker
-from cilantro.messages.base.base import MessageBase
+from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.messages.base.base import MessageBase
 
 import os
 import asyncio

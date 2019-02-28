@@ -1,6 +1,6 @@
-from cilantro.constants.testnet import TESTNET_MASTERNODES
-from cilantro.nodes.factory import NodeFactory
-from cilantro.constants.overlay_network import HOST_IP
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
+from cilantro_ee.nodes.factory import NodeFactory
+from cilantro_ee.constants.overlay_network import HOST_IP
 
 
 mn_sk = TESTNET_MASTERNODES[0]['sk']

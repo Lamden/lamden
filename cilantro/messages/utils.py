@@ -1,5 +1,5 @@
 from decimal import Decimal
-from cilantro.constants.protocol import DECIMAL_PRECISION
+from cilantro_ee.constants.protocol import DECIMAL_PRECISION
 
 def validate_hex(hex_str, length=None, field_name="", raise_err=True):
     def handle_err(exp: Exception):

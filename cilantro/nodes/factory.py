@@ -1,10 +1,10 @@
-from cilantro.nodes.masternode.masternode import Masternode
-from cilantro.nodes.delegate.delegate import Delegate
-from cilantro.nodes.witness.witness import Witness
-from cilantro.storage.contracts import seed_contracts
-from cilantro.storage.redis import SafeRedis
-from cilantro.nodes.masternode.master_store import MasterOps
-from cilantro.constants.db_config import MONGO_DIR, config_mongo_dir
+from cilantro_ee.nodes.masternode.masternode import Masternode
+from cilantro_ee.nodes.delegate.delegate import Delegate
+from cilantro_ee.nodes.witness.witness import Witness
+from cilantro_ee.storage.contracts import seed_contracts
+from cilantro_ee.storage.redis import SafeRedis
+from cilantro_ee.nodes.masternode.master_store import MasterOps
+from cilantro_ee.constants.db_config import MONGO_DIR, config_mongo_dir
 import  shutil
 
 

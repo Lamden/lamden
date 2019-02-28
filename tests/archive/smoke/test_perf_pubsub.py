@@ -5,10 +5,10 @@ import unittest
 def publisher():
     SLEEP_TIME = 0.05
     MAX_TIME = 10
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.utils.test import MPComposer
-    from cilantro.messages.transaction.contract import ContractTransactionBuilder
-    from cilantro.constants.testnet import TESTNET_DELEGATES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test import MPComposer
+    from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
+    from cilantro_ee.constants.testnet import TESTNET_DELEGATES
     import time, os
 
     log = get_logger("Publisher")
@@ -40,9 +40,9 @@ def publisher():
 
 def subscriber():
     MAX_TIME = 90
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.utils.test import MPComposer
-    from cilantro.constants.testnet import TESTNET_DELEGATES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test import MPComposer
+    from cilantro_ee.constants.testnet import TESTNET_DELEGATES
     import time, os
 
     log = get_logger("Subscriber")
@@ -67,7 +67,7 @@ class TestPerformancePubSub(BaseNetworkTestCase):
 
     testname = 'composer'
     setuptime = 6
-    compose_file = 'cilantro-nodes.yml'
+    compose_file = 'cilantro_ee-nodes.yml'
 
     @vmnet_test(run_webui=True)
     def test_network(self):

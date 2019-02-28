@@ -1,13 +1,13 @@
-# from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
-# from cilantro.protocol.states.decorators import input, input_timeout, exit_to_any, enter_from_any, timeout_after
-# from cilantro.storage.blocks import BlockStorageDriver
-# from cilantro.messages.block_data.block_metadata import BlockMetaDataReply, BlockMetaDataRequest, NewBlockNotification
-# from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
-# from cilantro.messages.envelope.envelope import Envelope
-# from cilantro.messages.transaction.contract import ContractTransaction
-# from cilantro.storage.vkbook import VKBook
-# from cilantro.constants.delegate import CATCHUP_TIMEOUT, BLOCK_REQ_TIMEOUT, TX_REQ_TIMEOUT
-# from cilantro.utils.hasher import Hasher
+# from cilantro_ee.nodes.delegate.delegate import Delegate, DelegateBaseState
+# from cilantro_ee.protocol.states.decorators import input, input_timeout, exit_to_any, enter_from_any, timeout_after
+# from cilantro_ee.storage.blocks import BlockStorageDriver
+# from cilantro_ee.messages.block_data.block_metadata import BlockMetaDataReply, BlockMetaDataRequest, NewBlockNotification
+# from cilantro_ee.messages.block_data.transaction_data import TransactionReply, TransactionRequest
+# from cilantro_ee.messages.envelope.envelope import Envelope
+# from cilantro_ee.messages.transaction.contract import ContractTransaction
+# from cilantro_ee.storage.vkbook import VKBook
+# from cilantro_ee.constants.delegate import CATCHUP_TIMEOUT, BLOCK_REQ_TIMEOUT, TX_REQ_TIMEOUT
+# from cilantro_ee.utils.hasher import Hasher
 #
 # DelegateBootState = "DelegateBootState"
 # DelegateInterpretState = "DelegateInterpretState"

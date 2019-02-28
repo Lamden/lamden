@@ -1,20 +1,20 @@
 import click
 import os
-from cilantro.protocol import wallet
+from cilantro_ee.protocol import wallet
 import json
 from simplecrypt import encrypt, decrypt
 import getpass
 import hashlib
 from seneca.engine.client import SenecaClient
-from cilantro.messages.transaction.contract import ContractTransactionBuilder
-from cilantro.constants.vmnet import generate_constitution
-from cilantro import tools
+from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
+from cilantro_ee.constants.vmnet import generate_constitution
+from cilantro_ee import tools
 
-configuration_path = '/usr/local/share/lamden/cilantro'
+configuration_path = '/usr/local/share/lamden/cilantro_ee'
 directory_file = 'dir.conf'
 network_file = 'net.conf'
 
-default_directory = '~/cilantro'
+default_directory = '~/cilantro_ee'
 default_crawl = '127.0.0.1'
 
 _cil_text = \

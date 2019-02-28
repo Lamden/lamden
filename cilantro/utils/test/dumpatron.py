@@ -1,6 +1,6 @@
-from cilantro.logger.base import get_logger
-from cilantro.utils.test.god import God
-from cilantro.constants.system_config import *
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.utils.test.god import God
+from cilantro_ee.constants.system_config import *
 import os, glob
 import asyncio, aiohttp
 

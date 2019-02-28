@@ -15,9 +15,9 @@ class CilantroHasher(object):
         return spec
 
     @staticmethod
-    def _filter_cilantro_files(cilantrodir, spec):
+    def _filter_cilantro_ee_files(cilantro_eedir, spec):
         allfiles = []
-        for (dirpath, dirnames, filenames) in os.walk(cilantrodir):
+        for (dirpath, dirnames, filenames) in os.walk(cilantro_eedir):
             filenames = [ os.path.join(dirpath, filename) for filename in filenames ]
             allfiles.extend([ filename for filename in filenames if not spec.match_file(filename) ])
         return allfiles
@@ -35,11 +35,11 @@ class CilantroHasher(object):
 
     @classmethod
     def generate(cls):
-        # Find cilantro directory, be sure to initiate filepath construction from the metadata of this file so we can call
+        # Find cilantro_ee directory, be sure to initiate filepath construction from the metadata of this file so we can call
         # this from anywhere
-        cilantrodir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../..'))
-        spec = cls._generate_gitignore_spec(os.path.join(cilantrodir, '.gitignore'))
-        files = cls._filter_cilantro_files(cilantrodir, spec)
+        cilantro_eedir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../..'))
+        spec = cls._generate_gitignore_spec(os.path.join(cilantro_eedir, '.gitignore'))
+        files = cls._filter_cilantro_ee_files(cilantro_eedir, spec)
 
         sha = hashlib.sha1()
         for fn in files:

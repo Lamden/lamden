@@ -3,7 +3,7 @@ import zmq
 import asyncio
 import time
 import random
-from cilantro.logger.base import get_logger
+from cilantro_ee.logger.base import get_logger
 from multiprocessing import Process
 import functools
 

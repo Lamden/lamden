@@ -1,14 +1,14 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-0.json')
 
 from vmnet.testcase import BaseNetworkTestCase
-import unittest, time, random, vmnet, cilantro
+import unittest, time, random, vmnet, cilantro_ee
 from os.path import join, dirname
-from cilantro.utils.test.mp_test_case import vmnet_test
-from cilantro.utils.test.god import God
-from cilantro.logger.base import get_logger
-from cilantro.utils.test.god import God
-from cilantro.logger import get_logger, overwrite_logger_level
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
+from cilantro_ee.utils.test.god import God
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.utils.test.god import God
+from cilantro_ee.logger import get_logger, overwrite_logger_level
 import logging
 
 LOG_LEVEL = 0
@@ -21,16 +21,16 @@ def wrap_func(fn, *args, **kwargs):
 
 
 def run_mn(slot_num):
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes.factory import NodeFactory
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.nodes.factory import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
     import os
     import logging
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
     # overwrite_logger_level(11)
-    from cilantro.logger.base import get_logger
+    from cilantro_ee.logger.base import get_logger
     log = get_logger("MN CREATOR")
     log.important("creating")
 
@@ -40,9 +40,9 @@ def run_mn(slot_num):
 
 
 def run_witness(slot_num):
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes.factory import NodeFactory
-    from cilantro.constants.testnet import TESTNET_WITNESSES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.nodes.factory import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_WITNESSES
     import os
     import logging
 
@@ -57,8 +57,8 @@ def run_witness(slot_num):
 
 
 def dump_it(volume, delay=0):
-    from cilantro.utils.test.god import God
-    from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test.god import God
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
     import logging
 
     overwrite_logger_level(logging.WARNING)
@@ -68,7 +68,7 @@ def dump_it(volume, delay=0):
 class TestManualDump(BaseNetworkTestCase):
 
     VOLUME = 1200  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-0-bootstrap.json')
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-2-2-0-bootstrap.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)

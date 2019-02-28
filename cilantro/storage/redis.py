@@ -1,4 +1,4 @@
-from cilantro.constants.db_config import *
+from cilantro_ee.constants.db_config import *
 import os, threading
 import redis
 from multiprocessing import Lock

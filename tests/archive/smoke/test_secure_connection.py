@@ -4,8 +4,8 @@ import time
 
 def run_node():
     import asyncio, os, zmq.auth
-    from cilantro.protocol.overlay.dht import DHT
-    from cilantro.logger import get_logger
+    from cilantro_ee.protocol.overlay.dht import DHT
+    from cilantro_ee.logger import get_logger
     log = get_logger(__name__)
 
     signing_keys = {
@@ -25,7 +25,7 @@ def run_node():
 
 class TestSecureConnection(BaseNetworkTestCase):
     testname = 'secure_connection'
-    compose_file = 'cilantro-nodes.yml'
+    compose_file = 'cilantro_ee-nodes.yml'
     setuptime = 10
 
     @vmnet_test(run_webui=True)

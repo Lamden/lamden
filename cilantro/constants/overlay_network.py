@@ -1,6 +1,6 @@
 from os import getenv as env
-from cilantro.protocol.overlay.ip import get_public_ip
-from cilantro.constants.test_suites import CI_FACTOR
+from cilantro_ee.protocol.overlay.ip import get_public_ip
+from cilantro_ee.constants.test_suites import CI_FACTOR
 
 ALPHA = 3
 KSIZE = 20
@@ -28,6 +28,6 @@ if env('HOST_IP'):
 else:
     HOST_IP = get_public_ip()
 
-PEPPER = env('PEPPER', 'cilantro_pepper')
+PEPPER = env('PEPPER', 'cilantro_ee_pepper')
 EVENT_URL = 'ipc://overlay-event-ipc-sock-{}'.format(env('HOST_NAME', ''))
 CMD_URL = 'ipc://overlay-cmd-ipc-sock-{}'.format(env('HOST_NAME', ''))

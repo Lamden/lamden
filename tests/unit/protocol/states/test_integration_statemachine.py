@@ -1,5 +1,5 @@
-from cilantro.utils.test.mp_test_case import MPTestCase
-from cilantro.utils.test.mp_testables import MPStateMachine
+from cilantro_ee.utils.test.mp_test_case import MPTestCase
+from cilantro_ee.utils.test.mp_testables import MPStateMachine
 import time, unittest
 try:
     from .stumachine import *

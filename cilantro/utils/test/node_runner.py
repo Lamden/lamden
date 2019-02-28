@@ -5,7 +5,7 @@ def wrap_func(fn, *args, **kwargs):
 
 
 def log_create(name, vk, ip):
-    from cilantro.logger import get_logger
+    from cilantro_ee.logger import get_logger
     log = get_logger("{}Builder".format(name))
     delim = '=' * 64
     msg = '\n' + delim + '\n' + 'Creating {} with:\nvk={}\nip={}\n'.format(name, vk, ip) + delim
@@ -20,16 +20,16 @@ def run_mn(slot_num=None, sk=None, log_lvl=11, reset_db=False, nonce_enabled=Tru
 
     import os
     if nonce_enabled:
-        # We must set this env var before we import anything from cilantro
+        # We must set this env var before we import anything from cilantro_ee
         os.environ["NONCE_ENABLED"] = "1"
 
     # os.environ['SSL_ENABLED'] = "True"
 
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes.factory import NodeFactory
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
-    from cilantro.utils.test.node_runner import log_create
-    from cilantro.protocol import wallet
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.nodes.factory import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
+    from cilantro_ee.utils.test.node_runner import log_create
+    from cilantro_ee.protocol import wallet
 
     overwrite_logger_level(log_lvl)
 
@@ -47,12 +47,12 @@ def run_mn(slot_num=None, sk=None, log_lvl=11, reset_db=False, nonce_enabled=Tru
 
 def run_witness(slot_num=None, sk=None, log_lvl=11, reset_db=False):
     assert slot_num is not None or sk is not None, "SK or slot num must be provided"
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes.factory import NodeFactory
-    from cilantro.constants.testnet import TESTNET_WITNESSES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.nodes.factory import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_WITNESSES
     import os
-    from cilantro.utils.test.node_runner import log_create
-    from cilantro.protocol import wallet
+    from cilantro_ee.utils.test.node_runner import log_create
+    from cilantro_ee.protocol import wallet
 
     overwrite_logger_level(log_lvl)
 
@@ -76,12 +76,12 @@ def run_delegate(slot_num=None, sk=None, log_lvl=11, seneca_log_lvl=11, bad_acto
         os.environ["SB_IDX_FAIL"] = ','.join((str(i) for i in bad_sb_set))
         os.environ["NUM_SUCC_SBS"] = str(num_succ_sbs)
 
-    from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
     from seneca.libs.logger import overwrite_logger_level as sen_overwrite_log
-    from cilantro.nodes.factory import NodeFactory
-    from cilantro.constants.testnet import TESTNET_DELEGATES
-    from cilantro.utils.test.node_runner import log_create
-    from cilantro.protocol import wallet
+    from cilantro_ee.nodes.factory import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_DELEGATES
+    from cilantro_ee.utils.test.node_runner import log_create
+    from cilantro_ee.protocol import wallet
 
     overwrite_logger_level(log_lvl)
     sen_overwrite_log(seneca_log_lvl)
@@ -99,8 +99,8 @@ def run_delegate(slot_num=None, sk=None, log_lvl=11, seneca_log_lvl=11, bad_acto
 
 
 def dump_it(volume, delay=0):
-    from cilantro.utils.test.god import God
-    from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test.god import God
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
     import logging
 
     overwrite_logger_level(logging.WARNING)
@@ -108,8 +108,8 @@ def dump_it(volume, delay=0):
 
 
 def pump_it(*args, **kwargs):
-    from cilantro.utils.test.god import God
-    from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test.god import God
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
     import logging, time
 
     overwrite_logger_level(logging.WARNING)

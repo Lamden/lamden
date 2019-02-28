@@ -8,14 +8,14 @@ import logging
 import os
 import zmq, zmq.asyncio
 
-from cilantro.protocol.overlay.kademlia.protocol import KademliaProtocol
-from cilantro.protocol.overlay.kademlia.utils import digest
-from cilantro.protocol.overlay.kademlia.node import Node
-from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
-from cilantro.constants.ports import DHT_PORT
-from cilantro.constants.overlay_network import *
-from cilantro.protocol.overlay.auth import Auth
-from cilantro.logger.base import get_logger
+from cilantro_ee.protocol.overlay.kademlia.protocol import KademliaProtocol
+from cilantro_ee.protocol.overlay.kademlia.utils import digest
+from cilantro_ee.protocol.overlay.kademlia.node import Node
+from cilantro_ee.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
+from cilantro_ee.constants.ports import DHT_PORT
+from cilantro_ee.constants.overlay_network import *
+from cilantro_ee.protocol.overlay.auth import Auth
+from cilantro_ee.logger.base import get_logger
 
 log = get_logger(__name__)
 

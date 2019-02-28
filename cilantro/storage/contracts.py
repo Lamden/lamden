@@ -1,11 +1,11 @@
-from cilantro.logger import get_logger
-from cilantro.utils import Hasher
+from cilantro_ee.logger import get_logger
+from cilantro_ee.utils import Hasher
 from seneca.engine.interface import SenecaInterface
 from seneca.engine.interpreter import SenecaInterpreter
-from cilantro.constants.system_config import *
+from cilantro_ee.constants.system_config import *
 import datetime, time
 import os
-from cilantro.utils.test.god import ALL_WALLETS
+from cilantro_ee.utils.test.god import ALL_WALLETS
 
 
 log = get_logger("ContractSeeder")
@@ -20,7 +20,7 @@ GENESIS_DATE = datetime.datetime(datetime.MINYEAR, 1, 1)
 
 def seed_contracts():
     """
-    Seeds the contracts table with all contracts found in cilantro/contracts
+    Seeds the contracts table with all contracts found in cilantro_ee/contracts
     """
     log.debugv("Setting up SenecaInterface to publish contracts.")
 
@@ -53,7 +53,7 @@ def seed_contracts():
 
 def _read_contract_files() -> list:
     """
-    Reads all contracts in the cilantro/contracts directory.
+    Reads all contracts in the cilantro_ee/contracts directory.
     :return: A list of tuples containing (contract_id, contract_code). Both values are strings
     """
     log.debug("Loading smart contracts at directory {}".format(CONTRACTS_DIR))

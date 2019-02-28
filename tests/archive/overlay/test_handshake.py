@@ -1,18 +1,18 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
 from vmnet.testcase import BaseTestCase
 from vmnet.comm import file_listener
-import unittest, time, random, vmnet, cilantro
+import unittest, time, random, vmnet, cilantro_ee
 from os.path import join, dirname
-from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
-from cilantro.logger.base import get_logger
-from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
+from cilantro_ee.utils.test.mp_test_case import vmnet_test, wrap_func
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
 
 def masternode(idx, node_count, all_vks):
     from vmnet.comm import send_to_file
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
-    from cilantro.protocol.overlay.handshake import Handshake
-    from cilantro.protocol.overlay.auth import Auth
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
+    from cilantro_ee.protocol.overlay.handshake import Handshake
+    from cilantro_ee.protocol.overlay.auth import Auth
     import asyncio, os, time
 
     async def check_nodes():
@@ -27,7 +27,7 @@ def masternode(idx, node_count, all_vks):
             *[Handshake.initiate_handshake(node['ip'], vk=node['vk']) \
                 for node in all_nodes])
 
-    from cilantro.logger import get_logger
+    from cilantro_ee.logger import get_logger
     log = get_logger('MasterNode_{}'.format(idx))
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -44,9 +44,9 @@ def masternode(idx, node_count, all_vks):
 
 def delegates(idx, node_count, all_vks):
     from vmnet.comm import send_to_file
-    from cilantro.constants.testnet import TESTNET_DELEGATES
-    from cilantro.protocol.overlay.handshake import Handshake
-    from cilantro.protocol.overlay.auth import Auth
+    from cilantro_ee.constants.testnet import TESTNET_DELEGATES
+    from cilantro_ee.protocol.overlay.handshake import Handshake
+    from cilantro_ee.protocol.overlay.auth import Auth
     import asyncio, os, time
 
     async def check_nodes():
@@ -61,7 +61,7 @@ def delegates(idx, node_count, all_vks):
             *[Handshake.initiate_handshake(node['ip'], vk=node['vk']) \
                 for node in all_nodes])
 
-    from cilantro.logger import get_logger
+    from cilantro_ee.logger import get_logger
     log = get_logger('Delegate_{}'.format(idx))
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -81,7 +81,7 @@ def delegates(idx, node_count, all_vks):
 class TestHandshake(BaseTestCase):
 
     log = get_logger(__name__)
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-4.json')
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-nodes-4.json')
     enable_ui = False
 
     def callback(self, data):

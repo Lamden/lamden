@@ -1,7 +1,7 @@
-from cilantro.logger import get_logger
-from cilantro.protocol import wallet
-from cilantro.protocol.comm.socket_manager import SocketManager
-from cilantro.messages.envelope.envelope import Envelope
+from cilantro_ee.logger import get_logger
+from cilantro_ee.protocol import wallet
+from cilantro_ee.protocol.comm.socket_manager import SocketManager
+from cilantro_ee.messages.envelope.envelope import Envelope
 
 from typing import Callable, Union
 import zmq.asyncio, asyncio

@@ -1,50 +1,50 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
-from cilantro.constants.testnet import set_testnet_nodes
+from cilantro_ee.constants.testnet import set_testnet_nodes
 set_testnet_nodes()
 
-from cilantro.nodes.masternode.block_aggregator import BlockAggregator
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator
+from cilantro_ee.storage.vkbook import VKBook
 
 import unittest
 from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
 
-from cilantro.constants.zmq_filters import *
-from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
-from cilantro.constants.system_config import *
+from cilantro_ee.constants.zmq_filters import *
+from cilantro_ee.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
+from cilantro_ee.constants.system_config import *
 
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro.messages.transaction.contract import ContractTransactionBuilder
-from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
+from cilantro_ee.messages.envelope.envelope import Envelope
+from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
+from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
+from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
 
-from cilantro.messages.block_data.block_data import *
-from cilantro.messages.block_data.state_update import *
-from cilantro.messages.block_data.block_metadata import *
-from cilantro.messages.consensus.merkle_signature import *
+from cilantro_ee.messages.block_data.block_data import *
+from cilantro_ee.messages.block_data.state_update import *
+from cilantro_ee.messages.block_data.block_metadata import *
+from cilantro_ee.messages.consensus.merkle_signature import *
 
-from cilantro.utils.hasher import Hasher
-from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro.protocol import wallet
-from cilantro.storage.mongo import MDB
-from cilantro.storage.redis import SafeRedis
+from cilantro_ee.utils.hasher import Hasher
+from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.protocol import wallet
+from cilantro_ee.storage.mongo import MDB
+from cilantro_ee.storage.redis import SafeRedis
 
 # time and logger are for debugging
 import time
-from cilantro.logger.base import get_logger
+from cilantro_ee.logger.base import get_logger
 
 
 class BlockAggTester:
     @staticmethod
     def test(func):
-        @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
-        @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
-        @mock.patch("cilantro.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 2)
-        @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-        @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-        @mock.patch("cilantro.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
+        @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
+        @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
+        @mock.patch("cilantro_ee.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 2)
+        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio", autospec=True)
+        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager", autospec=True)
+        @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
         def _func(*args, **kwargs):
             return func(*args, **kwargs)
         return _func
@@ -247,9 +247,9 @@ class TestBlockAggregator(TestCase):
                                                      prev_block_hash=GENESIS_BLOCK_HASH)
 
     @BlockAggTester.test
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
-    @mock.patch("cilantro.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 1)
     def test_combine_result_hash_with_one_sb(self, *args):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
 
@@ -326,9 +326,9 @@ class TestBlockAggregator(TestCase):
         self.assertEqual(block_data.transactions, TXS1 + TXS2)
 
     @BlockAggTester.test
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
-    @mock.patch("cilantro.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 1)
     def test_recv_ignore_extra_sub_block_contenders(self, *args):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
         ba.manager = MagicMock()
@@ -351,9 +351,9 @@ class TestBlockAggregator(TestCase):
 
     # TODO fix this test once we care about getting consensus on new block notifications --davis
     # @BlockAggTester.test
-    # @mock.patch("cilantro.nodes.masternode.block_aggregator.MASTERNODE_MAJORITY", 2)
-    # @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
-    # @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
+    # @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.MASTERNODE_MAJORITY", 2)
+    # @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
+    # @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
     # def test_recv_result_hash_multiple_subblocks_consensus(self, *args):
     #
     #     ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
@@ -390,9 +390,9 @@ class TestBlockAggregator(TestCase):
     #     self.assertEqual(block_data.transactions, TXS1 + TXS2)
 
     @BlockAggTester.test
-    @mock.patch("cilantro.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
-    @mock.patch("cilantro.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 1)
     def test_combine_result_hash_transactions_missing(self, *args):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
 

@@ -1,9 +1,9 @@
-from cilantro.messages.base.base import MessageBase
-from cilantro.utils import lazy_property, Hasher, set_lazy_property
-from cilantro.messages.utils import validate_hex
-from cilantro.logger import get_logger
-from cilantro.messages.consensus.merkle_signature import MerkleSignature
-from cilantro.messages.transaction.data import TransactionData
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.utils import lazy_property, Hasher, set_lazy_property
+from cilantro_ee.messages.utils import validate_hex
+from cilantro_ee.logger import get_logger
+from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
+from cilantro_ee.messages.transaction.data import TransactionData
 from typing import List
 
 
@@ -93,8 +93,8 @@ class SubBlockBuilder:
 
     @staticmethod
     def create(transactions: List[TransactionData]=None, num_txs=8, input_hash='A'*64, idx=0, signing_keys: List[str]=None):
-        from cilantro.messages.transaction.data import TransactionDataBuilder
-        from cilantro.protocol.structures.merkle_tree import MerkleTree
+        from cilantro_ee.messages.transaction.data import TransactionDataBuilder
+        from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 
         if not transactions:
             transactions = []

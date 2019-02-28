@@ -1,14 +1,14 @@
 import zmq, zmq.asyncio, asyncio, traceback, time
 from os import getenv as env
-from cilantro.constants.overlay_network import *
-from cilantro.constants.ports import AUTH_PORT
+from cilantro_ee.constants.overlay_network import *
+from cilantro_ee.constants.ports import AUTH_PORT
 from zmq.auth.thread import ThreadAuthenticator
 from zmq.auth.asyncio import AsyncioAuthenticator
-from cilantro.protocol.overlay.event import Event
-from cilantro.protocol.overlay.ip import *
-from cilantro.protocol.overlay.auth import Auth
-from cilantro.logger import get_logger
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.protocol.overlay.event import Event
+from cilantro_ee.protocol.overlay.ip import *
+from cilantro_ee.protocol.overlay.auth import Auth
+from cilantro_ee.logger import get_logger
+from cilantro_ee.storage.vkbook import VKBook
 from collections import defaultdict
 
 class Handshake:

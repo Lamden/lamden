@@ -1,24 +1,24 @@
-from cilantro.logger import get_logger
-from cilantro.utils.test.mp_test_case import MPTestCase
-from cilantro.utils.test.mp_test import MPTesterBase, mp_testable
-from cilantro.utils.test.god import God
+from cilantro_ee.logger import get_logger
+from cilantro_ee.utils.test.mp_test_case import MPTestCase
+from cilantro_ee.utils.test.mp_test import MPTesterBase, mp_testable
+from cilantro_ee.utils.test.god import God
 from unittest.mock import MagicMock
-from cilantro.protocol.transport.composer import Composer
-from cilantro.protocol.executors.manager import ExecutorManager
-from cilantro.protocol.states.statemachine import StateMachine
-from cilantro.nodes.masternode.masternode import Masternode
-from cilantro.nodes.delegate.delegate import Delegate
-from cilantro.nodes.witness.witness import Witness
-from cilantro.nodes.base import NodeBase
-from cilantro.protocol.overlay.daemon import OverlayServer
-from cilantro.utils.lprocess import LProcess
-# from cilantro.storage.db import DB
-from cilantro.utils.test.pubsub_auth import PubSubAuthTester
-from cilantro.utils.test.router_auth import RouterAuthTester
+from cilantro_ee.protocol.transport.composer import Composer
+from cilantro_ee.protocol.executors.manager import ExecutorManager
+from cilantro_ee.protocol.states.statemachine import StateMachine
+from cilantro_ee.nodes.masternode.masternode import Masternode
+from cilantro_ee.nodes.delegate.delegate import Delegate
+from cilantro_ee.nodes.witness.witness import Witness
+from cilantro_ee.nodes.base import NodeBase
+from cilantro_ee.protocol.overlay.daemon import OverlayServer
+from cilantro_ee.utils.lprocess import LProcess
+# from cilantro_ee.storage.db import DB
+from cilantro_ee.utils.test.pubsub_auth import PubSubAuthTester
+from cilantro_ee.utils.test.router_auth import RouterAuthTester
 import asyncio
 import zmq.asyncio
 import os
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 
 
 @mp_testable(NodeBase)
@@ -41,7 +41,7 @@ class MPPubSubAuth(MPTesterBase):
         VKBook.setup()
         # # DEBUG -- TODO DELETE
         # print("VKBook on REMOTE MACHINE")
-        # from cilantro.storage.vkbook import VKBook
+        # from cilantro_ee.storage.vkbook import VKBook
         # VKBook.test_print_nodes()
         # # END DEBUG
         loop = asyncio.get_event_loop()

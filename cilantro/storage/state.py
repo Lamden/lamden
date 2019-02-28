@@ -1,11 +1,11 @@
-from cilantro.logger.base import get_logger
+from cilantro_ee.logger.base import get_logger
 from seneca.engine.interface import SenecaInterface
-from cilantro.messages.transaction.contract import ContractTransaction
-from cilantro.messages.transaction.publish import PublishTransaction
-from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
-from cilantro.utils.utils import is_valid_hex
-from cilantro.storage.redis import SafeRedis
-from cilantro.constants.system_config import *
+from cilantro_ee.messages.transaction.contract import ContractTransaction
+from cilantro_ee.messages.transaction.publish import PublishTransaction
+from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
+from cilantro_ee.utils.utils import is_valid_hex
+from cilantro_ee.storage.redis import SafeRedis
+from cilantro_ee.constants.system_config import *
 from typing import List
 
 

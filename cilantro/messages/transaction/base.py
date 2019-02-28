@@ -1,9 +1,9 @@
-from cilantro.messages.base.base import MessageBase
-from cilantro.messages.utils import validate_hex
-from cilantro.utils import lazy_property, is_valid_hex
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.messages.utils import validate_hex
+from cilantro_ee.utils import lazy_property, is_valid_hex
 
-from cilantro.protocol import wallet as W
-from cilantro.protocol.pow import SHA3POW
+from cilantro_ee.protocol import wallet as W
+from cilantro_ee.protocol.pow import SHA3POW
 
 
 class TransactionBase(MessageBase):
@@ -108,5 +108,5 @@ def build_test_transaction() -> TransactionBase:
     unit/integration tests.
     :return: An instance of a subclass of TransactionBase
     """
-    from cilantro.messages.transaction.contract import ContractTransactionBuilder
+    from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
     return ContractTransactionBuilder.random_currency_tx()

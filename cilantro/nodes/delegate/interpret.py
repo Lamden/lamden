@@ -1,10 +1,10 @@
-# from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
-# from cilantro.storage.blocks import BlockStorageDriver
-# from cilantro.messages.transaction.ordering import OrderingContainer
-# from cilantro.constants.nodes import TRANSACTIONS_PER_SUB_BLOCK
-# from cilantro.protocol.states.decorators import input, enter_from_any, exit_to_any, exit_to, enter_from
-# from cilantro.utils.lprocess import LProcess
-# from cilantro.nodes.delegate.block_manager import BlockManager
+# from cilantro_ee.nodes.delegate.delegate import Delegate, DelegateBaseState
+# from cilantro_ee.storage.blocks import BlockStorageDriver
+# from cilantro_ee.messages.transaction.ordering import OrderingContainer
+# from cilantro_ee.constants.nodes import TRANSACTIONS_PER_SUB_BLOCK
+# from cilantro_ee.protocol.states.decorators import input, enter_from_any, exit_to_any, exit_to, enter_from
+# from cilantro_ee.utils.lprocess import LProcess
+# from cilantro_ee.nodes.delegate.block_manager import BlockManager
 #
 # DelegateBootState = "DelegateBootState"
 # DelegateInterpretState = "DelegateInterpretState"

@@ -1,16 +1,16 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
-from cilantro.constants.testnet import *
-from cilantro.constants.test_suites import CI_FACTOR
+from cilantro_ee.constants.testnet import *
+from cilantro_ee.constants.test_suites import CI_FACTOR
 
-from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
-from cilantro.utils.test.mp_testables import MPNodeBase
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
+from cilantro_ee.utils.test.mp_testables import MPNodeBase
+from cilantro_ee.storage.vkbook import VKBook
 import unittest, time
 
 
 class TestNodeBootStage(MPTestCase):
-    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-6.json'.format(CILANTRO_PATH)
+    config_file = '{}/cilantro_ee/vmnet_configs/cilantro_ee-nodes-6.json'.format(CILANTRO_PATH)
     # log_lvl = 19
 
     @vmnet_test
@@ -21,7 +21,7 @@ class TestNodeBootStage(MPTestCase):
         """
         def assert_boot(test_obj):
             pass
-            # from cilantro.storage.vkbook import VKBook
+            # from cilantro_ee.storage.vkbook import VKBook
             # mns, dels, wits, = set(VKBook.get_masternodes()), set(VKBook.get_delegates()), set(VKBook.get_witnesses())
             # assert test_obj.online_mns == mns, "Missing mns: {}".format(mns - test_obj.online_mns)
             # assert test_obj.online_wits == wits, "Missing wits: {}".format(wits - test_obj.online_wits)

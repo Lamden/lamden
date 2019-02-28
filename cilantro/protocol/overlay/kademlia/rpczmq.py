@@ -5,8 +5,8 @@ import os
 from base64 import b64encode
 from hashlib import sha1
 import umsgpack
-from cilantro.constants.ports import DHT_PORT
-from cilantro.logger.base import get_logger
+from cilantro_ee.constants.ports import DHT_PORT
+from cilantro_ee.logger.base import get_logger
 log = get_logger(__name__)
 
 class MalformedMessage(Exception):

@@ -2,18 +2,18 @@ import time
 import asyncio
 import math
 from collections import defaultdict
-from cilantro.logger import get_logger
-from cilantro.constants.zmq_filters import *
-from cilantro.protocol.comm.lsocket import LSocketBase
-from cilantro.storage.vkbook import VKBook
-from cilantro.storage.state import StateDriver
-from cilantro.storage.redis import SafeRedis
-from cilantro.storage.contracts import seed_contracts
-from cilantro.nodes.masternode.mn_api import StorageDriver
-from cilantro.nodes.masternode.master_store import MasterOps
-from cilantro.messages.block_data.block_data import BlockData
-from cilantro.messages.block_data.block_metadata import BlockMetaData
-from cilantro.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest, BlockDataReply
+from cilantro_ee.logger import get_logger
+from cilantro_ee.constants.zmq_filters import *
+from cilantro_ee.protocol.comm.lsocket import LSocketBase
+from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.state import StateDriver
+from cilantro_ee.storage.redis import SafeRedis
+from cilantro_ee.storage.contracts import seed_contracts
+from cilantro_ee.nodes.masternode.mn_api import StorageDriver
+from cilantro_ee.nodes.masternode.master_store import MasterOps
+from cilantro_ee.messages.block_data.block_data import BlockData
+from cilantro_ee.messages.block_data.block_metadata import BlockMetaData
+from cilantro_ee.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest, BlockDataReply
 
 
 IDX_REPLY_TIMEOUT = 20

@@ -1,7 +1,7 @@
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.protocol.executors.base import ExecutorBase
+from cilantro_ee.messages.envelope.envelope import Envelope
+from cilantro_ee.protocol.executors.base import ExecutorBase
 from collections import defaultdict
-from cilantro.protocol.states.state import StateInput
+from cilantro_ee.protocol.states.state import StateInput
 import zmq.asyncio
 import time
 

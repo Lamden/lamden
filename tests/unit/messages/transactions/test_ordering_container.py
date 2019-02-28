@@ -1,7 +1,7 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
-from cilantro.messages.transaction.ordering import *
-from cilantro.messages.transaction.contract import *
+from cilantro_ee.messages.transaction.ordering import *
+from cilantro_ee.messages.transaction.contract import *
 
 
 class TestOrderingContainer(TestCase):

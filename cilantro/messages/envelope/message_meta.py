@@ -1,5 +1,5 @@
-from cilantro.messages.base.base import MessageBase
-from cilantro.constants.protocol import MAX_UUID
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.constants.protocol import MAX_UUID
 import capnp
 
 import sys

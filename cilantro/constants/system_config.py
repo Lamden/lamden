@@ -1,5 +1,5 @@
-from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES, TESTNET_WITNESSES
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES, TESTNET_WITNESSES
+from cilantro_ee.storage.vkbook import VKBook
 import math
 
 

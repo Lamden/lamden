@@ -1,5 +1,5 @@
 module "masternode0" {
-  source = "./modules/cilantro_node"
+  source = "./modules/cilantro_ee_node"
   providers = {
     aws = "aws.us-west-1"
   }
@@ -15,7 +15,7 @@ output "masternode0-ssh" {
 }
 
 module "masternode1" {
-  source = "./modules/cilantro_node"
+  source = "./modules/cilantro_ee_node"
   providers = {
     aws = "aws.us-west-1"
   }
@@ -31,7 +31,7 @@ output "masternode1-ssh" {
 }
 
 module "witness0" {
-  source = "./modules/cilantro_node"
+  source = "./modules/cilantro_ee_node"
   providers = {
     aws = "aws.us-west-1"
   }
@@ -47,7 +47,7 @@ output "witness0-ssh" {
 }
 
 module "witness1" {
-  source = "./modules/cilantro_node"
+  source = "./modules/cilantro_ee_node"
   providers = {
     aws = "aws.us-west-1"
   }
@@ -63,7 +63,7 @@ output "witness1-ssh" {
 }
 
 module "delegate0" {
-  source = "./modules/cilantro_node"
+  source = "./modules/cilantro_ee_node"
   providers = {
     aws = "aws.us-west-1"
   }
@@ -79,7 +79,7 @@ output "delegate0-ssh" {
 }
 
 module "delegate1" {
-  source = "./modules/cilantro_node"
+  source = "./modules/cilantro_ee_node"
   providers = {
     aws = "aws.us-west-1"
   }

@@ -1,9 +1,9 @@
-import asyncio, time, cilantro, os, shutil, signal, sys
+import asyncio, time, cilantro_ee, os, shutil, signal, sys
 import zmq.asyncio
 from vmnet.launch import launch
 from vmnet.webserver import start_ui
 from vmnet.testcase import BaseNetworkTestCase
-from cilantro.logger.base import get_logger
+from cilantro_ee.logger.base import get_logger
 from .mp_test import SIG_ABORT, SIG_FAIL, SIG_RDY, SIG_SUCC, SIG_START
 from os.path import dirname, join
 from functools import wraps
@@ -14,7 +14,7 @@ URL = "tcp://127.0.0.1:5020"
 TEST_TIMEOUT = 5
 TESTER_POLL_FREQ = 0.1
 
-CILANTRO_PATH = dirname(dirname(cilantro.__path__[0]))
+CILANTRO_PATH = dirname(dirname(cilantro_ee.__path__[0]))
 
 log = get_logger("MPTestCase")  # TODO delete dat
 
@@ -77,7 +77,7 @@ def vmnet_test(*args, **kwargs):
 
 
 class MPTestCase(BaseNetworkTestCase):
-    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
+    config_file = '{}/cilantro_ee/vmnet_configs/cilantro_ee-nodes-4.json'.format(CILANTRO_PATH)
     testers = []
     _curr_tester_index = 1
     vmnet_test_active = False

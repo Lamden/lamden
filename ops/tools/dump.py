@@ -1,5 +1,5 @@
-from cilantro.utils.test.dumpatron import Dumpatron
-from cilantro.logger.base import overwrite_logger_level
+from cilantro_ee.utils.test.dumpatron import Dumpatron
+from cilantro_ee.logger.base import overwrite_logger_level
 import sys
 
 SSL_ENABLED = False  # TODO make this infered instead of a hard coded flag

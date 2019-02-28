@@ -1,11 +1,11 @@
-from cilantro.messages.base.base import MessageBase
-from cilantro.protocol.executors.manager import ExecutorManager
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.logger import get_logger
-from cilantro.protocol.structures.envelope_auth import EnvelopeAuth
-from cilantro.protocol import wallet
-from cilantro.constants.ports import DEFAULT_PUB_PORT, ROUTER_PORT, PAIR_PORT
-from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.protocol.executors.manager import ExecutorManager
+from cilantro_ee.messages.envelope.envelope import Envelope
+from cilantro_ee.logger import get_logger
+from cilantro_ee.protocol.structures.envelope_auth import EnvelopeAuth
+from cilantro_ee.protocol import wallet
+from cilantro_ee.constants.ports import DEFAULT_PUB_PORT, ROUTER_PORT, PAIR_PORT
+from cilantro_ee.protocol.overlay.daemon import OverlayServer, OverlayClient
 import asyncio
 from collections import deque
 from functools import wraps

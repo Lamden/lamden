@@ -1,12 +1,12 @@
 import os
-import cilantro
+import cilantro_ee
 from configparser import SafeConfigParser
-from cilantro.storage.vkbook import VKBook
-from cilantro.logger.base import get_logger
-from cilantro.storage.mongo import MDB
-from cilantro.messages.block_data.block_data import BlockData
-from cilantro.messages.block_data.sub_block import SubBlock
-from cilantro.storage.state import StateDriver
+from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.storage.mongo import MDB
+from cilantro_ee.messages.block_data.block_data import BlockData
+from cilantro_ee.messages.block_data.sub_block import SubBlock
+from cilantro_ee.storage.state import StateDriver
 
 
 class MasterOps:
@@ -17,7 +17,7 @@ class MasterOps:
         - get unique master id
     """
     log = get_logger('master_store')
-    path = os.path.dirname(cilantro.__path__[0])
+    path = os.path.dirname(cilantro_ee.__path__[0])
     cfg = SafeConfigParser()
     cfg.read('{}/mn_db_conf.ini'.format(path))
 

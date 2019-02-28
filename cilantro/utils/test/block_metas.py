@@ -1,8 +1,8 @@
-from cilantro.messages.consensus.block_contender import build_test_contender
-from cilantro.messages.transaction.base import build_test_transaction
-from cilantro.protocol import wallet
-from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro.constants.testnet import TESTNET_MASTERNODES
+from cilantro_ee.messages.consensus.block_contender import build_test_contender
+from cilantro_ee.messages.transaction.base import build_test_transaction
+from cilantro_ee.protocol import wallet
+from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 
 
 def build_valid_block_data(num_transactions=4) -> dict:

@@ -1,15 +1,15 @@
 # TODO this file could perhaps be named better
-from cilantro.messages.base.base import MessageBase
-from cilantro.constants.system_config import TRANSACTIONS_PER_SUB_BLOCK
-from cilantro.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
-from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
-from cilantro.constants.system_config import BATCH_SLEEP_INTERVAL, NO_ACTIVITY_SLEEP, NUM_BLOCKS
-from cilantro.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
-from cilantro.utils.utils import int_to_bytes, bytes_to_int
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.constants.system_config import TRANSACTIONS_PER_SUB_BLOCK
+from cilantro_ee.constants.zmq_filters import WITNESS_MASTERNODE_FILTER
+from cilantro_ee.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
+from cilantro_ee.constants.system_config import BATCH_SLEEP_INTERVAL, NO_ACTIVITY_SLEEP, NUM_BLOCKS
+from cilantro_ee.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
+from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
-from cilantro.protocol.multiprocessing.worker import Worker
-from cilantro.messages.transaction.ordering import OrderingContainer
-from cilantro.messages.transaction.batch import TransactionBatch
+from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.messages.transaction.ordering import OrderingContainer
+from cilantro_ee.messages.transaction.batch import TransactionBatch
 
 import zmq.asyncio
 import asyncio, time, os

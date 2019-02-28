@@ -1,5 +1,5 @@
-from cilantro.messages.transaction.contract import ContractTransaction
-import cilantro.protocol.wallet as wallet
+from cilantro_ee.messages.transaction.contract import ContractTransaction
+import cilantro_ee.protocol.wallet as wallet
 
 # Create a transaction
 sk, vk = wallet.new()

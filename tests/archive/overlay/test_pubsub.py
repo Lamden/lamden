@@ -1,28 +1,28 @@
 # from vmnet.testcase import BaseTestCase
-# from cilantro.protocol.overlay.kademlia.node import Node
+# from cilantro_ee.protocol.overlay.kademlia.node import Node
 # from vmnet.comm import file_listener
-# import unittest, time, random, vmnet, cilantro, asyncio, ujson as json, os
+# import unittest, time, random, vmnet, cilantro_ee, asyncio, ujson as json, os
 # from os.path import join, dirname
-# from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
-# from cilantro.protocol.overlay.kademlia.utils import digest
-# from cilantro.logger.base import get_logger
-# from cilantro.constants.test_suites import CI_FACTOR
-# from cilantro.constants.overlay_network import *
-# from cilantro.storage.vkbook import VKBook
-# from cilantro.constants.ports import DHT_PORT
+# from cilantro_ee.utils.test.mp_test_case import vmnet_test, wrap_func
+# from cilantro_ee.protocol.overlay.kademlia.utils import digest
+# from cilantro_ee.logger.base import get_logger
+# from cilantro_ee.constants.test_suites import CI_FACTOR
+# from cilantro_ee.constants.overlay_network import *
+# from cilantro_ee.storage.vkbook import VKBook
+# from cilantro_ee.constants.ports import DHT_PORT
 # import time
 #
 # def run_node(node_type, idx, all_ips=None):
 #     from unittest.mock import MagicMock
 #     from vmnet.comm import send_to_file
-#     from cilantro.utils.lprocess import LProcess
-#     from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
-#     from cilantro.protocol.overlay.handshake import Handshake
-#     from cilantro.protocol.executors.manager import ExecutorManager
-#     from cilantro.protocol.overlay.auth import Auth
+#     from cilantro_ee.utils.lprocess import LProcess
+#     from cilantro_ee.protocol.overlay.daemon import OverlayServer, OverlayClient
+#     from cilantro_ee.protocol.overlay.handshake import Handshake
+#     from cilantro_ee.protocol.executors.manager import ExecutorManager
+#     from cilantro_ee.protocol.overlay.auth import Auth
 #     import asyncio, os, ujson as json, zmq.asyncio, zmq, time
-#     from cilantro.storage.vkbook import VKBook
-#     from cilantro.protocol.comm.socket_manager import SocketManager
+#     from cilantro_ee.storage.vkbook import VKBook
+#     from cilantro_ee.protocol.comm.socket_manager import SocketManager
 #     VKBook.setup()
 #     PORT = 9432
 #     name = os.getenv('HOST_NAME')
@@ -53,7 +53,7 @@
 #         log.test('Sending msgs...'.format(msg))
 #         pub_sock.send_multipart(msg)
 #
-#     from cilantro.logger import get_logger
+#     from cilantro_ee.logger import get_logger
 #     log = get_logger('{}_{}'.format(node_type.upper(), idx))
 #     loop = asyncio.get_event_loop()
 #     creds = VKBook.constitution[node_type][idx]
@@ -102,7 +102,7 @@
 #
 # class TestPubSub(BaseTestCase):
 #     log = get_logger(__name__)
-#     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-6.json')
+#     config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-nodes-6.json')
 #     environment = {'CONSTITUTION_FILE': '2-2-2.json'}
 #     enable_ui = True
 #     timeout_delay = 120

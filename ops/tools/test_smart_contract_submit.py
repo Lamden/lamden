@@ -1,5 +1,5 @@
-from cilantro.utils.test.integration_utils.smart_contract_tester import SmartContractTester
-from cilantro.logger.base import overwrite_logger_level
+from cilantro_ee.utils.test.integration_utils.smart_contract_tester import SmartContractTester
+from cilantro_ee.logger.base import overwrite_logger_level
 import sys
 
 

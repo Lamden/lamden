@@ -4,13 +4,13 @@ variable "keyname" {
 }
 
 locals {
-  name = "${var.keyname}-cilantro-firewall"
+  name = "${var.keyname}-cilantro_ee-firewall"
 }
 
 # Define the security group
-resource "aws_security_group" "cilantro_firewall" {
+resource "aws_security_group" "cilantro_ee_firewall" {
   name        = "${local.name}"
-  description = "Allow specific ports necessary for cilantro to work"
+  description = "Allow specific ports necessary for cilantro_ee to work"
 
   ingress {
     from_port   = 443

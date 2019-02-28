@@ -1,18 +1,18 @@
-import cilantro
+import cilantro_ee
 import os, time
 import capnp
 from configparser import SafeConfigParser
 from pymongo import MongoClient, DESCENDING
-from cilantro.utils.utils import MongoTools
-from cilantro.logger.base import get_logger
-from cilantro.messages.block_data.block_data import GenesisBlockData, BlockData, MessageBase
-from cilantro.protocol import wallet
+from cilantro_ee.utils.utils import MongoTools
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.messages.block_data.block_data import GenesisBlockData, BlockData, MessageBase
+from cilantro_ee.protocol import wallet
 
 
 class MDB:
     # Config
     log = get_logger("mdb_log")
-    path = os.path.dirname(cilantro.__path__[0])
+    path = os.path.dirname(cilantro_ee.__path__[0])
     cfg = SafeConfigParser()
     cfg.read('{}/mn_db_conf.ini'.format(path))
 

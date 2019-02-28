@@ -1,15 +1,15 @@
-from cilantro.messages.base.base import MessageBase
-from cilantro.messages.transaction.base import TransactionBase
-from cilantro.messages.transaction.contract import TransactionBase
-from cilantro.messages.transaction.contract import ContractTransaction
-from cilantro.messages.transaction.publish import PublishTransaction
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.messages.transaction.base import TransactionBase
+from cilantro_ee.messages.transaction.contract import TransactionBase
+from cilantro_ee.messages.transaction.contract import ContractTransaction
+from cilantro_ee.messages.transaction.publish import PublishTransaction
+from cilantro_ee.storage.vkbook import VKBook
 
 import capnp
 import transaction_capnp
 import time
 
-from cilantro.logger import get_logger
+from cilantro_ee.logger import get_logger
 log = get_logger(__name__)
 
 
@@ -56,7 +56,7 @@ class OrderingContainer(MessageBase):
 
 
 def build_test_container():
-    from cilantro.storage.vkbook import VKBook
-    from cilantro.messages.transaction.base import build_test_transaction
+    from cilantro_ee.storage.vkbook import VKBook
+    from cilantro_ee.messages.transaction.base import build_test_transaction
 
     return OrderingContainer.create(tx=build_test_transaction())

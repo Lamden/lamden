@@ -1,5 +1,5 @@
-from cilantro.storage.redis import SafeRedis
-from cilantro.constants.masternode import NONCE_EXPIR
+from cilantro_ee.storage.redis import SafeRedis
+from cilantro_ee.constants.masternode import NONCE_EXPIR
 import secrets
 
 

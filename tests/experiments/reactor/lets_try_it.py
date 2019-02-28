@@ -1,26 +1,26 @@
-from cilantro.logger.base import get_logger
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.base.base import MessageBase
-from cilantro.protocol import wallet
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.messages.envelope.envelope import Envelope
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.protocol import wallet
 
-from cilantro.protocol.comm.socket_manager import SocketManager
-from cilantro.protocol.comm.lsocket import LSocket
+from cilantro_ee.protocol.comm.socket_manager import SocketManager
+from cilantro_ee.protocol.comm.lsocket import LSocket
 
 import asyncio
 import zmq.asyncio
 import time
 
 from vmnet.testcase import BaseNetworkTestCase
-import unittest, time, random, vmnet, cilantro
-from cilantro.utils.test.mp_test_case import vmnet_test
+import unittest, time, random, vmnet, cilantro_ee
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
 from os.path import join, dirname
 
 
 def run_pub():
-    from cilantro.utils.test.pubsub_auth import PubSubAuthTester
-    from cilantro.protocol.overlay.daemon import OverlayServer
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
-    from cilantro.utils.lprocess import LProcess
+    from cilantro_ee.utils.test.pubsub_auth import PubSubAuthTester
+    from cilantro_ee.protocol.overlay.daemon import OverlayServer
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
+    from cilantro_ee.utils.lprocess import LProcess
     import os
 
     sk = TESTNET_MASTERNODES[0]['sk']
@@ -37,11 +37,11 @@ def run_pub():
     t.start()
 
 def run_sub():
-    from cilantro.utils.test.pubsub_auth import PubSubAuthTester
-    from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
-    from cilantro.utils.lprocess import LProcess
-    from cilantro.constants.testnet import TESTNET_DELEGATES
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
+    from cilantro_ee.utils.test.pubsub_auth import PubSubAuthTester
+    from cilantro_ee.protocol.overlay.daemon import OverlayServer, OverlayClient
+    from cilantro_ee.utils.lprocess import LProcess
+    from cilantro_ee.constants.testnet import TESTNET_DELEGATES
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
     import os
 
     sk = TESTNET_DELEGATES[0]['sk']
@@ -61,7 +61,7 @@ def run_sub():
 
 class TestDump(BaseNetworkTestCase):
 
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes.json')
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-nodes.json')
 
     @vmnet_test(run_webui=True)
     def test_dump(self):

@@ -1,10 +1,10 @@
-from cilantro.messages.base.base_json import MessageBaseJson
-from cilantro.messages.base.base import MessageBase
-from cilantro.messages.block_data.block_data import BlockData
-from cilantro.utils import lazy_property
+from cilantro_ee.messages.base.base_json import MessageBaseJson
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.messages.block_data.block_data import BlockData
+from cilantro_ee.utils import lazy_property
 from typing import List
-from cilantro.utils import is_valid_hex
-from cilantro.constants.system_config import NUM_SUB_BLOCKS
+from cilantro_ee.utils import is_valid_hex
+from cilantro_ee.constants.system_config import NUM_SUB_BLOCKS
 
 import capnp
 import blockdata_capnp

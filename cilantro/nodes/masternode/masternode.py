@@ -1,11 +1,11 @@
 from multiprocessing import Queue
-from cilantro.utils.lprocess import LProcess
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.utils.lprocess import LProcess
+from cilantro_ee.storage.vkbook import VKBook
 
-from cilantro.nodes.base import NodeBase
-from cilantro.nodes.masternode.transaction_batcher import TransactionBatcher
-from cilantro.nodes.masternode.block_aggregator import BlockAggregator
-from cilantro.nodes.masternode.webserver import start_webserver
+from cilantro_ee.nodes.base import NodeBase
+from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
+from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator
+from cilantro_ee.nodes.masternode.webserver import start_webserver
 
 import os, random
 

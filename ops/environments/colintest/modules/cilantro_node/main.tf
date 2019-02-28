@@ -109,8 +109,8 @@ locals {
   prefix = "${var.keyname}-"
 
   images = {
-    full  = "lamden/cilantro_full"
-    light = "lamden/cilantro_light"
+    full  = "lamden/cilantro_ee_full"
+    light = "lamden/cilantro_ee_light"
   }
 }
 
@@ -120,8 +120,8 @@ data "aws_caller_identity" "current" {}
 ## Provisioning ##
 ##################
 
-# Configure a cilantro node
-resource "aws_instance" "cilantro_node" {
+# Configure a cilantro_ee node
+resource "aws_instance" "cilantro_ee_node" {
   key_name        = "${var.keyname}"
   ami             = "${local.amis["${var.region}"]}"
   instance_type   = "${var.size}"
@@ -140,7 +140,7 @@ resource "aws_instance" "cilantro_node" {
       "sudo apt-get install docker.io", # Install docker
       "sudo apt-get install socat",     # Instal socat (for issuing SSL certificates
       "sudo usermod -aG docker ubuntu", # Add the ubuntu user to the docker group so docker can be non-sudo
-      "sudo mkdir -p /var/db/cilantro", # Create the db directory on the host machine to mount into the container
+      "sudo mkdir -p /var/db/cilantro_ee", # Create the db directory on the host machine to mount into the container
     ]
   }
 
@@ -151,9 +151,9 @@ resource "aws_instance" "cilantro_node" {
 }
 
 # Define the security group
-resource "aws_security_group" "cilantro_firewall" {
+resource "aws_security_group" "cilantro_ee_firewall" {
   name        = "firewall-${prefix}${nodename}"
-  description = "Allow specific ports necessary for cilantro to work"
+  description = "Allow specific ports necessary for cilantro_ee to work"
 
   ingress {
     from_port   = 443
@@ -212,25 +212,25 @@ resource "aws_route53_record" "fqdn" {
   name    = "${var.subdomain_prefix == true ? "${local.prefix}" : ""}${local.nodename}"
   type    = "A"
   ttl     = "60"
-  records = ["${aws_instance.cilantro_node.public_ip}"]
+  records = ["${aws_instance.cilantro_ee_node.public_ip}"]
 }
 
-# Copy over cilantro config only if it has changed locally
-resource "null_resource" "cilantro-conf" {
+# Copy over cilantro_ee config only if it has changed locally
+resource "null_resource" "cilantro_ee-conf" {
   triggers {
-    conf = "${file("./conf/${var.type}${var.index}/cilantro.conf")}"
+    conf = "${file("./conf/${var.type}${var.index}/cilantro_ee.conf")}"
   }
 
   connection {
     type        = "ssh"
     user        = "ubuntu"
     private_key = "${var.private_key}"
-    host        = "${aws_instance.cilantro_node.public_ip}"
+    host        = "${aws_instance.cilantro_ee_node.public_ip}"
   }
 
   provisioner "file" {
-    source      = "./conf/${var.type}${var.index}/cilantro.conf"
-    destination = "/etc/cilantro.conf"
+    source      = "./conf/${var.type}${var.index}/cilantro_ee.conf"
+    destination = "/etc/cilantro_ee.conf"
   }
 }
 
@@ -301,15 +301,15 @@ resource "null_resource" "docker" {
   provisioner "remote-exec" {
     inline = [
       "sudo docker rm -f cil",
-      "sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v /etc/cilantro.conf:/etc/cilantro.conf -v /etc/circus.conf:/etc/circus.conf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh -v /home/ubuntu/.sslconf:/root/.sslconf -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
+      "sudo docker run --name cil -dit -v /var/db/cilantro_ee/:/var/db/cilantro_ee -v /etc/cilantro_ee.conf:/etc/cilantro_ee.conf -v /etc/circus.conf:/etc/circus.conf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh -v /home/ubuntu/.sslconf:/root/.sslconf -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
     ]
   }
 }
 
 output "ssh" {
-  value = "ssh ubuntu@${aws_instance.cilantro_node.public_ip}"
+  value = "ssh ubuntu@${aws_instance.cilantro_ee_node.public_ip}"
 }
 
 output "public_ip" {
-  value = "${aws_instance.cilantro_node.public_ip}"
+  value = "${aws_instance.cilantro_ee_node.public_ip}"
 }

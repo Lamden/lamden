@@ -1,22 +1,22 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('4-4-4.json')
 
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from cilantro.nodes.catchup import CatchupManager
-from cilantro.storage.state import StateDriver
-from cilantro.storage.redis import SafeRedis
-from cilantro.nodes.masternode.mn_api import StorageDriver
-from cilantro.nodes.masternode.master_store import MasterOps
-from cilantro.storage.mongo import MDB
+from cilantro_ee.nodes.catchup import CatchupManager
+from cilantro_ee.storage.state import StateDriver
+from cilantro_ee.storage.redis import SafeRedis
+from cilantro_ee.nodes.masternode.mn_api import StorageDriver
+from cilantro_ee.nodes.masternode.master_store import MasterOps
+from cilantro_ee.storage.mongo import MDB
 
-from cilantro.messages.block_data.block_data import *
-from cilantro.messages.block_data.state_update import *
-from cilantro.messages.block_data.block_metadata import *
+from cilantro_ee.messages.block_data.block_data import *
+from cilantro_ee.messages.block_data.state_update import *
+from cilantro_ee.messages.block_data.block_metadata import *
 
 import asyncio, time
-from cilantro.protocol import wallet
+from cilantro_ee.protocol import wallet
 
 SK = 'A' * 64
 VK = wallet.get_vk(SK)

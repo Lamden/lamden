@@ -1,29 +1,29 @@
-from cilantro.logger.base import get_logger
+from cilantro_ee.logger.base import get_logger
 
 from sanic import Sanic
-from cilantro.protocol.webserver.sanic import SanicSingleton
+from cilantro_ee.protocol.webserver.sanic import SanicSingleton
 from sanic.response import json, text
 from sanic.exceptions import ServerError
 from sanic_limiter import Limiter, get_remote_address
 from sanic_cors import CORS, cross_origin
 
-from cilantro.messages.transaction.contract import ContractTransaction
-from cilantro.messages.transaction.publish import PublishTransaction
-from cilantro.messages.transaction.container import TransactionContainer
-from cilantro.messages.transaction.ordering import OrderingContainer
+from cilantro_ee.messages.transaction.contract import ContractTransaction
+from cilantro_ee.messages.transaction.publish import PublishTransaction
+from cilantro_ee.messages.transaction.container import TransactionContainer
+from cilantro_ee.messages.transaction.ordering import OrderingContainer
 from multiprocessing import Queue
 
-from cilantro.nodes.masternode.nonce import NonceManager
-from cilantro.constants.ports import WEB_SERVER_PORT, SSL_WEB_SERVER_PORT
-from cilantro.constants.masternode import NUM_WORKERS
-from cilantro.utils.hasher import Hasher
+from cilantro_ee.nodes.masternode.nonce import NonceManager
+from cilantro_ee.constants.ports import WEB_SERVER_PORT, SSL_WEB_SERVER_PORT
+from cilantro_ee.constants.masternode import NUM_WORKERS
+from cilantro_ee.utils.hasher import Hasher
 
 from multiprocessing import Queue
 import os
 
-from cilantro.nodes.masternode.mn_api import StorageDriver
-from cilantro.protocol.webserver.validation import *
-from cilantro.tools import parse_code_str
+from cilantro_ee.nodes.masternode.mn_api import StorageDriver
+from cilantro_ee.protocol.webserver.validation import *
+from cilantro_ee.tools import parse_code_str
 
 import json as _json
 

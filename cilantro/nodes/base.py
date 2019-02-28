@@ -1,15 +1,15 @@
-from cilantro.logger import get_logger
-from cilantro.protocol.overlay.auth import Auth
-from cilantro.constants.system_config import MAX_BOOT_WAIT
-from cilantro.protocol.multiprocessing.worker import Worker
-from cilantro.protocol.overlay.daemon import OverlayServer
-from cilantro.utils.lprocess import LProcess
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.logger import get_logger
+from cilantro_ee.protocol.overlay.auth import Auth
+from cilantro_ee.constants.system_config import MAX_BOOT_WAIT
+from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.protocol.overlay.daemon import OverlayServer
+from cilantro_ee.utils.lprocess import LProcess
+from cilantro_ee.storage.vkbook import VKBook
 
 import asyncio
 import os
 import time
-from cilantro.protocol import wallet
+from cilantro_ee.protocol import wallet
 
 
 class NodeTypes:

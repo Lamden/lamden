@@ -30,9 +30,9 @@ class Hasher:
         :raises: An assertion if data is a non-trivial type that could not be casted to bytes
         """
         # MessageBase imported here to fix cyclic imports...TODO -- fix dependencies
-        from cilantro.messages.base.base import MessageBase
-        from cilantro.messages.transaction.data import TransactionData
-        from cilantro.utils import int_to_bytes
+        from cilantro_ee.messages.base.base import MessageBase
+        from cilantro_ee.messages.transaction.data import TransactionData
+        from cilantro_ee.utils import int_to_bytes
 
         assert data is not None, "Cannot hash a None type!"
 

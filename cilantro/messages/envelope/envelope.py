@@ -1,16 +1,16 @@
-from cilantro.utils import lazy_property, set_lazy_property
-from cilantro.messages.base.base import MessageBase
-from cilantro.messages.envelope.message_meta import MessageMeta
-from cilantro.messages.envelope.seal import Seal
-from cilantro.protocol.structures.envelope_auth import EnvelopeAuth
+from cilantro_ee.utils import lazy_property, set_lazy_property
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.messages.envelope.message_meta import MessageMeta
+from cilantro_ee.messages.envelope.seal import Seal
+from cilantro_ee.protocol.structures.envelope_auth import EnvelopeAuth
 
 import time
 from typing import Union
 
 import envelope_capnp
 
-from cilantro.protocol import wallet
-from cilantro.utils import Hasher  # Just for debugging (used in __repr__)
+from cilantro_ee.protocol import wallet
+from cilantro_ee.utils import Hasher  # Just for debugging (used in __repr__)
 
 
 
@@ -152,7 +152,7 @@ class Envelope(MessageBase):
         :param groups: A str, representing a type from enum NodeTypes, or a list of a said strings
         :return: True if this envelope is from a sender who belongs to the specified groups, False otherwise
         """
-        from cilantro.nodes.base import NodeTypes  # To avoid cyclic imports (i apologize for my sins --davis)
+        from cilantro_ee.nodes.base import NodeTypes  # To avoid cyclic imports (i apologize for my sins --davis)
 
         if type(groups) is str:
             groups = (groups,)

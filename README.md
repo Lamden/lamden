@@ -1,12 +1,12 @@
 # Cilantro
-[![Build Status](https://travis-ci.org/Lamden/cilantro.svg?branch=master)](https://travis-ci.org/Lamden/cilantro)
-[![Coverage Status](https://coveralls.io/repos/github/Lamden/cilantro/badge.svg?branch=master)](https://coveralls.io/github/Lamden/cilantro?branch=master)
-[![GitHub last commit](https://img.shields.io/github/last-commit/Lamden/cilantro.svg)](https://github.com/Lamden/cilantro/commits/master) 
-[![GitHub contributors](https://img.shields.io/github/contributors/Lamden/cilantro.svg)](https://github.com/Lamden/cilantro/graphs/contributors) 
+[![Build Status](https://travis-ci.org/Lamden/cilantro_ee.svg?branch=master)](https://travis-ci.org/Lamden/cilantro_ee)
+[![Coverage Status](https://coveralls.io/repos/github/Lamden/cilantro_ee/badge.svg?branch=master)](https://coveralls.io/github/Lamden/cilantro_ee?branch=master)
+[![GitHub last commit](https://img.shields.io/github/last-commit/Lamden/cilantro_ee.svg)](https://github.com/Lamden/cilantro_ee/commits/master) 
+[![GitHub contributors](https://img.shields.io/github/contributors/Lamden/cilantro_ee.svg)](https://github.com/Lamden/cilantro_ee/graphs/contributors) 
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 [![GitHub license](https://img.shields.io/badge/License-CC%20BY--NP%204.0-blue.svg)](http://creativecommons.org/licenses/by-nc/4.0/)
 
-<img src="https://github.com/Lamden/cilantro/raw/master/cilantro.jpeg" align="right"
+<img src="https://github.com/Lamden/cilantro_ee/raw/master/cilantro_ee.jpeg" align="right"
      title="Cilantro" width="300" height="450">
 
 Cilantro is a piece of software that allows the modular construction of blockchains. It is the piece of the puzzle that allows rapid development of decentralized systems while not restricting the possibilities of what said system can do. Lamden’s main deployment of Cilantro is for atomic swaps via the Clove protocol. This deployment is what holds the Lamden Tau coin and is what our first decentralized application will be for the public.
@@ -50,13 +50,13 @@ passed along in non-standard transactions and are critical to the Cilantro secur
 ## Installing
 Cilantro is in a very activate state of development so be sure to pull often ;)
 
-Highly recommended to be in an 3.6+ Python environment to ensure all dependencies play nice.  Also be sure to run cilantro
+Highly recommended to be in an 3.6+ Python environment to ensure all dependencies play nice.  Also be sure to run cilantro_ee
 in a separate virtual environment to not affect other Python builds on your machine. 
 
 Currently supported on Linux and macOS. Some dependencies are not available on Windows but Windows support will come in the near future.
 
-    git clone https://github.com/Lamden/cilantro.git
-    cd/to/cilantro
+    git clone https://github.com/Lamden/cilantro_ee.git
+    cd/to/cilantro_ee
     pip3 install -r requirements.txt
     mkdir logs
 

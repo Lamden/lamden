@@ -1,6 +1,6 @@
-from cilantro.protocol.states.state import State, EmptyState
-from cilantro.protocol.states.decorators import StateTransition
-from cilantro.utils import lazy_property
+from cilantro_ee.protocol.states.state import State, EmptyState
+from cilantro_ee.protocol.states.decorators import StateTransition
+from cilantro_ee.utils import lazy_property
 import inspect
 import asyncio
 

@@ -1,11 +1,11 @@
-from cilantro.messages.base.base import MessageBase
-from cilantro.utils import lazy_property, set_lazy_property, is_valid_hex
-from cilantro.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
-from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro.protocol import wallet
-from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro.storage.vkbook import VKBook
-from cilantro.utils.hasher import Hasher
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.utils import lazy_property, set_lazy_property, is_valid_hex
+from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature, build_test_merkle_sig
+from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.protocol import wallet
+from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
+from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.utils.hasher import Hasher
 from typing import List
 
 import capnp
@@ -139,7 +139,7 @@ class SubBlockContender(MessageBase):
 
 class SubBlockContenderBuilder:
 
-    from cilantro.constants.testnet import TESTNET_DELEGATES
+    from cilantro_ee.constants.testnet import TESTNET_DELEGATES
     DEL_SK = TESTNET_DELEGATES[0]['sk'] if len(TESTNET_DELEGATES) > 0 else 'A' * 64
     DEL_VK = TESTNET_DELEGATES[0]['vk'] if len(TESTNET_DELEGATES) > 0 else wallet.get_vk('A' * 64)
 

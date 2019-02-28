@@ -1,18 +1,18 @@
 """
 Utilities to build sets of signing keys and verifying keys for TestNet
 """
-import cilantro
+import cilantro_ee
 import configparser
-from cilantro.protocol import wallet
-from cilantro.logger.base import get_logger
+from cilantro_ee.protocol import wallet
+from cilantro_ee.logger.base import get_logger
 import json, os
 from os.path import join
 
 log = get_logger("TestnetNodeBuilder")
 
 DEFAULT_TESTNET_FILE_NAME = '4-4-4.json'
-TESTNET_JSON_DIR = os.path.dirname(cilantro.__path__[-1]) + '/constitutions/test'
-PUBLIC_JSON_DIR = os.path.dirname(cilantro.__path__[-1]) + '/constitutions/public'
+TESTNET_JSON_DIR = os.path.dirname(cilantro_ee.__path__[-1]) + '/constitutions/test'
+PUBLIC_JSON_DIR = os.path.dirname(cilantro_ee.__path__[-1]) + '/constitutions/public'
 # print("TESTNET JSON DIR: {}".format(TESTNET_JSON_DIR))
 
 TESTNET_KEY = 'testnet'
@@ -28,7 +28,7 @@ def set_testnet_config(testnet_json_file='4-4-4.json'):
     with open(CONFIG_FILE_PATH, 'w+') as f:
         config.write(f)
 
-    from cilantro.constants.testnet import set_testnet_nodes
+    from cilantro_ee.constants.testnet import set_testnet_nodes
     set_testnet_nodes()
 
 

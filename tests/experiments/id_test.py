@@ -1,5 +1,5 @@
 from multiprocessing import Process
-from cilantro.logger import get_logger
+from cilantro_ee.logger import get_logger
 import time
 
 

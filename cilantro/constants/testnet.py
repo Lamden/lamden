@@ -1,6 +1,6 @@
-from cilantro.logger import get_logger
+from cilantro_ee.logger import get_logger
 import json, math, os
-from cilantro.utils.test.testnet_config import get_testnet_json_path
+from cilantro_ee.utils.test.testnet_config import get_testnet_json_path
 
 
 TESTNET_JSON_PATH = get_testnet_json_path()
@@ -63,7 +63,7 @@ if os.getenv('CONSTITUTION_FILE', None) is None:
 else:
     # UNHACK ALL THIS
     # global MN_WITNESS_MAP, WITNESS_MN_MAP
-    from cilantro.storage.vkbook import VKBook
+    from cilantro_ee.storage.vkbook import VKBook
     print("Building WITNESS_MN_MAP manually")
     r = 1
     # Build MN_WITNESS_MAP/WITNESS_MN_MAP

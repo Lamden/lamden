@@ -1,8 +1,8 @@
 from collections import Counter
 import logging
 
-from cilantro.protocol.overlay.kademlia.node import Node, NodeHeap
-from cilantro.protocol.overlay.kademlia.utils import gather_dict
+from cilantro_ee.protocol.overlay.kademlia.node import Node, NodeHeap
+from cilantro_ee.protocol.overlay.kademlia.utils import gather_dict
 
 log = logging.getLogger(__name__)
 

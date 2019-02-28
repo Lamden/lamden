@@ -1,20 +1,20 @@
-# from cilantro.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
-# from cilantro.constants.masternode import NEW_BLOCK_TIMEOUT, FETCH_BLOCK_TIMEOUT
-# from cilantro.constants.ports import MN_NEW_BLOCK_PUB_PORT
-# from cilantro.nodes.masternode import MNBaseState, Masternode
+# from cilantro_ee.constants.zmq_filters import MASTERNODE_DELEGATE_FILTER
+# from cilantro_ee.constants.masternode import NEW_BLOCK_TIMEOUT, FETCH_BLOCK_TIMEOUT
+# from cilantro_ee.constants.ports import MN_NEW_BLOCK_PUB_PORT
+# from cilantro_ee.nodes.masternode import MNBaseState, Masternode
 #
-# from cilantro.utils import Hasher
+# from cilantro_ee.utils import Hasher
 #
-# from cilantro.storage.blocks import List, BlockStorageDriver, BlockStorageException
+# from cilantro_ee.storage.blocks import List, BlockStorageDriver, BlockStorageException
 #
-# from cilantro.protocol.states.decorators import enter_from_any, enter_from, input_request, input_timeout, input, timeout_after
+# from cilantro_ee.protocol.states.decorators import enter_from_any, enter_from, input_request, input_timeout, input, timeout_after
 #
-# from cilantro.messages.consensus.block_contender import BlockBuilder
-# from cilantro.messages.block_data.block_metadata import NewBlockNotification
-# from cilantro.messages.block_data.transaction_data import TransactionRequest, TransactionReply
-# from cilantro.messages.envelope.envelope import Envelope
+# from cilantro_ee.messages.consensus.block_contender import BlockBuilder
+# from cilantro_ee.messages.block_data.block_metadata import NewBlockNotification
+# from cilantro_ee.messages.block_data.transaction_data import TransactionRequest, TransactionReply
+# from cilantro_ee.messages.envelope.envelope import Envelope
 #
-# from cilantro.protocol.structures.merkle_tree import MerkleTree
+# from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 # from collections import deque
 # import random
 #

@@ -8,9 +8,9 @@ import inspect
 import traceback
 import time
 import os
-from cilantro.utils.lprocess import LProcess
-from cilantro.protocol import wallet
-from cilantro.logger import get_logger, overwrite_logger_level
+from cilantro_ee.utils.lprocess import LProcess
+from cilantro_ee.protocol import wallet
+from cilantro_ee.logger import get_logger, overwrite_logger_level
 from vmnet.testcase import BaseNetworkTestCase
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())

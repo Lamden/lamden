@@ -1,16 +1,16 @@
 from vmnet.testcase import BaseTestCase
 from vmnet.comm import file_listener
-import unittest, time, random, vmnet, cilantro
+import unittest, time, random, vmnet, cilantro_ee
 from os.path import join, dirname
-from cilantro.utils.test.mp_test_case import wrap_func
-from cilantro.logger.base import get_logger
-from cilantro.constants.testnet import *
+from cilantro_ee.utils.test.mp_test_case import wrap_func
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.constants.testnet import *
 
 
 def nodefn(sk, ip_vk_dict, expected_ip, use_auth):
     from zmq.auth.asyncio import AsyncioAuthenticator
-    from cilantro.protocol.overlay.auth import Auth
-    from cilantro.logger.base import get_logger
+    from cilantro_ee.protocol.overlay.auth import Auth
+    from cilantro_ee.logger.base import get_logger
     from vmnet.comm import send_to_file
     import asyncio, json, os, zmq.asyncio, zmq, traceback, time
     assert os.getenv('HOST_IP') == expected_ip, "we fukt up"
@@ -141,7 +141,7 @@ def nodefn(sk, ip_vk_dict, expected_ip, use_auth):
 class TestAuthRouter(BaseTestCase):
 
     log = get_logger(__name__)
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-8.json')
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-nodes-8.json')
     enable_ui = True
     USE_AUTH = True
 

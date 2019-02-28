@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.utils import int_to_bytes, bytes_to_int
+from cilantro_ee.utils import int_to_bytes, bytes_to_int
 import secrets
 import random
 

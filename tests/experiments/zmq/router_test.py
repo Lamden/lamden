@@ -1,5 +1,5 @@
 import zmq, time
-from cilantro.logger.base import get_logger
+from cilantro_ee.logger.base import get_logger
 from multiprocessing import Process
 
 

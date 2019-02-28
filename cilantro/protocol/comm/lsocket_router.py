@@ -1,5 +1,5 @@
-from cilantro.protocol.comm.lsocket import LSocketBase
-from cilantro.messages.envelope.envelope import Envelope
+from cilantro_ee.protocol.comm.lsocket import LSocketBase
+from cilantro_ee.messages.envelope.envelope import Envelope
 import time, asyncio
 from collections import defaultdict, deque
 from typing import List

@@ -1,6 +1,6 @@
 import configparser, os
 
-CIL_CONF_PATH = '/etc/cilantro.conf'
+CIL_CONF_PATH = '/etc/cilantro_ee.conf'
 
 
 class ConfMeta(type):

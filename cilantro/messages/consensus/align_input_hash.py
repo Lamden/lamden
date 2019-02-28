@@ -1,5 +1,5 @@
-from cilantro.messages.base.base import MessageBase
-from cilantro.utils import lazy_property, set_lazy_property, is_valid_hex
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.utils import lazy_property, set_lazy_property, is_valid_hex
 
 from typing import List
 

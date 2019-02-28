@@ -1,6 +1,6 @@
 import zmq.asyncio
 import asyncio
-from cilantro.logger.base import get_logger
+from cilantro_ee.logger.base import get_logger
 from multiprocessing import Process
 import time
 

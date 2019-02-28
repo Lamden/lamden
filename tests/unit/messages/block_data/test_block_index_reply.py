@@ -1,4 +1,4 @@
-from cilantro.messages.block_data.state_update import BlockIndexReply
+from cilantro_ee.messages.block_data.state_update import BlockIndexReply
 from unittest import TestCase
 
 

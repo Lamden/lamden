@@ -7,20 +7,20 @@ SENECA_LOG_LVL = 11
 
 RESET_DB = False
 
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('{}.json'.format(NETWORK_SIZE))
 
-from cilantro.constants.vmnet import get_config_file
+from cilantro_ee.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
-import unittest, time, random, vmnet, cilantro, os
+import unittest, time, random, vmnet, cilantro_ee, os
 from os.path import join, dirname
-from cilantro.utils.test.mp_test_case import vmnet_test
-from cilantro.utils.test.god import God
-from cilantro.logger.base import get_logger
-from cilantro.utils.test.god import God
-from cilantro.logger import get_logger, overwrite_logger_level
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
+from cilantro_ee.utils.test.god import God
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.utils.test.god import God
+from cilantro_ee.logger import get_logger, overwrite_logger_level
 import logging, os, shutil, time
-from cilantro.constants.system_config import *
+from cilantro_ee.constants.system_config import *
 
 detached = True
 
@@ -29,7 +29,7 @@ class TestPump(AWSTestCase):
 
     NUM_BLOCKS = 2
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dum
-    config_file = get_config_file('cilantro-aws-{}.json'.format(NETWORK_SIZE))
+    config_file = get_config_file('cilantro_ee-aws-{}.json'.format(NETWORK_SIZE))
     keep_up = True
     logging = True
 

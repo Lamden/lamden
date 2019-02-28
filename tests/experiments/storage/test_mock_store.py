@@ -1,11 +1,11 @@
-import unittest, time, cilantro
+import unittest, time, cilantro_ee
 from vmnet.testcase import BaseNetworkTestCase
-from cilantro.utils.test.mp_test_case import vmnet_test
-from cilantro.constants.testnet import TESTNET_MASTERNODES
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 from os.path import dirname, join
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 
-cilantro_path = dirname(dirname(cilantro.__path__[0]))
+cilantro_ee_path = dirname(dirname(cilantro_ee.__path__[0]))
 
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
@@ -14,7 +14,7 @@ def wrap_func(fn, *args, **kwargs):
 
 def start_mn(verifing_key):
     import os, zmq, time, asyncio
-    from cilantro.logger.base import get_logger
+    from cilantro_ee.logger.base import get_logger
     from tests.experiments.storage.test_master_store import MasterOps
 
     log = get_logger(os.getenv('MN'))
@@ -77,7 +77,7 @@ def start_mn(verifing_key):
 
 def start_mgmt():
     import asyncio, zmq, zmq.asyncio, os, time
-    from cilantro.logger.base import get_logger
+    from cilantro_ee.logger.base import get_logger
 
     log = get_logger('mgmt')
 
@@ -112,7 +112,7 @@ def start_mgmt():
 
 class TestMockStore(BaseNetworkTestCase):
 
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-multi-master.json')
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-multi-master.json')
 
     @vmnet_test
     def test_store(self):

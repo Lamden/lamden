@@ -1,4 +1,4 @@
-from cilantro.messages.base.base import MessageBase
+from cilantro_ee.messages.base.base import MessageBase
 
 
 class KillSignal(MessageBase):

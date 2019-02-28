@@ -1,10 +1,10 @@
-from cilantro.messages.base.base import MessageBase
-from cilantro.messages.transaction.base import TransactionBase
-from cilantro.messages.transaction.contract import ContractTransaction
-from cilantro.messages.transaction.publish import PublishTransaction
-from cilantro.messages.transaction.ordering import OrderingContainer
-from cilantro.messages.transaction.ordering import build_test_container
-from cilantro.utils import lazy_property
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.messages.transaction.base import TransactionBase
+from cilantro_ee.messages.transaction.contract import ContractTransaction
+from cilantro_ee.messages.transaction.publish import PublishTransaction
+from cilantro_ee.messages.transaction.ordering import OrderingContainer
+from cilantro_ee.messages.transaction.ordering import build_test_container
+from cilantro_ee.utils import lazy_property
 
 from typing import List
 

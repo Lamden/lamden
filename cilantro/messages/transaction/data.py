@@ -1,7 +1,7 @@
-from cilantro.messages.base.base import MessageBase
-from cilantro.messages.transaction.contract import ContractTransaction, TransactionBase, ContractTransactionBuilder
-from cilantro.utils.lazy_property import lazy_property, set_lazy_property
-from cilantro.utils.hasher import Hasher
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.messages.transaction.contract import ContractTransaction, TransactionBase, ContractTransactionBuilder
+from cilantro_ee.utils.lazy_property import lazy_property, set_lazy_property
+from cilantro_ee.utils.hasher import Hasher
 import uuid, capnp, random
 from typing import List
 from enum import Enum, auto

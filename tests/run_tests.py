@@ -6,11 +6,11 @@ import sys
 import time
 import os
 import re
-from cilantro.logger import get_logger, overwrite_logger_level
+from cilantro_ee.logger import get_logger, overwrite_logger_level
 import logging
 import argparse
 import random
-from cilantro.nodes.factory import _wait_for_mongo, _wait_for_redis
+from cilantro_ee.nodes.factory import _wait_for_mongo, _wait_for_redis
 
 # Hack to import stuff from groups.py regardless of where this file is run
 try: from .groups import *

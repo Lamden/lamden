@@ -44,7 +44,7 @@ module "shared_resources" {
 }
 
 module "masternode0" {
-  source = "./modules/cilantro_node"
+  source = "./modules/cilantro_ee_node"
 
   providers = {
     aws = "aws.us-west-2"

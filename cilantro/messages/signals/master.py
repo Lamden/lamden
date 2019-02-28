@@ -1,4 +1,4 @@
-from cilantro.messages.base.base_signal import SignalBase
+from cilantro_ee.messages.base.base_signal import SignalBase
 
 
 """

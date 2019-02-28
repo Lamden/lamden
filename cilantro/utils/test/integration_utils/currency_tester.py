@@ -1,7 +1,7 @@
-from cilantro.logger.base import get_logger
-from cilantro.utils.test.dumpatron import Dumpatron
-from cilantro.utils.test.god import God
-from cilantro.utils.test.wallets import GENERAL_WALLETS
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.utils.test.dumpatron import Dumpatron
+from cilantro_ee.utils.test.god import God
+from cilantro_ee.utils.test.wallets import GENERAL_WALLETS
 import time, random, asyncio, aiohttp
 from collections import defaultdict
 

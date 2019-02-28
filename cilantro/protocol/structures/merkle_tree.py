@@ -1,8 +1,8 @@
-from cilantro.messages.base.base import MessageBase
-from cilantro.utils import is_valid_hex
-from cilantro.utils import Hasher, lazy_property
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.utils import is_valid_hex
+from cilantro_ee.utils import Hasher, lazy_property
 from typing import List
-from cilantro.logger import get_logger
+from cilantro_ee.logger import get_logger
 
 
 log = get_logger("MerkleTree")

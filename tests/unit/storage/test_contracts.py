@@ -1,9 +1,9 @@
 from unittest import TestCase
 import unittest
 from unittest import mock
-from cilantro.storage.contracts import *
+from cilantro_ee.storage.contracts import *
 from seneca.engine.interface import SenecaInterface
-from cilantro.protocol import wallet
+from cilantro_ee.protocol import wallet
 
 
 TEST_WALLET1 = wallet.new()
@@ -38,15 +38,15 @@ class TestContracts(TestCase):
         seed_contracts()
 
         # We should be able to import stuff normally now
-        import cilantro
+        import cilantro_ee
         from collections import OrderedDict
-        from cilantro.logger.base import get_logger
+        from cilantro_ee.logger.base import get_logger
         import capnp
         # import envelope_capnp
 
-    @mock.patch('cilantro.storage.contracts.SHOULD_MINT_WALLET', True)
-    @mock.patch('cilantro.storage.contracts.MINT_AMOUNT', 6967)
-    @mock.patch('cilantro.storage.contracts.ALL_WALLETS', [TEST_WALLET1, TEST_WALLET2])
+    @mock.patch('cilantro_ee.storage.contracts.SHOULD_MINT_WALLET', True)
+    @mock.patch('cilantro_ee.storage.contracts.MINT_AMOUNT', 6967)
+    @mock.patch('cilantro_ee.storage.contracts.ALL_WALLETS', [TEST_WALLET1, TEST_WALLET2])
     def test_seed_contracts_mints_wallets(self):
         seed_contracts()
 

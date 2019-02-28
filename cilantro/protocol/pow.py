@@ -1,4 +1,4 @@
-"""This is the basic SHA3 POW check implementation in cilantro. It acts as a check on incoming transactions to act as an
+"""This is the basic SHA3 POW check implementation in cilantro_ee. It acts as a check on incoming transactions to act as an
 anti-spam measure
 
 Available classes:
@@ -7,7 +7,7 @@ Available classes:
 
 import hashlib
 import secrets
-from cilantro.constants.system_config import POW_COMPLEXITY
+from cilantro_ee.constants.system_config import POW_COMPLEXITY
 
 
 class SHA3POW:

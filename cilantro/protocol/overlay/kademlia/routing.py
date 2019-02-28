@@ -5,7 +5,7 @@ import asyncio
 import logging
 
 from collections import OrderedDict
-from cilantro.protocol.overlay.kademlia.utils import OrderedSet, sharedPrefix, bytesToBitString
+from cilantro_ee.protocol.overlay.kademlia.utils import OrderedSet, sharedPrefix, bytesToBitString
 
 log = logging.getLogger(__name__)
 

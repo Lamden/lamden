@@ -6,7 +6,7 @@ import logging, coloredlogs
 import os, sys
 from os.path import dirname
 from logging.handlers import RotatingFileHandler
-import cilantro
+import cilantro_ee
 
 #from vmnet.cloud.aws import S3Handler
 from vmnet.cloud.aws import AWSCloudWatchHandler
@@ -31,10 +31,10 @@ req_log.propagate = True
 
 
 def get_main_log_path():
-    import cilantro
+    import cilantro_ee
 
-    root = cilantro.__file__  # resolves to '/Users/davishaba/Developer/cilantro/cilantro/__init__.py'
-    log_path = '/'.join(root.split('/')[:-2]) + '/logs/cilantro.log'
+    root = cilantro_ee.__file__  # resolves to '/Users/davishaba/Developer/cilantro_ee/cilantro_ee/__init__.py'
+    log_path = '/'.join(root.split('/')[:-2]) + '/logs/cilantro_ee.log'
 
     # Create log directory if it does not exist
     log_dir = os.path.dirname(log_path)
@@ -145,7 +145,7 @@ def get_logger(name=''):
     if _LOG_LVL == 0:
         return MockLogger()
 
-    filedir = "{}/logs/{}".format(dirname(cilantro.__path__[0]), os.getenv('TEST_NAME', 'test'))
+    filedir = "{}/logs/{}".format(dirname(cilantro_ee.__path__[0]), os.getenv('TEST_NAME', 'test'))
     filename = "{}/{}.log".format(filedir, os.getenv('HOST_NAME', name))
 
     if not os.path.exists(filedir):

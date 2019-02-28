@@ -1,6 +1,6 @@
 import asyncio
 import zmq.asyncio
-from cilantro.logger import get_logger
+from cilantro_ee.logger import get_logger
 
 
 async def do_something_that_ensures_a_sketcho():

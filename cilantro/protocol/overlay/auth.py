@@ -7,8 +7,8 @@ from nacl.public import PrivateKey, PublicKey
 from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519, crypto_sign_ed25519_pk_to_curve25519
 from nacl.encoding import HexEncoder
-from cilantro.logger import get_logger
-from cilantro.utils import lazy_property
+from cilantro_ee.logger import get_logger
+from cilantro_ee.utils import lazy_property
 
 class Auth:
     log = get_logger('Auth')

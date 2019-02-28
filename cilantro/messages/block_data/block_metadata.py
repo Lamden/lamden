@@ -1,11 +1,11 @@
-from cilantro.messages.base.base import MessageBase
-from cilantro.messages.consensus.merkle_signature import MerkleSignature
-from cilantro.messages.block_data.block_data import BlockData
-from cilantro.messages.utils import validate_hex
-from cilantro.messages.block_data.sub_block import SubBlock
-from cilantro.utils import lazy_property
-from cilantro.constants.system_config import NUM_SB_PER_BLOCK
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
+from cilantro_ee.messages.block_data.block_data import BlockData
+from cilantro_ee.messages.utils import validate_hex
+from cilantro_ee.messages.block_data.sub_block import SubBlock
+from cilantro_ee.utils import lazy_property
+from cilantro_ee.constants.system_config import NUM_SB_PER_BLOCK
+from cilantro_ee.storage.vkbook import VKBook
 import time
 from typing import List
 

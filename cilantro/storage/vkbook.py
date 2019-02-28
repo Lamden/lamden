@@ -1,6 +1,6 @@
 import os, math
-from cilantro.logger import get_logger
-from cilantro.utils.utils import is_valid_hex
+from cilantro_ee.logger import get_logger
+from cilantro_ee.utils.utils import is_valid_hex
 from collections import defaultdict
 
 log = get_logger("VKBook")
@@ -29,7 +29,7 @@ class VKBook(metaclass=VKBookMeta):
     @classmethod
     def setup(cls):
         # TODO untangle this mess --davis
-        from cilantro.utils.test.testnet_config import read_public_constitution
+        from cilantro_ee.utils.test.testnet_config import read_public_constitution
 
         const_file = os.getenv('CONSTITUTION_FILE', None)
         if const_file:
@@ -40,7 +40,7 @@ class VKBook(metaclass=VKBookMeta):
             wits = book['witnesses']
         else:
             log.info("No constitution file detected. Using TESTNET VKs")
-            from cilantro.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES, TESTNET_WITNESSES
+            from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES, TESTNET_WITNESSES
             mns = TESTNET_MASTERNODES
             dels = TESTNET_DELEGATES
             wits = TESTNET_WITNESSES

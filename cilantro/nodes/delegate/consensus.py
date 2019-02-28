@@ -1,20 +1,20 @@
-# from cilantro.protocol.structures.merkle_tree import MerkleTree
-# from cilantro.protocol import wallet
-# from cilantro.nodes.delegate.delegate import Delegate, DelegateBaseState
+# from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+# from cilantro_ee.protocol import wallet
+# from cilantro_ee.nodes.delegate.delegate import Delegate, DelegateBaseState
 #
-# from cilantro.protocol.states.decorators import input, enter_from_any, enter_from, exit_to_any, input_request, timeout_after
+# from cilantro_ee.protocol.states.decorators import input, enter_from_any, enter_from, exit_to_any, input_request, timeout_after
 #
-# from cilantro.messages.consensus.merkle_signature import MerkleSignature
-# from cilantro.messages.block_data.block_metadata import NewBlockNotification
-# from cilantro.messages.block_data.transaction_data import TransactionReply, TransactionRequest
+# from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
+# from cilantro_ee.messages.block_data.block_metadata import NewBlockNotification
+# from cilantro_ee.messages.block_data.transaction_data import TransactionReply, TransactionRequest
 #
-# from cilantro.constants.zmq_filters import DELEGATE_DELEGATE_FILTER
-# from cilantro.constants.testnet import MAJORITY, TESTNET_DELEGATES
-# from cilantro.constants.nodes import TRANSACTIONS_PER_SUB_BLOCK
-# from cilantro.constants.delegate import CONSENSUS_TIMEOUT
+# from cilantro_ee.constants.zmq_filters import DELEGATE_DELEGATE_FILTER
+# from cilantro_ee.constants.testnet import MAJORITY, TESTNET_DELEGATES
+# from cilantro_ee.constants.nodes import TRANSACTIONS_PER_SUB_BLOCK
+# from cilantro_ee.constants.delegate import CONSENSUS_TIMEOUT
 #
-# from cilantro.storage.vkbook import VKBook
-# from cilantro.storage.blocks import BlockStorageDriver
+# from cilantro_ee.storage.vkbook import VKBook
+# from cilantro_ee.storage.blocks import BlockStorageDriver
 #
 # DelegateBootState = "DelegateBootState"
 # DelegateInterpretState = "DelegateInterpretState"

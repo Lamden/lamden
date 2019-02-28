@@ -1,6 +1,6 @@
 from unittest import TestCase
-from cilantro.utils import Hasher
-from cilantro.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.utils import Hasher
+from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 import secrets
 
 

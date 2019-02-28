@@ -1,9 +1,9 @@
-from cilantro.utils.lazy_property import lazy_property
-from cilantro.messages.transaction.base import TransactionBase
-from cilantro.messages.utils import validate_hex
-from cilantro.protocol import wallet
-from cilantro.utils import is_valid_hex
-from cilantro.protocol.pow import SHA3POW
+from cilantro_ee.utils.lazy_property import lazy_property
+from cilantro_ee.messages.transaction.base import TransactionBase
+from cilantro_ee.messages.utils import validate_hex
+from cilantro_ee.protocol import wallet
+from cilantro_ee.utils import is_valid_hex
+from cilantro_ee.protocol.pow import SHA3POW
 from decimal import *
 import random
 from typing import Union
@@ -109,7 +109,7 @@ class ContractTransactionBuilder:
 
     @staticmethod
     def random_currency_tx():
-        from cilantro.utils.test.god import ALL_WALLETS
+        from cilantro_ee.utils.test.god import ALL_WALLETS
         import random
 
         sender, receiver = random.sample(ALL_WALLETS, 2)

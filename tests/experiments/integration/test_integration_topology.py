@@ -1,11 +1,11 @@
 # import unittest
-# from cilantro.utils.test import MPMasternode, MPTestCase, vmnet_test
-# from cilantro.constants.testnet import TESTNET_MASTERNODES
+# from cilantro_ee.utils.test import MPMasternode, MPTestCase, vmnet_test
+# from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 # from unittest.mock import call
-# from cilantro.utils.test.god import *
-# from cilantro.nodes.masternode.masternode import *
+# from cilantro_ee.utils.test.god import *
+# from cilantro_ee.nodes.masternode.masternode import *
 # import time
-# from cilantro.protocol.wallet import Wallet
+# from cilantro_ee.protocol.wallet import Wallet
 #
 # """
 # Here we do integration tests on our network topology. We spin up nodes on the VM, and ensure that they can talk
@@ -49,7 +49,7 @@
 #         tx2 = God.create_currency_tx(STU, FALCON, 150)
 #
 #         masternode = MPMasternode(name='Masternode', config_fn=config_mn, assert_fn=assert_mn, sk=mn_sk)
-#         from cilantro.utils.test import MPComposer
+#         from cilantro_ee.utils.test import MPComposer
 #         # comp = MPComposer(sk=mn_sk)
 #
 #         time.sleep(0.25)  # give masternode a quick sec to get his web server ready

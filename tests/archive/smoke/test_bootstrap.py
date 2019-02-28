@@ -1,11 +1,11 @@
 from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random
-import vmnet, cilantro
+import vmnet, cilantro_ee
 from os.path import dirname
-from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 
-cilantro_path = dirname(dirname(cilantro.__path__[0]))
-# cilantro_path = cilantro.__path__[0]
+cilantro_ee_path = dirname(dirname(cilantro_ee.__path__[0]))
+# cilantro_ee_path = cilantro_ee.__path__[0]
 
 
 def wrap_func(fn, *args, **kwargs):
@@ -14,8 +14,8 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def run_mn():
-    from cilantro.logger import get_logger
-    from cilantro.nodes import NodeFactory
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.nodes import NodeFactory
     import os
     log = get_logger("MASTERNODE FACTORY")
 
@@ -26,8 +26,8 @@ def run_mn():
 
 
 def run_witness(slot_num):
-    from cilantro.logger import get_logger
-    from cilantro.nodes import NodeFactory
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.nodes import NodeFactory
     import os
 
     log = get_logger("WITNESS FACTORY")
@@ -39,8 +39,8 @@ def run_witness(slot_num):
 
 
 def run_delegate(slot_num):
-    from cilantro.logger import get_logger
-    from cilantro.nodes import NodeFactory
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.nodes import NodeFactory
     import os
 
     log = get_logger("DELEGATE FACTORY")
@@ -56,10 +56,10 @@ def run_delegate(slot_num):
 class TestBootstrap(BaseNetworkTestCase):
     testname = 'bootstrap'
     setuptime = 10
-    compose_file = '{}/cilantro/tests/vmnet/compose_files/cilantro-bootstrap.yml'.format(cilantro_path)
-    local_path = cilantro_path
-    docker_dir = '{}/cilantro/tests/vmnet/docker_dir'.format(cilantro_path)
-    logdir = '{}/cilantro/logs'.format(cilantro_path)
+    compose_file = '{}/cilantro_ee/tests/vmnet/compose_files/cilantro_ee-bootstrap.yml'.format(cilantro_ee_path)
+    local_path = cilantro_ee_path
+    docker_dir = '{}/cilantro_ee/tests/vmnet/docker_dir'.format(cilantro_ee_path)
+    logdir = '{}/cilantro_ee/logs'.format(cilantro_ee_path)
 
     NUM_WITNESS = 2
     NUM_DELEGATES = 3

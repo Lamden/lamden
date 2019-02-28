@@ -1,7 +1,7 @@
 from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random
-from cilantro.protocol import wallet
-from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
+from cilantro_ee.protocol import wallet
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 
 import vmnet
 
@@ -11,8 +11,8 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def run_mn():
-    from cilantro.logger import get_logger
-    from cilantro.nodes import NodeFactory
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.nodes import NodeFactory
     import os, time
 
     log = get_logger(__name__)
@@ -23,8 +23,8 @@ def run_mn():
     mn = NodeFactory.run_masternode(ip=m_info['ip'], signing_key=m_info['sk'])
 
 def run_witness(slot_num):
-    from cilantro.logger import get_logger
-    from cilantro.nodes import NodeFactory
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.nodes import NodeFactory
     import os
 
     log = get_logger(__name__)
@@ -36,8 +36,8 @@ def run_witness(slot_num):
 
 
 def run_delegate(slot_num):
-    from cilantro.logger import get_logger
-    from cilantro.nodes import NodeFactory
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.nodes import NodeFactory
     import os
 
     log = get_logger("DELEGATE FACTORY")
@@ -48,8 +48,8 @@ def run_delegate(slot_num):
     NodeFactory.run_delegate(ip=d_info['ip'], signing_key=d_info['sk'])
 
 def run_mgmt():
-    from cilantro.logger import get_logger
-    from cilantro.utils.test import MPComposer
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.utils.test import MPComposer
 
     log = get_logger(__name__)
     sk = TESTNET_MASTERNODES[0]['sk']
@@ -61,7 +61,7 @@ def run_mgmt():
 class TestVKLookup(BaseNetworkTestCase):
     testname = 'vklookup'
     setuptime = 10
-    compose_file = 'cilantro-bootstrap.yml'
+    compose_file = 'cilantro_ee-bootstrap.yml'
 
     NUM_WITNESS = 2
     NUM_DELEGATES = 4

@@ -1,23 +1,23 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
 from vmnet.testcase import BaseTestCase
 from vmnet.comm import file_listener
-import unittest, time, random, vmnet, cilantro, asyncio, ujson as json
+import unittest, time, random, vmnet, cilantro_ee, asyncio, ujson as json
 from os.path import join, dirname
-from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
-from cilantro.logger.base import get_logger
+from cilantro_ee.utils.test.mp_test_case import vmnet_test, wrap_func
+from cilantro_ee.logger.base import get_logger
 
 def nodefn(idx):
 
     import os, asyncio
-    from cilantro.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
-    from cilantro.protocol.overlay.kademlia.network import Network
-    from cilantro.constants.ports import DHT_PORT
-    from cilantro.protocol.overlay.kademlia.node import Node
-    from cilantro.protocol.overlay.kademlia.utils import digest
-    from cilantro.protocol.overlay.auth import Auth
-    from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
-    from cilantro.logger.base import get_logger
+    from cilantro_ee.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
+    from cilantro_ee.protocol.overlay.kademlia.network import Network
+    from cilantro_ee.constants.ports import DHT_PORT
+    from cilantro_ee.protocol.overlay.kademlia.node import Node
+    from cilantro_ee.protocol.overlay.kademlia.utils import digest
+    from cilantro_ee.protocol.overlay.auth import Auth
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
+    from cilantro_ee.logger.base import get_logger
     from vmnet.comm import send_to_file
 
     log = get_logger('Node_{}'.format(idx+1))
@@ -73,7 +73,7 @@ def nodefn(idx):
 class TestProtocol(BaseTestCase):
 
     log = get_logger(__name__)
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-4.json')
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-nodes-4.json')
     enable_ui = True
 
     def callback(self, data):

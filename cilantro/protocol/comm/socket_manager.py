@@ -1,10 +1,10 @@
-from cilantro.logger import get_logger
-from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
-# from cilantro.protocol.comm.lsocket import LSocket
-from cilantro.protocol.comm.lsocket import LSocketBase
-from cilantro.protocol.comm.lsocket_router import LSocketRouter
-from cilantro.protocol.overlay.auth import Auth
-from cilantro.utils.utils import is_valid_hex
+from cilantro_ee.logger import get_logger
+from cilantro_ee.protocol.overlay.daemon import OverlayServer, OverlayClient
+# from cilantro_ee.protocol.comm.lsocket import LSocket
+from cilantro_ee.protocol.comm.lsocket import LSocketBase
+from cilantro_ee.protocol.comm.lsocket_router import LSocketRouter
+from cilantro_ee.protocol.overlay.auth import Auth
+from cilantro_ee.utils.utils import is_valid_hex
 
 from collections import defaultdict
 import asyncio, zmq.asyncio

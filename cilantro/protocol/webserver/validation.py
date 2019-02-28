@@ -1,4 +1,4 @@
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 from seneca.libs.datatypes import DATATYPES
 import re
 

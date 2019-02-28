@@ -1,7 +1,7 @@
 from vmnet.testcase import BaseNetworkTestCase
-import unittest, time, random, vmnet, cilantro
+import unittest, time, random, vmnet, cilantro_ee
 from os.path import join, dirname
-from cilantro.utils.test.mp_test_case import vmnet_test
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
 
 
 LOG_LEVEL = 0
@@ -12,9 +12,9 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def run_mn(slot_num):
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes import NodeFactory
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.nodes import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 
     import os
     import logging
@@ -29,8 +29,8 @@ def run_mn(slot_num):
 
 
 def trigger_mn_wr(blocks):
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.utils.test import God
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test import God
     overwrite_logger_level(15)
     God.dump_it(volume=volume, delay=delay)
 
@@ -38,7 +38,7 @@ def trigger_mn_wr(blocks):
 class MasterStore(BaseNetworkTestCase):
 
     BLOCKS = 1000
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-mn.json')
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-mn.json')
 
     @vmnet_test(run_webui=True)
     def mn_store(self):

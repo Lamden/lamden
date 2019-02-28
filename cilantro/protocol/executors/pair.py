@@ -1,7 +1,7 @@
-from cilantro.protocol.executors.base import ExecutorBase, _HANDLER, _SOCKET
+from cilantro_ee.protocol.executors.base import ExecutorBase, _HANDLER, _SOCKET
 from collections import defaultdict
-from cilantro.protocol.states.state import StateInput
-from cilantro.messages.envelope.envelope import Envelope
+from cilantro_ee.protocol.states.state import StateInput
+from cilantro_ee.messages.envelope.envelope import Envelope
 import zmq.asyncio
 
 

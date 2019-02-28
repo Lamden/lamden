@@ -1,31 +1,31 @@
-from cilantro.logger.base import get_logger
-from cilantro.protocol.multiprocessing.worker import Worker
-from cilantro.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 
-from cilantro.storage.state import StateDriver
-from cilantro.storage.vkbook import VKBook
-from cilantro.nodes.catchup import CatchupManager
-from cilantro.nodes.masternode.mn_api import StorageDriver
-from cilantro.nodes.masternode.block_contender import BlockContender
+from cilantro_ee.storage.state import StateDriver
+from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.nodes.catchup import CatchupManager
+from cilantro_ee.nodes.masternode.mn_api import StorageDriver
+from cilantro_ee.nodes.masternode.block_contender import BlockContender
 
-from cilantro.constants.zmq_filters import *
-from cilantro.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
-from cilantro.constants.system_config import *
-from cilantro.constants.masternode import *
+from cilantro_ee.constants.zmq_filters import *
+from cilantro_ee.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
+from cilantro_ee.constants.system_config import *
+from cilantro_ee.constants.masternode import *
 
-from cilantro.utils.utils import int_to_bytes, bytes_to_int
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro.messages.consensus.merkle_signature import MerkleSignature
-from cilantro.messages.block_data.block_data import BlockData
-from cilantro.messages.block_data.sub_block import SubBlock
-from cilantro.messages.block_data.state_update import *
-from cilantro.messages.block_data.block_metadata import NewBlockNotification, SkipBlockNotification
-from cilantro.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
-from cilantro.messages.transaction.data import TransactionData
+from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
+from cilantro_ee.messages.envelope.envelope import Envelope
+from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
+from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
+from cilantro_ee.messages.block_data.block_data import BlockData
+from cilantro_ee.messages.block_data.sub_block import SubBlock
+from cilantro_ee.messages.block_data.state_update import *
+from cilantro_ee.messages.block_data.block_metadata import NewBlockNotification, SkipBlockNotification
+from cilantro_ee.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
+from cilantro_ee.messages.transaction.data import TransactionData
 
-from cilantro.utils.hasher import Hasher
-from cilantro.protocol import wallet
+from cilantro_ee.utils.hasher import Hasher
+from cilantro_ee.protocol import wallet
 from typing import List
 
 import asyncio, zmq, os, time, itertools

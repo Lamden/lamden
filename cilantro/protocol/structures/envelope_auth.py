@@ -1,11 +1,11 @@
-from cilantro.utils import Hasher
+from cilantro_ee.utils import Hasher
 
-from cilantro.messages.envelope.seal import Seal
-from cilantro.messages.envelope.message_meta import MessageMeta
-from cilantro.messages.base.base import MessageBase
+from cilantro_ee.messages.envelope.seal import Seal
+from cilantro_ee.messages.envelope.message_meta import MessageMeta
+from cilantro_ee.messages.base.base import MessageBase
 
 import math
-from cilantro.constants.protocol import MAX_UUID
+from cilantro_ee.constants.protocol import MAX_UUID
 
 """
 TODO investigate why below is setting var 'W' to the string 'ED25519wallet' instead of the actual object (as of 5/21)
@@ -13,7 +13,7 @@ appears that this is the only place that happens. Must have something to do with
 not being 'built' properly by the time this is accessed
 """
 
-from cilantro.protocol import wallet
+from cilantro_ee.protocol import wallet
 W = wallet  # hack until we fix above
 
 UUID_SIZE = int(math.log2(MAX_UUID))  # size of UUID field on messagemeta struct as number of bits

@@ -1,4 +1,4 @@
-from cilantro.nodes.masternode.nonce import NonceManager
+from cilantro_ee.nodes.masternode.nonce import NonceManager
 from unittest import TestCase
 
 

@@ -1,9 +1,9 @@
-from cilantro.logger import get_logger
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.protocol.structures.capped_containers import CappedSet
+from cilantro_ee.logger import get_logger
+from cilantro_ee.messages.envelope.envelope import Envelope
+from cilantro_ee.protocol.structures.capped_containers import CappedSet
 import traceback
-from cilantro.protocol.states.state import StateInput
-from cilantro.constants.protocol import DUPE_TABLE_SIZE
+from cilantro_ee.protocol.states.state import StateInput
+from cilantro_ee.constants.protocol import DUPE_TABLE_SIZE
 import asyncio
 
 from typing import Union

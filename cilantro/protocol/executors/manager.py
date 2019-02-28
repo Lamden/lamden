@@ -1,9 +1,9 @@
-from cilantro.logger import get_logger
-from cilantro.protocol.executors.base import ExecutorBase
+from cilantro_ee.logger import get_logger
+from cilantro_ee.protocol.executors.base import ExecutorBase
 
 # These guys must be imported so the MetaClass is interpreted and they are loaded in ExecutorBase.registry
-from cilantro.protocol.executors.dealer_router import DealerRouterExecutor
-from cilantro.protocol.executors.sub_pub import SubPubExecutor
+from cilantro_ee.protocol.executors.dealer_router import DealerRouterExecutor
+from cilantro_ee.protocol.executors.sub_pub import SubPubExecutor
 
 
 class ExecutorManager:

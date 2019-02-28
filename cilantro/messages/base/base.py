@@ -1,4 +1,4 @@
-from cilantro.utils.lazy_property import lazy_func, set_lazy_property
+from cilantro_ee.utils.lazy_property import lazy_func, set_lazy_property
 import capnp
 import hashlib
 

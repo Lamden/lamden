@@ -1,11 +1,11 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
-from cilantro.constants.testnet import *
-from cilantro.constants.test_suites import CI_FACTOR
+from cilantro_ee.constants.testnet import *
+from cilantro_ee.constants.test_suites import CI_FACTOR
 
-from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
-from cilantro.utils.test.mp_testables import MPRouterAuth
-from cilantro.messages.signals.poke import Poke
+from cilantro_ee.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
+from cilantro_ee.utils.test.mp_testables import MPRouterAuth
+from cilantro_ee.messages.signals.poke import Poke
 import unittest, time
 
 
@@ -16,7 +16,7 @@ def config_node(test_obj):
 
 
 class TestRouterReconnect(MPTestCase):
-    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-6.json'.format(CILANTRO_PATH)
+    config_file = '{}/cilantro_ee/vmnet_configs/cilantro_ee-nodes-6.json'.format(CILANTRO_PATH)
     # log_lvl = 19
 
     def config_node(self, node: MPRouterAuth, vk_list: list):

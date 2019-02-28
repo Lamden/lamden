@@ -1,11 +1,11 @@
 import zmq, zmq.asyncio, asyncio, traceback
 from os import getenv as env
-from cilantro.constants.overlay_network import *
-from cilantro.constants.ports import DISCOVERY_PORT
-from cilantro.protocol.overlay.ip import *
-from cilantro.protocol.overlay.auth import Auth
-from cilantro.logger import get_logger
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.constants.overlay_network import *
+from cilantro_ee.constants.ports import DISCOVERY_PORT
+from cilantro_ee.protocol.overlay.ip import *
+from cilantro_ee.protocol.overlay.auth import Auth
+from cilantro_ee.logger import get_logger
+from cilantro_ee.storage.vkbook import VKBook
 
 
 class Discovery:

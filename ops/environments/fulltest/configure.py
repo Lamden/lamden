@@ -25,7 +25,7 @@ if __name__ == "__main__":
     _setup_argparse(p)
     args = p.parse_args()
 
-    config_path = 'conf/{}{}/cilantro.conf'.format(args.type, args.index)
+    config_path = 'conf/{}{}/cilantro_ee.conf'.format(args.type, args.index)
     configparser = configparser.ConfigParser()
     config = configparser.read(config_path)
 

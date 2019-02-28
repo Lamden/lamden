@@ -1,8 +1,8 @@
 from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random, os
-from cilantro.protocol import wallet
-from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
-from cilantro.utils.test.mp_test_case import vmnet_test
+from cilantro_ee.protocol import wallet
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
 
 import vmnet
 
@@ -12,8 +12,8 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def run_mn():
-    from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.protocol.overlay.daemon import OverlayServer, OverlayClient
     from multiprocessing import Process
     import os, time
 
@@ -33,8 +33,8 @@ def run_mn():
 
 
 def run_witness(slot_num):
-    from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.protocol.overlay.daemon import OverlayServer, OverlayClient
     from multiprocessing import Process
     import os
 
@@ -53,8 +53,8 @@ def run_witness(slot_num):
     client = OverlayClient(event_handler, block=True)
 
 def run_delegate(slot_num):
-    from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.protocol.overlay.daemon import OverlayServer, OverlayClient
     from multiprocessing import Process
     import os, asyncio
 
@@ -79,7 +79,7 @@ def run_delegate(slot_num):
     client.loop.run_forever()
 
 class TestOverlayInterface(BaseNetworkTestCase):
-    config_file = '../../vmnet_configs/cilantro-bootstrap.json'
+    config_file = '../../vmnet_configs/cilantro_ee-bootstrap.json'
 
     NUM_WITNESS = 2
     NUM_DELEGATES = 4

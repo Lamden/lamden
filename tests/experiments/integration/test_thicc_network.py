@@ -2,18 +2,18 @@
 # Mock out get_testnet_json_path to return the desired Testnet config json
 JSON_NAME = '4-4-8.json'
 
-import cilantro
+import cilantro_ee
 from unittest.mock import patch
-FAKE_JSON_DIR = cilantro.__path__[0] + '/../testnet_configs/' + JSON_NAME
-with patch('cilantro.utils.test.testnet_nodes.get_testnet_json_path') as mock_path:
+FAKE_JSON_DIR = cilantro_ee.__path__[0] + '/../testnet_configs/' + JSON_NAME
+with patch('cilantro_ee.utils.test.testnet_nodes.get_testnet_json_path') as mock_path:
     mock_path.return_value = FAKE_JSON_DIR
-    from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 # Done mocking
 # ------------------------------------------------------------------------
 
-from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
-from cilantro.utils.test.mp_testables import MPPubSubAuth
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
+from cilantro_ee.utils.test.mp_testables import MPPubSubAuth
+from cilantro_ee.storage.vkbook import VKBook
 import unittest, time
 
 
@@ -24,7 +24,7 @@ def config_sub(test_obj):
 
 
 class TestThiccNetwork(MPTestCase):
-    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-16.json'.format(CILANTRO_PATH)
+    config_file = '{}/cilantro_ee/vmnet_configs/cilantro_ee-nodes-16.json'.format(CILANTRO_PATH)
 
     @vmnet_test(run_webui=True)
     def test_4_4_8(self):

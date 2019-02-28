@@ -2,13 +2,13 @@ import random
 import asyncio
 import logging
 
-from cilantro.protocol.overlay.kademlia.rpczmq import RPCProtocol
+from cilantro_ee.protocol.overlay.kademlia.rpczmq import RPCProtocol
 
-from cilantro.protocol.overlay.kademlia.node import Node
-from cilantro.protocol.overlay.kademlia.routing import RoutingTable
-from cilantro.protocol.overlay.kademlia.utils import digest
-from cilantro.protocol.overlay.event import Event
-from cilantro.logger.base import get_logger
+from cilantro_ee.protocol.overlay.kademlia.node import Node
+from cilantro_ee.protocol.overlay.kademlia.routing import RoutingTable
+from cilantro_ee.protocol.overlay.kademlia.utils import digest
+from cilantro_ee.protocol.overlay.event import Event
+from cilantro_ee.logger.base import get_logger
 
 log = get_logger("KademliaProtocol")
 

@@ -1,4 +1,4 @@
-from cilantro.storage.contracts import run_contract, get_contract_exports
+from cilantro_ee.storage.contracts import run_contract, get_contract_exports
 
 
 """

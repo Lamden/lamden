@@ -6,7 +6,7 @@ object before they are pickled, and recreated when they are unloaded.
 Assumes the Logger object is an instance property called 'log'
 """
 
-from cilantro.logger import get_logger
+from cilantro_ee.logger import get_logger
 
 LOG_NAME = 'log'
 

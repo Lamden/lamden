@@ -1,12 +1,12 @@
-import cilantro
-from cilantro.protocol import wallet
+import cilantro_ee
+from cilantro_ee.protocol import wallet
 import json, os, configparser
 import shutil
 from copy import deepcopy
 import subprocess
 
-OPS_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/ops'
-CONST_DIR_PATH = os.path.dirname(cilantro.__path__[-1]) + '/constitutions/public'
+OPS_DIR_PATH = os.path.dirname(cilantro_ee.__path__[-1]) + '/ops'
+CONST_DIR_PATH = os.path.dirname(cilantro_ee.__path__[-1]) + '/constitutions/public'
 
 BASE_CONFIG_DIR_PATH = OPS_DIR_PATH + '/base'
 LIGHT_CONF_PATH = BASE_CONFIG_DIR_PATH + '/circus_light.conf'
@@ -138,7 +138,7 @@ def main():
             node_type = NAME_MAP[node_group]
 
             node_dir = config_dir_path + '/' + node_name
-            cilantro_conf_path = node_dir + '/' + 'cilantro.conf'
+            cilantro_ee_conf_path = node_dir + '/' + 'cilantro_ee.conf'
             circus_conf_path = node_dir + '/' + 'circus.conf'
             redis_conf_path = node_dir + '/' + 'redis.conf'
             os.mkdir(node_dir)
@@ -170,16 +170,16 @@ def main():
                 config_info['seneca_log_lvl'] = sen_log_lvl
                 shutil.copyfile(LIGHT_CONF_PATH, circus_conf_path)
 
-            # Write the cilantro config file
+            # Write the cilantro_ee config file
             config = configparser.ConfigParser()
             config['DEFAULT'] = config_info
-            with open(cilantro_conf_path, 'w') as f:
+            with open(cilantro_ee_conf_path, 'w') as f:
                 config.write(f)
 
             with open(nodes_file, "a") as nf:
                 node_definition = [
                     'module "{}" {{\n'.format(node_name),
-                    '  source = "./modules/cilantro_node"\n',
+                    '  source = "./modules/cilantro_ee_node"\n',
                     '  providers = {\n',
                     '    aws = "aws.{}"\n'.format(launch_region),
                     '  }\n',

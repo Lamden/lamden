@@ -1,11 +1,11 @@
-from cilantro.messages.transaction.container import TransactionContainer
-from cilantro.messages.transaction.publish import *
-from cilantro.messages.transaction.contract import *
-from cilantro.messages.signals.kill_signal import KillSignal
+from cilantro_ee.messages.transaction.container import TransactionContainer
+from cilantro_ee.messages.transaction.publish import *
+from cilantro_ee.messages.transaction.contract import *
+from cilantro_ee.messages.signals.kill_signal import KillSignal
 
-from cilantro.logger import get_logger
-from cilantro.utils.test.utils import *
-from cilantro.utils.test.wallets import ALL_WALLETS
+from cilantro_ee.logger import get_logger
+from cilantro_ee.utils.test.utils import *
+from cilantro_ee.utils.test.wallets import ALL_WALLETS
 import os, requests, time, random, asyncio, secrets, math, json
 from typing import List
 

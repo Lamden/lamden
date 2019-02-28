@@ -1,18 +1,18 @@
-from cilantro.nodes.base import NodeBase, NodeTypes
-from cilantro.constants.zmq_filters import *
-from cilantro.constants.ports import MN_TX_PUB_PORT, SBB_PORT_START
-from cilantro.constants.testnet import *
+from cilantro_ee.nodes.base import NodeBase, NodeTypes
+from cilantro_ee.constants.zmq_filters import *
+from cilantro_ee.constants.ports import MN_TX_PUB_PORT, SBB_PORT_START
+from cilantro_ee.constants.testnet import *
 
-from cilantro.protocol.comm.socket_manager import SocketManager
+from cilantro_ee.protocol.comm.socket_manager import SocketManager
 
-from cilantro.messages.transaction.base import TransactionBase
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.messages.transaction.ordering import OrderingContainer
-from cilantro.messages.transaction.batch import TransactionBatch
-from cilantro.messages.signals.kill_signal import KillSignal
+from cilantro_ee.messages.transaction.base import TransactionBase
+from cilantro_ee.messages.envelope.envelope import Envelope
+from cilantro_ee.messages.transaction.ordering import OrderingContainer
+from cilantro_ee.messages.transaction.batch import TransactionBatch
+from cilantro_ee.messages.signals.kill_signal import KillSignal
 
-from cilantro.storage.vkbook import VKBook
-from cilantro.utils.hasher import Hasher
+from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.utils.hasher import Hasher
 
 import zmq, asyncio, time
 

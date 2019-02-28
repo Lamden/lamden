@@ -1,7 +1,7 @@
 import inspect
-from cilantro.protocol.states.state import StateInput
-from cilantro.messages.base.base import MessageBase
-from cilantro.logger import get_logger
+from cilantro_ee.protocol.states.state import StateInput
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.logger import get_logger
 
 
 class Router:

@@ -1,7 +1,7 @@
 from vmnet.testcase import BaseNetworkTestCase
-import unittest, time, cilantro
+import unittest, time, cilantro_ee
 from os.path import join, dirname
-from cilantro.utils.test.mp_test_case import vmnet_test
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
 
 
 def wrap_func(fn, *args, **kwargs):
@@ -10,9 +10,9 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def run_mn():
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes import NodeFactory
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.nodes import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
     import os
     import logging
 
@@ -26,9 +26,9 @@ def run_mn():
 
 
 def run_witness(slot_num):
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes import NodeFactory
-    from cilantro.constants.testnet import TESTNET_WITNESSES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.nodes import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_WITNESSES
     import os
     import logging
 
@@ -42,9 +42,9 @@ def run_witness(slot_num):
 
 
 def run_delegate(slot_num):
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes import NodeFactory
-    from cilantro.constants.testnet import TESTNET_DELEGATES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.nodes import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_DELEGATES
     import os
     import logging
 
@@ -58,8 +58,8 @@ def run_delegate(slot_num):
 
 
 def pump_it(lamd, use_poisson):
-    from cilantro.utils.test import God
-    from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test import God
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
     import logging
 
     overwrite_logger_level(logging.WARNING)
@@ -75,7 +75,7 @@ class TestPump(BaseNetworkTestCase):
     TRANSACTION_RATE = 50  # Avg transaction/second. lambda parameter in Poission distribution
     MODEL_AS_POISSON = True
 
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-bootstrap.json')
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-bootstrap.json')
 
     @vmnet_test(run_webui=True)
     def test_bootstrap(self):

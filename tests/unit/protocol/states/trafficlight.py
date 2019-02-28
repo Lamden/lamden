@@ -1,5 +1,5 @@
-from cilantro.protocol.states.state import State
-from cilantro.protocol.states.decorators import exit_to, exit_to_any, enter_from_any, timeout_after, enter_from, \
+from cilantro_ee.protocol.states.state import State
+from cilantro_ee.protocol.states.decorators import exit_to, exit_to_any, enter_from_any, timeout_after, enter_from, \
     input_request, input, input_connection_dropped, input_socket_connected, input_lookup_failed
 
 YELLOW_TIMEOUT_DUR = 1.0
