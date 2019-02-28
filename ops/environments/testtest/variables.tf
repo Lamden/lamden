@@ -1,0 +1,1 @@
+../../base/environment/variables.tf

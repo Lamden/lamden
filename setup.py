@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-__version__ = '0.0.1dev'
+__version__ = '0.0.2dev'
 
 setup(
     name='cilantro_ee',
