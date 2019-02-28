@@ -1,6 +1,6 @@
 import unittest
 from unittest import TestCase
-from cilantro.protocol.structures.bidict import Bidict
+from cilantro_ee.protocol.structures.bidict import Bidict
 
 
 class TestBiDict(TestCase):

@@ -1,9 +1,9 @@
 from unittest import TestCase
 
-from cilantro.messages.transaction.base import MessageBase
-from cilantro.messages.transaction.base import TransactionBase
-from cilantro.messages.transaction.contract import ContractTransactionBuilder
-from cilantro.messages.transaction.container import TransactionContainer
+from cilantro_ee.messages.transaction.base import MessageBase
+from cilantro_ee.messages.transaction.base import TransactionBase
+from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
+from cilantro_ee.messages.transaction.container import TransactionContainer
 
 
 class TestTransactionContainer(TestCase):

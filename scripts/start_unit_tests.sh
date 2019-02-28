@@ -1,6 +1,6 @@
 #!/bin/bash
-#CIL_PATH='/Users/davishaba/Developer/cilantro'
-#docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v ~/cilantro/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_full:$(bash ~/cilantro/ops/tools/generate_tag.sh)
+#CIL_PATH='/Users/davishaba/Developer/cilantro_ee'
+#docker run --name cil -dit -v /var/db/cilantro_ee/:/var/db/cilantro_ee -v ~/cilantro_ee/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$(bash ~/cilantro_ee/ops/tools/generate_tag.sh)
 
 source /app/venv/bin/activate
 python3 /app/tests/run_tests.py --integration 0 --unit 1

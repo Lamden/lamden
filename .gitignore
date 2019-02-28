@@ -16,16 +16,16 @@ __pycache__/
 # C extensions
 *.so
 
-cilantro.egg-info/
+cilantro_ee.egg-info/
 
 # FOR DEMO
-cilantro/faucet.json
+cilantro_ee/faucet.json
 
 # LOGS
 **/logs
 
 # Data
-cilantro/protocol/networks/data
+cilantro_ee/protocol/networks/data
 certs
 .DS_Store
 state.tmp
@@ -42,8 +42,8 @@ vmnet_configs/constitutions/private
 
 # Config files
 db_conf.ini
-cilantro/testnet_configs/testnet.ini
-#cilantro/vmnet_configs/constitutions/test/testnet.ini
+cilantro_ee/testnet_configs/testnet.ini
+#cilantro_ee/vmnet_configs/constitutions/test/testnet.ini
 tests/cloud/Dockerfile
 
 # Docker

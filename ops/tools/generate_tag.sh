@@ -10,7 +10,7 @@ commitHash=${commitHash:0:8}
 
 if [ -z "$CIRCLECI" ]
 then
-    dirHash=$(python3  ${CILANTRO_BASE}/ops/tools/cilantrohasher.py)
+    dirHash=$(python3  ${CILANTRO_BASE}/ops/tools/cilantro_eehasher.py)
     dirHash=${dirHash:0:8}
     localTag="$branch-$commitHash-$dirHash"
     echo $localTag

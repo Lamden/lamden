@@ -1,10 +1,10 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('1-0-0.json')
 
-from cilantro.logger import get_logger, overwrite_logger_level
-from cilantro.nodes.factory import NodeFactory
-from cilantro.constants.testnet import TESTNET_MASTERNODES
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.logger import get_logger, overwrite_logger_level
+from cilantro_ee.nodes.factory import NodeFactory
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
+from cilantro_ee.storage.vkbook import VKBook
 import os
 import logging
 import time

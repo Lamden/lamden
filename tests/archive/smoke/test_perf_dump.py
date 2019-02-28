@@ -1,7 +1,7 @@
 from vmnet.testcase import BaseNetworkTestCase
-import unittest, time, random, vmnet, cilantro
+import unittest, time, random, vmnet, cilantro_ee
 from os.path import join, dirname
-from cilantro.utils.test.mp_test_case import vmnet_test
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
 
 
 def wrap_func(fn, *args, **kwargs):
@@ -12,10 +12,10 @@ def wrap_func(fn, *args, **kwargs):
 
 def run_mn():
     TEST_DUR = 170
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.utils.test.god import countdown
-    from cilantro.utils.test.mp_testables import MPMasternode
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test.god import countdown
+    from cilantro_ee.utils.test.mp_testables import MPMasternode
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
     import os, time
     import logging
 
@@ -40,10 +40,10 @@ def run_mn():
 
 def run_witness(slot_num):
     TEST_DUR = 170
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.utils.test.god import countdown
-    from cilantro.constants.testnet import TESTNET_WITNESSES
-    from cilantro.utils.test.mp_testables import MPWitness
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test.god import countdown
+    from cilantro_ee.constants.testnet import TESTNET_WITNESSES
+    from cilantro_ee.utils.test.mp_testables import MPWitness
     import os, time
     import logging
 
@@ -69,10 +69,10 @@ def run_witness(slot_num):
 
 def run_delegate(slot_num):
     TEST_DUR = 170
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.utils.test.god import countdown
-    from cilantro.constants.testnet import TESTNET_DELEGATES
-    from cilantro.utils.test.mp_testables import MPDelegate
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test.god import countdown
+    from cilantro_ee.constants.testnet import TESTNET_DELEGATES
+    from cilantro_ee.utils.test.mp_testables import MPDelegate
     import os, time
     import logging
 
@@ -97,8 +97,8 @@ def run_delegate(slot_num):
 
 
 def dump_it(volume, delay=20):
-    from cilantro.utils.test import God
-    from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test import God
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
     import logging
 
     overwrite_logger_level(logging.WARNING)
@@ -108,7 +108,7 @@ def dump_it(volume, delay=20):
 class TestPerformanceDump(BaseNetworkTestCase):
 
     VOLUME = 1000  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-bootstrap.json')
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-bootstrap.json')
     PROFILE_TYPE = 'c'
 
     @vmnet_test(run_webui=True)

@@ -1,6 +1,6 @@
 import zmq
 import time
-from cilantro.logger import get_logger
+from cilantro_ee.logger import get_logger
 
 
 URL = "ipc://localhost:9912"

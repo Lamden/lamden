@@ -7,8 +7,8 @@ Goals :
 '''
 
 from collections import defaultdict
-from cilantro.protocol import wallet
-from cilantro.constants.testnet import TESTNET_MASTERNODES
+from cilantro_ee.protocol import wallet
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 import json
 import sys
 import zmq

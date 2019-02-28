@@ -1,11 +1,11 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
-from cilantro.constants.testnet import *
-from cilantro.constants.test_suites import CI_FACTOR
+from cilantro_ee.constants.testnet import *
+from cilantro_ee.constants.test_suites import CI_FACTOR
 
-from cilantro.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
-from cilantro.utils.test.mp_testables import MPPubSubAuth
-from cilantro.storage.vkbook import VKBook
+from cilantro_ee.utils.test.mp_test_case import MPTestCase, vmnet_test, CILANTRO_PATH
+from cilantro_ee.utils.test.mp_testables import MPPubSubAuth
+from cilantro_ee.storage.vkbook import VKBook
 import unittest, time
 
 
@@ -22,7 +22,7 @@ def config_sub(test_obj):
 
 
 class TestPubSubSecure(MPTestCase):
-    config_file = '{}/cilantro/vmnet_configs/cilantro-nodes-4.json'.format(CILANTRO_PATH)
+    config_file = '{}/cilantro_ee/vmnet_configs/cilantro_ee-nodes-4.json'.format(CILANTRO_PATH)
 
     @vmnet_test
     def test_pubsub_1_pub_2_sub_unsecure(self):

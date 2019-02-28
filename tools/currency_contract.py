@@ -9,7 +9,7 @@ import os
 # Pip installed python imports
 
 # Lamden imports
-import cilantro.utils.test.god as god
+import cilantro_ee.utils.test.god as god
 
 def setup_argparse(parser):
     # Add positional arguments
@@ -24,7 +24,7 @@ def setup_argparse(parser):
     parser.add_argument('--retrycount', help='Set the number of transaction retries', type=int, default=10)
     parser.add_argument('--backoff', help='Set the backoff factor on retries', type=float, default=1.2)
     parser.add_argument('--baseretry', help='Set the base retry timeout in seconds', type=int, default=5)
-    parser.add_argument('-c', '--netconf', help='The vmnet file containing the network configuration', type=str, default='cilantro-aws-2-2-2.json')
+    parser.add_argument('-c', '--netconf', help='The vmnet file containing the network configuration', type=str, default='cilantro_ee-aws-2-2-2.json')
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()

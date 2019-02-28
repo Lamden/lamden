@@ -1,18 +1,18 @@
-import unittest, time, random, cilantro, asyncio, ujson as json, os, sys
-from cilantro.utils.test.mp_test_case import wrap_func
-from cilantro.constants.vmnet import get_config_file
+import unittest, time, random, cilantro_ee, asyncio, ujson as json, os, sys
+from cilantro_ee.utils.test.mp_test_case import wrap_func
+from cilantro_ee.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
 
 def masternode(idx):
 
-    from cilantro.logger import get_logger
+    from cilantro_ee.logger import get_logger
     from vmnet.cloud.comm import signal_success
     log = get_logger('MasterNode_{}'.format(idx))
 
-    from cilantro.protocol.overlay.discovery import Discovery
-    from cilantro.protocol.overlay.auth import Auth
+    from cilantro_ee.protocol.overlay.discovery import Discovery
+    from cilantro_ee.protocol.overlay.auth import Auth
     import asyncio, os, ujson as json, sys
-    from cilantro.storage.vkbook import VKBook
+    from cilantro_ee.storage.vkbook import VKBook
     VKBook.setup()
 
     async def check_nodes():
@@ -33,14 +33,14 @@ def masternode(idx):
 
 
 def delegates(idx):
-    from cilantro.logger import get_logger
+    from cilantro_ee.logger import get_logger
     log = get_logger('DelegateNode_{}'.format(idx))
     from vmnet.cloud.comm import signal_success
-    from cilantro.protocol.overlay.discovery import Discovery
-    from cilantro.protocol.overlay.auth import Auth
-    from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
+    from cilantro_ee.protocol.overlay.discovery import Discovery
+    from cilantro_ee.protocol.overlay.auth import Auth
+    from cilantro_ee.constants.overlay_network import MIN_BOOTSTRAP_NODES
     import asyncio, os, ujson as json, sys
-    from cilantro.storage.vkbook import VKBook
+    from cilantro_ee.storage.vkbook import VKBook
     VKBook.setup()
 
     async def check_nodes():
@@ -61,7 +61,7 @@ def delegates(idx):
 
 class TestCloud(AWSTestCase):
 
-    config_file = get_config_file('cilantro-aws-2-0-2.json')
+    config_file = get_config_file('cilantro_ee-aws-2-0-2.json')
     keep_up = True
     logging = True
     timeout = 120

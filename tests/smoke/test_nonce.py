@@ -1,14 +1,14 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('1-0-0.json')
 
 from vmnet.testcase import BaseNetworkTestCase
-import unittest, time, random, vmnet, cilantro
+import unittest, time, random, vmnet, cilantro_ee
 from os.path import join, dirname
-from cilantro.utils.test.mp_test_case import vmnet_test
-from cilantro.utils.test.god import God
-from cilantro.logger.base import get_logger
-from cilantro.utils.test.god import God
-from cilantro.logger import get_logger, overwrite_logger_level
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
+from cilantro_ee.utils.test.god import God
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.utils.test.god import God
+from cilantro_ee.logger import get_logger, overwrite_logger_level
 import logging
 
 LOG_LEVEL = 0
@@ -21,9 +21,9 @@ def wrap_func(fn, *args, **kwargs):
 
 
 def run_mn():
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes.factory import NodeFactory
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.nodes.factory import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
     import os
     import logging
     import time
@@ -41,9 +41,9 @@ def run_mn():
 
 
 def run_user():
-    from cilantro.utils.test.god import God
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.protocol import wallet
+    from cilantro_ee.utils.test.god import God
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.protocol import wallet
     import logging
 
     # Fix masternode URL on God
@@ -73,7 +73,7 @@ def run_user():
 
 class TestNonce(BaseNetworkTestCase):
 
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-mn.json')
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-mn.json')
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)

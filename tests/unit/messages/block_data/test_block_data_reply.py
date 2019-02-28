@@ -5,9 +5,9 @@ BlockMetaData is just a subclass of BlockData, with no additional fields, so tes
 """
 
 
-# from cilantro.messages.block_data.state_update import BlockDataReply
-# from cilantro.messages.block_data.block_data import BlockDataBuilder
-# from cilantro.constants.system_config import NUM_SUB_BLOCKS
+# from cilantro_ee.messages.block_data.state_update import BlockDataReply
+# from cilantro_ee.messages.block_data.block_data import BlockDataBuilder
+# from cilantro_ee.constants.system_config import NUM_SUB_BLOCKS
 # from unittest import TestCase
 # import secrets
 # from unittest import mock

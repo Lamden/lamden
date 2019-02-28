@@ -1,5 +1,5 @@
 module "masternode0" {
-  source = "./modules/cilantro_node"
+  source = "./modules/cilantro_ee_node"
 
   providers = {
     aws = "aws.us-west-2"
@@ -18,7 +18,7 @@ module "masternode0" {
 }
 
 module "masternode1" {
-  source = "./modules/cilantro_node"
+  source = "./modules/cilantro_ee_node"
 
   providers = {
     aws = "aws.us-west-1"

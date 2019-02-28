@@ -1,12 +1,12 @@
 from unittest import TestCase
 from unittest.mock import patch, MagicMock
 
-from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro.constants.system_config import *
-from cilantro.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro.messages.consensus.merkle_signature import MerkleSignature
-from cilantro.messages.block_data.sub_block import SubBlock
-from cilantro.nodes.masternode.block_contender import BlockContender
+from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.constants.system_config import *
+from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
+from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
+from cilantro_ee.messages.block_data.sub_block import SubBlock
+from cilantro_ee.nodes.masternode.block_contender import BlockContender
 
 
 # TODO write these

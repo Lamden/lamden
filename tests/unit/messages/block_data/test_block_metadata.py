@@ -7,19 +7,19 @@ BlockMetaData is just a subclass of BlockData, with no additional fields, so tes
 # from unittest import TestCase
 # from unittest import mock
 #
-# from cilantro.protocol import wallet
-# from cilantro.messages.block_data.block_data import BlockData
-# from cilantro.messages.consensus.merkle_signature import MerkleSignature
+# from cilantro_ee.protocol import wallet
+# from cilantro_ee.messages.block_data.block_data import BlockData
+# from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
 #
-# from cilantro.constants.testnet import TESTNET_MASTERNODES
+# from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 # TEST_SK, TEST_VK = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
 #
 #
 # class TestBlockMetaData(TestCase):
 #
-#     @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
+#     @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
 #     def test_create(self):
-#         from cilantro.messages.block_data.block_metadata import BlockMetaData  # avoid cyclic imports
+#         from cilantro_ee.messages.block_data.block_metadata import BlockMetaData  # avoid cyclic imports
 #
 #         prev_b_hash = 'A' * 64
 #         input_hashes = ['B' * 64, 'C' * 64]
@@ -42,9 +42,9 @@ BlockMetaData is just a subclass of BlockData, with no additional fields, so tes
 #         self.assertEqual(block_meta.block_num, block_num)
 #         self.assertEqual(block_meta.block_owners, block_owners)
 #
-#     @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
+#     @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
 #     def test_clone(self):
-#         from cilantro.messages.block_data.block_metadata import BlockMetaData  # avoid cyclic imports
+#         from cilantro_ee.messages.block_data.block_metadata import BlockMetaData  # avoid cyclic imports
 #
 #         prev_b_hash = 'A' * 64
 #         input_hashes = ['B' * 64, 'C' * 64]
@@ -62,7 +62,7 @@ BlockMetaData is just a subclass of BlockData, with no additional fields, so tes
 #
 #         self.assertEqual(block_meta, clone)
 #
-#     @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
+#     @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
 #     def test_from_block_data(self):
 #         # TODO implement
 #         pass

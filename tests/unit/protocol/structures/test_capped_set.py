@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.protocol.structures.capped_containers import CappedSet
+from cilantro_ee.protocol.structures.capped_containers import CappedSet
 
 
 class TestCappedSet(TestCase):

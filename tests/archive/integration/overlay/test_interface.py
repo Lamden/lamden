@@ -1,15 +1,15 @@
 from vmnet.comm import file_listener
 from vmnet.testcase import BaseTestCase
-import unittest, time, random, vmnet, cilantro, asyncio, ujson as json
+import unittest, time, random, vmnet, cilantro_ee, asyncio, ujson as json
 from os.path import join, dirname
-from cilantro.utils.test.mp_test_case import vmnet_test, wrap_func
-from cilantro.logger.base import get_logger
+from cilantro_ee.utils.test.mp_test_case import vmnet_test, wrap_func
+from cilantro_ee.logger.base import get_logger
 
 
 def masternode(idx):
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
-    from cilantro.protocol.overlay.interface import OverlayInterface
-    from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
+    from cilantro_ee.protocol.overlay.interface import OverlayInterface
+    from cilantro_ee.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from vmnet.comm import send_to_file
     import asyncio, json, os
 
@@ -25,9 +25,9 @@ def masternode(idx):
 
 
 def witness(idx):
-    from cilantro.constants.testnet import TESTNET_WITNESSES
-    from cilantro.protocol.overlay.interface import OverlayInterface
-    from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
+    from cilantro_ee.constants.testnet import TESTNET_WITNESSES
+    from cilantro_ee.protocol.overlay.interface import OverlayInterface
+    from cilantro_ee.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from vmnet.comm import send_to_file
     import asyncio, json, os
 
@@ -43,9 +43,9 @@ def witness(idx):
 
 
 def delegate(idx):
-    from cilantro.constants.testnet import TESTNET_DELEGATES
-    from cilantro.protocol.overlay.interface import OverlayInterface
-    from cilantro.constants.overlay_network import MIN_BOOTSTRAP_NODES
+    from cilantro_ee.constants.testnet import TESTNET_DELEGATES
+    from cilantro_ee.protocol.overlay.interface import OverlayInterface
+    from cilantro_ee.constants.overlay_network import MIN_BOOTSTRAP_NODES
     from vmnet.comm import send_to_file
     import asyncio, json, os
 
@@ -62,7 +62,7 @@ def delegate(idx):
 
 class TestInterface(BaseTestCase):
     log = get_logger(__name__)
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-2-2-4-bootstrap.json')
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-2-2-4-bootstrap.json')
     enable_ui = False
 
     def callback(self, data):

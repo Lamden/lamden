@@ -1,13 +1,13 @@
 from unittest import TestCase
 import unittest
 from seneca.engine.interface import SenecaInterface
-from cilantro.storage.state import StateDriver
-from cilantro.messages.transaction.data import TransactionDataBuilder, TransactionData
-from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
-from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
+from cilantro_ee.storage.state import StateDriver
+from cilantro_ee.messages.transaction.data import TransactionDataBuilder, TransactionData
+from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
+from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
 
 import redis
-from cilantro.constants.db_config import *
+from cilantro_ee.constants.db_config import *
 
 
 class TestStateDriver(TestCase):

@@ -1,5 +1,5 @@
-from cilantro.messages.transaction.batch import TransactionBatch, build_test_transaction_batch
-from cilantro.messages.transaction.ordering import build_test_container
+from cilantro_ee.messages.transaction.batch import TransactionBatch, build_test_transaction_batch
+from cilantro_ee.messages.transaction.ordering import build_test_container
 from unittest import TestCase
 
 

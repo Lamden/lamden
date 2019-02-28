@@ -11,12 +11,12 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def run_mn():
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.constants.testnet import masternodes
-    from cilantro.nodes import NodeFactory
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.constants.testnet import masternodes
+    from cilantro_ee.nodes import NodeFactory
     import os
     import logging
-    from cilantro.logger.base import get_logger
+    from cilantro_ee.logger.base import get_logger
     log = get_logger('M')
 
     # overwrite_logger_level(logging.WARNING)
@@ -28,12 +28,12 @@ def run_mn():
 
 
 def run_witness(slot_num):
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.constants.testnet import witnesses
-    from cilantro.nodes import NodeFactory
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.constants.testnet import witnesses
+    from cilantro_ee.nodes import NodeFactory
     import os
     import logging
-    from cilantro.logger.base import get_logger
+    from cilantro_ee.logger.base import get_logger
     log = get_logger('W')
 
     # overwrite_logger_level(logging.WARNING)
@@ -46,12 +46,12 @@ def run_witness(slot_num):
 
 
 def run_delegate(slot_num):
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.constants.testnet import delegates
-    from cilantro.nodes import NodeFactory
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.constants.testnet import delegates
+    from cilantro_ee.nodes import NodeFactory
     import os
     import logging
-    from cilantro.logger.base import get_logger
+    from cilantro_ee.logger.base import get_logger
     log = get_logger('D')
 
     # overwrite_logger_level(logging.WARNING)
@@ -64,8 +64,8 @@ def run_delegate(slot_num):
 
 
 def dump_it(volume):
-    from cilantro.utils.test import God
-    from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test import God
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
     import logging
 
     overwrite_logger_level(logging.WARNING)
@@ -78,7 +78,7 @@ class TestPump(BaseNetworkTestCase):
 
     testname = 'delegate_tps'
     setuptime = 5
-    compose_file = 'cilantro-delegate-flow.yml'
+    compose_file = 'cilantro_ee-delegate-flow.yml'
 
     @vmnet_test(run_webui=True)
     def test_bootstrap(self):

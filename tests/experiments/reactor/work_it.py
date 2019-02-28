@@ -1,10 +1,10 @@
-from cilantro.protocol.multiprocessing.worker import Worker
-from cilantro.messages.base.base_json import MessageBaseJson
-from cilantro.messages.envelope.envelope import Envelope
-from cilantro.protocol.states.decorators import *
+from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.messages.base.base_json import MessageBaseJson
+from cilantro_ee.messages.envelope.envelope import Envelope
+from cilantro_ee.protocol.states.decorators import *
 import time, random, asyncio
-from cilantro.utils.lprocess import LProcess
-from cilantro.protocol import wallet as W
+from cilantro_ee.utils.lprocess import LProcess
+from cilantro_ee.protocol import wallet as W
 
 
 PUBSUB_PORT = 1234

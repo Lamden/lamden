@@ -3,8 +3,8 @@ from unittest import TestCase
 from os import listdir, makedirs
 from os.path import exists, join
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
-from cilantro.protocol.overlay.auth import Auth
-from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
+from cilantro_ee.protocol.overlay.auth import Auth
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES, TESTNET_DELEGATES
 
 class TestAuth(TestCase):
     def test_setup(self):

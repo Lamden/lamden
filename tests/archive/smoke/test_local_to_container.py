@@ -1,8 +1,8 @@
 from vmnet.testcase import BaseNetworkTestCase
 import unittest, time, random, os, zmq
-from cilantro.utils.test.mp_test_case import vmnet_test
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
 import vmnet
-from cilantro.logger import get_logger
+from cilantro_ee.logger import get_logger
 log = get_logger(__name__)
 
 def wrap_func(fn, *args, **kwargs):
@@ -11,8 +11,8 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def run_container():
-    from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.daemon import OverlayServer, OverlayClient
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.protocol.overlay.daemon import OverlayServer, OverlayClient
     from multiprocessing import Process
     import os, time, zmq
 
@@ -30,7 +30,7 @@ def run_container():
         time.sleep(1)
 
 class TestOverlayInterface(BaseNetworkTestCase):
-    config_file = '../../vmnet_configs/cilantro-nodes.json'
+    config_file = '../../vmnet_configs/cilantro_ee-nodes.json'
 
     @vmnet_test(run_webui=True)
     def test_vklookup(self):

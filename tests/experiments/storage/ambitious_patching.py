@@ -5,8 +5,8 @@
 def patch_testnet_json_file(file_name):
     return """
 from unittest.mock import patch
-with patch('cilantro.utils.test.testnet_nodes.DEFAULT_TESTNET_FILE_NAME', '{file_name}'):
-    import cilantro.constants.testnet as testnet_constants
+with patch('cilantro_ee.utils.test.testnet_nodes.DEFAULT_TESTNET_FILE_NAME', '{file_name}'):
+    import cilantro_ee.constants.testnet as testnet_constants
     for obj_name in dir(testnet_constants):
         if obj_name[0] != '_' and obj_name.isupper():
             print("Injecting variable named " + obj_name)  # TODO remove

@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.messages.envelope.seal import Seal
+from cilantro_ee.messages.envelope.seal import Seal
 
 class TestSeal(TestCase):
 

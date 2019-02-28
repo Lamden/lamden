@@ -13,19 +13,19 @@ BAD_SB_SET = {1}  # The indices of the sub-blocks to send bad SubBlockContenders
 RESET_DB = False
 
 
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('{}.json'.format(NETWORK_SIZE))
 
 from vmnet.testcase import BaseNetworkTestCase
-import unittest, time, random, vmnet, cilantro, os
+import unittest, time, random, vmnet, cilantro_ee, os
 from os.path import join, dirname
-from cilantro.utils.test.mp_test_case import vmnet_test
-from cilantro.utils.test.god import God
-from cilantro.logger.base import get_logger
-from cilantro.utils.test.node_runner import *
-from cilantro.logger import get_logger, overwrite_logger_level
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
+from cilantro_ee.utils.test.god import God
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.utils.test.node_runner import *
+from cilantro_ee.logger import get_logger, overwrite_logger_level
 import logging, os, shutil, time
-from cilantro.constants.system_config import *
+from cilantro_ee.constants.system_config import *
 
 
 if os.getenv('USE_LOCAL_SENECA', '0') != '0':
@@ -33,8 +33,8 @@ if os.getenv('USE_LOCAL_SENECA', '0') != '0':
     user_sen_path = os.getenv('SENECA_PATH', None)
     assert user_sen_path, "If USE_LOCAL_SENECA env var is set, SENECA_PATH env var must also be set!"
 
-    import cilantro
-    venv_sen_path = cilantro.__path__[0] + '/../venv/lib/python3.6/site-packages/seneca'
+    import cilantro_ee
+    venv_sen_path = cilantro_ee.__path__[0] + '/../venv/lib/python3.6/site-packages/seneca'
 
     assert os.path.isdir(venv_sen_path), "Expect virtual env seneca at path {}".format(venv_sen_path)
     assert os.path.isdir(user_sen_path), "Expect user seneca at path {}".format(user_sen_path)
@@ -51,7 +51,7 @@ class TestManualDump(BaseNetworkTestCase):
 
     NUM_BLOCKS = 2
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dump
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-{}-bootstrap.json'.format(NETWORK_SIZE))
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-{}-bootstrap.json'.format(NETWORK_SIZE))
     PROFILE_TYPE = None
 
     @vmnet_test(run_webui=True)

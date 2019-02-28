@@ -1,14 +1,14 @@
 import unittest, sys, asyncio
 from unittest import TestCase
-from cilantro.nodes.masternode.webserver import start_webserver
-from cilantro.constants.testnet import TESTNET_MASTERNODES
-from cilantro.logger.base import get_logger
+from cilantro_ee.nodes.masternode.webserver import start_webserver
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
+from cilantro_ee.logger.base import get_logger
 from multiprocessing import Process
 from multiprocessing import Queue
 import requests
-from cilantro.protocol.webserver.sanic import SanicSingleton
-from cilantro import tools
-from cilantro.constants.masternode import WEB_SERVER_PORT
+from cilantro_ee.protocol.webserver.sanic import SanicSingleton
+from cilantro_ee import tools
+from cilantro_ee.constants.masternode import WEB_SERVER_PORT
 
 server_url = 'localhost:{}'.format(WEB_SERVER_PORT)
 log = get_logger(__name__)

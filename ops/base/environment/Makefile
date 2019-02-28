@@ -1,6 +1,6 @@
 .PHONY: run restart buildpush apply
 
-# Set the root of cilantro tobe immutable regardless of where the makefile is called from
+# Set the root of cilantro_ee tobe immutable regardless of where the makefile is called from
 MY_PATH ?= $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 CILANTRO_ROOT ?= $(join $(MY_PATH), ../../../)
 

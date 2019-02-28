@@ -1,16 +1,16 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
-from cilantro.constants.vmnet import get_config_file
+from cilantro_ee.constants.vmnet import get_config_file
 from vmnet.cloud.testcase import AWSTestCase
-import unittest, time, random, vmnet, cilantro, os
+import unittest, time, random, vmnet, cilantro_ee, os
 from os.path import join, dirname
-from cilantro.utils.test.mp_test_case import vmnet_test
-from cilantro.utils.test.god import God
-from cilantro.logger.base import get_logger
-from cilantro.utils.test.god import God
-from cilantro.logger import get_logger, overwrite_logger_level
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
+from cilantro_ee.utils.test.god import God
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.utils.test.god import God
+from cilantro_ee.logger import get_logger, overwrite_logger_level
 import logging, os, shutil, time
-from cilantro.constants.system_config import *
+from cilantro_ee.constants.system_config import *
 
 
 if os.getenv('USE_LOCAL_SENECA', '0') != '0':
@@ -18,8 +18,8 @@ if os.getenv('USE_LOCAL_SENECA', '0') != '0':
     user_sen_path = os.getenv('SENECA_PATH', None)
     assert user_sen_path, "If USE_LOCAL_SENECA env var is set, SENECA_PATH env var must also be set!"
 
-    import cilantro
-    venv_sen_path = cilantro.__path__[0] + '/../venv/lib/python3.6/site-packages/seneca'
+    import cilantro_ee
+    venv_sen_path = cilantro_ee.__path__[0] + '/../venv/lib/python3.6/site-packages/seneca'
 
     assert os.path.isdir(venv_sen_path), "Expect virtual env seneca at path {}".format(venv_sen_path)
     assert os.path.isdir(user_sen_path), "Expect user seneca at path {}".format(user_sen_path)
@@ -39,13 +39,13 @@ def wrap_func(fn, *args, **kwargs):
 
 
 def run_mn(slot_num):
-    # We must set this env var before we import anything from cilantro
+    # We must set this env var before we import anything from cilantro_ee
     import os
     os.environ["NONCE_DISABLED"] = "1"
 
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes.factory import NodeFactory
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.nodes.factory import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 
     # NOTE setting the log level below 11 does not work for some reason --davis
     # overwrite_logger_level(logging.WARNING)
@@ -58,9 +58,9 @@ def run_mn(slot_num):
 
 
 def run_witness(slot_num):
-    from cilantro.logger import get_logger, overwrite_logger_level
-    from cilantro.nodes.factory import NodeFactory
-    from cilantro.constants.testnet import TESTNET_WITNESSES
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.nodes.factory import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_WITNESSES
     import os
     import logging
 
@@ -75,10 +75,10 @@ def run_witness(slot_num):
 
 
 def run_delegate(slot_num):
-    from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
     from seneca.libs.logger import overwrite_logger_level as sen_overwrite_log
-    from cilantro.nodes.factory import NodeFactory
-    from cilantro.constants.testnet import TESTNET_DELEGATES
+    from cilantro_ee.nodes.factory import NodeFactory
+    from cilantro_ee.constants.testnet import TESTNET_DELEGATES
     import os
     import logging
 
@@ -94,8 +94,8 @@ def run_delegate(slot_num):
 
 
 def dump_it(volume, delay=0):
-    from cilantro.utils.test.god import God
-    from cilantro.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.utils.test.god import God
+    from cilantro_ee.logger import get_logger, overwrite_logger_level
     import logging
 
     overwrite_logger_level(logging.WARNING)
@@ -107,7 +107,7 @@ class TestManualDump(AWSTestCase):
 
     NUM_BLOCKS = 2
     VOLUME = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS  # Number of transactions to dum
-    config_file = get_config_file('cilantro-aws-2-2-2.json')
+    config_file = get_config_file('cilantro_ee-aws-2-2-2.json')
     keep_up = True
     timeout = 999999999999
     logging = True

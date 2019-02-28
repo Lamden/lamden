@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.protocol.structures.linked_hashtable import LinkedHashTable
+from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
 
 
 class TestLinkedHashTable(TestCase):

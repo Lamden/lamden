@@ -1,4 +1,4 @@
-from cilantro.messages.transaction.data import TransactionDataBuilder, TransactionData
+from cilantro_ee.messages.transaction.data import TransactionDataBuilder, TransactionData
 
 import capnp
 import transaction_capnp

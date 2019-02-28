@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     # Get and save relevant file paths for later reuse in the script
     ip_file = os.path.join(cache_path, "ip_{}{}".format(args.type, args.index))
-    cilantro_config = os.path.join(my_path, 'conf/{}{}/cilantro.conf'.format(args.type, args.index))
+    cilantro_ee_config = os.path.join(my_path, 'conf/{}{}/cilantro_ee.conf'.format(args.type, args.index))
 
     # Write my IP
     with open(ip_file, "w+") as f:
@@ -46,8 +46,8 @@ if __name__ == "__main__":
 
     # Write my config
     config = configparser.ConfigParser()
-    config.read(cilantro_config)
+    config.read(cilantro_ee_config)
     instanceip = config.set('DEFAULT', 'ip', args.ip)
     bootips = config.set('DEFAULT', 'boot_ips', ",".join(sorted(all_ips)))
-    with open(cilantro_config, "w") as cf:
+    with open(cilantro_ee_config, "w") as cf:
         config.write(cf)

@@ -34,7 +34,7 @@ LSocket
 import zmq, asyncio, zmq.asyncio
 from multiprocessing import Process
 import time
-from cilantro.logger.base import get_logger
+from cilantro_ee.logger.base import get_logger
 
 # /////////////////////////
 # TESTING BIND IN TRY/CATCH

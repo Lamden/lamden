@@ -5,7 +5,7 @@ import string
 import configparser
 from free_port import free_port
 from random_password import random_password
-from cilantro.constants.masternode import *
+from cilantro_ee.constants.masternode import *
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process some integers.')

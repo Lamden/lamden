@@ -3,14 +3,14 @@ jobs:
   black_box_integration:
     machine:
         image: circleci/classic:201808-01
-    working_directory: ~/cilantro
+    working_directory: ~/cilantro_ee
     parallelism: 1
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
+          key: cilantro_ee-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
       - run: pyenv local 3.6.5
 
       - run:
@@ -50,7 +50,7 @@ jobs:
 #              cd ops/environments/circleci && make testsc
 
       - save_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
+          key: cilantro_ee-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
           paths:
             - "/usr/local/bin"
             - "/opt/circleci/"
@@ -60,14 +60,14 @@ jobs:
   unit_tests:
     machine:
         image: circleci/classic:201808-01
-    working_directory: ~/cilantro
+    working_directory: ~/cilantro_ee
     parallelism: 1
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
       - run: sudo chown -R circleci:circleci /opt/circleci/.pyenv/versions/3.6.5/lib/python3.6/site-packages
       - restore_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
+          key: cilantro_ee-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
       - run: pyenv local 3.6.5
 
       - run:
@@ -79,9 +79,9 @@ jobs:
       - run:
           name: Download Base Images
           command: |
-            docker pull lamden/cilantro_base:circleci
-            docker pull lamden/cilantro_full:circleci
-            docker pull lamden/cilantro_light:circleci
+            docker pull lamden/cilantro_ee_base:circleci
+            docker pull lamden/cilantro_ee_full:circleci
+            docker pull lamden/cilantro_ee_light:circleci
 
       - run:
           name: Build and Push Docker Image
@@ -92,7 +92,7 @@ jobs:
           name: Spinup Docker Image
           command: |
              echo "SHOULD RUN DOCKER IMAGES HEREEERRERERERERERERERE"
-             sudo docker run --name cil -dit -v /var/db/cilantro/:/var/db/cilantro -v ~/cilantro/ops/base/redis.conf:/etc/redis.conf -v ~/cilantro/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_full:$(bash ~/cilantro/ops/tools/generate_tag.sh)
+             sudo docker run --name cil -dit -v /var/db/cilantro_ee/:/var/db/cilantro_ee -v ~/cilantro_ee/ops/base/redis.conf:/etc/redis.conf -v ~/cilantro_ee/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$(bash ~/cilantro_ee/ops/tools/generate_tag.sh)
 
       - run:
           name: Run Unit Tests Inside Docker Container
@@ -100,13 +100,13 @@ jobs:
             docker exec -it cil /app/scripts/start_unit_tests.sh
 
       - save_cache:
-          key: cilantro-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
+          key: cilantro_ee-{{ checksum "requirements.txt" }}-{{ checksum "dev-requirements.txt" }}-integration
           paths:
             - "/usr/local/bin"
 
 workflows:
   version: 2
-  build_and_test_cilantro:
+  build_and_test_cilantro_ee:
     jobs:
       - unit_tests
 #      - black_box_integrations

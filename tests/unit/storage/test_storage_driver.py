@@ -2,14 +2,14 @@ import unittest
 from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
-from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
-#from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
-from cilantro.storage.mongo import MDB
-from cilantro.nodes.masternode.mn_api import StorageDriver
-from cilantro.nodes.masternode.master_store import MasterOps
-from cilantro.utils.hasher import Hasher
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
+#from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
+from cilantro_ee.storage.mongo import MDB
+from cilantro_ee.nodes.masternode.mn_api import StorageDriver
+from cilantro_ee.nodes.masternode.master_store import MasterOps
+from cilantro_ee.utils.hasher import Hasher
 
-from cilantro.messages.block_data.block_data import *
+from cilantro_ee.messages.block_data.block_data import *
 
 
 TEST_IP = '127.0.0.1'
@@ -55,7 +55,7 @@ class TestStorageDriver(TestCase):
 
 
 
-    # @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
+    # @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
     # def test_store_block(self):
     #     sub_blocks = [SubBlockBuilder.create(idx=i) for i in range(2)]
     #     block = self.driver.store_block(sub_blocks)
@@ -69,7 +69,7 @@ class TestStorageDriver(TestCase):
     #     self.assertEqual(block.block_hash, last_stored_hash)
     #     self.assertTrue(result)
 
-    # @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
+    # @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
     # def test_get_latest_blocks(self):
     #     blocks = []
     #     for i in range(5):

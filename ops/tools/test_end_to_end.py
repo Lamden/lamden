@@ -1,5 +1,5 @@
-from cilantro.utils.test.integration_utils.currency_tester import CurrencyTester
-from cilantro.logger.base import overwrite_logger_level
+from cilantro_ee.utils.test.integration_utils.currency_tester import CurrencyTester
+from cilantro_ee.logger.base import overwrite_logger_level
 import sys
 
 

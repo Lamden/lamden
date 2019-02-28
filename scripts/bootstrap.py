@@ -1,7 +1,7 @@
 import os, configparser
-from cilantro.utils.test.node_runner import *
+from cilantro_ee.utils.test.node_runner import *
 
-CONFIG_PATH = '/etc/cilantro.conf'
+CONFIG_PATH = '/etc/cilantro_ee.conf'
 
 
 def main():

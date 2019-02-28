@@ -1,4 +1,4 @@
-from cilantro.utils.lazy_property import *
+from cilantro_ee.utils.lazy_property import *
 
 
 class Thing:

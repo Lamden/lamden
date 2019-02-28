@@ -14,14 +14,14 @@ def send_pepper():
     print("connecting to URL {}".format(URL))
     sock.connect(URL)
     print("about to send multipart...")
-    # sock.send_multipart([b'127.0.0.1', b'cilantro_pepper'])
-    sock.send_multipart([b'cilantro_pepper'])
+    # sock.send_multipart([b'127.0.0.1', b'cilantro_ee_pepper'])
+    sock.send_multipart([b'cilantro_ee_pepper'])
     print("done sending request, now waiting for reply")
 
     reply = sock.recv_multipart()
     print("got reply {}!!!!".format(reply))
 
-    sock.send_multipart([b'127.0.0.1', b'cilantro_pepper', b'A'*64])
+    sock.send_multipart([b'127.0.0.1', b'cilantro_ee_pepper', b'A'*64])
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-import cilantro
+import cilantro_ee
 import capnp
 import transaction_capnp
 import secrets

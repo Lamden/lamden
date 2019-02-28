@@ -1,16 +1,16 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-4.json')
 
 
 from unittest import TestCase, mock
 from unittest.mock import MagicMock
-from cilantro.protocol.multiprocessing.worker import Worker
-from cilantro.messages.base.base_signal import SignalBase
-from cilantro.messages.envelope.envelope import Envelope
+from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.messages.base.base_signal import SignalBase
+from cilantro_ee.messages.envelope.envelope import Envelope
 
 
-from cilantro.constants.testnet import *
-from cilantro.nodes.base import NodeTypes
+from cilantro_ee.constants.testnet import *
+from cilantro_ee.nodes.base import NodeTypes
 
 
 # A mock message type used just for these tests
@@ -22,10 +22,10 @@ class WorkerTester:
 
     @staticmethod
     def test(func):
-        @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-        # @mock.patch("cilantro.protocol.multiprocessing.worker.zmq", autospec=True)
-        # @mock.patch("cilantro.protocol.multiprocessing.worker.zmq.asyncio", autospec=True)
-        @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
+        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio", autospec=True)
+        # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.zmq", autospec=True)
+        # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.zmq.asyncio", autospec=True)
+        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager", autospec=True)
         def _func(*args, **kwargs):
             return func(*args, **kwargs)
         return _func

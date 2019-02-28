@@ -1,9 +1,9 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
 
-from cilantro.messages.transaction.contract import ContractTransaction, ContractTransactionBuilder
-from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro.constants.testnet import TESTNET_MASTERNODES
+from cilantro_ee.messages.transaction.contract import ContractTransaction, ContractTransactionBuilder
+from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 TEST_SK = TESTNET_MASTERNODES[0]['sk']
 
 

@@ -1,7 +1,7 @@
-from cilantro.protocol.overlay.ironhouse import Ironhouse
-from cilantro.constants.testnet import *
-from cilantro.utils.test.mp_test_case import vmnet_test
-import zmq, zmq.asyncio, time, asyncio, unittest, time, random, vmnet, cilantro, os, threading
+from cilantro_ee.protocol.overlay.ironhouse import Ironhouse
+from cilantro_ee.constants.testnet import *
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
+import zmq, zmq.asyncio, time, asyncio, unittest, time, random, vmnet, cilantro_ee, os, threading
 from multiprocessing import Process
 from vmnet.testcase import BaseNetworkTestCase
 
@@ -12,9 +12,9 @@ def wrap_func(fn, *args, **kwargs):
 
 def client(i):
     import zmq, asyncio, os, zmq.asyncio
-    from cilantro.protocol.overlay.ironhouse import Ironhouse
-    from cilantro.logger.base import get_logger
-    from cilantro.constants.testnet import TESTNET_MASTERNODES
+    from cilantro_ee.protocol.overlay.ironhouse import Ironhouse
+    from cilantro_ee.logger.base import get_logger
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
     log = get_logger('sub')
     async def connect(ih_ins):
         await asyncio.sleep(4)
@@ -46,8 +46,8 @@ def client(i):
 
 def server(i):
     import zmq, asyncio, os, zmq.asyncio
-    from cilantro.protocol.overlay.ironhouse import Ironhouse
-    from cilantro.logger.base import get_logger
+    from cilantro_ee.protocol.overlay.ironhouse import Ironhouse
+    from cilantro_ee.logger.base import get_logger
     log = get_logger('pub')
     async def bind(ih_ins):
         # Dummy keys shared by masternodes
@@ -77,7 +77,7 @@ def server(i):
     loop.run_forever()
 
 class TestZMQMultSub(BaseNetworkTestCase):
-    config_file = '../../vmnet_configs/cilantro-nodes.json'
+    config_file = '../../vmnet_configs/cilantro_ee-nodes.json'
     @vmnet_test(run_webui=True)
     def test_vklookup(self):
 

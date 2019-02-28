@@ -1,6 +1,6 @@
 from unittest import TestCase
-from cilantro.messages.transaction.publish import PublishTransaction
-from cilantro.protocol import wallet
+from cilantro_ee.messages.transaction.publish import PublishTransaction
+from cilantro_ee.protocol import wallet
 from decimal import *
 
 

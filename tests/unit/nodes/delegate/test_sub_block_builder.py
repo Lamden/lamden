@@ -1,28 +1,28 @@
-from cilantro.utils.test.testnet_config import set_testnet_config
+from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
 #
-from cilantro.logger.base import get_logger
-from cilantro.constants.system_config import *
-from cilantro.utils.utils import int_to_bytes, bytes_to_int
-from cilantro.utils.hasher import Hasher
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.constants.system_config import *
+from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
+from cilantro_ee.utils.hasher import Hasher
 #
 from seneca.engine.conflict_resolution import CRContext
 #
-from cilantro.nodes.delegate.block_manager import IPC_IP, IPC_PORT
-from cilantro.nodes.delegate.sub_block_builder import SubBlockBuilder, SubBlockManager
+from cilantro_ee.nodes.delegate.block_manager import IPC_IP, IPC_PORT
+from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder, SubBlockManager
 #
-from cilantro.messages.base.base import MessageBase
-from cilantro.messages.transaction.batch import TransactionBatch, build_test_transaction_batch
-from cilantro.messages.consensus.sub_block_contender import SubBlockContender, SubBlockContenderBuilder
-from cilantro.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro.messages.transaction.contract import ContractTransactionBuilder
-from cilantro.messages.signals.delegate import MakeNextBlock
+from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.messages.transaction.batch import TransactionBatch, build_test_transaction_batch
+from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender, SubBlockContenderBuilder
+from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
+from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
+from cilantro_ee.messages.signals.delegate import MakeNextBlock
 #
 from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
 #
-from cilantro.messages.envelope.envelope import Envelope
+from cilantro_ee.messages.envelope.envelope import Envelope
 import time
 #
 #
@@ -39,10 +39,10 @@ class SBBTester:
 #
     @staticmethod
     def test(func):
-        @mock.patch("cilantro.protocol.multiprocessing.worker.asyncio", autospec=True)
-        @mock.patch("cilantro.protocol.multiprocessing.worker.SocketManager", autospec=True)
-        @mock.patch("cilantro.nodes.delegate.block_manager.asyncio", autospec=True)
-        @mock.patch("cilantro.nodes.delegate.block_manager.SubBlockBuilder.run", autospec=True)
+        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio", autospec=True)
+        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager", autospec=True)
+        @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio", autospec=True)
+        @mock.patch("cilantro_ee.nodes.delegate.block_manager.SubBlockBuilder.run", autospec=True)
         def _func(*args, **kwargs):
             return func(*args, **kwargs)
         return _func
@@ -72,10 +72,10 @@ class SBBTester:
 class TestSubBlockBuilder(TestCase):
 
     @SBBTester.test
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 8)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 8)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 8)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 8)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
     def test_create_sub_sockets(self, *args):
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
 
@@ -100,13 +100,13 @@ class TestSubBlockBuilder(TestCase):
 
 
     @SBBTester.test
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
+    @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
     def test_one_sb_recv_empty_tx_bag(self, *args):
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
         self.assertEquals(len(sbb.sb_managers), 1)
@@ -121,14 +121,14 @@ class TestSubBlockBuilder(TestCase):
         SBBTester.send_ipc_to_sbb(sbb, make_next_block)
 
     @SBBTester.test
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
+    @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
     def test_sub_msg_with_make_next_block_notification_calls_handle_ipc_msg(self, *args):
         """
         Tests handle_ipc_msg correctly calls handle_new_block when a NewBlockNotification is received
@@ -155,13 +155,13 @@ class TestSubBlockBuilder(TestCase):
 #        self.assertTrue(msg.is_empty)
 #
     @SBBTester.test
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
+    @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
     def test_handle_new_block_signal_calls_make_next_sub_block(self, *args):
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
         sbb._make_next_sub_block = MagicMock()
@@ -172,13 +172,13 @@ class TestSubBlockBuilder(TestCase):
         sbb._make_next_sub_block.assert_called_once()
 
     @SBBTester.test
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
+    @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
     def test_single_tx_batch_adds_to_queue(self, *args):
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
         # Note we do not send a MakeNextBlockNotifcation
@@ -195,13 +195,13 @@ class TestSubBlockBuilder(TestCase):
         self.assertEqual(sbb.sb_managers[0].pending_txs.popleft(), tx_batch.message)
 
     @SBBTester.test
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
+    @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
     def test_double_tx_batch_builds_sbb(self, *args):
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
         sbb._execute_next_sb = MagicMock()
@@ -220,13 +220,13 @@ class TestSubBlockBuilder(TestCase):
 
 
     @SBBTester.test
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
-    @mock.patch("cilantro.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
-    @mock.patch("cilantro.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_BLOCKS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_BUILDERS", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SB_PER_BLOCK_PER_BUILDER", 1)
+    @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
+    @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 1)
     def test_create_sbc_from_batch(self, *args):
         num_txs = 4
         input_hash = 'A' * 64

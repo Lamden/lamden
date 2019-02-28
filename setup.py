@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
-__version__ = '0.0.1dev'
+__version__ = '0.0.2dev'
 
 setup(
-    name='cilantro',
+    name='cilantro_ee',
     version=__version__,
     packages=find_packages(exclude=['docs', 'tests']),
     install_requires=[
@@ -26,18 +26,18 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'storage=cilantro.networking.storage:serve',
-            'witness=cilantro.networking.witness:serve',
-            'cil=cilantro.cli:main'
+            'storage=cilantro_ee.networking.storage:serve',
+            'witness=cilantro_ee.networking.witness:serve',
+            'cil=cilantro_ee.cli:main'
         ],
     },
     zip_safe=False,
     package_data={
         '': [],
-        'cilantro': ['cilantro.conf'],
+        'cilantro_ee': ['cilantro_ee.conf'],
     },
     long_description="this is a fast blockchain",
-    url='https://github.com/Lamden/cilantro',
+    url='https://github.com/Lamden/cilantro_ee',
     author='Lamden',
     author_email='team@lamden.io',
     classifiers=[

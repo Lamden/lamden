@@ -45,6 +45,6 @@ RUN . /app/venv/bin/activate; \
 RUN . /app/venv/bin/activate; \
     pip3 install -r /app/requirements.txt;
 
-ENV PYTHONPATH "${PYTHONPATH}:/app/cilantro"
+ENV PYTHONPATH "${PYTHONPATH}:/app/cilantro_ee"
 
 ENTRYPOINT ["circusd", "/etc/circus.conf"]

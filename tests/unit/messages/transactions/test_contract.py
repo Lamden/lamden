@@ -1,7 +1,7 @@
 from unittest import TestCase
-from cilantro.messages.transaction.contract import ContractTransactionBuilder
-from cilantro.messages.transaction.contract import ContractTransaction
-from cilantro.protocol import wallet
+from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
+from cilantro_ee.messages.transaction.contract import ContractTransaction
+from cilantro_ee.protocol import wallet
 from decimal import *
 
 

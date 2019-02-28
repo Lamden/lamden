@@ -2,10 +2,10 @@
     This experiment tests the behavior of the default disconnect.
 """
 
-from cilantro.protocol.overlay.ironhouse import Ironhouse
-from cilantro.constants.testnet import *
-from cilantro.utils.test.mp_test_case import vmnet_test
-import zmq, zmq.asyncio, time, asyncio, unittest, time, random, vmnet, cilantro, os, threading
+from cilantro_ee.protocol.overlay.ironhouse import Ironhouse
+from cilantro_ee.constants.testnet import *
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
+import zmq, zmq.asyncio, time, asyncio, unittest, time, random, vmnet, cilantro_ee, os, threading
 from multiprocessing import Process
 from vmnet.testcase import BaseNetworkTestCase
 
@@ -16,9 +16,9 @@ def wrap_func(fn, *args, **kwargs):
 
 def start_client():
     import os, asyncio, zmq.asyncio, time
-    from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.ironhouse import Ironhouse
-    from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.protocol.overlay.ironhouse import Ironhouse
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES
 
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(loop)
@@ -60,9 +60,9 @@ def start_client():
 
 def start_server():
     import os, asyncio, zmq.asyncio, time
-    from cilantro.logger import get_logger
-    from cilantro.protocol.overlay.ironhouse import Ironhouse
-    from cilantro.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES
+    from cilantro_ee.logger import get_logger
+    from cilantro_ee.protocol.overlay.ironhouse import Ironhouse
+    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_WITNESSES
 
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(loop)
@@ -102,7 +102,7 @@ def start_server():
 
 class TestZMQDisconnect(BaseNetworkTestCase):
 
-    config_file = '../../vmnet_configs/cilantro-nodes.json'
+    config_file = '../../vmnet_configs/cilantro_ee-nodes.json'
 
     @vmnet_test(run_webui=True)
     def test_zmq_disconnect(self):

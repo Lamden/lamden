@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.protocol.structures.capped_containers import CappedDict
+from cilantro_ee.protocol.structures.capped_containers import CappedDict
 
 
 class TestCappedDict(TestCase):

@@ -1,11 +1,11 @@
 from vmnet.testcase import BaseNetworkTestCase
-from cilantro.utils.test.mp_test_case import vmnet_test
+from cilantro_ee.utils.test.mp_test_case import vmnet_test
 import unittest, time, random
-import vmnet, cilantro
+import vmnet, cilantro_ee
 from os.path import dirname, join
 import time
 
-cilantro_path = dirname(dirname(cilantro.__path__[0]))
+cilantro_ee_path = dirname(dirname(cilantro_ee.__path__[0]))
 
 def wrap_func(fn, *args, **kwargs):
     def wrapper():
@@ -15,7 +15,7 @@ def wrap_func(fn, *args, **kwargs):
 
 def start_client():
     import zmq, time
-    from cilantro.logger.base import get_logger
+    from cilantro_ee.logger.base import get_logger
 
     log = get_logger("ZMQ Client")
     ctx = zmq.Context()
@@ -43,7 +43,7 @@ def start_server():
     import zmq.asyncio
     import time
     import uuid
-    from cilantro.logger.base import get_logger
+    from cilantro_ee.logger.base import get_logger
 
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(loop)
@@ -74,7 +74,7 @@ def start_server():
 
 class TestZMQPair(BaseNetworkTestCase):
 
-    config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes.json')
+    config_file = join(dirname(cilantro_ee.__path__[0]), 'vmnet_configs', 'cilantro_ee-nodes.json')
 
     @vmnet_test
     def test_zmq_pair(self):

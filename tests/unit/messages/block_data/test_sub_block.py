@@ -1,11 +1,11 @@
-from cilantro.messages.transaction.data import TransactionDataBuilder
-from cilantro.messages.block_data.block_data import GENESIS_BLOCK_HASH
-from cilantro.protocol.structures.merkle_tree import MerkleTree
-from cilantro.messages.block_data.sub_block import SubBlock, SubBlockBuilder
-from cilantro.messages.consensus.merkle_signature import MerkleSignature
+from cilantro_ee.messages.transaction.data import TransactionDataBuilder
+from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH
+from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
+from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
 
 from unittest import TestCase
-from cilantro.constants.testnet import TESTNET_MASTERNODES
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 TEST_SK, TEST_VK = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
 
 
