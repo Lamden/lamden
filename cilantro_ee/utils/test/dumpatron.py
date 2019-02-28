@@ -72,9 +72,6 @@ class Dumpatron:
                 urls.append("http://{}:8080".format(ip))
         return urls
 
-    def dump(self, volume=1):
-        God.dump_it(volume=volume)
-
     async def start_interactive_dump(self):
         self.log.info("Starting the dump....")
         while True:
