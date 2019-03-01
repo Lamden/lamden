@@ -1,10 +1,8 @@
 """
 Package for interacting on the network at a high level.
 """
-import random
 import pickle
 import asyncio
-import logging
 import os
 import zmq, zmq.asyncio
 
@@ -14,6 +12,7 @@ from cilantro_ee.protocol.overlay.kademlia.node import Node
 from cilantro_ee.protocol.overlay.kademlia.crawling import NodeSpiderCrawl
 from cilantro_ee.constants.ports import DHT_PORT
 from cilantro_ee.constants.overlay_network import *
+from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.protocol.overlay.auth import Auth
 from cilantro_ee.logger.base import get_logger
 
@@ -39,21 +38,21 @@ class Network(object):
         self.alpha = alpha
         self.port = DHT_PORT
         self.cached_vks = {}
-        self.host_ip = HOST_IP
+        self.host_ip = CilantroConf.HOST_IP
 
         assert Auth.is_setup, 'Auth.setup() has not been called. Please do this in the OverlayInterface.'
         assert node_id, 'Node ID must be set!'
 
         self.node = Node(
             node_id,
-            ip=HOST_IP,
+            ip=CilantroConf.HOST_IP,
             port=self.port,
             vk=Auth.vk
         )
         self.state_fname = '{}-network-state.dat'.format(os.getenv('HOST_NAME', 'node'))
 
         self.loop = loop or asyncio.get_event_loop()
-        # asyncio.set_event_loop(self.loop)
+        asyncio.set_event_loop(self.loop)
         self.ctx = ctx or zmq.asyncio.Context()
         self.protocol = KademliaProtocol(self.node, self.ksize, self.loop, self.ctx)
 

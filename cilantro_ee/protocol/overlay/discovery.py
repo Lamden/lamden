@@ -1,5 +1,4 @@
 import zmq, zmq.asyncio, asyncio, traceback
-from os import getenv as env
 from cilantro_ee.constants.overlay_network import *
 from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.constants.ports import DISCOVERY_PORT
@@ -19,7 +18,7 @@ class Discovery:
     connections = {}
     is_setup = False
     is_listen_ready = False
-    bootnodes = []
+    bootnodes = CilantroConf.BOOTNODES
 
     @classmethod
     def setup(cls, ctx=None):
@@ -30,8 +29,10 @@ class Discovery:
             cls.sock.setsockopt(zmq.IDENTITY, cls.host_ip.encode())
             cls.is_connected = False
 
-            if os.environ['BOOT_IPS']:
-                cls.bootnodes = os.environ['BOOT_IPS'].split(',')
+            # DEBUG -- TODO DELETE
+            cls.log.important("my vk: {}".format(Auth.vk))
+            cls.log.important("is masternode: {}".format(VKBook.is_node_type('masternode', Auth.vk)))
+            # END DEBUG
 
             if VKBook.is_node_type('masternode', Auth.vk):
                 # cls.discovered_nodes[Auth.vk] = cls.host_ip

@@ -68,8 +68,7 @@ class MDB:
         if cls.init_mdb is False:
             # Sleep to prevent race conditions with create_user in the start_mongo.sh scripts.
             # we only do this on containers
-            if os.getenv('HOST_IP'):
-                time.sleep(5)
+            time.sleep(5)
 
         cls.setup_db()
 

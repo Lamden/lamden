@@ -21,8 +21,7 @@ class God:
 
     log = get_logger("GOD")
 
-    mn_urls = get_mn_urls()
-    multi_master = type(mn_urls) is list  # If True, outgoing transactions will be round-robined to all masternodes
+    mn_urls = []
     _current_mn_idx = 0
 
     def __init__(self):
@@ -31,10 +30,6 @@ class God:
     @classmethod
     def _default_gen_func(cls):
         return cls.random_contract_tx
-
-    @classmethod
-    def set_mn_url(cls, ip='localhost', port=8080):
-        raise NotImplementedError("This is deprecated!!!")
 
     @classmethod
     def create_currency_tx(cls, sender: tuple, receiver: tuple, amount: int, stamps=10000, nonce=None):
@@ -57,6 +52,7 @@ class God:
 
     @classmethod
     def send_tx(cls, tx: TransactionBase):
+        assert len(cls.mn_urls) > 0, "mn_urls must be set to send_tx! "
         mn_url = cls._get_mn_url()
         data = TransactionContainer.create(tx).serialize()
         try:
@@ -87,7 +83,6 @@ class God:
         Pump random transactions from random users to Masternode's REST endpoint at an average rate of 'rate'
         transactions per second. This func blocks.
         """
-        God.mn_urls = get_mn_urls()  # Reset MN URLS
         if pump_wait > 0:
             cls.log.important("Pumper sleeping {} seconds before starting...".format(pump_wait))
             time.sleep(pump_wait)
@@ -134,7 +129,6 @@ class God:
     @classmethod
     async def dump_it(cls, session, volume: int, delay: int=0, gen_func=None):
         """ Dump it fast. """
-        # God.mn_urls = get_mn_urls()  # Reset MN URLS
         assert volume > 0, "You must dump at least 1 transaction silly"
 
         if not gen_func:
@@ -316,12 +310,8 @@ class God:
 
     @classmethod
     def _get_mn_url(cls):
-        if cls.multi_master:
-            mn_url = cls.mn_urls[cls._current_mn_idx]
-            cls._current_mn_idx = (cls._current_mn_idx + 1) % len(cls.mn_urls)
-            cls.log.debug("Multi-master detected. Using Masternode at IP {}".format(mn_url))
-        else:
-            mn_url = cls.mn_urls[0]
-
+        assert len(cls.mn_urls) > 0, "mn_urls not set!"
+        mn_url = cls.mn_urls[cls._current_mn_idx]
+        cls._current_mn_idx = (cls._current_mn_idx + 1) % len(cls.mn_urls)
         return mn_url
 
