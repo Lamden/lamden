@@ -1,6 +1,7 @@
 from cilantro_ee.logger import get_logger
 import json, math, os
 from cilantro_ee.utils.test.testnet_config import get_testnet_json_path
+from cilantro_ee.constants.conf import CilantroConf
 
 
 TESTNET_JSON_PATH = get_testnet_json_path()
@@ -57,7 +58,7 @@ def set_testnet_nodes():
             WITNESS_MN_MAP[w] = mn_vk
 
 
-if os.getenv('CONSTITUTION_FILE', None) is None:
+if CilantroConf.CONSTITUTION_FILE is None:
     log.info("Constitution file not set, using default")
     set_testnet_nodes()
 else:
