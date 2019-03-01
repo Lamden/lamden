@@ -16,12 +16,13 @@ PROTOCOL_TESTS = [
     'tests.unit.protocol.structures',
     'tests.unit.protocol.wallets',
     'tests.unit.protocol.multiprocessing',
-    'tests.unit.protocol.comm'
+    'tests.unit.protocol.comm',
     ]
 
 NODE_TESTS = [
     'tests.unit.nodes.masternode',
     'tests.unit.nodes.delegate',
+    'tests.unit.nodes.base',
 ]
 
 MESSAGE_TESTS = [
