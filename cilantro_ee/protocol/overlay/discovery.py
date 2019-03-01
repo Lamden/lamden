@@ -1,6 +1,7 @@
 import zmq, zmq.asyncio, asyncio, traceback
 from os import getenv as env
 from cilantro_ee.constants.overlay_network import *
+from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.constants.ports import DISCOVERY_PORT
 from cilantro_ee.protocol.overlay.ip import *
 from cilantro_ee.protocol.overlay.auth import Auth
@@ -10,7 +11,7 @@ from cilantro_ee.storage.vkbook import VKBook
 
 class Discovery:
     log = get_logger('Discovery')
-    host_ip = HOST_IP
+    host_ip = CilantroConf.HOST_IP
     port = DISCOVERY_PORT
     url = 'tcp://*:{}'.format(port)
     pepper = PEPPER.encode()

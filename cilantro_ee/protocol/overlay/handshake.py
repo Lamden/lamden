@@ -4,6 +4,7 @@ from cilantro_ee.constants.overlay_network import *
 from cilantro_ee.constants.ports import AUTH_PORT
 from zmq.auth.thread import ThreadAuthenticator
 from zmq.auth.asyncio import AsyncioAuthenticator
+from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.protocol.overlay.event import Event
 from cilantro_ee.protocol.overlay.ip import *
 from cilantro_ee.protocol.overlay.auth import Auth
@@ -13,7 +14,7 @@ from collections import defaultdict
 
 class Handshake:
     log = get_logger('Handshake')
-    host_ip = HOST_IP
+    host_ip = CilantroConf.HOST_IP
     port = AUTH_PORT
     url = 'tcp://*:{}'.format(port)
     pepper = PEPPER.encode()
