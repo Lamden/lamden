@@ -1,4 +1,5 @@
 import zmq, zmq.asyncio, asyncio, ujson, os, uuid, json, inspect
+from cilantro.utils.keys import Keys
 from cilantro.protocol.overlay.interface import OverlayInterface
 from cilantro.constants.overlay_network import EVENT_URL, CMD_URL, CLIENT_SETUP_TIMEOUT
 from cilantro.storage.vkbook import VKBook
@@ -33,11 +34,11 @@ def async_reply(fn):
 
 
 class OverlayServer(OverlayInterface):
-    def __init__(self, sk, loop=None, ctx=None, start=True):
+    def __init__(self, sk, ctx, start=True):
         self.sk = sk
-        self.loop = loop or asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        self.ctx = ctx or zmq.asyncio.Context()
+        Keys.setup(sk_hex=self.sk)
+        self.loop = asyncio.get_event_loop()
+        self.ctx = ctx
 
         self.log = get_logger('Overlay.Server')
         self.supported_methods = [func for func in dir(OverlayInterface) if callable(getattr(OverlayInterface, func)) and not func.startswith("__")]
@@ -46,7 +47,7 @@ class OverlayServer(OverlayInterface):
         self.cmd_sock.bind(CMD_URL)
 
         # pass both evt_sock and cmd_sock ?
-        self.network = Network(sk, self.loop, self.ctx)
+        self.network = Network(Keys.vk, self.ctx)
 
         self.network.tasks.append(self.command_listener())
 
@@ -54,8 +55,6 @@ class OverlayServer(OverlayInterface):
             self.run()
 
     def run(self):
-        raghu todo - check this start 
-        Auth.setup(sk_hex=self.sk, reset_auth_folder=False)
         self.network.start()
 
     async def command_listener(self):
@@ -68,8 +67,8 @@ class OverlayServer(OverlayInterface):
             # getattr(self, msg[1].decode())(msg[0], *data)
             func = msg[1].decode()
             if func in self.supported_methods:
-                # getattr(self, func)(msg[0], *data)
-                self.network.func(msg[0], *data)
+                getattr(self, func)(msg[0], *data)
+                # self.network.func(msg[0], *data)
             else:
                 self.invalid_api_call(func)
            
@@ -110,7 +109,7 @@ class OverlayServer(OverlayInterface):
         }
 
     @async_reply
-    async def get_ip_and_handshake(self, event_id, vk, is_first_time, domain='*'):
+    async def get_ip_and_handshake(self, event_id, vk, domain='*', is_first_time=True):
 
         if not self.is_valid_vk(vk):
             # raghu todo - create event enum / class that does this
@@ -120,14 +119,12 @@ class OverlayServer(OverlayInterface):
                 'vk': vk
             }
 
-        ip = await self.network.find_ip(vk)
+        ip, is_auth = await self.network.find_ip_and_authenticate(vk, domain, is_first_time)
 
-        if ip:
-            authorized = await self.network.authenticate(event_id, ip, vk, domain) \
-                                      if ip else False
-            event = 'authorized_ip' if authorized else 'unauthorized_ip'
+        if is_auth:
+            event = 'authorized_ip'
        else:
-            event = 'not_found'
+            event = 'unauthorized_ip' if ip else 'not_found'
 
         return {
             'event': event,
@@ -137,10 +134,10 @@ class OverlayServer(OverlayInterface):
         }
 
     @async_reply
-    async def handshake_with_ip(self, event_id, is_first_time, ip, domain='*'):
-        authorized = await self.network.authenticate(event_id, is_first_time, ip, domain)
+    async def handshake_with_ip(self, event_id, vk, ip, domain='*', is_first_time=True):
+        is_auth = await self.network.authenticate(event_id, vk, ip, domain, is_first_time)
         return {
-            'event': 'authorized_ip' if authorized else 'unauthorized_ip',
+            'event': 'authorized_ip' if is_auth else 'unauthorized_ip',
             'event_id': event_id,
             'ip': ip,
             'vk': vk

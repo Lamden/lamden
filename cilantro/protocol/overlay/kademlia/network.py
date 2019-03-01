@@ -6,6 +6,8 @@ import pickle
 import asyncio
 import logging
 import os
+import time
+import traceback
 import uuid
 import zmq, zmq.asyncio
 
@@ -19,11 +21,10 @@ from cilantro.protocol.overlay.kademlia.node import Node
 from cilantro.protocol.overlay.kademlia.routing import RoutingTable
 from cilantro.protocol.overlay.kademlia.utils import digest
 from cilantro.protocol.overlay.kademlia.event import Event
+from cilantro.protocol.utils.socket import SocketUtil
 from cilantro.constants.ports import DHT_PORT
 from cilantro.constants.overlay_network import *
 from cilantro.logger.base import get_logger
-
-# log = get_logger(__name__)
 
 class MalformedMessage(Exception):
     """
@@ -58,23 +59,24 @@ class Network(object):
      - handshake - all listen functions will set or increment the counter that triggers main processing ?
 
 7. move event socket into network itself
+
+8. add update routing table functionality
+9. complete authentication 
+10. clean up
+11. do singletons and clean up
+12. hook up event socket part
+13. test integration tests
      
 
 
     """
 
-    def __init__(self, vk, loop=None, ctx=None):
+    def __init__(self, vk, ctx):
 
-        self.loop = loop or asyncio.get_event_loop()
-        self.ctx = ctx or zmq.asyncio.Context()
+        self.loop = asyncio.get_event_loop()
+        self.ctx = ctx
 
         self.log = get_logger('OS.Network')
-
-        # raghu todo
-        # self.event_socket?
-        # self.server_socket?
-        # data structure for req
-        # replies don't save state - immediately process and reply - make sure they are light weight
 
         self.vk = vk
         self.host_ip = HOST_IP
@@ -82,42 +84,38 @@ class Network(object):
 
         self.node = Node(digest(vk), ip=self.host_ip, port=self.port, vk=vk)
 
-        # raghu todo - change this to vk, ip, port order and for temp ones, use event_id for port
+        self.rep = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
         self.identity = '{}:{}:{}'.format(self.vk, self.host_ip, self.port).encode()
-        self.rep = self.ctx.socket(zmq.ROUTER)
         self.rep.setsockopt(zmq.IDENTITY, self.identity)
-        self.rep.setsockopt(zmq.LINGER, 5000)           # ms
-        self.rep.setsockopt(zmq.ROUTER_HANDOVER, 1)
         self.rep.bind('tcp://*:{}'.format(self.port))
 
-        self.evt_sock = self.ctx.socket(zmq.PUB)
+        self.evt_sock = SocketUtil.create_socket(self.ctx, zmq.PUB)
         self.evt_sock.bind(EVENT_URL)
         Event.set_evt_sock(self.evt_sock)       # raghu todo - do we need this still as we have everything local
 
-        self.track_on = False     # do we need these ? raghu todo
         self.is_connected = False
-        self.state_fname = '{}-network-state.dat'.format(os.getenv('HOST_NAME', 'node'))
+        # raghu TODO - do we want to save routing table and use it as part of discovery process when rebooted ?? useful only in open discovery only - so punt for now
+        # self.state_fname = '{}-network-state.dat'.format(os.getenv('HOST_NAME', 'node'))
 
-        self.pending_replies = set()
-        # raghu todo - refactor handshake, but for now ...
-        Handshake.setup(self.loop, self.ctx)
+        self.is_debug = False          # turn this on for verbose messages to debug
+        self.busy_level = 0            # raghu TODO
 
-        # raghu todo - pass vk, host_ip, port to routing_table
+        self.unheard_nodes = set()
+
         self.routing_table = RoutingTable(self.node)
         self.discovery = Discovery(vk, self.ctx)
+        # self.handshake = Handshake(self.vk, self.ctx)
 
         self.tasks = [
             self.discovery.listen(),
-            Handshake.listen(),
+            # self.handshake.listen(),
             self.process_requests(),
             self.bootup()
         ]
 
-    # raghu todo - do we need asyncio.gather here? don't think so
     def start(self):
-        # asyncio.run(*self.tasks)
-        self.loop.run_until_complete(asyncio.gather(
-            *self.tasks
+        self.loop.run_until_complete(asyncio.ensure_future(
+            asyncio.gather(*self.tasks)
         ))
 
     def stop(self):
@@ -131,9 +129,8 @@ class Network(object):
     async def bootup(self):
         addrs = await self.discovery.discover_nodes()
         if addrs:
-            # raghu todo - eliminate self.vk being part of addrs and eliminate the if below
-            nodes = [Node(digest(vk), ip=addrs[vk], port=self.port, vk=vk) \
-                                     for vk in addrs if vk is not self.vk]
+            nodes = [Node(digest(addrs[ip]), ip=ip, port=self.port, vk=addrs[ip]) \
+                           for ip in addrs ]
             await self.bootstrap(nodes)
         self.log.success('''
 ###########################################################################
@@ -153,11 +150,11 @@ class Network(object):
                    addresses are acceptable - hostnames will cause an error.
         """
 
-        self.log.debug("Attempting to bootstrap node with {} initial contacts: {}".format(len(nodes), nodes))
+        if self.is_debug:
+            self.log.debug("Attempting to bootstrap node with {} initial contacts: {}".format(len(nodes), nodes))
         event_id = uuid.uuid4().hex
         vk_to_find = self.vk         # me
-        await self.network_find_ip(event_id, nodes, vk_to_find)
-        self.log.debug('Finished boostrating')
+        await self.network_find_ip(event_id, nodes, vk_to_find, True)
 
 
     async def process_requests(self):
@@ -165,12 +162,18 @@ class Network(object):
         Start listening on the given port.
         """
 
-        self.log.debug("Server {} listening on port {}".format(self.vk, self.port))
-        self.log.debug("raghu router identity = {}".format(self.identity))
+        if self.is_debug:
+            self.log.debug("Server {} listening on port {}".format(self.vk, self.port))
         while True:
-            request = await self.rep.recv_multipart()
-            await self.process_msg_recvd(request)
-        self.log.debug("raghu done process_requests")
+            try:
+                request = await self.rep.recv_multipart()
+                await self.process_msg_recvd(request)
+
+            except zmq.ZMQError as e:
+                self.log.warning("ZMQError '{}' in process_requests\n".format(e))
+            except Exception as e:
+                self.log.warning("Exception '{}' in process_requests".format(e))
+        self.log.warning("Exiting listening for overlay requests!!")
 
     async def process_msg_recvd(self, msg):
         address = msg[0].decode().split(':')
@@ -179,10 +182,10 @@ class Network(object):
             self.log.warning("Received datagram too small from {}, ignoring".format(address))
             return
 
-        # msgID = datagram[1:21]
         data = umsgpack.unpackb(datagram[1:])
 
-        self.log.spam("Received message {} from addr {}".format(data, address))
+        if self.is_debug:
+            self.log.debug("Received message {} from addr {}".format(data, address))
 
         if datagram[:1] == b'\x00':
             # schedule accepting request and returning the result
@@ -191,11 +194,10 @@ class Network(object):
             return self._acceptResponse(address, data)
         else:
             # otherwise, don't know the format, don't do anything
-            self.log.spam("Received unknown message from {}, ignoring".format(address))
+            self.log.warning("Received unknown message from {}, ignoring".format(address))
 
     def _acceptResponse(self, address, data):
-        self.log.important("ERROR *** this shouldn't be entered")
-        # raghu todo - pass address to emit the event, but do the welcomeIfNewNode here
+        self.log.error("ERROR *** this shouldn't be entered")
         return data
 
     # raghu - need more protection against DOS?? like known string encrypted with its vk?
@@ -214,45 +216,18 @@ class Network(object):
         response = await func(address, *args)
         txdata = b'\x01' + umsgpack.packb(response)
         identity = '{}:{}:{}'.format(address[0], address[1], address[2]).encode()
-        self.rep.send_multipart([identity, txdata])
-        self.log.spam("sent response {} to {}".format(response, address))
-        # raghu todo - pass address to emit the event, but do the welcomeIfNewNode here
+        try:
+            await self.rep.send_multipart([identity, txdata])
+            if self.is_debug:
+                self.log.debug("sent response {} to {}".format(response, address))
 
+        except zmq.ZMQError as e:
+            self.log.warning("Got ZMQError when replying to msg from {}: {}".format(identity, e))
+        except Exception as e:
+            self.log.warning("Got exception when replying to msg from {}: {}".format(identity, e))
 
-    def set_track_on(self):
-        self.track_on = True
-
-
-    def rpc_find_node(self, sender, nodeid, key):
-        self.log.debugv("finding neighbors of {} in local table for {}".format(key, sender))
-        source = Node(nodeid, sender[0], sender[1], sender[2])
-
-        # DEBUG -- TODO DELETE
-        # self.log.important2("Got find_node req from sender with vk {}, who is looking for {}.\nself.track_on={}\nself.router"
-        #                ".isNewNode(source)={}".format(sender[2], key, self.track_on, self.router.isNewNode(source)))
-        # END DEBUG
-
-        # NOTE: we are always emitting node_online when we get a find_node request, because we don't know when clients
-        # drop. A client could drop, but still be in our routing table because we don't heartbeat. Always sending
-        # 'node_online' might be a heavy handed solution, but under the assumption that find_nodes (vk lookups) are
-        # a relatively infrequent operation, this should be acceptable  --davis
-        emit_to_client = self.track_on  #  and self.routing_table.isNewNode(source)
-        self.welcomeIfNewNode(source)
-        if emit_to_client:
-            Event.emit({'event': 'node_online', 'vk': self.node.vk, 'ip': self.node.ip})
-        node = Node(digest(key))
-        neighbors = self.routing_table.findNode(node)
-        return list(map(tuple, neighbors))
-
-
-    # debug only method
-    def get_neighbors(self, vk=None):
-        """
-        return a list of neighbors for the given vk
-        """
-
-        neighbors = self.protocol.routing_table.findNeighbors(vk if vk else self.node)
-        return [tuple(n)[1:] for n in neighbors]
+        rnode = Node(digest(address[0]), address[1], self.port, address[0])
+        self.welcomeIfNewNode(rnode)
 
 
     def welcomeIfNewNode(self, node):
@@ -267,7 +242,8 @@ class Network(object):
         if not self.routing_table.isNewNode(node):
             return
 
-        self.log.debug("never seen %s before, adding to routing_table", node)
+        if self.is_debug:
+            self.log.debug("never seen %s before, adding to routing_table", node)
         self.routing_table.addContact(node)
 
 
@@ -276,52 +252,49 @@ class Network(object):
 
     async def rpc_find_ip(self, address, vk_to_find):
         nodes = self.local_find_ip(vk_to_find)
-        rnode = Node(digest(address[0]), address[1], self.port, address[0])
-        self.welcomeIfNewNode(rnode)
-        if address[0] == vk_to_find:
-            # bootstrapping - raghu todo - not enough - even findNode has to have a way 
-            # better still - have a function to (new) ping to every one it needs to connect or it needs to connect to you
-            Event.emit({'event': 'node_online', 'vk': rnode.vk, 'ip': rnode.ip})
         return list(map(tuple, nodes))
 
-    # async def rpc_lookup_ip(self, req, event_id, node_to_ask, vk_to_find):
-    # don't need to transmit event_id as it is part of the identity
-    def rpc_request(self, req, node_to_ask, func_name, *args):
-        # add raddr to self.pending_replies  raghu todo
-        req.connect('tcp://{}:{}'.format(node_to_ask.ip, node_to_ask.port))
-        raddr = '{}:{}:{}'.format(node_to_ask.vk, node_to_ask.ip, self.port).encode()
-        self.pending_replies.add(raddr)
+    async def rpc_ping_ip(self, address, is_first_time):
+        if is_first_time:
+            self.log.debug("Got ping from {}:{}".format(address[0], address[1]))
+            # publish to the event
+        return True
+
+    async def rpc_connect(self, req, vk, ip):
+        raddr = '{}:{}:{}'.format(vk, ip, self.port).encode()
+        req.connect('tcp://{}:{}'.format(ip, self.port))
+        if self.is_debug:
+            self.log.debug("Connected to {}".format(raddr))
+        return raddr
+
+
+    async def rpc_request(self, req, raddr, func_name, *args):
+        self.unheard_nodes.add(raddr)
         data = umsgpack.packb([func_name, args])
         if len(data) > 8192:
             raise MalformedMessage("Total length of function name "
                                    "and arguments cannot exceed 8K")
         txdata = b'\x00' + data
-        self.log.debug("raghu sending request to {}".format(raddr))
-        req.send_multipart([raddr, txdata])
+        try:
+            await req.send_multipart([raddr, txdata])
+            if self.is_debug:
+                self.log.debug("Sent the request to {}".format(raddr))
+            return True
+
+        except zmq.ZMQError as e:
+            if self.is_debug or (e.errno != zmq.EHOSTUNREACH):
+                self.log.warning("ZMQError in sending request to {}: {}".format(raddr, e))
+        except Exception as e:
+            self.log.warning("Got exception in sending request to {}: {}".format(raddr, e))
+
+        return False
 
 
-    def rpc_response(self, msg):
-        raddr = msg[0].decode()
-        if raddr in self.pending_replies:
-            self.pending_replies.remove(raddr)
-        # raghu todo - welcomeNewNode?
-        addr_list = raddr.split(':')
-        rnode = Node(digest(addr_list[0]), addr_list[1], addr_list[2], addr_list[0])
-        self.welcomeIfNewNode(rnode)
-        data = msg[1]
-        # raghu todo error handling and audit layer ??
-        # msgID = datagram[1:21]
-        # data = umsgpack.unpackb(datagram[21:])
-        # raghu todo - we need to standarize whether eventId would be part of arguments or the extra one and be consistent
-        # raghu replies don't need to include event_ids?
-        assert data[:1] == b'\x01', "Expecting reply from remote node, but got something else!"
-        result = umsgpack.unpackb(data[1:])
-        self.log.debug('raghu Got result {} for bootstrap request from {}'.format(result, raddr))
+    def rpc_response(self, result):
         nodes = []
         for t in result:
             n = Node(digest(t[3]), ip=t[1], port=t[2], vk=t[3])
             nodes.append(n)
-        self.log.debug('raghu Got reply {} for bootstrap request from {}'.format(nodes, raddr))
         return nodes
   
 
@@ -330,76 +303,136 @@ class Network(object):
             if vk == node.vk:
                 return node
 
-    async def network_find_ip(self, event_id, nodes_to_ask, vk_to_find):
-        # raghu todo crp
-        # open router socket and set proper options
-        # while one more node to ask or one req pending
-        # poll if any answer is available, if so, process it.
-        # otherwise, send one more request
-        # close socket and return answer
+    async def try_rpc_response(self, req, pinterval):
+        try:
+            event = await req.poll(timeout=pinterval, flags=zmq.POLLIN)
+            if event == zmq.POLLIN:
+                msg = await req.recv_multipart(zmq.DONTWAIT)
+                if msg[0] in self.unheard_nodes:
+                    self.unheard_nodes.remove(msg[0])
+                raddr = msg[0].decode()
+                addr_list = raddr.split(':')
+                rnode = Node(digest(addr_list[0]), addr_list[1], addr_list[2], addr_list[0])
+                self.welcomeIfNewNode(rnode)
+                data = msg[1]
+                # raghu TODO error handling and audit layer ??
+                assert data[:1] == b'\x01', "Expecting reply from remote node, but got something else!"
+                result = umsgpack.unpackb(data[1:])
+                if self.is_debug:
+                    self.log.debug('Received {} from {}'.format(result, raddr))
+                return result
 
-        req = self.ctx.socket(zmq.ROUTER)
-        req.setsockopt(zmq.IDENTITY, '{}:{}:{}'.format(self.vk, self.host_ip, event_id).encode())
-        req.setsockopt(zmq.LINGER, 5000)
-        req.setsockopt(zmq.RCVTIMEO, 1000)    # do we still need it with polling
-        req.setsockopt(zmq.SNDTIMEO, 100)
+        except Exception as e:
+            self.log.warning("Exception '{}' in network_find_ip".format(e))
 
-        poller = zmq.Poller()
-        poller.register(req, zmq.POLLIN)
+        return None
+
+    async def _network_find_ip(self, req, nodes_to_ask, vk_to_find, is_bootstrap=False):
         processed = set()
         processed.add(self.vk)
+        failed_requests = set()
+        is_retry = is_bootstrap
         num_pending_replies = 0
-        req_ip = None
+        pinterval = 0
+        is_done = False
+        retry_time = time.time() + 3    # 3 seconds 
+        end_time = time.time() + 6      # 6 seconds is max
 
-        while (len(nodes_to_ask) > 0) or (num_pending_replies > 0):
-            # raghu todo - need to check if polling without connecting to anyone will have issues
+        if self.is_debug:
+            self.log.debug("Asking {} for the vk {}".format(nodes_to_ask, vk_to_find))
+        while ((time.time() < end_time) and not is_done):
             # first poll and process any replies
-            self.log.debug("raghu new iter {} {}".format(len(nodes_to_ask), num_pending_replies))
+            if self.is_debug:
+                self.log.debug("Num pending requests {} Num pending replies {} Num Failed requests {}".format(len(nodes_to_ask), num_pending_replies, len(failed_requests)))
             if num_pending_replies > 0:
-                self.log.debug("raghu poll new iter {} {}".format(len(nodes_to_ask), num_pending_replies))
-                socks = dict(poller.poll())
-                if req in socks and socks[req] == zmq.POLLIN:
-                    self.log.debug('Listening for the replies for bootstrap request')
-                    msg = await req.recv_multipart()
-                    num_pending_replies -= 1
-                    # raghu todo - this has eventId now - won't work as is
+                msg = await self.try_rpc_response(req, pinterval)
+                if msg:
                     nodes = self.rpc_response(msg)
-                    nd = self.get_node_from_nodes_list(vk_to_find, nodes)
+                    # in bootstrap mode, shouldn't return prematurely
+                    nd = None if is_bootstrap else \
+                         self.get_node_from_nodes_list(vk_to_find, nodes)
                     if nd:
-                        self.log.debug('Got ip {} for vk {}'.format(nd.ip, nd.vk))
-                        req_ip = nd.ip
-                        break
+                        if self.is_debug:
+                            self.log.debug('Found ip {} for vk {}'.format(nd.ip, nd.vk))
+                        return nd.ip
                     nodes_to_ask.extend(nodes)
-                    continue
-                else:
-                    self.log.debug('raghu no reply yet ...')
+                    num_pending_replies -= 1
+
             if len(nodes_to_ask) > 0:
                 node = nodes_to_ask.pop()
-                if node.vk in processed:
-                    self.log.debug('already processed this vk {}'.format(node.vk))
+                if node.vk in processed or \
+                   (is_bootstrap and not self.routing_table.isNewNode(node)):
+                    if self.is_debug:
+                        self.log.debug('Already processed this vk {}'.format(node.vk))
                     continue
-                self.log.debug('sending bootstrap request to {}'.format(node.vk))
+                if self.is_debug:
+                    self.log.debug('Asking {}:{} about vk {}'.format(node.vk, node.ip, vk_to_find))
                 processed.add(node.vk)
-                num_pending_replies += 1
-                self.rpc_request(req, node, 'rpc_find_ip', vk_to_find)
-                self.log.debug("raghu sent request to {}".format(node.ip))
-            else:
-                self.log.debug('raghu sleeping for a sec')
-                await asyncio.sleep(1)    # sleep for 1 sec
+                raddr = await self.rpc_connect(req, node.vk, node.ip)
+                is_sent = await self.rpc_request(req, raddr, 'rpc_find_ip', vk_to_find)
+                if is_sent:
+                    num_pending_replies += 1
+                elif is_retry:
+                    failed_requests.add(raddr)
+            elif len(failed_requests) > 0:           # expectation is that this is only needed for tests
+                ctime = time.time()
+                if ctime < retry_time:
+                    await asyncio.sleep(retry_time - ctime)
+                # If we save failed requests along with original request time, re-request interval can be better controlled
+                for raddr in failed_requests:
+                    if self.is_debug:
+                        self.log.debug('Requesting again {} about vk {}'.format(raddr, vk_to_find))
+                    is_sent = await self.rpc_request(req, raddr, 'rpc_find_ip', vk_to_find)
+                    if is_sent:
+                        num_pending_replies += 1
+                failed_requests.clear()
+            elif num_pending_replies == 0:
+                is_done = True
+            else:     # increase poll time here
+                pinterval = 1000
 
-        self.log.debug('raghu done with find_ip')
+        return None
+
+    async def network_find_ip(self, event_id, nodes_to_ask, vk_to_find, is_bootstrap=False):
+        req = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
+        req.setsockopt(zmq.IDENTITY, '{}:{}:{}'.format(self.vk, self.host_ip, event_id).encode())
+        ip = await self._network_find_ip(req, nodes_to_ask, vk_to_find, is_bootstrap)
         req.close()    # clean up socket  # handle the errors on remote properly
-        return req_ip
-
+        return ip
 
     async def find_ip(self, event_id, vk_to_find):
-        self.log.debug("find_ip called for vk {} with event_id {}".format(vk_to_find, event_id))
+        if self.is_debug:
+            self.log.debug("find_ip called for vk {} with event_id {}".format(vk_to_find, event_id))
         nodes = self.local_find_ip(vk_to_find)
         nd = self.get_node_from_nodes_list(vk_to_find, nodes)
         if nd:
             return nd.ip
         return await self.network_find_ip(event_id, nodes, vk_to_find)
 
+    async def _ping_ip(self, req, vk, ip, is_first_time):
+        raddr = await self.rpc_connect(req, vk, ip)
+        is_sent = await self.rpc_request(req, raddr, 'rpc_ping_ip', is_first_time)
+        if not is_sent:
+            return False
+        result = await self.try_rpc_response(req, 3000)     # wait for 3 sec max
+        return True if result else False
 
-    # async def authenticate(self, event_id, is_first_time, ip, domain):
+    async def ping_ip(self, event_id, vk, ip, is_first_time):
+        req = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
+        req.setsockopt(zmq.IDENTITY, '{}:{}:{}'.format(self.vk, self.host_ip, event_id).encode())
+        status = await self._ping_ip(req, vk, ip, is_first_time)
+        req.close()    # clean up socket  # handle the errors on remote properly
+        return status
+
+    async def find_ip_and_authenticate(self, event_id, vk_to_find, domain, is_first_time):
+        if self.is_debug:
+            self.log.debug("find_ip_and_authenticate called for vk {} with event_id {}".format(vk_to_find, event_id))
+        ip = self.find_ip(event_id, vk_to_find)
+        is_auth = False
+        if ip:
+            # raghu TODO if is_first_time, announce it as node_on_line - that is on the other side
+            # is_auth = await self.handshake.authenticate(event_id, vk_to_find, ip, domain, is_first_time)
+            is_auth = await self.ping_ip(event_id, vk_to_find, ip, is_first_time)
+        return ip, is_auth
+
 

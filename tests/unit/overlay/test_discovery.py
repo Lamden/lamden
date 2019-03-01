@@ -16,21 +16,21 @@ def run_node(node_type, idx):
     from cilantro.storage.vkbook import VKBook
     VKBook.setup()
     async def check_nodes():
-        while True:
-            await asyncio.sleep(2)
-            if len(dis.discovered_nodes) >= MIN_DISCOVERY_NODES:
-                send_to_file(env('HOST_NAME'))
+        nodes = await dis.discover_nodes()
+        if dis.is_masternode or (len(nodes) >= MIN_DISCOVERY_NODES):
+            send_to_file(env('HOST_NAME'))
 
     from cilantro.logger import get_logger
     log = get_logger('{}_{}'.format(node_type, idx))
     loop = asyncio.get_event_loop()
     ctx = zmq.asyncio.Context()
+    ctx2 = zmq.asyncio.Context()
+    log.test('raghu ctx {} ctx2 {}'.format(str(ctx), str(ctx2)))
     Auth.setup(VKBook.constitution[node_type][idx]['sk'])
     dis = Discovery(Auth.vk, ctx)
     log.test('Starting {}_{}'.format(node_type, idx))
     tasks = asyncio.ensure_future(asyncio.gather(
         dis.listen(),
-        dis.discover_nodes(),
         check_nodes()
     ))
     loop.run_until_complete(tasks)
@@ -62,7 +62,7 @@ class TestDiscoverySuccess(TestDiscovery):
 ################################################################################
 
     def tearDown(self):
-        file_listener(self, self.callback, self.timeout, 60)
+        file_listener(self, self.callback, self.timeout, 80)
         super().tearDown()
 
     def callback(self, data):
@@ -87,7 +87,6 @@ class TestDiscoverySuccess(TestDiscovery):
 
     def test_regular_one_master(self):
         self.all_nodes.remove('node_2')
-        self.all_nodes.remove('node_1')     # only master, self bootstrap
         self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
         self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
         self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
@@ -100,9 +99,9 @@ class TestDiscoverySuccess(TestDiscovery):
         self.log.test('Waiting 10 seconds before spinning up last node')
         time.sleep(10)
         self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
+        time.sleep(2)
 
     def test_one_master_late_delegate(self):
-        self.all_nodes.remove('node_1')  # single master - self bootstrap
         self.all_nodes.remove('node_2')
         self.execute_python('node_1', wrap_func(run_node, 'masternodes', 0))
         self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
@@ -124,7 +123,7 @@ class TestDiscoverySuccess(TestDiscovery):
         self.rerun_node_script('node_1')
 
     def test_one_late_masternode(self):
-        self.all_nodes.remove('node_1')  # single master - self bootstrap
+        # self.all_nodes.remove('node_1')     # only one master, self bootstraps
         self.all_nodes.remove('node_2')
         self.execute_python('node_3', wrap_func(run_node, 'delegates', 0))
         self.execute_python('node_4', wrap_func(run_node, 'delegates', 1))
@@ -144,7 +143,7 @@ class TestDiscoveryFail(TestDiscovery):
 ################################################################################
 
     def tearDown(self):
-        file_listener(self, self.callback, self.timeout, 15)
+        file_listener(self, self.callback, self.timeout, 80)
         super().tearDown()
 
     def callback(self, data):

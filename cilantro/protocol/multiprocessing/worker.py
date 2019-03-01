@@ -1,3 +1,4 @@
+from cilantro.protocol.multiprocessing import context
 from cilantro.logger import get_logger
 from cilantro.protocol import wallet
 from cilantro.protocol.comm.socket_manager import SocketManager
@@ -10,7 +11,7 @@ import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
-class Worker:
+class Worker(Context):
 
     def __init__(self, signing_key=None, loop=None, context=None, manager: SocketManager=None, name=''):
         name = name or type(self).__name__

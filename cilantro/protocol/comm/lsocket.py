@@ -1,7 +1,7 @@
 from cilantro.messages.base.base import MessageBase
 from cilantro.messages.envelope.envelope import Envelope
 from cilantro.protocol.structures.envelope_auth import EnvelopeAuth
-from cilantro.protocol.overlay.kademlia.auth import Auth
+from cilantro.protocol.utils.socket import SocketUtil
 from cilantro.logger.base import get_logger
 import zmq.asyncio, asyncio, os
 
@@ -51,7 +51,7 @@ class LSocketBase:
         self.secure, self.socket, self.domain, self.manager = secure, socket, domain, manager
 
         if secure:
-            self.socket = Auth.secure_socket(
+            self.socket = SocketUtil.secure_socket(
                 self.socket,
                 manager.secret,
                 manager.public_key,
@@ -210,13 +210,13 @@ class LSocketBase:
 
         if should_connect:
             if self.secure:
-                self.socket.curve_serverkey = Auth.vk2pk(vk)
-                Auth.configure_auth(self.manager.auth, self.domain)
+                self.socket.curve_serverkey = Keys.vk2pk(vk)
+                self.manager.configure_auth(self.domain)
             self.socket.connect(url)
         else:
             if self.secure:
                 self.socket.curve_server = True
-                Auth.configure_auth(self.manager.auth, self.domain)
+                self.manager.configure_auth(self.domain)
             self.socket.bind(url)
 
     def __getattr__(self, item):

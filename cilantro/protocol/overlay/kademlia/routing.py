@@ -153,6 +153,7 @@ class RoutingTable(object):
         index = self.getBucketFor(node)
         self.buckets[index].removeNode(node)
 
+    # raghu todo - this is inefficient serial search. change to binary search
     def isNewNode(self, node):
         index = self.getBucketFor(node)
         return self.buckets[index].isNewNode(node)

@@ -12,7 +12,6 @@ FIND_NODE_HOP_TIMEOUT = 10
 FIND_NODE_TIMEOUT = FIND_NODE_HOP_TIMEOUT * 4   # we should multiply by log2(network size)
 
 # The number of discovery retries necessary before a masternode boots alone
-DISCOVERY_RETRIES_BEFORE_SOLO_BOOT = 2 
 MIN_DISCOVERY_NODES = 1
 MIN_BOOTSTRAP_NODES = 1
 DISCOVERY_TIMEOUT = 3

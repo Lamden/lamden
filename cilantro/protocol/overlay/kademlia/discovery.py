@@ -1,13 +1,13 @@
 import zmq, zmq.asyncio, asyncio, traceback
-from os import getenv as env
+import uuid
+import time
+# from os import getenv as env
 from cilantro.constants.overlay_network import *
+from cilantro.protocol.utils.socket import SocketUtil
 from cilantro.constants.ports import DISCOVERY_PORT
 from cilantro.protocol.overlay.kademlia.ip import *
 from cilantro.logger import get_logger
 from cilantro.storage.vkbook import VKBook
-from cilantro.constants.ports import DHT_PORT
-from cilantro.protocol.overlay.kademlia.utils import digest
-from cilantro.protocol.overlay.kademlia.node import Node
 
 
 class Discovery:
@@ -22,180 +22,211 @@ class Discovery:
         self.pepper = PEPPER.encode()
 
         self.url = 'tcp://*:{}'.format(self.port)
-        self.sock = self.ctx.socket(zmq.ROUTER)
+        self.sock = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
+        # self.sock.setsockopt(zmq.IDENTITY, '{}:{}'.format(self.host_ip, self.port).encode())
+        # raghu make sure this is the only socket with just ip alone as the identity
         self.sock.setsockopt(zmq.IDENTITY, self.host_ip.encode())
-        self.sock.setsockopt(zmq.ROUTER_HANDOVER, 1)
-        self.sock.setsockopt(zmq.LINGER, 500)
         self.sock.bind(self.url)
 
-        self.discovered_nodes = {}
-        self.connections = {}
-        # self.is_connected = False
+        self.is_debug = False          # turn this on for verbose messages to debug
+
         self.is_masternode = False
         self.is_listen_ready = False
-        # raghu todo separate out vkbook - again through genesis script?
+        # raghu TODO - #enh maintain a list of ips serviced with a relative time counter to deny dos attacks ?
+        # raghu TODO #enh separate out vkbook - again through genesis script?
         if VKBook.is_node_type('masternode', self.vk):
             self.is_masternode = True
             self.is_listen_ready = True
 
     async def listen(self):
-        self.log.debug('Listening to other nodes on {}'.format(self.url))
+        self.log.info('Listening for other nodes to discover me')
         while True:
             try:
                 msg = await self.sock.recv_multipart()
-                self.log.spam("Got msg over discovery socket: {}".format(msg))
+
+                if self.is_debug:
+                    self.log.debug("Got msg over discovery socket: {}".format(msg))
+
                 ip, pepper = msg[:2]
 
                 if pepper != self.pepper:
+                    # raghu TODO #audit #error_processing #dos - these should go into zmq blacklist
                     self.log.warning("Node with ip {} tried to connect using incorrect pepper {}!".format(ip, pepper))
                     continue
 
                 if len(msg) == 2:
-                    self.reply(ip)
+                    await self.reply(ip)
 
                 elif len(msg) == 3:
-                    vk = msg[-1]
-                    self.discovered_nodes[vk.decode()] = ip.decode()
+                    self.log.warning("Shouldn't get reply to this channel, ignoring!")
 
+            except zmq.ZMQError as e:
+                self.log.warning("ZMQError '{}' in discovery\n".format(e))
             except Exception as e:
-                self.log.error(traceback.format_exc())
+                self.log.warning("Exception '{}' in discovery".format(e))
 
         self.sock.close()
         self.log.fatal('Discovery DIED')
 
-    def request(self, ip):
-        # TODO this is soooo sketch wrapping this in a try/except. Why does it give a 'Could not route host' error??
-        # --davis
+    async def request(self, req, ip):
+        if self.is_debug:
+            self.log.debug("Sending request to {}".format(ip))
+
         try:
-            self.sock.send_multipart([ip, self.pepper])
-        except Exception as e:
-            self.log.warning("Got ZMQError sending discovery msg\n{}".format(e))
-
-    def reply(self, ip):
-        if self.is_listen_ready and ip != self.host_ip:
-            self.log.spam("Replying to {}".format(ip))
-            self.sock.send_multipart([ip, self.pepper, self.vk.encode()])
-            # self.is_connected = True
-
-    def connect(self, ips):
-        self.log.spam("Attempting to connect to IP range {}".format(ips[0]))
-        for ip in ips:
-            if ip == self.host_ip:
-                continue
-            url = 'tcp://{}:{}'.format(ip, self.port)
-            if not self.connections.get(ip):
-                self.sock.connect(url)
-                self.connections[ip] = url
-            # if self.is_masternode:
-                # self.log.info("{} Sending request to {}".format(self.host_ip, ip))
-            self.request(ip.encode())
-
-    # need to test if this creates additional issues of listening after we disconect
-    def disconnect(self):
-        self.log.spam("Attempting to disconnect discovery connections")
-        for url in self.connections.values():
-            self.sock.disconnect(url)
-        self.connections.clear()
-
-
-    async def try_discover_nodes(self, start_ip):
-        self.log.info('We have the following boot nodes: {}'.format(VKBook.bootnodes))
-
-        self.discovered_nodes.clear()
-        # no need to discover anyone if it is the solo masternode in the network
-        if (self.is_masternode and len(VKBook.get_masternodes()) == 1):
-            self.log.important('Bootstrapping as the only masternode.')
+            await req.send_multipart([ip, self.pepper])
             return True
 
-        try_count = 0
-        while try_count < DISCOVERY_RETRIES:
-            if len(VKBook.bootnodes) > 0: # TODO refine logic post-anarchy-net
-                self.log.info('Connecting to boot nodes: {}'.format(VKBook.bootnodes))
-                self.connect(VKBook.bootnodes)
-            else:
-                ip_range = start_ip if type(start_ip) == list else get_ip_range(start_ip)
-                self.log.info('Connecting to this ip-range: {} to {}'.format(ip_range[0], ip_range[-1]))
-                self.connect(ip_range)
-            await asyncio.sleep(DISCOVERY_WAIT)
-            try_count += 1
-            # raghu todo - do we bootstrap only when this masternode connected to some node? but, we are enforcing it on single master case anyway
-            if (self.is_masternode and len(self.discovered_nodes) == 0 and \
-                          try_count >= DISCOVERY_RETRIES_BEFORE_SOLO_BOOT):
-                self.log.important('Bootstrapping as the only masternode so far.')
-                return True
-            elif len(self.discovered_nodes) >= MIN_DISCOVERY_NODES:
-                self.log.info('Found {} nodes to bootstrap: {}'.format(
-                    len(self.discovered_nodes), self.discovered_nodes
-                ))
-                return True
+        except zmq.ZMQError as e:
+            if self.is_debug or (e.errno != zmq.EHOSTUNREACH):
+                self.log.warning("ZMQError in sending discovery request to {}: {}".format(ip, e))
+        except Exception as e:
+            self.log.warning("Got exception in sending discovery msg: {}".format(e))
 
-        self.log.info('Did not find enough nodes after {} tries ({}/{}).'.format(
-            try_count,
-            len(self.discovered_nodes),
-            MIN_BOOTSTRAP_NODES
-        ))
         return False
 
+    async def reply(self, ip):
+        if self.is_listen_ready:
+            # raghu TODO #dos there could be dos attack on discovery socket
+            # anyone connects to this socket, we give away our vk
+            # requester should send in their vk which can be verified with VKBook or something
+
+            if self.is_debug:
+                self.log.debug("Replying to {}".format(ip))
+
+            try:
+                await self.sock.send_multipart([ip, self.pepper, self.vk.encode()])
+
+            except zmq.ZMQError as e:
+                self.log.warning("ZMQError in replying to discovery msg: {}".format(e))
+            except Exception as e:
+                self.log.warning("Got exception in replying to discovery msg: {}".format(e))
+
+        elif self.is_debug:
+            self.log.debug("Not authorized to reply to {}".format(ip))
+
+    async def try_process_reply(self, req, dis_nodes):
+        try:
+            event = await req.poll(timeout=0, flags=zmq.POLLIN)
+            if event == 0:
+                return False
+
+            # at this point, we should have a message
+            msg = await req.recv_multipart(zmq.DONTWAIT)
+            assert len(msg) == 3, "Got something else instead of reply!"
+
+            ip_enc, pepper = msg[:2]
+
+            ip = ip_enc.decode()
+            if self.is_debug:
+                self.log.debug("Got reply from {}".format(ip))
+            if ip in dis_nodes:
+                return False
+            vk = msg[-1]
+            dis_nodes[ip] = vk.decode()
+            return True
+
+        # except zmq.ZMQError as e:
+            # if e.errno != zmq.EAGAIN:
+                # self.log.warning("ZMQError '{}' in discovery reply\n".format(e))
+        except Exception as e:
+            self.log.warning("Exception '{}' in discovery reply processing".format(e))
+
+        return False
+
+
+    async def _try_discover_nodes(self, req, dis_nodes, connections, requests, ip_list):
+        assert len(ip_list) >= MIN_DISCOVERY_NODES, "Don't have enough discoverable addresses"
+        num_requests = len(requests)
+        num_replies = len(dis_nodes)
+        for ip in ip_list:
+            if (ip == self.host_ip) or ip in dis_nodes:
+                continue
+            while (num_replies < num_requests):
+                is_reply = await self.try_process_reply(req, dis_nodes)
+                if not is_reply:
+                    break
+                num_replies += 1
+                if num_replies >= MIN_DISCOVERY_NODES:
+                    return True
+
+            if ip not in connections:
+                url = 'tcp://{}:{}'.format(ip, self.port)
+                req.connect(url)
+                connections.add(ip)
+            
+            if ip not in dis_nodes:
+                is_sent = await self.request(req, ip.encode())
+                if is_sent and ip not in requests:
+                    num_requests += 1
+                    requests.add(ip)
+
+        if self.is_debug:
+            self.log.debug("Sent discovery request to all ips ({} {}) Sleeping for {}".format(num_requests, num_replies, DISCOVERY_WAIT))
+        await asyncio.sleep(DISCOVERY_WAIT)
+        while (num_replies < num_requests) and (num_replies < MIN_DISCOVERY_NODES):
+            is_reply = await self.try_process_reply(req, dis_nodes)
+            if not is_reply:
+                return False
+            num_replies += 1
+        return (num_replies >= MIN_DISCOVERY_NODES)
+
+    async def try_discover_nodes(self, dis_nodes, ip_list):
+        req = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
+        req.setsockopt(zmq.ROUTER_MANDATORY, 1)
+        event_id = uuid.uuid4().hex
+        req.setsockopt(zmq.IDENTITY, '{}:{}'.format(self.host_ip, event_id).encode())
+        # raghu TODO set hwm and bunch the requests to make sure they are under hwm
+        # raghu TODO better strategy is to use PROBE flag rather than multiple sends
+
+        connections = set()
+        requests = set()
+        try_count = 0
+        is_done = False
+        while not is_done and try_count < DISCOVERY_RETRIES:
+            # raghu this try and except is redundant?
+            try_count += 1
+            try:
+                is_done = await self._try_discover_nodes(req, dis_nodes, connections, requests, ip_list)
+            except exception as e:
+                self.log.warning("Got exception in discovering process '{}'".format(e))
+
+        req.close()
+
+
     async def discover_nodes(self):
-        is_success = await self.try_discover_nodes(self.host_ip)
-        if not is_success:
-            iter = 1
-            while not is_success and (iter < DISCOVERY_ITER):
-                # self.disconnect()
-                asyncio.sleep(DISCOVERY_LONG_WAIT)
-                is_success = await self.try_discover_nodes(self.host_ip)
-        # raghu todo - need to figure out why we can't disconnect cleanly here
-        # self.disconnect()
-        if not is_success:
-            self.log.critical('''
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-x   DISCOVERY FAILED: Cannot find enough nodes ({}/{}) and not a masternode
-x       Retrying...
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-            '''.format(len(self.discovered_nodes), MIN_BOOTSTRAP_NODES))
-            raise Exception('Failed to discover any nodes. Killing myself with shame!')
+        await asyncio.sleep(1)      # just to yield so listen can start before this one
+        dis_nodes = {}
+        if (self.is_masternode and len(VKBook.get_masternodes()) == 1):
+            self.log.info('Bootstrapping as the only masternode.')
+        else:
+            if len(VKBook.bootnodes) > 0: # TODO refine logic post-anarchy-net
+                self.log.info('Connecting to boot nodes: {}'.format(VKBook.bootnodes))
+                ip_list = VKBook.bootnodes
+            else:
+                start_ip = self.host_ip   # TODO see if we can get a list based on env variable here
+                ip_list = start_ip if type(start_ip) == list else get_ip_range(start_ip)
+                self.log.info('Connecting to this ip-range: {} to {}'.format(ip_list[0], ip_list[-1]))
+            iter = 0
+            while iter < DISCOVERY_ITER:
+                self.log.info('Trying to discover network ..')
+                await self.try_discover_nodes(dis_nodes, ip_list)
+                if (len(dis_nodes) >= MIN_DISCOVERY_NODES) or self.is_masternode:
+                    break
+                await asyncio.sleep(DISCOVERY_LONG_WAIT)
+                iter += 1
+
+            if (len(dis_nodes) < MIN_DISCOVERY_NODES) and not self.is_masternode:
+                self.log.critical('''
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+x   DISCOVERY FAILED: Cannot find enough nodes ({}/{})
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            '''.format(len(dis_nodes), MIN_DISCOVERY_NODES))
+                raise Exception('Failed to discover any nodes. Killing myself with shame!')
+
         self.log.success("DISCOVERY COMPLETE")
         self.is_listen_ready = True
-        return self.discovered_nodes
 
-        # raghu - todo - change interface of nodes. No need to create node list and import DHT_PORT etc here
-        if len(self.discovered_nodes) > 0:
-            addrs = [Node(digest(vk), ip=self.discovered_nodes[vk], port=DHT_PORT, vk=vk) \
-                for vk in self.discovered_nodes if vk is not self.vk]
-            return addrs
-        return []
+        if self.host_ip in dis_nodes:
+            del dis_nodes[self.host_ip]
+        return dis_nodes
 
-    # raghu these class methods are not thread-safe. Not sure why we want them to be class methods rather than instance methods
-#    @classmethod
-#    async def discover_nodes(cls, start_ip):
-#        try_count = 0
-#        cls.log.info('Connecting to this ip-range: {}'.format(start_ip))
-#        ips = get_ip_range(start_ip)
-#        while try_count < DISCOVERY_RETRIES:
-#            try_count += 1
-#            for ip in ips:
-#                if ip in cls.connections:
-#                    continue
-#                url = 'tcp://{}:{}'.format(ip, cls.port)
-#                cls.sock.connect(url)
-#                cls.connections[ip] = url
-#                cls.request(ip.encode())
-#                if (len(cls.discovered_nodes) == 1 and Auth.vk in VKBook.get_masternodes()) \
-#                    and try_count >= 2:
-#                    cls.log.important('Bootstrapping as the only masternode.'.format(
-#                        len(cls.discovered_nodes)
-#                    ))
-#                    return True
-#                elif len(cls.discovered_nodes) >= MIN_BOOTSTRAP_NODES:
-#                    cls.log.info('Found {} nodes to bootstrap.'.format(
-#                        len(cls.discovered_nodes)
-#                    ))
-#                    return True
-#            await asyncio.sleep(DISCOVERY_TIMEOUT)
-#        assert try_count >= DISCOVERY_RETRIES:
-#        cls.log.info('Did not find enough nodes after {} tries ({}/{}).'.format(
-#            try_count,
-#            len(cls.discovered_nodes),
-#            MIN_BOOTSTRAP_NODES
-#        ))
-#        return False
