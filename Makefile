@@ -1,7 +1,9 @@
 start-db:
 	python3 ./scripts/start_redis.py -no-conf &
 	python3 ./scripts/start_mongo.py &
+	sleep 1
 	python3 ./scripts/create_user.py &
+	sleep 2
 
 stop-db:
 	pkill mongod || true
