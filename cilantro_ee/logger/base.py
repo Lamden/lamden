@@ -8,14 +8,6 @@ from os.path import dirname
 from logging.handlers import RotatingFileHandler
 import cilantro_ee
 
-#from vmnet.cloud.aws import S3Handler
-from vmnet.cloud.aws import AWSCloudWatchHandler
-import multiprocessing
-
-logging.getLogger("paramiko").setLevel(logging.WARNING)
-logging.getLogger('boto3').setLevel(logging.WARNING)
-logging.getLogger('botocore').setLevel(logging.WARNING)
-
 VALID_LVLS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 _LOG_LVL = os.getenv('LOG_LEVEL', None)
 if _LOG_LVL:
@@ -156,9 +148,6 @@ def get_logger(name=''):
         ColoredStreamHandler()
     ]
 
-    if os.getenv('VMNET_CLOUD'):
-        filehandlers.append(AWSCloudWatchHandler(name))
-
     logging.basicConfig(
         format=format,
         handlers=filehandlers,
@@ -167,10 +156,6 @@ def get_logger(name=''):
 
     log = logging.getLogger(name)
     log.setLevel(_LOG_LVL)
-
-    if os.getenv('VMNET_DOCKER') or os.getenv('VMNET_CLOUD'):
-        sys.stdout = LoggerWriter(log.debug)
-        sys.stderr = LoggerWriter(log.error)
 
     for log_name, log_level in CUSTOM_LEVELS.items():
         apply_custom_level(log, log_name, log_level)

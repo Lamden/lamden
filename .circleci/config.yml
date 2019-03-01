@@ -71,7 +71,7 @@ jobs:
       - run: pyenv local 3.6.5
 
       - run:
-          name: Login to Docker
+          name: Login to Dockern
           command: |
             docker login -u $DOCKER_USER -p $DOCKER_PWD
             sleep 1

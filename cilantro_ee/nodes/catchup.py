@@ -266,8 +266,9 @@ class CatchupManager:
         self.log.important2("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num,
                                                                               request.block_hash))
 
-        assert delta_idx[0].get('blockNum') <= delta_idx[-1].get('blockNum'), "ensure reply are in ascending order {}"\
-            .format(delta_idx)
+        if len(delta_idx) > 1:
+            assert delta_idx[0].get('blockNum') >= delta_idx[-1].get('blockNum'), "ensure reply are in ascending order" \
+                                                                                  " {}" .format(delta_idx)
 
         # self.log.important2("RCV BIR")
         self.dump_debug_info(lnum = 258)
@@ -327,7 +328,7 @@ class CatchupManager:
             given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_bhash)
 
             self.log.debugv('given block is already latest hash - {} givenblk - {} curr-{}'
-                           .format(sender_bhash, given_blk_num, latest_blk_num))
+                            .format(sender_bhash, given_blk_num, latest_blk_num))
 
             if given_blk_num == latest_blk_num:
                 self.log.debug('given block is already latest')

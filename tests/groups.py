@@ -14,15 +14,15 @@ TODO -- better documentation on whats going on here
 PROTOCOL_TESTS = [
     'tests.unit.protocol.overlay',
     'tests.unit.protocol.structures',
-    'tests.unit.protocol.states',
     'tests.unit.protocol.wallets',
     'tests.unit.protocol.multiprocessing',
-    'tests.unit.protocol.comm'
+    'tests.unit.protocol.comm',
     ]
 
 NODE_TESTS = [
     'tests.unit.nodes.masternode',
     'tests.unit.nodes.delegate',
+    'tests.unit.nodes.base',
 ]
 
 MESSAGE_TESTS = [
@@ -30,6 +30,7 @@ MESSAGE_TESTS = [
     'tests.unit.messages.envelope',
     'tests.unit.messages.transactions',
     'tests.unit.messages.block_data',
+    'tests.unit.messages.signals',
 ]
 
 UTIL_TESTS = [

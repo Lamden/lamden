@@ -16,10 +16,11 @@ class ConfMeta(type):
 class CilantroConf(metaclass=ConfMeta):
 
     HOST_IP = None
-    BOOTNODES = None
+    BOOTNODES = []
     RESET_DB = False
     CONSTITUTION_FILE = None
     SSL_ENABLED = None
+    NONCE_ENABLED = None
 
     @classmethod
     def setup(cls):
@@ -28,8 +29,19 @@ class CilantroConf(metaclass=ConfMeta):
             config.read(CIL_CONF_PATH)
             config = config['DEFAULT']
 
-            cls.SSL_ENABLED = config.getboolean('ssl_enabled')
             cls.HOST_IP = config['ip']
             cls.CONSTITUTION_FILE = config['constitution_file']
-            cls.BOOT_IPS = config['boot_ips'].split(',')
+            cls.BOOTNODES = config['boot_ips'].split(',')
             cls.RESET_DB = config.getboolean('reset_db')
+            cls.SSL_ENABLED = config.getboolean('ssl_enabled')
+            cls.NONCE_ENABLED = config.getboolean('nonce_enabled') or False
+
+            # DEBUG -- TODO DELETE
+            from cilantro_ee.logger.base import get_logger
+            log = get_logger("ConfDebug")
+            log.important("BOOT IP FROM CONFIG FILE: {}".format(config['boot_ips']))
+            log.important("BOOT IP CLASS VAR: {}".format(cls.BOOTNODES))
+            log.important("HOST IP CLASS VAR: {}".format(cls.HOST_IP))
+            log.important("SSL ENABLED CLASS VAR: {}".format(cls.SSL_ENABLED))
+            log.important("NONCE ENABLED CLASS VAR: {}".format(cls.NONCE_ENABLED))
+            # END DEBUG

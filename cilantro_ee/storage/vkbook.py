@@ -1,6 +1,7 @@
-import os, math
+import math
 from cilantro_ee.logger import get_logger
 from cilantro_ee.utils.utils import is_valid_hex
+from cilantro_ee.constants.conf import CilantroConf
 from collections import defaultdict
 
 log = get_logger("VKBook")
@@ -31,7 +32,7 @@ class VKBook(metaclass=VKBookMeta):
         # TODO untangle this mess --davis
         from cilantro_ee.utils.test.testnet_config import read_public_constitution
 
-        const_file = os.getenv('CONSTITUTION_FILE', None)
+        const_file = CilantroConf.CONSTITUTION_FILE
         if const_file:
             log.info("VKBook using constitution file {}".format(const_file))
             book = read_public_constitution(const_file)
@@ -83,9 +84,6 @@ class VKBook(metaclass=VKBookMeta):
     @classmethod
     def is_node_type(cls, node_type, vk):
         assert node_type in cls.node_types, 'Invalid node type!'
-        # if node_type == 'masternode':
-        #     log.important("vk {} checking if masternode in book {}".format(vk, cls.book))
-        #     log.important("correspoinding nodes for type: {}".format(cls.book[cls.node_types_map[node_type]]))
         return vk in cls.book[cls.node_types_map[node_type]]
 
     @classmethod

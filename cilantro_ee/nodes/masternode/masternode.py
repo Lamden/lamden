@@ -13,6 +13,7 @@ import os, random
 IPC_IP = 'masternode-ipc-sock'
 IPC_PORT = 6967
 
+
 class Masternode(NodeBase):
 
     def start(self):

@@ -11,11 +11,11 @@ from cilantro_ee.messages.transaction.contract import ContractTransaction
 from cilantro_ee.messages.transaction.publish import PublishTransaction
 from cilantro_ee.messages.transaction.container import TransactionContainer
 from cilantro_ee.messages.transaction.ordering import OrderingContainer
-from multiprocessing import Queue
 
 from cilantro_ee.nodes.masternode.nonce import NonceManager
 from cilantro_ee.constants.ports import WEB_SERVER_PORT, SSL_WEB_SERVER_PORT
 from cilantro_ee.constants.masternode import NUM_WORKERS
+from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.utils.hasher import Hasher
 
 from multiprocessing import Queue
@@ -36,14 +36,16 @@ log = get_logger("MN-WebServer")
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
 static_headers = {}
 
-if os.getenv('NONCE_ENABLED', False):
+# if os.getenv('NONCE_ENABLED', False):
+if CilantroConf.NONCE_ENABLED:
     log.info("Nonces enabled.")
     limiter = Limiter(app, global_limits=['60/minute'], key_func=get_remote_address)
 else:
     log.warning("Nonces are disabled! Nonce checking as well as rate limiting will be disabled!")
     limiter = Limiter(app, key_func=get_remote_address)
 
-if os.getenv('SSL_ENABLED') == '1':
+# if os.getenv('SSL_ENABLED') == '1':
+if CilantroConf.SSL_ENABLED:
     log.info("SSL enabled")
     with open(os.path.expanduser("~/.sslconf"), "r") as df:
         ssl = _json.load(df)
@@ -77,7 +79,8 @@ async def submit_transaction(request):
     if type(tx) not in (ContractTransaction, PublishTransaction):
         return _respond_to_request({'error': 'Cannot process transaction of type {}'.format(type(tx))}, status=400)
 
-    if os.getenv('NONCE_ENABLED'):
+    # if os.getenv('NONCE_ENABLED'):
+    if CilantroConf.SSL_ENABLED:
         # Verify the nonce, and remove it from db if its valid so it cannot be used again
         # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
         if not NonceManager.check_if_exists(tx.nonce):
