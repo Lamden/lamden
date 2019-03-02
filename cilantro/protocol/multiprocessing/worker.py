@@ -1,4 +1,4 @@
-from cilantro.protocol.multiprocessing import context
+from cilantro.protocol.multiprocessing.context import Context
 from cilantro.logger import get_logger
 from cilantro.protocol import wallet
 from cilantro.protocol.comm.socket_manager import SocketManager

@@ -81,7 +81,7 @@ class OverlayServer(OverlayInterface):
 
 
     def is_valid_vk(self, vk):
-        return vk in VKBook.get_all():
+        return vk in VKBook.get_all()
 
     @async_reply
     async def get_ip_from_vk(self, event_id, vk):
@@ -109,7 +109,7 @@ class OverlayServer(OverlayInterface):
         }
 
     @async_reply
-    async def get_ip_and_handshake(self, event_id, vk, domain='*', is_first_time=True):
+    async def get_ip_and_handshake(self, event_id, vk, is_first_time):
 
         if not self.is_valid_vk(vk):
             # raghu todo - create event enum / class that does this
@@ -119,11 +119,11 @@ class OverlayServer(OverlayInterface):
                 'vk': vk
             }
 
-        ip, is_auth = await self.network.find_ip_and_authenticate(vk, domain, is_first_time)
+        ip, is_auth = await self.network.find_ip_and_authenticate(event_id, vk, is_first_time)
 
         if is_auth:
             event = 'authorized_ip'
-       else:
+        else:
             event = 'unauthorized_ip' if ip else 'not_found'
 
         return {
@@ -134,8 +134,8 @@ class OverlayServer(OverlayInterface):
         }
 
     @async_reply
-    async def handshake_with_ip(self, event_id, vk, ip, domain='*', is_first_time=True):
-        is_auth = await self.network.authenticate(event_id, vk, ip, domain, is_first_time)
+    async def handshake_with_ip(self, event_id, vk, ip, is_first_time):
+        is_auth = await self.network.ping_ip(event_id, vk, ip, is_first_time)
         return {
             'event': 'authorized_ip' if is_auth else 'unauthorized_ip',
             'event_id': event_id,
@@ -144,8 +144,8 @@ class OverlayServer(OverlayInterface):
         }
 
     @async_reply
-    async def ping_ip(self, event_id, ip, is_first_time):
-        status = await self.network.ping_ip(event_id, is_first_time, ip)
+    async def ping_ip(self, event_id, vk, ip, is_first_time):
+        status = await self.network.ping_ip(event_id, vk, ip, is_first_time)
         return {
             'event': 'node_online' if status else 'node_offline',
             'event_id': event_id,
@@ -166,8 +166,6 @@ class OverlayServer(OverlayInterface):
                 'status': 'not_ready'
             }
 
-    def set_new_node_tracking(self, *args, **kwargs):
-        self.interface.track_new_nodes()
 
     def teardown(self):
         try:

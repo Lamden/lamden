@@ -16,15 +16,10 @@ class OverlayInterface(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def handshake_with_ip(self, ip):
+    def handshake_with_ip(self, vk, ip, is_first_time):
         pass
 
     @abc.abstractmethod
-    def ping_ip(self, ip, is_first_time):
-        pass
-
-    # don't need this probably
-    @abc.abstractmethod
-    def add_event_handler(self):
+    def ping_ip(self, vk, ip, is_first_time):
         pass
 

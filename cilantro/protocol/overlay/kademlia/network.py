@@ -424,7 +424,7 @@ class Network(object):
         req.close()    # clean up socket  # handle the errors on remote properly
         return status
 
-    async def find_ip_and_authenticate(self, event_id, vk_to_find, domain, is_first_time):
+    async def find_ip_and_authenticate(self, event_id, vk_to_find, is_first_time):
         if self.is_debug:
             self.log.debug("find_ip_and_authenticate called for vk {} with event_id {}".format(vk_to_find, event_id))
         ip = self.find_ip(event_id, vk_to_find)

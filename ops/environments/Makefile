@@ -29,7 +29,7 @@ new: checkdeps
 # Check if all necessary dependencies exist before running them
 checkdeps:
 ifeq (,$(shell which terraform))
-	$(error "No terraform in path, please install through your package manager (e.g. MacOS 'brew install terraform'")
+	$(error "No terraform in path, please install through your package manager e.g. MacOS 'brew install terraform'")
 endif
 ifeq (,$(shell pip3 freeze | grep pathspec | cut -d'=' -f 1))
 	$(error "Package pathspec not available to python3, please install via your python package manager (e.g. 'pip3 install pathspec')")

@@ -60,23 +60,23 @@ class OverlayClient(OverlayInterface):
         await asyncio.wait_for(wait_until_ready(), CLIENT_SETUP_TIMEOUT)
 
     @command
-    def lookup_ip(self, vk):
+    def get_ip_from_vk(self, *args, **kwargs):
         pass
 
     @command
-    def get_node_from_vk(self, *args, **kwargs):
+    def get_ip_and_handshake(self, *args, **kwargs):
+        pass
+
+    @command
+    def handshake_with_ip(self, *args, **kwargs):
+        pass
+
+    @command
+    def ping_ip(self, *args, **kwargs):
         pass
 
     @command
     def get_service_status(self, *args, **kwargs):
-        pass
-
-    @command
-    def check_node_status(self, *args, **kwargs):
-        pass
-
-    @command
-    def set_new_node_tracking(self, *args, **kwargs):
         pass
 
     async def event_listener(self, event_handler):

@@ -1,4 +1,4 @@
-from cilantro.protocol.multiprocessing import context
+from cilantro.protocol.multiprocessing.context import Context
 from cilantro.logger import get_logger
 from cilantro.constants.system_config import MAX_BOOT_WAIT
 from cilantro.protocol.multiprocessing.worker import Worker

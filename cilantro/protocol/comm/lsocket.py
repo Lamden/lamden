@@ -115,7 +115,6 @@ class LSocketBase:
 
     async def _listen(self, func, key):
         self.log.debug("Starting listener handler key {}".format(key))
-        self.manager.set_new_node_tracking()
 
         while True:
             try:

@@ -1,5 +1,6 @@
 from cilantro.protocol import wallet
 from cilantro.utils.keys import Keys
+from cilantro.utils import is_valid_hex
 
 import asyncio, zmq, zmq.asyncio
 
