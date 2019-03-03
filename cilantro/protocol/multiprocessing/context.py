@@ -1,4 +1,5 @@
 from cilantro.protocol import wallet
+from cilantro.protocol.utils.socket import SocketUtil
 from cilantro.utils.keys import Keys
 from cilantro.utils import is_valid_hex
 

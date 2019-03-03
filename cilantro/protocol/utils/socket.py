@@ -1,3 +1,5 @@
+import os, shutil
+from os.path import join, exists
 import zmq, zmq.asyncio
 
 # dir structure reset is a singleton  per node ?  node base
@@ -17,6 +19,15 @@ class SocketUtil:
             cls.domain_register = set()
             cls.authorized_keys_dir = join(cls.base_dir, cls.default_domain_dir)
             cls.is_setup = True
+
+    # this is really needed to be called only once per machine,
+    # otherwise we need a inter-process locks to enforce sequentiality of this operation.
+    # It is kinda enforced through sw architecture to have only one process call this
+    @classmethod
+    def clear_domain_register(cls):
+        if exists(cls.base_dir):
+            shutil.rmtree(cls.base_dir, ignore_errors=True)
+        cls.domain_register.clear()
 
     @classmethod
     def is_domain_registered(cls, domain='*'):

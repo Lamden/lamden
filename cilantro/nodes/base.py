@@ -1,7 +1,6 @@
 from cilantro.protocol.multiprocessing.context import Context
 from cilantro.logger import get_logger
 from cilantro.constants.system_config import MAX_BOOT_WAIT
-from cilantro.protocol.multiprocessing.worker import Worker
 from cilantro.protocol.overlay.kademlia.auth import Auth
 from cilantro.protocol.overlay.server import OverlayServer
 from cilantro.utils.lprocess import LProcess
@@ -43,14 +42,13 @@ class NodeBase(Context):
     REQ_DELS = len(VKBook.get_delegates())  # - 1      # remove -1 its to test manual dump.
     REQ_WITS = len(VKBook.get_witnesses())
 
-    def __init__(self, ip, signing_key, loop=None, name='Node'):
+    def __init__(self, ip, signing_key, name='Node'):
         super().__init__(signing_key=signing_key, name=name)
+        
+        SocketUtil.clear_domain_register()
 
         self.log = get_logger(name)
         self.ip = ip
-
-
-        Auth.setup(sk_hex=signing_key, reset_auth_folder=True)
 
         # Variables to track connected nodes when booting
         self.online_mns, self.online_dels, self.online_wits = set(), set(), set()
