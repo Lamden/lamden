@@ -1,3 +1,4 @@
+from cilantro_ee.protocol.multiprocessing.context import Context
 from cilantro_ee.logger import get_logger
 from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.comm.socket_manager import SocketManager
@@ -10,27 +11,18 @@ import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
-class Worker:
+class Worker(Context):
 
-    def __init__(self, signing_key=None, loop=None, context=None, manager: SocketManager=None, name=''):
+    def __init__(self, signing_key, name=''):
+
         name = name or type(self).__name__
+        super().__init__(signing_key=signing_key, name=name)
         self.log = get_logger(name)
 
-        if manager:
-            assert not loop and not context and not signing_key, "If passing in a SocketManager you should omit all other args"
-            signing_key, context, loop = manager.signing_key, manager.context, manager.loop
-        else:
-            assert signing_key, "Signing key arg is required if not passing in a SocketManager"
-            if context: assert loop, 'If passing context, must also include loop'
-
-        self.loop = loop or asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        self.context = context or zmq.asyncio.Context()
-
-        self.signing_key = signing_key
+        # do we need this?  raghu TOD
         self.verifying_key = wallet.get_vk(self.signing_key)
 
-        self.manager = manager or SocketManager(signing_key=signing_key, context=self.context, loop=self.loop)
+        self.manager = SocketManager(context=self.zmq_ctx)
 
     def add_overlay_handler_fn(self, key: str, handler: Callable[[dict], None]):
         """

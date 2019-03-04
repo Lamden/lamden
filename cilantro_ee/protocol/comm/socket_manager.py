@@ -1,9 +1,10 @@
 from cilantro_ee.logger import get_logger
-from cilantro_ee.protocol.overlay.daemon import OverlayServer, OverlayClient
+from cilantro_ee.protocol.overlay.server import OverlayServer
+from cilantro_ee.protocol.overlay.client import OverlayClient
 # from cilantro_ee.protocol.comm.lsocket import LSocket
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.protocol.comm.lsocket_router import LSocketRouter
-from cilantro_ee.protocol.overlay.auth import Auth
+from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.utils.utils import is_valid_hex
 
 from collections import defaultdict
@@ -12,21 +13,11 @@ import asyncio, zmq.asyncio
 
 class SocketManager:
 
-    def __init__(self, signing_key: str, context=None, loop=None):
-        assert is_valid_hex(signing_key, 64), "signing_key must a 64 char hex str not {}".format(signing_key)
-
+    def __init__(self, context):
         self.log = get_logger(type(self).__name__)
 
-        Auth.setup(signing_key, reset_auth_folder=False)
-
-        self.signing_key = Auth.sk
-        self.verifying_key = Auth.vk
-        self.public_key = Auth.public_key
-        self.secret = Auth.private_key
-
-        self.loop = loop or asyncio.get_event_loop()
-        self.context = context or zmq.asyncio.Context()
-        self.secure_context, self.auth = Auth.secure_context(async=True)
+        self.context = context
+        self.secure_context, self.auth = SocketUtil.secure_context(self.log, async=True)
 
         self.sockets = []
 
@@ -42,16 +33,13 @@ class SocketManager:
         self.overlay_callbacks = defaultdict(set)
 
         # Instantiating an OverlayClient blocks until the OverlayServer is ready
-        self.overlay_client = OverlayClient(self._handle_overlay_event, loop=self.loop, ctx=self.context, start=True)
-
-    def set_new_node_tracking(self):
-        self.overlay_client.set_new_node_tracking()
+        self.overlay_client = OverlayClient(self._handle_overlay_event, self._handle_overlay_event, ctx=self.context, start=True)
 
     def create_socket(self, socket_type, secure=False, domain='*', *args, name='LSocket', **kwargs) -> LSocketBase:
         assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)
 
         ctx = self.secure_context if secure else self.context
-        zmq_socket = ctx.socket(socket_type, *args, **kwargs)
+        zmq_socket = SocketUtil.create_socket(socket_type, *args, **kwargs)
 
         if socket_type == zmq.ROUTER:
             socket = LSocketRouter(zmq_socket, manager=self, secure=secure, domain=domain, name=name)
@@ -61,12 +49,16 @@ class SocketManager:
         self.sockets.append(socket)
         return socket
 
+    def configure_auth(self, domain='*'):
+        domain_dir = SocketUtil.get_domain_dir(domain)
+        self.auth.configure_curve(domain=domain, location=domain_dir)
+
     def _handle_overlay_event(self, e):
         self.log.debugv("SocketManager got overlay event {}".format(e))
 
         # Execute socket manager specific functionality
         if e['event'] == 'authorized':
-            Auth.configure_auth(self.auth, e['domain'])
+            self.configure_auth(e['domain'])
 
         # Forward 'got_ip' and 'not_found' events to the LSockets who initiated them
         elif e['event'] in ('got_ip', 'not_found'):
