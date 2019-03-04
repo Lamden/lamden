@@ -20,12 +20,11 @@ def command(fn):
 
 
 class OverlayClient(OverlayInterface):
-    def __init__(self, reply_handler, event_handler, name=None, loop=None, ctx=None, start=False):
+    def __init__(self, reply_handler, event_handler, ctx, name=None, start=False):
         self.name = name or str(os.getpid())
         self.log = get_logger('Overlay.Client.{}'.format(name))
-        self.loop = loop or asyncio.get_event_loop()
-        # asyncio.set_event_loop(self.loop)
-        self.ctx = ctx or zmq.asyncio.Context()
+        self.loop = asyncio.get_event_loop()
+        self.ctx = ctx
         self.cmd_sock = self.ctx.socket(socket_type=zmq.DEALER)
         self.cmd_sock.setsockopt(zmq.IDENTITY, self.name.encode())
         self.cmd_sock.connect(CMD_URL)
@@ -39,7 +38,7 @@ class OverlayClient(OverlayInterface):
 
         self._ready = False
         if start:
-            self.start()
+            self.run()
 
     def run(self):
         try:

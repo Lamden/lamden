@@ -1,6 +1,8 @@
 import os, shutil
 from os.path import join, exists
 import zmq, zmq.asyncio
+from zmq.auth.thread import ThreadAuthenticator
+from zmq.auth.asyncio import AsyncioAuthenticator
 
 # dir structure reset is a singleton  per node ?  node base
 # dir structure create is a singleton  per process ?  worker

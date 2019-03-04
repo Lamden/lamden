@@ -5,6 +5,7 @@ from cilantro.constants.overlay_network import EVENT_URL, CMD_URL, CLIENT_SETUP_
 from cilantro.storage.vkbook import VKBook
 from cilantro.logger.base import get_logger
 from cilantro.protocol.overlay.kademlia.event import Event
+from cilantro.protocol.overlay.kademlia.network import Network
 from collections import deque
 
 
@@ -70,7 +71,7 @@ class OverlayServer(OverlayInterface):
                 getattr(self, func)(msg[0], *data)
                 # self.network.func(msg[0], *data)
             else:
-                self.invalid_api_call(func)
+                getattr('invalid_api_call', func)
            
 
     @reply

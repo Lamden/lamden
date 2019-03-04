@@ -199,9 +199,10 @@ class Discovery:
         if (self.is_masternode and len(VKBook.get_masternodes()) == 1):
             self.log.info('Bootstrapping as the only masternode.')
         else:
-            if len(VKBook.bootnodes) > 0: # TODO refine logic post-anarchy-net
+            # if len(VKBook.bootnodes) > 0: # TODO refine logic post-anarchy-net
+            if False:
                 self.log.info('Connecting to boot nodes: {}'.format(VKBook.bootnodes))
-                ip_list = VKBook.bootnodes
+                # ip_list = VKBook.bootnodes
             else:
                 start_ip = self.host_ip   # TODO see if we can get a list based on env variable here
                 ip_list = start_ip if type(start_ip) == list else get_ip_range(start_ip)

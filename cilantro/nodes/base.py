@@ -1,3 +1,4 @@
+from cilantro.protocol.utils.socket import SocketUtil
 from cilantro.protocol.multiprocessing.context import Context
 from cilantro.logger import get_logger
 from cilantro.constants.system_config import MAX_BOOT_WAIT
@@ -53,18 +54,20 @@ class NodeBase(Context):
         # Variables to track connected nodes when booting
         self.online_mns, self.online_dels, self.online_wits = set(), set(), set()
 
+        self.log.info("Starting node components")
+        self.start_node()
+
         self.log.info("Starting overlay service")
-        self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key})
-        self.overlay_proc.start()  # TODO should we make this proc a daemon?
+        # self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key, 'ctx': self.zmq_ctx})
+        # self.overlay_proc.start()  # TODO should we make this proc a daemon?
 
-        self.log.notice("Node with vk {} has ip {}".format(self.verifying_key, ip))
-        # self.add_overlay_handler_fn('node_offline', self._node_offline_event)
-        # self.add_overlay_handler_fn('node_online', self._node_online_event)
-
-        # self._wait_for_nodes()
+        self.overlay_server = OverlayServer(sk=signing_key, ctx=self.zmq_ctx)
 
         self.start()
 
     def start(self):
+        self.overlay_server.start()
+
+    def start_node(self):
         pass
 

@@ -19,10 +19,6 @@ class Worker(Context):
         super().__init__(signing_key=signing_key, name=name)
         self.log = get_logger(name)
 
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        self.zmq_ctx = zmq.asyncio.Context()
-
         # do we need this?  raghu TOD
         self.verifying_key = wallet.get_vk(self.signing_key)
 
