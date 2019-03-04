@@ -53,6 +53,7 @@ class NodeBase(Context):
         # Variables to track connected nodes when booting
         self.online_mns, self.online_dels, self.online_wits = set(), set(), set()
 
+        # TODO -- race condition, what if server does not start in time and misses some requests
         self.log.info("Starting node components")
         self.start_node()
 

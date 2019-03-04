@@ -79,8 +79,6 @@ class SubBlockBuilder(Worker):
     def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int, *args, **kwargs):
         super().__init__(signing_key=signing_key, name="SubBlockBuilder_{}".format(sbb_index))
 
-        self.tasks = []
-
         # These variables are used only for testing
         self.bad_actor = bool(os.getenv('BAD_ACTOR'))
         if self.bad_actor:

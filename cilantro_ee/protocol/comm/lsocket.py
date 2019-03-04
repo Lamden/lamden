@@ -2,6 +2,7 @@ from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.envelope.envelope import Envelope
 from cilantro_ee.protocol.structures.envelope_auth import EnvelopeAuth
 from cilantro_ee.protocol.utils.socket import SocketUtil
+from cilantro_ee.utils.keys import Keys
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.constants.conf import CilantroConf
 import zmq.asyncio, asyncio, os
@@ -20,7 +21,7 @@ def vk_lookup(func):
         contains_ip = 'ip' in kwargs and kwargs['ip']
 
         if contains_vk and not contains_ip:
-            cmd_id = self.manager.overlay_client.get_node_from_vk(kwargs['vk'], domain=self.domain, secure=self.secure)
+            cmd_id = self.manager.overlay_client.get_ip_from_vk(kwargs['vk'])
             assert cmd_id not in self.pending_lookups, "Collision! Uuid {} already in pending lookups {}".format(cmd_id, self.pending_lookups)
 
             self.log.socket("{} call resolving ip for vk {}".format(func.__name__, kwargs['vk']))
@@ -52,11 +53,15 @@ class LSocketBase:
         self.log, self.name = get_logger(name), name
         self.secure, self.socket, self.domain, self.manager = secure, socket, domain, manager
 
+        # DEBUG -- TODO DELETE
+        self.secure = False
+        # END DEBUG
+
         if secure:
             self.socket = SocketUtil.secure_socket(
                 self.socket,
-                manager.secret,
-                manager.public_key,
+                Keys.private_key,
+                Keys.public_key,
                 self.domain
             )
 
@@ -259,8 +264,8 @@ class LSocketBase:
         assert type(msg) is not Envelope, "Attempted to package a 'message' that is already an envelope"
         assert issubclass(type(msg), MessageBase), "Attempted to package a message that is not a MessageBase subclass"
 
-        return Envelope.create_from_message(message=msg, signing_key=self.manager.signing_key,
-                                            verifying_key=self.manager.verifying_key)
+        return Envelope.create_from_message(message=msg, signing_key=Keys.sk,
+                                            verifying_key=Keys.vk)
 
     def _package_reply(self, reply: MessageBase, req_env: Envelope) -> Envelope:
         """ Convenience method to create a reply envelope. The difference between this func and _package_msg, is that
@@ -272,8 +277,8 @@ class LSocketBase:
         request_uuid = req_env.meta.uuid
         reply_uuid = EnvelopeAuth.reply_uuid(request_uuid)
 
-        return Envelope.create_from_message(message=reply, signing_key=self.manager.signing_key,
-                                            verifying_key=self.manager.verifying_key, uuid=reply_uuid)
+        return Envelope.create_from_message(message=reply, signing_key=Keys.sk,
+                                            verifying_key=Keys.vk, uuid=reply_uuid)
 
     def _flush_pending_commands(self):
         self.log.debug("Flushing {} pending commands from queue".format(len(self.pending_commands)))

@@ -39,7 +39,7 @@ class SocketManager:
         assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)
 
         ctx = self.secure_context if secure else self.context
-        zmq_socket = SocketUtil.create_socket(socket_type, *args, **kwargs)
+        zmq_socket = SocketUtil.create_socket(ctx, socket_type, *args, **kwargs)
 
         if socket_type == zmq.ROUTER:
             socket = LSocketRouter(zmq_socket, manager=self, secure=secure, domain=domain, name=name)

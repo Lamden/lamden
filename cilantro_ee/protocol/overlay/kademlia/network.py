@@ -157,7 +157,6 @@ class Network(object):
         vk_to_find = self.vk         # me
         await self.network_find_ip(event_id, nodes, vk_to_find, True)
 
-
     async def process_requests(self):
         """
         Start listening on the given port.
@@ -268,7 +267,6 @@ class Network(object):
             self.log.debug("Connected to {}".format(raddr))
         return raddr
 
-
     async def rpc_request(self, req, raddr, func_name, *args):
         self.unheard_nodes.add(raddr)
         data = umsgpack.packb([func_name, args])
@@ -290,7 +288,6 @@ class Network(object):
 
         return False
 
-
     def rpc_response(self, result):
         nodes = []
         for t in result:
@@ -298,7 +295,6 @@ class Network(object):
             nodes.append(n)
         return nodes
   
-
     def get_node_from_nodes_list(self, vk, nodes):
         for node in nodes:
             if vk == node.vk:

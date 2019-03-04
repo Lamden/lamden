@@ -9,6 +9,7 @@ from zmq.auth.asyncio import AsyncioAuthenticator
 # what about loop ?    per process ?  worker
 # Sock auth? per process ? worker
 
+
 class SocketUtil:
 
     is_setup = False
@@ -55,7 +56,7 @@ class SocketUtil:
         else:
             ctx = context or zmq.Context()
             auth = ThreadAuthenticator(ctx, log=log)
-        auth.start()
+        # auth.start()
         return ctx, auth
 
     @staticmethod

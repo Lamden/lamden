@@ -20,8 +20,6 @@ import zmq, asyncio, time
 class Witness(NodeBase):
 
     def start(self):
-        self.tasks = []
-
         self._create_sub_socket()
         self._create_pub_socket()
 
