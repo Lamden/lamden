@@ -1,11 +1,19 @@
-from cilantro_ee.nodes.base import NodeBase, NodeTypes
+from cilantro_ee.utils.lprocess import LProcess
+from cilantro_ee.nodes.base import NodeBase
 from cilantro_ee.nodes.delegate.block_manager import BlockManager
-from cilantro_ee.storage.vkbook import VKBook
 
 
 # TODO this can probly be refactored to multi-inherit from BlockManager and look a bit nicer
 class Delegate(NodeBase):
-    def start(self):
-        self.log.important("Starting BlockManager...")
-        self.bm = BlockManager(ip=self.ip, manager=self.manager)  # This blocks
+
+    # This call should not block!
+    def start_node(self):
+        self._start_bm()
+
+    def _start_bm(self):
+        self.log.info("Starting block manager process")
+        self.bm = LProcess(target=BlockManager, name='BlockManager',
+                                kwargs={'signing_key': self.signing_key,
+                                        'ip': self.ip})
+        self.bm.start()
 

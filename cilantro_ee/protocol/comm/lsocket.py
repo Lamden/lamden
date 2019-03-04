@@ -1,7 +1,7 @@
 from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.envelope.envelope import Envelope
 from cilantro_ee.protocol.structures.envelope_auth import EnvelopeAuth
-from cilantro_ee.protocol.overlay.auth import Auth
+from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.constants.conf import CilantroConf
 import zmq.asyncio, asyncio, os
@@ -10,6 +10,7 @@ from collections import defaultdict, deque
 from functools import wraps
 from typing import List, Union
 from os.path import join
+
 
 
 def vk_lookup(func):
@@ -52,7 +53,7 @@ class LSocketBase:
         self.secure, self.socket, self.domain, self.manager = secure, socket, domain, manager
 
         if secure:
-            self.socket = Auth.secure_socket(
+            self.socket = SocketUtil.secure_socket(
                 self.socket,
                 manager.secret,
                 manager.public_key,
@@ -116,7 +117,6 @@ class LSocketBase:
 
     async def _listen(self, func, key):
         self.log.debug("Starting listener handler key {}".format(key))
-        self.manager.set_new_node_tracking()
 
         while True:
             try:
@@ -211,13 +211,13 @@ class LSocketBase:
 
         if should_connect:
             if self.secure:
-                self.socket.curve_serverkey = Auth.vk2pk(vk)
-                Auth.configure_auth(self.manager.auth, self.domain)
+                self.socket.curve_serverkey = Keys.vk2pk(vk)
+                self.manager.configure_auth(self.domain)
             self.socket.connect(url)
         else:
             if self.secure:
                 self.socket.curve_server = True
-                Auth.configure_auth(self.manager.auth, self.domain)
+                self.manager.configure_auth(self.domain)
             self.socket.bind(url)
 
     def __getattr__(self, item):

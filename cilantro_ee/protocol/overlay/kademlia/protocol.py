@@ -54,6 +54,7 @@ class KademliaProtocol(RPCProtocol):
         # drop. A client could drop, but still be in our routing table because we don't heartbeat. Always sending
         # 'node_online' might be a heavy handed solution, but under the assumption that find_nodes (vk lookups) are
         # a relatively infrequent operation, this should be acceptable  --davis
+        # raghu todo - only emit when sender is doing findMe operation
         emit_to_client = self.track_on  #  and self.router.isNewNode(source)
         self.welcomeIfNewNode(source)
         if emit_to_client:
