@@ -35,7 +35,7 @@ def async_reply(fn):
 
 
 class OverlayServer(OverlayInterface):
-    def __init__(self, sk, ctx, start=True):
+    def __init__(self, sk, ctx):
         self.sk = sk
         Keys.setup(sk_hex=self.sk)
         self.loop = asyncio.get_event_loop()
@@ -52,10 +52,7 @@ class OverlayServer(OverlayInterface):
 
         self.network.tasks.append(self.command_listener())
 
-        if start:
-            self.run()
-
-    def run(self):
+    def start(self):
         self.network.start()
 
     async def command_listener(self):
@@ -71,7 +68,7 @@ class OverlayServer(OverlayInterface):
                 getattr(self, func)(msg[0], *data)
                 # self.network.func(msg[0], *data)
             else:
-                getattr('invalid_api_call', func)
+                raise Exception("Unsupported API call {}".format(func))
            
 
     @reply
@@ -79,7 +76,6 @@ class OverlayServer(OverlayInterface):
         self.log.info('Overlay server got unsupported api call {}'.format(api_call))
         # raghu todo create std error enums to return
         return "Unsupported API"
-
 
     def is_valid_vk(self, vk):
         return vk in VKBook.get_all()

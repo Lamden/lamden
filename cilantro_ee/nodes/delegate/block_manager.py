@@ -89,7 +89,6 @@ class BlockManager(Worker):
     def __init__(self, ip, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
-        self.tasks = []
 
         self.ip = ip
         self.sb_builders = {}  # index -> process

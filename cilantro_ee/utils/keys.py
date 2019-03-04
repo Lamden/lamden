@@ -12,6 +12,13 @@ class Keys:
             nacl_sk = SigningKey(seed=bytes.fromhex(sk_hex))
             cls.sk = sk_hex
             cls.vk = nacl_sk.verify_key.encode().hex()
+
+            # DEBUG -- TODO DELETE
+            from cilantro_ee.protocol.wallet import get_vk
+            wall_vk = get_vk(cls.sk)
+            assert wall_vk == cls.vk, "wallet vk {} not match nacl vk {}".format(wall_vk, cls.vk)
+            # END DEBUG
+
             cls.public_key = cls.vk2pk(cls.vk)
             cls.private_key = crypto_sign_ed25519_sk_to_curve25519(nacl_sk._signing_key)
             cls.is_setup = True

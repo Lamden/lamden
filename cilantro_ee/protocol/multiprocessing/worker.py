@@ -19,10 +19,8 @@ class Worker(Context):
         super().__init__(signing_key=signing_key, name=name)
         self.log = get_logger(name)
 
-        # do we need this?  raghu TOD
-        self.verifying_key = wallet.get_vk(self.signing_key)
-
         self.manager = SocketManager(context=self.zmq_ctx)
+        self.tasks = self.manager.overlay_client.tasks
 
     def add_overlay_handler_fn(self, key: str, handler: Callable[[dict], None]):
         """

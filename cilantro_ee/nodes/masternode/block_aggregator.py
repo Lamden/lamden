@@ -41,8 +41,6 @@ class BlockAggregator(Worker):
         self.ipc_ip = ipc_ip
         self.ipc_port = ipc_port
 
-        self.tasks = []
-
         self.curr_block = BlockContender()
 
         self.pub, self.sub, self.router, self.ipc_router = None, None, None, None  # Set in build_task_list

@@ -21,8 +21,6 @@ class TransactionBatcher(Worker):
         super().__init__(*args, **kwargs)
         self.queue, self.ip = queue, ip
 
-        self.tasks = []
-
         # Create Pub socket to broadcast to witnesses
         self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
         self.pub_sock.bind(port=MN_TX_PUB_PORT, ip=self.ip)
