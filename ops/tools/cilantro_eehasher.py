@@ -25,13 +25,16 @@ class CilantroHasher(object):
     @staticmethod
     def _update_sha(filepath, sha):
         # Add filepath to sha to ensure empty files are tracked as well as the file contents
-        sha.update(filepath.encode('utf-8'))
-        with open(filepath, 'rb') as f:
-            while True:
-                block = f.read(2**10) # Magic number: one-megabyte blocks.
-                if not block:
-                    break
-                sha.update(block)
+        try:
+            sha.update(filepath.encode('utf-8'))
+            with open(filepath, 'rb') as f:
+                while True:
+                    block = f.read(2**10) # Magic number: one-megabyte blocks.
+                    if not block:
+                        break
+                    sha.update(block)
+        except Exception as e:
+            pass
 
     @classmethod
     def generate(cls):
