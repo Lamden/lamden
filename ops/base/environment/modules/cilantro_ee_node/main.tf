@@ -75,25 +75,6 @@ variable "docker_tag" {
 ## Local Variables ##
 #####################
 locals {
-  # All ubuntu 18.04 AMIs
-  amis = {
-    us-east-2      = "ami-06e2e609dbf389341"
-    us-east-1      = "ami-012fd5eb46f56731f"
-    us-west-1      = "ami-0bf3d63a666665438"
-    us-west-2      = "ami-082fd9a18128c9e8c"
-    ap-south-1     = "ami-092e1fd695ed0e93c"
-    ap-northeast-2 = "ami-069c1055fab7b32e5"
-    ap-northeast-1 = "ami-0f63c02167ca94956"
-    ap-southeast-1 = "ami-0393b4f16793f7f12"
-    ap-southeast-2 = "ami-0deda1f8bbb52aac7"
-    ca-central-1   = "ami-008c2d1a8ad81bc10"
-    eu-central-1   = "ami-0cf8fa6a01bb07363"
-    eu-west-1      = "ami-0286372f78291e588"
-    eu-west-2      = "ami-04b69fa254407c8ee"
-    eu-west-3      = "ami-0e82c2554d8492095"
-    sa-east-1      = "ami-05a01ab93a59b45de"
-  }
-
   nodename = "${var.type}${var.index}"
 
   prefix = "${var.keyname}-"
@@ -104,8 +85,22 @@ locals {
   }
 }
 
+##########
+## DATA ##
+##########
+
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
+
+data "aws_ami" "cilantrobase" {
+  owners      = ["self"]
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["cilantrobase-*"]
+  }
+}
 
 ##################
 ## Provisioning ##
@@ -168,7 +163,7 @@ resource "aws_security_group" "cilantro_ee_firewall" {
 # Configure a cilantro_ee node
 resource "aws_instance" "cilantro_ee-node" {
   key_name        = "${var.keyname}"
-  ami             = "${local.amis["${data.aws_region.current.name}"]}"
+  ami             = "${data.aws_ami.cilantrobase.id}"
   instance_type   = "${var.size}"
   security_groups = ["${aws_security_group.cilantro_ee_firewall.name}"]
 
@@ -180,23 +175,6 @@ resource "aws_instance" "cilantro_ee-node" {
     type        = "ssh"
     user        = "ubuntu"
     private_key = "${var.private_key}"
-  }
-
-  # Provisioner step here will only run on creation of a new instance
-  # If you would like to run code more frequently, please use a null_resource
-  # with the appropriate trigger
-  provisioner "remote-exec" {
-    inline = [
-      "sudo apt-get update",                                                                                             # Update the package manager
-      "sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common",         # Install packages for https repos
-      "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",                                    # Add the GPG key for docker
-      "sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"", # Add repo
-      "sudo apt-get update",                                                                                             # Update with new repo
-      "sudo apt-get install -y docker-ce docker-ce-cli containerd.io",                                                   # Install docker
-      "sudo apt-get install -y socat",                                                                                   # Instal socat (for issuing SSL certificates
-      "sudo usermod -aG docker ubuntu",                                                                                  # Add the ubuntu user to the docker group so docker can be non-sudo
-      "sudo mkdir -p /var/db/cilantro_ee",                                                                               # Create the db directory on the host machine to mount into the container
-    ]
   }
 
   provisioner "file" {
