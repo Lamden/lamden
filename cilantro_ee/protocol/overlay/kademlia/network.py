@@ -139,6 +139,7 @@ class Network(object):
 ###########################################################################\
         ''')
         self.is_connected = True
+        asyncio.sleep(2)
         Event.emit({ 'event': 'service_status', 'status': 'ready' })
 
     async def bootstrap(self, nodes):
@@ -403,8 +404,12 @@ class Network(object):
         nodes = self.local_find_ip(vk_to_find)
         nd = self.get_node_from_nodes_list(vk_to_find, nodes)
         if nd:
-            return nd.ip
-        return await self.network_find_ip(event_id, nodes, vk_to_find)
+            ip = nd.ip
+        else:
+            ip = await self.network_find_ip(event_id, nodes, vk_to_find)
+        status = 'authorized' if ip else 'unknown_vk'
+        Event.emit({'event': status, 'vk': vk, 'ip': ip, 'domain': '*'})
+        return ip
 
     async def _ping_ip(self, req, vk, ip, is_first_time):
         raddr = await self.rpc_connect(req, vk, ip)

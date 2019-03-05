@@ -20,7 +20,7 @@ def command(fn):
 
 
 class OverlayClient(OverlayInterface):
-    def __init__(self, reply_handler, event_handler, ctx, name=None, start=False):
+    def __init__(self, reply_handler, event_handler, ctx, name=None):
         self.name = name or str(os.getpid())
         self.log = get_logger('Overlay.Client.{}'.format(name))
         self.loop = asyncio.get_event_loop()

@@ -8,7 +8,7 @@ from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.utils.utils import is_valid_hex
 
 from collections import defaultdict
-import asyncio, zmq.asyncio
+import asyncio, zmq.asyncio, time
 
 
 class SocketManager:
@@ -32,12 +32,21 @@ class SocketManager:
         # overlay_callbacks tracks LSockets who have subscribed to certain overlay events with custom handlers
         self.overlay_callbacks = defaultdict(set)
 
+        self._ready = False
+
         # Instantiating an OverlayClient blocks until the OverlayServer is ready
-        self.overlay_client = OverlayClient(self._handle_overlay_event, self._handle_overlay_event, ctx=self.context, start=True)
+        self.overlay_client = OverlayClient(self._handle_overlay_event, self._handle_overlay_event, ctx=self.context)
+
+
 
     def create_socket(self, socket_type, secure=False, domain='*', *args, name='LSocket', **kwargs) -> LSocketBase:
         assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)
+        if not self._ready:
+            time.sleep(30)
 
+        secure = False    # temporarily disable
+
+        self.log.spam("server is ready {}".format(self._ready))
         ctx = self.secure_context if secure else self.context
         zmq_socket = SocketUtil.create_socket(ctx, socket_type, *args, **kwargs)
 
@@ -51,7 +60,7 @@ class SocketManager:
 
     def configure_auth(self, domain='*'):
         domain_dir = SocketUtil.get_domain_dir(domain)
-        self.auth.configure_curve(domain=domain, location=domain_dir)
+        # self.auth.configure_curve(domain=domain, location=domain_dir)
 
     def _handle_overlay_event(self, e):
         self.log.debugv("SocketManager got overlay event {}".format(e))
@@ -69,6 +78,10 @@ class SocketManager:
         elif e['event'] == 'node_online':
             for sock in self.sockets:
                 sock.handle_overlay_event(e)
+
+        elif e['event'] == 'service_status':
+            self.log.spam("Overlay Server ready!!!")
+            self._ready = True
 
         # TODO proper error handling / 'bad actor' logic here
         elif e['event'] == 'unauthorized_ip':

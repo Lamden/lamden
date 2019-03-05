@@ -56,6 +56,7 @@ class NodeBase(Context):
         # TODO -- race condition, what if server does not start in time and misses some requests
         self.log.info("Starting node components")
         self.start_node()
+        time.sleep(3)
 
         self.log.info("Starting overlay service")
         # self.overlay_proc = LProcess(target=OverlayServer, kwargs={'sk': signing_key, 'ctx': self.zmq_ctx})
