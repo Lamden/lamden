@@ -55,6 +55,9 @@ def set_testnet_nodes():
         for w in witnesses:
             WITNESS_MN_MAP[w] = mn_vk
 
+
+set_testnet_nodes()
+
 # MN_WITNESS_MAP = {}  # Map of masternodes --> responsible witness set
 # WITNESS_MN_MAP = {}
 #
