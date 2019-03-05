@@ -1,0 +1,53 @@
+{
+  "variables": {},
+  "builders": [{
+    "profile": "default",
+    "type": "amazon-ebs",
+    "region": "us-west-1",
+    "source_ami_filter": {
+      "filters": {
+        "virtualization-type": "hvm",
+        "name": "ubuntu/images/*ubuntu-bionic-18.04-amd64-server-*",
+        "root-device-type": "ebs"
+      },
+      "owners": ["099720109477"],
+      "most_recent": true
+    },
+    "instance_type": "t2.large",
+    "ssh_username": "ubuntu",
+    "ami_name": "cilantrobase-{{timestamp}}",
+    "ami_regions": [
+      "us-west-2",
+      "us-east-2",
+      "us-east-1",
+      "ap-south-1",
+      "ap-northeast-2",
+      "ap-northeast-1",
+      "ap-southeast-1",
+      "ap-southeast-2",
+      "ca-central-1",
+      "eu-central-1",
+      "eu-west-1",
+      "eu-west-2",
+      "eu-west-3",
+      "sa-east-1"
+    ]
+  }],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sleep 60",
+        "sudo apt-get update",
+        "sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common",
+        "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
+        "sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"",
+        "sudo apt-get update",
+        "sudo apt-get install -y docker-ce docker-ce-cli containerd.io",
+        "sudo apt-get install -y socat",
+        "sudo usermod -aG docker ubuntu",
+        "sudo mkdir -p /var/db/cilantro_ee"
+      ]
+    }
+  ]
+}
