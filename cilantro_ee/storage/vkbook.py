@@ -43,7 +43,8 @@ class VKBook(metaclass=VKBookMeta):
             wits = book['witnesses']
         else:
             log.info("No constitution file detected. Using TESTNET VKs")
-            from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES, TESTNET_WITNESSES
+            from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES, TESTNET_WITNESSES, set_testnet_nodes
+            set_testnet_nodes()
             mns = TESTNET_MASTERNODES
             dels = TESTNET_DELEGATES
             wits = TESTNET_WITNESSES

@@ -153,14 +153,13 @@ class SubBlockBuilder(Worker):
         # END DEBUG
 
         # We then BIND a sub socket to a port for each of these masternode indices
-        for i, tup in enumerate(NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index)):
-            vk, port = tup
-            sb_idx = i * NUM_SB_BUILDERS + self.sbb_index  # actual SB index in global index space
+        for d in NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index):
+            vk, port, sb_idx = d['vk'], d['port'], d['sb_idx']
+
             sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
                                              secure=True)
             sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
             sub.connect(port=port, vk=vk)
-
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=i))
 
