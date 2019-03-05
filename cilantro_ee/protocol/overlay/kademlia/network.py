@@ -408,7 +408,7 @@ class Network(object):
         else:
             ip = await self.network_find_ip(event_id, nodes, vk_to_find)
         status = 'authorized' if ip else 'unknown_vk'
-        Event.emit({'event': status, 'vk': vk, 'ip': ip, 'domain': '*'})
+        Event.emit({'event': status, 'vk': vk_to_find, 'ip': ip, 'domain': '*'})
         return ip
 
     async def _ping_ip(self, req, vk, ip, is_first_time):

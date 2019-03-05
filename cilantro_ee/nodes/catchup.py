@@ -266,7 +266,7 @@ class CatchupManager:
         self.log.important2("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num,
                                                                               request.block_hash))
 
-        if len(delta_idx) > 1:
+        if delta_idx and len(delta_idx) > 1:
             assert delta_idx[0].get('blockNum') >= delta_idx[-1].get('blockNum'), "ensure reply are in ascending order" \
                                                                                   " {}" .format(delta_idx)
 

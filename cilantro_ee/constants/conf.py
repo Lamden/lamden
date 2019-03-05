@@ -21,6 +21,12 @@ class CilantroConf(metaclass=ConfMeta):
     CONSTITUTION_FILE = None
     SSL_ENABLED = None
     NONCE_ENABLED = None
+    VK_IP_MAP = {
+"6abda7bc485944cc3b190309e8006b446183ed5c3c419b042fa6f2375e787bb4":"13.57.26.58",
+"3906d9907f6b9621f36a6a24553201cf22b4fc2e454a9adae1e4763d1045208f":"52.53.245.135",
+"7980bbd1b667b120d50219a7df34ba9c1ef4c95c2596ed74481298361ef26142":"54.153.61.124",
+"2584c6f816b55fd66a6a17e32cc9495ef8b93777cfe54a25b790f54702d7ac3f":"54.193.52.212"
+                }
 
     @classmethod
     def setup(cls):
