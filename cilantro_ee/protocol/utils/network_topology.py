@@ -1,5 +1,5 @@
 from cilantro_ee.storage.vkbook import VKBook
-from cilantro_ee.constants.system_config import NUM_SB_BUILDERS
+from cilantro_ee.constants.system_config import NUM_SB_BUILDERS, NUM_SB_PER_BUILDER
 from cilantro_ee.constants.ports import *
 
 
@@ -17,8 +17,13 @@ class NetworkTopology:
         # equals number of SBBs
 
         assert delegate_vk in VKBook.get_delegates(), "vk {} not in delegate vk book {}".format(delegate_vk, VKBook.get_delegates())
-        assert len(VKBook.get_masternodes()) == NUM_SB_BUILDERS, "oh noooooo"
+        # assert len(VKBook.get_masternodes()) == NUM_SB_BUILDERS, "oh noooooo"
 
-        port = MN_TX_PUB_PORT
-        mn_vk = VKBook.get_masternodes()[sbb_idx]
-        return [(mn_vk, port)]
+        pubs = []
+        for i in range(NUM_SB_PER_BUILDER):
+            sb_idx = i * NUM_SB_BUILDERS + sbb_idx
+            port = MN_TX_PUB_PORT
+            mn_vk = VKBook.get_masternodes()[sb_idx % len(VKBook.get_masternodes())]
+            pubs.append({'sb_idx': sb_idx, 'port': port, 'vk': mn_vk})
+
+        return pubs
