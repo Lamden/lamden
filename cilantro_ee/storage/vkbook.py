@@ -26,6 +26,8 @@ class VKBook(metaclass=VKBookMeta):
         'delegate': 'delegates'
     }
     book = defaultdict(list)
+    # witness_mn_map = {}
+    # delegate_mn_map = {}
 
     @classmethod
     def setup(cls):
@@ -52,6 +54,8 @@ class VKBook(metaclass=VKBookMeta):
             cls.book['witnesses'].append(node['vk'])
         for node in dels:
             cls.book['delegates'].append(node['vk'])
+
+        # cls._build_mn_witness_maps()
 
     @classmethod
     def add_node(cls, vk, node_type, ip=None):
@@ -95,3 +99,27 @@ class VKBook(metaclass=VKBookMeta):
         log.notice("masternodes: {}".format(VKBook.get_masternodes()))
         log.notice("witnesses: {}".format(VKBook.get_witnesses()))
         log.notice("delegates: {}".format(VKBook.get_delegates()))
+
+    @classmethod
+    def get_mns_for_delegate_vk(cls, vk) -> list:
+        """ Returns a list of Masternode VKs that a given delegate vk is responsible to subscribing to (on the
+        TransactionBatcher socket) """
+        assert vk in cls.delegate_mn_map, "Delegate VK {} not found in delegate_mn_map {}".format(vk, cls.delegate_mn_map)
+        return cls.delegate_mn_map[vk]
+
+    # @classmethod
+    # def _build_mn_witness_maps(cls):
+    #     r = 1
+    #     for i, mn_vk in enumerate(VKBook.get_masternodes()):
+    #         witnesses = VKBook.get_witnesses()[i * r:i * r + r]
+    #         delegates = VKBook.get_delegates()[i * r:i * r + r]
+    #
+    #         for w in delegates:
+    #             cls.delegate_mn_map[w] = mn_vk
+    #
+    #         for w in witnesses:
+    #             cls.witness_mn_map[w] = mn_vk
+    #
+    #     # TODO remove
+    #     log.notice("DELEGATE_MN_MAP: {}".format(cls.delegate_mn_map))
+    #     log.notice("WITNESS_MN_MAP: {}".format(cls.witness_mn_map))

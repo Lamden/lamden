@@ -40,6 +40,7 @@ from seneca.engine.client import SenecaClient
 from seneca.engine.conflict_resolution import CRContext
 from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.protocol.utils.network_topology import NetworkTopology
 
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
@@ -146,22 +147,39 @@ class SubBlockBuilder(Worker):
         self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
 
     def _create_sub_sockets(self):
+        # DEBUG -- TODO DELETE
+        pubs = NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index)
+        self.log.important("SBB number {} is responsible for listening to masternodes with (vk, port):\n{}".format(self.sbb_index, NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index)))
+        # END DEBUG
+
         # We then BIND a sub socket to a port for each of these masternode indices
-        for idx in range(NUM_SB_PER_BUILDER):
-            # sidx = idx % NUM_SB_PER_BLOCK_PER_BUILDER
-            # sb_idx = sidx * NUM_SB_BUILDERS + self.sbb_index  # SB index for the block
-
-            sb_idx = idx * NUM_SB_BUILDERS + self.sbb_index  # actual SB index in global index space
-
-            port = SBB_PORT_START + sb_idx
+        for i, tup in enumerate(NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index)):
+            vk, port = tup
+            sb_idx = i * NUM_SB_BUILDERS + self.sbb_index  # actual SB index in global index space
             sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
                                              secure=True)
             sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
-            sub.bind(port=port, ip=self.ip)
-            self.log.info("SBB BINDing to port {} with no filter".format(port))
+            sub.connect(port=port, vk=vk)
 
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
-            self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
+            self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=i))
+
+        # TODO remove below once we confident in code above
+        # for idx in range(NUM_SB_PER_BUILDER):
+        #     # sidx = idx % NUM_SB_PER_BLOCK_PER_BUILDER
+        #     # sb_idx = sidx * NUM_SB_BUILDERS + self.sbb_index  # SB index for the block
+        #
+        #     sb_idx = idx * NUM_SB_BUILDERS + self.sbb_index  # actual SB index in global index space
+        #
+        #     port = SBB_PORT_START + sb_idx
+        #     sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
+        #                                      secure=True)
+        #     sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
+        #     sub.bind(port=port, ip=self.ip)
+        #     self.log.info("SBB BINDing to port {} with no filter".format(port))
+        #
+        #     self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
+        #     self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
     def _align_to_hash(self, input_hash):
         num_discards = 0
