@@ -187,11 +187,15 @@ resource "aws_instance" "cilantro_ee-node" {
   # with the appropriate trigger
   provisioner "remote-exec" {
     inline = [
-      "sudo apt-get update",               # Update the package manager
-      "sudo apt-get install -y docker.io", # Install docker
-      "sudo apt-get install -y socat",     # Instal socat (for issuing SSL certificates
-      "sudo usermod -aG docker ubuntu",    # Add the ubuntu user to the docker group so docker can be non-sudo
-      "sudo mkdir -p /var/db/cilantro_ee",    # Create the db directory on the host machine to mount into the container
+      "sudo apt-get update",                                                                                             # Update the package manager
+      "sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common",         # Install packages for https repos
+      "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",                                    # Add the GPG key for docker
+      "sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"", # Add repo
+      "sudo apt-get update",                                                                                             # Update with new repo
+      "sudo apt-get install -y docker-ce docker-ce-cli containerd.io",                                                   # Install docker
+      "sudo apt-get install -y socat",                                                                                   # Instal socat (for issuing SSL certificates
+      "sudo usermod -aG docker ubuntu",                                                                                  # Add the ubuntu user to the docker group so docker can be non-sudo
+      "sudo mkdir -p /var/db/cilantro_ee",                                                                               # Create the db directory on the host machine to mount into the container
     ]
   }
 
@@ -391,9 +395,9 @@ resource "null_resource" "ssh-keys" {
 # Swap out docker containers only if a new tag or image has been provided
 resource "null_resource" "docker" {
   triggers {
-    tag      = "${var.docker_tag}"
-    image    = "${var.type}"
-    circus   = "${file("./conf/${var.type}${var.index}/circus.conf")}"
+    tag         = "${var.docker_tag}"
+    image       = "${var.type}"
+    circus      = "${file("./conf/${var.type}${var.index}/circus.conf")}"
     cilantro_ee = "${file("./conf/${var.type}${var.index}/cilantro_ee.conf")}"
   }
 
