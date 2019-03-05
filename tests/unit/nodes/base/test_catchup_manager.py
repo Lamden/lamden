@@ -419,7 +419,7 @@ class TestCatchupManager(TestCase):
 
         blocks = BlockDataBuilder.create_conseq_blocks(8)
 
-        # Store the first 2 blocks
+        # # Store the first 2 blocks
         curr_blk = blocks[1]
         StateDriver.set_latest_block_info(block_hash=curr_blk.block_hash, block_num=curr_blk.block_num)
 
@@ -439,6 +439,8 @@ class TestCatchupManager(TestCase):
         for block in blocks:
             all_idx_replies.append({'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': [vk1, vk2]})
             reply_datas.append(BlockDataReply.create_from_block(block))
+
+        all_idx_replies.reverse()
 
         first_round_idxs = all_idx_replies[:5]
         #first_round_blocks = blocks[:5]
