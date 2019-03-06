@@ -355,15 +355,18 @@ class TestCatchupManager(TestCase):
         vk3 = VKBook.get_masternodes()[2]
         vk4 = VKBook.get_masternodes()[3]
 
-        all_idx_replies = []
+        all_idx_replies = ()
         reply_datas = []
-        for block in blocks[:5]:
-            all_idx_replies.append({'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': [vk1, vk2]})
+        for block in reversed(blocks[:5]):
+            all_idx_replies = all_idx_replies + ({'blockNum': block.block_num, 'blockHash': block.block_hash,
+                                                  'blockOwners': [vk1, vk2]},)
             reply_datas.append(BlockDataReply.create_from_block(block))
 
-        index_reply1 = BlockIndexReply.create(all_idx_replies[:2])
-        index_reply2 = BlockIndexReply.create(all_idx_replies)
-        index_reply3 = BlockIndexReply.create(all_idx_replies[:4])
+        index_reply1 = BlockIndexReply.create(list(all_idx_replies[2:]))
+        index_reply2 = BlockIndexReply.create(list(all_idx_replies))
+        index_reply3 = BlockIndexReply.create(list(all_idx_replies[4:]))
+        index_reply4 = BlockIndexReply.create(list(all_idx_replies[4:]))
+
 
         # As a Masternode (store_full_blocks=True), he should require 2/4 other idx replies
         cm.recv_block_idx_reply(vk1, index_reply1)
@@ -375,7 +378,7 @@ class TestCatchupManager(TestCase):
         cm.recv_block_idx_reply(vk3, index_reply3)
         self.assertTrue(cm._check_idx_reply_quorum())
 
-        cm.recv_block_idx_reply(vk4, index_reply3)
+        cm.recv_block_idx_reply(vk4, index_reply4)
         self.assertTrue(cm._check_idx_reply_quorum())
 
     def test_catchup_qourum_reached_for_delegate(self):
