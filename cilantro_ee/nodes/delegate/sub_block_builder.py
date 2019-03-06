@@ -158,7 +158,7 @@ class SubBlockBuilder(Worker):
 
             sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
                                              secure=True)
-            sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
+            sub.setsockopt(zmq.SUBSCRIBE, TRANSACTION_FILTER.encode())
             sub.connect(port=port, vk=vk)
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=i))

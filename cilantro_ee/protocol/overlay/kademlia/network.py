@@ -94,7 +94,9 @@ class Network(object):
         self.evt_sock.bind(EVENT_URL)
         Event.set_evt_sock(self.evt_sock)       # raghu todo - do we need this still as we have everything local
 
+        self._use_ee_bootup = True              # turn this on for enterprise edition boot up method
         self.is_connected = False
+
         # raghu TODO - do we want to save routing table and use it as part of discovery process when rebooted ?? useful only in open discovery only - so punt for now
         # self.state_fname = '{}-network-state.dat'.format(os.getenv('HOST_NAME', 'node'))
 
@@ -108,11 +110,12 @@ class Network(object):
         # self.handshake = Handshake(self.vk, self.ctx)
 
         self.tasks = [
-            self.discovery.listen(),
             # self.handshake.listen(),
             self.process_requests(),
             self.bootup()
         ]
+        if not self._use_ee_bootup:
+            self.tasks += [ self.discovery.listen() ]
 
     def start(self):
         self.loop.run_until_complete(asyncio.ensure_future(
@@ -127,12 +130,26 @@ class Network(object):
         self.evt_sock.close()
         self.rep.close()
 
-    async def bootup(self):
+    # open source (public) version of booting up
+    async def _bootup_os(self):
         addrs = await self.discovery.discover_nodes()
         if addrs:
             nodes = [Node(digest(addrs[ip]), ip=ip, port=self.port, vk=addrs[ip]) \
                            for ip in addrs ]
             await self.bootstrap(nodes)
+
+    # enterprise version of booting up
+    async def _bootup_ee(self):
+        self.log.info("Loading vk, ip information of {} nodes in this enterprise setup".format(len(CilantroConf.VK_IP_MAP)))
+        for vk, ip in CilantroConf.VK_IP_MAP.items():
+            node = Node(digest(vk), ip=ip, port=self.port, vk=vk)
+            self.routing_table.addContact(node)
+
+    async def bootup(self):
+        if self._use_ee_bootup:
+            await self._bootup_ee()
+        else:
+            await self._bootup_os()
         self.log.success('''
 ###########################################################################
 #   BOOTSTRAP COMPLETE
