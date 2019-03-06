@@ -157,23 +157,22 @@ class TestCatchupManager(TestCase):
         vk3 = VKBook.get_masternodes()[2]
         vk4 = VKBook.get_masternodes()[3]
 
-        all_idx_replies = []
+        all_idx_replies = ()
         reply_datas = []
         for block in blocks:
-            all_idx_replies.append({'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': [vk1, vk2]})
+            all_idx_replies = ({'blockNum': block.block_num, 'blockHash': block.block_hash,
+                                'blockOwners': [vk1, vk2]},) + all_idx_replies
             reply_datas.append(BlockDataReply.create_from_block(block))
 
-        # Send the BlockIndexReplies (1 extra)
-        reply_data1 = all_idx_replies[:2]  # this incomplete reply only includes the first 2 blocks
-        reply_data2 = all_idx_replies
-        reply_data3 = all_idx_replies[:4]
-        index_reply1 = BlockIndexReply.create(reply_data1)
-        index_reply2 = BlockIndexReply.create(reply_data2)
-        index_reply3 = BlockIndexReply.create(reply_data3)
+        index_reply1 = BlockIndexReply.create(list(all_idx_replies[2:]))
+        index_reply2 = BlockIndexReply.create(list(all_idx_replies))
+        index_reply3 = BlockIndexReply.create(list(all_idx_replies[4:]))
+        index_reply4 = BlockIndexReply.create(list(all_idx_replies))
+
         cm.recv_block_idx_reply(vk1, index_reply1)  # only first 2/5
         cm.recv_block_idx_reply(vk4, index_reply3)  # first 4/5
         cm.recv_block_idx_reply(vk3, index_reply2)  # 5/5
-        cm.recv_block_idx_reply(vk2, index_reply2)  # 5/5
+        cm.recv_block_idx_reply(vk2, index_reply4)  # 5/5
 
         self.assertFalse(cm.is_catchup_done())
 
@@ -400,7 +399,6 @@ class TestCatchupManager(TestCase):
                                                   'blockOwners': [vk1, vk2]},)
             reply_datas.append(BlockDataReply.create_from_block(block))
 
-        index_reply = list(all_idx_replies)
 
         index_reply1 = BlockIndexReply.create(list(all_idx_replies[4:]))
         index_reply2 = BlockIndexReply.create(list(all_idx_replies))
