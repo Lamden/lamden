@@ -287,6 +287,32 @@ resource "null_resource" "cilantro_ee-conf" {
   depends_on = ["null_resource.aggregate-ips", "aws_eip.static-ip"]
 }
 
+resource "null_resource" "vk_ip_map-json" {
+  triggers {
+    always_run = "${uuid()}"
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = "${var.private_key}"
+    host        = "${aws_instance.cilantro_ee-node.public_ip}"
+  }
+
+  provisioner "file" {
+    source      = "./conf/${var.type}${var.index}/vk_ip_map.json"
+    destination = "/home/ubuntu/vk_ip_map.json"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo mv /home/ubuntu/vk_ip_map.json /etc/vk_ip_map.json",
+    ]
+  }
+
+  depends_on = ["null_resource.aggregate-ips", "aws_eip.static-ip"]
+}
+
 # Copy over circus config only if it has changed locally
 resource "null_resource" "circus-conf" {
   triggers {

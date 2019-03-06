@@ -2,6 +2,7 @@ import os
 import argparse
 import time
 import configparser
+import json
 
 my_path = os.path.dirname(os.path.abspath(__file__))
 cache_path = os.path.join(my_path, '.cache')
@@ -10,6 +11,7 @@ def _setup_argparse(p):
     p.add_argument("--ip", help="The IP address of the node calling the configure script", required=True)
     p.add_argument("--type", help="The type of node calling the script", choices=["masternode", "delegate", "witness"], required=True)
     p.add_argument("--index", help="The index of the node calling the script", type=int, required=True)
+
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
@@ -51,3 +53,23 @@ if __name__ == "__main__":
     bootips = config.set('DEFAULT', 'boot_ips', ",".join(sorted(all_ips)))
     with open(cilantro_ee_config, "w") as cf:
         config.write(cf)
+
+    # Write the vk_ip_map.json file which contains maps VK --> IP
+    # First, we walk the directories and collect the vk and ip information from the cilantro_ee.conf files
+    vk_ip = {}
+    for _, dirnames, _ in os.walk(os.path.join(my_path, 'conf')):
+        for d in dirnames:
+            conf_file = os.path.join(my_path, 'conf/{}/cilantro_ee.conf'.format(d))
+            assert os.path.exists(conf_file), "No conf file found at path {}".format(conf_file)
+
+            config = configparser.ConfigParser()
+            config.read(conf_file)
+            vk_ip[config['DEFAULT']['vk']] = config['DEFAULT']['ip']
+
+    assert len(vk_ip) == len(ip_files), "ya done goofed davis\n{}".format(vk_ip)
+
+    # Now actually write the file...
+    vk_json = cilantro_ee_config = os.path.join(my_path, 'conf/{}{}/vk_ip_map.json'.format(args.type, args.index))
+    with open(vk_json, "w") as json_file:
+        json.dump(vk_json, json_file)
+
