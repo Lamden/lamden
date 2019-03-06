@@ -14,7 +14,7 @@ from cilantro_ee.storage.mongo import MDB
 from cilantro_ee.messages.block_data.block_data import *
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.block_metadata import *
-
+import copy
 import asyncio, time
 from cilantro_ee.protocol import wallet
 
@@ -390,27 +390,33 @@ class TestCatchupManager(TestCase):
         vk3 = VKBook.get_masternodes()[2]
         vk4 = VKBook.get_masternodes()[3]
 
-        all_idx_replies = []
+        all_idx_replies = ()
         reply_datas = []
-        for block in blocks:
-            all_idx_replies.append({'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': [vk1, vk2]})
+        for block in reversed(blocks):
+            all_idx_replies = all_idx_replies + ({'blockNum': block.block_num, 'blockHash': block.block_hash,
+                                                  'blockOwners': [vk1, vk2]},)
             reply_datas.append(BlockDataReply.create_from_block(block))
 
-        index_reply1 = BlockIndexReply.create(all_idx_replies[:2])
-        index_reply2 = BlockIndexReply.create(all_idx_replies)
-        index_reply3 = BlockIndexReply.create(all_idx_replies[:4])
+        index_reply = list(all_idx_replies)
+
+        index_reply1 = BlockIndexReply.create(list(all_idx_replies[4:]))
+        index_reply2 = BlockIndexReply.create(list(all_idx_replies))
+        index_reply3 = BlockIndexReply.create(list(all_idx_replies[2:]))
+        index_reply4 = BlockIndexReply.create(list(all_idx_replies))
+
 
         # As a Delegate (store_full_blocks=False), he should require 2/3 other idx replies
+        #
         cm.recv_block_idx_reply(vk1, index_reply1)
         self.assertFalse(cm._check_idx_reply_quorum())
 
-        cm.recv_block_idx_reply(vk2, index_reply1)
+        cm.recv_block_idx_reply(vk2, index_reply2)
         self.assertFalse(cm._check_idx_reply_quorum())
 
         cm.recv_block_idx_reply(vk3, index_reply3)
         self.assertTrue(cm._check_idx_reply_quorum())
 
-        cm.recv_block_idx_reply(vk4, index_reply2)
+        cm.recv_block_idx_reply(vk4, index_reply4)
         self.assertTrue(cm._check_idx_reply_quorum())
 
     def test_catchup_with_new_blocks_and_replies_when_we_start_with_some_blocks_already_and_then_we_catchup_again(self):
