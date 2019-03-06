@@ -161,6 +161,7 @@ class SubBlockBuilder(Worker):
             sub.setsockopt(zmq.SUBSCRIBE, TRANSACTION_FILTER.encode())
             sub.connect(port=port, vk=vk)
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
+            i = sb_idx % len(VKBook.get_masternodes())
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=i))
 
         # TODO remove below once we confident in code above

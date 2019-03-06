@@ -41,7 +41,7 @@ class SocketManager:
     def create_socket(self, socket_type, secure=False, domain='*', *args, name='LSocket', **kwargs) -> LSocketBase:
         assert type(socket_type) is int and socket_type > 0, "socket type must be an int greater than 0, not {}".format(socket_type)
         if not self._ready:
-            time.sleep(30)
+            time.sleep(10)
 
         secure = False    # temporarily disable
 

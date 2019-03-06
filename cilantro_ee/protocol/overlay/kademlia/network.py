@@ -142,6 +142,8 @@ class Network(object):
     async def _bootup_ee(self):
         self.log.info("Loading vk, ip information of {} nodes in this enterprise setup".format(len(CilantroConf.VK_IP_MAP)))
         for vk, ip in CilantroConf.VK_IP_MAP.items():
+            if vk == self.vk:     # no need to insert myself into the routing table
+                continue
             node = Node(digest(vk), ip=ip, port=self.port, vk=vk)
             self.routing_table.addContact(node)
 
