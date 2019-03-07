@@ -17,7 +17,8 @@ DISCOVERY_LONG_WAIT = 30
 DISCOVERY_ITER = 10
 
 # How long OverlayClient should wait for a rdy sig from the OverlayServer until we timeout
-CLIENT_SETUP_TIMEOUT = DISCOVERY_LONG_WAIT * DISCOVERY_ITER
+# CLIENT_SETUP_TIMEOUT = DISCOVERY_LONG_WAIT * DISCOVERY_ITER
+CLIENT_SETUP_TIMEOUT = 10          # fixed amount in EE version
 
 PEPPER = env('PEPPER', 'cilantro_pepper')
 EVENT_URL = 'ipc://overlay-event-ipc-sock'

@@ -160,13 +160,21 @@ class BlockManager(Worker):
         )
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
-        self.tasks.append(self.catchup_db_state())
+        self.tasks.append(self._connect_and_process())
+
+
+    async def _connect_and_process(self):
+        # first make sure, we have overlay server ready
+        await self._wait_until_ready()
 
         # Listen to Masternodes over sub and connect router for catchup communication
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
             self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+
+        # now start the catchup
+        await self.catchup_db_state()
 
     async def catchup_db_state(self):
         # do catch up logic here

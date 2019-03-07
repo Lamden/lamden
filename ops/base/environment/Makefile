@@ -10,6 +10,8 @@ PARALLELISM ?= $(shell if [ "$(NODE_COUNT)" -gt "10" ]; then echo "-parallelism=
 
 ADDITIONAL_FLAGS ?= 
 
+RESOURCE ?=
+
 # Resolve the tag using the tag resolver script, this is the default
 DOCKER_TAG ?= $(shell bash $(CILANTRO_ROOT)/ops/tools/generate_tag.sh)
 
@@ -71,6 +73,10 @@ getlasttag:
 
 taintdocker:
 	@while read -r line; do bash -c "$$line"; done <<< "$$(terraform show | grep null_resource\.docker | sed 's/.$$//' | cut -d'.' -f 2 | awk '{print "terraform taint -module="$$1" null_resource.docker"}')"
+
+taint:
+	@while read -r line; do bash -c "$$line"; done <<< "$$(terraform show | grep null_resource\.docker | sed 's/.$$//' | cut -d'.' -f 2 | awk '{print "terraform taint -module="$$1" $(RESOURCE)"}')"
+
 
 # Prototypical naming scheme for cleaning up, maps to terraform naming scheme of 'destroy'
 clean: destroy

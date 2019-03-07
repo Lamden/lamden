@@ -71,7 +71,7 @@ class SocketUtil:
     @staticmethod
     def create_socket(ctx, socket_type, *args, **kwargs):
         socket = ctx.socket(socket_type, *args, **kwargs)
-        socket.setsockopt(zmq.LINGER, 200)              # ms - 200msec max
+        # socket.setsockopt(zmq.LINGER, 200)              # ms - 200msec max
         # this should be modified at usage level, but a max limit at system level
         # raghu todo add this as configurable option in constants so tests can modify it if needed
         # socket.setsockopt(zmq.RCVTIMEO, 15000)           # 15 secs max
@@ -82,6 +82,7 @@ class SocketUtil:
         # socket.setsockopt(zmq.RCVHWM, 20)     # HWM - limit to the max of 20 messages. selectively increase it where needed
         # socket.setsockopt(zmq.CONNECT_TIMEOUT, 1500)
         if socket_type == zmq.ROUTER:
+            socket.setsockopt(zmq.LINGER, 200)              # ms - 200msec max
             socket.setsockopt(zmq.ROUTER_HANDOVER, 1)
             socket.setsockopt(zmq.ROUTER_MANDATORY, 1)
 
