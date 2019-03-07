@@ -11,6 +11,12 @@ variable "index" {
   description = "The index of the node being launched"
 }
 
+variable "production" {
+  type        = "string"
+  description = "Whether or not the node is a production node"
+  default     = false
+}
+
 #################################
 ## AWS provisioning parameters ##
 #################################
@@ -168,7 +174,9 @@ resource "aws_instance" "cilantro_ee-node" {
   security_groups = ["${aws_security_group.cilantro_ee_firewall.name}"]
 
   tags = {
-    Name = "${local.prefix}-${local.nodename}"
+    Name       = "${local.prefix}-${local.nodename}"
+    Touch      = "${timestamp()}"
+    Production = "${var.production ? "True" : "False"}"
   }
 
   connection {
@@ -318,7 +326,7 @@ resource "null_resource" "vk_ip_map-json" {
 # Copy over circus config only if it has changed locally
 resource "null_resource" "circus-conf" {
   triggers {
-    conf = "${file("./conf/${var.type}${var.index}/circus.conf")}"
+    conf     = "${file("./conf/${var.type}${var.index}/circus.conf")}"
     instance = "${aws_instance.cilantro_ee-node.public_ip}"
   }
 
@@ -348,7 +356,7 @@ resource "null_resource" "circus-conf" {
 resource "null_resource" "redis-conf" {
   triggers {
     instance = "${aws_instance.cilantro_ee-node.public_ip}"
-    conf = "${file("./conf/${var.type}${var.index}/redis.conf")}"
+    conf     = "${file("./conf/${var.type}${var.index}/redis.conf")}"
   }
 
   connection {
@@ -375,7 +383,7 @@ resource "null_resource" "redis-conf" {
 resource "null_resource" "ssh-keys" {
   triggers {
     instance = "${aws_instance.cilantro_ee-node.public_ip}"
-    conf = "${file("../../security/authorized_keys")}"
+    conf     = "${file("../../security/authorized_keys")}"
   }
 
   connection {
