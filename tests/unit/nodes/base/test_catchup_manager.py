@@ -441,6 +441,13 @@ class TestCatchupManager(TestCase):
         self.assertTrue(cm._check_idx_reply_quorum())
 
     def test_catchup_with_new_blocks_and_replies_when_we_start_with_some_blocks_already_and_then_we_catchup_again(self):
+        """
+        Goal :
+        - start del with block 1 already
+        - 1st round catch up 4 blocks let catchup flag reset
+        - 2nd round let catchup start again and complete
+        :return:
+        """
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
@@ -461,32 +468,35 @@ class TestCatchupManager(TestCase):
         vk3 = VKBook.get_masternodes()[2]
         vk4 = VKBook.get_masternodes()[3]
 
-        all_idx_replies = []
+        all_idx_replies = ()
         reply_datas = []
-        for block in blocks:
-            all_idx_replies.append({'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': [vk1, vk2]})
+        for block in blocks[1:]:            # skipping blk 1 since curr_blk wont be included in blk_idx_req
+            all_idx_replies = ({'blockNum': block.block_num, 'blockHash': block.block_hash,
+                                'blockOwners': [vk1, vk2]},) + all_idx_replies
             reply_datas.append(BlockDataReply.create_from_block(block))
 
-        all_idx_replies.reverse()
 
-        first_round_idxs = all_idx_replies[:5]
-        #first_round_blocks = blocks[:5]
-        first_round_data = reply_datas[:2]
+        first_round_idxs = all_idx_replies[4:]
+        first_round_blocks = blocks[:4]
+        first_round_data = reply_datas[:3]
 
-        second_round_idxs = all_idx_replies[2:]
-        #second_round_blocks = blocks[5:]
-        second_round_data = reply_datas[2:]
+        second_round_idxs = all_idx_replies[1:4]
+        second_round_blocks = blocks[:-1]
+        second_round_data = reply_datas[3:]
+        second_round_data.pop(3)
 
-        # index_reply1 = BlockIndexReply.create(first_round_idxs[:2])
-        index_reply2 = BlockIndexReply.create(first_round_idxs)
-        # index_reply3 = BlockIndexReply.create(first_round_idxs[:4])
+        index_reply1 = BlockIndexReply.create(list(first_round_idxs))
+        index_reply2 = BlockIndexReply.create(list(first_round_idxs))
+        index_reply3 = BlockIndexReply.create(list(first_round_idxs))
+        index_reply4 = BlockIndexReply.create(list(first_round_idxs))
 
-        # START OF FIRST ROUND, we catchup to 5 new blocks
 
-        cm.recv_block_idx_reply(vk1, index_reply2)  # only first 2/5
+        # START OF FIRST ROUND, we catchup to blocknum 4
+
+        cm.recv_block_idx_reply(vk1, index_reply1)  # 5/5
         cm.recv_block_idx_reply(vk3, index_reply2)  # 5/5
-        # cm.recv_block_idx_reply(vk4, index_reply3)  # first 4/5
-        # cm.recv_block_idx_reply(vk2, index_reply2)  # 5/5
+        cm.recv_block_idx_reply(vk4, index_reply3)  # 5/5
+        cm.recv_block_idx_reply(vk2, index_reply4)  # 5/5
 
         async def slep(time):
             await asyncio.sleep(time)
@@ -494,38 +504,40 @@ class TestCatchupManager(TestCase):
         loop.run_until_complete(slep(3))
 
         self.assertFalse(cm.is_caught_up)
-        self.assertFalse(cm.is_catchup_done())
-        self.assertFalse(cm._check_idx_reply_quorum())
 
         # Send the BlockDataReplies (round 1)
         for bd_reply in first_round_data:
             cm.recv_block_data_reply(bd_reply)
 
-        self.assertFalse(cm.is_catchup_done())
+        self.assertTrue(cm.is_caught_up)
 
         # # Assert we set curr_hash and curr_num to the last added block
-        # self.assertEqual(cm.curr_hash, first_round_blocks[-1].block_hash)
-        # self.assertEqual(cm.curr_num, first_round_blocks[-1].block_num)
+        self.assertEqual(cm.curr_hash, first_round_blocks[-1].block_hash)
+        self.assertEqual(cm.curr_num, first_round_blocks[-1].block_num)
 
         # # Assert Redis has been updated
-        # self.assertEqual(StateDriver.get_latest_block_num(), first_round_blocks[-1].block_num)
-        # self.assertEqual(StateDriver.get_latest_block_hash(), first_round_blocks[-1].block_hash)
+        self.assertEqual(StateDriver.get_latest_block_num(), first_round_blocks[-1].block_num)
+        self.assertEqual(StateDriver.get_latest_block_hash(), first_round_blocks[-1].block_hash)
 
         # START OF SECOND ROUND, we catchup to 3 new blocks
-        # time.sleep(30)
-        #cm.run_catchup()
+        time.sleep(3)
+        cm.run_catchup()
         self.assertFalse(cm.is_catchup_done())
 
-        index_reply1 = BlockIndexReply.create(second_round_idxs[:2])
-        index_reply2 = BlockIndexReply.create(second_round_idxs)
-        index_reply3 = BlockIndexReply.create(second_round_idxs[:4])
-        cm.recv_block_idx_reply(vk1, index_reply2)
-        cm.recv_block_idx_reply(vk3, index_reply2)
-        cm.recv_block_idx_reply(vk4, index_reply2)
-        cm.recv_block_idx_reply(vk2, index_reply2)
+        index_reply1 = BlockIndexReply.create(list(second_round_idxs))
+        index_reply2 = BlockIndexReply.create(list(second_round_idxs))
+        index_reply3 = BlockIndexReply.create(list(second_round_idxs))
+        index_reply4 = BlockIndexReply.create(list(second_round_idxs))
+
+
+        # START OF second ROUND, we catchup to blocknum 4
+
+        cm.recv_block_idx_reply(vk1, index_reply1)  # 5/5
+        cm.recv_block_idx_reply(vk3, index_reply2)  # 5/5
+        cm.recv_block_idx_reply(vk4, index_reply3)  # 5/5
+        cm.recv_block_idx_reply(vk2, index_reply4)  # 5/5
 
         self.assertFalse(cm.is_caught_up)
-        self.assertFalse(cm.is_catchup_done())
 
         # Send the BlockDataReplies (round 2)
         for bd_reply in second_round_data:
@@ -534,12 +546,12 @@ class TestCatchupManager(TestCase):
         self.assertTrue(cm.is_catchup_done())
         #
         # # Assert we set curr_hash and curr_num to the last added block
-        # self.assertEqual(cm.curr_hash, second_round_blocks[-1].block_hash)
-        # self.assertEqual(cm.curr_num, second_round_blocks[-1].block_num)
+        self.assertEqual(cm.curr_hash, second_round_blocks[-1].block_hash)
+        self.assertEqual(cm.curr_num, second_round_blocks[-1].block_num)
         #
         # # Assert Redis has been updated
-        # self.assertEqual(StateDriver.get_latest_block_num(), second_round_blocks[-1].block_num)
-        # self.assertEqual(StateDriver.get_latest_block_hash(), second_round_blocks[-1].block_hash)
+        self.assertEqual(StateDriver.get_latest_block_num(), second_round_blocks[-1].block_num)
+        self.assertEqual(StateDriver.get_latest_block_hash(), second_round_blocks[-1].block_hash)
 
     def test_out_of_seq_idx_bd_processing(self):
 
@@ -555,10 +567,11 @@ class TestCatchupManager(TestCase):
         vk1 = VKBook.get_masternodes()[0]
         vk2 = VKBook.get_masternodes()[1]
 
-        all_idx_replies = []
+        all_idx_replies = ()
         reply_datas = []
-        for block in blocks:
-            all_idx_replies.append({'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': [vk1, vk2]})
+        for block in reversed(blocks):
+            all_idx_replies = all_idx_replies + ({'blockNum': block.block_num, 'blockHash': block.block_hash,
+                                                  'blockOwners': [vk1, vk2]},)
             reply_datas.append(BlockDataReply.create_from_block(block))
 
         first_round_idxs = all_idx_replies[:2]
