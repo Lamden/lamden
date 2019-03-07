@@ -555,7 +555,7 @@ class TestCatchupManager(TestCase):
 
     def test_out_of_seq_idx_bd_processing(self):
 
-        blocks = BlockDataBuilder.create_conseq_blocks(3)
+        blocks = BlockDataBuilder.create_conseq_blocks(4)
 
         # Store the first 2 blocks
         # curr_blk = blocks[0]
@@ -574,11 +574,11 @@ class TestCatchupManager(TestCase):
                                                   'blockOwners': [vk1, vk2]},)
             reply_datas.append(BlockDataReply.create_from_block(block))
 
-        first_round_idxs = all_idx_replies[:2]
+        first_round_idxs = list(all_idx_replies[2:])
         # first_round_blocks = blocks[:2]
-        first_round_data = reply_datas[:2]
+        first_round_data = reply_datas[2:]
 
-        index_reply1 = BlockIndexReply.create(first_round_idxs[:2])
+        index_reply1 = BlockIndexReply.create(first_round_idxs)
         cm.recv_block_idx_reply(vk1, index_reply1)
 
         for bd_reply in first_round_data:
@@ -586,8 +586,8 @@ class TestCatchupManager(TestCase):
 
         self.assertFalse(cm.is_catchup_done())
 
-        index_reply1 = BlockIndexReply.create(all_idx_replies)
-        cm.recv_block_idx_reply(vk2, index_reply1)
+        index_reply2 = BlockIndexReply.create(list(all_idx_replies))
+        cm.recv_block_idx_reply(vk2, index_reply2)
 
         for bd_reply in reply_datas:
             cm.recv_block_data_reply(bd_reply)
