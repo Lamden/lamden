@@ -30,12 +30,21 @@ class TestStorageDriver(TestCase):
         MDB.reset_db()
 
     def test_init(self):
+        """
+        verifies genesis block and get_full_blk api
+        :return:
+        """
         blk_frm_num = MasterOps.get_full_blk(blk_num = 0)
         blk_frm_hash = MasterOps.get_full_blk(blk_hash = "0000000000000000000000000000000000000000000000000000000000000000")
         self.assertEqual(blk_frm_num.get("blockNum"), 0)
         self.assertEqual(blk_frm_hash.get("blockNum"), 0)
 
     def test_store_blks(self):
+        """
+        Verifies api's
+        - store_block
+        :return:
+        """
 
         blocks = BlockDataBuilder.create_conseq_blocks(5)
         for block in blocks:

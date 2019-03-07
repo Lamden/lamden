@@ -54,6 +54,9 @@ if __name__ == "__main__":
     with open(cilantro_ee_config, "w") as cf:
         config.write(cf)
 
+    # nap while everyone writes their IPs to their respective cilantro_ee.conf files
+    time.sleep(1)
+
     # Write the vk_ip_map.json file which contains maps VK --> IP
     # First, we walk the directories and collect the vk and ip information from the cilantro_ee.conf files
     vk_ip = {}
