@@ -98,15 +98,19 @@ class TestCatchupManager(TestCase):
         vk3 = VKBook.get_masternodes()[2]
 
         reply_data1 = [{'blockNum': 1, 'blockHash': b1, 'blockOwners': [vk1, vk2]}]
-        reply_data2 = [{'blockNum': 1, 'blockHash': b1, 'blockOwners': [vk1, vk2]},
-                       {'blockNum': 2, 'blockHash': b2, 'blockOwners': [vk1, vk2]}]
+        reply_data2 = [{'blockNum': 2, 'blockHash': b2, 'blockOwners': [vk1, vk2]},
+                       {'blockNum': 1, 'blockHash': b1, 'blockOwners': [vk1, vk2]}]
+        reply_data3 = [{'blockNum': 2, 'blockHash': b2, 'blockOwners': [vk1, vk2]},
+                       {'blockNum': 1, 'blockHash': b1, 'blockOwners': [vk1, vk2]}]
 
         index_reply1 = BlockIndexReply.create(reply_data1)
         index_reply2 = BlockIndexReply.create(reply_data2)
+        index_reply3 = BlockIndexReply.create(reply_data3)
+
 
         cm.recv_block_idx_reply(vk1, index_reply1)
         cm.recv_block_idx_reply(vk2, index_reply2)
-        cm.recv_block_idx_reply(vk3, index_reply2)
+        cm.recv_block_idx_reply(vk3, index_reply3)
 
         expected_req_1 = BlockDataRequest.create(block_num=1)
         expected_req_2 = BlockDataRequest.create(block_num=2)
@@ -221,9 +225,6 @@ class TestCatchupManager(TestCase):
             reply_datas.append(BlockDataReply.create_from_block(block))
 
         # Send the BlockIndexReplies (1 extra)
-        reply_data1 = all_idx_replies[2:]  # this incomplete reply only includes the first 2 blocks
-        reply_data2 = all_idx_replies
-        reply_data3 = all_idx_replies[4:]
         index_reply1 = BlockIndexReply.create(list(all_idx_replies[2:]))
         index_reply2 = BlockIndexReply.create(list(all_idx_replies))
         index_reply3 = BlockIndexReply.create(list(all_idx_replies[4:]))
@@ -265,44 +266,58 @@ class TestCatchupManager(TestCase):
         cm.run_catchup()
         self.assertFalse(cm.is_catchup_done())
 
-        blocks = BlockDataBuilder.create_conseq_blocks(8)
+        blocks = BlockDataBuilder.create_conseq_blocks(6)
 
         vk1 = VKBook.get_masternodes()[0]
         vk2 = VKBook.get_masternodes()[1]
         vk3 = VKBook.get_masternodes()[2]
         vk4 = VKBook.get_masternodes()[3]
 
-        all_idx_replies = []
+        all_idx_replies = ()
         reply_datas = []
         for block in blocks[:5]:
-            all_idx_replies.append({'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': [vk1, vk2]})
+            all_idx_replies = ({'blockNum': block.block_num, 'blockHash': block.block_hash,
+                                'blockOwners': [vk1, vk2]},) + all_idx_replies
             reply_datas.append(BlockDataReply.create_from_block(block))
 
         # Send the BlockIndexReplies (1 extra)
-        reply_data1 = all_idx_replies[:2]  # this incomplete reply only includes the first 2 blocks
-        reply_data2 = all_idx_replies[:-1]
-        reply_data3 = all_idx_replies[:4]
-        index_reply1 = BlockIndexReply.create(reply_data1)
-        index_reply2 = BlockIndexReply.create(reply_data2)
-        index_reply3 = BlockIndexReply.create(reply_data3)
+
+        index_reply1 = BlockIndexReply.create(list(all_idx_replies))
+        index_reply2 = BlockIndexReply.create(list(all_idx_replies))
+        index_reply3 = BlockIndexReply.create(list(all_idx_replies))
+        index_reply4 = BlockIndexReply.create(list(all_idx_replies))
+
+
         cm.recv_block_idx_reply(vk1, index_reply1)
         cm.recv_block_idx_reply(vk2, index_reply2)
         cm.recv_block_idx_reply(vk3, index_reply3)
-        cm.recv_block_idx_reply(vk4, index_reply3)
+        cm.recv_block_idx_reply(vk4, index_reply4)
+
+        self.assertFalse(cm.is_catchup_done())
+
+        # Send the BlockDataReplies
+        for bd_reply in reply_datas[:3]:
+            cm.recv_block_data_reply(bd_reply)
+
+        self.assertFalse(cm.is_catchup_done())
 
         # Now, send a NewBlockNotification from a new hash/num, and make sure things worked propperly
         new_block_notif = NewBlockNotification.create_from_block_data(blocks[-1])
         cm.recv_new_blk_notif(new_block_notif)
 
-        # Send the BlockDataReplies
-        for bd_reply in reply_datas:
-            cm.recv_block_data_reply(bd_reply)
-
         self.assertFalse(cm.is_catchup_done())
 
+        reply_datas.append(BlockDataReply.create_from_block(blocks[-1]))
+
+        # Send the BlockDataReplies
+        for bd_reply in reply_datas[3:]:
+            cm.recv_block_data_reply(bd_reply)
+
+        self.assertTrue(cm.is_catchup_done())
+
         # # Assert Redis has been updated
-        # self.assertEqual(StateDriver.get_latest_block_num(), blocks[-1].block_num)
-        # self.assertEqual(StateDriver.get_latest_block_hash(), blocks[-1].block_hash)
+        self.assertEqual(StateDriver.get_latest_block_num(), blocks[-1].block_num)
+        self.assertEqual(StateDriver.get_latest_block_hash(), blocks[-1].block_hash)
 
     def test_get_new_block_notif_one_behind_after_caught_up(self):
         cm = self._build_manager()

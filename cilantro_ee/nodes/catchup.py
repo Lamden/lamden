@@ -356,7 +356,10 @@ class CatchupManager:
             while (blknum < self.awaited_blknum) and len(self.block_delta_list):
                 blk_ptr = self.block_delta_list.pop(0)
                 blknum = blk_ptr.get('blockNum')
-            assert blk_ptr and (blknum == self.awaited_blknum), "can't find the index infor for the block num {}".format(self.awaited_blknum)
+
+            if blknum < self.awaited_blknum:
+                return
+#           assert blk_ptr and (blknum == self.awaited_blknum), "can't find the index infor for the block num {}".format(self.awaited_blknum)
             mn_list = blk_ptr.get('blockOwners')
             for vk in mn_list:
                 self._send_block_data_req(mn_vk = vk, req_blk_num = self.awaited_blknum)
