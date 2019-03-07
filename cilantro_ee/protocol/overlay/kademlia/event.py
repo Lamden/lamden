@@ -5,6 +5,6 @@ class Event:
         cls.evt_sock = evt_sock
 
     @classmethod
-    def emit(cls, json_data):
+    async def emit(cls, json_data):
         if cls.evt_sock:
-            cls.evt_sock.send_json(json_data)
+            await cls.evt_sock.send_json(json_data)

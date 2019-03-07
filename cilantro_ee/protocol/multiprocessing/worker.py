@@ -26,7 +26,7 @@ class Worker(Context):
 
 
     async def _wait_until_ready(self):
-        await asyncio.sleep(10)   # sleep a bit
+        await asyncio.sleep(2)   # sleep a bit
         wait_until = time.time() + CLIENT_SETUP_TIMEOUT
         while not self.manager.is_ready() and (time.time() <= wait_until):
             await asyncio.sleep(2)

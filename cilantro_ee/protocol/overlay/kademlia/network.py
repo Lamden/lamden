@@ -146,6 +146,7 @@ class Network(object):
                 continue
             node = Node(digest(vk), ip=ip, port=self.port, vk=vk)
             self.routing_table.addContact(node)
+        await asyncio.sleep(5)
 
     async def bootup(self):
         if self._use_ee_bootup:
@@ -158,9 +159,8 @@ class Network(object):
 ###########################################################################\
         ''')
         self.is_connected = True
-        asyncio.sleep(2)
-        Event.emit({ 'event': 'service_status', 'status': 'ready' })
-        self.log.success("Status ready sent!!!")
+        await Event.emit({'event': 'service_status', 'status': 'ready'})
+        self.log.spam("Status ready sent!!!")
 
     async def bootstrap(self, nodes):
         """
@@ -428,7 +428,7 @@ class Network(object):
         else:
             ip = await self.network_find_ip(event_id, nodes, vk_to_find)
         status = 'authorized' if ip else 'unknown_vk'
-        Event.emit({'event': status, 'vk': vk_to_find, 'ip': ip, 'domain': '*'})
+        await Event.emit({'event': status, 'vk': vk_to_find, 'ip': ip, 'domain': '*'})
         return ip
 
     async def _ping_ip(self, req, vk, ip, is_first_time):

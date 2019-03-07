@@ -56,14 +56,14 @@ class OverlayClient(OverlayInterface):
         self.log.info('Listening for overlay events over {}'.format(EVENT_URL))
         while True:
             msg = await self.evt_sock.recv_json()
-            self.log.debug("OverlayClient received event {}".format(msg))
+            self.log.spam("OverlayClient received event {}".format(msg))
             event_handler(msg)
 
     async def reply_listener(self, event_handler):
         self.log.debugv("Listening for overlay replies over {}".format(CMD_URL))
         while True:
             msg = await self.cmd_sock.recv_multipart()
-            self.log.debug("OverlayClient received reply {}".format(msg))
+            self.log.spam("OverlayClient received reply {}".format(msg))
             event = json.loads(msg[-1])
             event_handler(event)
 

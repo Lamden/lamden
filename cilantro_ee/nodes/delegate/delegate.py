@@ -3,7 +3,6 @@ from cilantro_ee.nodes.base import NodeBase
 from cilantro_ee.nodes.delegate.block_manager import BlockManager
 
 
-# TODO this can probly be refactored to multi-inherit from BlockManager and look a bit nicer
 class Delegate(NodeBase):
 
     # This call should not block!
@@ -16,4 +15,3 @@ class Delegate(NodeBase):
                                 kwargs={'signing_key': self.signing_key,
                                         'ip': self.ip})
         self.bm.start()
-

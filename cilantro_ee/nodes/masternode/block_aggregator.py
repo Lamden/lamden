@@ -91,7 +91,6 @@ class BlockAggregator(Worker):
 
         # Create ROUTER socket for communication with batcher over IPC
         self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BA-IPC-Router")
-        self.ipc_router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.ipc_router.bind(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
 
         self.tasks.append(self._connect_and_process())

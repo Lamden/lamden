@@ -18,9 +18,7 @@
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 
 from cilantro_ee.logger import get_logger
-from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.state import StateDriver
-from cilantro_ee.constants.ports import SBB_PORT_START
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
 
@@ -106,6 +104,7 @@ class SubBlockBuilder(Worker):
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
+        self._create_sub_sockets()
         # need to tie with catchup state to initialize to real next_block_to_make
         self._next_block_to_make = NextBlockToMake()
         self.tasks.append(self._connect_and_process())
@@ -122,7 +121,7 @@ class SubBlockBuilder(Worker):
     async def _connect_and_process(self):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
-        await self._create_sub_sockets()
+        await self._connect_sub_sockets()
         await self.send_ready_to_bm()
 
     async def send_ready_to_bm(self):
@@ -151,41 +150,21 @@ class SubBlockBuilder(Worker):
 
         self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
 
-    async def _create_sub_sockets(self):
-        # DEBUG -- TODO DELETE
-        pubs = NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index)
-        self.log.important("SBB number {} is responsible for listening to masternodes with (vk, port):\n{}".format(self.sbb_index, NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index)))
-        # END DEBUG
-
-        # We then BIND a sub socket to a port for each of these masternode indices
-        for d in NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index):
-            vk, port, sb_idx = d['vk'], d['port'], d['sb_idx']
-
-            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
+    def _create_sub_sockets(self):
+        for idx in range(NUM_SB_PER_BUILDER):
+            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, idx),
                                              secure=True)
             sub.setsockopt(zmq.SUBSCRIBE, TRANSACTION_FILTER.encode())
-            sub.connect(port=port, vk=vk)
-            sbm_idx = len(self.sb_managers)
-            assert sbm_idx == d['sbm_idx'], "Index mismatch: Making sub-block num {} as part of sb_manager[{}]".format(d['sbm_idx'], sbm_idx)
-            self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
-            self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=sbm_idx))
+            self.sb_managers.append(SubBlockManager(sub_block_index=idx, sub_socket=sub))
+            self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
-        # TODO remove below once we confident in code above
-        # for idx in range(NUM_SB_PER_BUILDER):
-        #     # sidx = idx % NUM_SB_PER_BLOCK_PER_BUILDER
-        #     # sb_idx = sidx * NUM_SB_BUILDERS + self.sbb_index  # SB index for the block
-        #
-        #     sb_idx = idx * NUM_SB_BUILDERS + self.sbb_index  # actual SB index in global index space
-        #
-        #     port = SBB_PORT_START + sb_idx
-        #     sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
-        #                                      secure=True)
-        #     sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
-        #     sub.bind(port=port, ip=self.ip)
-        #     self.log.info("SBB BINDing to port {} with no filter".format(port))
-        #
-        #     self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
-        #     self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
+    async def _connect_sub_sockets(self):
+        # We then BIND a sub socket to a port for each of these masternode indices
+        for smi, d in enumerate(NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index), 0):
+            vk, port, sb_idx = d['vk'], d['port'], d['sb_idx']
+            self.sb_managers[smi].sub_block_index = sb_idx
+            self.sb_managers[smi].sub_socket.connect(port=port, vk=vk)
+
 
     def _align_to_hash(self, input_hash):
         num_discards = 0

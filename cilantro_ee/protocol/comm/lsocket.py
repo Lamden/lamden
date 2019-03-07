@@ -121,6 +121,7 @@ class LSocketBase:
             return coro
 
     async def _listen(self, func, key):
+        await asyncio.sleep(1)
         self.log.debug("Starting listener handler key {}".format(key))
 
         while True:

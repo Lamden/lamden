@@ -198,10 +198,6 @@ class BlockManager(Worker):
             self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
 
-        # Sleep to SBB's IPC sockets are ready for any messages from BlockManager
-        time.sleep(3)
-        self.log.info("Done sleeping after starting SBB procs")
-
     def _get_my_index(self):
         for index, vk in enumerate(VKBook.get_delegates()):
             if vk == self.verifying_key:

@@ -20,6 +20,6 @@ class NetworkTopology:
             # mn_vk = VKBook.get_masternodes()[sb_idx % len(VKBook.get_masternodes())]
             # sb_idx will be less than # of masternodes
             mn_vk = VKBook.get_masternodes()[sb_idx]
-            pubs.append({'sbm_idx': i, 'sb_idx': sb_idx, 'port': port, 'vk': mn_vk})
+            pubs.append({'sb_idx': sb_idx, 'port': port, 'vk': mn_vk})
 
         return pubs
