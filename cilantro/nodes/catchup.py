@@ -173,7 +173,9 @@ class CatchupManager:
             return
 
         tmp_list = reply.indices
-        assert tmp_list[0].get('blockNum') <= tmp_list[-1].get('blockNum'), "ensure reply are in ascending order"
+        if len(tmp_list) > 1:
+            assert tmp_list[0].get('blockNum') > tmp_list[-1].get('blockNum'), "ensure reply are in ascending order {}"\
+                .format(tmp_list)
         # Todo @tejas we need to think if we need reverse sort here
         tmp_list.reverse()
         self.log.important2("tmp list -> {}".format(tmp_list))
@@ -266,8 +268,9 @@ class CatchupManager:
         self.log.important2("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num,
                                                                               request.block_hash))
 
-        assert delta_idx[0].get('blockNum') <= delta_idx[-1].get('blockNum'), "ensure reply are in ascending order {}"\
-            .format(delta_idx)
+        if len(delta_idx) > 1:
+            assert delta_idx[0].get('blockNum') > delta_idx[-1].get('blockNum'), "ensure reply are in ascending order" \
+                                                                                  " {}" .format(delta_idx)
 
         # self.log.important2("RCV BIR")
         self.dump_debug_info(lnum = 258)
@@ -353,7 +356,10 @@ class CatchupManager:
             while (blknum < self.awaited_blknum) and len(self.block_delta_list):
                 blk_ptr = self.block_delta_list.pop(0)
                 blknum = blk_ptr.get('blockNum')
-            assert blk_ptr and (blknum == self.awaited_blknum), "can't find the index infor for the block num {}".format(self.awaited_blknum)
+
+            if blknum < self.awaited_blknum:
+                return
+#           assert blk_ptr and (blknum == self.awaited_blknum), "can't find the index infor for the block num {}".format(self.awaited_blknum)
             mn_list = blk_ptr.get('blockOwners')
             for vk in mn_list:
                 self._send_block_data_req(mn_vk = vk, req_blk_num = self.awaited_blknum)
