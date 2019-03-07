@@ -160,6 +160,7 @@ class Network(object):
         self.is_connected = True
         asyncio.sleep(2)
         Event.emit({ 'event': 'service_status', 'status': 'ready' })
+        self.log.success("Status ready sent!!!")
 
     async def bootstrap(self, nodes):
         """

@@ -106,10 +106,9 @@ class SubBlockBuilder(Worker):
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
-        self._create_sub_sockets()
         # need to tie with catchup state to initialize to real next_block_to_make
         self._next_block_to_make = NextBlockToMake()
-        self.tasks.append(self.send_ready_to_bm())
+        self.tasks.append(self._connect_and_process())
 
         self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_blders {} num_sb_per_block {} num_sb_per_builder {} sbs_per_blk_per_blder {}"
                         .format(sbb_index, NUM_SUB_BLOCKS, NUM_BLOCKS, NUM_SB_BUILDERS, NUM_SB_PER_BLOCK, NUM_SB_PER_BUILDER, NUM_SB_PER_BLOCK_PER_BUILDER))
@@ -119,6 +118,12 @@ class SubBlockBuilder(Worker):
     def run(self):
         self.log.notice("SBB {} starting...".format(self.sbb_index))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
+
+    async def _connect_and_process(self):
+        # first make sure, we have overlay server ready
+        await self._wait_until_ready()
+        await self._create_sub_sockets()
+        await self.send_ready_to_bm()
 
     async def send_ready_to_bm(self):
         await asyncio.sleep(1)
@@ -146,7 +151,7 @@ class SubBlockBuilder(Worker):
 
         self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
 
-    def _create_sub_sockets(self):
+    async def _create_sub_sockets(self):
         # DEBUG -- TODO DELETE
         pubs = NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index)
         self.log.important("SBB number {} is responsible for listening to masternodes with (vk, port):\n{}".format(self.sbb_index, NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index)))
@@ -160,9 +165,10 @@ class SubBlockBuilder(Worker):
                                              secure=True)
             sub.setsockopt(zmq.SUBSCRIBE, TRANSACTION_FILTER.encode())
             sub.connect(port=port, vk=vk)
+            sbm_idx = len(self.sb_managers)
+            assert sbm_idx == d['sbm_idx'], "Index mismatch: Making sub-block num {} as part of sb_manager[{}]".format(d['sbm_idx'], sbm_idx)
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
-            i = sb_idx % len(VKBook.get_masternodes())
-            self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=i))
+            self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=sbm_idx))
 
         # TODO remove below once we confident in code above
         # for idx in range(NUM_SB_PER_BUILDER):

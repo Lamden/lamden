@@ -80,17 +80,26 @@ class BlockAggregator(Worker):
             name="BA-Router",
             secure=True,
         )
-        # self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.bind(ip=self.ip, port=MASTER_ROUTER_PORT)
 
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
+        self.catchup_manager = CatchupManager(verifying_key=self.verifying_key, pub_socket=self.pub,
+                                              router_socket=self.router, store_full_blocks=True)
+
         # Create ROUTER socket for communication with batcher over IPC
         self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BA-IPC-Router")
         self.ipc_router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.ipc_router.bind(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
+
+        self.tasks.append(self._connect_and_process())
+
+
+    async def _connect_and_process(self):
+        # first make sure, we have overlay server ready
+        await self._wait_until_ready()
 
         # Listen to delegates for sub block contenders and state update requests
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
@@ -106,9 +115,8 @@ class BlockAggregator(Worker):
                 self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
                 self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
 
-        self.catchup_manager = CatchupManager(verifying_key=self.verifying_key, pub_socket=self.pub,
-                                              router_socket=self.router, store_full_blocks=True)
-        self.tasks.append(self._trigger_catchup())
+        # now start the catchup
+        await self._trigger_catchup()
 
     async def _trigger_catchup(self):
         self.log.debugv("Sleeping before triggering catchup...")

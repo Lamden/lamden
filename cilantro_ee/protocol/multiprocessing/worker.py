@@ -3,9 +3,11 @@ from cilantro_ee.logger import get_logger
 from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.comm.socket_manager import SocketManager
 from cilantro_ee.messages.envelope.envelope import Envelope
+from cilantro_ee.constants.overlay_network import CLIENT_SETUP_TIMEOUT
 
 from typing import Callable, Union
 import zmq.asyncio, asyncio
+import time
 
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -21,6 +23,15 @@ class Worker(Context):
 
         self.manager = SocketManager(context=self.zmq_ctx)
         self.tasks = self.manager.overlay_client.tasks
+
+
+    async def _wait_until_ready(self):
+        await asyncio.sleep(10)   # sleep a bit
+        wait_until = time.time() + CLIENT_SETUP_TIMEOUT
+        while not self.manager.is_ready() and (time.time() <= wait_until):
+            await asyncio.sleep(2)
+        if not self.manager.is_ready():
+            self.log.important("Overlay server is not ready still ...")
 
     def add_overlay_handler_fn(self, key: str, handler: Callable[[dict], None]):
         """

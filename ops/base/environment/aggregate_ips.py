@@ -68,8 +68,9 @@ if __name__ == "__main__":
 
     assert len(vk_ip) == len(ip_files), "ya done goofed davis\n{}".format(vk_ip)
 
+    print("\n\n\n WE GOT VK IP DICT:\n{}\n\n\n".format(vk_ip))
     # Now actually write the file...
-    vk_json = cilantro_ee_config = os.path.join(my_path, 'conf/{}{}/vk_ip_map.json'.format(args.type, args.index))
+    vk_json = os.path.join(my_path, 'conf/{}{}/vk_ip_map.json'.format(args.type, args.index))
     with open(vk_json, "w") as json_file:
-        json.dump(vk_json, json_file)
+        json.dump(vk_ip, json_file)
 

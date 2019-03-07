@@ -17,7 +17,9 @@ class NetworkTopology:
         for i in range(NUM_SB_PER_BUILDER):
             sb_idx = i * NUM_SB_BUILDERS + sbb_idx
             port = MN_TX_PUB_PORT
-            mn_vk = VKBook.get_masternodes()[sb_idx % len(VKBook.get_masternodes())]
-            pubs.append({'sb_idx': sb_idx, 'port': port, 'vk': mn_vk})
+            # mn_vk = VKBook.get_masternodes()[sb_idx % len(VKBook.get_masternodes())]
+            # sb_idx will be less than # of masternodes
+            mn_vk = VKBook.get_masternodes()[sb_idx]
+            pubs.append({'sbm_idx': i, 'sb_idx': sb_idx, 'port': port, 'vk': mn_vk})
 
         return pubs
