@@ -38,7 +38,8 @@ data
 vmnet_configs/constitutions/private
 *.tfstate
 *.tfstate.backup
-.cache/*
+ops/environments/*/.cache/*
+ops/environments/*/conf
 
 # Config files
 db_conf.ini
