@@ -12,7 +12,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 from cilantro_ee.constants.zmq_filters import *
-from cilantro_ee.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
+from cilantro_ee.constants.ports import MN_PUB_PORT
 from cilantro_ee.constants.system_config import *
 
 from cilantro_ee.messages.envelope.envelope import Envelope
@@ -127,7 +127,7 @@ class TestBlockAggregator(TestCase):
                 len([vk for vk in VKBook.get_delegates() if TEST_VK != vk]))
 
         log.critical("6")
-        mock_pub.bind.assert_called_with(ip=TEST_IP, port=MASTER_PUB_PORT)
+        mock_pub.bind.assert_called_with(ip=TEST_IP, port=MN_PUB_PORT)
 
     # TODO fix this test --davis
     # @BlockAggTester.test

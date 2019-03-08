@@ -9,7 +9,7 @@ from cilantro_ee.nodes.masternode.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
 
 from cilantro_ee.constants.zmq_filters import *
-from cilantro_ee.constants.ports import MASTER_ROUTER_PORT, MASTER_PUB_PORT, DELEGATE_PUB_PORT, DELEGATE_ROUTER_PORT
+from cilantro_ee.constants.ports import MN_ROUTER_PORT, MN_PUB_PORT, DELEGATE_PUB_PORT
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.masternode import *
 
@@ -73,7 +73,7 @@ class BlockAggregator(Worker):
             name="BA-Pub",
             secure=True,
         )
-        self.pub.bind(ip=self.ip, port=MASTER_PUB_PORT)
+        self.pub.bind(ip=self.ip, port=MN_PUB_PORT)
 
         self.router = self.manager.create_socket(
             socket_type=zmq.ROUTER,
@@ -81,7 +81,7 @@ class BlockAggregator(Worker):
             secure=True,
         )
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
-        self.router.bind(ip=self.ip, port=MASTER_ROUTER_PORT)
+        self.router.bind(ip=self.ip, port=MN_ROUTER_PORT)
 
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
@@ -111,8 +111,8 @@ class BlockAggregator(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, CATCHUP_MN_DN_FILTER.encode())
         for vk in VKBook.get_masternodes():
             if vk != self.verifying_key:
-                self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
-                self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+                self.sub.connect(vk=vk, port=MN_PUB_PORT)
+                self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
         # now start the catchup
         await self._trigger_catchup()

@@ -2,7 +2,7 @@
 from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.constants.system_config import TRANSACTIONS_PER_SUB_BLOCK
 from cilantro_ee.constants.zmq_filters import TRANSACTION_FILTER
-from cilantro_ee.constants.ports import MN_NEW_BLOCK_PUB_PORT, MN_TX_PUB_PORT
+from cilantro_ee.constants.ports import MN_TX_PUB_PORT
 from cilantro_ee.constants.system_config import BATCH_SLEEP_INTERVAL, NO_ACTIVITY_SLEEP, NUM_BLOCKS
 from cilantro_ee.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
