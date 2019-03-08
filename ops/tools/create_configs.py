@@ -88,7 +88,7 @@ def main():
     assert num_dels > 0, "num_dels must be greater than 0"
 
     num_wits = int(_get_input("Enter number of Witnesses"))
-    assert num_wits > 0, "num_wits must be greater than 0"
+    # assert num_wits > 0, "num_wits must be greater than 0"
 
     valid_regions = [ 'us-east-2', 'us-east-1', 'us-west-1', 'us-west-2', 'ap-south-1', 'ap-northeast-2', 'ap-northeast-1', 'ap-southeast-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-west-1', 'eu-west-2', 'eu-west-3', 'sa-east-1' ]
     launch_region = _get_input("Enter region to launch into (default='us-west-1')") or 'us-west-1'

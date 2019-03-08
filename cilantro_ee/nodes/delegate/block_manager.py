@@ -89,7 +89,6 @@ class BlockManager(Worker):
     def __init__(self, ip, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
-        self.tasks = []
 
         self.ip = ip
         self.sb_builders = {}  # index -> process
@@ -161,13 +160,21 @@ class BlockManager(Worker):
         )
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
-        self.tasks.append(self.catchup_db_state())
+        self.tasks.append(self._connect_and_process())
+
+
+    async def _connect_and_process(self):
+        # first make sure, we have overlay server ready
+        await self._wait_until_ready()
 
         # Listen to Masternodes over sub and connect router for catchup communication
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MASTER_PUB_PORT)
             self.router.connect(vk=vk, port=MASTER_ROUTER_PORT)
+
+        # now start the catchup
+        await self.catchup_db_state()
 
     async def catchup_db_state(self):
         # do catch up logic here
@@ -190,10 +197,6 @@ class BlockManager(Worker):
                                                    "sbb_index": i})
             self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
-
-        # Sleep to SBB's IPC sockets are ready for any messages from BlockManager
-        time.sleep(3)
-        self.log.info("Done sleeping after starting SBB procs")
 
     def _get_my_index(self):
         for index, vk in enumerate(VKBook.get_delegates()):

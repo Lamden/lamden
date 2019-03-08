@@ -1,36 +1,37 @@
+from cilantro_ee.protocol.multiprocessing.context import Context
 from cilantro_ee.logger import get_logger
 from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.comm.socket_manager import SocketManager
 from cilantro_ee.messages.envelope.envelope import Envelope
+from cilantro_ee.constants.overlay_network import CLIENT_SETUP_TIMEOUT
 
 from typing import Callable, Union
 import zmq.asyncio, asyncio
+import time
 
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
-class Worker:
+class Worker(Context):
 
-    def __init__(self, signing_key=None, loop=None, context=None, manager: SocketManager=None, name=''):
+    def __init__(self, signing_key, name=''):
+
         name = name or type(self).__name__
+        super().__init__(signing_key=signing_key, name=name)
         self.log = get_logger(name)
 
-        if manager:
-            assert not loop and not context and not signing_key, "If passing in a SocketManager you should omit all other args"
-            signing_key, context, loop = manager.signing_key, manager.context, manager.loop
-        else:
-            assert signing_key, "Signing key arg is required if not passing in a SocketManager"
-            if context: assert loop, 'If passing context, must also include loop'
+        self.manager = SocketManager(context=self.zmq_ctx)
+        self.tasks = self.manager.overlay_client.tasks
 
-        self.loop = loop or asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        self.context = context or zmq.asyncio.Context()
 
-        self.signing_key = signing_key
-        self.verifying_key = wallet.get_vk(self.signing_key)
-
-        self.manager = manager or SocketManager(signing_key=signing_key, context=self.context, loop=self.loop)
+    async def _wait_until_ready(self):
+        await asyncio.sleep(2)   # sleep a bit
+        wait_until = time.time() + CLIENT_SETUP_TIMEOUT
+        while not self.manager.is_ready() and (time.time() <= wait_until):
+            await asyncio.sleep(2)
+        if not self.manager.is_ready():
+            self.log.important("Overlay server is not ready still ...")
 
     def add_overlay_handler_fn(self, key: str, handler: Callable[[dict], None]):
         """

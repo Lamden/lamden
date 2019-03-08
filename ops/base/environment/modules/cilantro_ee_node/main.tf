@@ -11,6 +11,12 @@ variable "index" {
   description = "The index of the node being launched"
 }
 
+variable "production" {
+  type        = "string"
+  description = "Whether or not the node is a production node"
+  default     = false
+}
+
 #################################
 ## AWS provisioning parameters ##
 #################################
@@ -168,7 +174,9 @@ resource "aws_instance" "cilantro_ee-node" {
   security_groups = ["${aws_security_group.cilantro_ee_firewall.name}"]
 
   tags = {
-    Name = "${local.prefix}-${local.nodename}"
+    Name       = "${local.prefix}-${local.nodename}"
+    Touch      = "${timestamp()}"
+    Production = "${var.production ? "True" : "False"}"
   }
 
   connection {
@@ -280,7 +288,35 @@ resource "null_resource" "cilantro_ee-conf" {
 
   provisioner "remote-exec" {
     inline = [
+      "sudo rm -rf /etc/cilantro_ee.conf",
       "sudo mv /home/ubuntu/cilantro_ee.conf /etc/cilantro_ee.conf",
+    ]
+  }
+
+  depends_on = ["null_resource.aggregate-ips", "aws_eip.static-ip"]
+}
+
+resource "null_resource" "vk_ip_map-json" {
+  triggers {
+    always_run = "${uuid()}"
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = "${var.private_key}"
+    host        = "${aws_instance.cilantro_ee-node.public_ip}"
+  }
+
+  provisioner "file" {
+    source      = "./conf/${var.type}${var.index}/vk_ip_map.json"
+    destination = "/home/ubuntu/vk_ip_map.json"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo rm -rf /etc/vk_ip_map.json",
+      "sudo mv /home/ubuntu/vk_ip_map.json /etc/vk_ip_map.json",
     ]
   }
 
@@ -290,7 +326,8 @@ resource "null_resource" "cilantro_ee-conf" {
 # Copy over circus config only if it has changed locally
 resource "null_resource" "circus-conf" {
   triggers {
-    conf = "${file("./conf/${var.type}${var.index}/circus.conf")}"
+    conf     = "${file("./conf/${var.type}${var.index}/circus.conf")}"
+    instance = "${aws_instance.cilantro_ee-node.public_ip}"
   }
 
   connection {
@@ -307,6 +344,7 @@ resource "null_resource" "circus-conf" {
 
   provisioner "remote-exec" {
     inline = [
+      "sudo rm -rf /etc/circus.conf",
       "sudo mv /home/ubuntu/circus.conf /etc/circus.conf",
     ]
   }
@@ -317,7 +355,8 @@ resource "null_resource" "circus-conf" {
 # Copy over redis.conf file
 resource "null_resource" "redis-conf" {
   triggers {
-    conf = "${file("./conf/${var.type}${var.index}/redis.conf")}"
+    instance = "${aws_instance.cilantro_ee-node.public_ip}"
+    conf     = "${file("./conf/${var.type}${var.index}/redis.conf")}"
   }
 
   connection {
@@ -334,6 +373,7 @@ resource "null_resource" "redis-conf" {
 
   provisioner "remote-exec" {
     inline = [
+      "sudo rm -rf /etc/redis.conf",
       "sudo mv /home/ubuntu/redis.conf /etc/redis.conf",
     ]
   }
@@ -342,7 +382,8 @@ resource "null_resource" "redis-conf" {
 # Push up authorized keys to the nodes so all of Lamden's team can easily access them
 resource "null_resource" "ssh-keys" {
   triggers {
-    conf = "${file("../../security/authorized_keys")}"
+    instance = "${aws_instance.cilantro_ee-node.public_ip}"
+    conf     = "${file("../../security/authorized_keys")}"
   }
 
   connection {
@@ -391,7 +432,7 @@ resource "null_resource" "docker" {
   provisioner "remote-exec" {
     inline = [
       "sudo docker rm -f cil",
-      "sudo docker run --name cil -dit -v /var/db/cilantro_ee/:/var/db/cilantro_ee -v /etc/cilantro_ee.conf:/etc/cilantro_ee.conf -v /etc/redis.conf:/etc/redis.conf -v /etc/circus.conf:/etc/circus.conf ${var.setup_ssl ? "-v /home/ubuntu/.sslconf:/root/.sslconf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh" : ""} -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
+      "sudo docker run --name cil -dit -v /var/db/cilantro_ee/:/var/db/cilantro_ee -v /etc/vk_ip_map.json:/etc/vk_ip_map.json -v /etc/cilantro_ee.conf:/etc/cilantro_ee.conf -v /etc/redis.conf:/etc/redis.conf -v /etc/circus.conf:/etc/circus.conf ${var.setup_ssl ? "-v /home/ubuntu/.sslconf:/root/.sslconf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh" : ""} -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
     ]
   }
 

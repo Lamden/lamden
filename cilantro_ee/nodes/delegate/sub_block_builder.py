@@ -18,9 +18,7 @@
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 
 from cilantro_ee.logger import get_logger
-from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.state import StateDriver
-from cilantro_ee.constants.ports import SBB_PORT_START
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
 
@@ -40,6 +38,7 @@ from seneca.engine.client import SenecaClient
 from seneca.engine.conflict_resolution import CRContext
 from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.protocol.utils.network_topology import NetworkTopology
 
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
@@ -79,8 +78,6 @@ class SubBlockBuilder(Worker):
     def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int, *args, **kwargs):
         super().__init__(signing_key=signing_key, name="SubBlockBuilder_{}".format(sbb_index))
 
-        self.tasks = []
-
         # These variables are used only for testing
         self.bad_actor = bool(os.getenv('BAD_ACTOR'))
         if self.bad_actor:
@@ -110,7 +107,7 @@ class SubBlockBuilder(Worker):
         self._create_sub_sockets()
         # need to tie with catchup state to initialize to real next_block_to_make
         self._next_block_to_make = NextBlockToMake()
-        self.tasks.append(self.send_ready_to_bm())
+        self.tasks.append(self._connect_and_process())
 
         self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_blders {} num_sb_per_block {} num_sb_per_builder {} sbs_per_blk_per_blder {}"
                         .format(sbb_index, NUM_SUB_BLOCKS, NUM_BLOCKS, NUM_SB_BUILDERS, NUM_SB_PER_BLOCK, NUM_SB_PER_BUILDER, NUM_SB_PER_BLOCK_PER_BUILDER))
@@ -120,6 +117,12 @@ class SubBlockBuilder(Worker):
     def run(self):
         self.log.notice("SBB {} starting...".format(self.sbb_index))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
+
+    async def _connect_and_process(self):
+        # first make sure, we have overlay server ready
+        await self._wait_until_ready()
+        await self._connect_sub_sockets()
+        await self.send_ready_to_bm()
 
     async def send_ready_to_bm(self):
         await asyncio.sleep(1)
@@ -148,22 +151,20 @@ class SubBlockBuilder(Worker):
         self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
 
     def _create_sub_sockets(self):
-        # We then BIND a sub socket to a port for each of these masternode indices
         for idx in range(NUM_SB_PER_BUILDER):
-            # sidx = idx % NUM_SB_PER_BLOCK_PER_BUILDER
-            # sb_idx = sidx * NUM_SB_BUILDERS + self.sbb_index  # SB index for the block
-
-            sb_idx = idx * NUM_SB_BUILDERS + self.sbb_index  # actual SB index in global index space
-
-            port = SBB_PORT_START + sb_idx
-            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, sb_idx),
+            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, idx),
                                              secure=True)
-            sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
-            sub.bind(port=port, ip=self.ip)
-            self.log.info("SBB BINDing to port {} with no filter".format(port))
-
-            self.sb_managers.append(SubBlockManager(sub_block_index=sb_idx, sub_socket=sub))
+            sub.setsockopt(zmq.SUBSCRIBE, TRANSACTION_FILTER.encode())
+            self.sb_managers.append(SubBlockManager(sub_block_index=idx, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
+
+    async def _connect_sub_sockets(self):
+        # We then BIND a sub socket to a port for each of these masternode indices
+        for smi, d in enumerate(NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index), 0):
+            vk, port, sb_idx = d['vk'], d['port'], d['sb_idx']
+            self.sb_managers[smi].sub_block_index = sb_idx
+            self.sb_managers[smi].sub_socket.connect(port=port, vk=vk)
+
 
     def _align_to_hash(self, input_hash):
         num_discards = 0

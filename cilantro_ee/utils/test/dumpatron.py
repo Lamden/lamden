@@ -12,7 +12,7 @@ IP_FILE_PREFIX = 'ip_masternode'
 
 class Dumpatron:
 
-    TX_PER_BLOCK = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS
+    TX_PER_BLOCK = 0
     STAMPS_AMOUNT = 30000
 
     def __init__(self, env_path):
@@ -21,6 +21,7 @@ class Dumpatron:
         assert os.path.exists(env_path), "No env dir found at path {}".format(env_path)
         assert os.path.exists(env_path + '.cache'), "No .cache dir found at path {}.cache".format(env_path)
         self.log = get_logger("Dumpatron")
+        Dumpatron.TX_PER_BLOCK = TRANSACTIONS_PER_SUB_BLOCK * NUM_SB_PER_BLOCK * NUM_BLOCKS
 
         self.env_path = env_path
         self.mn_ip_dict = self._extract_mn_ips()

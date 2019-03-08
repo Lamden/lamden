@@ -11,6 +11,8 @@ class CilantroHasher(object):
         with open(path, 'r') as f:
             lines = f.readlines()
             lines.append('.git/')
+            lines.append('*.ipc')
+            lines.append('*-ipc-sock')
             spec = pathspec.PathSpec.from_lines('gitwildmatch', lines)
         return spec
 

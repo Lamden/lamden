@@ -1,6 +1,7 @@
-import configparser, os
+import configparser, os, json
 
 CIL_CONF_PATH = '/etc/cilantro_ee.conf'
+VK_IP_JSON_PATH = '/etc/vk_ip_map.json'
 
 
 class ConfMeta(type):
@@ -21,9 +22,14 @@ class CilantroConf(metaclass=ConfMeta):
     CONSTITUTION_FILE = None
     SSL_ENABLED = None
     NONCE_ENABLED = None
+    VK_IP_MAP = {}
 
     @classmethod
     def setup(cls):
+        # Logger is just for debugging
+        from cilantro_ee.logger.base import get_logger
+        log = get_logger("CilantroConf")
+
         if os.path.exists(CIL_CONF_PATH):
             config = configparser.ConfigParser()
             config.read(CIL_CONF_PATH)
@@ -37,11 +43,13 @@ class CilantroConf(metaclass=ConfMeta):
             cls.NONCE_ENABLED = config.getboolean('nonce_enabled') or False
 
             # DEBUG -- TODO DELETE
-            from cilantro_ee.logger.base import get_logger
-            log = get_logger("ConfDebug")
             log.important("BOOT IP FROM CONFIG FILE: {}".format(config['boot_ips']))
             log.important("BOOT IP CLASS VAR: {}".format(cls.BOOTNODES))
             log.important("HOST IP CLASS VAR: {}".format(cls.HOST_IP))
             log.important("SSL ENABLED CLASS VAR: {}".format(cls.SSL_ENABLED))
             log.important("NONCE ENABLED CLASS VAR: {}".format(cls.NONCE_ENABLED))
             # END DEBUG
+
+        if os.path.exists(VK_IP_JSON_PATH):
+            with open(VK_IP_JSON_PATH, 'r') as f:
+                cls.VK_IP_MAP = json.load(f)

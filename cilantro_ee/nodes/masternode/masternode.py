@@ -16,14 +16,15 @@ IPC_PORT = 6967
 
 class Masternode(NodeBase):
 
-    def start(self):
+    # This call should not block!
+    def start_node(self):
         self.tx_queue = Queue()
         self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
 
         self._start_web_server()
         if not os.getenv('MN_MOCK'):  # TODO @stu do we need this still? --davis
             self._start_batcher()
-            self._start_block_agg()  # This call blocks!
+            self._start_block_agg()
         else:
             self.log.warning("MN_MOCK env var is set! Not starting block aggregator or tx batcher.")
 
@@ -42,5 +43,5 @@ class Masternode(NodeBase):
 
     def _start_block_agg(self):
         self.log.info("Masternode starting BlockAggregator Process")
-        # this call blocks
-        self.block_agg = BlockAggregator(ip=self.ip, ipc_ip=self.ipc_ip, ipc_port=IPC_PORT, manager=self.manager, name='BlockAgg')
+        self.block_agg = LProcess(target=BlockAggregator,  name='BlockAgg', kwargs={'ip': self.ip, 'ipc_ip': self.ipc_ip, 'ipc_port': IPC_PORT, 'signing_key': self.signing_key, 'name': 'BlockAgg'})
+        self.block_agg.start()

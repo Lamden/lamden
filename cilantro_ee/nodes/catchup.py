@@ -268,7 +268,7 @@ class CatchupManager:
         self.log.important2("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num,
                                                                               request.block_hash))
 
-        if len(delta_idx) > 1:
+        if delta_idx and len(delta_idx) > 1:
             assert delta_idx[0].get('blockNum') > delta_idx[-1].get('blockNum'), "ensure reply are in ascending order" \
                                                                                   " {}" .format(delta_idx)
 
@@ -359,7 +359,7 @@ class CatchupManager:
 
             if blknum < self.awaited_blknum:
                 return
-#           assert blk_ptr and (blknum == self.awaited_blknum), "can't find the index infor for the block num {}".format(self.awaited_blknum)
+
             mn_list = blk_ptr.get('blockOwners')
             for vk in mn_list:
                 self._send_block_data_req(mn_vk = vk, req_blk_num = self.awaited_blknum)
