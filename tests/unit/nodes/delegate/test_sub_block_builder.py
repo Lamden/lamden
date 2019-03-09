@@ -39,10 +39,10 @@ class SBBTester:
 #
     @staticmethod
     def test(func):
-        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio", autospec=True)
-        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager", autospec=True)
-        @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio", autospec=True)
-        @mock.patch("cilantro_ee.nodes.delegate.block_manager.SubBlockBuilder.run", autospec=True)
+        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio")
+        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager")
+        @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio")
+        @mock.patch("cilantro_ee.nodes.delegate.block_manager.SubBlockBuilder.run")
         def _func(*args, **kwargs):
             return func(*args, **kwargs)
         return _func
