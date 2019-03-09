@@ -13,7 +13,7 @@ def _build_mock_manager():
     manager = MagicMock(spec=SocketManager)
     manager.signing_key, manager.verifying_key = wallet.new()
     manager.overlay_client = MagicMock()
-    manager.overlay_client.get_node_from_vk = MagicMock(side_effect=list(range(100)))
+    manager.overlay_client.get_ip_from_vk = MagicMock(side_effect=list(range(100)))
     manager.pending_lookups = {}
     return manager
 
