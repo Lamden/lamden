@@ -95,7 +95,6 @@ class BlockAggregator(Worker):
 
         self.tasks.append(self._connect_and_process())
 
-
     async def _connect_and_process(self):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()

@@ -24,7 +24,6 @@ class Worker(Context):
         self.manager = SocketManager(context=self.zmq_ctx)
         self.tasks = self.manager.overlay_client.tasks
 
-
     async def _wait_until_ready(self):
         await asyncio.sleep(2)   # sleep a bit
         wait_until = time.time() + CLIENT_SETUP_TIMEOUT
