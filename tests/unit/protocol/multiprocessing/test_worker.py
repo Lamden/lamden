@@ -25,7 +25,7 @@ class WorkerTester:
         @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio", autospec=True)
         # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.zmq", autospec=True)
         # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.zmq.asyncio", autospec=True)
-        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager", autospec=True)
+        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager")
         def _func(*args, **kwargs):
             return func(*args, **kwargs)
         return _func
