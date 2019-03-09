@@ -100,13 +100,6 @@ class BlockAggregator(Worker):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
 
-        # Listen to delegates for sub block contenders and state update requests
-        self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
-        for vk in VKBook.get_delegates():
-            self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
-            # I dont think we to connect to delegates here as delegates are already connecting in BlockManager --davis
-            # self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
-
         # Listen to masters for new block notifs and state update requests from masters/delegates
         self.sub.setsockopt(zmq.SUBSCRIBE, CATCHUP_MN_DN_FILTER.encode())
         for vk in VKBook.get_masternodes():
@@ -114,12 +107,20 @@ class BlockAggregator(Worker):
                 self.sub.connect(vk=vk, port=MN_PUB_PORT)
                 self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
+        # Listen to delegates for sub block contenders and state update requests
+        self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
+        for vk in VKBook.get_delegates():
+            self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
+            # I dont think we to connect to delegates here as delegates are already connecting in BlockManager --davis
+            # self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
+
+        # we just connected to other nodes, let's chill a bit to give time for those connections form !!!
+        self.log.spam("Sleeping before triggering catchup...")
+        await asyncio.sleep(8)
         # now start the catchup
         await self._trigger_catchup()
 
     async def _trigger_catchup(self):
-        self.log.debugv("Sleeping before triggering catchup...")
-        await asyncio.sleep(4)
         self.log.info("Triggering catchup")
         self.catchup_manager.run_catchup()
 
