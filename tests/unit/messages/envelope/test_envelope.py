@@ -14,6 +14,7 @@ from cilantro_ee.protocol import wallet
 
 from cilantro_ee.constants.testnet import *
 
+
 class TestEnvelopefromObjects(TestCase):
     """Envelope unit tests using Envelope.create_from_objects() directly to create envelopes"""
 
