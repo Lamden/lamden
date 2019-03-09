@@ -55,8 +55,6 @@ jobs:
             - "/usr/local/bin"
             - "/opt/circleci/"
 
-version: 2
-jobs:
   unit_tests:
     machine:
         image: circleci/classic:201808-01
