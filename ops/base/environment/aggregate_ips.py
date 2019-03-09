@@ -46,7 +46,8 @@ if __name__ == "__main__":
         with open(os.path.join(cache_path, ipf), "r") as f:
             all_ips.append(f.readline().rstrip())
 
-    # Write my config
+    # Write my config'contracts': {0},
+
     config = configparser.ConfigParser()
     config.read(cilantro_ee_config)
     instanceip = config.set('DEFAULT', 'ip', args.ip)

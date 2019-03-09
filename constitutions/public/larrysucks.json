@@ -1,0 +1,19 @@
+{
+    "masternodes": [
+        {
+            "vk": "60fe2227af23e75ac0996aa4a62718992037ea5a5dfb933bc0462eecbfc09ef1"
+        },
+        {
+            "vk": "ce274b2afb79260a2edbb3e577ee1150cf95162f6012257dc95aec5022e19ccd"
+        }
+    ],
+    "witnesses": [],
+    "delegates": [
+        {
+            "vk": "ce7a14ab3aa443393e691df20cd0be9c64f528bbf2f76b69f8ad0da9171dbf31"
+        },
+        {
+            "vk": "9fe278a5779041c34bcda1568f57582eacf8c5810a804ad5577504620b268d39"
+        }
+    ]
+}

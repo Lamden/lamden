@@ -1,10 +1,10 @@
 {
     "masternodes": [
         {
-            "vk": "901f798472c1f81ff161c4e9097b01bddc27d6dc87a4c9d8ef9eedd9e304a9dc"
+            "vk": "a459bd27e60c1fbb53948fe2fee4d7cb1802d778a3e69de5aba14b84d29a7f63"
         },
         {
-            "vk": "3e2bbf5a1f1e0dae80decaa05bab83c40e587ba7448eba22e4125539eb00ae7b"
+            "vk": "b696a42bb32f9ef54d92a9bf348e09130194ea17c78e2b5cefe45bb7f7fceee4"
         }
     ],
     "witnesses": [
