@@ -6,9 +6,8 @@ set_testnet_nodes()
 from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro_ee.storage.vkbook import VKBook
 
-import unittest
-from unittest import TestCase
-from unittest import mock
+import unittest, asyncio
+from unittest import TestCase, mock
 from unittest.mock import MagicMock
 
 from cilantro_ee.constants.zmq_filters import *
@@ -42,9 +41,9 @@ class BlockAggTester:
         @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
         @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
         @mock.patch("cilantro_ee.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 2)
-        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio", autospec=True)
-        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager", autospec=True)
-        @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.BlockAggregator.run", autospec=True)
+        # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio")
+        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager")
+        @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.BlockAggregator.run")
         def _func(*args, **kwargs):
             return func(*args, **kwargs)
         return _func
@@ -105,11 +104,15 @@ class TestBlockAggregator(TestCase):
     def test_build_task_list_connect_and_bind(self, *args):
         ba = BlockAggregator(ip=TEST_IP, signing_key=TEST_SK, ipc_ip="test_mn-ipc-sock", ipc_port=6967)
 
+        # tasks is usually self.manager.overlay_client.tasks, (which in this case is mocked out), so we must do thus:
+        ba.tasks = []
+
         mock_manager = MagicMock()
         ba.manager = mock_manager
 
         mock_pub, mock_sub, mock_router, mock_ipc_router = MagicMock(), MagicMock(), MagicMock(), MagicMock()
         mock_manager.create_socket = MagicMock(side_effect=[mock_sub, mock_pub, mock_router, mock_ipc_router])
+        mock_manager.is_ready = MagicMock(return_value=True)
 
         mock_sub_handler_task = MagicMock()
         mock_sub.add_handler = MagicMock(return_value=mock_sub_handler_task)
@@ -122,12 +125,16 @@ class TestBlockAggregator(TestCase):
         mock_sub.add_handler.assert_called()
         self.assertTrue(mock_sub_handler_task in ba.tasks)
 
-        self.assertEqual(mock_sub.connect.call_count,
-            len([vk for vk in VKBook.get_masternodes() if TEST_VK != vk]) + \
-                len([vk for vk in VKBook.get_delegates() if TEST_VK != vk]))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(ba._connect_and_process())
+        loop.close()
 
-        log.critical("6")
-        mock_pub.bind.assert_called_with(ip=TEST_IP, port=MN_PUB_PORT)
+        expected_num_mn_subs = len([vk for vk in VKBook.get_masternodes() if TEST_VK != vk])
+        expected_num_delegate_subs = len(VKBook.get_delegates())
+        self.assertEqual(mock_sub.connect.call_count, expected_num_mn_subs + expected_num_delegate_subs)
+
+        mock_pub.bind.assert_called_with(ip=TEST_IP, port=MASTER_PUB_PORT)
 
     # TODO fix this test --davis
     # @BlockAggTester.test
