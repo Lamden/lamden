@@ -11,7 +11,7 @@ CONST_DIR_PATH = os.path.dirname(cilantro_ee.__path__[-1]) + '/constitutions/pub
 BASE_CONFIG_DIR_PATH = OPS_DIR_PATH + '/base'
 LIGHT_CONF_PATH = BASE_CONFIG_DIR_PATH + '/circus_light.conf'
 FULL_CONF_PATH = BASE_CONFIG_DIR_PATH + '/circus_full.conf'
-REDIS_CONF_PATH = BASE_CONFIG_DIR_PATH + '/redis.conf'
+LEDIS_CONF_PATH = BASE_CONFIG_DIR_PATH + '/ledis.conf'
 
 NAME_MAP = {'masternodes': 'masternode', 'witnesses': 'witness', 'delegates': 'delegate'}
 
@@ -140,7 +140,7 @@ def main():
             node_dir = config_dir_path + '/' + node_name
             cilantro_ee_conf_path = node_dir + '/' + 'cilantro_ee.conf'
             circus_conf_path = node_dir + '/' + 'circus.conf'
-            redis_conf_path = node_dir + '/' + 'redis.conf'
+            LEDIS_CONF_PATH = node_dir + '/' + 'redis.conf'
             os.mkdir(node_dir)
 
             # Get the general info
@@ -155,7 +155,7 @@ def main():
                            }
 
             # Copy redis.conf
-            shutil.copyfile(REDIS_CONF_PATH, redis_conf_path)
+            shutil.copyfile(LEDIS_CONF_PATH, LEDIS_CONF_PATH)
 
             # Set node specific info; copy appropriate circus config file
             if node_type == 'masternode':
