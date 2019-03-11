@@ -4,8 +4,6 @@ from cilantro_ee.nodes.witness.witness import Witness
 from cilantro_ee.storage.contracts import seed_contracts
 from cilantro_ee.storage.ledis import SafeLedis
 from cilantro_ee.nodes.masternode.master_store import MasterOps
-from cilantro_ee.constants.db_config import MONGO_DIR, config_mongo_dir
-import shutil
 
 
 def _wait_for_ledis():
@@ -50,7 +48,7 @@ class NodeFactory:
 
     @staticmethod
     def run_masternode(signing_key, ip, name='Masternode', reset_db=False):
-        _wait_for_redis()
+        _wait_for_ledis()
         _wait_for_mongo()
         if reset_db:
             NodeFactory._reset_db()
@@ -61,7 +59,7 @@ class NodeFactory:
 
     @staticmethod
     def run_witness(signing_key, ip, name='Witness', reset_db=False):
-        _wait_for_redis()
+        _wait_for_ledis()
         if reset_db:
             NodeFactory._reset_db()
         NodeFactory._seed_if_necessary()
@@ -69,7 +67,7 @@ class NodeFactory:
 
     @staticmethod
     def run_delegate(signing_key, ip, name='Delegate', reset_db=False):
-        _wait_for_redis()
+        _wait_for_ledis()
         if reset_db:
             NodeFactory._reset_db()
         NodeFactory._seed_if_necessary()
