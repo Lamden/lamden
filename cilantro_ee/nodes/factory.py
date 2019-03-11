@@ -1,7 +1,7 @@
 from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.nodes.witness.witness import Witness
-from cilantro_ee.storage.contracts import seed_contracts
+from seneca.engine.interpreter.executor import Executor
 from cilantro_ee.storage.ledis import SafeLedis
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 
@@ -39,10 +39,10 @@ class NodeFactory:
 
     @staticmethod
     def _seed_if_necessary():
-        indicator_key = 'contracts_code'  # if contracts are seeded, we expect this key to exist
+        indicator_key = 'contracts:smart_contract'  # if contracts are seeded, we expect this key to exist
         if not SafeLedis.exists(indicator_key):
             print("No contracts found in db. Seeding contracts")
-            seed_contracts()
+            interface = Executor(concurrency=False, currency=False)
         else:
             print("Contracts already found in db. Skipping seeding.")
 

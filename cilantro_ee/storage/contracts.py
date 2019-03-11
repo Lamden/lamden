@@ -16,39 +16,6 @@ GENESIS_AUTHOR = '324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce3985
 GENESIS_DATE = datetime.datetime(datetime.MINYEAR, 1, 1)
 
 
-def seed_contracts():
-    """
-    Seeds the contracts table with all contracts found in cilantro_ee/contracts
-    """
-    log.debugv("Setting up Seneca's Executor to publish contracts.")
-
-    interface = Executor(concurrency=False, currency=False)
-
-    log.debug("Inserting contract code...")
-    # Insert contract code from files in file system into database table
-    for contract_id, code_str in _read_contract_files():
-        log.spam("Publishing contract with id {}".format(contract_id))
-        interface.publish_code_str(contract_id, GENESIS_AUTHOR, code_str)
-
-    log.debug("Seeding contracts...")
-    # Run contracts
-    for contract_id, code_str in _read_contract_files():
-        code_obj = interface.get_code_obj(contract_id)
-
-    log.debug("Done seeding contracts.")
-
-    if SHOULD_MINT_WALLET:
-        start = time.time()
-        log.info("Minting {} wallets with amount {}".format(NUM_WALLETS_TO_MINT, MINT_AMOUNT))
-        for keypair in ALL_WALLETS:
-            sk, vk = keypair
-
-            interface.execute_function(module_path='seneca.contracts.currency.mint', sender=GENESIS_AUTHOR,
-                                       stamps=None, to=vk, amount=MINT_AMOUNT)
-        log.info("Done minting {} wallets ({} seconds elapsed)"
-                 .format(NUM_WALLETS_TO_MINT, round(time.time()-start, 2)))
-
-
 def _read_contract_files() -> list:
     """
     Reads all contracts in the cilantro_ee/contracts directory.

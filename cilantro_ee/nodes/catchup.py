@@ -1,14 +1,13 @@
 import time
 import asyncio
 import math
-from collections import defaultdict
+from seneca.engine.interpreter.executor import Executor
 from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.storage.ledis import SafeLedis
-from cilantro_ee.storage.contracts import seed_contracts
 from cilantro_ee.nodes.masternode.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.messages.block_data.block_data import BlockData
@@ -72,7 +71,7 @@ class CatchupManager:
             # we need to rebuild state from scratch
             latest_state_num = 0
             SafeLedis.flushdb()
-            seed_contracts()
+            interface = Executor(concurrency=False, currency=False)
 
         if db_latest_blk_num > latest_state_num:
             self.log.info("StateDriver block num {} is behind DB block num {}".format(latest_state_num, db_latest_blk_num))
