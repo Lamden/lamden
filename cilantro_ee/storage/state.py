@@ -1,5 +1,5 @@
 from cilantro_ee.logger.base import get_logger
-from seneca.engine.interface import SenecaInterface
+from seneca.engine.interpreter.executor import Executor
 from cilantro_ee.messages.transaction.contract import ContractTransaction
 from cilantro_ee.messages.transaction.publish import PublishTransaction
 from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
@@ -14,6 +14,7 @@ class StateDriver:
     BLOCK_HASH_KEY = '_current_block_hash'
     BLOCK_NUM_KEY = '_current_block_num'
     log = get_logger("StateDriver")
+    interface = Executor()
 
     @classmethod
     def update_with_block(cls, block: BlockData):
@@ -47,10 +48,9 @@ class StateDriver:
 
     @classmethod
     def _process_publish_txs(cls, txs: List[PublishTransaction]):
-        with SenecaInterface(False) as interface:
-            for tx in txs:
-                cls.log.debug("Storing contract named from sender '{}'".format(tx.contract_name, tx.sender))
-                interface.publish_code_str(fullname=tx.contract_name, author=tx.sender, code_str=tx.contract_code)
+        for tx in txs:
+            cls.log.debug("Storing contract named from sender '{}'".format(tx.contract_name, tx.sender))
+            self.interface.publish_code_str(fullname=tx.contract_name, author=tx.sender, code_str=tx.contract_code)
 
     @classmethod
     def set_latest_block_info(cls, block_hash: str, block_num: int):

@@ -52,7 +52,6 @@ class NodeFactory:
         _wait_for_mongo()
         if reset_db:
             NodeFactory._reset_db()
-            _drop_mongo()
         NodeFactory._seed_if_necessary()
         MasterOps.init_master(key=signing_key)
         mn = Masternode(ip=ip, name=name, signing_key=signing_key)

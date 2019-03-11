@@ -1,7 +1,5 @@
 from cilantro_ee.logger import get_logger
-from cilantro_ee.utils import Hasher
-from seneca.engine.interface import SenecaInterface
-from seneca.engine.interpreter import SenecaInterpreter
+from seneca.engine.interpreter.executor import Executor
 from cilantro_ee.constants.system_config import *
 import datetime, time
 import os
@@ -22,33 +20,33 @@ def seed_contracts():
     """
     Seeds the contracts table with all contracts found in cilantro_ee/contracts
     """
-    log.debugv("Setting up SenecaInterface to publish contracts.")
+    log.debugv("Setting up Seneca's Executor to publish contracts.")
 
-    with SenecaInterface(concurrent_mode=False, bypass_currency=True) as interface:
+    interface = Executor(concurrency=False, currency=False)
 
-        log.debug("Inserting contract code...")
-        # Insert contract code from files in file system into database table
-        for contract_id, code_str in _read_contract_files():
-            log.spam("Publishing contract with id {}".format(contract_id))
-            interface.publish_code_str(contract_id, GENESIS_AUTHOR, code_str)
+    log.debug("Inserting contract code...")
+    # Insert contract code from files in file system into database table
+    for contract_id, code_str in _read_contract_files():
+        log.spam("Publishing contract with id {}".format(contract_id))
+        interface.publish_code_str(contract_id, GENESIS_AUTHOR, code_str)
 
-        log.debug("Seeding contracts...")
-        # Run contracts
-        for contract_id, code_str in _read_contract_files():
-            code_obj = interface.get_code_obj(contract_id)
+    log.debug("Seeding contracts...")
+    # Run contracts
+    for contract_id, code_str in _read_contract_files():
+        code_obj = interface.get_code_obj(contract_id)
 
-        log.debug("Done seeding contracts.")
+    log.debug("Done seeding contracts.")
 
-        if SHOULD_MINT_WALLET:
-            start = time.time()
-            log.info("Minting {} wallets with amount {}".format(NUM_WALLETS_TO_MINT, MINT_AMOUNT))
-            for keypair in ALL_WALLETS:
-                sk, vk = keypair
+    if SHOULD_MINT_WALLET:
+        start = time.time()
+        log.info("Minting {} wallets with amount {}".format(NUM_WALLETS_TO_MINT, MINT_AMOUNT))
+        for keypair in ALL_WALLETS:
+            sk, vk = keypair
 
-                interface.execute_function(module_path='seneca.contracts.currency.mint', sender=GENESIS_AUTHOR,
-                                           stamps=None, to=vk, amount=MINT_AMOUNT)
-            log.info("Done minting {} wallets ({} seconds elapsed)"
-                     .format(NUM_WALLETS_TO_MINT, round(time.time()-start, 2)))
+            interface.execute_function(module_path='seneca.contracts.currency.mint', sender=GENESIS_AUTHOR,
+                                       stamps=None, to=vk, amount=MINT_AMOUNT)
+        log.info("Done minting {} wallets ({} seconds elapsed)"
+                 .format(NUM_WALLETS_TO_MINT, round(time.time()-start, 2)))
 
 
 def _read_contract_files() -> list:

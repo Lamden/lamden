@@ -7,15 +7,15 @@ LEDIS_DIR = DATA_DIR + '/ledis'
 
 
 def start_ledis(conf_path):
-    print("Starting Redis server...")
+    print("Starting Ledis server...")
     if not os.path.exists(LEDIS_DIR):
-        print("Creating Redis directory at {}".format(LEDIS_DIR))
+        print("Creating Ledis directory at {}".format(LEDIS_DIR))
         os.makedirs(LEDIS_DIR, exist_ok=True)
 
-    print("Redis using data directory: {}".format(LEDIS_DIR))
+    print("Ledis using data directory: {}".format(LEDIS_DIR))
 
     if conf_path is not None:
-        assert os.path.exists(conf_path), "No redis.conf file found at path {}".format(conf_path)
+        assert os.path.exists(conf_path), "No Ledis.conf file found at path {}".format(conf_path)
         os.system('ledis-server -config={} {}'.format(LEDIS_CONF_PATH, conf_path))
     else:
         os.system('ledis-server')

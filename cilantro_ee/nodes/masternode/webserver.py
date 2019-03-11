@@ -23,7 +23,6 @@ import os
 
 from cilantro_ee.nodes.masternode.mn_api import StorageDriver
 from cilantro_ee.protocol.webserver.validation import *
-from cilantro_ee.tools import parse_code_str
 
 import json as _json
 
