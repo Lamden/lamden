@@ -13,21 +13,13 @@ RUN apt-get update \
         libffi-dev libtool dpkg \
         gsl-bin zlib1g-dev libboost-all-dev \
         nano vim
-RUN apt install -y redis-server
+RUN git clone https://github.com/siddontang/ledisdb.git src/github.com/siddontang/ledisdb
+    && cd src/github.com/siddontang/ledisdb
+    && source dev.sh
+    && make
 RUN pip3 install --upgrade setuptools wheel
 RUN pip3 install virtualenv
 RUN pip3 install circus
-
-# @falcon y tho
-# RUN rm -rf pynacl capnproto 2>/dev/null
-# RUN apt-get remove -y --allow-remove-essential \
-#         build-essential \
-#         gcc g++ \
-#         libffi-dev libtool \
-#         gsl-bin zlib1g-dev libboost-all-dev \
-#         autoconf automake
-# RUN apt autoremove -y
-# RUN rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt
 COPY dev-requirements.txt /app/dev-requirements.txt
