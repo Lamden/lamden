@@ -5,20 +5,18 @@ from cilantro_ee.storage.contracts import seed_contracts
 from cilantro_ee.storage.redis import SafeRedis
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.constants.db_config import MONGO_DIR, config_mongo_dir
-import  shutil
+import shutil
 
 
-def _wait_for_redis():
-    import redis, time
-    r = redis.StrictRedis()
+def _wait_for_ledis():
+    import ledis, time
     while True:
         try:
-            r = redis.StrictRedis()
-            r.client_list()
-            print("Redis ready!")
+            l = ledis.Ledis()
+            print("Ledis ready!")
             break
         except:
-            print("Waiting for Redis to be ready...")
+            print("Waiting for Ledis to be ready...")
             time.sleep(1)
 
 
@@ -33,21 +31,6 @@ def _wait_for_mongo():
         except:
             print("Waiting for Mongo to be ready...")
             time.sleep(1)
-
-
-def _drop_mongo():
-    pass
-    # print("Dropping MongoDB...")
-    # dbs = ['mn_tx', 'mn_index', 'mn_store']
-    # from pymongo import MongoClient
-    # c = MongoClient()
-    # for db in dbs:
-    #     print("Dropping mongo table '{}'".format(db))
-    #     c.drop_database(db)
-    # shutil.rmtree(MONGO_DIR)
-    # print("MongoDB dropped.")
-    # config_mongo_dir()
-
 
 
 class NodeFactory:
