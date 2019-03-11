@@ -125,6 +125,7 @@ class LSocketBase:
         self.log.debug("Starting listener handler key {}".format(key))
 
         while True:
+            should_forward = False
             try:
                 self.log.spam("Socket waiting for multipart msg...")
                 msg = await self.socket.recv_multipart()
