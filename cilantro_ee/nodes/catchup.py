@@ -7,7 +7,7 @@ from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.state import StateDriver
-from cilantro_ee.storage.redis import SafeRedis
+from cilantro_ee.storage.ledis import SafeLedis
 from cilantro_ee.storage.contracts import seed_contracts
 from cilantro_ee.nodes.masternode.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.master_store import MasterOps
@@ -71,7 +71,7 @@ class CatchupManager:
                            .format(db_latest_blk_num, latest_state_num))
             # we need to rebuild state from scratch
             latest_state_num = 0
-            SafeRedis.flushdb()
+            SafeLedis.flushdb()
             seed_contracts()
 
         if db_latest_blk_num > latest_state_num:

@@ -2,7 +2,7 @@ from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.nodes.witness.witness import Witness
 from cilantro_ee.storage.contracts import seed_contracts
-from cilantro_ee.storage.redis import SafeRedis
+from cilantro_ee.storage.ledis import SafeLedis
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.constants.db_config import MONGO_DIR, config_mongo_dir
 import shutil
@@ -37,12 +37,12 @@ class NodeFactory:
     @staticmethod
     def _reset_db():
         print("-------\tResetting database\t-------")
-        SafeRedis.flushall()
+        SafeLedis.flushall()
 
     @staticmethod
     def _seed_if_necessary():
         indicator_key = 'contracts_code'  # if contracts are seeded, we expect this key to exist
-        if not SafeRedis.exists(indicator_key):
+        if not SafeLedis.exists(indicator_key):
             print("No contracts found in db. Seeding contracts")
             seed_contracts()
         else:

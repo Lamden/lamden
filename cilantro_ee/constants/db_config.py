@@ -8,14 +8,6 @@ MONGO_DIR = DATA_DIR + '/mongo'
 MONGO_LOG_PATH = MONGO_DIR + '/logs/mongo.log'
 
 
-def get_redis_port():
-    return 6379
-
-
-def get_redis_password():
-    return ''
-
-
 def config_mongo_dir():
     try:
         os.makedirs(os.path.dirname(MONGO_LOG_PATH), exist_ok=True)
