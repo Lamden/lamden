@@ -3,6 +3,8 @@ FROM ubuntu:18.04
 MAINTAINER Lamden.io version: 0.1
 
 ENV DEBIAN_FRONTEND noninteractive
+ENV PATH /usr/lib/go-1.10/bin:$PATH
+ENV GOPATH /
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -12,10 +14,11 @@ RUN apt-get update \
         gcc g++ git autoconf automake \
         libffi-dev libtool dpkg \
         gsl-bin zlib1g-dev libboost-all-dev \
-        nano vim
-RUN git clone https://github.com/siddontang/ledisdb.git src/github.com/siddontang/ledisdb
-    && cd src/github.com/siddontang/ledisdb
-    && source dev.sh
+        nano vim \
+        golang-1.10
+RUN git clone https://github.com/siddontang/ledisdb.git src/github.com/siddontang/ledisdb \
+    && cd src/github.com/siddontang/ledisdb \
+    && /bin/bash -c "source dev.sh" \
     && make
 RUN pip3 install --upgrade setuptools wheel
 RUN pip3 install virtualenv

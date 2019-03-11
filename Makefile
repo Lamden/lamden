@@ -32,10 +32,10 @@ clean-db:
 clean: clean-logs clean-temps clean-db
 
 dockerbuild:
-	./ops/tools/docker_build_push.sh --push
+	./ops/tools/docker_build_push.sh
 
 dockerrun:
-	docker run --name cil -dit -v /var/db/cilantro_ee/:/var/db/cilantro_ee -v ./cilantro_ee/ops/base/redis.conf:/etc/redis.conf -v ./cilantro_ee/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$(bash ./ops/tools/generate_tag.sh)
+	docker run --name cil -dit -v /var/db/cilantro_ee:/var/db/cilantro_ee -v $$(pwd)/cilantro_ee/ops/base/ledis.conf:/etc/ledis.conf -v $$(pwd)/cilantro_ee/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$$(bash ops/tools/generate_tag.sh)
 
 dockertest:
 	docker exec -it cil /app/scripts/start_unit_tests.sh
@@ -44,4 +44,3 @@ money: clean dockerbuild dockerrun dockertest
 
 help:
 	echo '\n\n'; cat Makefile; echo '\n\n'
-
