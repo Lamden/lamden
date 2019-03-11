@@ -3,14 +3,14 @@ from cilantro_ee.constants.db_config import DATA_DIR
 
 
 LEDIS_CONF_PATH = '/etc/ledis.conf'
-LEDIS_DIR = DATA_DIR + '/redis'
+LEDIS_DIR = DATA_DIR + '/ledis'
 
 
-def start_redis(conf_path):
+def start_ledis(conf_path):
     print("Starting Redis server...")
-    if not os.path.exists(REDIS_DIR):
+    if not os.path.exists(LEDIS_DIR):
         print("Creating Redis directory at {}".format(LEDIS_DIR))
-        os.makedirs(REDIS_DIR, exist_ok=True)
+        os.makedirs(LEDIS_DIR, exist_ok=True)
 
     print("Redis using data directory: {}".format(LEDIS_DIR))
 
@@ -24,9 +24,9 @@ def start_redis(conf_path):
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         if sys.argv[1] == '-no-conf':
-            start_redis(None)
+            start_ledis(None)
         else:
-            start_redis(sys.argv[1])
+            start_ledis(sys.argv[1])
     else:
-        start_redis(LEDIS_CONF_PATH)
+        start_ledis(LEDIS_CONF_PATH)
 
