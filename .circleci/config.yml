@@ -69,7 +69,7 @@ jobs:
       - run: pyenv local 3.6.5
 
       - run:
-          name: Login to Dockern
+          name: Login to Docker
           command: |
             docker login -u $DOCKER_USER -p $DOCKER_PWD
             sleep 1
@@ -89,7 +89,6 @@ jobs:
       - run:
           name: Spinup Docker Image
           command: |
-             echo "SHOULD RUN DOCKER IMAGES HEREEERRERERERERERERERE"
              sudo docker run --name cil -dit -v /var/db/cilantro_ee/:/var/db/cilantro_ee -v ~/cilantro_ee/ops/base/redis.conf:/etc/redis.conf -v ~/cilantro_ee/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$(bash ~/cilantro_ee/ops/tools/generate_tag.sh)
 
       - run:
