@@ -21,7 +21,7 @@ class SafeLedisMeta(type):
         return key
 
     def cleanup(cls):
-        print('Redis is cleaning up!')
+        print('SafeLedis is cleaning up!')
         cls._shared_state.clear()
 
     def __getattr__(cls, item):
