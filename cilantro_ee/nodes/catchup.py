@@ -52,13 +52,13 @@ class CatchupManager:
 
         # masternode should make sure redis and mongo are in sync
         if store_full_blocks:
-            self.update_redis_state()
+            self.update_state()
 
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
         self.target_blk_num = self.curr_num
         self.awaited_blknum = None
 
-    def update_redis_state(self):
+    def update_state(self):
         """
         Sync block and state DB if either is out of sync.
         :return:
