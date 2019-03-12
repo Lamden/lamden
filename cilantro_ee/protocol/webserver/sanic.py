@@ -1,12 +1,9 @@
 from sanic import Sanic
-from seneca.engine.interpreter.executor import Executor
 
 
 class SanicSingleton(object):
 
     app = Sanic(__name__)
-
-    interface = Executor(concurrency=False)
 
     def __enter__(self):
         return self.app

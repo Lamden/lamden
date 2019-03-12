@@ -14,7 +14,7 @@ class StateDriver:
     BLOCK_HASH_KEY = '_current_block_hash'
     BLOCK_NUM_KEY = '_current_block_num'
     log = get_logger("StateDriver")
-    interface = Executor()
+    interface = None
 
     @classmethod
     def update_with_block(cls, block: BlockData):
@@ -48,9 +48,12 @@ class StateDriver:
 
     @classmethod
     def _process_publish_txs(cls, txs: List[PublishTransaction]):
+        if cls.interface is None:
+            cls.interface = Executor()
         for tx in txs:
+            # TODO i dont think this api call to publish_code_str is right.....
             cls.log.debug("Storing contract named from sender '{}'".format(tx.contract_name, tx.sender))
-            self.interface.publish_code_str(fullname=tx.contract_name, author=tx.sender, code_str=tx.contract_code)
+            cls.interface.publish_code_str(fullname=tx.contract_name, author=tx.sender, code_str=tx.contract_code)
 
     @classmethod
     def set_latest_block_info(cls, block_hash: str, block_num: int):

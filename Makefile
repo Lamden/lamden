@@ -35,8 +35,8 @@ dockerbuild:
 	./ops/tools/docker_build_push.sh
 
 dockerrun:
-	docker rm cil 2>/dev/null || true
-	docker run --name cil -it -v /var/db/cilantro_ee:/var/db/cilantro_ee -v $$(pwd)/ops/base/ledis.conf:/etc/ledis.conf -v $$(pwd)/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$$(bash ops/tools/generate_tag.sh)
+	docker rm -f cil 2>/dev/null || true
+	docker run --name cil -dit -v /var/db/cilantro_ee:/var/db/cilantro_ee -v $$(pwd)/ops/base/ledis.conf:/etc/ledis.conf -v $$(pwd)/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$$(bash ops/tools/generate_tag.sh)
 
 dockerenter:
 	docker exec -ti cil /bin/bash
