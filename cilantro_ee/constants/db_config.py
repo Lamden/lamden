@@ -2,7 +2,7 @@ import os
 
 
 MASTER_DB = 0
-DATA_DIR = '/usr/db/cilantro_ee'
+DATA_DIR = '/var/db/cilantro_ee'
 
 MONGO_DIR = DATA_DIR + '/mongo'
 MONGO_LOG_PATH = MONGO_DIR + '/logs/mongo.log'

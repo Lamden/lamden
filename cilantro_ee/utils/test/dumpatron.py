@@ -54,7 +54,8 @@ class Dumpatron:
         ips = {}
         pattern = "{}.cache/{}*".format(self.env_path, IP_FILE_PREFIX)
         mn_files = glob.glob(pattern)
-        assert len(mn_files) > 0, "No masternode ip config files found matching glob pattern {} (did colin change the" \
+        assert len(mn_files) > 0, "No masternode ip config files found matching glob pattern {} (Did you do make run " \
+                                  "first? Otherwise, harass Colin...did he change the" \
                                   " way IPs are cached?)".format(pattern)
 
         for mn_file in mn_files:

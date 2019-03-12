@@ -38,7 +38,7 @@ RUN . /app/venv/bin/activate; \
     pip3 install -r /app/dev-requirements.txt;
 
 RUN . /app/venv/bin/activate; \
-    pip3 install -r /app/requirements.txt;
+    pip3 install -r /app/requirements.txt --upgrade --no-cache-dir;
 
 ENV PYTHONPATH "${PYTHONPATH}:/app/cilantro_ee"
 
