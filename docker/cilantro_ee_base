@@ -3,7 +3,7 @@ FROM ubuntu:18.04
 MAINTAINER Lamden.io version: 0.1
 
 ENV DEBIAN_FRONTEND noninteractive
-ENV PATH /usr/lib/go-1.10/bin:$PATH
+ENV PATH /src/github.com/siddontang/ledisdb/bin/:/usr/lib/go-1.10/bin:$PATH
 ENV GOPATH /
 
 RUN apt-get update \

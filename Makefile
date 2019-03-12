@@ -1,5 +1,5 @@
 start-db:
-	python3 ./scripts/start_ledis.py -no-conf &
+	python3 ./scripts/start_redis.py -no-conf &
 	python3 ./scripts/start_mongo.py &
 	sleep 1
 	python3 ./scripts/create_user.py &
@@ -35,7 +35,11 @@ dockerbuild:
 	./ops/tools/docker_build_push.sh
 
 dockerrun:
-	docker run --name cil -dit -v /var/db/cilantro_ee:/var/db/cilantro_ee -v $$(pwd)/cilantro_ee/ops/base/ledis.conf:/etc/ledis.conf -v $$(pwd)/cilantro_ee/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$$(bash ops/tools/generate_tag.sh)
+	docker rm cil 2>/dev/null || true
+	docker run --name cil -it -v /var/db/cilantro_ee:/var/db/cilantro_ee -v $$(pwd)/ops/base/ledis.conf:/etc/ledis.conf -v $$(pwd)/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$$(bash ops/tools/generate_tag.sh)
+
+dockerenter:
+	docker exec -ti cil /bin/bash
 
 dockertest:
 	docker exec -it cil /app/scripts/start_unit_tests.sh
@@ -44,3 +48,4 @@ money: clean dockerbuild dockerrun dockertest
 
 help:
 	echo '\n\n'; cat Makefile; echo '\n\n'
+
