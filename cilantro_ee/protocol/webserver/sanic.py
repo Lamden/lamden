@@ -1,12 +1,16 @@
 from sanic import Sanic
+from seneca.engine.interpreter.executor import Executor
 
 
 class SanicSingleton(object):
 
     app = Sanic(__name__)
+    interface = None
 
     def __enter__(self):
-        return self.app
+        if not self.interface:
+            self.interface = Executor(currency=False, concurrency=False)
+        return self.app, self.interface
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass

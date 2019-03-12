@@ -1,12 +1,12 @@
 # do not delete the comment below. it is necessary for unit tests.
 # UNITTEST_FLAG_CURRENCY_SENECA 1729
 
-from seneca.libs.datatypes import hmap
+from seneca.libs.storage.datatypes import Hash
 
 # Declare Data Types
-xrate = hmap('xrate', str, float)
-balances = hmap('balances', str, int)
-allowed = hmap('allowed', str, hmap(key_type=str, value_type=int))
+xrate = Hash('xrate')
+balances = Hash('balances')
+allowed = Hash('allowed')
 
 # Initialization
 xrate['TAU_STP'] = 1.0

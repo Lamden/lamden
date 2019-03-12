@@ -1,5 +1,3 @@
-from cilantro_ee.storage.vkbook import VKBook
-from seneca.libs.datatypes import DATATYPES
 import re
 
 def _is_valid_name(name_type, name):

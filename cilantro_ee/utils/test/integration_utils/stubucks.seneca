@@ -1,6 +1,6 @@
-from seneca.libs.datatypes import hmap
+from seneca.libs.storage.datatypes import Hash
 
-balances = hmap('balances', str, int)
+balances = Hash('balances')
 
 
 @export

@@ -10,7 +10,7 @@ def _wait_for_ledis():
     import ledis, time
     while True:
         try:
-            l = ledis.Ledis()
+            l = SafeLedis()
             print("Ledis ready!")
             break
         except:
