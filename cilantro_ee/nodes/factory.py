@@ -2,6 +2,7 @@ from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.nodes.witness.witness import Witness
 from seneca.engine.interpreter.executor import Executor
+from cilantro_ee.storage.contracts import mint_wallets
 from cilantro_ee.storage.ledis import SafeLedis
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 
@@ -43,6 +44,7 @@ class NodeFactory:
         if not SafeLedis.exists(indicator_key):
             print("No contracts found in db. Seeding contracts")
             interface = Executor(concurrency=False, currency=False)
+            mint_wallets()
         else:
             print("Contracts already found in db. Skipping seeding.")
 
