@@ -37,3 +37,5 @@ class SafeLedisMeta(type):
 
 class SafeLedis(metaclass=SafeLedisMeta):
     pass
+
+

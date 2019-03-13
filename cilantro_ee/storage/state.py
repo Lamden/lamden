@@ -20,12 +20,13 @@ class StateDriver:
     def update_with_block(cls, block: BlockData):
         # Update state by running Redis outputs from the block's transactions
         publish_txs = []
-        pipe = SafeLedis.pipeline()
+        pipe = SafeLedis
+        # pipe = SafeLedis.pipeline()
         for tx in block.transactions:
             if tx.contract_type is ContractTransaction:
                 cmds = tx.state.split(';')
                 for cmd in cmds:
-                    if cmd: pipe.execute_command(cmd)
+                    if cmd: pipe.execute_command(*cmd.split(' '))
             elif tx.contract_type is PublishTransaction:
                 publish_txs.append(tx.transaction)
             else:
@@ -34,7 +35,7 @@ class StateDriver:
 
         if publish_txs:
             cls._process_publish_txs(publish_txs)
-        pipe.execute()
+        # pipe.execute()
 
         # Update our block hash and block num
         cls.set_latest_block_info(block.block_hash, block.block_num)
