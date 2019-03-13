@@ -134,7 +134,7 @@ class TestBlockAggregator(TestCase):
         expected_num_delegate_subs = len(VKBook.get_delegates())
         self.assertEqual(mock_sub.connect.call_count, expected_num_mn_subs + expected_num_delegate_subs)
 
-        mock_pub.bind.assert_called_with(ip=TEST_IP, port=MASTER_PUB_PORT)
+        mock_pub.bind.assert_called_with(ip=TEST_IP, port=MN_PUB_PORT)
 
     # TODO fix this test --davis
     # @BlockAggTester.test

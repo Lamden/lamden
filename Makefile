@@ -42,7 +42,7 @@ dockerenter:
 	docker exec -ti cil /bin/bash
 
 dockertest:
-	sleep 5
+	sleep 8
 	docker exec -it cil /app/scripts/start_unit_tests.sh
 
 money: clean dockerbuild dockerrun dockertest
