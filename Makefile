@@ -36,12 +36,13 @@ dockerbuild:
 
 dockerrun:
 	docker rm -f cil 2>/dev/null || true
-	docker run --name cil -it -v /var/db/cilantro_ee:/var/db/cilantro_ee -v $$(pwd)/ops/base/ledis.conf:/etc/ledis.conf -v $$(pwd)/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$$(bash ops/tools/generate_tag.sh)
+	docker run --name cil -dit -v /usr/local/db/cilantro_ee:/usr/local/db/cilantro_ee -v $$(pwd)/ops/base/ledis.conf:/etc/ledis.conf -v $$(pwd)/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$$(bash ops/tools/generate_tag.sh)
 
 dockerenter:
 	docker exec -ti cil /bin/bash
 
 dockertest:
+	sleep 5
 	docker exec -it cil /app/scripts/start_unit_tests.sh
 
 money: clean dockerbuild dockerrun dockertest
