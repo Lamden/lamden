@@ -1,7 +1,6 @@
 from cilantro_ee.logger.base import get_logger
 
 from sanic import Sanic
-from cilantro_ee.protocol.webserver.sanic import SanicSingleton
 from sanic.response import json, text
 from sanic.exceptions import ServerError
 from sanic_limiter import Limiter, get_remote_address
@@ -27,9 +26,8 @@ from cilantro_ee.protocol.webserver.validation import *
 import json as _json
 
 ssl = None
-app = SanicSingleton.app
+app = Sanic(__name__)
 CORS(app, automatic_options=True)
-interface = SanicSingleton.interface
 log = get_logger("MN-WebServer")
 
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
