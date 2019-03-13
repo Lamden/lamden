@@ -432,7 +432,7 @@ resource "null_resource" "docker" {
   provisioner "remote-exec" {
     inline = [
       "sudo docker rm -f cil",
-      "sudo docker run --name cil -dit -v /var/db/cilantro_ee/:/var/db/cilantro_ee -v /etc/vk_ip_map.json:/etc/vk_ip_map.json -v /etc/cilantro_ee.conf:/etc/cilantro_ee.conf -v /etc/ledis.conf:/etc/ledis.conf -v /etc/circus.conf:/etc/circus.conf ${var.setup_ssl ? "-v /home/ubuntu/.sslconf:/root/.sslconf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh" : ""} -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
+      "sudo docker run --name cil -dit -v /usr/local/db/cilantro_ee/:/usr/local/db/cilantro_ee -v /etc/vk_ip_map.json:/etc/vk_ip_map.json -v /etc/cilantro_ee.conf:/etc/cilantro_ee.conf -v /etc/ledis.conf:/etc/ledis.conf -v /etc/circus.conf:/etc/circus.conf ${var.setup_ssl ? "-v /home/ubuntu/.sslconf:/root/.sslconf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh" : ""} -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
     ]
   }
 

@@ -10,8 +10,8 @@ def _wait_for_ledis():
     import ledis, time
     while True:
         try:
-            l = ledis.Ledis()
-            print("Ledis ready!")
+            SafeLedis.ping()
+            print("Ledis ready! Pinged")
             break
         except:
             print("Waiting for Ledis to be ready...")
@@ -23,8 +23,8 @@ def _wait_for_mongo():
     from pymongo import MongoClient
     while True:
         try:
-            MongoClient()
-            print("Mongo ready!")
+            info = MongoClient().server_info()
+            print("Mongo ready! Server info:\n{}".format(info))
             break
         except:
             print("Waiting for Mongo to be ready...")

@@ -26,7 +26,7 @@ from cilantro_ee.protocol.webserver.validation import *
 import json as _json
 
 ssl = None
-app = Sanic(__name__)
+app = Sanic("MN-WebServer")
 CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
 
@@ -41,7 +41,6 @@ else:
     log.warning("Nonces are disabled! Nonce checking as well as rate limiting will be disabled!")
     limiter = Limiter(app, key_func=get_remote_address)
 
-# if os.getenv('SSL_ENABLED') == '1':
 if CilantroConf.SSL_ENABLED:
     log.info("SSL enabled")
     with open(os.path.expanduser("~/.sslconf"), "r") as df:
@@ -76,7 +75,6 @@ async def submit_transaction(request):
     if type(tx) not in (ContractTransaction, PublishTransaction):
         return _respond_to_request({'error': 'Cannot process transaction of type {}'.format(type(tx))}, status=400)
 
-    # if os.getenv('NONCE_ENABLED'):
     if CilantroConf.SSL_ENABLED:
         # Verify the nonce, and remove it from db if its valid so it cannot be used again
         # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
@@ -203,6 +201,7 @@ def get_tx(_hash):
     if not _hash:
         return None
     return StorageDriver.get_transactions(raw_tx_hash=_hash)
+
 
 """
 Colin McGrath

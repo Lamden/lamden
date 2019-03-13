@@ -182,7 +182,7 @@ resource "aws_instance" "cilantro_ee_node" {
       "sudo apt-get install -y docker docker.io", # Install docker
       "sudo apt-get install -y socat",            # Instal socat (for issuing SSL certificates
       "sudo usermod -aG docker ubuntu",           # Add the ubuntu user to the docker group so docker can be non-sudo
-      "sudo mkdir -p /var/db/cilantro_ee",           # Create the db directory on the host machine to mount into the container
+      "sudo mkdir -p /usr/local/db/cilantro_ee",           # Create the db directory on the host machine to mount into the container
     ]
   }
 
@@ -313,7 +313,7 @@ resource "null_resource" "docker" {
   provisioner "remote-exec" {
     inline = [
       "sudo docker rm -f cil",
-      "sudo docker run --name cil -dit -v /var/db/cilantro_ee/:/var/db/cilantro_ee -v /etc/cilantro_ee.conf:/etc/cilantro_ee.conf -v /etc/circus.conf:/etc/circus.conf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh -v /home/ubuntu/.sslconf:/root/.sslconf -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
+      "sudo docker run --name cil -dit -v /usr/local/db/cilantro_ee/:/usr/local/db/cilantro_ee -v /etc/cilantro_ee.conf:/etc/cilantro_ee.conf -v /etc/circus.conf:/etc/circus.conf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh -v /home/ubuntu/.sslconf:/root/.sslconf -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
     ]
   }
 }

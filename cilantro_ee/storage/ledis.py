@@ -29,7 +29,7 @@ class SafeLedisMeta(type):
         if key in cls._shared_state:
             cur = cls._shared_state[key]
         else:
-            cur = ledis.Ledis(db=MASTER_DB)
+            cur = ledis.Ledis(port=6379, db=MASTER_DB)
             cls._shared_state[key] = cur
 
         return getattr(cur, item)
