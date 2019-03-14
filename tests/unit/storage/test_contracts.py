@@ -31,7 +31,7 @@ class TestContracts(TestCase):
     @mock.patch('cilantro_ee.storage.contracts.ALL_WALLETS', [TEST_WALLET1, TEST_WALLET2])
     def test_seed_contracts_mints_wallets(self):
         mint_wallets()
-        interface = Executor(currency=False, concurrency=False)
+        interface = Executor(metering=False, concurrency=False)
         for wallet in [TEST_WALLET1, TEST_WALLET2]:
             sk, vk = wallet
             balances = interface.get_resource('currency', 'balances')

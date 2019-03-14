@@ -43,7 +43,7 @@ class God:
                            nonce=None, **kwargs) -> ContractTransaction:
         if nonce is None:
             nonce = wallet.get_vk(sender_sk) + ':' + 'A'*64
-        return ContractTransaction.create(sender_sk, stamps, contract_name, func_name, nonce, **kwargs)
+        return ContractTransaction.create(sender_sk, stamps, contract_name, func_name, nonce, kwargs)
 
     @classmethod
     def send_currency_contract(cls, sender: tuple, receiver: tuple, amount: int):

@@ -22,7 +22,7 @@ def mint_wallets():
     """
     log.debugv("Setting up Seneca's Executor to publish contracts.")
 
-    interface = Executor(concurrency=False, currency=False)
+    interface = Executor(concurrency=False, metering=False)
 
     if SHOULD_MINT_WALLET:
         start = time.time()

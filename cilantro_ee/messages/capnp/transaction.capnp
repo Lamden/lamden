@@ -27,17 +27,6 @@ struct ContractTransaction {
 }
 
 
-struct PublishPayload {
-    sender @0 :Text;
-    nonce @1 :Text;
-    stampsSupplied @2 :UInt64;
-
-    contractName @3 :Text;
-    contractCode @4 :Text;
-
-}
-
-
 struct PublishTransaction {
     metadata @0: MetaData;
     payload @1: Data;
