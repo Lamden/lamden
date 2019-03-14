@@ -115,7 +115,7 @@ class CatchupManager:
     def _reset_state(self):
         SafeLedis.flushdb()
 
-        interface = Executor(metering=False)  # Instantiating the Executor class for the first time will reseed any system contract data
+        interface = Executor(concurrency=False, metering=False)  # Instantiating the Executor class for the first time will reseed any system contract data
         if SHOULD_MINT_WALLET:
             mint_wallets()
 

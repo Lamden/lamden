@@ -92,6 +92,7 @@ class SubBlockBuilder(Worker):
         self.startup = True
         # self.pending_block_index = -1
         self.client = SenecaClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop,
+                                   concurrency=True,
                                    metering=CilantroConf.STAMPS_ENABLED)
         # raghu todo may need multiple clients here. NUM_SB_PER_BLOCK needs to be same for all blocks
         # self.clients = []

@@ -290,7 +290,7 @@ def mock_contract(code, name, stamp_amount, keyfile):
                                                              contract_name=name,
                                                              gas_supplied=int(stamp_amount))
 
-    s = SenecaClient(sbb_idx=0, num_sbb=0, metering=CilantroConf.STAMPS_ENABLED)
+    s = SenecaClient(sbb_idx=0, num_sbb=0, concurrency=True, metering=CilantroConf.STAMPS_ENABLED)
     # make a contract transaction struct
     s.submit_contract(contract)
 
