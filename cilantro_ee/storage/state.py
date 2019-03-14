@@ -23,19 +23,10 @@ class StateDriver:
         pipe = SafeLedis
         # pipe = SafeLedis.pipeline()
         for tx in block.transactions:
-            if tx.contract_type is ContractTransaction:
-                cmds = tx.state.split(';')
-                for cmd in cmds:
-                    if cmd: pipe.execute_command(*cmd.split(' '))
-            elif tx.contract_type is PublishTransaction:
-                publish_txs.append(tx.transaction)
-            else:
-                raise Exception('A transaction must be ContractTransaction or PublishTransaction not {}'
-                                .format(tx.contract_type))
-
-        if publish_txs:
-            cls._process_publish_txs(publish_txs)
-        # pipe.execute()
+            assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
+            cmds = tx.state.split(';')
+            for cmd in cmds:
+                if cmd: pipe.execute_command(*cmd.split(' '))
 
         # Update our block hash and block num
         cls.set_latest_block_info(block.block_hash, block.block_num)
@@ -46,15 +37,6 @@ class StateDriver:
 
         assert cls.get_latest_block_hash() == block.block_hash, "StateUpdate failed! Latest block hash {} does not " \
                                                                 "match block data {}".format(cls.get_latest_block_hash(), block)
-
-    @classmethod
-    def _process_publish_txs(cls, txs: List[PublishTransaction]):
-        if cls.interface is None:
-            cls.interface = Executor()
-        for tx in txs:
-            # TODO i dont think this api call to publish_code_str is right.....
-            cls.log.debug("Storing contract named from sender '{}'".format(tx.contract_name, tx.sender))
-            cls.interface.publish_code_str(fullname=tx.contract_name, author=tx.sender, code_str=tx.contract_code)
 
     @classmethod
     def set_latest_block_info(cls, block_hash: str, block_num: int):
