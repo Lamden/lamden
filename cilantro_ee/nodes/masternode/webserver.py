@@ -2,6 +2,7 @@ from cilantro_ee.logger.base import get_logger
 
 from sanic import Sanic
 from sanic.response import json, text
+from cilantro_ee.storage.ledis import SafeLedis
 from sanic.exceptions import ServerError
 from sanic_limiter import Limiter, get_remote_address
 from sanic_cors import CORS, cross_origin
@@ -16,6 +17,7 @@ from cilantro_ee.constants.ports import WEB_SERVER_PORT, SSL_WEB_SERVER_PORT
 from cilantro_ee.constants.masternode import NUM_WORKERS
 from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.utils.hasher import Hasher
+from ujson import loads as json_loads
 
 from multiprocessing import Queue
 import os
@@ -29,6 +31,7 @@ ssl = None
 app = Sanic("MN-WebServer")
 CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
+# TODO: make process safe
 
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
 static_headers = {}
@@ -54,6 +57,13 @@ def _respond_to_request(payload, headers={}, status=200, resptype='json'):
         return json(payload, headers=dict(headers, **static_headers), status=status)
     elif resptype == 'text':
         return text(payload, headers=dict(headers, **static_headers), status=status)
+
+
+def get_contract_obj(contract):
+    contract_name = validate_contract_name(contract)
+    contract_obj = json_loads(SafeLedis.get('contracts:{}'.format(contract_name)))
+    del contract_obj['code_obj']
+    return contract_obj
 
 
 @app.route("/", methods=["POST","OPTIONS",])
@@ -106,7 +116,8 @@ async def request_nonce(request):
 
 @app.route("/contracts", methods=["GET","OPTIONS",])
 async def get_contracts(request):
-    r = interface.r.hkeys('contracts')
+    # TODO fix it
+    r = SafeLedis.hkeys('contracts')
     result = {}
     r_str = [_r.decode() for _r in r]
     result['contracts'] = sorted(r_str)
@@ -120,29 +131,26 @@ async def ohai(request):
 
 
 @app.route("/contracts/<contract>", methods=["GET","OPTIONS",])
-async def get_contract_meta(request, contract):
-    contract_name = validate_contract_name(contract)
-    return _respond_to_request(interface.get_contract_meta(contract_name))
+async def get_contract(request, contract):
+    return _respond_to_request(get_contract_obj(contract))
 
 
 @app.route("/contracts/<contract>/resources", methods=["GET","OPTIONS",])
-async def get_contract_meta(request, contract):
-    contract_name = validate_contract_name(contract)
-    meta = interface.get_contract_meta(contract_name.encode())
-    r = list(meta['resources'].keys())
+async def get_contract_resources(request, contract):
+    contract_obj = get_contract_obj(contract)
+    r = list(contract_obj['resources'].keys())
     return _respond_to_request({'resources': r})
 
 
 @app.route("/contracts/<contract>/methods", methods=["GET","OPTIONS",])
 async def get_contract_meta(request, contract):
-    contract_name = validate_contract_name(contract)
-    meta = interface.get_contract_meta(contract_name.encode())
-    return _respond_to_request({'methods': meta['methods']})
+    contract_obj = get_contract_obj(contract)
+    return _respond_to_request({'methods': contract_obj['methods']})
 
 
 def get_keys(contract, resource, cursor=0):
     pattern = '{}:{}:*'.format(contract, resource)
-    keys = interface.r.scan(cursor, pattern, 100)
+    keys = SafeLedis.scan(cursor, pattern, 100)
     _keys = keys[1]
 
     formatted_keys = [k.decode()[len(pattern) - 1:] for k in _keys]
@@ -157,14 +165,16 @@ async def get_contract_resource_keys(request, contract, resource):
 
 
 @app.route("/contracts/<contract>/<resource>/cursor/<cursor>", methods=["GET","OPTIONS",])
-async def get_contract_resource_keys(request, contract, resource, cursor):
+async def get_contract_resource_keys_cursor(request, contract, resource, cursor):
     r = get_keys(contract, resource, cursor)
     return _respond_to_request(r)
 
 
 @app.route("/contracts/<contract>/<resource>/<key>", methods=["GET","OPTIONS",])
 async def get_state(request, contract, resource, key):
-    value = interface.r.get('{}:{}:{}'.format(contract, resource, key))
+    contract_obj = get_contract_obj(contract)
+    resource_type = contract_obj['resources'].get(resource)
+    value = SafeLedis.get('{}:{}:{}:{}'.format(resource_type, contract, resource, key))
     r = {}
     if value is None:
         r['value'] = 'null'

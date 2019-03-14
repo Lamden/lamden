@@ -11,6 +11,7 @@ Sanic-Cors==0.9.7
 -e git+https://github.com/Lamden/seneca.git@new-integration#egg=seneca
 -e git+https://github.com/holys/ledis-py.git#egg=ledis
 
+
 pathspec
 umsgpack
 aiohttp

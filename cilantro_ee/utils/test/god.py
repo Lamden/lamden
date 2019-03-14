@@ -8,6 +8,7 @@ from cilantro_ee.utils.test.utils import *
 from cilantro_ee.utils.test.wallets import ALL_WALLETS
 import os, requests, time, random, asyncio, secrets, math, json
 from typing import List
+from decimal import Decimal
 
 
 CURRENCY_CONTRACT_NAME = 'currency'
@@ -304,7 +305,7 @@ class God:
     def _process_balance_json(cls, d: dict) -> int or None:
         if d:
             assert 'value' in d, "Expected key 'value' to be in reply json {}".format(d)
-            return int(d['value'])
+            return Decimal(d['value'])
         else:
             return None
 
