@@ -37,8 +37,6 @@ RUN . /app/venv/bin/activate; \
 RUN . /app/venv/bin/activate; \
     pip3 install -r /app/dev-requirements.txt;
 
-RUN echo "NUB"
-
 RUN . /app/venv/bin/activate; \
     pip3 install -r /app/requirements.txt --upgrade --no-cache-dir;
 

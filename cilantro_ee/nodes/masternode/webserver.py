@@ -59,7 +59,7 @@ def _respond_to_request(payload, headers={}, status=200, resptype='json'):
         return text(payload, headers=dict(headers, **static_headers), status=status)
 
 
-def get_contract_obj(contract):
+def _get_contract_obj(contract):
     contract_name = validate_contract_name(contract)
     contract_obj = json_loads(SafeLedis.get('contracts:{}'.format(contract_name)))
     del contract_obj['code_obj']
@@ -132,19 +132,19 @@ async def ohai(request):
 
 @app.route("/contracts/<contract>", methods=["GET","OPTIONS",])
 async def get_contract(request, contract):
-    return _respond_to_request(get_contract_obj(contract))
+    return _respond_to_request(_get_contract_obj(contract))
 
 
 @app.route("/contracts/<contract>/resources", methods=["GET","OPTIONS",])
 async def get_contract_resources(request, contract):
-    contract_obj = get_contract_obj(contract)
+    contract_obj = _get_contract_obj(contract)
     r = list(contract_obj['resources'].keys())
     return _respond_to_request({'resources': r})
 
 
 @app.route("/contracts/<contract>/methods", methods=["GET","OPTIONS",])
 async def get_contract_meta(request, contract):
-    contract_obj = get_contract_obj(contract)
+    contract_obj = _get_contract_obj(contract)
     return _respond_to_request({'methods': contract_obj['methods']})
 
 
@@ -172,7 +172,7 @@ async def get_contract_resource_keys_cursor(request, contract, resource, cursor)
 
 @app.route("/contracts/<contract>/<resource>/<key>", methods=["GET","OPTIONS",])
 async def get_state(request, contract, resource, key):
-    contract_obj = get_contract_obj(contract)
+    contract_obj = _get_contract_obj(contract)
     resource_type = contract_obj['resources'].get(resource)
     value = SafeLedis.get('{}:{}:{}:{}'.format(resource_type, contract, resource, key))
     r = {}

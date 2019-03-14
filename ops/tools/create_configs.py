@@ -87,7 +87,8 @@ def main():
     num_dels = int(_get_input("Enter number of Delegates"))
     assert num_dels > 0, "num_dels must be greater than 0"
 
-    num_wits = int(_get_input("Enter number of Witnesses"))
+    # num_wits = int(_get_input("Enter number of Witnesses"))
+    num_wits = 0
     # assert num_wits > 0, "num_wits must be greater than 0"
 
     valid_regions = [ 'us-east-2', 'us-east-1', 'us-west-1', 'us-west-2', 'ap-south-1', 'ap-northeast-2', 'ap-northeast-1', 'ap-southeast-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-west-1', 'eu-west-2', 'eu-west-3', 'sa-east-1' ]
@@ -96,13 +97,14 @@ def main():
 
     # Build new constitution file
     if _check_constitution_exists(const_file):
-        print("WARNING: Constitution file {} already exists. Replacing with new one.".format(const_file))
+        print("WARNING: Constitution file {} already exists. Replacing with new one.\n".format(const_file))
     const_dict = _generate_constitution(const_file, num_mn, num_wits, num_dels)
 
     skip = _get_bool_input("Use default values for rest of config? (y/n)")
     if skip:
         print("Using default values for remaining inputs")
 
+    metering_enabled = _get_bool_input("Enable metering? (y/n), default='y'", default=True, skip=skip)
     reset_db = _get_bool_input("Reset DB on all nodes upon boot? (y/n), default='n'", default=False, skip=skip)
     nonce_enabled = _get_bool_input("Require nonces for user transactions? (y/n), default='n'", default=False, skip=skip)
     ssl_enabled = _get_bool_input("Enable SSL on Webservers? (y/n), default='n'", skip=skip, default=False)
@@ -152,6 +154,7 @@ def main():
                            'reset_db': reset_db,
                            'constitution_file': const_file,
                            'ssl_enabled': ssl_enabled,
+                           'metering': metering_enabled
                            }
 
             # Copy redis.conf

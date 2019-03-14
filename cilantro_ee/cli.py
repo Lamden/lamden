@@ -6,6 +6,7 @@ from simplecrypt import encrypt, decrypt
 import getpass
 import hashlib
 from seneca.engine.client import SenecaClient
+from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
 from cilantro_ee.constants.vmnet import generate_constitution
 from cilantro_ee import tools
@@ -289,7 +290,7 @@ def mock_contract(code, name, stamp_amount, keyfile):
                                                              contract_name=name,
                                                              gas_supplied=int(stamp_amount))
 
-    s = SenecaClient(sbb_idx=0, num_sbb=0)
+    s = SenecaClient(sbb_idx=0, num_sbb=0, metering=CilantroConf.STAMPS_ENABLED)
     # make a contract transaction struct
     s.submit_contract(contract)
 

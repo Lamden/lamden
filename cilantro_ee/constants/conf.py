@@ -23,6 +23,7 @@ class CilantroConf(metaclass=ConfMeta):
     SSL_ENABLED = None
     NONCE_ENABLED = None
     VK_IP_MAP = {}
+    STAMPS_ENABLED = False
 
     @classmethod
     def setup(cls):
@@ -41,6 +42,7 @@ class CilantroConf(metaclass=ConfMeta):
             cls.RESET_DB = config.getboolean('reset_db')
             cls.SSL_ENABLED = config.getboolean('ssl_enabled')
             cls.NONCE_ENABLED = config.getboolean('nonce_enabled') or False
+            cls.STAMPS_ENABLED = config.getboolean('stamps')
 
             # DEBUG -- TODO DELETE
             log.important("BOOT IP FROM CONFIG FILE: {}".format(config['boot_ips']))
@@ -48,6 +50,8 @@ class CilantroConf(metaclass=ConfMeta):
             log.important("HOST IP CLASS VAR: {}".format(cls.HOST_IP))
             log.important("SSL ENABLED CLASS VAR: {}".format(cls.SSL_ENABLED))
             log.important("NONCE ENABLED CLASS VAR: {}".format(cls.NONCE_ENABLED))
+            log.important("STAMPS ENABLED CLASS VAR: {}".format(cls.STAMPS_ENABLED))
+
             # END DEBUG
 
         if os.path.exists(VK_IP_JSON_PATH):

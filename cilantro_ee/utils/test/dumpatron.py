@@ -13,7 +13,7 @@ IP_FILE_PREFIX = 'ip_masternode'
 class Dumpatron:
 
     TX_PER_BLOCK = 0
-    STAMPS_AMOUNT = 30000
+    STAMPS_AMOUNT = 0
 
     def __init__(self, env_path):
         if env_path[-1] != '/':

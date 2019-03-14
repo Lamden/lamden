@@ -21,6 +21,7 @@ from cilantro_ee.logger import get_logger
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
+from cilantro_ee.constants.conf import CilantroConf
 
 from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.envelope.envelope import Envelope
@@ -90,7 +91,8 @@ class SubBlockBuilder(Worker):
         self.sbb_index = sbb_index
         self.startup = True
         # self.pending_block_index = -1
-        self.client = SenecaClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
+        self.client = SenecaClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop,
+                                   metering=CilantroConf.STAMPS_ENABLED)
         # raghu todo may need multiple clients here. NUM_SB_PER_BLOCK needs to be same for all blocks
         # self.clients = []
         # for i in range(NUM_SB_PER_BLOCK_PER_BUILDER):

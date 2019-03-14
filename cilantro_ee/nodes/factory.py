@@ -43,7 +43,7 @@ class NodeFactory:
         indicator_key = 'contracts:smart_contract'  # if contracts are seeded, we expect this key to exist
         if not SafeLedis.exists(indicator_key):
             print("No contracts found in db. Seeding contracts")
-            interface = Executor(concurrency=False, currency=False)
+            interface = Executor(concurrency=False, metering=False)
             mint_wallets()
         else:
             print("Contracts already found in db. Skipping seeding.")
