@@ -36,7 +36,7 @@ class ContractTransaction(TransactionBase):
 
     @classmethod
     def create(cls, sender_sk: str, stamps_supplied: int, contract_name: str, func_name: str, nonce: str, kwargs: dict):
-        assert stamps_supplied > 0, "Must supply positive stamps amount"
+        # assert stamps_supplied > 0, "Must supply positive stamps amount"
 
         struct = transaction_capnp.ContractTransaction.new_message()
         payload = transaction_capnp.ContractPayload.new_message()
