@@ -20,13 +20,12 @@ class StateDriver:
     def update_with_block(cls, block: BlockData):
         # Update state by running Redis outputs from the block's transactions
         publish_txs = []
-        pipe = SafeLedis
-        # pipe = SafeLedis.pipeline()
         for tx in block.transactions:
             assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
             cmds = tx.state.split(';')
+            cls.log.notice('tx has state {}'.format(cmds))
             for cmd in cmds:
-                if cmd: pipe.execute_command(*cmd.split(' '))
+                if cmd: SafeLedis.execute_command(*cmd.split(' '))
 
         # Update our block hash and block num
         cls.set_latest_block_info(block.block_hash, block.block_num)
