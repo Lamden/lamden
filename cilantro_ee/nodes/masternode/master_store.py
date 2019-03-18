@@ -185,11 +185,13 @@ class MasterOps:
         if blk_hash is not None:
             my_query = {'blockHash': blk_hash}
             outcome = MDB.query_db(type = 'MDB', query = my_query)
+            outcome.pop('_id')
             return outcome
 
         if blk_num is not None:
             my_query = {'blockNum': blk_num}
             outcome = MDB.query_db(type = 'MDB', query = my_query)
+            outcome.pop('_id')
             return outcome
 
         assert outcome is not None, "failed to get full block {}".format(outcome)
