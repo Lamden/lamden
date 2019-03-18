@@ -23,7 +23,7 @@ class StateDriver:
         for tx in block.transactions:
             assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
             cmds = tx.state.split(';')
-            cls.log.notice('tx has state {}'.format(cmds))
+            # cls.log.notice('tx has state {}'.format(cmds))
             for cmd in cmds:
                 if cmd: SafeLedis.execute_command(*cmd.split(' '))
 

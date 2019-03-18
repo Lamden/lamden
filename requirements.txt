@@ -14,5 +14,3 @@ Sanic-Cors==0.9.7
 pathspec
 umsgpack
 aiohttp
-
-#v7
