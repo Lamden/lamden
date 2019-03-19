@@ -6,7 +6,7 @@ import time, random, os
 from collections import defaultdict
 
 
-CONTRACT_FILENAME = 'stubucks.seneca'
+CONTRACT_FILENAME = 'stubucks.sen.py'
 
 
 class SmartContractTester(Dumpatron):

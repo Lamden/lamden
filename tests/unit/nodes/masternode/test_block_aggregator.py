@@ -28,7 +28,7 @@ from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.protocol import wallet
 from cilantro_ee.storage.mongo import MDB
-from cilantro_ee.storage.redis import SafeRedis
+from cilantro_ee.storage.ledis import SafeLedis
 
 # time and logger are for debugging
 import time
@@ -98,7 +98,7 @@ class TestBlockAggregator(TestCase):
     def setUp(self):
         MDB.init_mdb = True
         MDB.reset_db()
-        SafeRedis.flushall()
+        SafeLedis.flushall()
 
     @BlockAggTester.test
     def test_build_task_list_connect_and_bind(self, *args):
@@ -134,7 +134,7 @@ class TestBlockAggregator(TestCase):
         expected_num_delegate_subs = len(VKBook.get_delegates())
         self.assertEqual(mock_sub.connect.call_count, expected_num_mn_subs + expected_num_delegate_subs)
 
-        mock_pub.bind.assert_called_with(ip=TEST_IP, port=MASTER_PUB_PORT)
+        mock_pub.bind.assert_called_with(ip=TEST_IP, port=MN_PUB_PORT)
 
     # TODO fix this test --davis
     # @BlockAggTester.test

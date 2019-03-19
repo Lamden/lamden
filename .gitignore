@@ -51,6 +51,7 @@ tests/cloud/Dockerfile
 docker-compose.yml
 dump.rdb
 docker/redis.env
+src
 
 # Docs
 docs/sphinx/_build

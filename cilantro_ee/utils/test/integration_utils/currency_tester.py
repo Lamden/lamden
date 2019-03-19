@@ -50,6 +50,7 @@ class CurrencyTester(Dumpatron):
 
         self.log.test("All initial wallet balances fetched!".format(self.init_balances))
 
+    # TODO increase num_blocks to 4 once 1 works --davis
     async def send_test_currency_txs(self, num_blocks=4):
         assert len(self.init_balances) == len(self.wallets), "Init balances not equal to length of wallet"
         num = self.TX_PER_BLOCK * num_blocks
@@ -61,7 +62,8 @@ class CurrencyTester(Dumpatron):
             amount = random.randint(1, 10000)
             tx = God.create_currency_tx(sender, receiver, amount, self.STAMPS_AMOUNT)
             txs.append(tx)
-            self.deltas[sender[1]] -= (amount + self.STAMPS_AMOUNT)
+            # self.deltas[sender[1]] -= (amount + self.STAMPS_AMOUNT)
+            self.deltas[sender[1]] -= amount
             self.deltas[receiver[1]] += amount
 
         await God.async_send_txs(txs, self.session)

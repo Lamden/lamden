@@ -3,6 +3,8 @@ FROM ubuntu:18.04
 MAINTAINER Lamden.io version: 0.1
 
 ENV DEBIAN_FRONTEND noninteractive
+ENV PATH /src/github.com/siddontang/ledisdb/bin/:/usr/lib/go-1.10/bin:$PATH
+ENV GOPATH /
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -12,22 +14,15 @@ RUN apt-get update \
         gcc g++ git autoconf automake \
         libffi-dev libtool dpkg \
         gsl-bin zlib1g-dev libboost-all-dev \
-        nano vim
-RUN apt install -y redis-server
+        nano vim \
+        golang-1.10
+RUN git clone https://github.com/siddontang/ledisdb.git src/github.com/siddontang/ledisdb \
+    && cd src/github.com/siddontang/ledisdb \
+    && /bin/bash -c "source dev.sh" \
+    && make
 RUN pip3 install --upgrade setuptools wheel
 RUN pip3 install virtualenv
 RUN pip3 install circus
-
-# @falcon y tho
-# RUN rm -rf pynacl capnproto 2>/dev/null
-# RUN apt-get remove -y --allow-remove-essential \
-#         build-essential \
-#         gcc g++ \
-#         libffi-dev libtool \
-#         gsl-bin zlib1g-dev libboost-all-dev \
-#         autoconf automake
-# RUN apt autoremove -y
-# RUN rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt
 COPY dev-requirements.txt /app/dev-requirements.txt
@@ -43,7 +38,7 @@ RUN . /app/venv/bin/activate; \
     pip3 install -r /app/dev-requirements.txt;
 
 RUN . /app/venv/bin/activate; \
-    pip3 install -r /app/requirements.txt;
+    pip3 install -r /app/requirements.txt --upgrade --no-cache-dir;
 
 ENV PYTHONPATH "${PYTHONPATH}:/app/cilantro_ee"
 

@@ -35,9 +35,8 @@ class ContractTransaction(TransactionBase):
         return transaction_capnp.ContractPayload.from_bytes(data)
 
     @classmethod
-    def create(cls, sender_sk: str, stamps_supplied: int, contract_name: str, func_name: str, nonce: str, *args, **kwargs):
-        assert len(args) == 0, "Contract must be created with key word args only (no positional args sorry)"
-        assert stamps_supplied > 0, "Must supply positive stamps amount"
+    def create(cls, sender_sk: str, stamps_supplied: int, contract_name: str, func_name: str, nonce: str, kwargs: dict):
+        # assert stamps_supplied > 0, "Must supply positive stamps amount"
 
         struct = transaction_capnp.ContractTransaction.new_message()
         payload = transaction_capnp.ContractPayload.new_message()
@@ -105,7 +104,7 @@ class ContractTransactionBuilder:
 
         return ContractTransaction.create(sender_sk=sender_sk, stamps_supplied=stamps,
                                           contract_name=ContractTransactionBuilder.CURRENCY_CONTRACT_NAME,
-                                          func_name='transfer', nonce=nonce, to=receiver_vk, amount=amount)
+                                          func_name='transfer', nonce=nonce, kwargs={'to':receiver_vk, 'amount':amount})
 
     @staticmethod
     def random_currency_tx():

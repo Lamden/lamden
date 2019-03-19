@@ -1,14 +1,15 @@
 import time
 import asyncio
 import math
-from collections import defaultdict
+from seneca.engine.interpreter.executor import Executor
 from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
+from cilantro_ee.constants.system_config import SHOULD_MINT_WALLET
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.state import StateDriver
-from cilantro_ee.storage.redis import SafeRedis
-from cilantro_ee.storage.contracts import seed_contracts
+from cilantro_ee.storage.ledis import SafeLedis
+from cilantro_ee.storage.contracts import mint_wallets
 from cilantro_ee.nodes.masternode.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.messages.block_data.block_data import BlockData
@@ -52,13 +53,13 @@ class CatchupManager:
 
         # masternode should make sure redis and mongo are in sync
         if store_full_blocks:
-            self.update_redis_state()
+            self.update_state()
 
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
         self.target_blk_num = self.curr_num
         self.awaited_blknum = None
 
-    def update_redis_state(self):
+    def update_state(self):
         """
         Sync block and state DB if either is out of sync.
         :return:
@@ -71,8 +72,7 @@ class CatchupManager:
                            .format(db_latest_blk_num, latest_state_num))
             # we need to rebuild state from scratch
             latest_state_num = 0
-            SafeRedis.flushdb()
-            seed_contracts()
+            self._reset_state()
 
         if db_latest_blk_num > latest_state_num:
             self.log.info("StateDriver block num {} is behind DB block num {}".format(latest_state_num, db_latest_blk_num))
@@ -111,6 +111,13 @@ class CatchupManager:
         self.timeout_fut = asyncio.ensure_future(self._check_timeout())
         self.log.important2("Running catchup!")
         self.dump_debug_info(lnum = 111)
+
+    def _reset_state(self):
+        SafeLedis.flushdb()
+
+        interface = Executor(concurrency=False, metering=False)  # Instantiating the Executor class for the first time will reseed any system contract data
+        if SHOULD_MINT_WALLET:
+            mint_wallets()
 
     def _reset_timeout_fut(self):
         if self.timeout_fut:
