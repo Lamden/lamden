@@ -18,6 +18,10 @@ from cilantro_ee.constants.masternode import NUM_WORKERS
 from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.utils.hasher import Hasher
 from ujson import loads as json_loads
+import marshal
+from base64 import b64encode, b64decode
+from seneca.engine.interpreter.executor import Executor
+from seneca.constants.config import DELIMITER
 
 from multiprocessing import Queue
 import os
@@ -31,6 +35,7 @@ ssl = None
 app = Sanic("MN-WebServer")
 CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
+ex = Executor(concurrency=False, metering=False)
 # TODO: make process safe
 
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
@@ -61,8 +66,9 @@ def _respond_to_request(payload, headers={}, status=200, resptype='json'):
 
 def _get_contract_obj(contract):
     contract_name = validate_contract_name(contract)
-    contract_obj = json_loads(SafeLedis.get('contracts:{}'.format(contract_name)))
-    del contract_obj['code_obj']
+    contract_obj = ex.get_contract(contract_name)
+    if contract_obj.get('code_obj'):
+        del contract_obj['code_obj']
     return contract_obj
 
 
@@ -116,10 +122,9 @@ async def request_nonce(request):
 
 @app.route("/contracts", methods=["GET","OPTIONS",])
 async def get_contracts(request):
-    # TODO fix it
-    r = SafeLedis.hkeys('contracts')
+    r = SafeLedis.xscan('kv', 'contracts:*')[1]
     result = {}
-    r_str = [_r.decode() for _r in r]
+    r_str = [_r.decode().split(DELIMITER)[1] for _r in r]
     result['contracts'] = sorted(r_str)
     return _respond_to_request(result)
 
