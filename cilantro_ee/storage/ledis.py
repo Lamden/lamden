@@ -1,10 +1,10 @@
 from cilantro_ee.constants.db_config import *
 import os, threading
-import redis
+import ledis
 from multiprocessing import Lock
 
 
-class SafeRedisMeta(type):
+class SafeLedisMeta(type):
     """
     A simple Redis Driver designed to be used functionally across multiple threads/procs.
     Each thread will get its own cursor.
@@ -21,7 +21,7 @@ class SafeRedisMeta(type):
         return key
 
     def cleanup(cls):
-        print('Redis is cleaning up!')
+        print('SafeLedis is cleaning up!')
         cls._shared_state.clear()
 
     def __getattr__(cls, item):
@@ -29,11 +29,13 @@ class SafeRedisMeta(type):
         if key in cls._shared_state:
             cur = cls._shared_state[key]
         else:
-            cur = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
+            cur = ledis.Ledis(port=6379, db=MASTER_DB)
             cls._shared_state[key] = cur
 
         return getattr(cur, item)
 
 
-class SafeRedis(metaclass=SafeRedisMeta):
+class SafeLedis(metaclass=SafeLedisMeta):
     pass
+
+

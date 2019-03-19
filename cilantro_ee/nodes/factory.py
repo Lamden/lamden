@@ -1,24 +1,21 @@
 from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.nodes.witness.witness import Witness
-from cilantro_ee.storage.contracts import seed_contracts
-from cilantro_ee.storage.redis import SafeRedis
+from seneca.engine.interpreter.executor import Executor
+from cilantro_ee.storage.contracts import mint_wallets
+from cilantro_ee.storage.ledis import SafeLedis
 from cilantro_ee.nodes.masternode.master_store import MasterOps
-from cilantro_ee.constants.db_config import MONGO_DIR, config_mongo_dir
-import  shutil
 
 
-def _wait_for_redis():
-    import redis, time
-    r = redis.StrictRedis()
+def _wait_for_ledis():
+    import ledis, time
     while True:
         try:
-            r = redis.StrictRedis()
-            r.client_list()
-            print("Redis ready!")
+            SafeLedis.ping()
+            print("Ledis ready! Pinged")
             break
         except:
-            print("Waiting for Redis to be ready...")
+            print("Waiting for Ledis to be ready...")
             time.sleep(1)
 
 
@@ -27,58 +24,43 @@ def _wait_for_mongo():
     from pymongo import MongoClient
     while True:
         try:
-            MongoClient()
-            print("Mongo ready!")
+            info = MongoClient().server_info()
+            print("Mongo ready! Server info:\n{}".format(info))
             break
         except:
             print("Waiting for Mongo to be ready...")
             time.sleep(1)
 
 
-def _drop_mongo():
-    pass
-    # print("Dropping MongoDB...")
-    # dbs = ['mn_tx', 'mn_index', 'mn_store']
-    # from pymongo import MongoClient
-    # c = MongoClient()
-    # for db in dbs:
-    #     print("Dropping mongo table '{}'".format(db))
-    #     c.drop_database(db)
-    # shutil.rmtree(MONGO_DIR)
-    # print("MongoDB dropped.")
-    # config_mongo_dir()
-
-
-
 class NodeFactory:
     @staticmethod
     def _reset_db():
         print("-------\tResetting database\t-------")
-        SafeRedis.flushall()
+        SafeLedis.flushall()
 
     @staticmethod
     def _seed_if_necessary():
-        indicator_key = 'contracts_code'  # if contracts are seeded, we expect this key to exist
-        if not SafeRedis.exists(indicator_key):
+        indicator_key = 'contracts:smart_contract'  # if contracts are seeded, we expect this key to exist
+        if not SafeLedis.exists(indicator_key):
             print("No contracts found in db. Seeding contracts")
-            seed_contracts()
+            interface = Executor(concurrency=False, metering=False)
+            mint_wallets()
         else:
             print("Contracts already found in db. Skipping seeding.")
 
     @staticmethod
     def run_masternode(signing_key, ip, name='Masternode', reset_db=False):
-        _wait_for_redis()
+        _wait_for_ledis()
         _wait_for_mongo()
         if reset_db:
             NodeFactory._reset_db()
-            _drop_mongo()
         NodeFactory._seed_if_necessary()
         MasterOps.init_master(key=signing_key)
         mn = Masternode(ip=ip, name=name, signing_key=signing_key)
 
     @staticmethod
     def run_witness(signing_key, ip, name='Witness', reset_db=False):
-        _wait_for_redis()
+        _wait_for_ledis()
         if reset_db:
             NodeFactory._reset_db()
         NodeFactory._seed_if_necessary()
@@ -86,7 +68,7 @@ class NodeFactory:
 
     @staticmethod
     def run_delegate(signing_key, ip, name='Delegate', reset_db=False):
-        _wait_for_redis()
+        _wait_for_ledis()
         if reset_db:
             NodeFactory._reset_db()
         NodeFactory._seed_if_necessary()

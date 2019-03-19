@@ -65,7 +65,7 @@ class TransactionBase(MessageBase):
         :raises: An exception if the fields are somehow invalid
         """
         validate_hex(self.sender, 64, 'sender')
-        assert self.stamps_supplied > 0, "Must supply positive gas amount u silly billy"
+        # assert self.stamps_supplied > 0, "Must supply positive gas amount u silly billy"
         assert self.nonce[:64] == self.sender, "Prefix for nonce does not match sender!\nNonce: {}\nSender: {}"\
                                                .format(self.nonce, self.sender)
 

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.storage.state import StateDriver
-from cilantro_ee.storage.redis import SafeRedis
+from cilantro_ee.storage.ledis import SafeLedis
 from cilantro_ee.nodes.masternode.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.storage.mongo import MDB

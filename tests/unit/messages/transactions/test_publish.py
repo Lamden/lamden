@@ -10,8 +10,8 @@ class TestPublishTransaction(TestCase):
         sk, vk = wallet.new()
         kwargs = {'some_text': 'hi', 'some_num': Decimal(1.628), 'some_bool': True}
         gas = 10000
-        contract_name = 'currency'
-        contract_code = 'transfer'
+        contract_name = 'smart_contract'
+        contract_code = 'submit_contract'
         nonce = vk + ':' + 'A' * 64
 
         tx = PublishTransaction.create(sender_sk=sk, stamps_supplied=gas, contract_name=contract_name,
@@ -20,15 +20,14 @@ class TestPublishTransaction(TestCase):
         self.assertEquals(tx.sender, vk)
         self.assertEquals(tx.stamps_supplied, gas)
         self.assertEquals(tx.contract_name, contract_name)
-        self.assertEquals(tx.contract_code, contract_code)
         self.assertEquals(tx.nonce, nonce)
 
     def test_serialize_deserialize(self):
         sk, vk = wallet.new()
         kwargs = {'some_text': 'hi', 'some_num': Decimal(1.628), 'some_bool': True}
         gas = 10000
-        contract_name = 'currency'
-        contract_code = 'transfer'
+        contract_name = 'smart_contract'
+        contract_code = 'submit_contract'
         nonce = vk + ':' + 'A' * 64
 
         tx = PublishTransaction.create(sender_sk=sk, stamps_supplied=gas, contract_name=contract_name,

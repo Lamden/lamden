@@ -1,19 +1,18 @@
 from unittest import TestCase
 import unittest
-from seneca.engine.interface import SenecaInterface
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.messages.transaction.data import TransactionDataBuilder, TransactionData
 from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
 
-import redis
+import ledis
 from cilantro_ee.constants.db_config import *
 
 
 class TestStateDriver(TestCase):
 
     def setUp(self):
-        self.r = redis.StrictRedis(host='localhost', port=get_redis_port(), db=MASTER_DB, password=get_redis_password())
+        self.r = ledis.Ledis(host='localhost', db=MASTER_DB, port=6379)
         self.r.flushdb()
 
     def test_state_updated(self):

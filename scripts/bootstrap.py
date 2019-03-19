@@ -5,7 +5,6 @@ CONFIG_PATH = '/etc/cilantro_ee.conf'
 
 
 def main():
-    print("BoOoOoOoOoOTSSSSSSRAaaAAAaaaaaaaaaaAAAAAAaaaaaaaaaAAAAAAAAAAaaaaaaaAAAAAaaaaaaaaAAAAAAAAPPpppPP")
 
     assert os.path.exists(CONFIG_PATH), "No config file found at path {}".format(CONFIG_PATH)
     config = configparser.ConfigParser()
