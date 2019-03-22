@@ -1,7 +1,7 @@
 DATADIR ?= /usr/local/db/cilantro_ee
 
 start-db:
-	python3 ./scripts/start_ledis.py -no-conf &
+	python3 ./scripts/start_ledis.py $$(pwd)/ops/base/ledis.conf &
 	python3 ./scripts/start_mongo.py &
 	sleep 1
 	python3 ./scripts/create_user.py &
@@ -9,7 +9,7 @@ start-db:
 
 stop-db:
 	pkill mongod || true
-	pkill redis-server || true
+	pkill ledis-server || true
 
 restart-db: stop-db start-db
 
