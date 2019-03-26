@@ -1,5 +1,7 @@
+DATADIR ?= /usr/local/db/cilantro_ee
+
 start-db:
-	python3 ./scripts/start_ledis.py -no-conf &
+	python3 ./scripts/start_ledis.py $$(pwd)/ops/base/ledis.conf &
 	python3 ./scripts/start_mongo.py &
 	sleep 1
 	python3 ./scripts/create_user.py &
@@ -7,7 +9,7 @@ start-db:
 
 stop-db:
 	pkill mongod || true
-	pkill redis-server || true
+	pkill ledis-server || true
 
 restart-db: stop-db start-db
 
@@ -35,8 +37,9 @@ dockerbuild:
 	./ops/tools/docker_build_push.sh
 
 dockerrun:
+	@echo "Running with data dir ${DATADIR}"
 	docker rm -f cil 2>/dev/null || true
-	docker run --name cil -dit -v /usr/local/db/cilantro_ee:/usr/local/db/cilantro_ee -v $$(pwd)/ops/base/ledis.conf:/etc/ledis.conf -v $$(pwd)/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$$(bash ops/tools/generate_tag.sh)
+	docker run --name cil -dit -v ${DATADIR}:/usr/local/db/cilantro_ee -v $$(pwd)/ops/base/ledis.conf:/etc/ledis.conf -v $$(pwd)/ops/base/circus_unittest.conf:/etc/circus.conf lamden/cilantro_ee_full:$$(bash ops/tools/generate_tag.sh)
 
 dockerenter:
 	docker exec -ti cil /bin/bash

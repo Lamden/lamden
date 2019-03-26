@@ -210,7 +210,8 @@ async def get_block(request):
         if block is None:
             return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
 
-    return _respond_to_request(block)
+    return _respond_to_request(_json.dumps(block))
+
 
 def get_tx(_hash):
     if not _hash:

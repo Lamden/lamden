@@ -15,9 +15,11 @@ def start_ledis(conf_path):
     print("Ledis using data directory: {}".format(LEDIS_DIR))
 
     if conf_path is None:
+        print("Starting ledis-server with no conf!")
         os.system('ledis-server')
     else:
         assert os.path.exists(conf_path), "No Ledis.conf file found at path {}".format(conf_path)
+        print("Starting ledis-server with conf file at path {}".format(conf_path))
         os.system('ledis-server -config={}'.format(conf_path))
     #
     # if conf_path is not None:
