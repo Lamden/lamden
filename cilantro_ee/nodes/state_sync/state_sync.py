@@ -65,7 +65,7 @@ class StateSync(Worker):
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
         self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
         self.ipc_router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
-        self.ipc_router.bind(port=IPC_PORT, protocol='ipc', ip=self.ipc_ip)
+        self.ipc_router.bind(port=IPC_PORT, protocol='ipc', ip=IPC_IP)
         self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_msg))
 
         self.pub = self.manager.create_socket(
