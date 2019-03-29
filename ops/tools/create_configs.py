@@ -16,7 +16,7 @@ LEDIS_CONF_PATH = BASE_CONFIG_DIR_PATH + '/ledis.conf'
 NAME_MAP = {'masternodes': 'masternode', 'witnesses': 'witness', 'delegates': 'delegate'}
 
 
-def _generate_constitution(file_name, num_masters, num_witnesses, num_delegates) -> dict:
+def _generate_constitution(file_name, num_masters, num_witnesses, num_delegates, num_sched, num_notif) -> dict:
     def _build_nodes(num_nodes=64) -> list:
         nodes = []
         for i in range(num_nodes):
@@ -27,6 +27,10 @@ def _generate_constitution(file_name, num_masters, num_witnesses, num_delegates)
     file_path = CONST_DIR_PATH + '/' + file_name
     testnet = {'masternodes': _build_nodes(num_masters), 'witnesses': _build_nodes(num_witnesses),
                'delegates': _build_nodes(num_delegates)}
+    if num_sched > 0:
+        testnet['schedulers'] = _build_nodes(num_sched)
+    if num_notif > 0:
+        testnet['notifiers'] = _build_nodes(num_notif)
 
     # Build a version with only VK's and store this at 'file_path'
     testnet_vk_only = deepcopy(testnet)
@@ -91,6 +95,9 @@ def main():
     num_wits = 0
     # assert num_wits > 0, "num_wits must be greater than 0"
 
+    num_scheduler = int(_get_bool_input("Include scheduler node? (y/n), default=y", default=True))
+    num_notifier = int(_get_bool_input("Include notifier node? (y/n), default=y", default=True))
+
     valid_regions = [ 'us-east-2', 'us-east-1', 'us-west-1', 'us-west-2', 'ap-south-1', 'ap-northeast-2', 'ap-northeast-1', 'ap-southeast-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-west-1', 'eu-west-2', 'eu-west-3', 'sa-east-1' ]
     launch_region = _get_input("Enter region to launch into (default='us-west-1')") or 'us-west-1'
     assert launch_region in valid_regions, "Region provided invalid, please select among {}".format(valid_regions)
@@ -98,7 +105,7 @@ def main():
     # Build new constitution file
     if _check_constitution_exists(const_file):
         print("WARNING: Constitution file {} already exists. Replacing with new one.\n".format(const_file))
-    const_dict = _generate_constitution(const_file, num_mn, num_wits, num_dels)
+    const_dict = _generate_constitution(const_file, num_mn, num_wits, num_dels, num_scheduler, num_notifier)
 
     skip = _get_bool_input("Use default values for rest of config? (y/n)")
     if skip:
@@ -108,6 +115,7 @@ def main():
     reset_db = _get_bool_input("Reset DB on all nodes upon boot? (y/n), default='n'", default=False, skip=skip)
     nonce_enabled = _get_bool_input("Require nonces for user transactions? (y/n), default='n'", default=False, skip=skip)
     ssl_enabled = _get_bool_input("Enable SSL on Webservers? (y/n), default='n'", skip=skip, default=False)
+
 
     mn_log_lvl = int(_get_input("Enter Masternode log lvl. Must be 0 or in [11, 100]. (default=11)", skip=skip) or 11)
     assert mn_log_lvl >= 0, 'log lvl must be greater than 0'
@@ -199,7 +207,6 @@ def main():
                 nf.writelines(node_definition)
 
     subprocess.call('cd {} && terraform init {}'.format(base_config_dir_path, base_config_dir_path), shell=True)
-
 
     print("-"*64 + "\nDone generating configs for environment named {} at path {}".format(config_name, config_dir_path))
 
