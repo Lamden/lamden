@@ -111,7 +111,7 @@ def main():
     if skip:
         print("Using default values for remaining inputs")
 
-    metering_enabled = _get_bool_input("Enable metering? (y/n), default='y'", default=True, skip=skip)
+    metering_enabled = _get_bool_input("Enable metering? (y/n), default='n'", default=False, skip=skip)
     reset_db = _get_bool_input("Reset DB on all nodes upon boot? (y/n), default='n'", default=False, skip=skip)
     nonce_enabled = _get_bool_input("Require nonces for user transactions? (y/n), default='n'", default=False, skip=skip)
     ssl_enabled = _get_bool_input("Enable SSL on Webservers? (y/n), default='n'", skip=skip, default=False)
