@@ -97,6 +97,15 @@ class BlockManager(Worker):
 
         self.db_state = DBState()
 
+        self._thicc_log()
+
+        # Define Sockets (these get set in build_task_list)
+        self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
+        self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
+
+        self.run()
+
+    def _thicc_log(self):
         self.log.notice("\nBlockManager initializing with\nvk={vk}\nsubblock_index={sb_index}\n"
                         "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
                         "num_sb_builders={num_sb_builders}\nsub_blocks_per_builder={sb_per_builder}\n"
@@ -105,12 +114,6 @@ class BlockManager(Worker):
                                 num_blocks=NUM_BLOCKS, sb_per_block=NUM_SB_PER_BLOCK,
                                 num_sb_builders=NUM_SB_BUILDERS, sb_per_builder=NUM_SB_PER_BUILDER,
                                 sb_per_block_per_builder=NUM_SB_PER_BLOCK_PER_BUILDER))
-
-        # Define Sockets (these get set in build_task_list)
-        self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
-        self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
-
-        self.run()
 
     def run(self):
         self.build_task_list()
@@ -161,7 +164,6 @@ class BlockManager(Worker):
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
         self.tasks.append(self._connect_and_process())
-
 
     async def _connect_and_process(self):
         # first make sure, we have overlay server ready
@@ -266,7 +268,6 @@ class BlockManager(Worker):
     def is_sbb_ready(self):
         return self.sbb_not_ready_count == 0
 
-
     def recv_block_data_reply(self, reply):
         # will it block? otherwise, it may not work
         if self.db_state.catchup_mgr.recv_block_data_reply(reply):
@@ -326,6 +327,7 @@ class BlockManager(Worker):
             self.db_state.my_new_block_hash = self._compute_new_block_hash()
             self.update_db_if_ready()
 
+    # TODO make this DRY
     def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
@@ -492,7 +494,6 @@ class BlockManager(Worker):
             return
 
         self.fail_block_action(block_data)
-
 
     def send_updated_db_msg(self):
         self.log.info("Sending MakeNextBlock message to SBBs")

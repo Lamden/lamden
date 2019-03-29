@@ -22,3 +22,9 @@ MN_TX_PUB_PORT = 10012
 DELEGATE_ROUTER_PORT = 10020
 DELEGATE_PUB_PORT = 10021
 SBB_PORT_START = 10022   # only in use when witnesses are present in system (not in use in cilantro enterprise)
+
+# ---------------------------------------------------------------
+# StateSync Ports :10030-10039
+# ---------------------------------------------------------------
+SS_ROUTER_PORT = 10030
+SS_PUB_PORT = 10031

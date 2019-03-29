@@ -27,7 +27,6 @@ class NodeTypes:
             return vk in VKBook.get_delegates()
 
 
-
 class NodeBase(Context):
 
     def __init__(self, ip, signing_key, name='Node'):
