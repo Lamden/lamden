@@ -13,7 +13,18 @@ LIGHT_CONF_PATH = BASE_CONFIG_DIR_PATH + '/circus_light.conf'
 FULL_CONF_PATH = BASE_CONFIG_DIR_PATH + '/circus_full.conf'
 LEDIS_CONF_PATH = BASE_CONFIG_DIR_PATH + '/ledis.conf'
 
-NAME_MAP = {'masternodes': 'masternode', 'witnesses': 'witness', 'delegates': 'delegate'}
+NAME_MAP = {'masternodes': 'masternode', 'witnesses': 'witness', 'delegates': 'delegate', 'schedulers': 'scheduler',
+            'notifiers': 'notifier'}
+
+VALID_REGIONS = ['us-east-2', 'us-east-1', 'us-west-1', 'us-west-2', 'ap-south-1', 'ap-northeast-2',
+                 'ap-northeast-1', 'ap-southeast-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-west-1',
+                 'eu-west-2', 'eu-west-3', 'sa-east-1']
+
+# A dict of node types (ie 'masternodes') to terraform module names
+# Default module is 'cilantro_ee_node'. Scheduler and Notifier might have different ones
+GROUP_TO_MODULE = {group: 'cilantro_ee_node' for group in NAME_MAP}
+# GROUP_TO_MODULE['scheduler'] = 'scheduler'
+# GROUP_TO_MODULE['notifier'] = 'notifier'
 
 
 def _generate_constitution(file_name, num_masters, num_witnesses, num_delegates, num_sched, num_notif) -> dict:
@@ -27,6 +38,9 @@ def _generate_constitution(file_name, num_masters, num_witnesses, num_delegates,
     file_path = CONST_DIR_PATH + '/' + file_name
     testnet = {'masternodes': _build_nodes(num_masters), 'witnesses': _build_nodes(num_witnesses),
                'delegates': _build_nodes(num_delegates)}
+
+    # We do this outside of the constructor above because these dudes are only for enterprise, and thus should
+    # not be included as keys with empty values in the JSON if we don't need them
     if num_sched > 0:
         testnet['schedulers'] = _build_nodes(num_sched)
     if num_notif > 0:
@@ -53,7 +67,7 @@ def _get_input(prompt, skip=False):
     else: return input(prompt + '\n')
 
 
-def _input_to_bool(str_in: str, default=False) -> bool:
+def _input_to_bool(str_in: str) -> bool:
     assert str_in.lower() in ('y', 'n'), "invalid bool input. Must be 'y' or 'n', not {}".format(str_in)
     return True if str_in.lower() == 'y' else False
 
@@ -98,18 +112,17 @@ def main():
     num_scheduler = int(_get_bool_input("Include scheduler node? (y/n), default=y", default=True))
     num_notifier = int(_get_bool_input("Include notifier node? (y/n), default=y", default=True))
 
-    valid_regions = [ 'us-east-2', 'us-east-1', 'us-west-1', 'us-west-2', 'ap-south-1', 'ap-northeast-2', 'ap-northeast-1', 'ap-southeast-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-west-1', 'eu-west-2', 'eu-west-3', 'sa-east-1' ]
-    launch_region = _get_input("Enter region to launch into (default='us-west-1')") or 'us-west-1'
-    assert launch_region in valid_regions, "Region provided invalid, please select among {}".format(valid_regions)
-
     # Build new constitution file
     if _check_constitution_exists(const_file):
         print("WARNING: Constitution file {} already exists. Replacing with new one.\n".format(const_file))
     const_dict = _generate_constitution(const_file, num_mn, num_wits, num_dels, num_scheduler, num_notifier)
 
-    skip = _get_bool_input("Use default values for rest of config? (y/n)")
+    skip = _get_bool_input("Use default values for rest of config? (y/n), default=y", default=True)
     if skip:
-        print("Using default values for remaining inputs")
+        print("Using default values for remaining inputs...\n")
+
+    launch_region = _get_input("Enter region to launch into (default='us-west-1')", skip=skip) or 'us-west-1'
+    assert launch_region in VALID_REGIONS, "Region provided invalid, please select among {}".format(VALID_REGIONS)
 
     metering_enabled = _get_bool_input("Enable metering? (y/n), default='n'", default=False, skip=skip)
     reset_db = _get_bool_input("Reset DB on all nodes upon boot? (y/n), default='n'", default=False, skip=skip)
@@ -128,6 +141,18 @@ def main():
 
     sen_log_lvl = int(_get_input("Enter Seneca log lvl. (default=11)", skip=skip) or 11)
     assert sen_log_lvl >= 0, 'log lvl must be greater than 0'
+
+    if num_scheduler > 0:
+        sched_log_lvl = int(_get_input("Enter scheduler log lvl. (default=11)", skip=skip) or 11)
+        assert sched_log_lvl >= 0, 'log lvl must be greater than 0'
+    else:
+        sched_log_lvl = 0
+
+    if num_notifier > 0:
+        notif_log_lvl = int(_get_input("Enter scheduler log lvl. (default=11)", skip=skip) or 11)
+        assert notif_log_lvl >= 0, 'log lvl must be greater than 0'
+    else:
+        notif_log_lvl = 0
 
     # Now, to actually build the configs...
     os.makedirs(config_dir_path)
@@ -179,6 +204,12 @@ def main():
                 config_info['log_lvl'] = del_log_lvl
                 config_info['seneca_log_lvl'] = sen_log_lvl
                 shutil.copyfile(LIGHT_CONF_PATH, circus_conf_path)
+            elif node_type == 'scheduler':
+                config_info['log_lvl'] = sched_log_lvl
+                shutil.copyfile(LIGHT_CONF_PATH, circus_conf_path)
+            elif node_type == 'notifier':
+                config_info['log_lvl'] = notif_log_lvl
+                shutil.copyfile(LIGHT_CONF_PATH, circus_conf_path)
 
             # Write the cilantro_ee config file
             config = configparser.ConfigParser()
@@ -187,9 +218,11 @@ def main():
                 config.write(f)
 
             with open(nodes_file, "a") as nf:
+                assert node_group in GROUP_TO_MODULE, "Node group {} not in defined {}".format(node_group, GROUP_TO_MODULE)
+                module_name = GROUP_TO_MODULE[node_group]
                 node_definition = [
                     'module "{}" {{\n'.format(node_name),
-                    '  source = "./modules/cilantro_ee_node"\n',
+                    '  source = "./modules/{}"\n'.format(module_name),
                     '  providers = {\n',
                     '    aws = "aws.{}"\n'.format(launch_region),
                     '  }\n',

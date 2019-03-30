@@ -70,7 +70,7 @@ if __name__ == "__main__":
             config.read(conf_file)
             vk_ip[config['DEFAULT']['vk']] = config['DEFAULT']['ip']
 
-    assert len(vk_ip) == len(ip_files), "ya done goofed davis\n{}".format(vk_ip)
+    assert len(vk_ip) == len(ip_files), "ya done goofed davis\nvk_ip: {}\nip_files: \n".format(vk_ip, ip_files)
 
     # print("\n\n\n WE GOT VK IP DICT:\n{}\n\n\n".format(vk_ip))
     # Now actually write the file...
