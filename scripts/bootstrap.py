@@ -11,10 +11,6 @@ def main():
     config.read(CONFIG_PATH)
     config = config['DEFAULT']
 
-    # Some configs are specified as env vars so they can be accessible across multiple files
-    if config.getboolean('ssl_enabled'):
-        os.environ['SSL_ENABLED'] = "1"
-
     # print("VKBook mns {}".format(VKBook.get_masternodes()))
 
     if config['node_type'] == 'witness':
