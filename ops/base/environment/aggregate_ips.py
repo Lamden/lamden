@@ -7,9 +7,11 @@ import json
 my_path = os.path.dirname(os.path.abspath(__file__))
 cache_path = os.path.join(my_path, '.cache')
 
+VALID_NODES = ["masternode", "delegate", "witness", "notifier", "scheduler"]
+
 def _setup_argparse(p):
     p.add_argument("--ip", help="The IP address of the node calling the configure script", required=True)
-    p.add_argument("--type", help="The type of node calling the script", choices=["masternode", "delegate", "witness"], required=True)
+    p.add_argument("--type", help="The type of node calling the script", choices=VALID_NODES, required=True)
     p.add_argument("--index", help="The index of the node calling the script", type=int, required=True)
 
 
@@ -17,6 +19,10 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     _setup_argparse(p)
     args = p.parse_args()
+
+    # DEBUG -- TODO DELETE
+    print("\n\n RUNNING AGG IPS FOR TYPE {} WITH IP {}\n\n".format(args.type, args.index))
+    # END DEBUG
 
     # Get and save relevant file paths for later reuse in the script
     ip_file = os.path.join(cache_path, "ip_{}{}".format(args.type, args.index))

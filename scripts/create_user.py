@@ -1,11 +1,11 @@
 from pymongo import MongoClient
-import configparser, time
-import os
-import time
+import configparser, os, time, sys
 
 
-def create_user():
-    print('Creating user for Mongo...')
+def create_user(delay):
+    print('Creating user for Mongo with start delay of {}...'.format(delay))
+    time.sleep(delay)
+
     settings = configparser.ConfigParser()
     settings._interpolation = configparser.ExtendedInterpolation()
     db_conf_path = './mn_db_conf.ini'
@@ -23,4 +23,5 @@ def create_user():
 
 
 if __name__ == '__main__':
-    create_user()
+    _delay = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    create_user(_delay)

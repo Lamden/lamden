@@ -1,7 +1,6 @@
 from cilantro_ee.logger import get_logger
 import json, math, os
 from cilantro_ee.utils.test.testnet_config import get_testnet_json_path
-from cilantro_ee.constants.conf import CilantroConf
 
 
 TESTNET_JSON_PATH = get_testnet_json_path()

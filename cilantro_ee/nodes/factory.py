@@ -41,8 +41,12 @@ class NodeFactory:
 
     @staticmethod
     def _seed_if_necessary():
-        # TODO update this key to reflect changes from Dr. ArbitraryRefactor
+        # TODO (possibly) update key to reflect changes by Dr. ArbitraryRefactor, software's most notorious supervillain
         indicator_key = 'contracts:smart_contract'  # if contracts are seeded, we expect this key to exist
+
+        # ALSO -- i dont think this works as intended. Something unexpected is occurring in seneca that causes
+        # data to be seeded before we explicitly tell it to down below
+
         if not SafeLedis.exists(indicator_key):
             print("No contracts found in db. Seeding contracts")
             interface = Executor(concurrency=False, metering=False)

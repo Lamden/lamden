@@ -37,7 +37,7 @@ class CilantroConf(metaclass=ConfMeta):
         from cilantro_ee.logger.base import get_logger
         log = get_logger("CilantroConf")
 
-        assert os.path.exists(CIL_CONF_PATH), "No config file found at path {}. Comon man get it together!".format(CIL_CONF_PATH)
+        # assert os.path.exists(CIL_CONF_PATH), "No config file found at path {}. Comon man get it together!".format(CIL_CONF_PATH)
 
         if os.path.exists(CIL_CONF_PATH):
             config = configparser.ConfigParser()
@@ -57,18 +57,19 @@ class CilantroConf(metaclass=ConfMeta):
             cls.SK = config['sk']
 
             # DEBUG -- TODO DELETE
-            log.important("BOOT IP FROM CONFIG FILE: {}".format(config['boot_ips']))
-            log.important("BOOT IP CLASS VAR: {}".format(cls.BOOTNODES))
-            log.important("HOST IP CLASS VAR: {}".format(cls.HOST_IP))
-            log.important("SSL ENABLED CLASS VAR: {}".format(cls.SSL_ENABLED))
-            log.important("NONCE ENABLED CLASS VAR: {}".format(cls.NONCE_ENABLED))
-            log.important("STAMPS ENABLED CLASS VAR: {}".format(cls.STAMPS_ENABLED))
-            log.important("NODE TYPE CLASS VAR: {}".format(cls.NODE_TYPE))
-            log.important("LOG LEVEL CLASS VAR: {}".format(cls.LOG_LEVEL))
-            log.important("SK CLASS VAR: {}".format(cls.SK))
+            if False:
+                log.important("BOOT IP FROM CONFIG FILE: {}".format(config['boot_ips']))
+                log.important("BOOT IP CLASS VAR: {}".format(cls.BOOTNODES))
+                log.important("HOST IP CLASS VAR: {}".format(cls.HOST_IP))
+                log.important("SSL ENABLED CLASS VAR: {}".format(cls.SSL_ENABLED))
+                log.important("NONCE ENABLED CLASS VAR: {}".format(cls.NONCE_ENABLED))
+                log.important("STAMPS ENABLED CLASS VAR: {}".format(cls.STAMPS_ENABLED))
+                log.important("NODE TYPE CLASS VAR: {}".format(cls.NODE_TYPE))
+                log.important("LOG LEVEL CLASS VAR: {}".format(cls.LOG_LEVEL))
+                log.important("SK CLASS VAR: {}".format(cls.SK))
             # END DEBUG
 
-        assert os.path.exists(VK_IP_JSON_PATH), "No vk ip json found at path {}".format(VK_IP_JSON_PATH)
+        # assert os.path.exists(VK_IP_JSON_PATH), "No vk ip json found at path {}".format(VK_IP_JSON_PATH)
 
         if os.path.exists(VK_IP_JSON_PATH):
             with open(VK_IP_JSON_PATH, 'r') as f:

@@ -303,11 +303,15 @@ class God:
 
     @classmethod
     def _process_balance_json(cls, d: dict) -> int or None:
-        if d:
-            assert 'value' in d, "Expected key 'value' to be in reply json {}".format(d)
-            return Decimal(d['value'])
-        else:
-            return None
+        try:
+            if d:
+                assert 'value' in d, "Expected key 'value' to be in reply json {}".format(d)
+                return Decimal(d['value'])
+            else:
+                return None
+        except Exception as e:
+            log.critical("Got error processing balance json {} ... error:\n {}".format(d, e))
+
 
     @classmethod
     def _get_mn_url(cls):

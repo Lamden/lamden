@@ -20,9 +20,10 @@ VALID_REGIONS = ['us-east-2', 'us-east-1', 'us-west-1', 'us-west-2', 'ap-south-1
                  'ap-northeast-1', 'ap-southeast-1', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-west-1',
                  'eu-west-2', 'eu-west-3', 'sa-east-1']
 
-# A dict of node types (ie 'masternodes') to terraform module names
+# GROUP_TO_MODULE is a dict of node types (ie 'masternodes') to terraform module names
 # Default module is 'cilantro_ee_node'. Scheduler and Notifier might have different ones
 GROUP_TO_MODULE = {group: 'cilantro_ee_node' for group in NAME_MAP}
+# If/when we create a separate terraform module for scheduler/notifier, set them down below like so:
 # GROUP_TO_MODULE['scheduler'] = 'scheduler'
 # GROUP_TO_MODULE['notifier'] = 'notifier'
 
@@ -105,12 +106,15 @@ def main():
     num_dels = int(_get_input("Enter number of Delegates"))
     assert num_dels > 0, "num_dels must be greater than 0"
 
+    # commented out for enterprise deployment
     # num_wits = int(_get_input("Enter number of Witnesses"))
     num_wits = 0
     # assert num_wits > 0, "num_wits must be greater than 0"
 
     num_scheduler = int(_get_bool_input("Include scheduler node? (y/n), default=y", default=True))
     num_notifier = int(_get_bool_input("Include notifier node? (y/n), default=y", default=True))
+
+    reset_db = _get_bool_input("Reset DB on all nodes upon boot? (y/n), default='n'", default=False)
 
     # Build new constitution file
     if _check_constitution_exists(const_file):
@@ -125,7 +129,6 @@ def main():
     assert launch_region in VALID_REGIONS, "Region provided invalid, please select among {}".format(VALID_REGIONS)
 
     metering_enabled = _get_bool_input("Enable metering? (y/n), default='n'", default=False, skip=skip)
-    reset_db = _get_bool_input("Reset DB on all nodes upon boot? (y/n), default='n'", default=False, skip=skip)
     nonce_enabled = _get_bool_input("Require nonces for user transactions? (y/n), default='n'", default=False, skip=skip)
     ssl_enabled = _get_bool_input("Enable SSL on Webservers? (y/n), default='n'", skip=skip, default=False)
 
@@ -240,7 +243,7 @@ def main():
 
     subprocess.call('cd {} && terraform init {}'.format(base_config_dir_path, base_config_dir_path), shell=True)
 
-    print("-"*64 + "\nDone generating configs for environment named {} at path {}".format(config_name, config_dir_path))
+    print("\n" + "-"*64 + "\nDone generating configs for environment named {} at path {}\n".format(config_name, config_dir_path))
 
 
 if __name__ == '__main__':
