@@ -5,6 +5,7 @@ from seneca.engine.interpreter.executor import Executor
 from cilantro_ee.storage.contracts import mint_wallets
 from cilantro_ee.storage.ledis import SafeLedis
 from cilantro_ee.nodes.masternode.master_store import MasterOps
+from cilantro_ee.constants.conf import CilantroConf
 
 
 def _wait_for_ledis():
@@ -40,6 +41,7 @@ class NodeFactory:
 
     @staticmethod
     def _seed_if_necessary():
+        # TODO update this key to reflect changes from Dr. ArbitraryRefactor
         indicator_key = 'contracts:smart_contract'  # if contracts are seeded, we expect this key to exist
         if not SafeLedis.exists(indicator_key):
             print("No contracts found in db. Seeding contracts")
@@ -49,27 +51,27 @@ class NodeFactory:
             print("Contracts already found in db. Skipping seeding.")
 
     @staticmethod
-    def run_masternode(signing_key, ip, name='Masternode', reset_db=False):
+    def run_masternode(signing_key, name='Masternode'):
         _wait_for_ledis()
         _wait_for_mongo()
-        if reset_db:
+        if CilantroConf.RESET_DB:
             NodeFactory._reset_db()
         NodeFactory._seed_if_necessary()
         MasterOps.init_master(key=signing_key)
-        mn = Masternode(ip=ip, name=name, signing_key=signing_key)
+        mn = Masternode(ip=CilantroConf.HOST_IP, name=name, signing_key=signing_key)
 
     @staticmethod
-    def run_witness(signing_key, ip, name='Witness', reset_db=False):
+    def run_witness(signing_key, name='Witness'):
         _wait_for_ledis()
-        if reset_db:
+        if CilantroConf.RESET_DB:
             NodeFactory._reset_db()
         NodeFactory._seed_if_necessary()
-        w = Witness(ip=ip, name=name, signing_key=signing_key)
+        w = Witness(ip=CilantroConf.HOST_IP, name=name, signing_key=signing_key)
 
     @staticmethod
-    def run_delegate(signing_key, ip, name='Delegate', reset_db=False):
+    def run_delegate(signing_key, name='Delegate'):
         _wait_for_ledis()
-        if reset_db:
+        if CilantroConf.RESET_DB:
             NodeFactory._reset_db()
         NodeFactory._seed_if_necessary()
-        d = Delegate(ip=ip, name=name, signing_key=signing_key)
+        d = Delegate(ip=CilantroConf.HOST_IP, name=name, signing_key=signing_key)
