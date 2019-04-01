@@ -21,20 +21,13 @@ def run_mn(slot_num=None, sk=None, log_lvl=11, reset_db=False, nonce_enabled=Tru
     from cilantro_ee.constants.conf import CilantroConf
     from cilantro_ee.logger import get_logger, overwrite_logger_level
     from cilantro_ee.nodes.factory import NodeFactory
-    from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
     from cilantro_ee.utils.test.node_runner import log_create
     from cilantro_ee.protocol import wallet
 
     overwrite_logger_level(log_lvl)
+    vk = wallet.get_vk(sk)
 
-    if slot_num is not None and slot_num >= len(TESTNET_MASTERNODES):
-        raise Exception("Slot num {} out of bounds for TESTNET_MASTERNODES {}".format(slot_num, TESTNET_MASTERNODES))
     ip = CilantroConf.HOST_IP
-    if slot_num is not None:
-        vk, sk = TESTNET_MASTERNODES[slot_num]['vk'],  TESTNET_MASTERNODES[slot_num]['sk']
-    else:
-        vk = wallet.get_vk(sk)
-
     log_create("Masternode", vk, ip)
     NodeFactory.run_masternode(ip=ip, signing_key=sk, reset_db=reset_db)
 
@@ -50,12 +43,7 @@ def run_witness(slot_num=None, sk=None, log_lvl=11, reset_db=False):
 
     overwrite_logger_level(log_lvl)
 
-    if slot_num is not None and slot_num >= len(TESTNET_WITNESSES):
-        raise Exception("Slot num {} out of bounds for TESTNET_WITNESSES {}".format(slot_num, TESTNET_WITNESSES))
-    if slot_num is not None:
-        vk, sk = TESTNET_WITNESSES[slot_num]['vk'],  TESTNET_WITNESSES[slot_num]['sk']
-    else:
-        vk = wallet.get_vk(sk)
+    vk = wallet.get_vk(sk)
 
     ip = CilantroConf.HOST_IP
     log_create("Witness", vk, ip)
@@ -74,19 +62,13 @@ def run_delegate(slot_num=None, sk=None, log_lvl=11, seneca_log_lvl=11, bad_acto
     from cilantro_ee.logger import get_logger, overwrite_logger_level
     from seneca.libs.logger import overwrite_logger_level as sen_overwrite_log
     from cilantro_ee.nodes.factory import NodeFactory
-    from cilantro_ee.constants.testnet import TESTNET_DELEGATES
     from cilantro_ee.utils.test.node_runner import log_create
     from cilantro_ee.protocol import wallet
 
     overwrite_logger_level(log_lvl)
     sen_overwrite_log(seneca_log_lvl)
 
-    if slot_num is not None and slot_num >= len(TESTNET_DELEGATES):
-        raise Exception("Slot num {} out of bounds for TESTNET_DELEGATES {}".format(slot_num, TESTNET_DELEGATES))
-    if slot_num is not None:
-        vk, sk = TESTNET_DELEGATES[slot_num]['vk'],  TESTNET_DELEGATES[slot_num]['sk']
-    else:
-        vk = wallet.get_vk(sk)
+    vk = wallet.get_vk(sk)
 
     ip = CilantroConf.HOST_IP
     log_create("Delegate", vk, ip)

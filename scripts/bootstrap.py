@@ -1,5 +1,7 @@
 import os, configparser
 from cilantro_ee.utils.test.node_runner import *
+from cilantro_ee.constants.conf import CilantroConf
+
 
 CONFIG_PATH = '/etc/cilantro_ee.conf'
 
@@ -21,6 +23,8 @@ def main():
     elif config['node_type'] == 'masternode':
         run_mn(sk=config['sk'], log_lvl=int(config['log_lvl']), nonce_enabled=config.getboolean('nonce_enabled'),
                reset_db=config.getboolean('reset_db'))
+    elif config['node_type'] in ('scheduler', 'notifier'):
+        pass
     else:
         raise Exception("Unrecognized node type {}".format(config['node_type']))
 
