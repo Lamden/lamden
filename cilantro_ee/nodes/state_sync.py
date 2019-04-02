@@ -108,7 +108,7 @@ class StateSync(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MN_PUB_PORT)
-            self.dealer.connect(vk=vk, port=MN_ROUTER_PORT)
+            self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
         # now start the catchup
         await self.catchup_db_state()
