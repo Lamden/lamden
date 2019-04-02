@@ -9,7 +9,7 @@ from cilantro_ee.nodes.masternode.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
 
 from cilantro_ee.constants.zmq_filters import *
-from cilantro_ee.constants.ports import MN_ROUTER_PORT, MN_PUB_PORT, DELEGATE_PUB_PORT
+from cilantro_ee.constants.ports import MN_ROUTER_PORT, MN_PUB_PORT, DELEGATE_PUB_PORT, SS_PUB_PORT
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.masternode import *
 
@@ -108,10 +108,14 @@ class BlockAggregator(Worker):
 
         # Listen to delegates for sub block contenders and state update requests
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
-        for vk in VKBook.get_delegates():
+        for vk in VKBook.get_delegates() :
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
-            # I dont think we to connect to delegates here as delegates are already connecting in BlockManager --davis
+            # I dont think we to connect to delegates to router here as delegates are already connecting
+            # in BlockManager --davis
             # self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
+
+        for vk in VKBook.get_schedulers() + VKBook.get_notifiers():
+            self.sub.connect(vk=vk, port=SS_PUB_PORT)
 
         # we just connected to other nodes, let's chill a bit to give time for those connections form !!!
         self.log.spam("Sleeping before triggering catchup...")

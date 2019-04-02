@@ -41,6 +41,8 @@ class VKBook(metaclass=VKBookMeta):
             mns = book['masternodes']
             dels = book['delegates']
             wits = book['witnesses']
+            scheds = book['schedulers'] if 'schedulers' in book else []
+            notifs = book['notifiers'] if 'notifiers' in book else []
         else:
             log.info("No constitution file detected. Using TESTNET VKs")
             from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES, TESTNET_WITNESSES, set_testnet_nodes
@@ -48,6 +50,7 @@ class VKBook(metaclass=VKBookMeta):
             mns = TESTNET_MASTERNODES
             dels = TESTNET_DELEGATES
             wits = TESTNET_WITNESSES
+            scheds, notifs = [], []
 
         for node in mns:
             cls.book['masternodes'].append(node['vk'])
@@ -55,6 +58,10 @@ class VKBook(metaclass=VKBookMeta):
             cls.book['witnesses'].append(node['vk'])
         for node in dels:
             cls.book['delegates'].append(node['vk'])
+        for node in scheds:
+            cls.book['schedulers'].append(node['vk'])
+        for node in notifs:
+            cls.book['notifiers'].append(node['vk'])
 
         # cls._build_mn_witness_maps()
 
@@ -72,19 +79,32 @@ class VKBook(metaclass=VKBookMeta):
 
     @classmethod
     def get_all(cls):
-        return cls.get_masternodes() + cls.get_delegates() + cls.get_witnesses()
+        return cls.get_masternodes() + cls.get_delegates() + cls.get_witnesses() + cls.get_schedulers() \
+               + cls.get_notifiers()
 
     @classmethod
-    def get_masternodes(cls):
+    def get_masternodes(cls) -> list:
         return cls.book['masternodes']
 
     @classmethod
-    def get_witnesses(cls):
+    def get_witnesses(cls) -> list:
         return cls.book['witnesses']
 
     @classmethod
-    def get_delegates(cls):
+    def get_delegates(cls) -> list:
         return cls.book['delegates']
+
+    @classmethod
+    def get_schedulers(cls) -> list:
+        return cls.book['schedulers']
+
+    @classmethod
+    def get_notifiers(cls) -> list:
+        return cls.book['notifiers']
+
+    @classmethod
+    def get_state_syncs(cls) -> list:
+        return cls.get_schedulers() + cls.get_notifiers() + cls.get_delegates() + cls.get_masternodes()
 
     @classmethod
     def is_node_type(cls, node_type, vk):

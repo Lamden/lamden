@@ -27,6 +27,8 @@ class TestCatchupManager(TestCase):
     @classmethod
     def setUpClass(cls):
         MasterOps.init_master(key=SK)
+        from cilantro_ee.storage.vkbook import VKBook
+        VKBook.setup()
 
     def setUp(self):
         MDB.reset_db()

@@ -332,7 +332,7 @@ class CatchupManager:
 
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
-        valid_node = VKBook.is_node_type('masternode', vk) or VKBook.is_node_type('delegate', vk)
+        valid_node = vk in VKBook.get_state_syncs()
         if valid_node is True:
             given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_bhash)
 
@@ -346,8 +346,7 @@ class CatchupManager:
                 idx_delta = MasterOps.get_blk_idx(n_blks = (latest_blk_num - given_blk_num))
                 return idx_delta
 
-        assert valid_node is True, "invalid vk given key is not of master or delegate dumping vk {}".format(vk)
-        pass
+        assert valid_node, "invalid vk given key is not of master/delegate/statestync dumping vk {}".format(vk)
 
     # removed flooding, but it could be too sequential?
     # use futures to control rate of requests?
