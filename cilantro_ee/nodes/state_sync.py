@@ -23,8 +23,11 @@ from cilantro_ee.messages.block_data.state_update import *
 import asyncio, zmq
 
 
-IPC_IP = 'state-sync-ipc-sock'
-IPC_PORT = 6174
+IPC_ROUTER_IP = 'state-sync-router-ipc-sock'
+IPC_ROUTER_PORT = 6174
+
+IPC_PUB_IP = 'state-sync-pub-ipc-sock'
+IPC_PUB_PORT = 6175
 
 
 class StateSyncNode(NodeBase):
@@ -32,6 +35,7 @@ class StateSyncNode(NodeBase):
         self.log.info("Starting StateSync processes")
         self.sync = LProcess(target=StateSync, name='StateSync',
                              kwargs={'signing_key': self.signing_key, 'ip': self.ip})
+        self.sync.start()
 
 
 class StateSync(Worker):
@@ -41,7 +45,7 @@ class StateSync(Worker):
         self.ip = ip
 
         # these guys get set in build_task_list
-        self.router, self.sub, self.pub, self.ipc_router = None, None, None, None
+        self.router, self.sub, self.pub, self.ipc_router, self.ipc_pub = None, None, None, None, None
         self.catchup = None
 
         self.run()
@@ -62,11 +66,13 @@ class StateSync(Worker):
         self.router.bind(port=SS_ROUTER_PORT, protocol='tcp', ip=self.ip)
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
-        # Create ROUTER socket for bidirectional communication with SBBs over IPC
         self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
         self.ipc_router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
-        self.ipc_router.bind(port=IPC_PORT, protocol='ipc', ip=IPC_IP)
+        self.ipc_router.bind(port=IPC_ROUTER_PORT, protocol='ipc', ip=IPC_ROUTER_IP)
         self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_msg))
+
+        self.ipc_pub = self.manager.create_socket(socket_type=zmq.PUB, name="StateSync-IPC-Pub", secure=False)
+        self.ipc_pub.bind(port=IPC_PUB_PORT, protocol="ipc", ip=IPC_PUB_IP)
 
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
@@ -102,7 +108,7 @@ class StateSync(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MN_PUB_PORT)
-            self.router.connect(vk=vk, port=MN_ROUTER_PORT)
+            self.dealer.connect(vk=vk, port=MN_ROUTER_PORT)
 
         # now start the catchup
         await self.catchup_db_state()
@@ -126,12 +132,12 @@ class StateSync(Worker):
         msg = envelope.message
 
         if isinstance(msg, BlockIndexReply):
-            self.log.debug("Got BlockIndexReply {}".format(msg))
+            self.log.important("Got BlockIndexReply {}".format(msg))
             # TODO handle this (pass to catchup manager)
             # self.recv_block_idx_reply(sender, msg)
             pass
         elif isinstance(msg, BlockDataReply):
-            self.log.debug("Got BlockDataReply {}".format(msg))
+            self.log.important("Got BlockDataReply {}".format(msg))
             # TODO handle this (pass to catchup manager)
             # self.recv_block_data_reply(msg)
             pass
@@ -145,11 +151,16 @@ class StateSync(Worker):
 
         # TODO logic here
 
-    def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
-        """ Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process.
+    def _send_msg_over_ipc_pub(self, message: MessageBase):
+        self.log.debug("Publishing message {} over IPC".format(message))
+        message_type = MessageBase.registry[type(message)]
+        self.ipc_pub.send_multipart([STATESYNC_FILTER.encode(), int_to_bytes(message_type), message.serialize()])
+
+    def _send_msg_over_ipc_router(self, task_idx: int, message: MessageBase):
+        """ Convenience method to send a MessageBase instance over IPC router socket to a particular dealer.
          Includes a frame to identify the type of message """
-        self.log.spam("Sending msg to sb_index {} with payload {}".format(sb_index, message))
+        self.log.spam("Sending msg to task_idx {} with payload {}".format(task_idx, message))
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
-        id_frame = str(sb_index).encode()
+        id_frame = str(task_idx).encode()
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])

@@ -1,6 +1,7 @@
 from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.nodes.witness.witness import Witness
+from cilantro_ee.nodes.scheduler.scheduler import Scheduler
 from seneca.engine.interpreter.executor import Executor
 from cilantro_ee.storage.contracts import mint_wallets
 from cilantro_ee.storage.ledis import SafeLedis
@@ -79,3 +80,11 @@ class NodeFactory:
             NodeFactory._reset_db()
         NodeFactory._seed_if_necessary()
         d = Delegate(ip=CilantroConf.HOST_IP, name=name, signing_key=signing_key)
+
+    @staticmethod
+    def run_scheduler(signing_key, name='Scheduler'):
+        _wait_for_ledis()
+        if CilantroConf.RESET_DB:
+            NodeFactory._reset_db()
+        NodeFactory._seed_if_necessary()
+        s = Scheduler(ip=CilantroConf.HOST_IP, name=name, signing_key=signing_key)

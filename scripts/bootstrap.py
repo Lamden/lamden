@@ -25,9 +25,12 @@ def boot(delay):
     elif CilantroConf.NODE_TYPE == 'masternode':
         NodeFactory.run_masternode(CilantroConf.SK)
 
-    elif CilantroConf.NODE_TYPE in ('scheduler', 'notifier'):
+    elif CilantroConf.NODE_TYPE == 'scheduler':
+        NodeFactory.run_scheduler(CilantroConf.SK)
+
+    elif CilantroConf.NODE_TYPE == 'notifier':
         while True:
-            print("I am a scheduler or notifier but i has no logic yet")
+            print("I am a notifier but i has no logic yet :(")
             time.sleep(1)
         pass
 

@@ -70,7 +70,8 @@ help:
 	@echo "                         environment"
 	@echo " -- make testcurr        End-to-End black box, programatically test the currency"
 	@echo "                         contract"
-	@echo " -- make testsc          End-to-End black box, test smart contract submissions"
+	@echo " -- make testsc          End-to-End black box, programatically test submitting a smart contract
+									and transacting upon it"
 	@echo ""
 
 
@@ -119,7 +120,8 @@ show:
 	@echo "============="
 	@echo "|| OUTPUTS ||"
 	@echo "============="
-	@terraform output
+	@echo ""
+	@terraform output | sed -nE "s/-ssh//p" | sed -nE "s/ = (.*)/,\1,/p" | tr ',' '\n'
 	@echo ""
 
 testdump:
