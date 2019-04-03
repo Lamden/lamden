@@ -130,7 +130,7 @@ class CatchupManager:
     async def _check_timeout(self):
         async def _timeout():
             elapsed = 0
-            self.log.important3("-----CHK-----")
+            # self.log.important3("-----CHK-----")
             while elapsed < IDX_REPLY_TIMEOUT:
                 elapsed += TIMEOUT_CHECK_INTERVAL
                 await asyncio.sleep(TIMEOUT_CHECK_INTERVAL)
@@ -158,7 +158,7 @@ class CatchupManager:
         self.log.info("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))
         # self.log.important3("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))  # TODO remove
         req = BlockIndexRequest.create(block_hash=self.curr_hash)
-        self.pub.send_msg(req, header=CATCHUP_MN_DN_FILTER.encode())
+        self.pub.send_msg(req, header=BLOCK_IDX_REQ_FILTER.encode())
 
         # self.log.important2("SEND BIR")
         self.dump_debug_info(lnum = 155)
@@ -272,8 +272,8 @@ class CatchupManager:
 
         delta_idx = self.get_idx_list(vk = requester_vk, latest_blk_num = self.curr_num,
                                       sender_bhash = request.block_hash)
-        self.log.important2("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num,
-                                                                              request.block_hash))
+        self.log.debugv("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num,
+                                                                          request.block_hash))
 
         if delta_idx and len(delta_idx) > 1:
             assert delta_idx[0].get('blockNum') > delta_idx[-1].get('blockNum'), "ensure reply are in ascending order" \

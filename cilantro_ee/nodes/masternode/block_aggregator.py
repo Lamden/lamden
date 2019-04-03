@@ -68,6 +68,10 @@ class BlockAggregator(Worker):
             name="BA-Sub",
             secure=True,
         )
+        self.sub.setsockopt(zmq.SUBSCRIBE, BLOCK_IDX_REQ_FILTER.encode())
+        self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
+        self.sub.setsockopt(zmq.SUBSCRIBE, NEW_BLK_NOTIF_FILTER.encode())
+
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
             name="BA-Pub",
@@ -100,14 +104,12 @@ class BlockAggregator(Worker):
         await self._wait_until_ready()
 
         # Listen to masters for new block notifs and state update requests from masters/delegates
-        self.sub.setsockopt(zmq.SUBSCRIBE, CATCHUP_MN_DN_FILTER.encode())
         for vk in VKBook.get_masternodes():
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MN_PUB_PORT)
                 self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
         # Listen to delegates for sub block contenders and state update requests
-        self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_delegates() :
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
             # I dont think we to connect to delegates to router here as delegates are already connecting
@@ -243,7 +245,7 @@ class BlockAggregator(Worker):
         new_block_notif = NewBlockNotification.create_from_block_data(block_data)
         # sleep a bit so slower nodes don't have to constantly use catchup mgr 
         time.sleep(0.1)
-        self.pub.send_msg(msg=new_block_notif, header=DEFAULT_FILTER.encode())
+        self.pub.send_msg(msg=new_block_notif, header=NEW_BLK_NOTIF_FILTER.encode())
         self.log.info('Published new block notif with hash "{}" and prev hash {}'
                       .format(block_data.block_hash, block_data.prev_block_hash))
 

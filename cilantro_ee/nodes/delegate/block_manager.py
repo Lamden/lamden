@@ -27,7 +27,7 @@ from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro_ee.constants.system_config import *
-from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER
+from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILTER
 from cilantro_ee.constants.ports import *
 
 from cilantro_ee.messages.block_data.block_data import BlockData
@@ -161,6 +161,8 @@ class BlockManager(Worker):
             name="BM-Sub-{}".format(self.verifying_key[-4:]),
             secure=True,
         )
+        self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
+        self.sub.setsockopt(zmq.SUBSCRIBE, NEW_BLK_NOTIF_FILTER.encode())
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
         self.tasks.append(self._connect_and_process())
@@ -170,7 +172,6 @@ class BlockManager(Worker):
         await self._wait_until_ready()
 
         # Listen to Masternodes over sub and connect router for catchup communication
-        self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MN_PUB_PORT)
             self.router.connect(vk=vk, port=MN_ROUTER_PORT)
