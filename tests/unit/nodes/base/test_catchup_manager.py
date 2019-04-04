@@ -601,6 +601,9 @@ class TestCatchupManager(TestCase):
         cm.run_catchup()
         self.assertFalse(cm.is_catchup_done())
 
+        # TODO should i send this guy an empty block notif so he knows he is caught up at 0??? Bug seems to repro
+        # the same anyway
+
         blocks = BlockDataBuilder.create_conseq_blocks(3)
 
         new_block_notifs = []

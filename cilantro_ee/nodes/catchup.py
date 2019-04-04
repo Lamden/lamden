@@ -235,6 +235,7 @@ class CatchupManager:
             return
 
         self.rcv_block_dict[rcv_blk_num] = reply
+        # WHY IS AWAITED BLK NUM NONE HERE ???
         if rcv_blk_num > self.awaited_blknum:
             self.log.debug("Got block num {}, still awaiting block num {}".format(rcv_blk_num, self.awaited_blknum))
             return
