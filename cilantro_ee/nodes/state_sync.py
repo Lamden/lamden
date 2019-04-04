@@ -19,8 +19,10 @@ from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.messages.envelope.envelope import Envelope
 from cilantro_ee.messages.block_data.block_metadata import NewBlockNotification, SkipBlockNotification, BlockMetaData
 from cilantro_ee.messages.block_data.state_update import *
+from cilantro_ee.messages.signals.state_sync import UpdatedStateSignal
 
-import asyncio, zmq
+import asyncio, zmq, math
+from collections import defaultdict
 
 
 IPC_ROUTER_IP = 'state-sync-router-ipc-sock'
@@ -46,7 +48,11 @@ class StateSync(Worker):
 
         # these guys get set in build_task_list
         self.router, self.sub, self.pub, self.ipc_router, self.ipc_pub = None, None, None, None, None
-        self.catchup = None
+        self.cm = None
+
+        self.is_caught_up = False
+        self.new_blk_notifs = defaultdict(list)  # mapping of block hash to new_block_notif messages
+        self.mn_quorum = math.ceil(len(VKBook.get_masternodes()) * (2/3))
 
         self.run()
 
@@ -86,43 +92,65 @@ class StateSync(Worker):
             name="StateSync-Sub-{}".format(self.verifying_key[-4:]),
             secure=True,
         )
+        self.sub.setsockopt(zmq.SUBSCRIBE, NEW_BLK_NOTIF_FILTER.encode())
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
         self.tasks.append(self._connect_and_process())
 
-        self.catchup = CatchupManager(verifying_key=self.verifying_key, pub_socket=self.pub, router_socket=self.router,
-                                      store_full_blocks=False)
+        self.cm = CatchupManager(verifying_key=self.verifying_key, pub_socket=self.pub, router_socket=self.router,
+                                 store_full_blocks=False)
 
     async def catchup_db_state(self):
         await asyncio.sleep(6)  # so pub/sub connections can complete
-        assert self.catchup, "Expected catchup_mgr initialized at this point, learn to fking code pls"
+        assert self.cm, "Expected catchup_mgr initialized at this point, learn to fking code pls"
 
         self.log.info("Catching up...")
-        self.catchup.run_catchup()
+        self.cm.run_catchup()
+
+    def check_catchup(self, caught_up: bool):
+        if not caught_up:
+            self.log.important("Setting caught up to false")
+            self.is_caught_up = caught_up
+
+        elif not self.is_caught_up and caught_up:
+            self.log.important("Setting caught up to true, and running caughtup behavior")
+            self.is_caught_up = True
+            self.new_blk_notifs.clear()
+            self.run_caughtup_behavior()
+
+    def run_caughtup_behavior(self):
+        self._send_msg_over_ipc_pub(UpdatedStateSignal.create())
 
     async def _connect_and_process(self):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
 
-        # Listen to Masternodes over sub and connect router for catchup communication
-        self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
+        # Listen to Masternodes over sub and connect router for cm communication
         for vk in VKBook.get_masternodes():
             self.sub.connect(vk=vk, port=MN_PUB_PORT)
             self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
-        # now start the catchup
+        # now start the cm
         await self.catchup_db_state()
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
-        msg_hash = envelope.message_hash
+        sender = envelope.sender
+
+        # TODO -- consensus on NewBlockNotifications before we feed it to the cm manager
 
         if isinstance(msg, NewBlockNotification):
-            self.log.info("Got NewBlockNotification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
-            # TODO send this to catchup manager
+            self.log.info("Got NewBlockNotification from sender {} with hash {}".format(sender, msg.block_hash))
+            self._handle_new_blk_notif(msg)
         else:
             self.log.warning("Got unexpected message type {}".format(type(msg)))
+
+    def _handle_new_blk_notif(self, nbc: NewBlockNotification):
+        self.new_blk_notifs[nbc.block_hash].append(nbc)
+        if len(self.new_blk_notifs[nbc.block_hash]) >= self.mn_quorum:
+            del self.new_blk_notifs[nbc.block_hash]
+            self.check_catchup(self.cm.recv_new_blk_notif(nbc))
 
     def handle_router_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -132,15 +160,13 @@ class StateSync(Worker):
         msg = envelope.message
 
         if isinstance(msg, BlockIndexReply):
-            self.log.important("Got BlockIndexReply {}".format(msg))
-            # TODO handle this (pass to catchup manager)
-            # self.recv_block_idx_reply(sender, msg)
-            pass
+            self.log.debugv("Got BlockIndexReply {}".format(msg))
+            self.check_catchup(self.cm.recv_block_idx_reply(sender, msg))
+
         elif isinstance(msg, BlockDataReply):
-            self.log.important("Got BlockDataReply {}".format(msg))
-            # TODO handle this (pass to catchup manager)
-            # self.recv_block_data_reply(msg)
-            pass
+            self.log.debugv("Got BlockDataReply {}".format(msg))
+            self.check_catchup(self.cm.recv_block_data_reply(msg))
+
         else:
             raise Exception("Got message type {} from ROUTER socket that it does not know how to handle"
                             .format(type(msg)))

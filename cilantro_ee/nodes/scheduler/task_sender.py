@@ -12,7 +12,7 @@ class TaskSender(Worker):
 
     def __init__(self, ip, *args, task_idx=0, **kwargs):
         super().__init__(*args, **kwargs)
-        self.log = get_logger("StateSync")
+        self.log = get_logger("TaskSender")
         self.task_idx = task_idx
         self.dealer, self.sub = None, None
         self.run()
