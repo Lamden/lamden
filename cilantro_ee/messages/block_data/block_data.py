@@ -160,7 +160,7 @@ class BlockDataBuilder:
 
         block_hash = BlockData.compute_block_hash([sb1.merkle_root, sb2.merkle_root], prev_hash)
         block_num = num
-        block_owners = [cls.MN_VK]
+        block_owners = [m['vk'] for m in TESTNET_MASTERNODES]  #[cls.MN_VK]
 
         block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_hash, block_num=block_num,
                                  sub_blocks=sbs, block_owners=block_owners)
