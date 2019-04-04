@@ -27,8 +27,8 @@ class TestCatchupManager(TestCase):
     @classmethod
     def setUpClass(cls):
         MasterOps.init_master(key=SK)
-        from cilantro_ee.storage.vkbook import VKBook
-        VKBook.setup()
+        # from cilantro_ee.storage.vkbook import VKBook
+        # VKBook.setup()
 
     def setUp(self):
         MDB.reset_db()
@@ -595,6 +595,31 @@ class TestCatchupManager(TestCase):
             cm.recv_block_data_reply(bd_reply)
 
         self.assertTrue(cm.is_catchup_done())
+
+    def test_catchup_from_new_block_notifs(self):
+        cm = self._build_manager()
+        cm.run_catchup()
+        self.assertFalse(cm.is_catchup_done())
+
+        blocks = BlockDataBuilder.create_conseq_blocks(3)
+
+        new_block_notifs = []
+        reply_datas = []
+        for block in blocks:
+            reply_datas.append(BlockDataReply.create_from_block(block))
+            new_block_notifs.append(NewBlockNotification.create_from_block_data(block))
+
+        # Send the BlockIndexReplies (1 extra)
+
+        assert len(new_block_notifs) == len(reply_datas), "You done goofed this test up davis"
+
+        # Assert that after sending each NBC, we are not caught up, then after receiving the block data we are
+        for i in range(len(new_block_notifs)):
+            cm.recv_new_blk_notif(new_block_notifs[i])
+            self.assertFalse(cm.is_catchup_done())
+
+            cm.recv_block_data_reply(reply_datas[i])
+            self.assertTrue(cm.is_catchup_done())
 
 
 if __name__ == "__main__":
