@@ -609,7 +609,8 @@ class TestCatchupManager(TestCase):
         new_block_notifs = []
         reply_datas = []
         for block in blocks:
-            reply_datas.append(BlockDataReply.create_from_block(block))
+            bd_copy = BlockData.from_bytes(block.serialize())
+            reply_datas.append(BlockDataReply.create_from_block(bd_copy))
             new_block_notifs.append(NewBlockNotification.create_from_block_data(block))
 
         # Send the BlockIndexReplies (1 extra)

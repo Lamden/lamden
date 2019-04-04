@@ -57,7 +57,7 @@ class CatchupManager:
 
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
         self.target_blk_num = self.curr_num
-        self.awaited_blknum = None
+        self.awaited_blknum = self.curr_num
 
     def update_state(self):
         """
@@ -196,12 +196,8 @@ class CatchupManager:
             self.block_delta_list.extend(update_list)
             # self.dump_debug_info()
             if self.awaited_blknum == self.curr_num:
-                self.awaited_blknum += 1
                 self.process_recv_idx()
 
-            if not self.awaited_blknum:
-                self.awaited_blknum = self.curr_num
-                self.process_recv_idx()
 
         self.node_idx_reply_set.add(sender_vk)
         self.log.debugv("new target block num {}\ntarget block num {}\ntemp list {}"
@@ -290,7 +286,7 @@ class CatchupManager:
         if self.is_caught_up:
             self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
             self.target_blk_num = self.curr_num
-            self.awaited_blknum = None
+            self.awaited_blknum = self.curr_num
         if (nw_blk_num <= self.curr_num) or (nw_blk_num <= self.target_blk_num):
             return
         if nw_blk_num > (self.target_blk_num + 1):
@@ -302,8 +298,12 @@ class CatchupManager:
             # elem["blockHash"] = update.block_hash
             # elem["blockOwners"] = update.block_owners
             # self.block_delta_list.append(elem)
+            for vk in update.block_owners:
+                self.node_idx_reply_set.add(vk)
             self.is_caught_up = False
             self.target_blk_num = nw_blk_num
+            if self.awaited_blknum == self.curr_num:
+                self.awaited_blknum += 1
             for vk in update.block_owners:
                 self._send_block_data_req(mn_vk = vk, req_blk_num = nw_blk_num)
 
