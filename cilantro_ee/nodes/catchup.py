@@ -185,7 +185,7 @@ class CatchupManager:
                 .format(tmp_list)
         # Todo @tejas we need to think if we need reverse sort here
         tmp_list.reverse()
-        self.log.important2("tmp list -> {}".format(tmp_list))
+        self.log.debugv("tmp list -> {}".format(tmp_list))
         self.new_target_blk_num = tmp_list[-1].get('blockNum')
         new_blks = self.new_target_blk_num - self.target_blk_num
 
@@ -315,7 +315,7 @@ class CatchupManager:
     # MASTER ONLY CALL
     def _send_block_idx_reply(self, reply_to_vk = None, catchup_list=None):
         # this func doesnt care abt catchup_state we respond irrespective
-        self.log.important2("catchup list -> {}".format(catchup_list))
+        self.log.debug("catchup list -> {}".format(catchup_list))
         reply = BlockIndexReply.create(block_info = catchup_list)
         self.log.debugv("Sending block index reply to vk {}, catchup {}".format(reply_to_vk, catchup_list))
         self.router.send_msg(reply, header=reply_to_vk.encode())

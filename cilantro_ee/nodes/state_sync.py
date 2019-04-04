@@ -150,6 +150,7 @@ class StateSync(Worker):
         self.new_blk_notifs[nbc.block_hash].append(nbc)
         if len(self.new_blk_notifs[nbc.block_hash]) >= self.mn_quorum:
             del self.new_blk_notifs[nbc.block_hash]
+            self.log.important3("Sending NBC {} to catchup manager".format(nbc))  # TODO delete
             self.check_catchup(self.cm.recv_new_blk_notif(nbc))
 
     def handle_router_msg(self, frames):
