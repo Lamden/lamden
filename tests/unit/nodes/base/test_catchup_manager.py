@@ -2,19 +2,17 @@ from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('4-4-4.json')
 
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.storage.state import StateDriver
-from cilantro_ee.storage.ledis import SafeLedis
-from cilantro_ee.nodes.masternode.mn_api import StorageDriver
+from cilantro_ee.storage.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.storage.mongo import MDB
 
 from cilantro_ee.messages.block_data.block_data import *
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.block_metadata import *
-import copy
 import asyncio, time
 from cilantro_ee.protocol import wallet
 

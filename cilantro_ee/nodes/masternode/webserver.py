@@ -3,9 +3,8 @@ from cilantro_ee.logger.base import get_logger
 from sanic import Sanic
 from sanic.response import json, text
 from cilantro_ee.storage.ledis import SafeLedis
-from sanic.exceptions import ServerError
 from sanic_limiter import Limiter, get_remote_address
-from sanic_cors import CORS, cross_origin
+from sanic_cors import CORS
 
 from cilantro_ee.messages.transaction.contract import ContractTransaction
 from cilantro_ee.messages.transaction.publish import PublishTransaction
@@ -17,16 +16,13 @@ from cilantro_ee.constants.ports import WEB_SERVER_PORT, SSL_WEB_SERVER_PORT
 from cilantro_ee.constants.masternode import NUM_WORKERS
 from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.utils.hasher import Hasher
-from ujson import loads as json_loads
-import marshal
-from base64 import b64encode, b64decode
 from seneca.engine.interpreter.executor import Executor
 from seneca.constants.config import DELIMITER
 
 from multiprocessing import Queue
 import os
 
-from cilantro_ee.nodes.masternode.mn_api import StorageDriver
+from cilantro_ee.storage.mn_api import StorageDriver
 from cilantro_ee.protocol.webserver.validation import *
 
 import json as _json

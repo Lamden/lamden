@@ -1,15 +1,14 @@
 from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('6-6-6.json')
 import unittest
-import vmnet, cilantro_ee
-import time
+import cilantro_ee
 from configparser import SafeConfigParser
 from os.path import dirname, join
 from vmnet.testcase import BaseNetworkTestCase
 from cilantro_ee.utils.test.mp_test_case import vmnet_test
 from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 from cilantro_ee.storage.mongo import MDB
-from cilantro_ee.nodes.masternode.mn_api import StorageDriver
+from cilantro_ee.storage.mn_api import StorageDriver
 
 cilantro_ee_path = dirname(dirname(cilantro_ee.__path__[0]))
 cfg = SafeConfigParser()
@@ -28,7 +27,7 @@ def start_mn(verifing_key):
     import os, zmq, time
     from cilantro_ee.logger.base import get_logger, overwrite_logger_level
     from cilantro_ee.nodes.masternode.master_store import MasterOps
-    from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
+    from cilantro_ee.messages.block_data.sub_block import SubBlockBuilder
     from cilantro_ee.storage.state import StateDriver
 
     overwrite_logger_level(12)
@@ -99,7 +98,7 @@ def start_mn(verifing_key):
 
 
 def start_mgmt():
-    import os, asyncio, zmq, time, zmq.asyncio
+    import os, asyncio, time, zmq.asyncio
     from cilantro_ee.logger.base import get_logger
 
     time.sleep(5)
