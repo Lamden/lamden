@@ -23,7 +23,7 @@ all tests are run.
 
 log = get_logger("TestRunner")
 delim = '-' * 80
-os.environ['__INHERIT_CONSTITUTION__'] = 'True'
+os.environ['__INHERIT_CONSTITUTION__'] = 'False'
 
 
 def skip_tests(test_suite: unittest.TestSuite, test_names: list):
