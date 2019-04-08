@@ -5,7 +5,7 @@ from cilantro_ee.protocol import wallet
 from cilantro_ee.utils import is_valid_hex
 from cilantro_ee.protocol.pow import SHA3POW
 from decimal import *
-import random
+import random, secrets
 from typing import Union
 
 import capnp
@@ -37,6 +37,9 @@ class ContractTransaction(TransactionBase):
     @classmethod
     def create(cls, sender_sk: str, stamps_supplied: int, contract_name: str, func_name: str, nonce: str, kwargs: dict):
         # assert stamps_supplied > 0, "Must supply positive stamps amount"
+
+        if not nonce:
+            nonce = wallet.get_vk(sender_sk) + ":" + secrets.token_bytes(32).hex()
 
         struct = transaction_capnp.ContractTransaction.new_message()
         payload = transaction_capnp.ContractPayload.new_message()
