@@ -2,7 +2,7 @@ from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.nodes.witness.witness import Witness
 from cilantro_ee.nodes.scheduler.scheduler import Scheduler
-from seneca.engine.interpreter.executor import Executor
+from seneca.execution.executor import Executor
 from cilantro_ee.storage.contracts import mint_wallets
 from cilantro_ee.storage.ledis import SafeLedis
 from cilantro_ee.nodes.masternode.master_store import MasterOps
