@@ -34,9 +34,9 @@ from cilantro_ee.messages.transaction.data import TransactionData, TransactionDa
 from cilantro_ee.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
 from cilantro_ee.messages.signals.node import Ready
 
-from seneca.engine.client import NUM_CACHES
-from seneca.engine.client import SenecaClient
-from seneca.engine.conflict_resolution import CRContext
+from seneca.client import NUM_CACHES
+from seneca.client import SenecaClient
+from seneca.parallelism.conflict_resolution import CRContext
 from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 from cilantro_ee.protocol.utils.network_topology import NetworkTopology

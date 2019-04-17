@@ -16,8 +16,8 @@ from cilantro_ee.constants.ports import WEB_SERVER_PORT, SSL_WEB_SERVER_PORT
 from cilantro_ee.constants.masternode import NUM_WORKERS
 from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.utils.hasher import Hasher
-from seneca.engine.interpreter.executor import Executor
-from seneca.constants.config import DELIMITER
+from seneca.execution.executor import Executor
+from seneca.config import DELIMITER
 
 from multiprocessing import Queue
 import os
