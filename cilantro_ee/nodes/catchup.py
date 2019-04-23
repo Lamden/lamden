@@ -1,7 +1,7 @@
 import time
 import asyncio
 import math
-from seneca.engine.interpreter.executor import Executor
+from seneca.execution.executor import Executor
 from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import SHOULD_MINT_WALLET

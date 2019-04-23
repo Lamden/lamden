@@ -5,7 +5,6 @@ import json
 from simplecrypt import encrypt, decrypt
 import getpass
 import hashlib
-from seneca.engine.client import SenecaClient
 from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
 from cilantro_ee.constants.vmnet import generate_constitution
