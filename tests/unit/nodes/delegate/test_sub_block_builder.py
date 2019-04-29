@@ -6,7 +6,7 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.utils.hasher import Hasher
 #
-from seneca.engine.conflict_resolution import CRContext
+from seneca.parallelism.conflict_resolution import CRContext
 #
 from cilantro_ee.nodes.delegate.block_manager import IPC_IP, IPC_PORT
 from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder, SubBlockManager

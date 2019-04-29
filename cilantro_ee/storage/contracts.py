@@ -1,5 +1,5 @@
 from cilantro_ee.logger import get_logger
-from seneca.engine.interpreter.executor import Executor
+from seneca.execution.executor import Executor
 from cilantro_ee.constants.system_config import *
 import datetime, time
 import os

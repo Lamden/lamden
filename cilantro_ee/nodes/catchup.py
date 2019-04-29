@@ -1,7 +1,7 @@
 import time
 import asyncio
 import math
-from seneca.engine.interpreter.executor import Executor
+from seneca.execution.executor import Executor
 from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import SHOULD_MINT_WALLET
@@ -10,7 +10,7 @@ from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.storage.ledis import SafeLedis
 from cilantro_ee.storage.contracts import mint_wallets
-from cilantro_ee.nodes.masternode.mn_api import StorageDriver
+from cilantro_ee.storage.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.messages.block_data.block_data import BlockData
 from cilantro_ee.messages.block_data.block_metadata import BlockMetaData

@@ -1,15 +1,11 @@
 import unittest
-import json
 from unittest import TestCase
-from unittest import mock
-from unittest.mock import MagicMock, patch
-from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
+from unittest.mock import patch
 #from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 from cilantro_ee.storage.mongo import MDB
-from cilantro_ee.nodes.masternode.mn_api import StorageDriver
+from cilantro_ee.storage.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 import cilantro_ee.nodes.masternode.webserver as endpt
-from cilantro_ee.utils.hasher import Hasher
 
 from cilantro_ee.messages.block_data.block_data import *
 
@@ -65,14 +61,14 @@ class TestStorageDriver(TestCase):
         self.assertEqual(last_blk_hash, fifth_block.get('blockHash'))
 
 
-    @patch('cilantro_ee.nodes.masternode.webserver.get')
-    def test_webserver_api(self):
-        blocks = BlockDataBuilder.create_conseq_blocks(5)
-        for block in blocks:
-            StorageDriver.store_block(block.sub_blocks)
-
-        json_blk = endpt._respond_to_request(blocks[2])
-        print(json_blk)
+    # @patch('cilantro_ee.nodes.masternode.webserver.get')
+    # def test_webserver_api(self):
+    #     blocks = BlockDataBuilder.create_conseq_blocks(5)
+    #     for block in blocks:
+    #         StorageDriver.store_block(block.sub_blocks)
+    #
+    #     json_blk = endpt._respond_to_request(blocks[2])
+    #     print(json_blk)
 
 
 

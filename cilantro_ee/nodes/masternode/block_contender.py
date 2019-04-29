@@ -1,14 +1,10 @@
 from cilantro_ee.storage.state import StateDriver
-from cilantro_ee.nodes.masternode.mn_api import StorageDriver
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.constants.system_config import *
 
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro_ee.messages.transaction.data import TransactionData
-from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
 from cilantro_ee.messages.block_data.sub_block import SubBlock
-from cilantro_ee.messages.block_data.block_data import BlockData
 from cilantro_ee.messages.block_data.state_update import FailedBlockNotification
 
 from collections import defaultdict
