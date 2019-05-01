@@ -34,9 +34,8 @@ from cilantro_ee.messages.transaction.data import TransactionData, TransactionDa
 from cilantro_ee.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
 from cilantro_ee.messages.signals.node import Ready
 
-from seneca.client import NUM_CACHES
-from seneca.client import SenecaClient
-from seneca.parallelism.conflict_resolution import CRContext
+from contracting.config import NUM_CACHES
+from contracting.db.cr.client import SubBlockClient
 from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 from cilantro_ee.protocol.utils.network_topology import NetworkTopology
@@ -305,21 +304,24 @@ class SubBlockBuilder(Worker):
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(cr_context.input_hash))
         self._send_msg_over_ipc(sbc)
 
-    def _create_sbc_from_batch(self, cr_context: CRContext):
+    def _create_sbc_from_batch(self, data: List[tuple]):
         """
         Creates a Sub Block Contender from a TransactionBatch
         """
+
+        # TODO somehow get the input hash from CR!
+
         self.log.info("Building sub block contender for input hash {}".format(cr_context.input_hash))
 
-        sb_data = cr_context.get_subblock_rep()
+        sb_data = data
         # self.log.important3("GOT SB DATA: {}".format(sb_data))
 
-        txs_data = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[2]) for d in sb_data]
+        txs_data = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[3]) for d in sb_data]
 
         # Purposely produce a bad SBC if BAD_ACTOR is set, and the conditions are right
         if self.bad_actor:
-            if self.good_sb_count >= self.fail_interval and cr_context.sbb_idx in self.fail_idxs:
-                self.log.critical("Creating an evil sub-block for idx {}!".format(cr_context.sbb_idx))
+            if self.good_sb_count >= self.fail_interval and self.sub_block_index in self.fail_idxs:
+                self.log.critical("Creating an evil sub-block for idx {}!".format(self.sub_block_index))
                 txs_data = TransactionDataBuilder.create_random_batch(len(txs_data))
                 self.good_sb_count = 0
             else:
