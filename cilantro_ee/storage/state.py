@@ -1,10 +1,8 @@
 from cilantro_ee.logger.base import get_logger
-from seneca.execution.executor import Executor
 from cilantro_ee.messages.transaction.contract import ContractTransaction
-from cilantro_ee.messages.transaction.publish import PublishTransaction
 from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
 from cilantro_ee.utils.utils import is_valid_hex
-from cilantro_ee.storage.ledis import SafeDriver
+from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.constants.system_config import *
 from typing import List
 
@@ -19,7 +17,6 @@ class StateDriver:
     @classmethod
     def update_with_block(cls, block: BlockData):
         # Update state by running Redis outputs from the block's transactions
-        publish_txs = []
         for tx in block.transactions:
             assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
             cmds = tx.state.split(';')

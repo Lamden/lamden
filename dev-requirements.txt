@@ -4,4 +4,4 @@ numpy
 scipy
 vprof
 paramiko
-walrus
+redis==3.2.0
