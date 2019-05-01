@@ -36,6 +36,7 @@ from cilantro_ee.messages.signals.node import Ready
 
 from contracting.config import NUM_CACHES
 from contracting.db.cr.client import SubBlockClient
+from contracting.db.cr.callback_data import ExecutionData, SBData
 from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 from cilantro_ee.protocol.utils.network_topology import NetworkTopology
@@ -90,9 +91,8 @@ class SubBlockBuilder(Worker):
         self.sbb_index = sbb_index
         self.startup = True
         # self.pending_block_index = -1
-        self.client = SenecaClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop,
-                                   concurrency=True,
-                                   metering=CilantroConf.STAMPS_ENABLED)
+        self.client = SubBlockClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
+
         # raghu todo may need multiple clients here. NUM_SB_PER_BLOCK needs to be same for all blocks
         # self.clients = []
         # for i in range(NUM_SB_PER_BLOCK_PER_BUILDER):
@@ -288,47 +288,47 @@ class SubBlockBuilder(Worker):
         self.log.debug("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
         self.sb_managers[index].pending_txs.append(input_hash, envelope.message)
 
-    def _create_empty_sbc(self, cr_context: CRContext):
+    def _create_empty_sbc(self, sb_data: SBData):
         """
         Creates an Empty Sub Block Contender
         """
-        self.log.info("Building empty sub block contender for input hash {}".format(cr_context.input_hash))
-        signature = wallet.sign(self.signing_key, bytes.fromhex(cr_context.input_hash))
+        self.log.info("Building empty sub block contender for input hash {}".format(sb_data.input_hash))
+        signature = wallet.sign(self.signing_key, bytes.fromhex(sb_data.input_hash))
         merkle_sig = MerkleSignature.create(sig_hex=signature,
                                             timestamp=str(int(time.time())),
                                             sender=self.verifying_key)
-        sbc = SubBlockContender.create_empty_sublock(input_hash=cr_context.input_hash,
-                                                     sub_block_index=cr_context.sbb_idx, signature=merkle_sig,
+        sbc = SubBlockContender.create_empty_sublock(input_hash=sb_data.input_hash,
+                                                     sub_block_index=self.sbb_index, signature=merkle_sig,
                                                      prev_block_hash=StateDriver.get_latest_block_hash())
         # Send to block manager
-        self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(cr_context.input_hash))
+        self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
         self._send_msg_over_ipc(sbc)
 
-    def _create_sbc_from_batch(self, data: List[tuple]):
+    def _create_sbc_from_batch(self, sb_data: SBData):
         """
         Creates a Sub Block Contender from a TransactionBatch
         """
 
         # TODO somehow get the input hash from CR!
 
-        self.log.info("Building sub block contender for input hash {}".format(cr_context.input_hash))
+        self.log.info("Building sub block contender for input hash {}".format(sb_data.input_hash))
 
-        sb_data = data
+        exec_data = sb_data.tx_data
         # self.log.important3("GOT SB DATA: {}".format(sb_data))
 
-        txs_data = [TransactionData.create(contract_tx=d[0], status=d[1], state=d[3]) for d in sb_data]
+        txs_data = [TransactionData.create(contract_tx=d.contract, status=d.status, state=d.state) for d in exec_data]
 
         # Purposely produce a bad SBC if BAD_ACTOR is set, and the conditions are right
         if self.bad_actor:
-            if self.good_sb_count >= self.fail_interval and self.sub_block_index in self.fail_idxs:
-                self.log.critical("Creating an evil sub-block for idx {}!".format(self.sub_block_index))
+            if self.good_sb_count >= self.fail_interval and self.sbb_index in self.fail_idxs:
+                self.log.critical("Creating an evil sub-block for idx {}!".format(self.sbb_index))
                 txs_data = TransactionDataBuilder.create_random_batch(len(txs_data))
                 self.good_sb_count = 0
             else:
                 self.log.info("Not producing an evil sub-block.....for now....")
 
         txs_data_serialized = [t.serialize() for t in txs_data]
-        txs = [d[0] for d in sb_data]
+        txs = [d[0] for d in exec_data]
 
         # build sbc
         merkle = MerkleTree.from_raw_transactions(txs_data_serialized)
@@ -336,14 +336,14 @@ class SubBlockBuilder(Worker):
         merkle_sig = MerkleSignature.create(sig_hex=signature,
                                             timestamp=str(time.time()),
                                             sender=self.verifying_key)
-        sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=cr_context.input_hash,
-                                       merkle_leaves=merkle.leaves, sub_block_index=cr_context.sbb_idx,
+        sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=sb_data.input_hash,
+                                       merkle_leaves=merkle.leaves, sub_block_index=self.sbb_index,
                                        signature=merkle_sig, transactions=txs_data,
                                        prev_block_hash=StateDriver.get_latest_block_hash())
 
         # Send sbc to block manager
         self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
-                            .format(len(txs), cr_context.input_hash))
+                            .format(len(txs), sb_data.input_hash))
         self._send_msg_over_ipc(sbc)
 
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
