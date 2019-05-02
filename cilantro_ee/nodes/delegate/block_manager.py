@@ -423,11 +423,6 @@ class BlockManager(Worker):
             self.db_state.is_new_block = is_new_block
             self.update_db_if_ready()
 
-        # TODO why is this wrapped up in a try/catch with no failure handling? looks kinda sketchy --davis
-        if block_data.block_num % DUMP_TO_CACHE_EVERY_N_BLOCKS == 0:
-            try: SafeDriver.bgsave()
-            except: pass
-
     def skip_block(self):
         if (self.db_state.num_skip_block < MIN_NEW_BLOCK_MN_QOURUM) or (self.db_state.num_empty_sbc != NUM_SB_PER_BLOCK):
             return
