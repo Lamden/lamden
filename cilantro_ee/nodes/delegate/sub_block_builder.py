@@ -93,6 +93,10 @@ class SubBlockBuilder(Worker):
         # self.pending_block_index = -1
         self.client = SubBlockClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
 
+        # DEBUG -- TODO DELETE
+        self.log.important("num sbb per blk {}".format(NUM_SB_PER_BLOCK))
+        # END DEBUG
+
         # raghu todo may need multiple clients here. NUM_SB_PER_BLOCK needs to be same for all blocks
         # self.clients = []
         # for i in range(NUM_SB_PER_BLOCK_PER_BUILDER):
@@ -328,7 +332,7 @@ class SubBlockBuilder(Worker):
                 self.log.info("Not producing an evil sub-block.....for now....")
 
         txs_data_serialized = [t.serialize() for t in txs_data]
-        txs = [d[0] for d in exec_data]
+        txs = [d.contract for d in exec_data]
 
         # build sbc
         merkle = MerkleTree.from_raw_transactions(txs_data_serialized)
