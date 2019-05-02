@@ -5,7 +5,7 @@ from cilantro_ee.utils.lprocess import LProcess
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro_ee.storage.vkbook import VKBook
-from cilantro_ee.storage.ledis import SafeLedis
+from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.state import StateDriver
 

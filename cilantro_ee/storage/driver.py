@@ -1,7 +1,6 @@
 from cilantro_ee.constants.db_config import *
 from contracting.db.driver import DatabaseDriver
 import os, threading
-import ledis
 from multiprocessing import Lock
 
 
@@ -22,7 +21,7 @@ class SafeDriverMeta(type):
         return key
 
     def cleanup(cls):
-        print('SafeLedis is cleaning up!')
+        print('SafeDriver is cleaning up!')
         cls._shared_state.clear()
 
     def __getattr__(cls, item):

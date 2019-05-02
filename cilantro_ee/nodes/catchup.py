@@ -8,7 +8,7 @@ from cilantro_ee.constants.system_config import SHOULD_MINT_WALLET
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.state import StateDriver
-from cilantro_ee.storage.ledis import SafeLedis
+from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.contracts import mint_wallets
 from cilantro_ee.storage.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.master_store import MasterOps
@@ -113,7 +113,7 @@ class CatchupManager:
         self.dump_debug_info(lnum = 111)
 
     def _reset_state(self):
-        SafeLedis.flushdb()
+        SafeDriver.flushdb()
 
         interface = Executor(concurrency=False, metering=False)  # Instantiating the Executor class for the first time will reseed any system contract data
         if SHOULD_MINT_WALLET:

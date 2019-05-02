@@ -352,11 +352,11 @@ resource "null_resource" "circus-conf" {
   depends_on = ["aws_eip.static-ip"]
 }
 
-# Copy over ledis.conf file
+# Copy over redis.conf file
 resource "null_resource" "redis-conf" {
   triggers {
     instance = "${aws_instance.cilantro_ee-node.public_ip}"
-    conf     = "${file("./conf/${var.type}${var.index}/ledis.conf")}"
+    conf     = "${file("./conf/${var.type}${var.index}/redis.conf")}"
   }
 
   connection {
@@ -367,14 +367,14 @@ resource "null_resource" "redis-conf" {
   }
 
   provisioner "file" {
-    source      = "./conf/${var.type}${var.index}/ledis.conf"
-    destination = "/home/ubuntu/ledis.conf"
+    source      = "./conf/${var.type}${var.index}/redis.conf"
+    destination = "/home/ubuntu/redis.conf"
   }
 
   provisioner "remote-exec" {
     inline = [
-      "sudo rm -rf /etc/ledis.conf",
-      "sudo mv /home/ubuntu/ledis.conf /etc/ledis.conf",
+      "sudo rm -rf /etc/redis.conf",
+      "sudo mv /home/ubuntu/redis.conf /etc/redis.conf",
     ]
   }
 }
@@ -433,7 +433,7 @@ resource "null_resource" "docker" {
     inline = [
       "sudo docker rm -f cil",
       "sleep 5",
-      "sudo docker run --name cil -dit -v /usr/local/db/cilantro_ee/:/usr/local/db/cilantro_ee -v /etc/vk_ip_map.json:/etc/vk_ip_map.json -v /etc/cilantro_ee.conf:/etc/cilantro_ee.conf -v /etc/ledis.conf:/etc/ledis.conf -v /etc/circus.conf:/etc/circus.conf ${var.setup_ssl ? "-v /home/ubuntu/.sslconf:/root/.sslconf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh" : ""} -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
+      "sudo docker run --name cil -dit -v /usr/local/db/cilantro_ee/:/usr/local/db/cilantro_ee -v /etc/vk_ip_map.json:/etc/vk_ip_map.json -v /etc/cilantro_ee.conf:/etc/cilantro_ee.conf -v /etc/redis.conf:/etc/redis.conf -v /etc/circus.conf:/etc/circus.conf ${var.setup_ssl ? "-v /home/ubuntu/.sslconf:/root/.sslconf -v /home/ubuntu/.acme.sh:/home/root/.acme.sh" : ""} -p 8080:8080 -p 443:443 -p 10000-10100:10000-10100 ${var.type == "masternode" ? "${local.images["full"]}" : "${local.images["light"]}"}:${var.docker_tag}",
     ]
   }
 

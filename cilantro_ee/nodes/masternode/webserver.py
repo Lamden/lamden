@@ -2,7 +2,7 @@ from cilantro_ee.logger.base import get_logger
 
 from sanic import Sanic
 from sanic.response import json, text
-from cilantro_ee.storage.ledis import SafeLedis
+from cilantro_ee.storage.driver import SafeDriver
 from sanic_limiter import Limiter, get_remote_address
 from sanic_cors import CORS
 
@@ -118,7 +118,7 @@ async def request_nonce(request):
 
 @app.route("/contracts", methods=["GET","OPTIONS",])
 async def get_contracts(request):
-    r = SafeLedis.xscan('kv', 'contracts:*')[1]
+    r = SafeDriver.xscan('kv', 'contracts:*')[1]
     result = {}
     r_str = [_r.decode().split(DELIMITER)[1] for _r in r]
     result['contracts'] = sorted(r_str)
@@ -151,7 +151,7 @@ async def get_contract_meta(request, contract):
 
 def get_keys(contract, resource, cursor=0):
     pattern = '{}:{}:*'.format(contract, resource)
-    keys = SafeLedis.scan(cursor, pattern, 100)
+    keys = SafeDriver.scan(cursor, pattern, 100)
     _keys = keys[1]
 
     formatted_keys = [k.decode()[len(pattern) - 1:] for k in _keys]
@@ -175,7 +175,7 @@ async def get_contract_resource_keys_cursor(request, contract, resource, cursor)
 async def get_state(request, contract, resource, key):
     contract_obj = _get_contract_obj(contract)
     resource_type = contract_obj['resources'].get(resource)
-    value = SafeLedis.get('{}:{}:{}:{}'.format(resource_type, contract, resource, key))
+    value = SafeDriver.get('{}:{}:{}:{}'.format(resource_type, contract, resource, key))
     r = {}
     if value is None:
         r['value'] = 'null'

@@ -177,7 +177,7 @@ def main():
             node_dir = config_dir_path + '/' + node_name
             cilantro_ee_conf_path = node_dir + '/' + 'cilantro_ee.conf'
             circus_conf_path = node_dir + '/' + 'circus.conf'
-            ledis_conf_path = node_dir + '/' + 'ledis.conf'
+            redis_conf_path = node_dir + '/' + 'redis.conf'
             os.mkdir(node_dir)
 
             # Get the general info
@@ -193,7 +193,7 @@ def main():
                            }
 
             # Copy redis.conf
-            shutil.copyfile(LEDIS_CONF_PATH, ledis_conf_path)
+            shutil.copyfile(LEDIS_CONF_PATH, redis_conf_path)
 
             # Set node specific info; copy appropriate circus config file
             if node_type == 'masternode':
