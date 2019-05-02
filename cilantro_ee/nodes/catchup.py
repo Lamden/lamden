@@ -1,7 +1,6 @@
 import time
 import asyncio
 import math
-from seneca.execution.executor import Executor
 from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import SHOULD_MINT_WALLET
@@ -115,7 +114,6 @@ class CatchupManager:
     def _reset_state(self):
         SafeDriver.flushdb()
 
-        interface = Executor(concurrency=False, metering=False)  # Instantiating the Executor class for the first time will reseed any system contract data
         if SHOULD_MINT_WALLET:
             mint_wallets()
 

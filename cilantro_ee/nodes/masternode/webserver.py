@@ -16,8 +16,7 @@ from cilantro_ee.constants.ports import WEB_SERVER_PORT, SSL_WEB_SERVER_PORT
 from cilantro_ee.constants.masternode import NUM_WORKERS
 from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.utils.hasher import Hasher
-from seneca.execution.executor import Executor
-from seneca.config import DELIMITER
+from contracting.config import DELIMITER
 
 from multiprocessing import Queue
 import os
@@ -31,8 +30,6 @@ ssl = None
 app = Sanic("MN-WebServer")
 CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
-ex = Executor(concurrency=False, metering=False)
-# TODO: make process safe
 
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
 static_headers = {}
