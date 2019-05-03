@@ -342,7 +342,6 @@ class TestSubBlockBuilder(TestCase):
             SBBTester.send_ipc_to_sbb(sbb1, make_next_block)
             SBBTester.send_ipc_to_sbb(sbb2, make_next_block)
 
-
             self.run_async(sbb1.loop, 2)
             self.run_async(sbb2.loop, 2)
 
