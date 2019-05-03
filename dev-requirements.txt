@@ -5,3 +5,4 @@ scipy
 vprof
 paramiko
 redis==3.2.0
+simple-crypt==4.1.7

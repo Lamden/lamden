@@ -325,13 +325,10 @@ class TestSubBlockBuilder(TestCase):
             SBBTester.send_ipc_to_sbb(sbb1, make_next_block)
             SBBTester.send_ipc_to_sbb(sbb2, make_next_block)
 
-            # THE FIRST
-            tx_batch_env1 = SBBTester.create_tx_batch_env(10, MN_SK1)
-            SBBTester.send_sub_to_sbb(sbb1, tx_batch_env1, handler_key=0)
             tx_batch_env2 = SBBTester.create_tx_batch_env(20, MN_SK2)
             SBBTester.send_sub_to_sbb(sbb2, tx_batch_env2, handler_key=0)
 
-            # THE SECOND
+            # THE FIRST
             tx_batch_env1 = SBBTester.create_tx_batch_env(10, MN_SK1)
             SBBTester.send_sub_to_sbb(sbb1, tx_batch_env1, handler_key=0)
             tx_batch_env2 = SBBTester.create_tx_batch_env(20, MN_SK2)
@@ -345,6 +342,10 @@ class TestSubBlockBuilder(TestCase):
             SBBTester.send_ipc_to_sbb(sbb1, make_next_block)
             SBBTester.send_ipc_to_sbb(sbb2, make_next_block)
 
+
+            self.run_async(sbb1.loop, 2)
+            self.run_async(sbb2.loop, 2)
+
             # make sure he called _created_sbc as a result of inputing a bag
             sbb1._create_sbc_from_batch.assert_called_once()
             sbb2._create_sbc_from_batch.assert_called_once()
@@ -352,9 +353,15 @@ class TestSubBlockBuilder(TestCase):
             self.run_async(sbb1.loop, 2)
             self.run_async(sbb2.loop, 2)
 
-            # yet ANOTHER ONE
-            make_next_block = MakeNextBlock.create()
-            SBBTester.send_ipc_to_sbb(sbb1, make_next_block)
+            # # yet ANOTHER ONE
+            # make_next_block = MakeNextBlock.create()
+            # SBBTester.send_ipc_to_sbb(sbb1, make_next_block)
+            # SBBTester.send_ipc_to_sbb(sbb2, make_next_block)
+
+            # THE SECOND
+            tx_batch_env1 = SBBTester.create_tx_batch_env(10, MN_SK1)
+            SBBTester.send_sub_to_sbb(sbb1, tx_batch_env1, handler_key=0)
+
 
             self.run_async(sbb1.loop, 2)
             self.run_async(sbb2.loop, 2)

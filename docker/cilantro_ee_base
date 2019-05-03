@@ -21,19 +21,19 @@ RUN pip3 install --upgrade setuptools wheel
 RUN pip3 install virtualenv
 RUN pip3 install circus
 
-COPY requirements.txt /app/requirements.txt
-COPY dev-requirements.txt /app/dev-requirements.txt
-COPY protocol-requirements.txt /app/protocol-requirements.txt
-
-RUN cd /app; \
+RUN mkdir /app; \
+    cd /app; \
     virtualenv -p python3 venv;
 
+COPY protocol-requirements.txt /app/protocol-requirements.txt
 RUN . /app/venv/bin/activate; \
     pip3 install -r /app/protocol-requirements.txt;
 
+COPY dev-requirements.txt /app/dev-requirements.txt
 RUN . /app/venv/bin/activate; \
     pip3 install -r /app/dev-requirements.txt;
 
+COPY requirements.txt /app/requirements.txt
 RUN . /app/venv/bin/activate; \
     pip3 install -r /app/requirements.txt --upgrade --no-cache-dir;
 
