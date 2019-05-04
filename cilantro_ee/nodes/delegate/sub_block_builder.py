@@ -320,7 +320,7 @@ class SubBlockBuilder(Worker):
         exec_data = sb_data.tx_data
         # self.log.important3("GOT SB DATA: {}".format(sb_data))
 
-        txs_data = [TransactionData.create(contract_tx=d.contract, status=d.status, state=d.state) for d in exec_data]
+        txs_data = [TransactionData.create(contract_tx=d.contract, status=str(d.status), state=d.state) for d in exec_data]
 
         # Purposely produce a bad SBC if BAD_ACTOR is set, and the conditions are right
         if self.bad_actor:
