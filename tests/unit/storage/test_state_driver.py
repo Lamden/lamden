@@ -5,15 +5,16 @@ from cilantro_ee.messages.transaction.data import TransactionDataBuilder, Transa
 from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
 
-import ledis
+import redis
 from cilantro_ee.constants.db_config import *
+from cilantro_ee.storage.driver import SafeDriver
 
 
 class TestStateDriver(TestCase):
 
     def setUp(self):
-        self.r = ledis.Ledis(host='localhost', db=MASTER_DB, port=6379)
-        self.r.flushdb()
+        self.r = SafeDriver  # this is a class, not an instance, so we do not instantiate
+        self.r.flush()
 
     def test_state_updated(self):
         states = [

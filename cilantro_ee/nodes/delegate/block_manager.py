@@ -17,7 +17,7 @@ from cilantro_ee.logger.base import get_logger
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
-from cilantro_ee.storage.ledis import SafeLedis
+from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.protocol.multiprocessing.worker import Worker
@@ -422,11 +422,6 @@ class BlockManager(Worker):
             self.db_state.new_block_hash = new_block_hash
             self.db_state.is_new_block = is_new_block
             self.update_db_if_ready()
-
-        # TODO why is this wrapped up in a try/catch with no failure handling? looks kinda sketchy --davis
-        if block_data.block_num % DUMP_TO_CACHE_EVERY_N_BLOCKS == 0:
-            try: SafeLedis.bgsave()
-            except: pass
 
     def skip_block(self):
         if (self.db_state.num_skip_block < MIN_NEW_BLOCK_MN_QOURUM) or (self.db_state.num_empty_sbc != NUM_SB_PER_BLOCK):

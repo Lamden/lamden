@@ -1,6 +1,6 @@
 from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.signals.state_sync import *
-from cilantro_ee.storage.ledis import SafeLedis
+from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.nodes.state_sync import IPC_ROUTER_IP, IPC_ROUTER_PORT, IPC_PUB_IP, IPC_PUB_PORT
 from cilantro_ee.nodes.scheduler.asyncio_scheduler import AsyncioScheduler
