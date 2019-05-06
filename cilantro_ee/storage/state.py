@@ -22,7 +22,10 @@ class StateDriver:
             cmds = tx.state.split(';')
             # cls.log.notice('tx has state {}'.format(cmds))
             for cmd in cmds:
-                if cmd: SafeDriver.set(*cmd.split(' '))
+                # DEBUG -- TODO DELETE
+                # cls.log.important("splitting and running cmd {}".format(cmd))
+                # END DEBUG
+                if cmd: SafeDriver.set(*cmd.split(' ')[1:])
 
         # Update our block hash and block num
         cls.set_latest_block_info(block.block_hash, block.block_num)

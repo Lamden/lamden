@@ -58,6 +58,11 @@ class CatchupManager:
         self.target_blk_num = self.curr_num
         self.awaited_blknum = self.curr_num
 
+        # DEBUG -- TODO DELETE
+        self.log.test("CatchupManager VKBook MN's: {}".format(VKBook.get_masternodes()))
+        self.log.test("CatchupManager VKBook Delegates's: {}".format(VKBook.get_delegates()))
+        # END DEBUG
+
     def update_state(self):
         """
         Sync block and state DB if either is out of sync.

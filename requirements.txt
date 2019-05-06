@@ -1,12 +1,3 @@
--e git+https://github.com/Lamden/seneca.git@queue-merge-cmds#egg=seneca
-# take 2#another take
-#another take
-#another take
-#another take
-#another take
-#another take
-#another take
-# annnn
-#another take
-#another take
-#another take
+-e git+https://github.com/Lamden/seneca.git@dev#egg=seneca
+
+# henlo
