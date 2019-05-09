@@ -1,5 +1,4 @@
 from cilantro_ee.logger import get_logger
-from seneca.execution.executor import Executor
 from cilantro_ee.constants.system_config import *
 import datetime, time
 import os
@@ -20,18 +19,20 @@ def mint_wallets():
     """
     Seeds the contracts table with all contracts found in cilantro_ee/contracts
     """
-    log.debugv("Setting up Seneca's Executor to publish contracts.")
+    log.important("TODO -- implemented mint_wallets with new API")
 
-    interface = Executor(concurrency=False, metering=False)
-
-    if SHOULD_MINT_WALLET:
-        start = time.time()
-        log.info("Minting {} wallets with amount {}".format(NUM_WALLETS_TO_MINT, MINT_AMOUNT))
-        for keypair in ALL_WALLETS:
-            sk, vk = keypair
-            interface.execute_function('currency', 'mint', GENESIS_AUTHOR, kwargs={
-                                           'to': vk,
-                                           'amount': MINT_AMOUNT
-                                       })
-        log.info("Done minting {} wallets ({} seconds elapsed)"
-                 .format(NUM_WALLETS_TO_MINT, round(time.time()-start, 2)))
+    # log.debugv("Setting up Seneca's Executor to publish contracts.")
+    #
+    # interface = Executor(concurrency=False, metering=False)
+    #
+    # if SHOULD_MINT_WALLET:
+    #     start = time.time()
+    #     log.info("Minting {} wallets with amount {}".format(NUM_WALLETS_TO_MINT, MINT_AMOUNT))
+    #     for keypair in ALL_WALLETS:
+    #         sk, vk = keypair
+    #         interface.execute_function('currency', 'mint', GENESIS_AUTHOR, kwargs={
+    #                                        'to': vk,
+    #                                        'amount': MINT_AMOUNT
+    #                                    })
+    #     log.info("Done minting {} wallets ({} seconds elapsed)"
+    #              .format(NUM_WALLETS_TO_MINT, round(time.time()-start, 2)))

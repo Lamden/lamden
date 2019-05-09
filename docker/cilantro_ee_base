@@ -16,27 +16,33 @@ RUN apt-get update \
         gsl-bin zlib1g-dev libboost-all-dev \
         nano vim \
         golang-1.10
-RUN git clone https://github.com/siddontang/ledisdb.git src/github.com/siddontang/ledisdb \
-    && cd src/github.com/siddontang/ledisdb \
-    && /bin/bash -c "source dev.sh" \
-    && make
+RUN apt-get install -y --no-install-recommends redis-server
 RUN pip3 install --upgrade setuptools wheel
 RUN pip3 install virtualenv
 RUN pip3 install circus
 
-COPY requirements.txt /app/requirements.txt
-COPY dev-requirements.txt /app/dev-requirements.txt
-COPY protocol-requirements.txt /app/protocol-requirements.txt
+# Install Mongo (TODO put this in cilantro_full in the long term...this is just for rapid iterations)
+RUN apt-get update \
+    && apt-get install -y software-properties-common \
+    && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4 \
+    && add-apt-repository 'deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse' \
+    && apt-get remove -y software-properties-common \
+    && apt-get update \
+    && apt-get install -y mongodb
 
-RUN cd /app; \
+RUN mkdir /app; \
+    cd /app; \
     virtualenv -p python3 venv;
 
+COPY protocol-requirements.txt /app/protocol-requirements.txt
 RUN . /app/venv/bin/activate; \
     pip3 install -r /app/protocol-requirements.txt;
 
+COPY dev-requirements.txt /app/dev-requirements.txt
 RUN . /app/venv/bin/activate; \
     pip3 install -r /app/dev-requirements.txt;
 
+COPY requirements.txt /app/requirements.txt
 RUN . /app/venv/bin/activate; \
     pip3 install -r /app/requirements.txt --upgrade --no-cache-dir;
 

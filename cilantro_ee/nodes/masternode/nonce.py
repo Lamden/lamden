@@ -1,4 +1,4 @@
-from cilantro_ee.storage.ledis import SafeLedis
+from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.constants.masternode import NONCE_EXPIR
 import secrets
 
@@ -11,7 +11,7 @@ class NonceManager:
 
     @classmethod
     def check_if_exists(cls, nonce: str) -> bool:
-        return SafeLedis.exists(nonce)
+        return SafeDriver.exists(nonce)
 
     @classmethod
     def create_nonce(cls, user_vk: str) -> str:
@@ -21,12 +21,12 @@ class NonceManager:
         # TODO this check if just for dev. remove it in prod.
         assert not cls.check_if_exists(key), "Nonce {} already exists!!!".format(key)
 
-        SafeLedis.set(key, 1)
-        SafeLedis.expire(key, NONCE_EXPIR)
+        SafeDriver.set(key, 1)
+        SafeDriver.expire(key, NONCE_EXPIR)
 
         return key
 
     @classmethod
     def delete_nonce(cls, nonce: str):
         if cls.check_if_exists(nonce):
-            SafeLedis.delete(nonce)
+            SafeDriver.delete(nonce)

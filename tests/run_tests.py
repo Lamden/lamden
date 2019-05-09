@@ -10,7 +10,7 @@ from cilantro_ee.logger import get_logger, overwrite_logger_level
 import logging
 import argparse
 import random
-from cilantro_ee.nodes.factory import _wait_for_mongo, _wait_for_ledis
+from cilantro_ee.nodes.factory import _wait_for_mongo, _wait_for_redis
 
 # Hack to import stuff from groups.py regardless of where this file is run
 try: from .groups import *
@@ -96,7 +96,7 @@ def skip_circle_ci_modules(module_to_skip='tests/integration'):
 
 
 def main(args):
-    _wait_for_ledis()
+    _wait_for_redis()
     _wait_for_mongo()
     log.debug("\nRunning test suites with args\n\nrun unit tests={}\nrun integration tests={}\nverbosity={}\n"
               "skip modules={}\nskip tests={}\n[env var] CILANTRO_DEBUG={}\n[env var] CI={}\n"

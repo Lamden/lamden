@@ -28,7 +28,7 @@ from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.protocol import wallet
 from cilantro_ee.storage.mongo import MDB
-from cilantro_ee.storage.ledis import SafeLedis
+from cilantro_ee.storage.driver import SafeDriver
 
 # time and logger are for debugging
 import time
@@ -98,7 +98,7 @@ class TestBlockAggregator(TestCase):
     def setUp(self):
         MDB.init_mdb = True
         MDB.reset_db()
-        SafeLedis.flushall()
+        SafeDriver.flush()
 
     @BlockAggTester.test
     def test_build_task_list_connect_and_bind(self, *args):
