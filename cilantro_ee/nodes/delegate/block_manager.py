@@ -185,6 +185,8 @@ class BlockManager(Worker):
         assert self.db_state.catchup_mgr, "Expected catchup_mgr initialized at this point"
         self.log.info("Catching up...")
 
+
+
         self.db_state.catchup_mgr.run_catchup()
 
         # TODO needs to be deleted after catchup is working. for now, assume that it is caught up

@@ -1,3 +1,2 @@
--e git+https://github.com/Lamden/seneca.git@dev#egg=seneca
-
+contracting
 # henlo
