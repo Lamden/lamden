@@ -41,6 +41,8 @@ from cilantro_ee.messages.signals.delegate import MakeNextBlock, DiscardPrevBloc
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.block_data.state_update import *
 
+from cilantro_ee.contracts.sync import sync_genesis_contracts
+
 import asyncio, zmq, os, time, random
 from collections import defaultdict
 from typing import List
@@ -185,7 +187,8 @@ class BlockManager(Worker):
         assert self.db_state.catchup_mgr, "Expected catchup_mgr initialized at this point"
         self.log.info("Catching up...")
 
-        # GENESIS CATCHUP
+        # Add genesis contracts to state db if needed
+        sync_genesis_contracts()
 
         self.db_state.catchup_mgr.run_catchup()
 
