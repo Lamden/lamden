@@ -185,7 +185,7 @@ class BlockManager(Worker):
         assert self.db_state.catchup_mgr, "Expected catchup_mgr initialized at this point"
         self.log.info("Catching up...")
 
-
+        # GENESIS CATCHUP
 
         self.db_state.catchup_mgr.run_catchup()
 
