@@ -1,5 +1,6 @@
 from unittest import TestCase
 from cilantro_ee.contracts import sync
+from contracting.db.driver import ContractDriver
 
 
 class TestContractSync(TestCase):
@@ -24,3 +25,43 @@ class TestContractSync(TestCase):
 
         self.assertEqual(name, _name)
 
+    def test_sync_genesis_contracts_if_none_in_instance(self):
+        driver = ContractDriver()
+        driver.flush()
+
+        sync.sync_genesis_contracts(driver)
+
+        submission = driver.get_contract('submission')
+        currency = driver.get_contract('currency')
+
+        self.assertIsNotNone(submission)
+        self.assertIsNotNone(currency)
+
+    def test_sync_genesis_contracts_if_one_deleted(self):
+        driver = ContractDriver()
+        driver.flush()
+
+        sync.sync_genesis_contracts(driver)
+
+        driver.delete_contract('submission')
+
+        sync.sync_genesis_contracts(driver)
+
+        submission = driver.get_contract('submission')
+        currency = driver.get_contract('currency')
+
+        self.assertIsNotNone(submission)
+        self.assertIsNotNone(currency)
+
+    def test_sync_genesis_contracts_if_none_deleted(self):
+        driver = ContractDriver()
+        driver.flush()
+
+        sync.sync_genesis_contracts(driver)
+        sync.sync_genesis_contracts(driver)
+
+        submission = driver.get_contract('submission')
+        currency = driver.get_contract('currency')
+
+        self.assertIsNotNone(submission)
+        self.assertIsNotNone(currency)

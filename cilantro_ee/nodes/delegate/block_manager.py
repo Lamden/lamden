@@ -42,6 +42,7 @@ from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.block_data.state_update import *
 
 from cilantro_ee.contracts.sync import sync_genesis_contracts
+from contracting.db.driver import ContractDriver
 
 import asyncio, zmq, os, time, random
 from collections import defaultdict
@@ -188,7 +189,8 @@ class BlockManager(Worker):
         self.log.info("Catching up...")
 
         # Add genesis contracts to state db if needed
-        sync_genesis_contracts()
+        d = ContractDriver()
+        sync_genesis_contracts(d)
 
         self.db_state.catchup_mgr.run_catchup()
 
