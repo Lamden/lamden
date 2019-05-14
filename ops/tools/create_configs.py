@@ -128,6 +128,12 @@ def main():
     launch_region = _get_input("Enter region to launch into (default='us-west-1')", skip=skip) or 'us-west-1'
     assert launch_region in VALID_REGIONS, "Region provided invalid, please select among {}".format(VALID_REGIONS)
 
+    pflag = _get_bool_input("Is this a production node? WARNING: Setting this to 'y' will keep the garbage collector from cleaning it up (default='n')",
+                            default=False, skip=skip)
+    production = 'false'
+    if pflag:
+        production = 'true'
+
     metering_enabled = _get_bool_input("Enable metering? (y/n), default='n'", default=False, skip=skip)
     nonce_enabled = _get_bool_input("Require nonces for user transactions? (y/n), default='n'", default=False, skip=skip)
     ssl_enabled = _get_bool_input("Enable SSL on Webservers? (y/n), default='n'", skip=skip, default=False)
@@ -234,6 +240,7 @@ def main():
                     '  keyname = "${local.keyname}"\n',
                     '  private_key = "${module.key.private_key}"\n',
                     '  docker_tag  = "${var.docker_tag}"\n',
+                    '  production  = {}\n'.format(production),
                     '}\n\n',
                     'output "{}-ssh" {{\n'.format(node_name),
                     '  value = "ssh ubuntu@${{module.{}.public_ip}}"\n'.format(node_name),
