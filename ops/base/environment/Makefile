@@ -70,8 +70,8 @@ help:
 	@echo "                         environment"
 	@echo " -- make testcurr        End-to-End black box, programatically test the currency"
 	@echo "                         contract"
-	@echo " -- make testsc          End-to-End black box, programatically test submitting a smart contract
-									and transacting upon it"
+	@echo " -- make testsc          End-to-End black box, programatically test submitting a smart contract"
+	@echo "                         and transacting upon it"
 	@echo ""
 
 
