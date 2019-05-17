@@ -10,7 +10,9 @@ from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
 
+from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.envelope.envelope import Envelope
+from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.block_data.block_metadata import NewBlockNotification
 
 _log = get_logger("TestBlockManager")
@@ -70,19 +72,26 @@ class TestBlockManager(TestCase):
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.SubBlockBuilder")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.BlockManager.run")
-    def test_handle_ipc_msg(self, mock_run_method, mock_bm_asyncio, mock_sbb, mock_manager, mock_worker_asyncio):
+    def test_handle_ready_msg(self, mock_run_method, mock_bm_asyncio, mock_sbb, mock_manager, mock_worker_asyncio):
         bm = BlockManager(ip=TEST_IP, signing_key=TEST_SK)
         bm.tasks = []
         bm.manager = MagicMock()
         bm.ipc_router = MagicMock()
+        bm._handle_sbc = MagicMock()
 
         bm.start_sbb_procs()
 
-        frames = [b'', b'', b'this should be a real message binary']
+        num_sbb = len(bm.sb_builders)
+        message = Ready.create()
+        message_type = MessageBase.registry[type(message)]
 
-        # bm.handle_ipc_msg(frames)
+        for i in range(num_sbb):
+            self.assertFalse(bm.is_sbb_ready())
+            frames = [str(i).encode(), int_to_bytes(message_type), message.serialize()]
+            bm.handle_ipc_msg(frames)
 
-        # TODO assert handle_ipc_msg does what expected
+        self.assertTrue(bm.is_sbb_ready())
+
 
     # TODO comment this back in when catchup is fixed
     # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio", autospec=True)
