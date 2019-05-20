@@ -1,4 +1,4 @@
-from cilantro_ee.nodes.factory import NodeFactory
+from cilantro_ee.utils.factory import NodeFactory
 from cilantro_ee.constants.conf import CilantroConf, CIL_CONF_PATH
 
 from cilantro_ee.logger.base import overwrite_logger_level

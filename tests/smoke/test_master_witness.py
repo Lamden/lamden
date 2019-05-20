@@ -2,14 +2,11 @@ from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-0.json')
 
 from vmnet.testcase import BaseNetworkTestCase
-import unittest, time, random, vmnet, cilantro_ee
+import unittest, cilantro_ee
 from os.path import join, dirname
 from cilantro_ee.utils.test.mp_test_case import vmnet_test
 from cilantro_ee.utils.test.god import God
-from cilantro_ee.logger.base import get_logger
-from cilantro_ee.utils.test.god import God
-from cilantro_ee.logger import get_logger, overwrite_logger_level
-import logging
+from cilantro_ee.logger import get_logger
 
 LOG_LEVEL = 0
 
@@ -21,11 +18,9 @@ def wrap_func(fn, *args, **kwargs):
 
 
 def run_mn(slot_num):
-    from cilantro_ee.logger import get_logger, overwrite_logger_level
-    from cilantro_ee.nodes.factory import NodeFactory
+    from cilantro_ee.utils.factory import NodeFactory
     from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
     import os
-    import logging
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
@@ -40,11 +35,9 @@ def run_mn(slot_num):
 
 
 def run_witness(slot_num):
-    from cilantro_ee.logger import get_logger, overwrite_logger_level
-    from cilantro_ee.nodes.factory import NodeFactory
+    from cilantro_ee.utils.factory import NodeFactory
     from cilantro_ee.constants.testnet import TESTNET_WITNESSES
     import os
-    import logging
 
     # overwrite_logger_level(logging.WARNING)
     # overwrite_logger_level(21)
@@ -58,7 +51,7 @@ def run_witness(slot_num):
 
 def dump_it(volume, delay=0):
     from cilantro_ee.utils.test.god import God
-    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.logger import overwrite_logger_level
     import logging
 
     overwrite_logger_level(logging.WARNING)

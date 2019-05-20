@@ -1,3 +1,0 @@
-import rbac
-rbac.create_user('{__user__}', '{__role__}')
-print("created user named {} with role {}".format('{__user__}', '{__role__}'))

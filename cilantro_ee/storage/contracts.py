@@ -4,7 +4,6 @@ import datetime, time
 import os
 from cilantro_ee.utils.test.god import ALL_WALLETS
 
-
 log = get_logger("ContractSeeder")
 
 path = os.path.abspath(__file__)
@@ -20,6 +19,8 @@ def mint_wallets():
     Seeds the contracts table with all contracts found in cilantro_ee/contracts
     """
     log.important("TODO -- implemented mint_wallets with new API")
+
+
 
     # log.debugv("Setting up Seneca's Executor to publish contracts.")
     #

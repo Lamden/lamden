@@ -41,6 +41,9 @@ from cilantro_ee.messages.signals.delegate import MakeNextBlock, DiscardPrevBloc
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.block_data.state_update import *
 
+from cilantro_ee.contracts.sync import sync_genesis_contracts
+from contracting.db.driver import ContractDriver
+
 import asyncio, zmq, os, time, random
 from collections import defaultdict
 from typing import List
@@ -184,6 +187,10 @@ class BlockManager(Worker):
         await asyncio.sleep(6)  # so pub/sub connections can complete
         assert self.db_state.catchup_mgr, "Expected catchup_mgr initialized at this point"
         self.log.info("Catching up...")
+
+        # Add genesis contracts to state db if needed
+        d = ContractDriver()
+        sync_genesis_contracts(d)
 
         self.db_state.catchup_mgr.run_catchup()
 
