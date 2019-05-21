@@ -19,6 +19,10 @@ def seed():
     for w in founder_wallets:
         balances[w] = seed_amount
 
+        s = supply.get()
+        s += seed_amount
+        supply.set(s)
+
     supply.set(balances[ctx.caller])
 
 @export
