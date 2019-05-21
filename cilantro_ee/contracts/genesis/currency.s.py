@@ -18,18 +18,25 @@ def seed():
     ]
 
     for w in founder_wallets:
+        print('Minting {} with {} coins'.format(w, seed_amount))
         balances[w] = seed_amount
 
         s = supply.get()
         s += seed_amount
         supply.set(s)
-
-    supply.set(balances[ctx.caller])
+    print('Done minting!')
 
 @export
 def transfer(amount, to):
     sender = ctx.caller
-    assert balances[sender] >= amount, 'Not enough coins to send!'
+
+    balance = balances[sender]
+
+    assert balance >= amount, 'Current balance {} from sender {} is less than amount {}.'.format(
+        balance,
+        sender,
+        amount
+    )
 
     balances[sender] -= amount
     balances[to] += amount
