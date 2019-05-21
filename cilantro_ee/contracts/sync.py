@@ -1,7 +1,7 @@
 import glob
 import os
 from contracting.db.driver import ContractDriver
-
+from contracting.compilation.compiler import ContractingCompiler
 
 def contract_name_from_file_path(p: str) -> str:
     directories = p.split('/')
@@ -13,21 +13,39 @@ def contract_name_from_file_path(p: str) -> str:
     return name
 
 
-def sync_genesis_contracts(path: str='genesis', extension: str='*.s.py', author: str='sys'):
-    # Direct database writing of all contract files in the 'genesis' folder
-    contract_glob = os.path.join(os.path.dirname(__file__), path) + '/' + extension
-    genesis_contracts = glob.glob(contract_glob)
+def contracts_for_directory(path, extension):
+    dir_path = os.path.join(os.path.dirname(__file__), path) + '/' + extension
+    contracts = glob.glob(dir_path)
+    return contracts
 
-    d = ContractDriver()
 
-    for contract in genesis_contracts:
+def submit_files(contracts, _compile=True, lint=True, author='sys'):
+    compiler = ContractingCompiler()
+    driver = ContractDriver()
+
+    for contract in contracts:
         name = contract_name_from_file_path(contract)
 
-        if d.get_contract(name) is None:
+        if driver.get_contract(name) is None:
             with open(contract) as f:
                 contract = f.read()
 
-            d.set_contract(name=name,
+            if _compile:
+                contract = compiler.parse_to_code(contract, lint=lint)
+
+            driver.set_contract(name=name,
                            code=contract,
                            author=author)
-            d.commit()
+            driver.commit()
+
+
+def sync_genesis_contracts(genesis_path: str='genesis',
+                           direct_path: str='direct',
+                           extension: str='*.s.py'):
+
+    # Direct database writing of all contract files in the 'genesis' folder
+    direct_contracts = contracts_for_directory(direct_path, extension)
+    submit_files(direct_contracts, _compile=False)
+
+    genesis_contracts = contracts_for_directory(genesis_path, extension)
+    submit_files(genesis_contracts)
