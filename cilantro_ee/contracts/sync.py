@@ -25,7 +25,7 @@ def sync_genesis_contracts(genesis_path: str='genesis',
     # Direct database writing of all contract files in the 'genesis' folder
     # direct_contracts = contracts_for_directory(direct_path, extension)
     # explicitly submit the submission contract
-    submission_file = __file__ + '/submission.s.py'
+    submission_file = os.path.dirname(__file__) + '/submission.s.py'
     client = ContractingClient(submission_filename=submission_file)
 
     genesis_contracts = contracts_for_directory(genesis_path, extension)
