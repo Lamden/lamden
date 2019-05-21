@@ -19,6 +19,8 @@ from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.block_metadata import NewBlockNotification, SkipBlockNotification
 from cilantro_ee.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
 
+from cilantro_ee.contracts.sync import sync_genesis_contracts
+
 from typing import List
 
 import asyncio, zmq, time
@@ -119,6 +121,9 @@ class BlockAggregator(Worker):
 
     async def _trigger_catchup(self):
         self.log.info("Triggering catchup")
+        # Add genesis contracts to state db if needed
+        sync_genesis_contracts()
+
         self.catchup_manager.run_catchup()
 
     def _send_msg_over_ipc(self, message: MessageBase):

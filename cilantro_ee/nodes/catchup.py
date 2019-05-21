@@ -117,7 +117,9 @@ class CatchupManager:
         self.dump_debug_info(lnum = 111)
 
     def _reset_state(self):
+        # only in a very rare case where mongo db is behind redis, this is called
         SafeDriver.flushdb()
+        sync_genesis_contracts()
 
         if SHOULD_MINT_WALLET:
             mint_wallets()
