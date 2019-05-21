@@ -37,6 +37,7 @@ from cilantro_ee.messages.signals.node import Ready
 from contracting.config import NUM_CACHES
 from contracting.db.cr.client import SubBlockClient
 from contracting.db.cr.callback_data import ExecutionData, SBData
+
 from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 from cilantro_ee.protocol.utils.network_topology import NetworkTopology
@@ -57,6 +58,7 @@ class NextBlockState(Enum):
     NOT_READY  = 0
     READY      = 1
     PROCESSED  = 2
+
 
 class NextBlockToMake:
     def __init__(self, block_index: int=0, state: NextBlockState=NextBlockState.PROCESSED):
@@ -204,15 +206,20 @@ class SubBlockBuilder(Worker):
 
     def _fail_block(self, fbn: FailedBlockNotification):
         self.log.notice("FailedBlockNotification - aligning input hashes")
+
         num_discards = 0
         input_hashes = fbn.input_hashes[self.sbb_index]
+
         for input_hash in input_hashes:
             num_discards = num_discards + self._align_to_hash(input_hash)
+
         self.log.debug("Thrown away {} input bags to get alignment".format(num_discards))
+
         # at this point, any bags in to_finalize_txs should go back to the front of pending_txs
         while len(self.sb_managers[0].to_finalize_txs) > 0:
             ih, txs_bag = self.sb_managers[0].to_finalize_txs.pop_front()
             self.sb_managers[0].pending_txs.insert_front(ih, txs_bag)
+
         self.client.flush_all()
         self._make_next_sb()
 
@@ -283,12 +290,14 @@ class SubBlockBuilder(Worker):
         self.sb_managers[index].processed_txs_timestamp = timestamp
         self.log.debug("num_pending_txs {}".format(self.sb_managers[index].num_pending_sb))
         self.move_next_block_to_make()
+
         if self.sb_managers[index].num_pending_sb > 0:
             self.log.debug("Sending transaction batch {} to seneca client".format(index))
             sbb_idx = self.sb_managers[index].sub_block_index
             if self._execute_next_sb(input_hash, envelope.message, sbb_idx):
                 self.sb_managers[index].num_pending_sb -= 1
                 return
+
         self.log.debug("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
         self.sb_managers[index].pending_txs.append(input_hash, envelope.message)
 
@@ -301,6 +310,7 @@ class SubBlockBuilder(Worker):
         merkle_sig = MerkleSignature.create(sig_hex=signature,
                                             timestamp=str(int(time.time())),
                                             sender=self.verifying_key)
+
         sbc = SubBlockContender.create_empty_sublock(input_hash=sb_data.input_hash,
                                                      sub_block_index=self.sbb_index, signature=merkle_sig,
                                                      prev_block_hash=StateDriver.get_latest_block_hash())
@@ -355,11 +365,14 @@ class SubBlockBuilder(Worker):
         self.log.debug("SBB {} attempting to build {} block with sub block index {}"
                        .format(self.sbb_index, "empty sub" if tx_batch.is_empty else "sub", sbb_idx))
 
-        if self.client.execute_sb(input_hash, tx_batch.transactions, self._create_empty_sbc \
-                                     if tx_batch.is_empty else self._create_sbc_from_batch):
+        callback = self._create_empty_sbc if tx_batch.is_empty else self._create_sbc_from_batch
+        result = self.client.execute_sb(input_hash, tx_batch.transactions, callback)
+
+        if result:
             self._next_block_to_make.state = NextBlockState.PROCESSED
             return True
         return False
+
 
     def _make_next_sb(self):
         if not self.move_next_block_to_make():
