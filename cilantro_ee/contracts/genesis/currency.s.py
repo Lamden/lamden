@@ -41,6 +41,14 @@ def transfer(amount, to):
     balances[sender] -= amount
     balances[to] += amount
 
+    print('Succesfully sent {} coins to {}. {} updated from {} to {}'.format(
+        amount,
+        to,
+        sender,
+        balance,
+        balances[sender]
+    ))
+
 @export
 def balance_of(account):
     return balances[account]
