@@ -13,45 +13,39 @@ def contract_name_from_file_path(p: str) -> str:
     return name
 
 
-def sync_genesis_contracts(d: ContractDriver,
-                           genesis_path: str='genesis',
-                           direct_path: str='direct',
-                           extension: str='*.s.py',
-                           author: str='sys'):
+def contracts_for_directory(path, extension):
+    dir_path = os.path.join(os.path.dirname(__file__), path) + '/' + extension
+    contracts = glob.glob(dir_path)
+    return contracts
 
-    # Direct database writing of all contract files in the 'genesis' folder
-    direct_glob = os.path.join(os.path.dirname(__file__), direct_path) + '/' + extension
-    direct_contracts = glob.glob(direct_glob)
 
-    for contract in direct_contracts:
+def submit_files(contracts, d: ContractDriver, _compile=True, lint=True, author='sys'):
+    compiler = ContractingCompiler()
+
+    for contract in contracts:
         name = contract_name_from_file_path(contract)
 
         if d.get_contract(name) is None:
 
             with open(contract) as f:
                 contract = f.read()
+
+            if _compile:
+                contract = compiler.parse_to_code(contract, lint=lint)
 
             d.set_contract(name=name,
                            code=contract,
                            author=author)
             d.commit()
 
-    genesis_glob = os.path.join(os.path.dirname(__file__), genesis_path) + '/' + extension
-    genesis_contracts = glob.glob(genesis_glob)
 
-    compiler = ContractingCompiler()
+def sync_genesis_contracts(genesis_path: str='genesis',
+                           direct_path: str='direct',
+                           extension: str='*.s.py'):
 
-    for contract in genesis_contracts:
-        name = contract_name_from_file_path(contract)
+    # Direct database writing of all contract files in the 'genesis' folder
+    direct_contracts = contracts_for_directory(direct_path, extension)
+    submit_files(direct_contracts, _compile=False)
 
-        if d.get_contract(name) is None:
-
-            with open(contract) as f:
-                contract = f.read()
-
-            compiled_code = compiler.parse_to_code(contract, lint=True)
-
-            d.set_contract(name=name,
-                           code=compiled_code,
-                           author=author)
-            d.commit()
+    genesis_contracts = contracts_for_directory(genesis_path, extension)
+    submit_files(genesis_contracts)
