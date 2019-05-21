@@ -6,6 +6,7 @@ def seed():
     #balances[ctx.caller] = 288_090_567
 
     seed_amount = 1000000
+    supply.set(0)
 
     founder_wallets = [
         '324ee2e3544a8853a3c5a0ef0946b929aa488cbe7e7ee31a0fef9585ce398502',
