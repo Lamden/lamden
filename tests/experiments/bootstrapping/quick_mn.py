@@ -1,5 +1,5 @@
 from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
-from cilantro_ee.nodes.factory import NodeFactory
+from cilantro_ee.utils.factory import NodeFactory
 from cilantro_ee.constants.overlay_network import HOST_IP
 
 
