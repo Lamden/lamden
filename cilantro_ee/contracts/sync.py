@@ -29,3 +29,4 @@ def sync_genesis_contracts(d: ContractDriver, path: str='genesis', extension: st
             d.set_contract(name=name,
                            code=contract,
                            author=author)
+            d.commit()
