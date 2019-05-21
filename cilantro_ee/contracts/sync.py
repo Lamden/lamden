@@ -19,24 +19,24 @@ def contracts_for_directory(path, extension):
     return contracts
 
 
-def submit_files(contracts, d: ContractDriver, _compile=True, lint=True, author='sys'):
+def submit_files(contracts, _compile=True, lint=True, author='sys'):
     compiler = ContractingCompiler()
+    driver = ContractDriver()
 
     for contract in contracts:
         name = contract_name_from_file_path(contract)
 
-        if d.get_contract(name) is None:
-
+        if driver.get_contract(name) is None:
             with open(contract) as f:
                 contract = f.read()
 
             if _compile:
                 contract = compiler.parse_to_code(contract, lint=lint)
 
-            d.set_contract(name=name,
+            driver.set_contract(name=name,
                            code=contract,
                            author=author)
-            d.commit()
+            driver.commit()
 
 
 def sync_genesis_contracts(genesis_path: str='genesis',
