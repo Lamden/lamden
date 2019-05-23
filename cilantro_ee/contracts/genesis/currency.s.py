@@ -18,13 +18,13 @@ def seed():
     ]
 
     for w in founder_wallets:
-        print('Minting {} with {} coins'.format(w, seed_amount))
+        # print('Minting {} with {} coins'.format(w, seed_amount))
         balances[w] = seed_amount
 
         s = supply.get()
         s += seed_amount
         supply.set(s)
-    print('Done minting!')
+    # print('Done minting!')
 
 @export
 def transfer(amount, to):
@@ -41,13 +41,13 @@ def transfer(amount, to):
     balances[sender] -= amount
     balances[to] += amount
 
-    print('Succesfully sent {} coins to {}. {} updated from {} to {}'.format(
-        amount,
-        to,
-        sender,
-        balance,
-        balances[sender]
-    ))
+    # print('Succesfully sent {} coins to {}. {} updated from {} to {}'.format(
+        # amount,
+        # to,
+        # sender,
+        # balance,
+        # balances[sender]
+    # ))
 
 @export
 def balance_of(account):
