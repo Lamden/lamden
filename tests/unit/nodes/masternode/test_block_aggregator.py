@@ -72,10 +72,10 @@ RAWTXS2 = [
 ]
 TXS1 = [TransactionData.create(
     contract_tx=ContractTransactionBuilder.create_currency_tx(sender_sk=TEST_SK, receiver_vk=raw_tx.decode(), amount=10),
-    status='SUCCESS', state='SET x 1') for raw_tx in RAWTXS1]
+    status='SUCCESS', state='x 1') for raw_tx in RAWTXS1]
 TXS2 = [TransactionData.create(
     contract_tx=ContractTransactionBuilder.create_currency_tx(sender_sk=TEST_SK, receiver_vk=raw_tx.decode(), amount=10),
-    status='SUCCESS', state='SET x 1') for raw_tx in RAWTXS2]
+    status='SUCCESS', state='x 1') for raw_tx in RAWTXS2]
 
 TREE1 = MerkleTree.from_raw_transactions([t.serialize() for t in TXS1])
 TREE2 = MerkleTree.from_raw_transactions([t.serialize() for t in TXS2])
