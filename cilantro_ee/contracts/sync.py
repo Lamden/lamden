@@ -1,6 +1,6 @@
 import glob
 import os
-from contracting.db.driver import ContractDriver
+from contracting.client import ContractingClient
 
 
 def contract_name_from_file_path(p: str) -> str:
@@ -13,20 +13,28 @@ def contract_name_from_file_path(p: str) -> str:
     return name
 
 
-def sync_genesis_contracts(d: ContractDriver, path: str='genesis', extension: str='*.s.py', author: str='sys'):
+def contracts_for_directory(path, extension):
+    dir_path = os.path.join(os.path.dirname(__file__), path) + '/' + extension
+    contracts = glob.glob(dir_path)
+    return contracts
+
+
+def sync_genesis_contracts(genesis_path: str='genesis',
+                           extension: str='*.s.py'):
+
     # Direct database writing of all contract files in the 'genesis' folder
-    contract_glob = os.path.join(os.path.dirname(__file__), path) + '/' + extension
-    genesis_contracts = glob.glob(contract_glob)
+    # direct_contracts = contracts_for_directory(direct_path, extension)
+    # explicitly submit the submission contract
+    submission_file = os.path.dirname(__file__) + '/submission.s.py'
+    client = ContractingClient(submission_filename=submission_file)
+
+    genesis_contracts = contracts_for_directory(genesis_path, extension)
 
     for contract in genesis_contracts:
         name = contract_name_from_file_path(contract)
 
-        if d.get_contract(name) is None:
-
+        if client.raw_driver.get_contract(name) is None:
             with open(contract) as f:
-                contract = f.read()
+                code = f.read()
 
-            d.set_contract(name=name,
-                           code=contract,
-                           author=author)
-            d.commit()
+            client.submit(code, name=name)

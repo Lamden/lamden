@@ -25,7 +25,7 @@ class StateDriver:
                 # DEBUG -- TODO DELETE
                 # cls.log.important("splitting and running cmd {}".format(cmd))
                 # END DEBUG
-                if cmd: SafeDriver.set(*cmd.split(' ')[1:])
+                if cmd: SafeDriver.set(*cmd.split(' '))
 
         # Update our block hash and block num
         cls.set_latest_block_info(block.block_hash, block.block_num)

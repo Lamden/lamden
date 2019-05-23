@@ -24,4 +24,5 @@ if SHOULD_MINT_WALLET:
         sk, vk = wallet.new(int_to_padded_bytes(i))
         GENERAL_WALLETS.append((sk, vk))
 
-ALL_WALLETS = COOL_KIDS + GENERAL_WALLETS
+#ALL_WALLETS = COOL_KIDS + GENERAL_WALLETS
+ALL_WALLETS = COOL_KIDS
