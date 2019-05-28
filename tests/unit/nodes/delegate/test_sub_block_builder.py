@@ -260,7 +260,7 @@ class TestSubBlockBuilder(TestCase):
         SBBTester.send_sub_to_sbb(sbb, envelope=tx_batch, handler_key=0)
 
         self.assertEqual(len(sbb.sb_managers[0].pending_txs), 1)
-        self.assertEqual(sbb.sb_managers[0].pending_txs.popleft(), tx_batch.message)
+        self.assertEqual(sbb.sb_managers[0].pending_txs.popleft(), tx_batch)
 
     @SBBTester.test
     @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.NUM_SUB_BLOCKS", 1)

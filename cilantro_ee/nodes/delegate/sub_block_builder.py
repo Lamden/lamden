@@ -294,12 +294,12 @@ class SubBlockBuilder(Worker):
         if self.sb_managers[index].num_pending_sb > 0:
             self.log.debug("Sending transaction batch {} to seneca client".format(index))
             sbb_idx = self.sb_managers[index].sub_block_index
-            if self._execute_next_sb(input_hash, envelope.message, sbb_idx):
+            if self._execute_next_sb(input_hash, envelope, sbb_idx):
                 self.sb_managers[index].num_pending_sb -= 1
                 return
 
         self.log.debug("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
-        self.sb_managers[index].pending_txs.append(input_hash, envelope.message)
+        self.sb_managers[index].pending_txs.append(input_hash, envelope)
 
     def _create_empty_sbc(self, sb_data: SBData):
         """
@@ -361,7 +361,9 @@ class SubBlockBuilder(Worker):
         self._send_msg_over_ipc(sbc)
 
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
-    def _execute_next_sb(self, input_hash: str, tx_batch: TransactionBatch, sbb_idx: int):
+    def _execute_next_sb(self, input_hash: str, envelope: Envelope, sbb_idx: int):
+        tx_batch = envelope.message
+        timestamp = envelope.meta.timestamp
         self.log.debug("SBB {} attempting to build {} block with sub block index {}"
                        .format(self.sbb_index, "empty sub" if tx_batch.is_empty else "sub", sbb_idx))
 
@@ -392,10 +394,10 @@ class SubBlockBuilder(Worker):
             if len(self.sb_managers[sb_idx].to_finalize_txs) > NUM_CACHES:
                 self.sb_managers[sb_idx].to_finalize_txs.pop_front()
             if len(self.sb_managers[sb_idx].pending_txs) > 0:
-                input_hash, txs_bag = self.sb_managers[sb_idx].pending_txs.pop_front()
+                input_hash, envelope = self.sb_managers[sb_idx].pending_txs.pop_front()
                 self.log.debug("Make next sub-block with input hash {}".format(input_hash))
                 sbb_idx = self.sb_managers[sb_idx].sub_block_index
-                if self._execute_next_sb(input_hash, txs_bag, sbb_idx) and self.sb_managers[sb_idx].num_pending_sb > 0:
+                if self._execute_next_sb(input_hash, envelope, sbb_idx) and self.sb_managers[sb_idx].num_pending_sb > 0:
                     self.sb_managers[sb_idx].num_pending_sb -= 1
             else:
                 self.sb_managers[sb_idx].num_pending_sb += 1
