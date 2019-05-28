@@ -65,23 +65,3 @@ class StateDriver:
         """ Sets the latest block num on the Redis database"""
         assert block_num >= 0, "block num must be GTE 0"
         SafeDriver.set(cls.BLOCK_NUM_KEY, block_num)
-
-
-class StateMetadataDriver:
-    def __init__(self):
-        pass
-
-    def set_latest_block_info(self, block_hash: str, block_num: int):
-        pass
-
-    def get_latest_block_info(self) -> tuple:
-        pass
-
-    def set_latest_block_hash(self, block_hash: str):
-        pass
-
-    def get_latest_block_num(self) -> int:
-        pass
-
-    def set_latest_block_num(self, block_num: int):
-        pass

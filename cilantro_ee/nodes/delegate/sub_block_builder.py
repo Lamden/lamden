@@ -350,6 +350,7 @@ class SubBlockBuilder(Worker):
         merkle_sig = MerkleSignature.create(sig_hex=signature,
                                             timestamp=str(time.time()),
                                             sender=self.verifying_key)
+
         sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=sb_data.input_hash,
                                        merkle_leaves=merkle.leaves, sub_block_index=self.sbb_index,
                                        signature=merkle_sig, transactions=txs_data,
@@ -363,12 +364,23 @@ class SubBlockBuilder(Worker):
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
     def _execute_next_sb(self, input_hash: str, envelope: Envelope, sbb_idx: int):
         tx_batch = envelope.message
-        timestamp = envelope.meta.timestamp
+
         self.log.debug("SBB {} attempting to build {} block with sub block index {}"
                        .format(self.sbb_index, "empty sub" if tx_batch.is_empty else "sub", sbb_idx))
 
         callback = self._create_empty_sbc if tx_batch.is_empty else self._create_sbc_from_batch
-        result = self.client.execute_sb(input_hash, tx_batch.transactions, callback)
+
+        # Pass protocol level variables into environment so they are accessible at runtime in smart contracts
+        block_hash, block_num = StateDriver.get_latest_block_info()
+        timestamp = envelope.meta.timestamp
+
+        environment = {
+            'block_hash': block_hash,
+            'block_num': block_num,
+            'now': timestamp
+        }
+
+        result = self.client.execute_sb(input_hash, tx_batch.transactions, callback, environment=environment)
 
         if result:
             self._next_block_to_make.state = NextBlockState.PROCESSED
