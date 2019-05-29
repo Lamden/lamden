@@ -21,8 +21,8 @@ class StateDriver:
             assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
 
             if tx.state is not None:
+                cls.log.notice("State changes for tx: {}.".format(tx.state))
                 sets = json.loads(tx.state)
-                cls.log.notice("State changes for tx found.")
                 for k, v in sets.items():
                     cls.log.notice("Setting {} to {}".format(k, v))
                     SafeDriver.set(k, v)
