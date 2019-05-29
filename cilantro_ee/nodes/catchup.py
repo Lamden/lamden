@@ -14,7 +14,7 @@ from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.messages.block_data.block_data import BlockData
 from cilantro_ee.messages.block_data.block_metadata import BlockMetaData
 from cilantro_ee.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest, BlockDataReply
-
+from cilantro_ee.contracts.sync import sync_genesis_contracts
 
 IDX_REPLY_TIMEOUT = 20
 TIMEOUT_CHECK_INTERVAL = 1
