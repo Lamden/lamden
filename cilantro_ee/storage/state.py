@@ -5,7 +5,7 @@ from cilantro_ee.utils.utils import is_valid_hex
 from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.constants.system_config import *
 from typing import List
-
+import json
 
 class StateDriver:
 
@@ -19,13 +19,22 @@ class StateDriver:
         # Update state by running Redis outputs from the block's transactions
         for tx in block.transactions:
             assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
-            cmds = tx.state.split(';')
-            # cls.log.notice('tx has state {}'.format(cmds))
-            for cmd in cmds:
-                # DEBUG -- TODO DELETE
-                # cls.log.important("splitting and running cmd {}".format(cmd))
-                # END DEBUG
-                if cmd: SafeDriver.set(*cmd.split(' '))
+
+            sets = json.loads(tx.state)
+            for k, v in sets.items():
+                SafeDriver.set(k, v)
+
+            # cmds = tx.state.split(';')
+            # # cls.log.notice('tx has state {}'.format(cmds))
+            # for cmd in cmds:
+            #     # DEBUG -- TODO DELETE
+            #     # cls.log.important("splitting and running cmd {}".format(cmd))
+            #     # END DEBUG
+            #     if cmd:
+            #         c = cmd.split(' ')
+            #         if len(c) > 2:
+            #             cls.log.notice('CMD split is: {}'.format(c))
+            #         SafeDriver.set(*cmd.split(' '))
 
         # Update our block hash and block num
         cls.set_latest_block_info(block.block_hash, block.block_num)
