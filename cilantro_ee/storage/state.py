@@ -20,9 +20,14 @@ class StateDriver:
         for tx in block.transactions:
             assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
 
-            sets = json.loads(tx.state)
-            for k, v in sets.items():
-                SafeDriver.set(k, v)
+            if tx.state is not None:
+                sets = json.loads(tx.state)
+                cls.log.notice("State changes for tx found.")
+                for k, v in sets.items():
+                    cls.log.notice("Setting {} to {}".format(k, v))
+                    SafeDriver.set(k, v)
+
+            cls.log.notice("No state changes for tx.")
 
             # cmds = tx.state.split(';')
             # # cls.log.notice('tx has state {}'.format(cmds))
