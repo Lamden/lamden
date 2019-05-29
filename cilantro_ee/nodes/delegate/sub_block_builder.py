@@ -35,6 +35,7 @@ from cilantro_ee.messages.signals.delegate import MakeNextBlock, DiscardPrevBloc
 from cilantro_ee.messages.signals.node import Ready
 
 from contracting.config import NUM_CACHES
+from contracting.stdlib.bridge.time import Datetime
 from contracting.db.cr.client import SubBlockClient
 from contracting.db.cr.callback_data import ExecutionData, SBData
 
@@ -50,6 +51,7 @@ from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from enum import Enum, unique
 import asyncio, zmq.asyncio, time, os
+from datetime import datetime
 from typing import List
 
 
@@ -372,12 +374,23 @@ class SubBlockBuilder(Worker):
 
         # Pass protocol level variables into environment so they are accessible at runtime in smart contracts
         block_hash, block_num = StateDriver.get_latest_block_info()
+
+        # Get the timestamp and turn it into a Contracting Datetime object which is safe to use in Contracting
         timestamp = envelope.meta.timestamp
+
+        dt = datetime.utcfromtimestamp(timestamp)
+        dt_object = Datetime(year=dt.year,
+                             month=dt.month,
+                             day=dt.day,
+                             hour=dt.hour,
+                             minute=dt.minute,
+                             second=dt.second,
+                             microsecond=dt.microsecond)
 
         environment = {
             'block_hash': block_hash,
             'block_num': block_num,
-            'now': timestamp
+            'now': dt_object
         }
 
         result = self.client.execute_sb(input_hash, tx_batch.transactions, callback, environment=environment)
