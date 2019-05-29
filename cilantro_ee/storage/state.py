@@ -20,7 +20,7 @@ class StateDriver:
         for tx in block.transactions:
             assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
 
-            if tx.state is not None:
+            if tx.state is not None and len(tx.state) > 0:
                 cls.log.notice("State changes for tx: {}.".format(tx.state))
                 sets = json.loads(tx.state)
                 for k, v in sets.items():
