@@ -35,6 +35,7 @@ from cilantro_ee.messages.signals.delegate import MakeNextBlock, DiscardPrevBloc
 from cilantro_ee.messages.signals.node import Ready
 
 from contracting.config import NUM_CACHES
+from contracting.stdlib.bridge.time import Datetime
 from contracting.db.cr.client import SubBlockClient
 from contracting.db.cr.callback_data import ExecutionData, SBData
 
@@ -50,6 +51,7 @@ from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from enum import Enum, unique
 import asyncio, zmq.asyncio, time, os
+from datetime import datetime
 from typing import List
 
 
@@ -350,6 +352,7 @@ class SubBlockBuilder(Worker):
         merkle_sig = MerkleSignature.create(sig_hex=signature,
                                             timestamp=str(time.time()),
                                             sender=self.verifying_key)
+
         sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=sb_data.input_hash,
                                        merkle_leaves=merkle.leaves, sub_block_index=self.sbb_index,
                                        signature=merkle_sig, transactions=txs_data,
@@ -363,12 +366,34 @@ class SubBlockBuilder(Worker):
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
     def _execute_next_sb(self, input_hash: str, envelope: Envelope, sbb_idx: int):
         tx_batch = envelope.message
-        timestamp = envelope.meta.timestamp
+
         self.log.debug("SBB {} attempting to build {} block with sub block index {}"
                        .format(self.sbb_index, "empty sub" if tx_batch.is_empty else "sub", sbb_idx))
 
         callback = self._create_empty_sbc if tx_batch.is_empty else self._create_sbc_from_batch
-        result = self.client.execute_sb(input_hash, tx_batch.transactions, callback)
+
+        # Pass protocol level variables into environment so they are accessible at runtime in smart contracts
+        block_hash, block_num = StateDriver.get_latest_block_info()
+
+        # Get the timestamp and turn it into a Contracting Datetime object which is safe to use in Contracting
+        timestamp = envelope.meta.timestamp
+
+        dt = datetime.utcfromtimestamp(timestamp)
+        dt_object = Datetime(year=dt.year,
+                             month=dt.month,
+                             day=dt.day,
+                             hour=dt.hour,
+                             minute=dt.minute,
+                             second=dt.second,
+                             microsecond=dt.microsecond)
+
+        environment = {
+            'block_hash': block_hash,
+            'block_num': block_num,
+            'now': dt_object
+        }
+
+        result = self.client.execute_sb(input_hash, tx_batch.transactions, callback, environment=environment)
 
         if result:
             self._next_block_to_make.state = NextBlockState.PROCESSED

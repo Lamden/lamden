@@ -1,3 +1,5 @@
--e git+https://github.com/Lamden/contracting.git@dev#egg=contracting
+-e git+https://github.com/Lamden/contracting.git@dev-stamps-as-reward#egg=contracting
 # contracting==0.1.1
+# henlo
+# henlo
 # henlo

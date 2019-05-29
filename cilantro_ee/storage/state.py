@@ -5,7 +5,7 @@ from cilantro_ee.utils.utils import is_valid_hex
 from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.constants.system_config import *
 from typing import List
-
+import json
 
 class StateDriver:
 
@@ -19,13 +19,15 @@ class StateDriver:
         # Update state by running Redis outputs from the block's transactions
         for tx in block.transactions:
             assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
-            cmds = tx.state.split(';')
-            # cls.log.notice('tx has state {}'.format(cmds))
-            for cmd in cmds:
-                # DEBUG -- TODO DELETE
-                # cls.log.important("splitting and running cmd {}".format(cmd))
-                # END DEBUG
-                if cmd: SafeDriver.set(*cmd.split(' '))
+
+            if tx.state is not None and len(tx.state) > 0:
+                cls.log.notice("State changes for tx: {}.".format(tx.state))
+                sets = json.loads(tx.state)
+                for k, v in sets.items():
+                    cls.log.notice("Setting {} to {}".format(k, v))
+                    SafeDriver.set(k, v)
+
+            cls.log.notice("No state changes for tx.")
 
         # Update our block hash and block num
         cls.set_latest_block_info(block.block_hash, block.block_num)
@@ -65,23 +67,3 @@ class StateDriver:
         """ Sets the latest block num on the Redis database"""
         assert block_num >= 0, "block num must be GTE 0"
         SafeDriver.set(cls.BLOCK_NUM_KEY, block_num)
-
-
-class StateMetadataDriver:
-    def __init__(self):
-        pass
-
-    def set_latest_block_info(self, block_hash: str, block_num: int):
-        pass
-
-    def get_latest_block_info(self) -> tuple:
-        pass
-
-    def set_latest_block_hash(self, block_hash: str):
-        pass
-
-    def get_latest_block_num(self) -> int:
-        pass
-
-    def set_latest_block_num(self, block_num: int):
-        pass
