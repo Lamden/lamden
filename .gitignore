@@ -16,7 +16,20 @@ __pycache__/
 # C extensions
 *.so
 
+# other extensions
+*.svg
+*.pdf
+*.dot
+*.ps
+
 cilantro_ee.egg-info/
+cilantro.egg-info/
+capnproto-c++-0.7.0/
+capnproto/
+var/
+mongo/
+
+
 
 # FOR DEMO
 cilantro_ee/faucet.json
@@ -40,6 +53,7 @@ vmnet_configs/constitutions/private
 *.tfstate.backup
 ops/environments/*/.cache/*
 ops/environments/*/conf
+ops/environments/TJ*
 
 # Config files
 db_conf.ini
