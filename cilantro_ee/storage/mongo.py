@@ -119,7 +119,8 @@ class MDB:
 
         # update index record
         if cls.init_mdb is True:
-            idx = {'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': cls.verify_key}
+            idx = {'blockNum': block.block_num, 'blockHash': block.block_hash, 'blockOwners': cls.verify_key,
+                   'ts': time.time()}
             cls.log.debugv('start_db init index {}'.format(idx))
             return cls.insert_idx_record(my_dict = idx)
 
