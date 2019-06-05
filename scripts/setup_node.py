@@ -94,11 +94,11 @@ config['DEFAULT']['seneca_log_lvl'] = '11'
 print('\n')
 print('Writing VK IP map file to /etc/vk_ip_map.json')
 
-json.dump(const['vk_ip_map'], open('./vk_ip_map.json', 'w'))
+json.dump(const['vk_ip_map'], open('/etc/vk_ip_map.json', 'w'))
 
 print('Writing node config file to /etc/cilantro_ee.conf\n')
 
-with open('./cilantro_ee.conf', 'w') as c:
+with open('/etc/cilantro_ee.conf', 'w') as c:
     config.write(c)
 
 print('Complete! Now run bootstrap.py to join the network!')
