@@ -25,10 +25,10 @@ class Worker(Context):
         self.tasks = self.manager.overlay_client.tasks
 
     async def _wait_until_ready(self):
-        await asyncio.sleep(2)   # sleep a bit
+        await asyncio.sleep(10)   # sleep a bit
         wait_until = time.time() + CLIENT_SETUP_TIMEOUT
         while not self.manager.is_ready() and (time.time() <= wait_until):
-            await asyncio.sleep(2)
+            await asyncio.sleep(10)
         await asyncio.sleep(6)  # sleep addtional time to let other nodes bind their sockets
         if not self.manager.is_ready():
             self.log.important("Overlay server is not ready still ...")
