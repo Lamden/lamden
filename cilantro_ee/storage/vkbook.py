@@ -86,7 +86,7 @@ class VKBook(metaclass=VKBookMeta):
 
         num_masternodes = cls.get_masternodes()
         num_delegates = cls.get_delegates()
-        num_bootnodes = cls.get_all()
+        num_bootnodes = len(cls.get_all())
 
         cls.BOOT_QUORUM = math.ceil(num_bootnodes * 2 / 3)
         cls.BOOT_QUORUM_MASTERNODES = math.ceil(num_masternodes * 2 / 3)
