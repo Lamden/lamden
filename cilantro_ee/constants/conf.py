@@ -7,11 +7,18 @@ VK_IP_JSON_PATH = '/etc/vk_ip_map.json'
 # this spicy code, courtesy of kind sir davis, will call setup() on CilantroConf as soon as the code is interpretted
 # no manually invoking of setup() required!
 class ConfMeta(type):
+    confs = {}
+
     def __new__(cls, clsname, bases, clsdict):
+        if clsname in cls.confs:
+            return cls.confs[clsname]
+
         clsobj = super().__new__(cls, clsname, bases, clsdict)
 
         assert hasattr(clsobj, 'setup'), "Class obj {} expected to have method called 'setup'".format(clsobj)
         clsobj.setup()
+
+        cls.confs[clsname] = clsobj
 
         return clsobj
 

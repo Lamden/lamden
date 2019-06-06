@@ -24,14 +24,17 @@ class Worker(Context):
         self.manager = SocketManager(context=self.zmq_ctx)
         self.tasks = self.manager.overlay_client.tasks
 
+    async def _just_wait_until_ready(self):
+        self.log.debugv("Started waiting for overlay server to be ready!!")
+        while not self.manager.is_ready():
+            await asyncio.sleep(1)
+        # await asyncio.sleep(60)
+        self.log.debugv("overlay server is ready!!")
+        
+
     async def _wait_until_ready(self):
-        await asyncio.sleep(2)   # sleep a bit
-        wait_until = time.time() + CLIENT_SETUP_TIMEOUT
-        while not self.manager.is_ready() and (time.time() <= wait_until):
-            await asyncio.sleep(2)
-        await asyncio.sleep(6)  # sleep addtional time to let other nodes bind their sockets
-        if not self.manager.is_ready():
-            self.log.important("Overlay server is not ready still ...")
+        cmd_id = self.manager.overlay_client.ready()
+        await self._just_wait_until_ready()
 
     def add_overlay_handler_fn(self, key: str, handler: Callable[[dict], None]):
         """

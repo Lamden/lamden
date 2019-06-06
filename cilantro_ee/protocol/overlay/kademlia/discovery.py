@@ -31,10 +31,18 @@ class Discovery:
 
         self.is_masternode = False
         self.is_listen_ready = False
+        self.min_discovery_nodes = 1 if (len(VKBook.get_masternodes()) == 1) else 2
+
         # raghu TODO - #enh maintain a list of ips serviced with a relative time counter to deny dos attacks ?
         # raghu TODO #enh separate out vkbook - again through genesis script?
         if VKBook.is_node_type('masternode', self.vk):
             self.is_masternode = True
+            if (len(VKBook.get_masternodes()) == 2):
+                self.min_discovery_nodes = 1
+
+
+    def set_ready(self):
+        if self.is_masternode:
             self.is_listen_ready = True
 
     async def listen(self):
@@ -132,26 +140,18 @@ class Discovery:
 
         return False
 
-    async def _try_discover_nodes(self, req, dis_nodes, connections, requests, ip_list):
-        assert len(ip_list) >= MIN_DISCOVERY_NODES, "Don't have enough discoverable addresses"
+    async def _try_discover_nodes(self, req, dis_nodes, connections, requests):
         num_requests = len(requests)
         num_replies = len(dis_nodes)
-        for ip in ip_list:
-            if (ip == self.host_ip) or ip in dis_nodes:
-                continue
+        for ip in connections:
             while (num_replies < num_requests):
                 is_reply = await self.try_process_reply(req, dis_nodes)
                 if not is_reply:
                     break
                 num_replies += 1
-                if num_replies >= MIN_DISCOVERY_NODES:
+                if num_replies >= self.min_discovery_nodes:
                     return True
 
-            if ip not in connections:
-                url = 'tcp://{}:{}'.format(ip, self.port)
-                req.connect(url)
-                connections.add(ip)
-            
             if ip not in dis_nodes:
                 is_sent = await self.request(req, ip.encode())
                 if is_sent and ip not in requests:
@@ -161,14 +161,15 @@ class Discovery:
         if self.is_debug:
             self.log.debug("Sent discovery request to all ips ({} {}) Sleeping for {}".format(num_requests, num_replies, DISCOVERY_WAIT))
         await asyncio.sleep(DISCOVERY_WAIT)
-        while (num_replies < num_requests) and (num_replies < MIN_DISCOVERY_NODES):
+        while (num_replies < num_requests) and (num_replies < self.min_discovery_nodes):
             is_reply = await self.try_process_reply(req, dis_nodes)
             if not is_reply:
                 return False
             num_replies += 1
-        return (num_replies >= MIN_DISCOVERY_NODES)
+        return (num_replies >= self.min_discovery_nodes)
 
     async def try_discover_nodes(self, dis_nodes, ip_list):
+        assert len(ip_list) >= self.min_discovery_nodes, "Don't have enough discoverable addresses"
         req = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
         req.setsockopt(zmq.ROUTER_MANDATORY, 1)
         event_id = uuid.uuid4().hex
@@ -180,11 +181,20 @@ class Discovery:
         requests = set()
         try_count = 0
         is_done = False
+        # first form connections
+        for ip in ip_list:
+            if (ip == self.host_ip) or ip in dis_nodes:
+                continue
+            if ip not in connections:
+                url = 'tcp://{}:{}'.format(ip, self.port)
+                req.connect(url)
+                connections.add(ip)
+        await asyncio.sleep(1)
         while not is_done and try_count < DISCOVERY_RETRIES:
             # raghu this try and except is redundant?
             try_count += 1
             try:
-                is_done = await self._try_discover_nodes(req, dis_nodes, connections, requests, ip_list)
+                is_done = await self._try_discover_nodes(req, dis_nodes, connections, requests)
             except Exception as e:
                 self.log.warning("Got exception in discovering process '{}'".format(e))
 
@@ -208,17 +218,17 @@ class Discovery:
             while iter < DISCOVERY_ITER:
                 self.log.info('Trying to discover network ..')
                 await self.try_discover_nodes(dis_nodes, ip_list)
-                if (len(dis_nodes) >= MIN_DISCOVERY_NODES) or self.is_masternode:
+                if (len(dis_nodes) >= self.min_discovery_nodes):
                     break
                 await asyncio.sleep(DISCOVERY_LONG_WAIT)
                 iter += 1
 
-            if (len(dis_nodes) < MIN_DISCOVERY_NODES) and not self.is_masternode:
+            if (len(dis_nodes) < self.min_discovery_nodes) and not self.is_masternode:
                 self.log.critical('''
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 x   DISCOVERY FAILED: Cannot find enough nodes ({}/{})
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-            '''.format(len(dis_nodes), MIN_DISCOVERY_NODES))
+            '''.format(len(dis_nodes), self.min_discovery_nodes))
                 raise Exception('Failed to discover any nodes. Killing myself with shame!')
 
         self.log.success("DISCOVERY COMPLETE")
