@@ -4,7 +4,9 @@
         { "vk":"64cdc0774705e09d1f2c3288766721ad1fa4a9cfd2be8260c127c0ea3475dd8e" },
         { "vk":"1f2995f6cb7afad770efdf4615be264fae145d796fc7fb3b9794372812e361cd" },
         { "vk":"aacfe4211a363363211f300a9bfcd70072d2615ccf58cd7fdb53c2a8d74d1c7e" },
-        { "vk":"76bebe49e768818773bda994491dc271f8e360917a820278d4e52d7a7f76c9af" }
+        { "vk":"76bebe49e768818773bda994491dc271f8e360917a820278d4e52d7a7f76c9af" },
+        { "vk":"93aeefec5d87bc890b02fec280ab9c79803d2ab71d1cb274d7090e9b84cd6f8a" },
+        { "vk":"2b060b761c8e698168cc9641ef2b22ff357464cb324866631572508defcc0898" }
     ],
     "witnesses": [],
     "masternodes": [
