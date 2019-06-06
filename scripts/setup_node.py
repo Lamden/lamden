@@ -84,12 +84,12 @@ config['DEFAULT']['boot_ips'] = ','.join(const['bootnodes'])
 config['DEFAULT']['node_type'] = role
 config['DEFAULT']['sk'] = keys[0]
 config['DEFAULT']['vk'] = keys[1]
-config['DEFAULT']['reset_db'] = 'False'
+config['DEFAULT']['reset_db'] = 'True'
 config['DEFAULT']['constitution_file'] = c_name
 config['DEFAULT']['ssl_enabled'] = 'False'
 config['DEFAULT']['metering'] = 'True'
-config['DEFAULT']['log_lvl'] = '11'
-config['DEFAULT']['seneca_log_lvl'] = '11'
+config['DEFAULT']['log_lvl'] = '13'
+config['DEFAULT']['seneca_log_lvl'] = '13'
 
 print('\n')
 print('Writing VK IP map file to /etc/vk_ip_map.json')

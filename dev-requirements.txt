@@ -21,4 +21,3 @@ umsgpack
 aiohttp
 
 transitions
-astor
