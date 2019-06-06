@@ -135,7 +135,7 @@ class SubBlockBuilder(Worker):
         await self.send_ready_to_bm()
 
     async def send_ready_to_bm(self):
-        await asyncio.sleep(1)
+        # await asyncio.sleep(1)
         message = Ready.create()
         self._send_msg_over_ipc(message)
 
@@ -167,6 +167,17 @@ class SubBlockBuilder(Worker):
             sub.setsockopt(zmq.SUBSCRIBE, TRANSACTION_FILTER.encode())
             self.sb_managers.append(SubBlockManager(sub_block_index=idx, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
+
+    def _connect_new_node(self, vk):
+        d = NetworkTopology.get_sbb_publisher(vk)
+        if d is None:
+            return
+        sbb_idx = d['sb_idx'] % NUM_SB_BUILDERS
+        if sbb_idx != self.sbb_index:
+            return
+        smi = d['sb_idx'] // NUM_SB_BUILDERS
+        self.sb_managers[smi].sub_socket.connect(port=port, vk=vk)
+
 
     async def _connect_sub_sockets(self):
         # We then BIND a sub socket to a port for each of these masternode indices

@@ -6,6 +6,8 @@ import logging
 
 from collections import OrderedDict
 from cilantro_ee.constants.overlay_network import *
+from cilantro_ee.protocol.overlay.kademlia.node import Node
+from cilantro_ee.protocol.overlay.kademlia.utils import digest
 from cilantro_ee.protocol.overlay.kademlia.utils import OrderedSet, sharedPrefix, bytesToBitString
 
 log = logging.getLogger(__name__)
@@ -159,6 +161,9 @@ class RoutingTable(object):
         return self.buckets[index].isNewNode(node)
 
     def addContact(self, node):
+        if node.id == self.node.id:
+            return False
+
         index = self.getBucketFor(node)
         bucket = self.buckets[index]
 
@@ -182,6 +187,14 @@ class RoutingTable(object):
         for index, bucket in enumerate(self.buckets):
             if node.long_id < bucket.range[1]:
                 return index
+
+    def isVKIn(self, vk):
+        node = Node(digest(vk))
+        if node.id == self.node.id:
+            return self.node
+        bucket = self.buckets[self.getBucketFor(node)]
+        return bucket.nodes.get(node.id, None)
+  
 
     def findNode(self, node):
         k=self.ksize
@@ -217,6 +230,12 @@ class RoutingTable(object):
             nodes.append(neighbor)
 
         return nodes
+
+    def numContacts(self):
+        numNodes = 0
+        for bucket in self.buckets:
+            numNodes += len(bucket.nodes)
+        return numNodes
 
     def getMyNeighbors(self):
         return self.getNeighbors(self.node)

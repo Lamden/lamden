@@ -82,7 +82,7 @@ class SocketUtil:
         # socket.setsockopt(zmq.RCVHWM, 20)     # HWM - limit to the max of 20 messages. selectively increase it where needed
         # socket.setsockopt(zmq.CONNECT_TIMEOUT, 1500)
         if socket_type == zmq.ROUTER:
-            socket.setsockopt(zmq.LINGER, 200)              # ms - 200msec max
+            socket.setsockopt(zmq.LINGER, 2000)              # ms - 200msec max
             socket.setsockopt(zmq.ROUTER_HANDOVER, 1)
             socket.setsockopt(zmq.ROUTER_MANDATORY, 1)
 

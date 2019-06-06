@@ -101,7 +101,7 @@ class BlockAggregator(Worker):
         for vk in VKBook.get_masternodes():
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MN_PUB_PORT)
-                self.router.connect(vk=vk, port=MN_ROUTER_PORT)
+                # self.router.connect(vk=vk, port=MN_ROUTER_PORT)  # we don't want 2 simultaneous look ups @ overlay server
 
         # Listen to delegates for sub block contenders and state update requests
         for vk in VKBook.get_delegates() :
@@ -112,6 +112,11 @@ class BlockAggregator(Worker):
 
         for vk in VKBook.get_schedulers() + VKBook.get_notifiers():
             self.sub.connect(vk=vk, port=SS_PUB_PORT)
+
+        # Listen to masters for new block notifs and state update requests from masters/delegates
+        for vk in VKBook.get_masternodes():
+            if vk != self.verifying_key:
+                self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
         # we just connected to other nodes, let's chill a bit to give time for those connections form !!!
         self.log.spam("Sleeping before triggering catchup...")

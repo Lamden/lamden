@@ -1,4 +1,4 @@
-import zmq, zmq.asyncio, asyncio, ujson, os, uuid, json, inspect
+import zmq, zmq.asyncio, asyncio, ujson, os, uuid, json, inspect, time
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.protocol.overlay.interface import OverlayInterface
 from cilantro_ee.constants.overlay_network import EVENT_URL, CMD_URL, CLIENT_SETUP_TIMEOUT
@@ -35,13 +35,17 @@ def async_reply(fn):
 
 
 class OverlayServer(OverlayInterface):
-    def __init__(self, sk, ctx):
+    def __init__(self, sk, ctx, quorum):
+        self.log = get_logger('Overlay.Server')
         self.sk = sk
         Keys.setup(sk_hex=self.sk)
         self.loop = asyncio.get_event_loop()
         self.ctx = ctx
+        if quorum <= 0:
+            self.log.critical("quorum value should be greater than 0 for overlay server to properly synchronize!")
 
-        self.log = get_logger('Overlay.Server')
+        self.quorum = quorum
+
         self.supported_methods = [func for func in dir(OverlayInterface) if callable(getattr(OverlayInterface, func)) and not func.startswith("__")]
 
         self.cmd_sock = self.ctx.socket(zmq.ROUTER)
@@ -54,6 +58,8 @@ class OverlayServer(OverlayInterface):
 
     def start(self):
         self.network.start()
+        if self.quorum == 0:
+            self.network.bootup()
 
     async def command_listener(self):
         self.log.info('Listening for overlay commands over {}'.format(CMD_URL))
@@ -70,6 +76,18 @@ class OverlayServer(OverlayInterface):
             else:
                 raise Exception("Unsupported API call {}".format(func))
            
+
+    @async_reply
+    async def ready(self, *args, **kwargs):
+        self.log.debugv('Overlay Client # {} ready!'.format(self.quorum))
+        self.quorum = self.quorum - 1
+        if self.quorum == 0:
+            await self.network.bootup()
+        return {
+            'event': 'service_status',
+            'status': 'not_ready'
+        }
+
 
     @reply
     def invalid_api_call(self, api_call):
@@ -152,7 +170,7 @@ class OverlayServer(OverlayInterface):
 
     @reply
     def get_service_status(self, event_id):
-        if self.network.ready:
+        if self.network.is_connected:
             return {
                 'event': 'service_status',
                 'status': 'ready'

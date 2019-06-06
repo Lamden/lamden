@@ -38,11 +38,10 @@ class NodeBase(Context):
         self.ip = ip
 
         self.log.info("Starting node components")
-        self.start_node()
-        time.sleep(4)
+        quorum = self.start_node()
 
         self.log.info("Starting overlay service")
-        self.overlay_server = OverlayServer(sk=signing_key, ctx=self.zmq_ctx)
+        self.overlay_server = OverlayServer(sk=signing_key, ctx=self.zmq_ctx, quorum=quorum)
         self.start()
 
     def start(self):

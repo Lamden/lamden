@@ -26,6 +26,7 @@ from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.constants.ports import DHT_PORT
 from cilantro_ee.constants.overlay_network import *
 from cilantro_ee.logger.base import get_logger
+from cilantro_ee.storage.vkbook import VKBook
 
 class MalformedMessage(Exception):
     """
@@ -94,7 +95,7 @@ class Network(object):
         self.evt_sock.bind(EVENT_URL)
         Event.set_evt_sock(self.evt_sock)       # raghu todo - do we need this still as we have everything local
 
-        self._use_ee_bootup = True              # turn this on for enterprise edition boot up method
+        self._use_ee_bootup = False             # turn this on for enterprise edition boot up method
         self.is_connected = False
 
         # raghu TODO - do we want to save routing table and use it as part of discovery process when rebooted ?? useful only in open discovery only - so punt for now
@@ -111,8 +112,8 @@ class Network(object):
 
         self.tasks = [
             # self.handshake.listen(),
-            self.process_requests(),
-            self.bootup()
+            # self.bootup(),
+            self.process_requests()
         ]
         if not self._use_ee_bootup:
             self.tasks += [ self.discovery.listen() ]
@@ -148,7 +149,34 @@ class Network(object):
             self.routing_table.addContact(node)
         await asyncio.sleep(5)
 
+    async def _wait_for_boot_quorum(self):
+        if (self.routing_table.numContacts() + 1) >= VKBook.get_boot_quorum():
+            return        # met overall quorum
+        is_masternode = self.vk in VKBook.get_masternodes()
+        quorum_required = VKBook.get_boot_quorum() if is_masternode else VKBook.get_boot_quorum_masternodes()
+        quorum_required -= 1     # eliminate myself
+        vks_connected = set()
+        vks_to_wait_for = VKBook.get_all() if is_masternode else VKBook.get_masternodes()
+        # for vk in vks_to_connect:
+            # if self.routing_table.isVKIn(vk):
+                # vks_connected.add(vk)
+            # else:
+                # vks_to_wait_for.add(vk)
+        while len(vks_to_wait_for) > 0:
+            if len(vks_connected) >= quorum_required:
+                return
+            await asyncio.sleep(2)
+            for vk in vks_to_wait_for:
+                if vk in vks_connected:
+                    continue
+                event_id = uuid.uuid4().hex
+                ip = await self.find_ip(event_id, vk)
+                if ip:
+                    vks_connected.add(vk)
+     
+
     async def bootup(self):
+        self.discovery.set_ready()
         if self._use_ee_bootup:
             await self._bootup_ee()
         else:
@@ -156,6 +184,12 @@ class Network(object):
         self.log.success('''
 ###########################################################################
 #   BOOTSTRAP COMPLETE
+###########################################################################\
+        ''')
+        await self._wait_for_boot_quorum()
+        self.log.success('''
+###########################################################################
+#   MET BOOT QUORUM 
 ###########################################################################\
         ''')
         self.is_connected = True
@@ -349,7 +383,7 @@ class Network(object):
         processed = set()
         processed.add(self.vk)
         failed_requests = set()
-        is_retry = is_bootstrap
+        is_retry = True
         num_pending_replies = 0
         pinterval = 0
         is_done = False
