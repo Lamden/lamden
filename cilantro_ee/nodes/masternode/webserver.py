@@ -19,7 +19,7 @@ from cilantro_ee.utils.hasher import Hasher
 from contracting.config import DELIMITER
 
 from multiprocessing import Queue
-import os
+import os, time
 
 from cilantro_ee.storage.mn_api import StorageDriver
 from cilantro_ee.protocol.webserver.validation import *
@@ -262,6 +262,7 @@ async def teardown_network(request):
     return _respond_to_request({ 'message': 'tearing down network' })
 
 def start_webserver(q):
+    time.sleep(30)   # wait for 30 secs before starting web server
     app.queue = q
     log.info("Creating REST server on port {}".format(WEB_SERVER_PORT))
     if ssl:

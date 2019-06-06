@@ -25,8 +25,10 @@ class Masternode(NodeBase):
         if not os.getenv('MN_MOCK'):  # TODO @stu do we need this still? --davis
             self._start_batcher()
             self._start_block_agg()
+            return 1
         else:
             self.log.warning("MN_MOCK env var is set! Not starting block aggregator or tx batcher.")
+            return 0
 
     def _start_web_server(self):
         self.log.debug("Masternode starting REST server on port 8080")

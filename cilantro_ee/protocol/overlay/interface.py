@@ -5,6 +5,11 @@ class OverlayInterface(abc.ABC):
         pass
         # interface dictionary
 
+    # ready signal from client to start overlay server
+    @abc.abstractmethod
+    def ready(self):
+        pass
+
     # returns ip address if found else None
     @abc.abstractmethod
     def get_ip_from_vk(self, vk):
