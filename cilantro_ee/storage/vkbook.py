@@ -80,9 +80,14 @@ class VKBook(metaclass=VKBookMeta):
     # todo we need to enhance bootnodes to have separate lists of masternodes and delegates. Until then, let's assume equal split
     @classmethod
     def _setup_quorums(cls):
-        num_bootnodes = len(CilantroConf.BOOTNODES)
-        num_masternodes = num_bootnodes // 2
-        num_delegates = num_bootnodes - num_masternodes
+        # num_bootnodes = len(CilantroConf.BOOTNODES)
+        # num_masternodes = num_bootnodes // 2
+        # num_delegates = num_bootnodes - num_masternodes
+
+        num_masternodes = cls.get_masternodes()
+        num_delegates = cls.get_delegates()
+        num_bootnodes = cls.get_all()
+
         cls.BOOT_QUORUM = math.ceil(num_bootnodes * 2 / 3)
         cls.BOOT_QUORUM_MASTERNODES = math.ceil(num_masternodes * 2 / 3)
         cls.BOOT_QUORUM_DELEGATES = math.ceil(num_delegates * 2 / 3)
@@ -115,8 +120,9 @@ class VKBook(metaclass=VKBookMeta):
 
     @classmethod
     def get_all(cls):
-        return cls.get_masternodes() + cls.get_delegates() + cls.get_witnesses() + cls.get_schedulers() \
-               + cls.get_notifiers()
+        # return cls.get_masternodes() + cls.get_delegates() + cls.get_witnesses() + cls.get_schedulers() \
+        #        + cls.get_notifiers()
+        return cls.get_masternodes() + cls.get_delegates()
 
     @classmethod
     def get_masternodes(cls) -> list:
