@@ -37,6 +37,10 @@ class OverlayClient(OverlayInterface):
         ]
 
     @command
+    def ready(self, *args, **kwargs):
+        pass
+
+    @command
     def get_ip_from_vk(self, *args, **kwargs):
         pass
 

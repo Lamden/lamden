@@ -100,6 +100,12 @@ class CatchupManager:
 
         # first reset state variables
         self.node_idx_reply_set.clear()
+
+        if self._check_idx_reply_quorum() is True:
+            self.is_caught_up = True
+            self.log.debugv("Quorum reached!")
+            return
+
         self.is_caught_up = False
         # self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
         # self.target_blk_num = self.curr_num

@@ -42,8 +42,8 @@ Custom Log Levels
 """
 
 CUSTOM_LEVELS = {
-    'SPAM': 1,
-    'DEBUGV': 5,
+    'SPAM': 12,
+    'DEBUGV': 13,
     'SOCKET': 23,
     'NOTICE': 24,
     'SUCCESS': 26,

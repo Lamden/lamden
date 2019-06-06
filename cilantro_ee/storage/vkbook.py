@@ -8,11 +8,18 @@ log = get_logger("VKBook")
 
 
 class VKBookMeta(type):
-    def __new__(cls, clsname, bases, clsdict):
-        clsobj = super().__new__(cls, clsname, bases, clsdict)
+    vkbooks = {}
 
+    def __new__(cls, clsname, bases, clsdict):
+        
+        if clsname in cls.vkbooks:
+            return cls.vkbooks[clsname]
+
+        clsobj = super().__new__(cls, clsname, bases, clsdict)
         assert hasattr(clsobj, 'setup'), "Class obj {} expected to have method called 'setup'".format(clsobj)
         clsobj.setup()
+
+        cls.vkbooks[clsname] = clsobj
 
         return clsobj
 
@@ -28,6 +35,10 @@ class VKBook(metaclass=VKBookMeta):
     book = defaultdict(list)
     # witness_mn_map = {}
     # delegate_mn_map = {}
+
+    BOOT_QUORUM = 0
+    BOOT_QUORUM_MASTERNODES = 0
+    BOOT_QUORUM_DELEGATES = 0
 
     @classmethod
     def setup(cls):
@@ -64,6 +75,23 @@ class VKBook(metaclass=VKBookMeta):
             cls.book['notifiers'].append(node['vk'])
 
         # cls._build_mn_witness_maps()
+        cls._setup_quorums()
+
+    # todo we need to enhance bootnodes to have separate lists of masternodes and delegates. Until then, let's assume equal split
+    @classmethod
+    def _setup_quorums(cls):
+        # num_bootnodes = len(CilantroConf.BOOTNODES)
+        # num_masternodes = num_bootnodes // 2
+        # num_delegates = num_bootnodes - num_masternodes
+
+        num_masternodes = cls.get_masternodes()
+        num_delegates = cls.get_delegates()
+        num_bootnodes = cls.get_all()
+
+        cls.BOOT_QUORUM = math.ceil(num_bootnodes * 2 / 3)
+        cls.BOOT_QUORUM_MASTERNODES = math.ceil(num_masternodes * 2 / 3)
+        cls.BOOT_QUORUM_DELEGATES = math.ceil(num_delegates * 2 / 3)
+        
 
     @classmethod
     def add_node(cls, vk, node_type, ip=None):
@@ -77,10 +105,24 @@ class VKBook(metaclass=VKBookMeta):
             encoded_ip = 1
         cls.book[node_type][vk] = encoded_ip
 
+
+    @classmethod
+    def get_boot_quorum(cls) -> int:
+        return cls.BOOT_QUORUM
+
+    @classmethod
+    def get_boot_quorum_masternodes(cls) -> int:
+        return cls.BOOT_QUORUM_MASTERNODES
+
+    @classmethod
+    def get_boot_quorum_delegates(cls) -> int:
+        return cls.BOOT_QUORUM_DELEGATES
+
     @classmethod
     def get_all(cls):
-        return cls.get_masternodes() + cls.get_delegates() + cls.get_witnesses() + cls.get_schedulers() \
-               + cls.get_notifiers()
+        # return cls.get_masternodes() + cls.get_delegates() + cls.get_witnesses() + cls.get_schedulers() \
+        #        + cls.get_notifiers()
+        return cls.get_masternodes() + cls.get_delegates()
 
     @classmethod
     def get_masternodes(cls) -> list:
