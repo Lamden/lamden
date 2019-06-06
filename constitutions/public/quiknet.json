@@ -1,0 +1,14 @@
+{
+    "delegates": [
+        { "vk":"8143f569f258c33de00d71a6527eadd5e22a88b0f16bee3f13230d26dd8a5e46" },
+        { "vk":"64cdc0774705e09d1f2c3288766721ad1fa4a9cfd2be8260c127c0ea3475dd8e" },
+        { "vk":"1f2995f6cb7afad770efdf4615be264fae145d796fc7fb3b9794372812e361cd" },
+        { "vk":"aacfe4211a363363211f300a9bfcd70072d2615ccf58cd7fdb53c2a8d74d1c7e" },
+        { "vk":"76bebe49e768818773bda994491dc271f8e360917a820278d4e52d7a7f76c9af" }
+    ],
+    "witnesses": [],
+    "masternodes": [
+        { "vk":"6fa435ea82e54d55b20599609b750f2602c596edbd70520c156a7d907e26926b" },
+        { "vk":"9dcef7bceb11e0d7f4ce687d343be819fb96c4abc3bb87fe4126849230c93a2a" }
+    ]
+}
