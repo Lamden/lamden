@@ -152,16 +152,17 @@ class Network(object):
     async def _wait_for_boot_quorum(self):
         if (self.routing_table.numContacts() + 1) >= VKBook.get_boot_quorum():
             return        # met overall quorum
-        is_masternode = self.vk in VKBook.get_masternodes()
-        quorum_required = VKBook.get_boot_quorum() if is_masternode else VKBook.get_boot_quorum_masternodes()
-        quorum_required -= 1     # eliminate myself
         vks_connected = set()
-        vks_to_wait_for = VKBook.get_all() if is_masternode else VKBook.get_masternodes()
-        # for vk in vks_to_connect:
-            # if self.routing_table.isVKIn(vk):
-                # vks_connected.add(vk)
-            # else:
-                # vks_to_wait_for.add(vk)
+        is_masternode = self.vk in VKBook.get_masternodes()
+        if is_masternode:
+            quorum_required = VKBook.get_boot_quorum()
+            quorum_required -= 1     # eliminate myself
+            vks_to_wait_for = VKBook.get_all()
+            vks_to_wait_for.remove(self.vk)
+        else:
+            quorum_required = VKBook.get_boot_quorum_masternodes()
+            vks_to_wait_for = VKBook.get_masternodes()
+    
         while len(vks_to_wait_for) > 0:
             if len(vks_connected) >= quorum_required:
                 return
