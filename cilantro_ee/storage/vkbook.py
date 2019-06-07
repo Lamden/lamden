@@ -88,10 +88,13 @@ class VKBook(metaclass=VKBookMeta):
         num_delegates = len(cls.get_delegates())
         num_bootnodes = len(cls.get_all())
 
-        cls.BOOT_QUORUM = math.ceil(num_bootnodes * 2 / 3)
-        cls.BOOT_QUORUM_MASTERNODES = math.ceil(num_masternodes * 2 / 3)
-        cls.BOOT_QUORUM_DELEGATES = math.ceil(num_delegates * 2 / 3)
-        
+        # cls.BOOT_QUORUM = math.ceil(num_bootnodes * 2 / 3)
+        # cls.BOOT_QUORUM_MASTERNODES = math.ceil(num_masternodes * 2 / 3)
+        # cls.BOOT_QUORUM_DELEGATES = math.ceil(num_delegates * 2 / 3)
+
+        cls.BOOT_QUORUM = num_bootnodes
+        cls.BOOT_QUORUM_MASTERNODES = num_masternodes
+        cls.BOOT_QUORUM_DELEGATES = num_delegates
 
     @classmethod
     def add_node(cls, vk, node_type, ip=None):
