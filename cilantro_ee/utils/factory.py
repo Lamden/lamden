@@ -7,6 +7,9 @@ from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.constants.conf import CilantroConf
 
+MASTERNODE = 0
+DELEGATE = 1
+WITNESS = 2
 
 def _wait_for_redis():
     # import ledis, time
@@ -45,6 +48,16 @@ class NodeFactory:
 
         # TODO make this a database agnostic command
         SafeDriver.flush()
+
+    @staticmethod
+    def run(signing_key, node_type):
+        _wait_for_redis()
+        if node_type == MASTERNODE:
+            _wait_for_mongo()
+            MasterOps.init_master(key=signing_key)
+            mn = Masternode(ip=CilantroConf.HOST_IP, name='Masternode', signing_key=signing_key)
+        elif node_type == DELEGATE:
+            d = Delegate(ip=CilantroConf.HOST_IP, name='Delegate', signing_key=signing_key)
 
     @staticmethod
     def run_masternode(signing_key, name='Masternode'):

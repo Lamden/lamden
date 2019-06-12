@@ -1,4 +1,4 @@
-from cilantro_ee.utils.factory import NodeFactory
+from cilantro_ee.utils.factory import NodeFactory, MASTERNODE, DELEGATE
 from cilantro_ee.constants.conf import CilantroConf, CIL_CONF_PATH
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.logger.base import overwrite_logger_level
@@ -44,12 +44,15 @@ def boot(delay):
     _, vk = wallet.new(seed=sk)
     print("Your VK is: {}.".format(vk))
 
+    # Determine what type the node is based on VK
+    node_type = None
     if vk in mns:
-        node_type = 'masternode'
+        node_type = MASTERNODE
     elif vk in dels:
-        node_type = 'delegate'
-    else:
-        node_type = 'none'
+        node_type = DELEGATE
+
+    if node_type is None:
+        raise Exception("You are not in the network!")
 
     print("Your node type is: {}".format(CilantroConf.NODE_TYPE))
 
@@ -59,28 +62,7 @@ def boot(delay):
     # print("VKBook mns {}".format(VKBook.get_masternodes()))
     overwrite_logger_level(CilantroConf.LOG_LEVEL)
 
-    if node_type == 'witness':
-        NodeFactory.run_witness(signing_key=CilantroConf.SK)
-
-    elif node_type == 'delegate':
-        sen_overwrite_log(CilantroConf.SEN_LOG_LEVEL)
-        NodeFactory.run_delegate(CilantroConf.SK)
-
-    elif node_type == 'masternode':
-        NodeFactory.run_masternode(CilantroConf.SK)
-
-    elif node_type == 'scheduler':
-        NodeFactory.run_scheduler(CilantroConf.SK)
-
-    elif node_type == 'notifier':
-        while True:
-            print("I am a notifier but i has no logic yet :(")
-            time.sleep(1)
-        pass
-
-    else:
-        raise Exception("Unrecognized node type {}".format(CilantroConf.NODE_TYPE))
-
+    NodeFactory.run(signing_key=CilantroConf.SK, node_type=node_type)
 
 if __name__ == '__main__':
     _delay = int(sys.argv[1]) if len(sys.argv) > 1 else 0
