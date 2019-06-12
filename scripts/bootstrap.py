@@ -1,4 +1,4 @@
-from cilantro_ee.utils.factory import NodeFactory, MASTERNODE, DELEGATE
+from cilantro_ee.utils.factory import MASTERNODE, DELEGATE, start_node
 from cilantro_ee.constants.conf import CilantroConf, CIL_CONF_PATH
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.logger.base import overwrite_logger_level
@@ -10,6 +10,7 @@ from contracting.client import ContractingClient
 from cilantro_ee.contracts import sync
 from cilantro_ee.protocol import wallet
 import requests
+
 
 def boot(delay):
     assert os.path.exists(CIL_CONF_PATH), "No config file found at path {}. Comon man get it together!".format(CIL_CONF_PATH)
@@ -57,7 +58,7 @@ def boot(delay):
 
     overwrite_logger_level(CilantroConf.LOG_LEVEL)
 
-    NodeFactory.run(signing_key=CilantroConf.SK, node_type=node_type)
+    start_node(signing_key=CilantroConf.SK, node_type=node_type)
 
 if __name__ == '__main__':
     _delay = int(sys.argv[1]) if len(sys.argv) > 1 else 0

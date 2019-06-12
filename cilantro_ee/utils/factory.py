@@ -4,19 +4,19 @@ from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.constants.conf import CilantroConf
 
+import time
+from pymongo import MongoClient
+
 MASTERNODE = 0
 DELEGATE = 1
 WITNESS = 2
 
 
-def _wait_for_redis():
-    import time
+def wait_for_redis():
     time.sleep(20)
 
 
-def _wait_for_mongo():
-    import time
-    from pymongo import MongoClient
+def wait_for_mongo():
     while True:
         try:
             info = MongoClient().server_info()
@@ -27,17 +27,15 @@ def _wait_for_mongo():
             time.sleep(1)
 
 
-class NodeFactory:
-    @staticmethod
-    def _reset_db():
-        SafeDriver.flush()
+def start_node(signing_key, node_type):
+    wait_for_redis()
 
-    @staticmethod
-    def run(signing_key, node_type):
-        _wait_for_redis()
-        if node_type == MASTERNODE:
-            _wait_for_mongo()
-            MasterOps.init_master(key=signing_key)
-            mn = Masternode(ip=CilantroConf.HOST_IP, name='Masternode', signing_key=signing_key)
-        elif node_type == DELEGATE:
-            d = Delegate(ip=CilantroConf.HOST_IP, name='Delegate', signing_key=signing_key)
+    if node_type == MASTERNODE:
+        wait_for_mongo()
+
+        MasterOps.init_master(key=signing_key)
+
+        Masternode(ip=CilantroConf.HOST_IP, name='Masternode', signing_key=signing_key)
+
+    elif node_type == DELEGATE:
+        Delegate(ip=CilantroConf.HOST_IP, name='Delegate', signing_key=signing_key)
