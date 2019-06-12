@@ -11,6 +11,9 @@ from cilantro_ee.contracts import sync
 def boot(delay):
     assert os.path.exists(CIL_CONF_PATH), "No config file found at path {}. Comon man get it together!".format(CIL_CONF_PATH)
 
+    #
+    # TODO: RESET THE DBS. THEY ALREADY ARE SEEDED AND NOT RESEEDING SO THE OLD VKS FOR DELEGATES ARE STILL IN THERE AND BLOWING UP BLOCKMANAGER
+    #
     print("Seeding genesis contract and building VKBook...")
     sync.sync_genesis_contracts()
     client = ContractingClient()

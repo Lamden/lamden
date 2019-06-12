@@ -7,22 +7,6 @@ from collections import defaultdict
 
 log = get_logger("VKBook")
 
-class VKBookMeta(type):
-    vkbooks = {}
-
-    def __new__(cls, clsname, bases, clsdict):
-        
-        if clsname in cls.vkbooks:
-            return cls.vkbooks[clsname]
-
-        clsobj = super().__new__(cls, clsname, bases, clsdict)
-        assert hasattr(clsobj, 'setup'), "Class obj {} expected to have method called 'setup'".format(clsobj)
-        clsobj.setup()
-
-        cls.vkbooks[clsname] = clsobj
-
-        return clsobj
-
 class VKBook:
 
     node_types = ('masternode', 'witness', 'delegate')
