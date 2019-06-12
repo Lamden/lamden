@@ -34,6 +34,7 @@ def sync_genesis_contracts(genesis_path: str='genesis',
         name = contract_name_from_file_path(contract)
 
         if client.raw_driver.get_contract(name) is None:
+            print(client.raw_driver.get_contract(name))
             with open(contract) as f:
                 code = f.read()
 
