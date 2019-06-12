@@ -16,17 +16,11 @@ def boot(delay):
     client = ContractingClient()
     vk_book_contract = client.get_contract('vkbook')
 
-    print('masternodes: {}'.format(vk_book_contract.get_masternodes()))
-    print('delegates: {}'.format(vk_book_contract.get_delegates()))
-
     masternodes = vk_book_contract.get_masternodes()
     delegates = vk_book_contract.get_delegates()
 
     VKBook.set_masternodes(masternodes)
     VKBook.set_delegates(delegates)
-
-    print('masternodes: {}'.format(VKBook.get_masternodes()))
-    print('delegates: {}'.format(VKBook.get_delegates()))
 
     print("Bootstrapping node with start delay of {}...".format(delay))
     time.sleep(delay)
