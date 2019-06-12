@@ -19,8 +19,8 @@ def boot(delay):
     print("Seeding genesis contract and building VKBook...")
 
     book = read_public_constitution(CilantroConf.CONSTITUTION_FILE)
-    mns = book['masternodes']
-    dels = book['delegates']
+    mns = [node['vk'] for node in book['masternodes']]
+    dels = [node['vk'] for node in book['delegates']]
 
     sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns,
                                                                 'delegates': dels})
