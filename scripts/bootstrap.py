@@ -22,7 +22,8 @@ def boot(delay):
     mns = book['masternodes']
     dels = book['delegates']
 
-    sync.sync_genesis_contracts()
+    sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns,
+                                                                'delegates': dels})
     client = ContractingClient()
     vk_book_contract = client.get_contract('vkbook')
 
