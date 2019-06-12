@@ -14,9 +14,6 @@ import requests
 def boot(delay):
     assert os.path.exists(CIL_CONF_PATH), "No config file found at path {}. Comon man get it together!".format(CIL_CONF_PATH)
 
-    #
-    # TODO: RESET THE DBS. THEY ALREADY ARE SEEDED AND NOT RESEEDING SO THE OLD VKS FOR DELEGATES ARE STILL IN THERE AND BLOWING UP BLOCKMANAGER
-    #
     if CilantroConf.RESET_DB:
         NodeFactory._reset_db()
 
@@ -54,12 +51,9 @@ def boot(delay):
     if node_type is None:
         raise Exception("You are not in the network!")
 
-    print("Your node type is: {}".format(CilantroConf.NODE_TYPE))
-
     print("Bootstrapping node with start delay of {}...".format(delay))
     time.sleep(delay)
 
-    # print("VKBook mns {}".format(VKBook.get_masternodes()))
     overwrite_logger_level(CilantroConf.LOG_LEVEL)
 
     NodeFactory.run(signing_key=CilantroConf.SK, node_type=node_type)
