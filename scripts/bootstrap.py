@@ -14,8 +14,10 @@ import requests
 def boot(delay):
     assert os.path.exists(CIL_CONF_PATH), "No config file found at path {}. Comon man get it together!".format(CIL_CONF_PATH)
 
+    client = ContractingClient()
+
     if CilantroConf.RESET_DB:
-        NodeFactory._reset_db()
+        client.raw_driver.flush()
 
     print("Seeding genesis contract and building VKBook...")
 
@@ -23,9 +25,8 @@ def boot(delay):
     mns = [node['vk'] for node in book['masternodes']]
     dels = [node['vk'] for node in book['delegates']]
 
-    sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns,
-                                                                'delegates': dels})
-    client = ContractingClient()
+    sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns, 'delegates': dels})
+
     vk_book_contract = client.get_contract('vkbook')
 
     masternodes = vk_book_contract.get_masternodes()

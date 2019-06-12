@@ -1,6 +1,8 @@
 import configparser, os, json
 
 CIL_CONF_PATH = '/etc/cilantro_ee.conf'
+VK_IP_JSON_PATH = '/etc/vk_ip_map.json'
+
 
 class CilantroConf:
 
@@ -10,6 +12,7 @@ class CilantroConf:
     CONSTITUTION_FILE = None
     SSL_ENABLED = None
     NONCE_ENABLED = None
+    VK_IP_MAP = {}
     STAMPS_ENABLED = False
     LOG_LEVEL = None
     SEN_LOG_LEVEL = None
@@ -40,6 +43,10 @@ class CilantroConf:
                 cls.LOG_LEVEL = int(config['log_lvl'])
                 cls.SEN_LOG_LEVEL = int(config['seneca_log_lvl']) if 'seneca_log_lvl' in config else 0
                 cls.SK = config['sk']
+
+            if os.path.exists(VK_IP_JSON_PATH):
+                with open(VK_IP_JSON_PATH, 'r') as f:
+                    cls.VK_IP_MAP = json.load(f)
 
             cls.SETUP = True
 
