@@ -37,7 +37,8 @@ def boot(delay):
     print("Configuring your node...")
     CilantroConf.HOST_IP = requests.get('https://api.ipify.org').text
     print("Your public IP is: {}".format(CilantroConf.HOST_IP))
-    _, vk = wallet.new(seed=CilantroConf.SK)
+    sk = bytes.fromhex(CilantroConf.SK)
+    _, vk = wallet.new(seed=sk)
     print("Your VK is: {}.".format(vk))
 
     if vk in mns:
