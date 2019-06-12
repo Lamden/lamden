@@ -4,26 +4,7 @@ CIL_CONF_PATH = '/etc/cilantro_ee.conf'
 VK_IP_JSON_PATH = '/etc/vk_ip_map.json'
 
 
-# this spicy code, courtesy of kind sir davis, will call setup() on CilantroConf as soon as the code is interpretted
-# no manually invoking of setup() required!
-class ConfMeta(type):
-    confs = {}
-
-    def __new__(cls, clsname, bases, clsdict):
-        if clsname in cls.confs:
-            return cls.confs[clsname]
-
-        clsobj = super().__new__(cls, clsname, bases, clsdict)
-
-        assert hasattr(clsobj, 'setup'), "Class obj {} expected to have method called 'setup'".format(clsobj)
-        clsobj.setup()
-
-        cls.confs[clsname] = clsobj
-
-        return clsobj
-
-
-class CilantroConf(metaclass=ConfMeta):
+class CilantroConf:
 
     HOST_IP = None
     BOOTNODES = []
@@ -38,29 +19,36 @@ class CilantroConf(metaclass=ConfMeta):
     SEN_LOG_LEVEL = None
     SK = None
 
+    SETUP = False
+
     @classmethod
     def setup(cls):
-        # Logger is just for debugging
-        from cilantro_ee.logger.base import get_logger
-        log = get_logger("CilantroConf")
+        if not cls.SETUP:
+            # Logger is just for debugging
+            from cilantro_ee.logger.base import get_logger
+            log = get_logger("CilantroConf")
 
-        # assert os.path.exists(CIL_CONF_PATH), "No config file found at path {}. Comon man get it together!".format(CIL_CONF_PATH)
+            # assert os.path.exists(CIL_CONF_PATH), "No config file found at path {}. Comon man get it together!".format(CIL_CONF_PATH)
 
-        if os.path.exists(CIL_CONF_PATH):
-            config = configparser.ConfigParser()
-            config.read(CIL_CONF_PATH)
-            config = config['DEFAULT']
+            if os.path.exists(CIL_CONF_PATH):
+                config = configparser.ConfigParser()
+                config.read(CIL_CONF_PATH)
+                config = config['DEFAULT']
 
-            cls.CONSTITUTION_FILE = config['constitution_file']
-            cls.BOOTNODES = config['boot_ips'].split(',')
-            cls.RESET_DB = config.getboolean('reset_db')
-            cls.SSL_ENABLED = config.getboolean('ssl_enabled')
-            cls.NONCE_ENABLED = config.getboolean('nonce_enabled') or False
-            cls.STAMPS_ENABLED = config.getboolean('stamps')
-            cls.LOG_LEVEL = int(config['log_lvl'])
-            cls.SEN_LOG_LEVEL = int(config['seneca_log_lvl']) if 'seneca_log_lvl' in config else 0
-            cls.SK = config['sk']
+                cls.CONSTITUTION_FILE = config['constitution_file']
+                cls.BOOTNODES = config['boot_ips'].split(',')
+                cls.RESET_DB = config.getboolean('reset_db')
+                cls.SSL_ENABLED = config.getboolean('ssl_enabled')
+                cls.NONCE_ENABLED = config.getboolean('nonce_enabled') or False
+                cls.STAMPS_ENABLED = config.getboolean('stamps')
+                cls.LOG_LEVEL = int(config['log_lvl'])
+                cls.SEN_LOG_LEVEL = int(config['seneca_log_lvl']) if 'seneca_log_lvl' in config else 0
+                cls.SK = config['sk']
 
-        if os.path.exists(VK_IP_JSON_PATH):
-            with open(VK_IP_JSON_PATH, 'r') as f:
-                cls.VK_IP_MAP = json.load(f)
+            if os.path.exists(VK_IP_JSON_PATH):
+                with open(VK_IP_JSON_PATH, 'r') as f:
+                    cls.VK_IP_MAP = json.load(f)
+
+            cls.SETUP = True
+
+CilantroConf.setup()

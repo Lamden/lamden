@@ -17,6 +17,9 @@ def boot(delay):
     #
     # TODO: RESET THE DBS. THEY ALREADY ARE SEEDED AND NOT RESEEDING SO THE OLD VKS FOR DELEGATES ARE STILL IN THERE AND BLOWING UP BLOCKMANAGER
     #
+    if CilantroConf.RESET_DB:
+        NodeFactory._reset_db()
+
     print("Seeding genesis contract and building VKBook...")
 
     book = read_public_constitution(CilantroConf.CONSTITUTION_FILE)

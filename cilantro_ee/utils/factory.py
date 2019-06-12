@@ -50,28 +50,20 @@ class NodeFactory:
     def run_masternode(signing_key, name='Masternode'):
         _wait_for_redis()
         _wait_for_mongo()
-        if CilantroConf.RESET_DB:
-            NodeFactory._reset_db()
         MasterOps.init_master(key=signing_key)
         mn = Masternode(ip=CilantroConf.HOST_IP, name=name, signing_key=signing_key)
 
     @staticmethod
     def run_witness(signing_key, name='Witness'):
         _wait_for_redis()
-        if CilantroConf.RESET_DB:
-            NodeFactory._reset_db()
         w = Witness(ip=CilantroConf.HOST_IP, name=name, signing_key=signing_key)
 
     @staticmethod
     def run_delegate(signing_key, name='Delegate'):
         _wait_for_redis()
-        if CilantroConf.RESET_DB:
-            NodeFactory._reset_db()
         d = Delegate(ip=CilantroConf.HOST_IP, name=name, signing_key=signing_key)
 
     @staticmethod
     def run_scheduler(signing_key, name='Scheduler'):
         _wait_for_redis()
-        if CilantroConf.RESET_DB:
-            NodeFactory._reset_db()
         s = Scheduler(ip=CilantroConf.HOST_IP, name=name, signing_key=signing_key)
