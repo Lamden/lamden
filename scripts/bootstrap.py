@@ -45,11 +45,11 @@ def boot(delay):
     print("Your VK is: {}.".format(vk))
 
     if vk in mns:
-        CilantroConf.NODE_TYPE = 'masternode'
+        node_type = 'masternode'
     elif vk in dels:
-        CilantroConf.NODE_TYPE = 'delegate'
+        node_type = 'delegate'
     else:
-        CilantroConf.NODE_TYPE = 'none'
+        node_type = 'none'
 
     print("Your node type is: {}".format(CilantroConf.NODE_TYPE))
 
@@ -59,20 +59,20 @@ def boot(delay):
     # print("VKBook mns {}".format(VKBook.get_masternodes()))
     overwrite_logger_level(CilantroConf.LOG_LEVEL)
 
-    if CilantroConf.NODE_TYPE == 'witness':
+    if node_type == 'witness':
         NodeFactory.run_witness(signing_key=CilantroConf.SK)
 
-    elif CilantroConf.NODE_TYPE == 'delegate':
+    elif node_type == 'delegate':
         sen_overwrite_log(CilantroConf.SEN_LOG_LEVEL)
         NodeFactory.run_delegate(CilantroConf.SK)
 
-    elif CilantroConf.NODE_TYPE == 'masternode':
+    elif node_type == 'masternode':
         NodeFactory.run_masternode(CilantroConf.SK)
 
-    elif CilantroConf.NODE_TYPE == 'scheduler':
+    elif node_type == 'scheduler':
         NodeFactory.run_scheduler(CilantroConf.SK)
 
-    elif CilantroConf.NODE_TYPE == 'notifier':
+    elif node_type == 'notifier':
         while True:
             print("I am a notifier but i has no logic yet :(")
             time.sleep(1)
