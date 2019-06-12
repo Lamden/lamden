@@ -44,7 +44,7 @@ def boot(delay):
     if vk in mns:
         CilantroConf.NODE_TYPE = 'masternode'
     elif vk in dels:
-        CilantroConf.NODE_TYPE = 'delegates'
+        CilantroConf.NODE_TYPE = 'delegate'
     else:
         CilantroConf.NODE_TYPE = 'none'
 
