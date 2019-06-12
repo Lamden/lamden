@@ -19,7 +19,6 @@ def boot(delay):
     masternodes = vk_book_contract.get_masternodes()
     delegates = vk_book_contract.get_delegates()
 
-    VKBook.setup()
     VKBook.set_masternodes(masternodes)
     VKBook.set_delegates(delegates)
 
