@@ -5,9 +5,16 @@ from cilantro_ee.logger.base import overwrite_logger_level
 from contracting.logger import overwrite_logger_level as sen_overwrite_log
 import os, sys, time
 
+from contracting.client import ContractingClient
+from cilantro_ee.contracts import sync
 
 def boot(delay):
     assert os.path.exists(CIL_CONF_PATH), "No config file found at path {}. Comon man get it together!".format(CIL_CONF_PATH)
+
+    print("Seeding genesis contract and building VKBook...")
+    sync.sync_genesis_contracts()
+    client = ContractingClient()
+    vk_book_contract = client.get_contract('vkbook')
 
     print("Bootstrapping node with start delay of {}...".format(delay))
     time.sleep(delay)

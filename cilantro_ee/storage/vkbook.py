@@ -45,13 +45,6 @@ class VKBook(metaclass=VKBookMeta):
         # TODO untangle this mess --davis
         from cilantro_ee.utils.test.testnet_config import read_public_constitution
 
-        #from contracting.client import ContractingClient
-        #from cilantro_ee.contracts import sync
-
-        #sync.sync_genesis_contracts()
-        #client = ContractingClient()
-        #vk_book_contract = client.get_contract('vkbook')
-
         const_file = CilantroConf.CONSTITUTION_FILE
         if const_file:
             log.info("VKBook using constitution file {}".format(const_file))
