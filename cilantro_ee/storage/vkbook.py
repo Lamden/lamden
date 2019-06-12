@@ -4,11 +4,10 @@ from cilantro_ee.utils.utils import is_valid_hex
 from cilantro_ee.constants.conf import CilantroConf
 from collections import defaultdict
 
-
 log = get_logger("VKBook")
 
-class VKBook:
 
+class VKBook:
     node_types = ('masternode', 'witness', 'delegate')
     node_types_map = {
         'masternode': 'masternodes',

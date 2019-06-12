@@ -38,3 +38,15 @@ def sync_genesis_contracts(genesis_path: str='genesis',
                 code = f.read()
 
             client.submit(code, name=name)
+
+
+def submit_contract_with_construction_args(name, args={}):
+    file = os.path.dirname(__file__) + '/genesis/{}.s.py'.format(name)
+
+    submission_file = os.path.dirname(__file__) + '/submission.s.py'
+    client = ContractingClient(submission_filename=submission_file)
+
+    with open(file) as f:
+        code = f.read()
+
+        client.submit(code, name=name, constructor_args=args)

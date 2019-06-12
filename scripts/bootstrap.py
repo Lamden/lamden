@@ -5,8 +5,10 @@ from cilantro_ee.logger.base import overwrite_logger_level
 from contracting.logger import overwrite_logger_level as sen_overwrite_log
 import os, sys, time
 
+from cilantro_ee.utils.test.testnet_config import read_public_constitution
 from contracting.client import ContractingClient
 from cilantro_ee.contracts import sync
+
 
 def boot(delay):
     assert os.path.exists(CIL_CONF_PATH), "No config file found at path {}. Comon man get it together!".format(CIL_CONF_PATH)
@@ -15,6 +17,11 @@ def boot(delay):
     # TODO: RESET THE DBS. THEY ALREADY ARE SEEDED AND NOT RESEEDING SO THE OLD VKS FOR DELEGATES ARE STILL IN THERE AND BLOWING UP BLOCKMANAGER
     #
     print("Seeding genesis contract and building VKBook...")
+
+    book = read_public_constitution(CilantroConf.CONSTITUTION_FILE)
+    mns = book['masternodes']
+    dels = book['delegates']
+
     sync.sync_genesis_contracts()
     client = ContractingClient()
     vk_book_contract = client.get_contract('vkbook')
