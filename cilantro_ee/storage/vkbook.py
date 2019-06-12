@@ -132,12 +132,20 @@ class VKBook(metaclass=VKBookMeta):
         return cls.book['masternodes']
 
     @classmethod
+    def set_masternodes(cls, nodes):
+        cls.book['masternodes'] = nodes
+
+    @classmethod
     def get_witnesses(cls) -> list:
         return cls.book['witnesses']
 
     @classmethod
     def get_delegates(cls) -> list:
         return cls.book['delegates']
+
+    @classmethod
+    def set_delegates(cls, nodes):
+        cls.book['masternodes'] = nodes
 
     @classmethod
     def get_schedulers(cls) -> list:

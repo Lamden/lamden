@@ -1,6 +1,6 @@
 from cilantro_ee.utils.factory import NodeFactory
 from cilantro_ee.constants.conf import CilantroConf, CIL_CONF_PATH
-
+from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.logger.base import overwrite_logger_level
 from contracting.logger import overwrite_logger_level as sen_overwrite_log
 import os, sys, time
@@ -15,6 +15,18 @@ def boot(delay):
     sync.sync_genesis_contracts()
     client = ContractingClient()
     vk_book_contract = client.get_contract('vkbook')
+
+    print('masternodes: {}'.format(vk_book_contract.get_masternodes()))
+    print('delegates: {}'.format(vk_book_contract.get_delegates()))
+
+    masternodes = vk_book_contract.get_masternodes()
+    delegates = vk_book_contract.get_delegates()
+
+    VKBook.set_masternodes(masternodes)
+    VKBook.set_delegates(delegates)
+
+    print('masternodes: {}'.format(VKBook.get_masternodes()))
+    print('delegates: {}'.format(VKBook.get_delegates()))
 
     print("Bootstrapping node with start delay of {}...".format(delay))
     time.sleep(delay)
