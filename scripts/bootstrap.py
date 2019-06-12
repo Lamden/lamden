@@ -22,6 +22,9 @@ def boot(delay):
     VKBook.set_masternodes(masternodes)
     VKBook.set_delegates(delegates)
 
+    print(delegates)
+    print(VKBook.get_delegates())
+
     print("Bootstrapping node with start delay of {}...".format(delay))
     time.sleep(delay)
 
