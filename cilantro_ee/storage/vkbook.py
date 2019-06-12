@@ -24,7 +24,7 @@ class VKBookMeta(type):
         return clsobj
 
 
-class VKBook(metaclass=VKBookMeta):
+class VKBook:
 
     node_types = ('masternode', 'witness', 'delegate')
     node_types_map = {
@@ -145,7 +145,7 @@ class VKBook(metaclass=VKBookMeta):
 
     @classmethod
     def set_delegates(cls, nodes):
-        cls.book['masternodes'] = nodes
+        cls.book['delegates'] = nodes
 
     @classmethod
     def get_schedulers(cls) -> list:
