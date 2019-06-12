@@ -52,3 +52,5 @@ def submit_contract_with_construction_args(name, args={}):
         code = f.read()
 
         client.submit(code, name=name, constructor_args=args)
+
+    client.raw_driver.commit()
